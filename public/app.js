@@ -2642,8 +2642,22 @@ async function loadOwner() {
     document.querySelectorAll('[data-grant-premium]').forEach(b=>b.onclick=async()=>{try{await api('/api/owner/premium-requests/'+b.dataset.grantPremium+'/grant',{method:'POST'});toast('Premium granted.');loadOwner()}catch(e){toast(e.message)}});
     const giftList=await api('/api/gifts').catch(()=>({gifts:[]}));
     if($('ownerGiftList')) $('ownerGiftList').innerHTML=(giftList.gifts||[]).map(g=>`<div class="filter-table-row"><span>${esc(g.icon||g.image||'🎁')} <b>${esc(g.name)}</b> · 🪙 ${g.cost}</span><button class="mini" data-edit-gift="${g.id}">Edit</button><button class="mini danger" data-delete-gift="${g.id}">Delete</button></div>`).join('')||'<p class="muted">No gifts.</p>';
-    if($('ownerAddGift')) $('ownerAddGift').onclick=()=>{modal(`<h2>Add Gift</h2><input id="giftOwnerName" required placeholder="Name"><input id="giftOwnerImage" required placeholder="Image URL"><div id="giftOwnerPreview" class="media-preview"></div><input id="giftOwnerPrice" type="number" min="1" required placeholder="Gold price"><button class="primary" id="giftOwnerSave">Add</button>`);$('giftOwnerImage').oninput=()=>{$('giftOwnerPreview').innerHTML=$('giftOwnerImage').value.trim()?`<img src="${esc($('giftOwnerImage').value.trim())}" onerror="this.style.display='none'">`:''};};
-    if($('giftOwnerSave')) $('giftOwnerSave').onclick=async()=>{try{if(!$('giftOwnerName').value.trim()||!$('giftOwnerImage').value.trim()||Number($('giftOwnerPrice').value)<1)throw Error('Name, image URL and price are required.');await api('/api/gifts',{method:'POST',body:JSON.stringify({name:$('giftOwnerName').value,image:$('giftOwnerImage').value,price:$('giftOwnerPrice').value})});closeModal();toast('Gift added successfully.');loadOwner()}catch(e){toast(e.message)}};
+    if($('ownerAddGift')) $('ownerAddGift').onclick=()=>{
+      modal(`<h2>Add Gift</h2><input id="giftOwnerName" required placeholder="Name"><input id="giftOwnerImage" required placeholder="Image URL"><div id="giftOwnerPreview" class="media-preview"></div><input id="giftOwnerPrice" type="number" min="1" required placeholder="Gold price"><button class="primary" id="giftOwnerSave" type="button">Add</button>`);
+      const imageInput=$('giftOwnerImage'), preview=$('giftOwnerPreview'), saveGift=$('giftOwnerSave');
+      if(imageInput) imageInput.oninput=()=>{
+        const url=imageInput.value.trim();
+        preview.innerHTML=url?`<img src="${esc(url)}" alt="Gift preview" onerror="this.style.display='none';this.parentElement.insertAdjacentHTML('beforeend','<small class="muted">Image could not be loaded.</small>')">`:'';
+      };
+      if(saveGift) saveGift.onclick=async()=>{
+        try{
+          const name=$('giftOwnerName').value.trim(), image=imageInput.value.trim(), price=Number($('giftOwnerPrice').value);
+          if(!name||!image||!Number.isFinite(price)||price<1) throw Error('Name, image URL and price are required.');
+          await api('/api/gifts',{method:'POST',body:JSON.stringify({name,image,price})});
+          closeModal(); toast('Gift added successfully.'); await loadOwner();
+        }catch(e){toast(e.message);}
+      };
+    };
     document.querySelectorAll('[data-delete-gift]').forEach(b=>b.onclick=async()=>{if(confirm('Delete this gift?')){await api('/api/owner/gifts/'+b.dataset.deleteGift,{method:'DELETE'});loadOwner()}});
     document.querySelectorAll('[data-edit-gift]').forEach(b=>b.onclick=async()=>{const g=(giftList.gifts||[]).find(x=>String(x.id)===String(b.dataset.editGift));if(!g)return;modal(`<h2>Edit Gift</h2><input id="giftOwnerName" value="${esc(g.name)}"><input id="giftOwnerImage" value="${esc(g.image||g.icon||'')}"><input id="giftOwnerPrice" type="number" value="${g.cost}"><button class="primary" id="giftOwnerSave">Save</button>`);$('giftOwnerSave').onclick=async()=>{try{await api('/api/owner/gifts/'+g.id,{method:'PATCH',body:JSON.stringify({name:$('giftOwnerName').value,image:$('giftOwnerImage').value,price:$('giftOwnerPrice').value})});closeModal();loadOwner()}catch(e){toast(e.message)}}});
   } catch (error) {
