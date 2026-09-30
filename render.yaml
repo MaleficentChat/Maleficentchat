@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: maleficent-chat
+    runtime: node
+    buildCommand: npm install
+    startCommand: npm start
+    disk:
+      name: maleficent-chat-data
+      mountPath: /opt/render/project/src/data
+      sizeGB: 1
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: UPLOAD_DIR
+        value: /opt/render/project/src/data/uploads
+      - key: SEO_SITE_URL
+        value: https://maleficentchat.onrender.com

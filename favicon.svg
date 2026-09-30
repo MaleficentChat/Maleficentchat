@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title">
+  <title id="title">Maleficent Chat</title>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#19323b"/>
+      <stop offset="1" stop-color="#071016"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="18" fill="url(#bg)"/>
+  <path d="M15 21h8l9 11 9-11h8v25h-8V33L32 44 23 33v13h-8z" fill="#74e0d5"/>
+  <circle cx="51" cy="14" r="4" fill="#ff4fd8"/>
+</svg>

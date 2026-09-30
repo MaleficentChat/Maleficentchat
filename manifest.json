@@ -1,0 +1,9 @@
+{
+  "name":"MaleficentChat",
+  "short_name":"MaleficentChat",
+  "start_url":"/",
+  "display":"standalone",
+  "background_color":"#071016",
+  "theme_color":"#00bfae",
+  "icons":[{"src":"/favicon.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}]
+}
