@@ -935,15 +935,10 @@ function messageHTML(message) {
       <div class="msg-body">
 
         <div class="msg-top">
+          <span class="message-rank-icon" title="${esc(message.rank||"MEMBER")}" aria-label="${esc(message.rank||"MEMBER")}">${rankIcon[String(message.rank||"MEMBER").toUpperCase()]||"⚡"}</span>
           <button class="message-author tag-author" type="button" title="Tag @${esc(message.username)}" onclick="tagUserFromMessage('${esc(message.username)}')" style="color:${esc(message.usernameColor||state.user?.settings?.usernameColor||'var(--username-color)')}">${esc(message.displayName)}</button>
-          
-
-          <span class="msg-time">
-            ${fmt(message.time)}
-            ${message.edited ? " · edited" : ""}
-          </span>
+          <span class="msg-time">${fmt(message.time)}${message.edited ? " · edited" : ""}</span>
         </div>
-        <div class="message-rank-icon" title="${esc(message.rank||"MEMBER")}">${rankIcon[String(message.rank||"MEMBER").toUpperCase()]||"⚡"}</div>
 
        ${
   message.replyTo
@@ -1380,6 +1375,32 @@ function replyMsg(id) {
 
   $("message").focus();
 }
+
+
+// Double-click (desktop) or double-tap (touch) a message bubble to quote it.
+(function enableMessageDoubleTapQuote(){
+  let lastTouch = { id: null, time: 0 };
+  document.addEventListener("pointerup", event => {
+    if(event.pointerType !== "touch") return;
+    const target=event.target;
+    if(!(target instanceof Element) || target.closest("button,a,input,textarea,audio,video,iframe,.msg-actions,.message-actions-menu")) return;
+    const msg=target.closest(".msg[data-mid]");
+    if(!msg || !target.closest(".msg-text,.message-image,.chat-gif,.quoted,.msg-body")) return;
+    const id=msg.dataset.mid, now=Date.now();
+    if(lastTouch.id===id && now-lastTouch.time<360){
+      lastTouch={id:null,time:0};
+      replyMsg(id);
+    }else lastTouch={id,time:now};
+  }, {passive:true});
+  document.addEventListener("dblclick", event => {
+    const target=event.target;
+    if(!(target instanceof Element) || target.closest("button,a,input,textarea,audio,video,iframe,.msg-actions,.message-actions-menu")) return;
+    const msg=target.closest(".msg[data-mid]");
+    if(!msg || !target.closest(".msg-text,.message-image,.chat-gif,.quoted,.msg-body")) return;
+    replyMsg(msg.dataset.mid);
+  });
+})();
+
 function cancelReply() {
   state.replyTo = null;
 
