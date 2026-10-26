@@ -923,3 +923,83 @@ input,textarea,select{background:rgba(255,255,255,.055);border-color:rgba(255,25
   .composer { padding: 6px 8px; gap: 6px; }
   #message { min-width: 0; }
 }
+
+
+/* Uploaded-index room/chat layout merge — preserve the existing app features */
+/* Room browser: distinct, easy-to-scan rows matching the uploaded room-first structure. */
+#viewRooms:not(.chatting) > .topbar {
+  background: linear-gradient(115deg, rgba(27,21,43,.98), rgba(13,20,30,.98));
+  border-bottom: 1px solid rgba(174,132,255,.18);
+}
+#viewRooms:not(.chatting) #rooms.room-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 18px 22px 26px;
+  background: radial-gradient(ellipse at 12% 0%, rgba(139,92,246,.09), transparent 45%);
+}
+#viewRooms:not(.chatting) .room-list-card {
+  padding: 14px 16px;
+  border: 1px solid rgba(177,143,255,.16);
+  border-radius: 15px;
+  background: linear-gradient(112deg, rgba(31,27,46,.94), rgba(14,21,30,.97));
+  box-shadow: 0 7px 22px rgba(0,0,0,.14);
+  transition: border-color .16s ease, background .16s ease, transform .16s ease;
+}
+#viewRooms:not(.chatting) .room-list-card:hover,
+#viewRooms:not(.chatting) .room-list-card.selected {
+  border-color: rgba(177,143,255,.48);
+  background: linear-gradient(112deg, rgba(46,34,67,.96), rgba(17,25,36,.98));
+}
+#viewRooms:not(.chatting) .room-list-card:hover { transform: translateY(-1px); }
+#viewRooms:not(.chatting) .room-icon-wrap {
+  width: 54px;
+  height: 54px;
+  border-radius: 14px;
+  background: linear-gradient(145deg, rgba(139,92,246,.30), rgba(236,72,153,.15));
+  border-color: rgba(192,160,255,.22);
+}
+#viewRooms:not(.chatting) .room-title-row { color: #f6f0ff; }
+#viewRooms:not(.chatting) .room-subrow { color: #b8a4dc; }
+#viewRooms:not(.chatting) .room-count {
+  min-width: 48px;
+  width: auto;
+  padding: 7px 9px;
+  border: 1px solid rgba(255,255,255,.07);
+  border-radius: 11px;
+  background: rgba(255,255,255,.045);
+}
+#viewRooms:not(.chatting) .room-list-actions { display:flex; gap:6px; flex-wrap:wrap; margin:10px 0 0 66px; }
+#viewRooms.chatting .chat-wrap {
+  grid-template-columns: minmax(0,1fr) minmax(235px, var(--online-w));
+  gap: 10px;
+  padding: 10px;
+  background: radial-gradient(ellipse at 12% 0%, rgba(139,92,246,.07), transparent 42%);
+}
+#viewRooms.chatting .chat-card,
+#viewRooms.chatting .online-panel {
+  border: 1px solid rgba(177,143,255,.15);
+  border-radius: 15px;
+  background: rgba(11,15,24,.94);
+  box-shadow: 0 12px 32px rgba(0,0,0,.18);
+}
+#viewRooms.chatting .chat-head,
+#viewRooms.chatting .online-panel > .panel-head {
+  background: linear-gradient(105deg, rgba(32,26,48,.97), rgba(15,22,31,.97));
+  border-bottom-color: rgba(177,143,255,.13);
+}
+#viewRooms.chatting .online-panel { border-left: 1px solid rgba(177,143,255,.15); }
+#viewRooms.chatting .chat-games-panel { margin: 12px; }
+#viewRooms.chatting .composer {
+  border-radius: 0 0 15px 15px;
+  background: rgba(18,19,31,.98);
+  border-top-color: rgba(177,143,255,.15);
+}
+@media (max-width: 768px) {
+  #viewRooms:not(.chatting) #rooms.room-grid { padding: 12px; gap: 9px; }
+  #viewRooms:not(.chatting) .room-list-card { padding: 12px; }
+  #viewRooms:not(.chatting) .room-icon-wrap { width: 43px; height: 43px; font-size: 23px; }
+  #viewRooms:not(.chatting) .room-list-actions { margin-left: 0; }
+  #viewRooms.chatting .chat-wrap { padding: 0; gap: 0; }
+  #viewRooms.chatting .chat-card { border-radius: 0; }
+}
