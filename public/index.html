@@ -67,7 +67,7 @@
 <main class="main">
   <div id="viewRooms" class="view">
     <div class="topbar">
-      <div><h2>Rooms & Community</h2><p class="muted">Open a room, or use My Rooms to find rooms you created or joined.</p></div>
+      <div><h2>Rooms & Community</h2><p class="muted">Main Room plus additional public/private communities.</p></div>
       <div class="top-actions"><div class="room-view-tabs"><button class="mini active" id="allRoomsBtn" type="button">All rooms</button><button class="mini" id="myRoomsBtn" type="button">My rooms</button></div><input id="roomSearch" placeholder="Search rooms…"><button class="primary coowner-only hidden" id="newRoom">＋ Room</button></div>
     </div>
     <div id="rooms" class="room-grid"></div>
@@ -104,6 +104,15 @@
           </div>
           <div class="panel-head"><b id="onlinePanelTitle">Online <span class="online-badge" id="roomOnlineBadge"></span></b><button class="panel-more" type="button" onclick="openOnlinePanelMenu()">⋯</button></div>
           <div id="onlineUsers"></div>
+          <section class="games-panel chat-games-panel">
+            <div class="panel-head"><b>🎮 Games</b><span class="muted">Quick play</span></div>
+            <div class="game-grid">
+              <button type="button" class="mini" onclick="playRPS()">✊ RPS</button>
+              <button type="button" class="mini" onclick="rollDice()">🎲 Dice</button>
+              <button type="button" class="mini" onclick="showGameScores()">🏆 Scores</button>
+            </div>
+            <div id="gameResult" class="game-result">Choose a game.</div>
+          </section>
         </aside>
     </div>
   </div>
