@@ -1384,3 +1384,71 @@ input,textarea,select{background:rgba(255,255,255,.055);border-color:rgba(255,25
  #dmList .dm-inbox-actions{gap:5px}
  #dmList .dm-inbox-actions button{padding:7px 8px!important;font-size:11px}
 }
+
+
+/* Hard-targeted mobile fixes for profile modal and private-message directory */
+#modal .modal-card:has(#modalBody .profile-modal){
+  width:min(700px,96vw)!important;max-width:96vw!important;
+  max-height:calc(100dvh - 20px)!important;padding:0!important;
+  overflow-x:hidden!important;overflow-y:auto!important;
+}
+#modalBody>.profile-modal{
+  width:100%!important;max-width:100%!important;min-width:0!important;
+  overflow:visible!important;border-radius:18px!important;
+  background:#11101b!important;color:#f5efff!important;
+}
+#modalBody>.profile-modal>.profile-banner{
+  min-height:0!important;height:auto!important;box-sizing:border-box!important;
+  padding:74px 14px 22px!important;gap:8px!important;
+  justify-content:flex-start!important;align-items:center!important;
+  background-color:#171126!important;
+}
+#modalBody .profile-stats{
+  position:absolute!important;top:10px!important;left:10px!important;right:48px!important;
+  display:flex!important;flex-wrap:wrap!important;gap:5px!important;
+}
+#modalBody .profile-hamburger{position:absolute!important;top:10px!important;right:8px!important}
+#modalBody .profile-banner .big-avatar{width:88px!important;height:88px!important;margin:0!important;flex:0 0 88px!important}
+#modalBody .profile-name{max-width:100%!important;font-size:clamp(20px,5vw,27px)!important;line-height:1.2!important;overflow-wrap:anywhere!important}
+#modalBody .profile-tabs{display:flex!important;width:100%!important;box-sizing:border-box!important;overflow-x:auto!important;justify-content:flex-start!important;background:#211832!important}
+#modalBody .profile-tab{flex:0 0 auto!important;color:#d8c9eb!important;background:transparent!important}
+#modalBody .profile-tab.active{background:rgba(155,92,255,.22)!important;color:#fff!important;box-shadow:inset 0 -3px #b78aff!important}
+#modalBody .profile-info{width:100%!important;box-sizing:border-box!important;padding:14px!important;background:#11101b!important;color:#f5efff!important}
+#modalBody .profile-info-row{grid-template-columns:minmax(0,1fr)!important;gap:4px!important;padding:12px 0!important;border-bottom:1px solid rgba(255,255,255,.09)!important}
+#modalBody .profile-info-row b{color:#eee5ff!important}
+#modalBody .profile-info-row span{color:#c9bfd8!important;overflow-wrap:anywhere!important}
+#modalBody .about-card{background:#191426!important;border-color:rgba(190,145,255,.18)!important}
+@media(max-width:700px){
+ #modal .modal-card:has(#modalBody .profile-modal){width:calc(100vw - 12px)!important;max-width:calc(100vw - 12px)!important;max-height:calc(100dvh - 12px)!important}
+ #modalBody>.profile-modal{border-radius:14px!important}
+ #modalBody>.profile-modal>.profile-banner{padding:72px 10px 18px!important}
+ #modalBody .profile-stats{left:8px!important;right:46px!important}
+ #modalBody .profile-stat{font-size:10px!important;padding:5px 6px!important}
+}
+
+/* Private Messages page: prevent the top search controls from overflowing */
+#viewDms{width:100%;max-width:100%;min-width:0;box-sizing:border-box;overflow-x:clip}
+#viewDms>.topbar{
+ display:grid!important;grid-template-columns:minmax(0,1fr)!important;
+ gap:10px!important;align-items:stretch!important;width:100%!important;
+ max-width:100%!important;min-width:0!important;box-sizing:border-box!important;
+}
+#viewDms>.topbar>div,#viewDms>.topbar>input,#viewDms>.topbar>button{min-width:0!important;max-width:100%!important;width:100%!important;box-sizing:border-box!important}
+#viewDms>.topbar>input{margin:0!important}
+#viewDms>#dmSearchResults,#viewDms>#dmList{
+ width:100%!important;max-width:760px!important;min-width:0!important;
+ margin:12px auto!important;box-sizing:border-box!important;
+ display:flex!important;flex-direction:column!important;align-items:stretch!important;
+ gap:12px!important;padding:0 12px 16px!important;
+}
+#viewDms #dmList .dm-inbox-toolbar{width:100%!important;max-width:100%!important;min-width:0!important;box-sizing:border-box!important;margin:0 auto!important}
+#viewDms #dmList .dm-inbox-toolbar input{display:block!important;width:100%!important;max-width:100%!important;min-width:0!important;box-sizing:border-box!important}
+#viewDms #dmList .dm-inbox-list{width:100%!important;max-width:100%!important;min-width:0!important;box-sizing:border-box!important}
+#viewDms #dmList .dm-inbox-card{width:100%!important;max-width:100%!important;min-width:0!important;box-sizing:border-box!important;margin:0!important}
+#viewDms #dmSearchResults .user-card{width:100%!important;max-width:100%!important;min-width:0!important;box-sizing:border-box!important;margin:0!important}
+@media(max-width:700px){
+ #viewDms>.topbar{padding:12px!important;margin:0!important}
+ #viewDms>#dmSearchResults,#viewDms>#dmList{padding-left:10px!important;padding-right:10px!important;margin-left:auto!important;margin-right:auto!important}
+ #viewDms #dmList .dm-inbox-actions{display:flex!important;flex-wrap:wrap!important}
+ #viewDms #dmList .dm-inbox-actions button:last-child{margin-left:0!important;flex:1 1 70px!important}
+}
