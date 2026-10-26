@@ -312,7 +312,7 @@ function adminLogCategory(action){
  if(/ROOM/.test(a))return "room_changes";
  if(/SETTING|CONFIG|FEATURE|PERMISSION/.test(a))return "site_settings";
  if(/LOGIN|LOGOUT|REGISTER|PASSWORD|EMAIL|ACCOUNT|PROFILE|USERNAME/.test(a))return "account_security";
- if(/MUTE|KICK|WARN|BAN|MODERAT|ROLE|RANK|STAFF|OWNER|ADMIN|NOTE|USER_ACTION/.test(a))return "staff_moderation";
+ if(/MUTE|KICK|WARN|BAN|MODERAT|ROLE|RANK|STAFF|NOTE|USER_ACTION/.test(a))return "staff_moderation";
  return "other_staff_actions";
 }
 function adminLogEnabled(action){return adminLogSettings()[adminLogCategory(action)]!==false;}
