@@ -5,17 +5,17 @@ const $ = id => document.getElementById(id);
 const memoryStorage = new Map();
 const safeStorage = {
   getItem(key) {
-    try { const value = window.safeStorage.getItem(key); if (value !== null) return value; } catch {}
+    try { const value = window.localStorage.getItem(key); if (value !== null) return value; } catch {}
     return memoryStorage.has(key) ? memoryStorage.get(key) : null;
   },
   setItem(key, value) {
     const text = String(value);
     memoryStorage.set(key, text);
-    try { window.safeStorage.setItem(key, text); } catch {}
+    try { window.localStorage.setItem(key, text); } catch {}
   },
   removeItem(key) {
     memoryStorage.delete(key);
-    try { window.safeStorage.removeItem(key); } catch {}
+    try { window.localStorage.removeItem(key); } catch {}
   }
 };
 
