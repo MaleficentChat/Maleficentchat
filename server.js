@@ -568,6 +568,17 @@ const upload=multer({
   }
 });
 
+function visibleRoomOnlineCount(roomId){
+  const members=io.sockets.adapter.rooms.get("room:"+roomId);
+  if(!members)return 0;
+  let count=0;
+  for(const socketId of members){
+    const socket=io.sockets.sockets.get(socketId);
+    const user=findUser(socket?.data?.userId);
+    if(user&&user.online&&!user.invisible)count++;
+  }
+  return count;
+}
 app.get(
   "/api/bootstrap",
   (req,res)=>
@@ -583,7 +594,7 @@ app.get(
       rooms:db.rooms.map(r=>({
         ...r,
         passwordHash:undefined,
-        onlineCount:io.sockets.adapter.rooms.get("room:"+r.id)?.size||0
+        onlineCount:visibleRoomOnlineCount(r.id)
       })),
 
       settings:db.settings,
@@ -1098,7 +1109,7 @@ app.get("/api/rooms",auth,async(req,res)=>{
   await pool.query(`INSERT INTO rooms(name,created_by,icon,description,category,is_public,rank_required,invite_token,min_age,max_age,is_default) VALUES ('Main room 1',(SELECT id FROM users WHERE username='Maleficent'),'🏠','Meet and chat with the community.','Community',true,'MEMBER','main-1',0,18,true),('Main room 2',(SELECT id FROM users WHERE username='Maleficent'),'🏠','A second open community room.','Community',true,'MEMBER','main-2',19,99,true) ON CONFLICT(name) DO UPDATE SET description=EXCLUDED.description,min_age=CASE WHEN rooms.name='Main room 1' THEN 0 ELSE 19 END,max_age=CASE WHEN rooms.name='Main room 1' THEN 18 ELSE 99 END,is_default=true`);
   const {rows}=await pool.query(`SELECT r.*,u.username AS creator FROM rooms r LEFT JOIN users u ON r.created_by=u.id ORDER BY r.is_default DESC,r.created_at ASC,r.id ASC`);
   if(!rows.length) return res.status(503).json({error:'Rooms are not initialized yet. Please retry in a moment.',rooms:[]});
-  const rooms=rows.map(r=>({id:String(r.id),name:r.name,icon:r.icon||"💬",description:r.description||"",category:r.category||"Community",public:r.is_public!==false,passwordHash:r.password_hash||null,rankRequired:String(r.rank_required||"MEMBER").toUpperCase(),limit:Number(r.room_limit||100),slowMode:Number(r.slow_mode||0),announcement:r.announcement||"",ownerId:r.created_by?String(r.created_by):null,banner:r.banner||"",inviteToken:r.invite_token||"",creator:r.creator||null,isDefault:!!r.is_default,minAge:Number(r.min_age??0),maxAge:Number(r.max_age??120),locked:!!r.password_hash,onlineCount:io.sockets.adapter.rooms.get("room:"+r.id)?.size||0}));
+  const rooms=rows.map(r=>({id:String(r.id),name:r.name,icon:r.icon||"💬",description:r.description||"",category:r.category||"Community",public:r.is_public!==false,passwordHash:r.password_hash||null,rankRequired:String(r.rank_required||"MEMBER").toUpperCase(),limit:Number(r.room_limit||100),slowMode:Number(r.slow_mode||0),announcement:r.announcement||"",ownerId:r.created_by?String(r.created_by):null,banner:r.banner||"",inviteToken:r.invite_token||"",creator:r.creator||null,isDefault:!!r.is_default,minAge:Number(r.min_age??0),maxAge:Number(r.max_age??120),locked:!!r.password_hash,onlineCount:visibleRoomOnlineCount(r.id)}));
   db.rooms=rooms;
   res.json({rooms:rooms.map(r=>({...r,passwordHash:undefined}))});
 });
