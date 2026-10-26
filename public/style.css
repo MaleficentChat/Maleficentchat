@@ -1089,3 +1089,33 @@ input,textarea,select{background:rgba(255,255,255,.055);border-color:rgba(255,25
  .dm-composer #dmText{padding:10px 8px!important;font-size:13px}
  .dm-file-name{display:none}
 }
+
+
+/* Private-message inbox enhancements */
+.dm-inbox-toolbar{display:grid;gap:10px;margin:8px 0 14px}
+.dm-inbox-toolbar>input{width:100%;box-sizing:border-box;background:#11151d;color:inherit;border:1px solid #51416c;border-radius:12px;padding:12px 14px;outline:none}
+.dm-inbox-toolbar>input:focus{border-color:#9b5cff;box-shadow:0 0 0 2px #9b5cff22}
+.dm-inbox-tabs{display:flex;gap:7px;flex-wrap:wrap}
+.dm-inbox-tabs button{border:1px solid #443653;background:#171522;color:#c9c1d5;border-radius:999px;padding:7px 13px}
+.dm-inbox-tabs button.active{background:#38234f;border-color:#9b5cff;color:#fff}
+.dm-inbox-list{display:grid;gap:8px}
+.dm-inbox-card{display:flex;align-items:center;gap:11px;padding:12px;border:1px solid #34303f;border-radius:14px;background:linear-gradient(115deg,#171923,#1d1b29);min-width:0}
+.dm-inbox-card.dm-is-pinned{border-color:#7652a4;background:linear-gradient(115deg,#211b2c,#1d1b29)}
+.dm-inbox-card .dm-contact-copy{flex:1;min-width:0;display:grid;gap:4px}
+.dm-inbox-title{display:flex;align-items:center;gap:8px;min-width:0}
+.dm-inbox-title b,.dm-preview{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dm-preview{display:block;opacity:.72;max-width:100%}
+.dm-unread-badge{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;padding:0 6px;border-radius:999px;background:#9b5cff;color:#fff;font-size:11px;font-weight:800}
+.dm-inbox-actions{display:flex;align-items:center;justify-content:flex-end;gap:4px;flex-wrap:wrap}
+.dm-inbox-actions .mini{padding:7px 8px;min-width:31px}
+.dm-empty{padding:22px;text-align:center;border:1px dashed #4a4059;border-radius:12px}
+@media(max-width:700px){
+ .dm-inbox-card{gap:8px;padding:9px}
+ .dm-inbox-card .avatar{width:38px;height:38px;flex-shrink:0}
+ .dm-inbox-actions{max-width:116px}
+ .dm-inbox-actions .mini{padding:6px;min-width:28px}
+ .dm-inbox-actions .primary{padding:7px 9px}
+ .dm-inbox-toolbar{margin:6px 0 10px}
+ .dm-inbox-tabs{overflow-x:auto;flex-wrap:nowrap;padding-bottom:3px}
+ .dm-inbox-tabs button{white-space:nowrap}
+}
