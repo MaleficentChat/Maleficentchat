@@ -2119,30 +2119,46 @@ app.get(
 );
 
 app.get("/api/staff/ip-inspection/users",auth,ownerOnly,async(req,res)=>{
-  const term=String(req.query.q||"").trim().slice(0,80);
-  const result=await pool.query("SELECT id,username,email,created_at FROM users WHERE ($1='' OR username ILIKE '%'||$1||'%' OR COALESCE(email,'') ILIKE '%'||$1||'%') ORDER BY LOWER(username) LIMIT 30",[term]);
-  res.json({users:result.rows});
+  let stage="validate-search";
+  try{
+    const term=String(req.query.q||"").trim().slice(0,80);
+    stage="query-users";
+    const result=await pool.query("SELECT id,username,email,created_at FROM users WHERE ($1='' OR username ILIKE '%'||$1||'%' OR COALESCE(email,'') ILIKE '%'||$1||'%') ORDER BY LOWER(username) LIMIT 30",[term]);
+    return res.json({users:result.rows});
+  }catch(err){
+    console.error("[IP_INSPECTION] user search failed at "+stage+":",err?.stack||err?.message||err);
+    if(!res.headersSent) return res.status(500).json({error:"IP Inspection account search failed. Check server logs for [IP_INSPECTION]."});
+  }
 });
 app.get("/api/staff/ip-inspection",auth,ownerOnly,async(req,res)=>{
-  const actor=current(req);
-  const search=String(req.query.q||"").trim().slice(0,100);
-  const limit=Math.min(200,Math.max(1,Number(req.query.limit)||100));
-  const params=[];
-  let where="";
-  if(search){
-    params.push("%"+search+"%");
-    where="WHERE u.username ILIKE $1 OR COALESCE(u.email,'') ILIKE $1 OR COALESCE(h.ip_address::text,'') ILIKE $1";
+  let stage="prepare-query";
+  try{
+    const actor=current(req);
+    const search=String(req.query.q||"").trim().slice(0,100);
+    const limit=Math.min(200,Math.max(1,Number(req.query.limit)||100));
+    const params=[];
+    let where="";
+    if(search){
+      params.push("%"+search+"%");
+      where="WHERE u.username ILIKE $1 OR COALESCE(u.email,'') ILIKE $1 OR COALESCE(h.ip_address::text,'') ILIKE $1";
+    }
+    params.push(limit);
+    const limitPlaceholder="$"+params.length;
+    stage="query-ip-history";
+    const q=await pool.query(`SELECT h.id,h.user_id,u.username,u.email,h.ip_address::text AS ip_address,h.event_type,h.user_agent,h.recorded_at,u.created_at AS registered_at FROM users u LEFT JOIN user_ip_history h ON h.user_id=u.id ${where} ORDER BY h.recorded_at DESC NULLS LAST,u.username LIMIT ${limitPlaceholder}`,params);
+    stage="write-audit-log";
+    await pool.query("INSERT INTO admin_logs(action_type,performed_by,details) VALUES($1,$2,$3)",["IP_INSPECTION_VIEW",Number(actor.id),JSON.stringify({search:search||null,rows:q.rowCount})]);
+    stage="lookup-network-details";
+    const uniqueIps=[...new Set(q.rows.map(x=>x.ip_address))].filter(ip=>ip&&ip!=="::1"&&ip!=="127.0.0.1"&&!ip.startsWith("127.")&&!ip.startsWith("10.")&&!ip.startsWith("192.168.")&&!ip.startsWith("fc")&&!ip.startsWith("fd")&&!ip.toLowerCase().startsWith("fe80:"));
+    const lookups=await Promise.all(uniqueIps.slice(0,30).map(async ip=>{
+      try{const response=await fetch("https://ipapi.co/"+encodeURIComponent(ip)+"/json/",{headers:{"User-Agent":"MaleficentChat-IPInspection/1.0"},signal:AbortSignal.timeout(2500)});if(!response.ok)return [ip,{}];const d=await response.json();return [ip,{country:d.country_name||"",region:d.region||"",city:d.city||"",networkProvider:d.org||d.asn||"",networkType:d.version||"",isProxy:d.proxy===true}];}catch{return [ip,{}];}
+    }));
+    const geo=Object.fromEntries(lookups);
+    return res.json({records:q.rows.map(row=>({...row,network:geo[row.ip_address]||{}})),limit,geolocationNote:"Country and network details are approximate and may be unavailable. IP addresses are sent to ipapi.co for lookup when this panel is opened."});
+  }catch(err){
+    console.error("[IP_INSPECTION] request failed at "+stage+":",err?.stack||err?.message||err);
+    if(!res.headersSent) return res.status(500).json({error:"IP Inspection failed during "+stage+". Check server logs for [IP_INSPECTION]."});
   }
-  params.push(limit);
-  const limitPlaceholder="$"+params.length;
-  const q=await pool.query(`SELECT h.id,h.user_id,u.username,u.email,h.ip_address::text AS ip_address,h.event_type,h.user_agent,h.recorded_at,u.created_at AS registered_at FROM users u LEFT JOIN user_ip_history h ON h.user_id=u.id ${where} ORDER BY h.recorded_at DESC NULLS LAST,u.username LIMIT ${limitPlaceholder}`,params);
-  await pool.query("INSERT INTO admin_logs(action_type,performed_by,details) VALUES($1,$2,$3)",["IP_INSPECTION_VIEW",Number(actor.id),JSON.stringify({search:search||null,rows:q.rowCount})]);
-  const uniqueIps=[...new Set(q.rows.map(x=>x.ip_address))].filter(ip=>ip&&ip!=="::1"&&ip!=="127.0.0.1"&&!ip.startsWith("127.")&&!ip.startsWith("10.")&&!ip.startsWith("192.168.")&&!ip.startsWith("fc")&&!ip.startsWith("fd")&&!ip.toLowerCase().startsWith("fe80:"));
-  const lookups=await Promise.all(uniqueIps.slice(0,30).map(async ip=>{
-    try{const response=await fetch("https://ipapi.co/"+encodeURIComponent(ip)+"/json/",{headers:{"User-Agent":"MaleficentChat-IPInspection/1.0"},signal:AbortSignal.timeout(2500)});if(!response.ok)return [ip,{}];const d=await response.json();return [ip,{country:d.country_name||"",region:d.region||"",city:d.city||"",networkProvider:d.org||d.asn||"",networkType:d.version||"",isProxy:d.proxy===true}];}catch{return [ip,{}];}
-  }));
-  const geo=Object.fromEntries(lookups);
-  res.json({records:q.rows.map(row=>({...row,network:geo[row.ip_address]||{}})),limit,geolocationNote:"Country and network details are approximate and may be unavailable. IP addresses are sent to ipapi.co for lookup when this panel is opened."});
 });
 
 app.get(
