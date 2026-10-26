@@ -1933,3 +1933,33 @@ input,textarea,select{background:rgba(255,255,255,.055);border-color:rgba(255,25
 .owner-user-search input:focus{border-color:#c084fc;box-shadow:0 0 0 3px rgba(192,132,252,.12)}
 .owner-user-search-count{white-space:nowrap;font-size:12px}
 .owner-user-control-row[style*="display: none"]{display:none!important}
+
+
+/* Keep modal close controls visible and prevent tall forms being cut off on small screens. */
+#modal{align-items:center;justify-content:center;overflow-y:auto;overscroll-behavior:contain}
+#modal .modal-card:not(:has(.profile-modal)){
+  display:flex;flex-direction:column;min-height:0;
+  max-height:calc(100dvh - 24px);max-height:calc(100vh - 24px);
+  overflow:hidden;box-sizing:border-box;
+}
+#modal .modal-card:not(:has(.profile-modal))>.modal-close{
+  position:sticky;top:0;align-self:flex-end;flex:0 0 32px;
+  width:32px;height:32px;margin:0 -8px -30px 0;
+  display:flex;align-items:center;justify-content:center;
+  background:#172730;border-radius:9px;line-height:1;
+}
+#modal .modal-card:not(:has(.profile-modal))>#modalBody{
+  min-height:0;max-height:calc(100dvh - 92px);max-height:calc(100vh - 92px);
+  overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;
+  padding:8px 4px 4px;box-sizing:border-box;scrollbar-gutter:stable;
+}
+#modal .modal-card:not(:has(.profile-modal)) #modalBody form,
+#modal .modal-card:not(:has(.profile-modal)) #modalBody .toolbar{min-width:0;flex-wrap:wrap}
+#modal .modal-card:not(:has(.profile-modal)) #modalBody input,
+#modal .modal-card:not(:has(.profile-modal)) #modalBody textarea,
+#modal .modal-card:not(:has(.profile-modal)) #modalBody select{max-width:100%;box-sizing:border-box}
+@media(max-width:700px){
+  #modal{padding:8px!important;box-sizing:border-box}
+  #modal .modal-card:not(:has(.profile-modal)){width:calc(100vw - 16px)!important;max-width:calc(100vw - 16px)!important;padding:16px!important;border-radius:14px}
+  #modal .modal-card:not(:has(.profile-modal))>#modalBody{max-height:calc(100dvh - 76px);max-height:calc(100vh - 76px);padding:8px 2px 4px}
+}
