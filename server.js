@@ -1276,7 +1276,7 @@ app.get("/api/rooms/:id/messages",auth,async(req,res)=>{
 });
 
 function malReply(user,rawText){
-  const query=String(rawText||"").replace(/^@Mal\\s*/i,"").trim().toLowerCase();
+  const query=String(rawText||"").replace(/^@Mal\s*/i,"").trim().toLowerCase();
   if(!query)return "Hey @"+(user.displayName||user.username)+"! Try @Mal time, @Mal help, or ask me a question.";
   if(/^(time|what time is it|current time|clock)$/.test(query)){
     return "🕒 Current India time: "+new Intl.DateTimeFormat("en-IN",{timeZone:"Asia/Kolkata",dateStyle:"medium",timeStyle:"medium"}).format(new Date())+".";
@@ -1393,7 +1393,7 @@ app.post("/api/rooms/:id/messages",auth,featureAllowed("send_messages"),upload.s
 
   if(/^@Mal\s+/i.test(text)){const reply=malReply(u,text);if(reply){const bot={id:id(),system:false,isBot:true,userId:"bot-mal",username:"Mal",displayName:"Mal",rank:"BOT",text:reply,roomId:String(r.id),time:Date.now(),reactions:{},pinned:false,deleted:false};await pool.query(`INSERT INTO room_messages(id,room_id,data,created_at) VALUES($1,$2,$3::jsonb,NOW())`,[bot.id,Number(r.id),JSON.stringify(bot)]);db.messages.push(bot);io.to("room:"+r.id).emit("message",bot);}}
   const botMention=text.match(/^@([A-Za-z0-9_]+)\s+([\s\S]*)/);
-  if(botMention && !/^Mal$/i.test(botMention[1]) && !(/^Aurora$/i.test(botMention[1]) && /^(truth|dare)\\b/i.test(String(botMention[2]||"").trim()))){const bq=await pool.query(`SELECT * FROM bots WHERE LOWER(name)=LOWER($1) AND is_active=true LIMIT 1`,[botMention[1]]);const botRow=bq.rows[0];if(botRow && botRow.auto_reply){const bot={id:id(),system:false,isBot:true,userId:'bot-'+botRow.id,username:botRow.name,displayName:botRow.name,rank:'BOT',text:botRow.auto_reply,roomId:String(r.id),time:Date.now(),reactions:{},pinned:false,deleted:false};await pool.query(`INSERT INTO room_messages(id,room_id,data,created_at) VALUES($1,$2,$3::jsonb,NOW())`,[bot.id,Number(r.id),JSON.stringify(bot)]);db.messages.push(bot);io.to('room:'+r.id).emit('message',bot);}}
+  if(botMention && !/^Mal$/i.test(botMention[1]) && !(/^Aurora$/i.test(botMention[1]) && /^(truth|dare)\b/i.test(String(botMention[2]||"").trim()))){const bq=await pool.query(`SELECT * FROM bots WHERE LOWER(name)=LOWER($1) AND is_active=true LIMIT 1`,[botMention[1]]);const botRow=bq.rows[0];if(botRow && botRow.auto_reply){const bot={id:id(),system:false,isBot:true,userId:'bot-'+botRow.id,username:botRow.name,displayName:botRow.name,rank:'BOT',text:botRow.auto_reply,roomId:String(r.id),time:Date.now(),reactions:{},pinned:false,deleted:false};await pool.query(`INSERT INTO room_messages(id,room_id,data,created_at) VALUES($1,$2,$3::jsonb,NOW())`,[bot.id,Number(r.id),JSON.stringify(bot)]);db.messages.push(bot);io.to('room:'+r.id).emit('message',bot);}}
   addActivity("message",`${u.username} sent a message in ${r.name||"a room"}`,u.id,{roomId:r.id});
   res.json({message:m,autoMuted});
 });
