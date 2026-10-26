@@ -2754,7 +2754,7 @@ async function loadOwner() {
           </button>
 
           <button class="mini" onclick="ownerFeatureGrants()">🧩 Feature granting</button><button class="mini" onclick="openBotsManagement()">🤖 Bots Management</button>
-          <button class="mini" onclick="ownerUserPermissionPanel()">👤 User permissions</button>
+          
 
         </div>
 
@@ -2822,31 +2822,7 @@ async function loadOwner() {
 
       </div>
 
-      <div class="card">
 
-        <h3>
-          Gold transaction history
-        </h3>
-
-        ${
-          data.goldTransactions?.length
-            ? data.goldTransactions
-                .slice(-100)
-                .reverse()
-                .map(transaction => `
-                  <div>
-                    ${fmt(transaction.time)}
-                    ·
-                    ${esc(transaction.type)}
-                    ·
-                    ${transaction.delta}
-                  </div>
-                `)
-                .join("")
-            : `<p>No transactions.</p>`
-        }
-
-      </div>
     `;
 
     if($('addBulkFilter')) $('addBulkFilter').onclick=async()=>{try{await api('/api/filter-words/bulk',{method:'POST',body:JSON.stringify({text:$('bulkFilterWords').value})});$('bulkFilterWords').value='';await loadOwner();}catch(e){toast(e.message)}};
@@ -2880,19 +2856,6 @@ async function showAdminLogs(){
   const load=async()=>{try{const q=new URLSearchParams({type,search:$('adminLogSearch').value,from:$('adminLogFrom').value,to:$('adminLogTo').value});const d=await api('/api/admin/logs?'+q.toString());$('adminLogRows').innerHTML=(d.logs||[]).map(x=>`<div class="admin-log-row"><b>${esc(x.action_type||'Action')}</b><span>${esc(x.performer_username||'SYSTEM')} → ${esc(x.target_username||'—')}</span><small>${fmt(x.created_at)}</small><p>${esc(x.details||'')}</p></div>`).join('')||'<p class="muted">No matching logs.</p>';}catch(e){toast(e.message)}};
   document.querySelectorAll('[data-log-tab]').forEach(b=>b.onclick=()=>{type=b.dataset.logTab;load()});
   $('adminLogApply').onclick=load;await load();
-}
-
-async function ownerUserPermissionPanel(){
-  try{
-    const {users=[]}=await api('/api/owner/overview');
-    const permissions=['can_mute','can_kick','can_ban','can_warn','can_delete_messages','can_view_ips','can_view_emails','can_edit_rooms','can_delete_rooms','can_create_rooms','can_view_admin_logs','can_grant_features','can_manage_gifts','can_manage_users','can_clear_history','can_add_notes','can_send_global_announcement','can_share_gold','can_manage_ranks','can_edit_usernames','can_edit_emails','can_manage_reports','can_manage_announcements','can_manage_clubs','can_manage_news','can_manage_profiles','can_view_deleted_messages','can_manage_settings'];
-    const available=users.filter(u=>u.username!=='Maleficent'&&String(u.rank).toUpperCase()!=='DEVELOPER');
-    modal(`<div class="feature-grant-modal"><h2>👤 User permissions</h2><label>Select user<select id="permissionUser">${available.map(u=>`<option value="${esc(u.id)}">@${esc(u.username)} · ${esc(u.rank)}</option>`).join('')}</select></label><div class="toolbar"><button class="primary" id="loadUserPermissions">Load permissions</button></div><div id="userPermissionRows" class="feature-grant-list"></div><button class="primary" id="saveUserPermissions" disabled>Save permissions</button></div>`);
-    const load=async()=>{const id=$('permissionUser').value;if(!id)return;const data=await api(`/api/owner/user/${encodeURIComponent(id)}/feature-grants`);$('userPermissionRows').innerHTML=permissions.map(key=>{const g=data.grants?.[key];return `<label class="feature-grant-row"><span><b>${key==='can_manage_profiles'?'Account modifications':key.replace(/^can_/,'').replaceAll('_',' ')}</b><small>Granted by: ${esc(g?.grantedByUsername||'not granted')}</small></span><input type="checkbox" data-user-permission="${key}" ${g?.granted?'checked':''}></label>`}).join('');$('saveUserPermissions').disabled=false;};
-    $('loadUserPermissions').onclick=()=>load().catch(e=>toast(e.message));
-    $('saveUserPermissions').onclick=async()=>{try{const grants=Object.fromEntries([...document.querySelectorAll('[data-user-permission]')].map(el=>[el.dataset.userPermission,el.checked]));await api(`/api/owner/user/${encodeURIComponent($('permissionUser').value)}/feature-grants`,{method:'PUT',body:JSON.stringify({grants})});toast('User permissions saved.');await load();}catch(e){toast(e.message)}};
-    if(available.length)await load();else $('userPermissionRows').innerHTML='<p class="muted">No eligible accounts to manage.</p>';
-  }catch(e){toast(e.message)}
 }
 
 async function ownerEdit(id) {
@@ -3531,8 +3494,7 @@ async function loadSettings(){
     <div class="panel"><h3>🎨 Appearance</h3><p class="muted">Personalize how Maleficent Chat looks for you.</p><div class="theme-picker">${['obsidian','midnight','forest','rose','lavender','sunset','ocean'].map(t=>`<button type="button" class="theme-chip ${s.theme===t?'active':''}" data-theme-choice="${t}"><span class="theme-dot"></span><b>${t[0].toUpperCase()+t.slice(1)}</b></button>`).join('')}</div><select id="v3Theme" class="hidden"><option>obsidian</option><option>midnight</option><option>forest</option><option>rose</option><option>lavender</option><option>sunset</option><option>ocean</option></select><select id="v3Font"><option value="small">Small text</option><option value="medium">Medium text</option><option value="large">Large text</option></select><label><input type="checkbox" id="v3Compact"> Compact mode</label><label><input type="checkbox" id="v3Motion"> Reduced animation</label><label><input type="checkbox" id="v3Contrast"> High contrast</label><label>Username color <input type="color" id="v3UsernameColor" value="${esc(s.usernameColor||'#9b5cff')}"></label><label>Chat bubble color <input type="color" id="v3BubbleColor" value="${esc(s.bubbleColor||'#33244f')}"></label><label>Chat font <select id="v3ChatFont"><option>Inter</option><option>Georgia</option><option>Monospace</option><option>Arial</option><option>Trebuchet MS</option></select></label><label>Message effects <select id="v3Effects"><option value="none">None</option><option value="soft">Soft glow</option><option value="sparkle">Sparkle</option></select></label><button class="primary" id="saveAppearance">Save appearance</button></div>
     <div class="panel"><h3>🔔 Notifications</h3><p class="muted">Turn off notification types you do not want to receive.</p><label><input type="checkbox" id="nMessages" ${np.messages!==false?'checked':''}> Private messages</label><label><input type="checkbox" id="nMentions" ${np.mentions!==false?'checked':''}> Mentions</label><label><input type="checkbox" id="nReplies" ${np.replies!==false?'checked':''}> Replies</label><label><input type="checkbox" id="nSecurity" ${np.security!==false?'checked':''}> Security alerts</label><label><input type="checkbox" id="nStaff" ${np.staff!==false?'checked':''}> Staff / reports</label><label><input type="checkbox" id="nGamification" ${np.gamification!==false?'checked':''}> Gold / level / achievements</label><label><input type="checkbox" id="nOther" ${np.other!==false?'checked':''}> Other notifications</label><button class="primary" id="saveNotifications">Save notifications</button></div>
     <div class="panel"><h3>🛡️ Security & sessions</h3><p class="muted">${sessions.length} active session record${sessions.length===1?'':'s'}.</p><button class="mini" id="viewLoginHistory">View login history</button><button class="mini danger" id="logoutAllDevices">Log out all other devices</button></div>
-    <div class="panel"><h3>📜 Account history</h3><p class="muted">Review activity recorded for your account.</p><button class="mini" id="viewAccountHistory">View history</button><div id="accountHistoryRows"></div></div>
-    <div class="panel danger-panel"><h3>⚠️ Account actions</h3><p class="muted">Deleting your account removes your account and personal conversations permanently.</p><button class="mini danger" onclick="deleteAccount()">Delete my account</button></div>`;
+<div class="panel danger-panel"><h3>⚠️ Account actions</h3><p class="muted">Deleting your account removes your account and personal conversations permanently.</p><button class="mini danger" onclick="deleteAccount()">Delete my account</button></div>`;
   $('v3Theme').value=s.theme||'obsidian'; $('v3Font').value=s.fontSize||'medium'; $('v3ChatFont').value=s.chatFont||'Inter'; $('v3Effects').value=s.messageEffects||'none'; $('v3Compact').checked=!!s.compactMode; $('v3Motion').checked=!!s.reducedMotion; $('v3Contrast').checked=!!s.highContrast; applyTheme(s.theme||'obsidian');
   document.querySelectorAll('[data-theme-choice]').forEach(b=>b.onclick=()=>{ $('v3Theme').value=b.dataset.themeChoice; applyTheme(b.dataset.themeChoice); document.querySelectorAll('[data-theme-choice]').forEach(x=>x.classList.toggle('active',x===b)); });
   $('saveProfileColors').onclick=async()=>{try{const r=await api('/api/profile',{method:'PUT',body:JSON.stringify({profileColor:$('profileColor').value,profileAccentColor:$('profileAccentColor').value})});state.user=r.user;toast('Profile colors saved.');await loadProfile(state.user);}catch(e){toast(e.message)}};
@@ -3540,7 +3502,6 @@ async function loadSettings(){
   $('saveAppearance').onclick=async()=>{try{const payload={theme:$('v3Theme').value,fontSize:$('v3Font').value,compactMode:$('v3Compact').checked,reducedMotion:$('v3Motion').checked,highContrast:$('v3Contrast').checked,usernameColor:$('v3UsernameColor').value,chatFont:$('v3ChatFont').value,messageEffects:$('v3Effects').value,bubbleColor:$('v3BubbleColor').value};const r=await api('/api/settings',{method:'PUT',body:JSON.stringify(payload)});state.user.settings={...(state.user.settings||{}),...(r.settings||payload)};state.user.theme=payload.theme;applyTheme(payload.theme);applyUserAppearance();renderMessages();toast('Appearance saved and applied.');}catch(e){toast(e.message)}};
   $('saveNotifications').onclick=async()=>{await api('/api/notifications/preferences',{method:'PUT',body:JSON.stringify({messages:$('nMessages').checked,mentions:$('nMentions').checked,replies:$('nReplies').checked,security:$('nSecurity').checked,staff:$('nStaff').checked,gamification:$('nGamification').checked,other:$('nOther').checked})});toast('Notification preferences saved.');};
   $('viewLoginHistory').onclick=async()=>{const h=await api('/api/security/login-history');modal(`<h2>Login history</h2>${(h.history||[]).map(x=>`<div class="card"><b>${fmt(x.time)}</b><div class="muted">${esc(x.ip||'Unknown device')}</div></div>`).join('')||'<p class="muted">No login history.</p>'}`);};
-  $('viewAccountHistory').onclick=async()=>{try{const h=await api('/api/history');const canRemove=state.user?.username==='Maleficent'||String(state.user?.rank).toUpperCase()==='DEVELOPER';$('accountHistoryRows').innerHTML=(h.history||[]).map(x=>`<div class="hub-row" data-history-row="${esc(x.id)}"><div><b>${esc(x.action||'Activity')}</b><small>${fmt(x.created_at)} · ${esc(typeof x.details==='string'?x.details:JSON.stringify(x.details||{}))}</small></div>${canRemove?`<button class="mini danger" data-remove-history="${esc(x.id)}">🗑 Remove</button>`:''}</div>`).join('')||'<p class="muted">No history entries.</p>';document.querySelectorAll('[data-remove-history]').forEach(b=>b.onclick=async()=>{try{await api('/api/admin/history/'+encodeURIComponent(b.dataset.removeHistory),{method:'DELETE'});b.closest('[data-history-row]')?.remove();toast('History entry removed.');}catch(e){toast(e.message)}});}catch(e){toast(e.message)}};
   $('logoutAllDevices').onclick=async()=>{if(!confirm('Log out all sessions?'))return;try{await api('/api/security/logout-all',{method:'POST'});location.reload();}catch(e){toast(e.message)}};
 }
 
