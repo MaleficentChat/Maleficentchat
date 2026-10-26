@@ -3509,6 +3509,7 @@ async function loadSettings(){
   const np=s.notificationPrefs||{};
   const sessions=(await api('/api/security/sessions').catch(()=>({sessions:[]}))).sessions||[];
   $('settings').innerHTML=`
+    <section class="settings-hero"><div class="settings-hero-glow"></div><div class="settings-hero-copy"><span class="settings-eyebrow">MALEFICENT CHAT · CONTROL CENTER</span><h2>Account settings</h2><p>Your account, your privacy, your aesthetic. Make this space yours.</p><div class="settings-hero-tags"><span>✦ Personalize</span><span>♢ Stay secure</span><span>♡ Your choices</span></div></div><div class="settings-hero-emblem">✧</div></section>
     <div class="grid2">
       <div class="panel"><h3>👤 Account</h3><p class="muted">Manage the information connected to your account.</p><div class="settings-list">
         <button class="settings-row" onclick="editProfileInfo()"><span>🪪</span><b>Profile information</b><small>Display name, pronouns and basic details</small><strong>›</strong></button>
