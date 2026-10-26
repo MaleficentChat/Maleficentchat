@@ -928,7 +928,7 @@ function messageHTML(message) {
 
         <div class="msg-top">
           <button class="message-author tag-author" type="button" title="Tag @${esc(message.username)}" onclick="tagUserFromMessage('${esc(message.username)}')" style="color:${esc(message.usernameColor||state.user?.settings?.usernameColor||'var(--username-color)')}">${esc(message.displayName)}</button>
-          ${rank(message.rank)}
+          
 
           <span class="msg-time">
             ${fmt(message.time)}
