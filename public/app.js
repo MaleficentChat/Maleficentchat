@@ -3114,9 +3114,16 @@ async function ownerFeatureGrants(){
 async function toggleNotificationDropdown(){
   const box=$('notificationDropdown'); if(!box)return;
   if(!box.classList.contains('hidden')){box.classList.add('hidden');return;}
-  try{const d=await api('/api/notifications');const rows=(d.notifications||[]).slice(0,20);box.innerHTML=`<div class="notification-dropdown-head"><b>🔔 Notifications</b><button class="mini" id="dropdownMarkAll">Mark all read</button></div>${rows.map(n=>`<button class="notification-dropdown-item ${n.read?'':'unread'}" data-dropdown-notif="${esc(n.id)}"><b>${esc(n.title||n.type||'Notification')}</b><span>${esc(n.text||n.message||'')}</span><small>${fmt(n.time)}</small></button>`).join('')||'<p class="muted">No notifications.</p>'}`;box.classList.remove('hidden');
-    box.querySelectorAll('[data-dropdown-notif]').forEach(b=>b.onclick=async()=>{await api('/api/notifications/'+encodeURIComponent(b.dataset.dropdownNotif)+'/read',{method:'PATCH'});box.classList.add('hidden');loadNotifications();});
-    $('dropdownMarkAll')?.addEventListener('click',async e=>{e.stopPropagation();await api('/api/notifications/read',{method:'POST'});box.classList.add('hidden');loadNotifications();});
+  try{
+    const d=await api('/api/notifications');
+    const rows=(d.notifications||[]).slice(0,20);
+    const unreadCount=rows.filter(n=>!n.read).length;
+    box.innerHTML=`<div class="notification-dropdown-head"><div><b>🔔 Notifications</b><small class="notification-unread-summary">${unreadCount} unread</small></div><button class="mini" id="dropdownMarkAll" ${unreadCount?'':'disabled'}>Mark all read</button></div>${rows.map(n=>`<button class="notification-dropdown-item ${n.read?'':'unread'}" data-dropdown-notif="${esc(n.id)}"><b>${esc(n.title||n.type||'Notification')}</b><span>${esc(n.text||n.message||'')}</span><small>${fmt(n.time)}</small></button>`).join('')||'<p class="muted notification-empty">✨ You’re all caught up.</p>'}`;
+    box.classList.remove('hidden');
+    box.querySelectorAll('[data-dropdown-notif]').forEach(b=>b.onclick=async()=>{
+      try{await api('/api/notifications/'+encodeURIComponent(b.dataset.dropdownNotif)+'/read',{method:'PATCH'});b.classList.remove('unread');loadNotifications();toggleNotificationDropdown();}catch(e){toast(e.message)}
+    });
+    $('dropdownMarkAll')?.addEventListener('click',async e=>{e.stopPropagation();try{await api('/api/notifications/read',{method:'POST'});box.classList.add('hidden');loadNotifications();toast('All notifications marked as read.');}catch(err){toast(err.message)}});
   }catch(e){toast(e.message)}
 }
 
@@ -3138,8 +3145,9 @@ async function loadNotifications() {
       const el=$(id);
       if(!el)return;
       el.textContent=count>99?'99+':String(count);
+      el.classList.toggle('count-badge',count>0);
       el.style.setProperty('display',count>0?'inline-flex':'none','important');
-      el.setAttribute('aria-label',`${count} unread`);
+      el.setAttribute('aria-label',`${count} unread notifications`);
     };
     setBubble("notifDot",counts.all);
     setBubble("topNotifDot",counts.all);
