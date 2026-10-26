@@ -286,7 +286,7 @@ async function start() {
   });
 
   state.socket.on("message", message => {
-    if (message.roomId === state.currentRoom) {
+    if (String(message.roomId) === String(state.currentRoom)) {
       appendMessage(message);
     }
   });
@@ -1148,6 +1148,11 @@ $("composer").onsubmit = async e => {
       method: "POST",
       body: form
     });
+
+    // Render the server-confirmed message immediately; appendMessage prevents socket duplicates.
+    if (data.message && String(data.message.roomId) === String(state.currentRoom)) {
+      appendMessage(data.message);
+    }
 
     $("message").value = "";
     $("file").value = "";
