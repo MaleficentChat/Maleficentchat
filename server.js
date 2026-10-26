@@ -300,6 +300,22 @@ function log(actor,action,target="",meta={}){
   pool.query(`INSERT INTO admin_logs(action_type,performed_by,target_user_id,details) VALUES($1,$2,$3,$4)`,[String(action||'ACTION').slice(0,100),actor?.id||null,targetUser?.id||null,JSON.stringify({target,meta})]).catch(e=>console.error('Admin log persistence failed:',e.message));
 }
 
+// Record a lightweight per-user activity entry. This is used by the activity timeline UI.
+function addActivity(type, message, userId, details = {}) {
+  db.activityTimeline ||= {};
+  const key = String(userId);
+  const entries = db.activityTimeline[key] ||= [];
+  entries.push({
+    id: id(),
+    type: String(type || "activity"),
+    message: String(message || ""),
+    details: details && typeof details === "object" ? details : {},
+    time: Date.now()
+  });
+  if (entries.length > 100) entries.splice(0, entries.length - 100);
+  save();
+}
+
 function notificationPreferenceKey(type){
   if(type==="private-message" || type==="message") return "messages";
   if(type==="mention") return "mentions";
