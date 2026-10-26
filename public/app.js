@@ -1521,33 +1521,21 @@ $("userSearch").oninput = () => loadUsers();
 $("userRankFilter")?.addEventListener("change",()=>loadUsers());
 
 function userCard(user) {
+  const displayName = user.displayName || user.username || "User";
+  const onlineNow = !!(user.online || user.isOnline || user.status === "online");
   return `
-    <div class="user-card">
-
-      ${avatar(user)}
-
-      <div style="flex:1">
-
-        <b>${esc(user.displayName)}</b>
-
-        <div class="muted">
-          @${esc(user.username)}
-        </div>
-
-        ${rank(user.rank)}
-        · Lv ${user.level || 1}
-        · 🪙 ${user.gold || 0}
-
-      </div>
-
-      <button
-        class="mini"
-        onclick="openUser('${esc(user.id)}')"
-      >
-        Open
+    <article class="user-card instagram-user-card">
+      <button class="instagram-user-main" onclick="openUser('${esc(user.id)}')" aria-label="Open profile of ${esc(displayName)}">
+        <span class="instagram-avatar-ring">${avatar(user)}</span>
+        <span class="instagram-user-name">${esc(displayName)}</span>
+        <span class="instagram-user-handle">@${esc(user.username)}</span>
+        <span class="instagram-user-rank">${rank(user.rank)}</span>
+        <span class="instagram-user-meta"><span class="instagram-presence-dot ${onlineNow ? "is-online" : ""}"></span>${onlineNow ? "Online" : "Member"} <span>·</span> Lv ${Number(user.level || 1)}</span>
       </button>
-
-    </div>
+      <div class="instagram-user-actions">
+        <button class="mini" onclick="openUser('${esc(user.id)}')">View profile</button>
+      </div>
+    </article>
   `;
 }
 
