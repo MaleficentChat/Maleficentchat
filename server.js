@@ -3666,6 +3666,20 @@ app.post('/api/rooms/:id/gif',auth,featureAllowed('send_messages'),async(req,res
   db.messages.push(m);db.goldTransactions ||= [];db.goldTransactions.push({id:id(),userId:u.id,amount:-cost,reason:'GIF sent',time:Date.now()});save();io.to('room:'+r.id).emit('message',m);res.json({ok:true,message:m,gold:u.gold,cost});
 });
 
+app.post('/api/rooms/:id/youtube',auth,featureAllowed('use_youtube'),async(req,res)=>{
+  const u=current(req),room=db.rooms.find(x=>String(x.id)===String(req.params.id));
+  if(!room)return res.status(404).json({error:"Room not found."});
+  if(!verifyRoomJoinToken(req.headers['x-room-join-token'],u.id,room))return res.status(403).json({error:"Join this room before sharing a video."});
+  const videoId=String(req.body.videoId||"").trim(),title=cleanText(req.body.title||"YouTube video").slice(0,200);
+  if(!/^[A-Za-z0-9_-]{11}$/.test(videoId))return res.status(400).json({error:"Invalid YouTube video ID."});
+  const m={id:id(),roomId:String(room.id),userId:u.id,username:u.username,displayName:u.displayName,rank:u.rank,text:"🎬 "+title+" https://www.youtube.com/watch?v="+videoId,youtube:{videoId,title},reactions:{},edited:false,deleted:false,pinned:false,time:Date.now(),delivered:true};
+  try{
+    await pool.query('INSERT INTO room_messages(id,room_id,user_id,data,created_at) VALUES($1,$2,$3,$4::jsonb,NOW())',[m.id,Number(room.id),Number(u.id),JSON.stringify(m)]);
+    db.messages.push(m);u.stats ||= {messages:0,rooms:0,friends:0};u.stats.messages=(u.stats.messages||0)+1;
+    save();io.to("room:"+room.id).emit("message",m);res.json({ok:true,message:m});
+  }catch(e){console.error("YouTube share failed:",e);res.status(500).json({error:"Could not share this video."});}
+});
+
 app.get('/api/youtube/search',auth,async(req,res)=>{
   const q=String(req.query.q||'').trim().slice(0,100); if(!q)return res.json({results:[]});
   if(process.env.YOUTUBE_API_KEY){
