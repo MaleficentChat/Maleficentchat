@@ -1304,3 +1304,83 @@ input,textarea,select{background:rgba(255,255,255,.055);border-color:rgba(255,25
   .profile-actions button{width:100%;min-width:0;white-space:normal}
   .profile-actions .profile-action-hint{grid-column:1/-1}
 }
+
+
+/* Profile v2: fix overlapping header controls and improve hierarchy */
+.modal-card:has(.profile-modal){
+  width:min(700px,96vw);max-width:96vw;max-height:calc(100dvh - 20px);
+  padding:0!important;overflow-x:hidden;overflow-y:auto;align-self:center;
+}
+.profile-modal{background:#11101b!important;color:#f5efff!important;border:1px solid rgba(190,145,255,.2)}
+.profile-banner{
+  min-height:0!important;height:auto!important;
+  padding:76px 16px 24px!important;
+  gap:8px!important;
+  justify-content:flex-start!important;
+  background-image:linear-gradient(180deg,rgba(12,10,20,.16),rgba(12,10,20,.94)),var(--profile-cover,linear-gradient(135deg,#3b2656,#172730))!important;
+}
+.profile-stats{
+  top:12px!important;left:12px!important;right:54px!important;
+  display:flex!important;flex-wrap:wrap!important;align-items:center!important;
+  gap:6px!important;position:absolute!important;
+}
+.profile-hamburger{position:absolute!important;top:10px!important;right:10px!important;z-index:4}
+.profile-rank-btn{position:static!important}
+.profile-banner .big-avatar{width:100px!important;height:100px!important;margin:0!important;flex:none!important}
+.profile-rank{margin-top:2px}
+.profile-name{font-size:clamp(20px,4vw,28px)!important;font-weight:800;line-height:1.2}
+.profile-handle{font-size:14px!important}
+.profile-tabs{background:#1c1729!important;border-bottom:1px solid rgba(190,145,255,.2)!important}
+.profile-tab{color:#c9bddb!important}
+.profile-tab.active{color:#fff!important;background:rgba(155,92,255,.2)!important;box-shadow:inset 0 -3px #b78aff!important}
+.profile-info{background:#11101b!important;padding:18px!important}
+.profile-info-row{grid-template-columns:minmax(0, .8fr) minmax(0,1.2fr)!important;border-bottom-color:rgba(255,255,255,.08)!important}
+.profile-info-row b{color:#eee5ff!important}
+.profile-info-row span{color:#c9bfd8!important}
+.profile-actions .mini,.profile-actions .primary{border-radius:12px!important}
+@media(max-width:700px){
+ .modal-card:has(.profile-modal){width:calc(100vw - 12px)!important;max-width:calc(100vw - 12px)!important;max-height:calc(100dvh - 12px)!important}
+ .profile-banner{padding:72px 12px 20px!important;align-items:center!important}
+ .profile-stats{left:9px!important;right:48px!important;top:10px!important}
+ .profile-stat{font-size:11px!important;padding:5px 7px!important}
+ .profile-banner .big-avatar{width:88px!important;height:88px!important}
+ .profile-info{padding:14px!important}
+ .profile-info-row{grid-template-columns:minmax(0,1fr)!important;gap:5px!important;padding:12px 0!important}
+ .profile-actions{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+}
+
+/* DM inbox cards match the refreshed member directory */
+#dmList.user-grid{display:flex!important;flex-direction:column!important;gap:12px!important;padding:14px!important}
+#dmList .dm-inbox-toolbar{position:sticky;top:0;z-index:3;padding:12px;border-radius:16px;background:rgba(17,16,27,.97);border:1px solid rgba(190,145,255,.18);backdrop-filter:blur(12px)}
+#dmList .dm-inbox-toolbar input{width:100%;box-sizing:border-box;margin:0 0 10px;border-radius:12px;padding:12px 14px;background:#211832;border:1px solid rgba(190,145,255,.2);color:#fff}
+#dmList .dm-inbox-tabs{display:flex;gap:7px;overflow-x:auto;padding-bottom:2px}
+#dmList .dm-inbox-tabs .mini{flex:0 0 auto;border-radius:999px!important;padding:7px 13px!important;background:#211832;border:1px solid rgba(190,145,255,.18)}
+#dmList .dm-inbox-tabs .mini.active{background:linear-gradient(120deg,#7c3aed,#d946ef)!important;color:#fff;border-color:transparent}
+#dmList .dm-inbox-list{display:grid;gap:10px;min-width:0}
+#dmList .dm-inbox-card{
+ display:grid!important;grid-template-columns:58px minmax(0,1fr);grid-template-rows:auto auto;
+ align-items:center!important;gap:10px!important;padding:12px!important;min-height:0!important;height:auto!important;
+ text-align:left!important;border-radius:16px!important;border:1px solid rgba(190,145,255,.2)!important;
+ background:linear-gradient(125deg,rgba(39,25,57,.94),rgba(15,23,32,.98) 72%)!important;
+ box-shadow:0 6px 20px rgba(0,0,0,.15);transition:transform .16s,border-color .16s;
+}
+#dmList .dm-inbox-card:hover{transform:translateY(-2px);border-color:rgba(207,151,255,.55)!important}
+#dmList .dm-inbox-card.dm-is-pinned{border-color:rgba(250,204,21,.5)!important}
+#dmList .dm-inbox-card>.avatar{grid-column:1;grid-row:1;width:54px!important;height:54px!important;border:2px solid rgba(190,145,255,.55);box-sizing:border-box}
+#dmList .dm-contact-copy{grid-column:2;grid-row:1;min-width:0;width:100%;display:flex;flex-direction:column;gap:4px}
+#dmList .dm-inbox-title{display:flex;align-items:center;gap:7px;min-width:0}
+#dmList .dm-inbox-title b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:14px}
+#dmList .dm-contact-copy small{display:block;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#b9a9cc;font-size:11px}
+#dmList .dm-contact-copy .dm-preview{color:#ded4eb;font-size:12px}
+#dmList .dm-unread-badge{flex:0 0 auto;display:inline-grid;place-items:center;min-width:20px;height:20px;padding:0 5px;border-radius:999px;background:#d946ef;color:#fff;font-size:11px;font-weight:800}
+#dmList .dm-inbox-actions{grid-column:1/-1;grid-row:2;display:flex;align-items:center;gap:7px;min-width:0}
+#dmList .dm-inbox-actions button{min-width:0;flex:0 0 auto;border-radius:10px!important;padding:7px 10px!important}
+#dmList .dm-inbox-actions button:last-child{margin-left:auto;flex:1}
+#dmList .dm-empty{padding:24px;text-align:center;border:1px dashed rgba(190,145,255,.25);border-radius:16px}
+@media(max-width:700px){
+ #dmList.user-grid{padding:10px!important;gap:10px!important}
+ #dmList .dm-inbox-card{grid-template-columns:48px minmax(0,1fr);gap:8px!important;padding:10px!important}
+ #dmList .dm-inbox-card>.avatar{width:46px!important;height:46px!important}
+ #dmList .dm-inbox-actions{gap:5px}
+ #dmList .dm-inbox-actions button{padding:7px 8px!important;font-size:11px}
+}
