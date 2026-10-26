@@ -1694,3 +1694,22 @@ input,textarea,select{background:rgba(255,255,255,.055);border-color:rgba(255,25
   #viewRooms.chatting .mobile-chat-fab button:active{transform:scale(.94)}
   #viewRooms.chatting .mobile-chat-fab #floatingRoomsBtn{background:linear-gradient(145deg,#302044,#56377b)!important}
 }
+
+
+/* Critical visibility guard: hidden screens must remain hidden despite mobile display overrides */
+#auth.hidden,
+#app.hidden,
+.view.hidden,
+.chat-wrap.hidden,
+.mobile-chat-fab.hidden,
+.online-panel.hidden,
+.notification-dropdown.hidden,
+.modal.hidden {
+  display:none!important;
+}
+@media(max-width:768px){
+  #auth.auth-screen:not(.hidden){display:grid!important}
+  #app.app:not(.hidden){display:flex!important}
+  #viewRooms.hidden{display:none!important}
+  #viewRooms:not(.hidden){display:block!important}
+}
