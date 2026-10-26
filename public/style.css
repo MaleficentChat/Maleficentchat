@@ -1672,3 +1672,25 @@ input,textarea,select{background:rgba(255,255,255,.055);border-color:rgba(255,25
   #viewRooms.chatting .chat-head{flex-basis:46px!important;height:46px!important;min-height:46px!important}
   #viewRooms.chatting .composer{flex-basis:54px!important;height:54px!important;min-height:54px!important}
 }
+
+
+/* Floating mobile shortcuts: always visible while inside a room */
+.mobile-chat-fab{display:none}
+@media(max-width:768px){
+  #viewRooms.chatting .mobile-chat-fab{
+    display:flex!important;position:fixed!important;right:12px!important;bottom:82px!important;
+    z-index:240!important;flex-direction:column!important;gap:10px!important;
+    align-items:center!important;pointer-events:none!important;
+  }
+  #viewRooms.chatting .mobile-chat-fab button{
+    pointer-events:auto!important;display:flex!important;align-items:center!important;justify-content:center!important;
+    width:46px!important;height:46px!important;min-width:46px!important;min-height:46px!important;
+    border-radius:50%!important;border:1px solid rgba(215,177,255,.42)!important;
+    background:linear-gradient(145deg,#a855f7,#d946ef)!important;color:#fff!important;
+    font-size:21px!important;font-weight:800!important;
+    box-shadow:0 5px 18px rgba(168,85,247,.34)!important;
+    -webkit-tap-highlight-color:transparent!important;
+  }
+  #viewRooms.chatting .mobile-chat-fab button:active{transform:scale(.94)}
+  #viewRooms.chatting .mobile-chat-fab #floatingRoomsBtn{background:linear-gradient(145deg,#302044,#56377b)!important}
+}
