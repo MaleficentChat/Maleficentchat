@@ -547,7 +547,7 @@ $("floatingPeopleBtn")?.addEventListener("click",()=>{
 
 if ($("topMessages")) $("topMessages").onclick = () => toggleMessagesDropdown();
 if ($("topFriends")) $("topFriends").onclick = () => toggleFriendsDropdown();
-if ($("topNotifications")) $("topNotifications").onclick = () => { $("topFriendsDropdown")?.classList.add("hidden"); $("topMessagesDropdown")?.classList.add("hidden"); toggleNotificationDropdown(); };
+if ($("topNotifications")) $("topNotifications").onclick = () => { $("topFriendsDropdown")?.classList.add("hidden"); $("topMessagesDropdown")?.classList.add("hidden"); $("reportDropdown")?.classList.add("hidden"); toggleNotificationDropdown(); };
 if ($("topFlag")) $("topFlag").onclick = () => { $("topFriendsDropdown")?.classList.add("hidden"); $("topMessagesDropdown")?.classList.add("hidden"); $("notificationDropdown")?.classList.add("hidden"); toggleReportDropdown(); };
 if ($("topProfile")) $("topProfile").onclick = () => {
   state.view = "profile";
