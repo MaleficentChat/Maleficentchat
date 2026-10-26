@@ -1904,3 +1904,13 @@ input,textarea,select{background:rgba(255,255,255,.055);border-color:rgba(255,25
 .report-card{align-items:flex-start;flex-wrap:wrap;gap:12px}.report-main{flex:1 1 280px;min-width:0}.report-main>div{overflow-wrap:anywhere}.report-actions{display:flex;flex-wrap:wrap;gap:7px;flex:1 1 100%}.report-actions button{min-height:34px}
 .private-report-modal{width:min(92vw,800px);max-height:82vh;overflow:auto;padding:clamp(14px,2vw,22px);box-sizing:border-box}.private-report-meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin:14px 0}.private-report-meta>div{display:grid;gap:5px;padding:10px;border:1px solid var(--border);border-radius:9px;background:rgba(255,255,255,.025);min-width:0}.private-report-meta small{font-size:11px;color:var(--muted)}.private-report-meta b{font-size:13px;overflow-wrap:anywhere}.private-report-transcript{display:grid;gap:8px;max-height:48vh;overflow:auto;padding:2px}.private-report-message{padding:11px;border:1px solid var(--border);border-radius:10px;background:rgba(255,255,255,.025)}.private-report-message>div{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}.private-report-message time{font-size:11px;color:var(--muted)}.private-report-message p{white-space:pre-wrap;overflow-wrap:anywhere;margin:8px 0 0}
 @media(max-width:600px){.report-card{padding:11px}.report-actions{width:100%}.report-actions button{flex:1 1 auto}.private-report-modal{width:96vw}}
+
+
+/* Compact report action panel in the top header */
+.report-dropdown-item{display:flex;flex-direction:column;gap:8px;padding:10px 8px;border-top:1px solid var(--border);}
+.report-dropdown-copy{display:flex;flex-direction:column;gap:4px;min-width:0;}
+.report-dropdown-copy b{font-size:13px;overflow-wrap:anywhere;}
+.report-dropdown-copy span{font-size:12px;color:var(--text);overflow-wrap:anywhere;}
+.report-dropdown-copy small{font-size:11px;color:var(--muted);}
+.report-dropdown-item .toolbar{display:flex;gap:6px;flex-wrap:wrap;}
+.report-dropdown-item .toolbar button{flex:0 0 auto;}
