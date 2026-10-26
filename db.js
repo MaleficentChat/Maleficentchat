@@ -282,6 +282,7 @@ async function loadState(defaultState) {
 
   state.settings ||= {};
   state.settings.feature_grants = settingRows.find(x=>x.key==='feature_grants')?.value || state.settings.feature_grants || {};
+  state.settings.admin_log_settings = settingRows.find(x=>x.key==='admin_log_settings')?.value || state.settings.admin_log_settings || {};
   for(const [key,val] of settingRows.map(x=>[x.key,x.value])) {
     if(["gold_per_message","xp_per_message","daily_xp_limit","filter_affected_ranks","filter_mute_duration"].includes(key)) state.settings[key]=val;
   }
