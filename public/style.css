@@ -1972,3 +1972,18 @@ input,textarea,select{background:rgba(255,255,255,.055);border-color:rgba(255,25
 .user-history-entry-copy{flex:1;min-width:0;overflow-wrap:anywhere}
 .user-history-entry>.mini{flex:0 0 auto}
 @media(max-width:600px){.user-history-entry{gap:8px;padding:10px}.user-history-entry>.mini{padding:7px 9px}}
+
+
+/* Compact header dropdowns for friend requests and private conversations */
+#topFriendDot{z-index:20;pointer-events:none;min-width:19px!important;height:19px!important;padding:0 5px!important;align-items:center!important;justify-content:center!important;border-radius:999px!important}
+.friend-request-panel-row{gap:10px}
+.friend-request-panel-row .toolbar{display:flex;gap:6px;flex-wrap:wrap}
+.friend-request-panel-row .toolbar button{flex:0 0 auto}
+.dm-header-item{cursor:pointer;border-radius:9px}
+.dm-header-item b{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.dm-header-item span{overflow-wrap:anywhere}
+.dm-header-item.unread{background:rgba(155,92,255,.09);border-left:2px solid var(--accent)}
+@media(max-width:700px){
+  .friend-request-panel-row .toolbar{width:100%}
+  .friend-request-panel-row .toolbar button{flex:1}
+}
