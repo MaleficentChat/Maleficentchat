@@ -545,18 +545,10 @@ $("floatingPeopleBtn")?.addEventListener("click",()=>{
   if(panel.classList.contains("mobile-open"))renderOnline();
 });
 
-if ($("topMessages")) $("topMessages").onclick = () => {
-  state.view = "dms";
-  document.querySelectorAll(".nav[data-view]").forEach(x => x.classList.toggle("active", x.dataset.view === "dms"));
-  renderView();
-};
-if ($("topFriends")) $("topFriends").onclick = () => {
-  state.view = "friends";
-  document.querySelectorAll(".nav[data-view]").forEach(x => x.classList.toggle("active", x.dataset.view === "friends"));
-  renderView();
-};
-if ($("topNotifications")) $("topNotifications").onclick = () => toggleNotificationDropdown();
-if ($("topFlag")) $("topFlag").onclick = () => toggleReportDropdown();
+if ($("topMessages")) $("topMessages").onclick = () => toggleMessagesDropdown();
+if ($("topFriends")) $("topFriends").onclick = () => toggleFriendsDropdown();
+if ($("topNotifications")) $("topNotifications").onclick = () => { $("topFriendsDropdown")?.classList.add("hidden"); $("topMessagesDropdown")?.classList.add("hidden"); toggleNotificationDropdown(); };
+if ($("topFlag")) $("topFlag").onclick = () => { $("topFriendsDropdown")?.classList.add("hidden"); $("topMessagesDropdown")?.classList.add("hidden"); $("notificationDropdown")?.classList.add("hidden"); toggleReportDropdown(); };
 if ($("topProfile")) $("topProfile").onclick = () => {
   state.view = "profile";
   document.querySelectorAll(".nav[data-view]").forEach(x => x.classList.toggle("active", x.dataset.view === "profile"));
@@ -3105,6 +3097,33 @@ async function ownerFeatureGrants(){
     modal(`<div class='feature-grant-modal'><h2>🧩 Feature Granting Panel</h2><p class='muted'>Set the minimum rank for each active feature, or disable it. Direct user permissions remain managed in User Permissions.</p>${grouped}${extra?`<details class='grant-category'><summary>Other active features</summary>${extra}</details>`:''}</div>`);
     document.querySelectorAll('[data-grant-save]').forEach(b=>b.onclick=async()=>{const key=b.dataset.grantSave,select=document.querySelector(`[data-grant='${key}']`);try{await api('/api/owner/feature-grants',{method:'PUT',body:JSON.stringify({grants:{[key]:select.value==='off'?null:select.value}})});toast('Feature permission saved.');}catch(e){toast(e.message)}});
   }catch(e){toast(e.message)}
+}
+
+async function toggleFriendsDropdown(refresh=false){
+  const box=$("topFriendsDropdown");if(!box)return;
+  if(!refresh&&!box.classList.contains("hidden")){box.classList.add("hidden");return;}
+  $("topMessagesDropdown")?.classList.add("hidden");$("notificationDropdown")?.classList.add("hidden");$("reportDropdown")?.classList.add("hidden");
+  try{
+    const d=await api("/api/friends");
+    const incoming=d.incoming||[];
+    box.innerHTML=`<div class="notification-dropdown-head"><div><b>💜 Friend requests</b><small class="notification-unread-summary">${incoming.length} pending</small></div></div>${incoming.map(u=>`<div class="report-dropdown-item friend-request-panel-row"><div class="report-dropdown-copy"><b>${esc(u.displayName||u.username)}</b><span>@${esc(u.username)}</span></div><div class="toolbar"><button class="mini primary" data-friend-accept="${esc(u.id)}">Accept</button><button class="mini danger" data-friend-decline="${esc(u.id)}">Decline</button></div></div>`).join("")||'<p class="muted notification-empty">No new friend requests. 💜</p>'}`;
+    box.classList.remove("hidden");
+    box.querySelectorAll("[data-friend-accept]").forEach(b=>b.onclick=async()=>{b.disabled=true;try{await acceptFriend(b.dataset.friendAccept);await toggleFriendsDropdown(true);await loadNotifications()}catch(e){b.disabled=false;toast(e.message)}});
+    box.querySelectorAll("[data-friend-decline]").forEach(b=>b.onclick=async()=>{b.disabled=true;try{await api('/api/friends/'+encodeURIComponent(b.dataset.friendDecline),{method:'DELETE'});toast('Friend request declined.');await toggleFriendsDropdown(true);await loadNotifications()}catch(e){b.disabled=false;toast(e.message)}});
+  }catch(e){box.innerHTML=`<div class="notification-dropdown-head"><b>💜 Friend requests</b></div><p class="muted">${esc(e.message||"Could not load friend requests.")}</p>`;box.classList.remove("hidden");}
+}
+async function toggleMessagesDropdown(refresh=false){
+  const box=$("topMessagesDropdown");if(!box)return;
+  if(!refresh&&!box.classList.contains("hidden")){box.classList.add("hidden");return;}
+  $("topFriendsDropdown")?.classList.add("hidden");$("notificationDropdown")?.classList.add("hidden");$("reportDropdown")?.classList.add("hidden");
+  try{
+    const d=await api("/api/dm/conversations");
+    const conversations=(d.conversations||[]).sort((a,b)=>Number(b.unreadCount||0)-Number(a.unreadCount||0)).slice(0,10);
+    const nicknames=(await api('/api/private-nicknames').catch(()=>({nicknames:{}}))).nicknames||{};
+    box.innerHTML=`<div class="notification-dropdown-head"><div><b>✉ Private messages</b><small class="notification-unread-summary">${conversations.reduce((n,x)=>n+Number(x.unreadCount||0),0)} unread</small></div></div>${conversations.map(c=>{const u=c.user||{},id=String(u.id),last=c.lastMessage||{},preview=last.attachment?'📎 Attachment':(last.text||'Start a conversation');return `<button class="notification-dropdown-item dm-header-item ${Number(c.unreadCount||0)?'unread':''}" data-header-dm="${esc(id)}"><b>${esc(nicknames[id]||u.displayName||u.username||'User')} ${Number(c.unreadCount||0)?'<span class="dm-unread-badge">'+Number(c.unreadCount)+'</span>':''}</b><span>@${esc(u.username||'')} · ${esc(preview).slice(0,100)}</span><small>${last.time?fmt(last.time):''}</small></button>`}).join("")||'<p class="muted notification-empty">No private conversations yet.</p>'}`;
+    box.classList.remove("hidden");
+    box.querySelectorAll("[data-header-dm]").forEach(b=>b.onclick=()=>{box.classList.add("hidden");openDM(b.dataset.headerDm)});
+  }catch(e){box.innerHTML=`<div class="notification-dropdown-head"><b>✉ Private messages</b></div><p class="muted">${esc(e.message||"Could not load private messages.")}</p>`;box.classList.remove("hidden");}
 }
 
 async function toggleReportDropdown(refresh=false){
