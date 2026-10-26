@@ -2066,3 +2066,16 @@ input,textarea,select{background:rgba(255,255,255,.055);border-color:rgba(255,25
 #viewRooms:not(.chatting){display:flex!important;flex-direction:column!important;min-height:0!important;overflow:hidden!important}
 #viewRooms:not(.chatting)>.topbar{flex:0 0 auto!important}
 #viewRooms:not(.chatting) #rooms.room-grid{display:flex!important;flex:1 1 auto!important;height:auto!important;min-height:0!important;max-height:none!important;overflow-x:hidden!important;overflow-y:auto!important;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;align-content:flex-start!important}
+
+
+/* Owner Space command access management */
+.command-management{display:flex;flex-direction:column;gap:14px;max-width:760px}
+.command-management h2{margin:0}
+.command-management-list{display:flex;flex-direction:column;gap:10px}
+.command-management-row{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:14px;border:1px solid rgba(177,143,255,.18);border-radius:13px;background:rgba(255,255,255,.025)}
+.command-management-info{min-width:0;flex:1}
+.command-management-info>b{color:#e9dcff;font-size:14px}
+.command-management-info p{margin:5px 0 0;font-size:12px}
+.command-management-row label{display:flex;flex-direction:column;gap:5px;min-width:150px;font-size:11px;color:var(--muted,#a99db8)}
+.command-management-row select{width:100%;min-height:38px;padding:8px 10px;border-radius:9px;background:#171323;color:#f7f1ff;border:1px solid rgba(177,143,255,.28)}
+@media(max-width:560px){.command-management-row{align-items:stretch;flex-direction:column}.command-management-row label{min-width:0;width:100%}}
