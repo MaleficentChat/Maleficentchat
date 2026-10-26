@@ -822,6 +822,7 @@ async function renderOnline(tab=onlinePanelTab,searchQuery=""){
           <small>@${esc(user.username)} ${invisibleDot(user)} · ${user.online?"Online":"Offline"}</small>
           ${rank(user.rank)}
         </div>
+        ${invisibleToggleMarkup(user,true)}
         <span class="status ${user.online?'on':''}"></span>
       </div>
     `).join("") || `<div class="online-empty"><div>${tab==="staff"?"🛡️":tab==="friends"?"💜":"👥"}</div><b>No users here</b><span>Try another tab.</span></div>`}</div>`;
