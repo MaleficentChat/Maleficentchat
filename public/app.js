@@ -3165,17 +3165,18 @@ async function toggleNotificationDropdown(){
 
 async function loadNotifications() {
   try {
-    const [data,unreadData,dm,staffCounts]=await Promise.all([
+    const [data,unreadData,dm,staffCounts,friendsData]=await Promise.all([
       api("/api/notifications"),
       api("/api/notifications/unread").catch(()=>null),
       api("/api/dm/unread-count").catch(()=>({count:0})),
-      api("/api/staff/unread-count").catch(()=>({reports:0,staffNotifications:0,total:0}))
+      api("/api/staff/unread-count").catch(()=>({reports:0,staffNotifications:0,total:0})),
+      api("/api/friends").catch(()=>({incoming:[]}))
     ]);
     // Fall back to the main notification response if the unread-only endpoint is unavailable.
     const unread=unreadData?.notifications || (data.notifications||[]).filter(n=>!n.read);
     const notificationStaffCount=unread.filter(n=>["report","moderation","staff"].includes(n.type)).length;
     const reportCount=Math.max(Number(staffCounts.reports||0),notificationStaffCount);
-    const counts={dm:Number(dm.count||0),report:reportCount,all:unread.length};
+    const counts={dm:Number(dm.count||0),report:reportCount,all:unread.length,friends:(friendsData.incoming||[]).length};
     const setBubble=(id,count)=>{
       const el=$(id);
       if(!el)return;
@@ -3187,6 +3188,7 @@ async function loadNotifications() {
     setBubble("notifDot",counts.all);
     setBubble("topNotifDot",counts.all);
     setBubble("topDmDot",counts.dm);
+    setBubble("topFriendDot",counts.friends);
     setBubble("dmDot",counts.dm);
     setBubble("reportDot",counts.report);
     setBubble("topReportDot",counts.report);
