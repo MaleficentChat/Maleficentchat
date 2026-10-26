@@ -2185,104 +2185,35 @@ app.get("/api/staff/ip-inspection",auth,ownerOnly,async(req,res)=>{
   }
 });
 
-app.get(
-  "/api/staff/dashboard",
-  auth,
-  featureAllowed("view_staff_dashboard"),
-  (req,res)=>{
-    const u=current(req);
-
-    if(!hasRank(u,"MOD")){
-      return res.status(403).json({
-        error:"Staff only"
-      });
-    }
-
-    res.json({
-      reports:db.reports.filter(x=>x.status==='OPEN'),
-
-      logs:
-        db.logs
-          .slice(-500)
-          .reverse(),
-
-      history:
-        db.moderationHistory
-          .slice(-500)
-          .reverse(),
-
-      activeActions:db.users.filter(x=>
-        (x.banned===true)||
-        (x.kickedUntil&&x.kickedUntil>Date.now())||
-        (x.mutedUntil&&x.mutedUntil>Date.now())
-      ).map(x=>({id:x.id,username:x.username,displayName:x.displayName,rank:x.rank,gold:x.gold||0,banned:!!x.banned,kickedUntil:x.kickedUntil||null,mutedUntil:x.mutedUntil||null,reason:x.banReason||x.kickReason||x.muteReason||""})),
-
-      stats:{
-        users:db.users.length,
-
-        online:
-          db.users.filter(
-            x=>x.online
-          ).length,
-
-        messages:
-          db.messages.length,
-
-        reportsOpen:
-          db.reports.filter(
-            x=>x.status==="OPEN"
-          ).length
-      }
+app.get("/api/staff/dashboard",auth,featureAllowed("view_staff_dashboard"),async(req,res)=>{
+  const u=current(req);
+  if(!hasRank(u,"MOD"))return res.status(403).json({error:"Staff only"});
+  try{
+    const stored=await pool.query("SELECT r.id,r.reporter_id,r.reported_id,r.conversation_user_id,r.reason,r.data,r.created_at,reporter.username AS reporter_username,target.username AS reported_username,convo.username AS conversation_username FROM reports r LEFT JOIN users reporter ON reporter.id=r.reporter_id LEFT JOIN users target ON target.id=r.reported_id LEFT JOIN users convo ON convo.id=r.conversation_user_id ORDER BY r.created_at DESC LIMIT 500");
+    const pgReports=stored.rows.map(row=>{
+      const d=row.data&&typeof row.data==="object"?row.data:{};
+      return {...d,id:String(row.id),reporter:d.reporter??row.reporter_id,reporterUsername:d.reporterUsername||row.reporter_username||"Unknown",reportedUserId:d.reportedUserId??row.reported_id,reportedUserUsername:d.reportedUserUsername||row.reported_username||"Unknown",conversationUserId:d.conversationUserId??row.conversation_user_id??null,conversationUsername:d.conversationUsername||row.conversation_username||"",reason:d.reason||row.reason||"No reason supplied",time:d.time||new Date(row.created_at).getTime(),kind:d.kind||(row.conversation_user_id?"private_message":d.messageId?"message":"profile"),category:d.category||(row.conversation_user_id?"Private message report":d.messageId?"Message report":"Profile report"),status:d.status||"OPEN"};
     });
-  }
-);
+    const ids=new Set(pgReports.map(r=>String(r.id)));
+    const reports=[...pgReports,...(db.reports||[]).filter(r=>!ids.has(String(r.id)))].filter(r=>String(r.status||"OPEN").toUpperCase()==="OPEN").sort((a,b)=>Number(b.time||0)-Number(a.time||0));
+    res.json({reports,logs:db.logs.slice(-500).reverse(),history:db.moderationHistory.slice(-500).reverse(),activeActions:db.users.filter(x=>(x.banned===true)||(x.kickedUntil&&x.kickedUntil>Date.now())||(x.mutedUntil&&x.mutedUntil>Date.now())).map(x=>({id:x.id,username:x.username,displayName:x.displayName,rank:x.rank,gold:x.gold||0,banned:!!x.banned,kickedUntil:x.kickedUntil||null,mutedUntil:x.mutedUntil||null,reason:x.banReason||x.kickReason||x.muteReason||""})),stats:{users:db.users.length,online:db.users.filter(x=>x.online).length,messages:db.messages.length,reportsOpen:reports.length}});
+  }catch(e){console.error("Staff dashboard reports failed:",e);res.status(500).json({error:"Could not load staff reports. Please refresh and try again."});}
+});
 
-app.post(
-  "/api/staff/reports/:id/resolve",
-  auth,
-  (req,res)=>{
-    const u=current(req);
-
-    if(!hasRank(u,"MOD")){
-      return res.status(403).json({
-        error:"Staff only"
-      });
-    }
-
-    const r=db.reports.find(
-      x=>x.id===req.params.id
-    );
-
-    if(!r){
-      return res.status(404).json({
-        error:"Report not found"
-      });
-    }
-
-    r.status=
-      req.body.status||
-      "RESOLVED";
-
-    r.resolvedBy=u.id;
-    r.resolvedAt=Date.now();
-
-    save();
-
-    log(
-      u,
-      "REPORT_RESOLVE",
-      r.id,
-      {
-        status:r.status
-      }
-    );
-
-    res.json({
-      report:r
-    });
-  }
-);
-
+app.post("/api/staff/reports/:id/resolve",auth,async(req,res)=>{
+  const u=current(req);
+  if(!hasRank(u,"MOD"))return res.status(403).json({error:"Staff only"});
+  const status=String(req.body.status||"RESOLVED").toUpperCase();
+  if(!["RESOLVED","DISMISSED","OPEN"].includes(status))return res.status(400).json({error:"Invalid report status."});
+  try{
+    const pg=await pool.query("UPDATE reports SET data=COALESCE(data,jsonb_build_object())||$2::jsonb WHERE id=$1 RETURNING data",[req.params.id,JSON.stringify({status,resolvedBy:u.id,resolvedByUsername:u.username,resolvedAt:Date.now()})]);
+    const r=(db.reports||[]).find(x=>String(x.id)===String(req.params.id));
+    if(r){r.status=status;r.resolvedBy=u.id;r.resolvedByUsername=u.username;r.resolvedAt=Date.now();}
+    if(!pg.rowCount&&!r)return res.status(404).json({error:"Report not found"});
+    save();log(u,"REPORT_RESOLVE",req.params.id,{status});
+    res.json({report:pg.rowCount?{...(pg.rows[0].data||{}),id:req.params.id,status}:r});
+  }catch(e){console.error("Report resolution failed:",e);res.status(500).json({error:"Could not update this report. Please try again."});}
+});
 app.get(
   "/api/staff/filter-word",
   auth,
@@ -2980,15 +2911,23 @@ app.post("/api/report",auth,async(req,res)=>{
   if(!reported||!convo)return res.status(400).json({error:"Reported user and conversation user are required."});
   const reportId=id(), reason=cleanText(req.body.reason).slice(0,500)||"Private message report";
   const q=await pool.query(`SELECT data FROM private_messages WHERE (sender_id=$1 AND receiver_id=$2) OR (sender_id=$2 AND receiver_id=$1) ORDER BY created_at DESC LIMIT 200`,[Number(reported.id),Number(convo.id)]);
-  const data={id:reportId,reporter:reporter.id,reportedUserId:reported.id,conversationUserId:convo.id,reason,status:"OPEN",time:Date.now()};
+  const data={id:reportId,reporter:reporter.id,reportedUserId:reported.id,conversationUserId:convo.id,reason,status:"OPEN",time:Date.now(),kind:"private_message"};
   await pool.query(`INSERT INTO reports(id,reporter_id,reported_id,conversation_user_id,reason,data,created_at) VALUES($1,$2,$3,$4,$5,$6::jsonb,NOW())`,
     [reportId,Number(reporter.id),Number(reported.id),Number(convo.id),reason,JSON.stringify({...data,privateMessages:q.rows.map(x=>x.data)})]);
   db.reports.push({...data,privateMessages:q.rows.map(x=>x.data)}); notifyStaff("report","New private-message report",`@${reporter.username} reported @${reported.username}.`); res.json({ok:true,report:data});
 });
-app.get("/api/staff/reports/:id/private-messages",auth,ownerOnly,async(req,res)=>{
-  const q=await pool.query(`SELECT data FROM reports WHERE id=$1`,[req.params.id]); if(!q.rowCount)return res.status(404).json({error:"Report not found"});
-  const d=q.rows[0].data||{}; const p=await pool.query(`SELECT data FROM private_messages WHERE (sender_id=$1 AND receiver_id=$2) OR (sender_id=$2 AND receiver_id=$1) ORDER BY created_at`,[Number(d.reportedUserId),Number(d.conversationUserId)]);
-  res.json({messages:p.rows.map(x=>x.data)});
+app.get("/api/staff/reports/:id/private-messages",auth,featureAllowed("view_staff_dashboard"),async(req,res)=>{
+  const u=current(req);if(!hasRank(u,"MOD"))return res.status(403).json({error:"Staff only"});
+  try{
+    const q=await pool.query("SELECT data FROM reports WHERE id=$1",[req.params.id]);
+    const cached=(db.reports||[]).find(r=>String(r.id)===String(req.params.id));
+    if(!q.rowCount&&!cached)return res.status(404).json({error:"Report not found"});
+    const d=q.rowCount&&q.rows[0].data&&typeof q.rows[0].data==="object"?q.rows[0].data:cached||{};
+    if(!d.conversationUserId)return res.status(400).json({error:"This is not a private-message report."});
+    let messages=Array.isArray(d.privateMessages)?d.privateMessages:[];
+    if(!messages.length){const p=await pool.query("SELECT data FROM private_messages WHERE (sender_id=$1 AND receiver_id=$2) OR (sender_id=$2 AND receiver_id=$1) ORDER BY created_at DESC LIMIT 200",[Number(d.reportedUserId),Number(d.conversationUserId)]);messages=p.rows.map(x=>x.data).reverse();}
+    res.json({messages,report:{id:req.params.id,reason:d.reason||"No reason supplied",reporterUsername:d.reporterUsername||"",reportedUserUsername:d.reportedUserUsername||"",conversationUsername:d.conversationUsername||""}});
+  }catch(e){console.error("Private-message report evidence failed:",e);res.status(500).json({error:"Could not load the reported private-message evidence."});}
 });
 
 app.get("/api/staff/unread-count",auth,async(req,res)=>{
