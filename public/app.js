@@ -2821,7 +2821,7 @@ async function loadOwner() {
           </button>
           <button class="mini danger" type="button" onclick="refreshSiteMessages()">🧹 Refresh Site Messages</button>
 
-          <button class="mini" onclick="ownerFeatureGrants()">🧩 Feature granting</button><button class="mini" onclick="openBotsManagement()">🤖 Bots Management</button>
+          <button class="mini" onclick="ownerFeatureGrants()">🧩 Feature granting</button><button class="mini" onclick="openCommandManagement()">⌘ Command Management</button>
           
 
         </div>
@@ -3154,6 +3154,27 @@ async function openBotManagementBot(botId){
     }
   }catch(e){toast(e.message)}
 }
+
+async function openCommandManagement(){
+  const commandLabels={clear:{label:"/clear",description:"Clear all messages from the current room."}};
+  const ranks=["MEMBER","VIP","PREMIUM","MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER","DEVELOPER"];
+  try{
+    const data=await api("/api/owner/command-settings");
+    const settings=data.settings||{},commands=data.commands||[];
+    modal(`<div class="command-management">
+      <h2>⌘ Command Management</h2>
+      <p class="muted">Choose the minimum rank allowed to use each command. Higher ranks inherit access. Changes are saved to site settings.</p>
+      <div class="command-management-list">${commands.map(command=>{
+        const key=esc(command.key),current=String(settings[command.key]||command.defaultRank||"ADMIN").toUpperCase();
+        return `<article class="command-management-row"><div class="command-management-info"><b>${esc(commandLabels[command.key]?.label||command.label||command.key)}</b><p class="muted">${esc(commandLabels[command.key]?.description||command.description||"Configure command access.")}</p></div><label>Minimum rank<select data-command-rank="${key}">${ranks.map(rank=>`<option value="${rank}" ${rank===current?"selected":""}>${rank.replace(/_/g," ")}</option>`).join("")}</select></label></article>`;
+      }).join("")||'<p class="muted">No supported commands are registered yet.</p>'}</div>
+      <div class="toolbar"><button class="primary" id="saveCommandSettings">Save Command Settings</button><button class="mini" id="reloadCommandSettings">Reload</button></div>
+    </div>`);
+    $("saveCommandSettings").onclick=async()=>{try{const next={};document.querySelectorAll("[data-command-rank]").forEach(select=>next[select.dataset.commandRank]=select.value);await api("/api/owner/command-settings",{method:"PATCH",body:JSON.stringify({settings:next})});toast("Command access settings saved.");closeModal();}catch(error){toast(error.message||"Could not save command settings.");}};
+    $("reloadCommandSettings").onclick=()=>openCommandManagement();
+  }catch(error){toast(error.message||"Could not load command settings.");}
+}
+
 async function openBotsManagement(){
   try{const d=await api('/api/bots');modal(`<div class="bot-management"><h2>🤖 Bots Management</h2><p class="muted">Create and manage community bots. Active bots can reply when their configured name is mentioned.</p><div class="card"><h3>➕ Add Bot</h3><input id="newBotName" placeholder="Bot name"><input id="newBotAvatar" placeholder="Avatar URL or emoji"><textarea id="newBotReply" placeholder="Automatic reply text"></textarea><button class="primary" id="addBotBtn">Add Bot</button></div><div class="card"><h3>Current bots</h3><div class="stack">${(d.bots||[]).map(b=>`<div class="hub-row"><span>🤖 <b>${esc(b.name)}</b> · ${b.is_active?'Active':'Disabled'}</span><div class="toolbar"><button class="mini" data-bot-edit="${b.id}">Edit</button><button class="mini" data-bot-toggle="${b.id}">${b.is_active?'Disable':'Enable'}</button><button class="mini danger" data-bot-delete="${b.id}">Delete</button></div></div>`).join('')||'<p class="muted">No bots yet.</p>'}</div></div></div>`);$('addBotBtn').onclick=async()=>{try{const name=$('newBotName').value.trim();if(!name)throw Error('Bot name required.');await api('/api/bots',{method:'POST',body:JSON.stringify({name,avatar:$('newBotAvatar').value,auto_reply:$('newBotReply').value})});openBotsManagement()}catch(e){toast(e.message)}};document.querySelectorAll('[data-bot-edit]').forEach(b=>b.onclick=()=>openBotManagementBot(b.dataset.botEdit));document.querySelectorAll('[data-bot-toggle]').forEach(b=>b.onclick=async()=>{try{await api('/api/bots/'+b.dataset.botToggle+'/toggle',{method:'POST'});openBotsManagement()}catch(e){toast(e.message)}});document.querySelectorAll('[data-bot-delete]').forEach(b=>b.onclick=async()=>{if(!confirm('Delete this bot?'))return;try{await api('/api/bots/'+b.dataset.botDelete,{method:'DELETE'});openBotsManagement()}catch(e){toast(e.message)}});}catch(e){toast(e.message)}}
 
