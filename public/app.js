@@ -340,6 +340,7 @@ async function start() {
 
   state.socket.on("room:clear", () => {
     if (state.currentRoom) {
+      state.messages=(state.messages||[]).filter(m=>String(m.roomId)!==String(state.currentRoom));
       $("messages").innerHTML = "";
       toast("Room cleared by staff.");
     }
@@ -793,10 +794,10 @@ async function renderOnline(tab=onlinePanelTab,searchQuery=""){
   try{
     const data=await api("/api/users");
     onlinePanelCache=data.users||[];
-    const online=onlinePanelCache.filter(u=>u.online);
+    const online=onlinePanelCache.filter(u=>u.online&&!u.invisible);
     const friendsData=await api("/api/friends").catch(()=>({users:[]}));
     const friendIds=new Set((friendsData.users||[]).map(u=>u.id));
-    const offline=onlinePanelCache.filter(u=>!u.online);
+    const offline=onlinePanelCache.filter(u=>!u.online&&!u.invisible);
     let list=[];
     let title="Online";
 
@@ -819,11 +820,11 @@ async function renderOnline(tab=onlinePanelTab,searchQuery=""){
         ${avatar(user)}
         <div class="online-user-copy">
           <b>${esc(user.displayName)}</b>
-          <small>@${esc(user.username)} ${invisibleDot(user)} · ${user.online?"Online":"Offline"}</small>
+          <small>@${esc(user.username)} ${invisibleDot(user)}${user.invisible?"":" · "+(user.online?"Online":"Offline")}</small>
           ${rank(user.rank)}
         </div>
         ${invisibleToggleMarkup(user,true)}
-        <span class="status ${user.online?'on':''}"></span>
+        <span class="status ${!user.invisible&&user.online?'on':''}"></span>
       </div>
     `).join("") || `<div class="online-empty"><div>${tab==="staff"?"🛡️":tab==="friends"?"💜":"👥"}</div><b>No users here</b><span>Try another tab.</span></div>`}</div>`;
     const searchInput=$("onlineUsernameSearch");if(searchInput){searchInput.value=searchQuery;searchInput.oninput=()=>{const value=searchInput.value;renderOnline("search",value).then(()=>{const next=$("onlineUsernameSearch");if(next){next.focus();next.setSelectionRange(value.length,value.length);}});};}
@@ -1167,6 +1168,17 @@ $("composer").onsubmit = async e => {
   const text =
     $("message").value.trim();
 
+  if(text.toLowerCase()==='/clear'){
+    if($("file").files[0]){toast("Send /clear without an attachment.");return;}
+    try{
+      const result=await api("/api/rooms/"+encodeURIComponent(state.currentRoom)+"/clear",{method:"POST"});
+      $("message").value="";$("message").dispatchEvent(new Event("input"));
+      state.messages=(state.messages||[]).filter(m=>String(m.roomId)!==String(state.currentRoom));
+      $("messages").innerHTML="";
+      toast("Room cleared. "+Number(result.removed||0)+" message(s) removed.");
+    }catch(error){toast(error.message||"Could not clear this room.");}
+    return;
+  }
   if(/^@stefan\s+options$/i.test(text)){
     $("message").value="";
     $("message").dispatchEvent(new Event("input"));
