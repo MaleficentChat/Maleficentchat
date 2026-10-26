@@ -3336,6 +3336,7 @@ io.on(
             "typing",
             {
               user:d.user,
+              userId:socket.data.userId,
               typing:!!d.typing
             }
           )
