@@ -1963,3 +1963,12 @@ input,textarea,select{background:rgba(255,255,255,.055);border-color:rgba(255,25
   #modal .modal-card:not(:has(.profile-modal)){width:calc(100vw - 16px)!important;max-width:calc(100vw - 16px)!important;padding:16px!important;border-radius:14px}
   #modal .modal-card:not(:has(.profile-modal))>#modalBody{max-height:calc(100vh - 76px);max-height:calc(100dvh - 76px);padding:8px 2px 4px}
 }
+
+
+/* Staff user-history action controls */
+.user-history-modal{min-width:0}
+.user-history-entries{max-height:min(58vh,520px);overflow:auto;overscroll-behavior:contain}
+.user-history-entry{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;min-width:0}
+.user-history-entry-copy{flex:1;min-width:0;overflow-wrap:anywhere}
+.user-history-entry>.mini{flex:0 0 auto}
+@media(max-width:600px){.user-history-entry{gap:8px;padding:10px}.user-history-entry>.mini{padding:7px 9px}}
