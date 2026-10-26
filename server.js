@@ -2118,6 +2118,25 @@ app.get(
   }
 );
 
+app.get("/api/staff/ip-inspection/diagnostics",auth,ownerOnly,(req,res)=>{
+  const normalizeIp=value=>{
+    let ip=String(value||"").split(",")[0].trim();
+    if(ip.startsWith("::ffff:")) ip=ip.slice(7);
+    return ip||"unavailable";
+  };
+  const isPrivateIp=value=>{
+    const ip=normalizeIp(value).toLowerCase();
+    return ip==="unavailable"||ip==="unknown"||ip==="::1"||ip==="127.0.0.1"||ip.startsWith("10.")||ip.startsWith("192.168.")||/^172\\.(1[6-9]|2[0-9]|3[0-1])\\./.test(ip)||ip.startsWith("fc")||ip.startsWith("fd")||ip.startsWith("fe80:");
+  };
+  const sources={
+    expressIp:normalizeIp(req.ip),
+    socketRemoteAddress:normalizeIp(req.socket?.remoteAddress),
+    forwardedFor:normalizeIp(req.headers["x-forwarded-for"]),
+    realIp:normalizeIp(req.headers["x-real-ip"]),
+    cloudflareConnectingIp:normalizeIp(req.headers["cf-connecting-ip"])
+  };
+  res.json({sources,privateOrUnavailable:Object.fromEntries(Object.entries(sources).map(([key,value])=>[key,isPrivateIp(value)])),trustProxy:app.get("trust proxy")});
+});
 app.get("/api/staff/ip-inspection/users",auth,ownerOnly,async(req,res)=>{
   let stage="validate-search";
   try{
