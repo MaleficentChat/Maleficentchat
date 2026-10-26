@@ -1249,6 +1249,7 @@ app.post(
       });
     }
 
+    systemNotice(`${u.displayName||u.username} has joined the room ${r.name}.`,r.id);
     res.json({
       ok:true,
       joinToken:makeRoomJoinToken(u.id,r),
@@ -1288,6 +1289,63 @@ app.post("/api/rooms/:id/messages",auth,featureAllowed("send_messages"),upload.s
   if(String(u.rank).toUpperCase()!=="DEVELOPER" && req.file&&!/^image\/|^audio\//.test(req.file.mimetype))return res.status(400).json({error:"Only image/audio uploads are allowed."});
   let text=cleanText(req.body.text);
   if(!text&&!req.file)return res.status(400).json({error:"Message is empty."});
+
+  // Slash commands execute on the server so permission checks cannot be bypassed in the browser.
+  const commandMatch=!req.file&&text.match(/^\/([a-z0-9]+)(?:\s+([\s\S]*))?$/i);
+  if(commandMatch){
+    const commandKey=commandMatch[1].toLowerCase(),args=String(commandMatch[2]||"").trim();
+    const commandDef=COMMAND_SETTING_DEFS.find(c=>c.key===commandKey);
+    if(commandDef && commandKey!=="clear"){
+      if(!commandAllowed(u,commandKey))return res.status(403).json({error:"The /"+commandKey+" command requires "+commandSettings()[commandKey].replace(/_/g," ")+" or higher."});
+      let response="";
+      const pick=list=>list[Math.floor(Math.random()*list.length)];
+      const targetName=value=>String(value||"").replace(/^@/,"").trim();
+      const targetUser=name=>db.users.find(x=>String(x.username||"").toLowerCase()===targetName(name).toLowerCase()||String(x.displayName||"").toLowerCase()===targetName(name).toLowerCase());
+      if(commandKey==="roll"){
+        const maxRaw=Number(args||100),max=Number.isFinite(maxRaw)?Math.max(2,Math.min(100000,Math.floor(maxRaw))):100;
+        response="🎲 "+(u.displayName||u.username)+" rolled "+(Math.floor(Math.random()*max)+1)+" (1–"+max+").";
+      }else if(commandKey==="ship"){
+        const names=args.match(/@?[A-Za-z0-9_]{3,24}/g)||[];
+        if(names.length<2)return res.status(400).json({error:"Usage: /ship @user1 @user2"});
+        const first=targetUser(names[0]),second=targetUser(names[1]);
+        if(!first||!second)return res.status(404).json({error:"Both users must exist. Use their usernames."});
+        response="💜 Aurora ships "+(first.displayName||first.username)+" + "+(second.displayName||second.username)+": "+Math.floor(Math.random()*101)+"% compatibility!";
+      }else if(commandKey==="8ball"){
+        if(!args)return res.status(400).json({error:"Usage: /8ball your question"});
+        response="🔮 "+pick(["It is looking good.","Absolutely.","The signs say yes.","Ask again later.","The answer is unclear.","Probably not.","Trust your instincts.","It is possible."]);
+      }else if(["hug","slap","poke","kiss"].includes(commandKey)){
+        if(!args)return res.status(400).json({error:"Usage: /"+commandKey+" @username"});
+        const target=targetUser(args.split(/\s+/)[0]);
+        if(!target)return res.status(404).json({error:"User not found. Use their username."});
+        const actor=u.displayName||u.username,who=target.displayName||target.username;
+        response=commandKey==="hug"?"🤗 "+actor+" sends "+who+" a warm hug!":commandKey==="slap"?"👋 "+actor+" playfully slaps "+who+"!":commandKey==="poke"?"👉 "+actor+" pokes "+who+"!":"💋 "+actor+" sends "+who+" a playful kiss!";
+      }else if(commandKey==="coinflip"){
+        response="🪙 The coin landed on "+pick(["Heads","Tails"])+"!";
+      }else if(commandKey==="choose"){
+        const options=args.split(/\s*,\s*|\s+or\s+/i).map(x=>x.trim()).filter(Boolean).slice(0,30);
+        if(options.length<2)return res.status(400).json({error:"Usage: /choose tea, coffee (or separate options with “or”)"});
+        response="✨ Aurora chooses: "+pick(options);
+      }else if(commandKey==="fortune"){
+        response="🌙 Your fortune: "+pick(["A new opportunity may appear when you least expect it.","Patience will help you see the right path.","A small kindness will make someone's day.","A fresh idea is worth exploring.","Take one step at a time; progress is still progress.","A conversation may bring a pleasant surprise."]);
+      }else if(commandKey==="joke"){
+        response="😄 "+pick(["Why did the computer go to the doctor? It had a virus.","Why was the math book sad? It had too many problems.","What do you call a sleeping dinosaur? A dino-snore.","Why did the chat room stay calm? Everyone kept their cool.","What is a wizard's favourite subject? Spell-ing."]);
+      }else if(commandKey==="fact"){
+        response="🧠 Did you know? "+pick(["Octopuses have three hearts.","A group of flamingos is called a flamboyance.","Honey can remain edible for a very long time when properly sealed and stored.","The Moon moves away from Earth by a few centimetres each year.","Botanically, bananas are berries, while strawberries are not true berries."]);
+      }else if(commandKey==="lock"){
+        r.locked=true; r.lockedBy=u.username; r.lockedAt=Date.now(); save();
+        response="🔒 "+(u.displayName||u.username)+" locked "+r.name+". Only staff can chat until it is unlocked.";
+      }else if(commandKey==="unlock"){
+        r.locked=false; r.lockedBy=null; r.lockedAt=null; save();
+        response="🔓 "+(u.displayName||u.username)+" unlocked "+r.name+". Everyone can chat again.";
+      }
+      if(response){
+        const notice=await auroraRoomMessage(response,r.id);
+        log(u,"CHAT_COMMAND_"+commandKey.toUpperCase(),r.name,{command:"/"+commandKey,args});
+        return res.json({message:notice,command:true});
+      }
+    }
+  }
+  if(r.locked && !hasRank(u,"MOD") && String(u.rank).toUpperCase()!=="DEVELOPER")return res.status(403).json({error:"This room is locked. Only staff can send messages."});
 
   const matchedFilter=filteredWord(text);
   const affected=(db.settings.filter_affected_ranks||[]).map(x=>String(x).toUpperCase());
@@ -1977,10 +2035,15 @@ app.post(
   }
 );
 
+async function auroraRoomMessage(text, roomId){
+  const notice={id:id(),system:true,username:'Aurora',displayName:'Aurora',rank:'BOT',text:String(text),roomId:String(roomId),time:Date.now(),reactions:{},pinned:false,deleted:false};
+  try{await pool.query(`INSERT INTO room_messages(id,room_id,data,created_at) VALUES($1,$2,$3::jsonb,NOW())`,[notice.id,Number(roomId),JSON.stringify(notice)]);}catch(err){console.error("Aurora message persistence failed:",err.message);}
+  db.messages.push(notice); save(); io.to('room:'+roomId).emit('message',notice); return notice;
+}
 function systemNotice(text, roomId=null){
-  const notice={id:id(),system:true,username:'Aurora',displayName:'Aurora',rank:'BOT',text:String(text),roomId,time:Date.now(),reactions:{},pinned:false,deleted:false};
-  if(roomId){ db.messages.push(notice); save(); io.to('room:'+roomId).emit('message',notice); } else { io.emit('system-message',notice); }
-  return notice;
+  const targetRoom=roomId||((db.rooms.find(x=>x.id==='main'||String(x.name).toLowerCase()==='main room')||db.rooms[0])?.id||null);
+  if(targetRoom){auroraRoomMessage(text,targetRoom).catch(err=>console.error("Aurora notice failed:",err.message));}
+  else {const notice={id:id(),system:true,username:'Aurora',displayName:'Aurora',rank:'BOT',text:String(text),roomId:null,time:Date.now(),reactions:{},pinned:false,deleted:false};io.emit('system-message',notice);}
 }
 
 app.get('/api/daily/status',auth,async(req,res)=>{const q=await pool.query(`SELECT last_claim,streak,(last_claim AT TIME ZONE 'UTC')::date AS claim_day FROM daily_rewards WHERE user_id=$1`,[Number(current(req).id)]);const today=new Date().toISOString().slice(0,10);res.json({claimed:!!(q.rowCount&&q.rows[0].claim_day===today),streak:Number(q.rows[0]?.streak||0)});});
@@ -2611,7 +2674,21 @@ app.get(
 
 
 const COMMAND_SETTING_DEFS=[
-  {key:"clear",label:"/clear",description:"Clear all messages from the current room.",defaultRank:"ADMIN"}
+  {key:"clear",label:"/clear",description:"Clear all messages from the current room.",defaultRank:"ADMIN"},
+  {key:"roll",label:"/roll",description:"Roll a random number, optionally with a maximum.",defaultRank:"MEMBER"},
+  {key:"ship",label:"/ship",description:"Generate a playful compatibility score for two users.",defaultRank:"MEMBER"},
+  {key:"8ball",label:"/8ball",description:"Ask a question and receive a random fortune-style answer.",defaultRank:"MEMBER"},
+  {key:"hug",label:"/hug",description:"Send a playful hug action.",defaultRank:"MEMBER"},
+  {key:"slap",label:"/slap",description:"Send a playful slap action.",defaultRank:"MEMBER"},
+  {key:"poke",label:"/poke",description:"Poke someone playfully.",defaultRank:"MEMBER"},
+  {key:"kiss",label:"/kiss",description:"Send a friendly, playful kiss action.",defaultRank:"MEMBER"},
+  {key:"coinflip",label:"/coinflip",description:"Flip a virtual coin.",defaultRank:"MEMBER"},
+  {key:"choose",label:"/choose",description:"Choose randomly from options separated by commas or “or”.",defaultRank:"MEMBER"},
+  {key:"fortune",label:"/fortune",description:"Receive a random fortune.",defaultRank:"MEMBER"},
+  {key:"joke",label:"/joke",description:"Get a random joke.",defaultRank:"MEMBER"},
+  {key:"fact",label:"/fact",description:"Get a random general-interest fact.",defaultRank:"MEMBER"},
+  {key:"lock",label:"/lock",description:"Lock the current room so only staff can chat.",defaultRank:"MOD"},
+  {key:"unlock",label:"/unlock",description:"Unlock the current room.",defaultRank:"MOD"}
 ];
 function commandSettings(){
   const saved=db.settings?.command_ranks||{},allowed=new Set(ranks),settings={};
