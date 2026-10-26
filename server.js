@@ -2127,7 +2127,7 @@ app.get("/api/staff/ip-inspection",auth,ownerOnly,async(req,res)=>{
   params.push(limit);
   const q=await pool.query(`SELECT h.id,h.user_id,u.username,u.email,h.ip_address::text AS ip_address,h.event_type,h.user_agent,h.recorded_at,u.created_at AS registered_at FROM user_ip_history h JOIN users u ON u.id=h.user_id ${where} ORDER BY h.recorded_at DESC LIMIT ${params.length}`,params);
   await pool.query("INSERT INTO admin_logs(action_type,performed_by,details) VALUES($1,$2,$3)",["IP_INSPECTION_VIEW",Number(actor.id),JSON.stringify({search:search||null,rows:q.rowCount})]);
-  const uniqueIps=[...new Set(q.rows.map(x=>x.ip_address))].filter(ip=>ip&&!/^(127\\.|10\\.|192\\.168\\.|172\\.(1[6-9]|2[0-9]|3[01])\\.|::1$|fc|fd|fe80:)/i.test(ip));
+  const uniqueIps=[...new Set(q.rows.map(x=>x.ip_address))].filter(ip=>ip&&ip!=="::1"&&ip!=="127.0.0.1"&&!ip.startsWith("127.")&&!ip.startsWith("10.")&&!ip.startsWith("192.168.")&&!ip.startsWith("fc")&&!ip.startsWith("fd")&&!ip.toLowerCase().startsWith("fe80:"));
   const lookups=await Promise.all(uniqueIps.slice(0,30).map(async ip=>{
     try{const response=await fetch("https://ipapi.co/"+encodeURIComponent(ip)+"/json/",{headers:{"User-Agent":"MaleficentChat-IPInspection/1.0"},signal:AbortSignal.timeout(2500)});if(!response.ok)return [ip,{}];const d=await response.json();return [ip,{country:d.country_name||"",region:d.region||"",city:d.city||"",networkProvider:d.org||d.asn||"",networkType:d.version||"",isProxy:d.proxy===true}];}catch{return [ip,{}];}
   }));
