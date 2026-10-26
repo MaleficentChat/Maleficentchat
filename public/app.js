@@ -2769,17 +2769,26 @@ async function loadOwner() {
 
       <div class="card"><h3>💎 Premium Requests</h3>${(premiumRequests.requests||[]).map(r=>`<div class="hub-row"><span>@${esc(r.username||'Unknown')} · ${esc(r.created_at||'')}</span><button class="mini" data-grant-premium="${r.id}">Grant Premium</button><button class="mini danger" data-cancel-premium="${r.user_id||r.id}">Cancel Premium</button></div>`).join('')||'<p class="muted">No requests.</p>'}</div><div class="card owner-gift-catalog-card"><div class="section-title"><div><h3>🎁 Gift Catalog</h3><p class="muted">Manage the catalog used by profiles. Gifts are saved and delivered privately.</p></div><button class="primary" id="ownerAddGift">＋ Add gift</button></div><details class="filter-words-details owner-gift-dropdown"><summary>Gift list — open to view and manage gifts</summary><div id="ownerGiftList"></div></details></div>
 
-      <div class="card"><h3>⚙️ Site Settings</h3><div class="owner-settings-grid">
+      <div class="card owner-settings-card">
+        <h3>⚙️ Site Settings</h3>
+        <details class="filter-words-details owner-settings-dropdown">
+          <summary>Site settings — open to view and manage options</summary>
+          <div class="owner-settings-content">
+            <div class="owner-settings-grid">
 <label>Gold cost per GIF<input id="ownerGifCost" type="number" min="0" value="${Number(data.settings?.gif_cost??10)}"></label><label>Gold per message<input id="ownerGoldPerMessage" type="number" min="0" value="${Number(data.settings?.gold_per_message??data.settings?.goldPerMessage??0)}"></label>
 <label>XP per message<input id="ownerXpPerMessage" type="number" min="0" value="${Number(data.settings?.xp_per_message??data.settings?.xpPerMessage??5)}"></label>
 <label>Daily XP limit<input id="ownerDailyXp" type="number" min="1" value="${Number(data.settings?.daily_xp_limit??data.settings?.dailyXpLimit??500)}"></label><label>Daily reward gold<input id="ownerDailyRewardGold" type="number" min="0" value="${Number(data.settings?.daily_reward_gold??25)}"></label><label>Daily reward XP<input id="ownerDailyRewardXp" type="number" min="0" value="${Number(data.settings?.daily_reward_xp??15)}"></label>
 <label>Filter mute duration (minutes)<input id="ownerFilterDuration" type="number" min="1" value="${Number(data.settings?.filter_mute_duration??data.settings?.filterMuteDurationMinutes??5)}"></label>
-</div><b>Filter word affected ranks</b><div class="rank-check-grid">${['MEMBER','VIP','PREMIUM','MOD','ADMIN','SUPER_ADMIN','COMMISSOR','COOWNER','OWNER'].map(r=>`<label><input type="checkbox" data-filter-rank value="${r}" ${(data.settings?.filter_affected_ranks||['MEMBER','VIP','PREMIUM','MOD','ADMIN','SUPER_ADMIN','COMMISSOR','COOWNER','OWNER']).includes(r)?'checked':''}> ${r}</label>`).join('')}</div><button class="primary" onclick="saveOwnerSiteState()">Save Site Settings</button></div>
+</div><b>Filter word affected ranks</b><div class="rank-check-grid">${['MEMBER','VIP','PREMIUM','MOD','ADMIN','SUPER_ADMIN','COMMISSOR','COOWNER','OWNER'].map(r=>`<label><input type="checkbox" data-filter-rank value="${r}" ${(data.settings?.filter_affected_ranks||['MEMBER','VIP','PREMIUM','MOD','ADMIN','SUPER_ADMIN','COMMISSOR','COOWNER','OWNER']).includes(r)?'checked':''}> ${r}</label>`).join('')}</div><button class="primary" onclick="saveOwnerSiteState()">Save Site Settings</button>
+          </div>
+        </details>
+      </div>
 
-      <div class="card">
-
-        <h3>User controls</h3>
-
+      <div class="card owner-user-controls-card">
+        <h3>👥 User controls</h3>
+        <details class="filter-words-details owner-user-controls-dropdown">
+          <summary>User controls — open to manage accounts</summary>
+          <div class="owner-user-controls-content">
         ${
           (data.users || [])
             .map(user => `
@@ -2818,7 +2827,8 @@ async function loadOwner() {
             `)
             .join("")
         }
-
+          </div>
+        </details>
       </div>
 
 
