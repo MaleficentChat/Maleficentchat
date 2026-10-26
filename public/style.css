@@ -1785,3 +1785,17 @@ input,textarea,select{background:rgba(255,255,255,.055);border-color:rgba(255,25
   .quick-user-avatar{width:84px;height:84px}
   .quick-user-row{min-height:62px!important}
 }
+
+/* Compact, lively room cards: remove tall empty blocks on mobile */
+#viewRooms:not(.chatting) .room-list-card{height:auto!important;min-height:0!important;max-height:none!important;align-self:stretch!important;flex:0 0 auto!important;transform:translateZ(0);animation:roomCardEnter .28s ease both}
+#viewRooms:not(.chatting) .room-list-card:nth-child(2){animation-delay:.035s}
+#viewRooms:not(.chatting) .room-list-card:nth-child(3){animation-delay:.07s}
+#viewRooms:not(.chatting) .room-list-card:nth-child(4){animation-delay:.105s}
+#viewRooms:not(.chatting) .room-open{min-height:0!important;height:auto!important}
+#viewRooms:not(.chatting) .room-main{display:flex;flex-direction:column;gap:5px}
+#viewRooms:not(.chatting) .room-desc{line-height:1.4}
+#viewRooms:not(.chatting) .room-list-actions{margin-top:8px!important}
+@keyframes roomCardEnter{from{opacity:.65;transform:translateY(7px)}to{opacity:1;transform:translateY(0)}}
+@media(max-width:768px){#viewRooms:not(.chatting) .room-list-card{padding:13px!important}#viewRooms:not(.chatting) .room-open{align-items:center!important}#viewRooms:not(.chatting) .room-list-actions{justify-content:flex-start!important}#viewRooms:not(.chatting) .room-list-actions .mini{min-height:38px!important}}
+/* User requested full-screen chat without redundant floating room/people buttons */
+.mobile-chat-fab{display:none!important}
