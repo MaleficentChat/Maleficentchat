@@ -555,12 +555,7 @@ if ($("topFriends")) $("topFriends").onclick = () => {
   renderView();
 };
 if ($("topNotifications")) $("topNotifications").onclick = () => toggleNotificationDropdown();
-if ($("topFlag")) $("topFlag").onclick = async () => {
-  if(!can("MOD")) { toast("Reports are available to staff."); return; }
-  state.view="staff";
-  document.querySelectorAll(".nav[data-view]").forEach(x=>x.classList.toggle("active",x.dataset.view==="staff"));
-  await renderView();
-};
+if ($("topFlag")) $("topFlag").onclick = () => toggleReportDropdown();
 if ($("topProfile")) $("topProfile").onclick = () => {
   state.view = "profile";
   document.querySelectorAll(".nav[data-view]").forEach(x => x.classList.toggle("active", x.dataset.view === "profile"));
@@ -2716,20 +2711,13 @@ async function viewPrivateMessageReport(id){
 }
 async function resolveReport(id) {
   try {
-    await api(
-      `/api/staff/reports/${id}/resolve`,
-      {
-        method: "POST",
-        body: JSON.stringify({
-          status: "RESOLVED"
-        })
-      }
-    );
-
-    await loadStaff();
-  } catch (error) {
-    toast(error.message);
-  }
+    await api(`/api/staff/reports/${encodeURIComponent(id)}/resolve`,{method:"POST",body:JSON.stringify({status:"RESOLVED"})});
+    toast("Report resolved.");
+    if(state.view==="staff") await loadStaff();
+    const box=$("reportDropdown");
+    if(box&&!box.classList.contains("hidden")) await toggleReportDropdown(true);
+    await loadNotifications();
+  } catch (error) { toast(error.message); }
 }
 
 /* ---------------- OWNER ---------------- */
@@ -3088,6 +3076,25 @@ async function ownerFeatureGrants(){
     modal(`<div class='feature-grant-modal'><h2>🧩 Feature Granting Panel</h2><p class='muted'>Set the minimum rank for each active feature, or disable it. Direct user permissions remain managed in User Permissions.</p>${grouped}${extra?`<details class='grant-category'><summary>Other active features</summary>${extra}</details>`:''}</div>`);
     document.querySelectorAll('[data-grant-save]').forEach(b=>b.onclick=async()=>{const key=b.dataset.grantSave,select=document.querySelector(`[data-grant='${key}']`);try{await api('/api/owner/feature-grants',{method:'PUT',body:JSON.stringify({grants:{[key]:select.value==='off'?null:select.value}})});toast('Feature permission saved.');}catch(e){toast(e.message)}});
   }catch(e){toast(e.message)}
+}
+
+async function toggleReportDropdown(refresh=false){
+  const box=$("reportDropdown"); if(!box)return;
+  if(!refresh&&!box.classList.contains("hidden")){box.classList.add("hidden");return;}
+  try{
+    const d=await api("/api/staff/dashboard");
+    const reports=(d.reports||[]).filter(r=>String(r.status||"OPEN").toUpperCase()==="OPEN").slice(0,8);
+    box.innerHTML=`<div class="notification-dropdown-head"><div><b>⚑ Reports</b><small class="notification-unread-summary">${reports.length} open</small></div><button class="mini" id="openFullReports">All reports</button></div>${reports.map(r=>{
+      const snap=r.messageSnapshot||{};
+      const who=r.reportedUserUsername||snap.username||"Unknown";
+      const category=r.category||(r.conversationUserId?"Private message":r.messageId?"Message":"Profile");
+      return `<div class="report-dropdown-item"><div class="report-dropdown-copy"><b>${esc(category)} · @${esc(who)}</b><span>${esc(r.reason||snap.text||"No reason supplied")}</span><small>${fmt(r.time)}</small></div><div class="toolbar">${r.reportedUserId?`<button class="mini" data-report-moderate="${esc(r.reportedUserId)}">Moderate</button>`:""}<button class="mini primary" data-report-resolve="${esc(r.id)}">Resolve</button></div></div>`;
+    }).join("")||'<p class="muted notification-empty">No open reports. ✨</p>'}`;
+    box.classList.remove("hidden");
+    $("openFullReports")?.addEventListener("click",async()=>{box.classList.add("hidden");state.view="staff";document.querySelectorAll(".nav[data-view]").forEach(x=>x.classList.toggle("active",x.dataset.view==="staff"));await renderView();});
+    box.querySelectorAll("[data-report-moderate]").forEach(b=>b.onclick=()=>{box.classList.add("hidden");moderate(b.dataset.reportModerate);});
+    box.querySelectorAll("[data-report-resolve]").forEach(b=>b.onclick=async()=>{await resolveReport(b.dataset.reportResolve);});
+  }catch(e){box.innerHTML=`<div class="notification-dropdown-head"><b>⚑ Reports</b></div><p class="muted">${esc(e.message||"Reports are available to authorized staff only.")}</p>`;box.classList.remove("hidden");}
 }
 
 async function toggleNotificationDropdown(){
