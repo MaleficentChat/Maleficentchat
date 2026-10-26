@@ -1450,7 +1450,7 @@ app.post(
   "/api/messages/:id/report",
   auth,
   featureAllowed("report_message"),
-  (req,res)=>{
+  async(req,res)=>{
     const u=current(req);
 
     const m=db.messages.find(
@@ -1490,8 +1490,16 @@ app.post(
           req.body.reason
         ).slice(0,500),
 
-      status:"OPEN"
+      status:"OPEN",
+      kind:"message"
     };
+
+    try{
+      await pool.query("INSERT INTO reports(id,reporter_id,reported_id,conversation_user_id,reason,data,created_at) VALUES($1,$2,$3,NULL,$4,$5::jsonb,NOW())",[report.id,Number(u.id),Number(report.reportedUserId),report.reason||"Message report",JSON.stringify(report)]);
+    }catch(e){
+      console.error("Message report persistence failed:",e);
+      return res.status(500).json({error:"Could not save this report. Please try again."});
+    }
 
     db.reports.push(report);
 
