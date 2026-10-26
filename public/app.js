@@ -1020,7 +1020,6 @@ function messageHTML(message) {
             <button class="message-menu-item" role="menuitem" onclick="replyMsg('${esc(message.id)}');closeMessageMenus()"><span class="menu-icon">↩</span><span><b>Quote</b><small>Reply to this message</small></span></button>
             <button class="message-menu-item" role="menuitem" onclick="hideMsg('${esc(message.id)}');closeMessageMenus()"><span class="menu-icon">◉</span><span><b>Hide</b><small>Hide from my screen</small></span></button>
             <button class="message-menu-item" role="menuitem" onclick="reportMsg('${esc(message.id)}');closeMessageMenus()"><span class="menu-icon">!</span><span><b>Report</b><small>Report this content</small></span></button>
-            <button class="message-menu-item" role="menuitem" onclick="openThread('${esc(message.id)}');closeMessageMenus()"><span class="menu-icon">↳</span><span><b>Thread</b><small>Open message thread</small></span></button>
             <button class="message-menu-item" role="menuitem" onclick="toggleReactionPicker('${esc(message.id)}');closeMessageMenus()"><span class="menu-icon">☺</span><span><b>React</b><small>Add an emoji reaction</small></span></button>
             <button class="message-menu-item" role="menuitem" onclick="saveMsg('${esc(message.id)}');closeMessageMenus()"><span class="menu-icon">♧</span><span><b>Save</b><small>Keep in saved messages</small></span></button>
             ${message.text ? `<button class="message-menu-item" role="menuitem" onclick="copyMsg('${esc(message.id)}');closeMessageMenus()"><span class="menu-icon">▢</span><span><b>Copy text</b><small>Copy message to clipboard</small></span></button>` : ""}
@@ -1248,13 +1247,6 @@ $("message").oninput = () => {
 };
 
 
-async function openThread(messageId){
-  try{
-    const d=await api('/api/messages/'+encodeURIComponent(messageId)+'/thread');
-    modal(`<h2>🧵 Message Thread</h2><div class="thread-root"><b>@${esc(d.root.username)}</b><p>${formatMentions(d.root.text||'📎 Attachment')}</p></div><div id="threadRows" class="lab-list">${(d.replies||[]).map(x=>`<div class="card"><b>@${esc(x.username)}</b> ${formatMentions(x.text||'')}<small>${fmt(x.time)}</small></div>`).join('')||'<p class="muted">No replies yet.</p>'}</div><textarea id="threadText" placeholder="Reply in this thread…"></textarea><button class="primary" id="threadSend">Reply</button>`);
-    $("threadSend").onclick=async()=>{const t=$("threadText").value.trim();if(!t)return;await api('/api/messages/'+messageId+'/thread',{method:'POST',body:JSON.stringify({text:t})});closeModal();toast('Thread reply sent.')};
-  }catch(e){toast(e.message)}
-}
 if($("expireBtn")) $("expireBtn").onclick=()=>{
   const options=[0,10,60,3600,86400],i=options.indexOf(state.messageExpiry),next=options[(i+1)%options.length];
   state.messageExpiry=next;
