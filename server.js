@@ -728,7 +728,7 @@ app.post(
       }
 
       res.json({
-        user:safeUser(u), token:makeToken(u.id)
+        user:{...safeUser(u),invisible:!!u.invisible}, token:makeToken(u.id)
       });
     });
   }
@@ -819,10 +819,10 @@ app.post(
 app.get(
   "/api/me",
   auth,
-  (req,res)=>
-    res.json({
-      user:safeUser(current(req))
-    })
+  (req,res)=>{
+    const u=current(req);
+    res.json({user:{...safeUser(u),invisible:!!u.invisible}});
+  }
 );
 
 app.patch(
