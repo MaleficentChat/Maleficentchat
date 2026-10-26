@@ -294,7 +294,7 @@ async function start() {
   });
   state.socket.on("room-error",d=>toast(d?.error||"Could not join room."));
   state.socket.on("dm-typing",d=>{
-    if(String(d?.user?.id||d?.userId||"")===String(state.dmUserId))return;
+    if(String(d?.userId||"")!==String(state.dmUserId))return;
     const status=$("dmTypingStatus");
     if(!status||!state.dmUserId)return;
     status.textContent=d?.typing?((typeof d.user==="string"?d.user:"Someone")+" is typing…"):"Quote a message to reply · Attach photos or files";
