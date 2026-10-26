@@ -2465,6 +2465,7 @@ async function loadStaff() {
     const bootstrapData=await api('/api/bootstrap');
     const filterWords=await api('/api/staff/filter-word');
     $('staff').innerHTML=`
+      ${(state.user?.username==='Maleficent'||String(state.user?.rank).toUpperCase()==='DEVELOPER') ? '<section class="card ip-inspection-card"><div><h3>🔎 IP Inspection</h3><p class="muted">Owner/Developer only · Registered email, recorded IP history and approximate network details.</p></div><form id="ipInspectionForm" class="ip-inspection-form"><input id="ipInspectionSearch" placeholder="Search username, email or IP address" maxlength="100"><button class="primary" type="submit">Inspect</button></form><p class="muted ip-inspection-note">IP and network information is sensitive. Each inspection is audit-logged. Country/ISP lookup is approximate and uses ipapi.co.</p><div id="ipInspectionResults"><p class="muted">Search for an account to inspect its recorded IP history.</p></div></section>' : ''}
       <div class="grid2">
         <div class="card"><h3>Statistics</h3><p>Users: ${data.stats.users}<br>Online: ${data.stats.online}<br>Messages: ${data.stats.messages}<br>Open reports: ${data.stats.reportsOpen}</p></div>
         <div class="card"><h3>Filtered words</h3><button class="mini" onclick="addFilterWord()">＋ Add word</button><details class="filter-words-details"><summary>Filter words (${(filterWords.words||[]).length})</summary><div class="filter-word-list">${(filterWords.words||[]).map(w=>`<div class="filter-word-row"><code>${esc(w)}</code><button class="mini danger" onclick="deleteFilterWord(decodeURIComponent('${encodeURIComponent(w)}'))">×</button></div>`).join('')||'<span class="muted">No filter words configured.</span>'}</div></details><p class="muted">Link filter: ${bootstrapData.settings?.linkFilter?'ON':'OFF'}</p></div>
@@ -2478,6 +2479,7 @@ async function loadStaff() {
       </div>
       <div class="card"><h3>Deleted media</h3><p class="muted">Photos and other attachments preserved from deleted messages.</p><div class="deleted-media-grid">${(data.logs||[]).filter(log=>log.action==='MESSAGE_DELETE' && log.meta?.attachment?.type?.startsWith('image/')).slice(0,100).map(log=>{const m=log.meta||{};const at=m.attachment;return `<div class="deleted-media-card"><img class="deleted-media-image" src="${esc(at.url)}" alt="Deleted photo"><div><b>@${esc(m.username||'Unknown')}</b><div class="muted">Deleted by @${esc(m.deletedBy||log.actor||'Unknown')} · ${fmt(m.deletedAt||log.time)}</div>${m.text?`<div class="deleted-media-text">${esc(m.text)}</div>`:''}</div></div>`;}).join('')||'<p class="muted">No deleted photos recorded yet.</p>'}</div></div>
 `;
+    $('ipInspectionForm')?.addEventListener('submit',e=>{e.preventDefault();loadIpInspection($('ipInspectionSearch')?.value||'');});
     const renderActiveActions=()=>{
       const filter=$("staffActionFilter")?.value||"";
       const rows=(data.activeActions||[]).filter(x=>!filter||(filter==="BANNED"&&x.banned)||(filter==="MUTED"&&x.mutedUntil)||(filter==="KICKED"&&x.kickedUntil));
@@ -2488,6 +2490,17 @@ async function loadStaff() {
   }catch(e){toast(e.message)}
 }
 
+async function loadIpInspection(query=''){
+  const results=$('ipInspectionResults'); if(!results)return;
+  results.innerHTML='<p class="muted">Loading recorded IP history…</p>';
+  try{
+    const d=await api('/api/staff/ip-inspection?q='+encodeURIComponent(query));
+    const rows=d.records||[];
+    if(!rows.length){results.innerHTML='<p class="muted">No recorded IP history matched that search. Older registrations are only shown if IP data was recorded.</p>';return;}
+    const rowHtml=rows.map(r=>'<tr><td><b>@'+esc(r.username||'Unknown')+'</b><small>'+esc(r.email||'No email recorded')+'</small><small>Registered: '+(r.registered_at?fmt(new Date(r.registered_at).getTime()):'Unknown')+'</small></td><td><code>'+esc(r.ip_address||'Unavailable')+'</code></td><td>'+esc([r.network?.city,r.network?.region,r.network?.country].filter(Boolean).join(', ')||'Unavailable')+'</td><td>'+esc(r.network?.networkProvider||'Unavailable')+'</td><td>'+esc(r.event_type||'login')+'<small>'+(r.recorded_at?fmt(new Date(r.recorded_at).getTime()):'Unknown')+'</small></td><td class="ip-user-agent">'+esc(r.user_agent||'Unavailable')+'</td></tr>').join('');
+    results.innerHTML='<div class="ip-inspection-table-wrap"><table class="ip-inspection-table"><thead><tr><th>Account / email</th><th>IP address</th><th>Country / region</th><th>Network provider</th><th>Event / time</th><th>Browser</th></tr></thead><tbody>'+rowHtml+'</tbody></table></div><p class="muted">'+esc(d.geolocationNote||'Network details are approximate.')+'</p>';
+  }catch(e){results.innerHTML='<p class="muted">'+esc(e.message||'Could not load IP history.')+'</p>';}
+}
 function findUserName(id){
   return state.allUsers?.find(u=>u.id===id)?.username || (id?String(id).slice(0,12):'Unknown');
 }
