@@ -2832,6 +2832,16 @@ async function loadOwner() {
         </details>
       </div>
 
+      <div class="card owner-log-settings-card">
+        <h3>📋 Logs settings</h3>
+        <p class="muted">Choose which events are recorded in Admin Audit Logs. Changes apply to new events and are saved permanently.</p>
+        <details class="filter-words-details owner-log-settings-dropdown">
+          <summary>Logs settings — manage recorded events</summary>
+          <div id="ownerLogSettingsRows" class="owner-log-settings-rows"><p class="muted">Loading log settings…</p></div>
+          <div class="toolbar"><button class="primary" id="saveOwnerLogSettings">Save Logs Settings</button></div>
+        </details>
+      </div>
+
       <div class="card owner-user-controls-card">
         <h3>👥 User controls</h3>
         <details class="filter-words-details owner-user-controls-dropdown">
@@ -2886,6 +2896,8 @@ async function loadOwner() {
 
     `;
 
+    await loadOwnerLogSettings();
+    $('saveOwnerLogSettings')?.addEventListener('click',saveOwnerLogSettings);
     if($('ownerUserSearch')) $('ownerUserSearch').oninput=()=>{const q=$('ownerUserSearch').value.trim().toLowerCase();const rows=[...document.querySelectorAll('.owner-user-control-row')];let showing=0;rows.forEach(row=>{const match=(row.dataset.userSearch||'').includes(q);row.style.display=match?'':'none';if(match)showing++});if($('ownerUserSearchCount'))$('ownerUserSearchCount').textContent=q?(`${showing} of ${rows.length} users`):(`${rows.length} users`)};
     if($('addBulkFilter')) $('addBulkFilter').onclick=async()=>{try{await api('/api/filter-words/bulk',{method:'POST',body:JSON.stringify({text:$('bulkFilterWords').value})});$('bulkFilterWords').value='';await loadOwner();}catch(e){toast(e.message)}};
     if($('filterSearch')) $('filterSearch').oninput=()=>{const q=$('filterSearch').value.toLowerCase();const rows=[...document.querySelectorAll('.filter-table-row')];let showing=0;rows.forEach(r=>{const show=r.dataset.word.toLowerCase().includes(q);r.style.display=show?'':'none';if(show)showing++});$('filterCounts').textContent=`Total: ${rows.length} | Showing: ${showing}`};
@@ -2903,6 +2915,32 @@ async function loadOwner() {
   } catch (error) {
     toast(error.message);
   }
+}
+
+async function loadOwnerLogSettings(){
+  const host=$('ownerLogSettingsRows');if(!host)return;
+  try{
+    const d=await api('/api/owner/log-settings');
+    host.innerHTML=(d.definitions||[]).map(item=>{
+      const enabled=d.settings?.[item.key]!==false;
+      return '<label class="owner-log-setting-row"><span class="owner-log-setting-copy"><b>'+esc(item.label)+'</b><small>'+esc(item.description)+'</small></span><span class="owner-log-setting-toggle"><span data-log-state="'+esc(item.key)+'">'+(enabled?'ON':'OFF')+'</span><input type="checkbox" role="switch" data-log-setting="'+esc(item.key)+'" '+(enabled?'checked':'')+' aria-label="Record '+esc(item.label)+'"></span></label>';
+    }).join('');
+    host.querySelectorAll('[data-log-setting]').forEach(input=>input.addEventListener('change',()=>{
+      const stateLabel=host.querySelector('[data-log-state="'+input.dataset.logSetting+'"]');
+      if(stateLabel)stateLabel.textContent=input.checked?'ON':'OFF';
+    }));
+  }catch(e){host.innerHTML='<p class="muted">Could not load log settings: '+esc(e.message||'Please retry.')+'</p>';}
+}
+async function saveOwnerLogSettings(){
+  const inputs=[...document.querySelectorAll('[data-log-setting]')];
+  if(!inputs.length){toast('Log settings are not loaded yet.');return;}
+  const settings=Object.fromEntries(inputs.map(input=>[input.dataset.logSetting,input.checked]));
+  const button=$('saveOwnerLogSettings');if(button){button.disabled=true;button.textContent='Saving…';}
+  try{
+    await api('/api/owner/log-settings',{method:'PATCH',body:JSON.stringify({settings})});
+    toast('Logs settings saved. New audit events will follow these switches.');
+  }catch(e){toast(e.message||'Could not save log settings.');}
+  finally{if(button){button.disabled=false;button.textContent='Save Logs Settings';}}
 }
 
 function ownerGiftEditor(gift=null){
