@@ -550,11 +550,20 @@ if ($("topMessages")) $("topMessages").onclick = () => toggleMessagesDropdown();
 if ($("topFriends")) $("topFriends").onclick = () => toggleFriendsDropdown();
 if ($("topNotifications")) $("topNotifications").onclick = () => { $("topFriendsDropdown")?.classList.add("hidden"); $("topMessagesDropdown")?.classList.add("hidden"); $("reportDropdown")?.classList.add("hidden"); toggleNotificationDropdown(); };
 if ($("topFlag")) $("topFlag").onclick = () => { $("topFriendsDropdown")?.classList.add("hidden"); $("topMessagesDropdown")?.classList.add("hidden"); $("notificationDropdown")?.classList.add("hidden"); toggleReportDropdown(); };
-if ($("topProfile")) $("topProfile").onclick = () => { const box=$("topProfileDropdown"); if(box) box.classList.toggle("hidden"); };
+if ($("topProfile")) $("topProfile").onclick = () => {
+  const box=$("topProfileDropdown");if(!box)return;
+  const opening=box.classList.contains("hidden");
+  ["topMessagesDropdown","topFriendsDropdown","notificationDropdown","reportDropdown"].forEach(id=>$(id)?.classList.add("hidden"));
+  box.classList.toggle("hidden",!opening);
+};
+document.addEventListener("click",e=>{if(!e.target.closest("#topProfile")&&!e.target.closest("#topProfileDropdown"))$("topProfileDropdown")?.classList.add("hidden");});
 function openMyProfileFromHeader(){ $("topProfileDropdown")?.classList.add("hidden"); state.view="profile"; document.querySelectorAll(".nav[data-view]").forEach(x=>x.classList.toggle("active",x.dataset.view==="profile")); renderView(); }
-
-
-function openHeaderChatOptions(){$("topProfileDropdown")?.classList.add("hidden");const s=state.user?.settings||{};modal('<div class="header-chat-options"><h2>💬 Chat options</h2><p class="muted">Quick chat customization</p><label>Text size<select id="quickChatSize"><option value="small">small</option><option value="medium">medium</option><option value="large">large</option></select></label><label>Bubble color<input type="color" id="quickBubbleColor"></label><label>Display-name color<input type="color" id="quickUsernameColor"></label><label><input type="checkbox" id="quickCompact"> Compact chat spacing</label><button class="primary" id="quickChatSave">Save chat options</button></div>');$("quickChatSize").value=s.fontSize||"medium";$("quickBubbleColor").value=s.bubbleColor||"#33244f";$("quickUsernameColor").value=s.usernameColor||"#9b5cff";$("quickCompact").checked=!!s.compactMode;$("quickChatSave").onclick=async()=>{const p={fontSize:$("quickChatSize").value,bubbleColor:$("quickBubbleColor").value,usernameColor:$("quickUsernameColor").value,compactMode:$("quickCompact").checked};try{const d=await api("/api/settings",{method:"PUT",body:JSON.stringify(p)});state.user.settings={...(state.user.settings||{}),...(d.settings||p)};applyTheme(state.user.settings.theme||"obsidian");renderMessages();closeModal();toast("Chat options saved.");}catch(e){toast(e.message)}};}
+function openHeaderChatOptions(){
+  $("topProfileDropdown")?.classList.add("hidden");const s=state.user?.settings||{};
+  modal('<div class="header-chat-options"><h2>💬 Chat options</h2><p class="muted">Quick chat customization without leaving the room.</p><label>Message text size<select id="quickChatSize"><option value="small">Small</option><option value="medium">Medium</option><option value="large">Large</option></select></label><label>Chat font<select id="quickChatFont"><option>Inter</option><option>Georgia</option><option>Monospace</option><option>Arial</option><option>Trebuchet MS</option></select></label><label>Bubble color<input type="color" id="quickBubbleColor"></label><label>Display-name color<input type="color" id="quickUsernameColor"></label><label class="quick-chat-check"><input type="checkbox" id="quickCompact"> Compact chat spacing</label><button class="primary" id="quickChatSave">Save chat options</button></div>');
+  $("quickChatSize").value=s.fontSize||"medium";$("quickChatFont").value=s.chatFont||"Inter";$("quickBubbleColor").value=s.bubbleColor||"#33244f";$("quickUsernameColor").value=s.usernameColor||"#9b5cff";$("quickCompact").checked=!!s.compactMode;
+  $("quickChatSave").onclick=async()=>{const p={fontSize:$("quickChatSize").value,chatFont:$("quickChatFont").value,bubbleColor:$("quickBubbleColor").value,usernameColor:$("quickUsernameColor").value,compactMode:$("quickCompact").checked};try{const d=await api("/api/settings",{method:"PUT",body:JSON.stringify(p)});state.user.settings={...(state.user.settings||{}),...(d.settings||p)};applyTheme(state.user.settings.theme||"obsidian");renderMessages();closeModal();toast("Chat options saved.");}catch(e){toast(e.message)}};
+}
 
 async function loadWall(){
   const d=await api('/api/wall');
