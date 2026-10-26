@@ -2789,10 +2789,14 @@ async function loadOwner() {
         <details class="filter-words-details owner-user-controls-dropdown">
           <summary>User controls — open to manage accounts</summary>
           <div class="owner-user-controls-content">
+            <div class="owner-user-search">
+              <input id="ownerUserSearch" type="search" placeholder="🔎 Search users by username, display name, or rank…" autocomplete="off" aria-label="Search user controls">
+              <span id="ownerUserSearchCount" class="muted">${(data.users||[]).length} users</span>
+            </div>
         ${
           (data.users || [])
             .map(user => `
-              <div class="user-card">
+              <div class="user-card owner-user-control-row" data-user-search="${esc([user.username,user.displayName,user.rank,user.id].filter(Boolean).join(" ").toLowerCase())}">
 
                 ${avatar(user)}
 
@@ -2834,6 +2838,7 @@ async function loadOwner() {
 
     `;
 
+    if($('ownerUserSearch')) $('ownerUserSearch').oninput=()=>{const q=$('ownerUserSearch').value.trim().toLowerCase();const rows=[...document.querySelectorAll('.owner-user-control-row')];let showing=0;rows.forEach(row=>{const match=(row.dataset.userSearch||'').includes(q);row.style.display=match?'':'none';if(match)showing++});if($('ownerUserSearchCount'))$('ownerUserSearchCount').textContent=q?(`${showing} of ${rows.length} users`):(`${rows.length} users`)};
     if($('addBulkFilter')) $('addBulkFilter').onclick=async()=>{try{await api('/api/filter-words/bulk',{method:'POST',body:JSON.stringify({text:$('bulkFilterWords').value})});$('bulkFilterWords').value='';await loadOwner();}catch(e){toast(e.message)}};
     if($('filterSearch')) $('filterSearch').oninput=()=>{const q=$('filterSearch').value.toLowerCase();const rows=[...document.querySelectorAll('.filter-table-row')];let showing=0;rows.forEach(r=>{const show=r.dataset.word.toLowerCase().includes(q);r.style.display=show?'':'none';if(show)showing++});$('filterCounts').textContent=`Total: ${rows.length} | Showing: ${showing}`};
     document.querySelectorAll('[data-filter-delete]').forEach(b=>b.onclick=async()=>{try{await api('/api/filter-words/'+b.dataset.filterDelete,{method:'DELETE'});loadOwner()}catch(e){toast(e.message)}});
