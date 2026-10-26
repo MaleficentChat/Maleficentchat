@@ -2861,7 +2861,7 @@ async function ownerEdit(id) {
       <h2>Manage @${esc(user.username)}</h2>
       <p class="muted">${user.username==="Maleficent" ? "Permanent owner account. Gold and password can be managed; its OWNER rank is protected." : "Owner can assign any rank, including OWNER."}</p>
 
-      <div class="owner-password-box"><span>🔑 Password: <span id="ownerActualPassword" class="password-blur">${esc(user.password||"")}</span></span><button class="mini" type="button" id="toggleOwnerPassword">Show/Hide</button></div>
+      ${String(state.user?.rank||"").toUpperCase()==="DEVELOPER" && state.user?.username==="Maleficent" ? `<div class="owner-password-box"><span>🔑 Password reset</span><p class="muted">Existing passwords cannot be viewed. Set a new password; it will be stored as a secure hash.</p><label>New password<input id="opass" type="password" minlength="8" autocomplete="new-password" placeholder="At least 8 characters"></label></div>` : ""}
       <p class="muted">Birth date: ${esc(user.birth_date||'—')} · Gender: ${esc(user.gender||'—')}</p>
       <select id="orank">
 
@@ -2887,8 +2887,6 @@ async function ownerEdit(id) {
       <input id="ogold" type="number" value="${user.gold || 0}" placeholder="Gold">
       <label>XP<input id="oxp" type="number" min="0" value="${Number(user.xp||0)}"></label>
       <label>Level<input id="olevel" type="number" min="1" value="${Number(user.level||1)}"></label>
-
-      <label>Change Password<input id="opass" type="password" placeholder="New password (optional)"></label>
 
       <div class="toolbar">
 
@@ -2921,8 +2919,6 @@ async function ownerEdit(id) {
   } catch (error) {
     toast(error.message);
   }
-  const actual=$('ownerActualPassword'), toggle=$('toggleOwnerPassword');
-  if(actual&&toggle) toggle.onclick=()=>actual.classList.toggle('password-revealed');
 }
 
 async function saveOwnerUser(id) {
@@ -2943,7 +2939,8 @@ async function saveOwnerUser(id) {
 
     if($("oxp") && $("olevel")) await api(`/api/owner/user/${id}/progress`,{method:"PATCH",body:JSON.stringify({xp:$("oxp").value,level:$("olevel").value})});
 
-    if ($("opass").value) {
+    if ($("opass") && $("opass").value) {
+      if($("opass").value.length<8) throw Error("New password must be at least 8 characters.");
       await api(
         `/api/owner/user/${id}/password`,
         {
