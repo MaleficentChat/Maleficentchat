@@ -1996,3 +1996,15 @@ input,textarea,select{background:rgba(255,255,255,.055);border-color:rgba(255,25
 .online-user .invisible-mode-toggle{align-self:center;margin-left:auto}
 .instagram-user-actions .invisible-mode-toggle{margin-left:4px}
 @media(max-width:600px){.instagram-user-actions .invisible-mode-toggle{flex:1 1 auto}.online-user .invisible-mode-toggle{padding:4px 7px!important}}
+
+
+/* Room browser scrolling: keep the header fixed and make the room list the flexible scroll area. */
+#viewRooms:not(.chatting){display:flex;flex-direction:column;min-height:0;height:100%;overflow:hidden}
+#viewRooms:not(.chatting)>.topbar{flex:0 0 auto}
+#viewRooms:not(.chatting)>#rooms.room-grid{display:flex;flex:1 1 auto;min-height:0;height:auto;max-height:none;overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;touch-action:pan-y}
+@media(max-width:800px){
+  #viewRooms:not(.chatting)>#rooms.room-grid{height:auto;min-height:0;flex:1 1 auto;overflow-y:auto}
+}
+
+/* Invisible accounts are visible to staff, but never expose their online/offline state. */
+.online-user:has(.invisible-staff-dot) .status{display:none!important}
