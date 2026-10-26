@@ -1873,3 +1873,15 @@ input,textarea,select{background:rgba(255,255,255,.055);border-color:rgba(255,25
 .notification-empty{text-align:center;padding:24px 8px;color:#b9bfd0}
 #dropdownMarkAll:disabled{opacity:.45;cursor:default}
 @media(max-width:700px){.notification-dropdown{top:66px!important;right:8px!important;width:calc(100vw - 16px)!important;max-width:420px;margin-left:auto;border-radius:16px!important}}
+
+
+/* Notification and message counters: keep numeric badges visible over the header icons. */
+.top-header-actions .top-icon{position:relative;overflow:visible}
+#topNotifDot.count-badge,#topDmDot.count-badge{
+  position:absolute!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;
+  min-width:19px!important;height:19px!important;padding:0 5px!important;box-sizing:border-box!important;
+  top:-4px!important;right:-4px!important;margin:0!important;border-radius:999px!important;
+  font-style:normal!important;font-size:10px!important;font-weight:800!important;line-height:19px!important;
+  color:#fff!important;background:#ff3b6b!important;z-index:999!important;pointer-events:none!important;
+}
+#topNotifDot.green{background:#39e58c!important;color:#071016!important}
