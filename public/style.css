@@ -1758,3 +1758,30 @@ input,textarea,select{background:rgba(255,255,255,.055);border-color:rgba(255,25
   }
   .message-actions-menu .message-menu-item{min-height:58px!important;padding:9px 10px!important}
 }
+
+
+/* Floating quick profile card opened by tapping a chat avatar */
+.quick-user-card{overflow:hidden!important;border-radius:24px!important;background:#203038!important;color:#edf4f5!important;border:1px solid rgba(255,255,255,.06)!important;box-shadow:0 22px 65px rgba(0,0,0,.48)!important;padding:0!important}
+.quick-user-top{position:relative;display:flex;flex-direction:column;align-items:center;text-align:center;padding:22px 18px 18px;background:linear-gradient(160deg,#243b42,#1d2b32)}
+.quick-user-level{position:absolute;left:14px;top:14px;padding:6px 10px;border-radius:20px;background:rgba(255,255,255,.12);font-weight:800}
+.quick-user-close{position:absolute;right:12px;top:10px;width:32px;height:32px;border:0;border-radius:50%;background:rgba(0,0,0,.18);color:#fff;font-size:23px}
+.quick-user-avatar{width:92px;height:92px;border:3px solid #f3f6f7;border-radius:50%;overflow:hidden;margin:12px auto 6px;display:grid;place-items:center}
+.quick-user-avatar img,.quick-user-avatar .avatar-img{width:100%;height:100%;object-fit:cover}
+.quick-user-top h2{margin:0;font-size:23px;font-weight:800}
+.quick-user-top p{margin:4px 0 7px;font-size:15px}
+.quick-user-top small{color:#afc0c5}
+.quick-user-flag{font-size:28px;margin:2px 0}
+.quick-user-row{display:flex!important;align-items:center!important;gap:14px!important;width:100%!important;min-height:68px!important;padding:14px 20px!important;border:0!important;border-top:1px solid rgba(255,255,255,.045)!important;background:transparent!important;color:#e9f1f3!important;text-align:left!important;font-size:16px!important}
+.quick-user-row span{width:28px;text-align:center;font-size:21px;color:#00c5a0}
+.quick-user-row b{flex:1;font-weight:650}
+.quick-user-row i{font-style:normal;color:#93a9af;font-size:22px}
+.quick-user-row:hover{background:rgba(0,197,160,.09)!important}
+.profile-drawer-list{display:flex!important;flex-direction:column!important;gap:8px!important}
+.profile-drawer-list .mini{width:100%!important;min-height:46px!important;text-align:left!important;border-radius:12px!important;padding:10px 13px!important}
+@media(max-width:768px){
+  #modal{align-items:center!important;justify-content:center!important;padding:16px!important;box-sizing:border-box!important}
+  #modal .modal-card:has(.quick-user-card){width:min(430px,calc(100vw - 32px))!important;max-width:calc(100vw - 32px)!important;padding:0!important;border-radius:24px!important;overflow:hidden!important;margin:0 auto!important}
+  .quick-user-top{padding:18px 14px 15px}
+  .quick-user-avatar{width:84px;height:84px}
+  .quick-user-row{min-height:62px!important}
+}
