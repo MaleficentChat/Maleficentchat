@@ -344,6 +344,7 @@ async function start() {
       toast("Room cleared by staff.");
     }
   });
+  state.socket.on("site:messages-cleared",()=>{state.messages=[];if($("messages"))$("messages").innerHTML="";if(state.dmUserId)openDM(state.dmUserId);if(state.currentRoom)toast("Owner cleared all site chat messages.");});
 
   state.socket.on("typing", data => {
     $("typing").textContent =
@@ -1654,7 +1655,7 @@ function renderUserProfileModal(user,data={}){
     else if(tab==='friends') box.innerHTML=`<div class="about-card"><h3>Friends</h3><p class="muted">Friends and social connections for @${esc(user.username)}.</p><div class="profile-info-row"><b>👥 Friends</b><span>${user.friendsCount||0}</span></div><button class="mini" id="viewFriendsBtn">Open Friends</button></div>`;
     else if(tab==='gifts') box.innerHTML=`<div class='about-card'><div class='gift-head'><div><h3>Virtual Gifts</h3><p class='muted'>Send a catalog gift with a personal note. Gifts are saved to the recipient's profile.</p></div></div>${!isSelf?`<div class='gift-balance'>Your gold: 🪙 <b>${state.user.gold||0}</b></div><label>Gift note <input id='giftMessage' maxlength='240' placeholder='Add a short personal note'></label><div class='gift-grid' id='giftGrid'><div class='muted'>Loading gifts…</div></div>`:`<div class='received-gift-list'>${(user.giftsReceived||[]).slice(-30).reverse().map(g=>`<article class='received-gift-card'><div class='received-gift-visual'>${/^https?:\/\//i.test(String(g.icon||''))?`<img src='${esc(g.icon)}' alt='${esc(g.gift||'Gift')}'>`:`<span>${esc(g.icon||'🎁')}</span>`}</div><div><b>${esc(g.gift||'Gift')}</b><small>From ${esc(g.fromDisplayName||g.fromUsername||'a community member')} · ${fmt(g.time)}</small>${g.message?`<p>${esc(g.message)}</p>`:''}</div></article>`).join('')||'<p class=muted>No gifts yet. Received gifts will appear here.</p>'}</div>`}</div>`;
     else box.innerHTML=`<div class="about-card"><div class="profile-info-row"><b>📝 About</b><span>${esc(user.bio||'No About Me')}</span></div><div class="profile-info-row"><b>📜 Username history</b><span>${(user.usernameHistory||[]).length} changes</span></div><div class="profile-info-row"><b>🔗 Profile ID</b><span>${esc(user.id)}</span></div>${can('MOD')?`<div class="toolbar"><button class="mini" id="profileHistoryBtn">📜 Staff action history</button></div><div id="profileHistoryBox"></div>`:''}<div class="profile-actions">${!isSelf?'<button class="mini danger" id="profileReportBtn">⚑ Report user</button>':''}</div></div>`;
-    if(tab==='more' && can('MOD')) $('profileHistoryBtn')?.addEventListener('click',async()=>{try{const r=await api(`/api/users/${encodeURIComponent(user.id)}/action-history`);$('profileHistoryBox').innerHTML=(r.history||[]).map(h=>`<div class="card"><b>${esc(h.action)}</b> · ${esc(h.actorUsername||h.actor||'SYSTEM')}<br><span class="muted">${fmt(h.time)}${h.expiresAt?` · expires ${fmt(h.expiresAt)}`:''}</span><br>${esc(h.reason||'No reason recorded')}</div>`).join('')||'<p class="muted">No staff actions recorded.</p>';}catch(e){toast(e.message)}});
+    if(tab==='more' && can('MOD')) $('profileHistoryBtn')?.addEventListener('click',()=>showUserActionHistory(user.id));
     if(tab==='info'&&!isSelf&&canFeature('profile_note'))api(`/api/staff/user/${encodeURIComponent(user.id)}/note`).then(n=>{if(n.hasNote&&$('profileNoteDot'))$('profileNoteDot').style.display='inline';}).catch(()=>{});
     wireProfileTabActions();
   };
@@ -2353,7 +2354,7 @@ async function openProfileActionDrawer(user,data){
   $('drawerMessage')?.addEventListener('click',()=>{closeModal();openDM(user.id)});
   $('drawerLike')?.addEventListener('click',async()=>{try{const r=await api(`/api/users/${user.id}/like`,{method:'POST'});data.likedByMe=r.liked;user.profileLikes=r.likes;closeModal();renderUserProfileModal(user,data);toast(r.liked?'Profile liked.':'Profile like removed.');}catch(e){toast(e.message)}});
   $('drawerRank')?.addEventListener('click',()=>{closeModal();rankFromProfile(user)});
-  $('drawerHistory')?.addEventListener('click',async()=>{try{const r=await api(`/api/users/${user.id}/action-history`);modal(`<h2>📜 User history</h2><div class="stack">${(r.history||[]).map(h=>`<div class="card"><b>${esc(h.action)}</b> · ${esc(h.actorUsername||h.actor||'SYSTEM')}<br><small>${fmt(h.time)}${h.expiresAt?` · expires ${fmt(h.expiresAt)}`:''}</small><br>${esc(h.reason||'No reason recorded')}</div>`).join('')||'<p class="muted">No user history recorded.</p>'}</div>`);}catch(e){toast(e.message)}});
+  $('drawerHistory')?.addEventListener('click',()=>showUserActionHistory(user.id));
   $('drawerFriend')?.addEventListener('click',async()=>{try{await friend(user.id);closeModal();toast('Friend request sent.')}catch(e){toast(e.message)}});
   $('drawerBlock')?.addEventListener('click',async()=>{try{if(blocked) await api(`/api/users/${user.id}/block`,{method:'DELETE'}); else await block(user.id); closeModal(); toast(blocked?'User unblocked.':'User blocked.');}catch(e){toast(e.message)}});
   $('drawerGift')?.addEventListener('click',async()=>{closeModal();renderUserProfileModal(user,data);setTimeout(()=>document.querySelector('.profile-tab[data-tab=\"gifts\"]')?.click(),0);});
@@ -2720,8 +2721,28 @@ async function resolveReport(id) {
   } catch (error) { toast(error.message); }
 }
 
+async function showUserActionHistory(userId){
+  try{
+    const r=await api('/api/users/'+encodeURIComponent(userId)+'/action-history');
+    const entries=r.history||[];
+    const rows=entries.map(h=>'<div class="card user-history-entry"><div class="user-history-entry-copy"><b>'+esc(h.action)+'</b> · '+esc(h.actorUsername||h.actor||'SYSTEM')+'<br><small>'+fmt(h.time)+(h.expiresAt?' · expires '+fmt(h.expiresAt):'')+'</small><br>'+esc(h.reason||'No reason recorded')+'</div><button class="mini danger" type="button" onclick="deleteUserActionHistory(\''+esc(userId)+'\',\''+esc(h.id)+'\')">Delete</button></div>').join('');
+    modal('<div class="user-history-modal"><h2>📜 User history</h2><div class="toolbar"><button class="mini danger" type="button" onclick="clearUserActionHistory(\''+esc(userId)+'\')">🧹 Clear History</button></div><p class="muted">Delete removes one selected action. Clear History removes this user’s staff-action history only.</p><div class="stack user-history-entries">'+(rows||'<p class="muted">No user history recorded.</p>')+'</div></div>');
+  }catch(e){toast(e.message)}
+}
+async function deleteUserActionHistory(userId,actionId){
+  if(!confirm('Delete this specific history action?'))return;
+  try{await api('/api/users/'+encodeURIComponent(userId)+'/action-history/'+encodeURIComponent(actionId),{method:'DELETE'});toast('History action deleted.');await showUserActionHistory(userId)}catch(e){toast(e.message)}
+}
+async function clearUserActionHistory(userId){
+  if(!confirm('Clear all staff-action history for this user? This will not delete their account or chat messages.'))return;
+  try{const r=await api('/api/users/'+encodeURIComponent(userId)+'/action-history/clear',{method:'POST'});toast('Cleared '+Number(r.removed||0)+' history action(s).');await showUserActionHistory(userId)}catch(e){toast(e.message)}
+}
 /* ---------------- OWNER ---------------- */
 
+async function refreshSiteMessages(){
+  if(!confirm('This permanently deletes ALL room chat messages and ALL private messages for every user. Accounts, rooms, ranks, gold, settings, gifts, reports, and moderation history will remain. Continue?'))return;
+  try{const result=await api('/api/owner/refresh-site-messages',{method:'POST',body:JSON.stringify({})});toast('Site messages cleared: '+Number(result.roomMessages||0)+' room messages and '+Number(result.privateMessages||0)+' private messages.')}catch(e){toast(e.message)}
+}
 async function loadOwner() {
   try {
     const data =
@@ -2751,6 +2772,7 @@ async function loadOwner() {
           >
             Inspect private messages
           </button>
+          <button class="mini danger" type="button" onclick="refreshSiteMessages()">🧹 Refresh Site Messages</button>
 
           <button class="mini" onclick="ownerFeatureGrants()">🧩 Feature granting</button><button class="mini" onclick="openBotsManagement()">🤖 Bots Management</button>
           
