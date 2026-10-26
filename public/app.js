@@ -1540,6 +1540,18 @@ async function loadUsers() {
 
 $("userSearch").oninput = () => loadUsers();
 $("userRankFilter")?.addEventListener("change",()=>loadUsers());
+async function toggleInvisibleMode(event){
+  event?.preventDefault?.();
+  event?.stopPropagation?.();
+  if(!canFeature("invisible_mode")){toast("Your rank has not been granted invisible mode.");return;}
+  const enabled=!state.user?.invisible;
+  try{
+    const result=await api("/api/me/invisible",{method:"POST",body:JSON.stringify({enabled})});
+    state.user.invisible=!!result.invisible;
+    toast(state.user.invisible?"Invisible mode enabled. Staff can still see you.":"Invisible mode disabled.");
+    await Promise.all([loadUsers().catch(()=>{}),renderOnline(onlinePanelTab).catch(()=>{})]);
+  }catch(error){toast(error.message||"Could not change invisible mode.");}
+}
 
 function userCard(user) {
   const displayName = user.displayName || user.username || "User";
