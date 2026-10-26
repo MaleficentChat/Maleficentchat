@@ -2048,3 +2048,21 @@ input,textarea,select{background:rgba(255,255,255,.055);border-color:rgba(255,25
 #viewRooms.chatting .msg .message-author{font-size:12px!important}
 #viewRooms.chatting .msg .message-rank-icon{font-size:11px!important;margin:1px 0 3px!important}
 @media(max-width:700px){#modal .modal-card:has(.admin-logs-modal){width:calc(100vw - 16px)!important;max-width:calc(100vw - 16px)!important;padding:12px!important}#modal .admin-log-filters{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}#viewRooms.chatting .msg .msg-body{max-width:min(76%,calc(100vw - 92px))!important}#viewRooms.chatting .msg .msg-text{padding:6px 8px!important}}
+
+
+/* Message header stays above the actual compact bubble; rank icon sits beside the name. */
+#viewRooms.chatting .msg{align-items:flex-start!important;gap:8px!important}
+#viewRooms.chatting .msg .msg-body{max-width:min(78%,760px)!important;min-width:0!important;padding:0!important;background:transparent!important;border:0!important;box-shadow:none!important;overflow:visible!important}
+#viewRooms.chatting .msg-top{display:flex!important;align-items:center!important;justify-content:flex-start!important;gap:5px!important;margin:0 0 3px!important;min-height:15px!important;line-height:1.2!important}
+#viewRooms.chatting .msg.mine .msg-top{justify-content:flex-end!important}
+#viewRooms.chatting .msg .message-rank-icon{display:inline-flex!important;align-items:center!important;justify-content:center!important;position:static!important;flex:0 0 auto!important;font-size:11px!important;line-height:1!important;margin:0!important;opacity:.9}
+#viewRooms.chatting .msg .message-author{font-size:12px!important;font-weight:750!important;line-height:1.2!important;max-width:55vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#viewRooms.chatting .msg .msg-time{font-size:9px!important;white-space:nowrap!important}
+#viewRooms.chatting .msg .msg-text{display:table!important;width:auto!important;max-width:100%!important;box-sizing:border-box!important;margin-top:0!important;padding:7px 10px!important;border-radius:11px 11px 11px 3px!important;background:rgba(28,24,43,.94)!important;border:1px solid rgba(164,117,255,.15)!important;color:#f5f0ff!important;line-height:1.35!important;white-space:pre-wrap!important;overflow-wrap:anywhere!important}
+#viewRooms.chatting .msg.mine .msg-text{margin-left:auto!important;border-radius:11px 11px 3px 11px!important;background:var(--bubble-color,#33244f)!important}
+#viewRooms.chatting .msg .quoted{max-width:100%;margin:0 0 5px}
+#viewRooms.chatting .msg .msg-actions{margin-top:3px!important}
+#viewRooms.chatting .msg .message-image,#viewRooms.chatting .msg .chat-gif img{max-width:100%;height:auto;border-radius:10px}
+#viewRooms:not(.chatting){display:flex!important;flex-direction:column!important;min-height:0!important;overflow:hidden!important}
+#viewRooms:not(.chatting)>.topbar{flex:0 0 auto!important}
+#viewRooms:not(.chatting) #rooms.room-grid{display:flex!important;flex:1 1 auto!important;height:auto!important;min-height:0!important;max-height:none!important;overflow-x:hidden!important;overflow-y:auto!important;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;align-content:flex-start!important}
