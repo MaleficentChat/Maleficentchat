@@ -2147,7 +2147,7 @@ app.post("/api/owner/refresh-site-messages",auth,ownerOnly,async(req,res)=>{
     db.messages=[];
     db.privateMessages=[];
     save();
-    log(current(req),"SITE_MESSAGES_REFRESH",{roomMessages:Number(roomResult.rowCount||0),privateMessages:Number(privateResult.rowCount||0)});
+    log(current(req),"SITE_MESSAGES_REFRESH","ALL",{roomMessages:Number(roomResult.rowCount||0),privateMessages:Number(privateResult.rowCount||0)});
     io.emit("site:messages-cleared");
     res.json({ok:true,roomMessages:Number(roomResult.rowCount||0),privateMessages:Number(privateResult.rowCount||0)});
   }catch(error){
