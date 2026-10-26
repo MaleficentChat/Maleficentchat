@@ -381,6 +381,18 @@ function current(req){
   return uid?db.users.find(u=>String(u.id)===String(uid)):null;
 }
 
+function clientIp(req){
+  let ip=String(req.headers["x-forwarded-for"]||req.ip||req.socket.remoteAddress||"").split(",")[0].trim();
+  if(ip.startsWith("::ffff:")) ip=ip.slice(7);
+  return ip;
+}
+async function recordUserIp(req,user,eventType){
+  const ip=clientIp(req);
+  if(!ip || ip==="unknown") return;
+  try { await pool.query("INSERT INTO user_ip_history(user_id,ip_address,event_type,user_agent) VALUES($1,$2,$3,$4)",[Number(user.id),ip,String(eventType||"login"),String(req.headers["user-agent"]||"").slice(0,500)]); }
+  catch(err){ console.error("IP history recording failed:",err.message); }
+}
+
 function auth(req,res,next){
   const u=current(req);
 
@@ -681,6 +693,7 @@ app.post(
     db.users.push(u);
 
     req.session.userId=u.id;
+    await recordUserIp(req,u,"register");
 
     save();
 
@@ -734,6 +747,7 @@ app.post(
     u.lastSeen=Date.now();
 
     req.session.userId=u.id;
+    await recordUserIp(req,u,"login");
 
     save();
 
@@ -2103,6 +2117,24 @@ app.get(
     });
   }
 );
+
+app.get("/api/staff/ip-inspection",auth,ownerOnly,async(req,res)=>{
+  const actor=current(req);
+  const search=String(req.query.q||"").trim().slice(0,100);
+  const limit=Math.min(200,Math.max(1,Number(req.query.limit)||100));
+  const params=[]; let where="";
+  if(search){params.push("%"+search.replace(/[\\%_]/g,"\\\\app.get(
+  "/api/staff/dashboard",")+"%");where="WHERE u.username ILIKE $1 OR COALESCE(u.email,'') ILIKE $1 OR h.ip_address::text ILIKE $1";}
+  params.push(limit);
+  const q=await pool.query(`SELECT h.id,h.user_id,u.username,u.email,h.ip_address::text AS ip_address,h.event_type,h.user_agent,h.recorded_at,u.created_at AS registered_at FROM user_ip_history h JOIN users u ON u.id=h.user_id ${where} ORDER BY h.recorded_at DESC LIMIT ${params.length}`,params);
+  await pool.query("INSERT INTO admin_logs(action_type,performed_by,details) VALUES($1,$2,$3)",["IP_INSPECTION_VIEW",Number(actor.id),JSON.stringify({search:search||null,rows:q.rowCount})]);
+  const uniqueIps=[...new Set(q.rows.map(x=>x.ip_address))].filter(ip=>ip&&!/^(127\\.|10\\.|192\\.168\\.|172\\.(1[6-9]|2[0-9]|3[01])\\.|::1$|fc|fd|fe80:)/i.test(ip));
+  const lookups=await Promise.all(uniqueIps.slice(0,30).map(async ip=>{
+    try{const response=await fetch("https://ipapi.co/"+encodeURIComponent(ip)+"/json/",{headers:{"User-Agent":"MaleficentChat-IPInspection/1.0"},signal:AbortSignal.timeout(2500)});if(!response.ok)return [ip,{}];const d=await response.json();return [ip,{country:d.country_name||"",region:d.region||"",city:d.city||"",networkProvider:d.org||d.asn||"",networkType:d.version||"",isProxy:d.proxy===true}];}catch{return [ip,{}];}
+  }));
+  const geo=Object.fromEntries(lookups);
+  res.json({records:q.rows.map(row=>({...row,network:geo[row.ip_address]||{}})),limit,geolocationNote:"Country and network details are approximate and may be unavailable. IP addresses are sent to ipapi.co for lookup when this panel is opened."});
+});
 
 app.get(
   "/api/staff/dashboard",
