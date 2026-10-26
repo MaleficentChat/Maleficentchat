@@ -2016,7 +2016,21 @@ input,textarea,select{background:rgba(255,255,255,.055);border-color:rgba(255,25
 @media(max-width:700px){.msg .msg-body{max-width:78%;padding:7px 9px}.msg .message-rank-icon{font-size:11px}#modal .modal-card:has(.admin-logs-modal){width:calc(100vw - 16px);max-width:calc(100vw - 16px);margin:0 auto}}
 
 /* Compact profile menu and chat options dialog */
-.top-header-actions{position:relative}.profile-quick-dropdown{position:absolute;top:calc(100% + 8px);right:0;z-index:120;width:min(320px,calc(100vw - 20px))}.profile-quick-item{display:flex;align-items:center;gap:11px;width:100%;padding:12px 10px;border:0;border-radius:11px;background:transparent;color:var(--text,#edf2f5);text-align:left;cursor:pointer}.profile-quick-item:hover{background:rgba(168,85,247,.13)}.header-chat-options{display:grid;gap:12px;min-width:0}.header-chat-options h2{margin:0}.header-chat-options>label{display:grid;gap:6px;font-size:12px;color:#cbd5e1}.header-chat-options input[type=color],.header-chat-options select{width:100%;min-width:0;box-sizing:border-box}
+.top-header-actions{position:relative}/* Owner Space: compact audit logging controls */
+.owner-log-settings-rows{display:grid;gap:0;margin:10px 0 14px}
+.owner-log-setting-row{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:13px 4px;border-bottom:1px solid var(--border);cursor:pointer}
+.owner-log-setting-copy{display:grid;gap:4px;min-width:0}
+.owner-log-setting-copy b{font-size:13px;color:var(--text)}
+.owner-log-setting-copy small{font-size:11px;line-height:1.45;color:var(--muted)}
+.owner-log-setting-toggle{display:flex;align-items:center;gap:9px;flex:0 0 auto;font-size:11px;font-weight:800;letter-spacing:.06em}
+.owner-log-setting-toggle span{min-width:28px;text-align:right;color:var(--muted)}
+.owner-log-setting-toggle input[type=checkbox]{appearance:none;width:40px;height:23px;border-radius:99px;background:#46515b;border:1px solid var(--border-strong);position:relative;cursor:pointer;transition:background .18s ease;flex:0 0 auto}
+.owner-log-setting-toggle input[type=checkbox]::after{content:"";position:absolute;left:2px;top:2px;width:17px;height:17px;border-radius:50%;background:#fff;transition:transform .18s ease}
+.owner-log-setting-toggle input[type=checkbox]:checked{background:var(--accent,#00bfae);border-color:var(--accent,#00bfae)}
+.owner-log-setting-toggle input[type=checkbox]:checked::after{transform:translateX(17px)}
+.owner-log-setting-toggle input[type=checkbox]:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+@media(max-width:560px){.owner-log-setting-row{align-items:flex-start;gap:10px}.owner-log-setting-toggle{padding-top:2px}.owner-log-setting-copy small{max-width:250px}}
+.profile-quick-dropdown{position:absolute;top:calc(100% + 8px);right:0;z-index:120;width:min(320px,calc(100vw - 20px))}.profile-quick-item{display:flex;align-items:center;gap:11px;width:100%;padding:12px 10px;border:0;border-radius:11px;background:transparent;color:var(--text,#edf2f5);text-align:left;cursor:pointer}.profile-quick-item:hover{background:rgba(168,85,247,.13)}.header-chat-options{display:grid;gap:12px;min-width:0}.header-chat-options h2{margin:0}.header-chat-options>label{display:grid;gap:6px;font-size:12px;color:#cbd5e1}.header-chat-options input[type=color],.header-chat-options select{width:100%;min-width:0;box-sizing:border-box}
 @media(max-width:700px){.profile-quick-dropdown{position:fixed;top:66px;right:8px;width:calc(100vw - 16px);max-width:360px}}
 
 .msg .msg-body{background:var(--bubble-color,rgba(28,24,43,.88))}
