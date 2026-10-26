@@ -1109,7 +1109,7 @@ function showStefanOptions(){
     `<button class="stefan-option" onclick="postRoomAnnouncement();closeStefanCard()">📢 Announcement</button>`,
     `<button class="stefan-option" onclick="showPinnedMessages();closeStefanCard()">📌 Pinned messages</button>`,
     `<button class="stefan-option" onclick="showInvite();closeStefanCard()">🔗 Invite link</button>`,
-    `<button class="stefan-option" onclick="showAuroraHelp();closeStefanCard()">✨ Aurora</button>`,
+    `<button class="stefan-option" onclick="openCommandGuide();closeStefanCard()">⌘ Command Guide</button>`,
     `<button class="stefan-option" onclick="openScheduleFromStefan();closeStefanCard()">⏰ Schedule message</button>`,
     `<button class="stefan-option" onclick="cycleExpiryFromStefan();closeStefanCard()">⏳ Expiring message</button>`,
     canEdit ? `<button class="stefan-option" onclick="editRoom();closeStefanCard()">✏️ Edit room</button>` : "",
