@@ -2008,3 +2008,9 @@ input,textarea,select{background:rgba(255,255,255,.055);border-color:rgba(255,25
 
 /* Invisible accounts are visible to staff, but never expose their online/offline state. */
 .online-user:has(.invisible-staff-dot) .status{display:none!important}
+
+/* Center audit logs and tighten chat bubbles */
+#modal .modal-card:has(.admin-logs-modal){width:min(1050px,calc(100vw - 28px));max-width:calc(100vw - 28px);margin:0 auto;align-self:center;box-sizing:border-box;position:relative;left:auto;right:auto}
+#modal .admin-logs-modal{width:100%;max-width:100%;margin:0;transform:none;position:static}
+.msg .msg-body{max-width:min(65%,600px);padding:7px 10px}.msg .msg-top{gap:6px;min-height:16px}.msg .message-author{font-size:12px;font-weight:700}.msg .msg-time{font-size:9px}.msg .msg-text{font-size:var(--chat-size,1em);line-height:1.35;margin-top:2px}.message-rank-icon{font-size:12px;line-height:1;margin:2px 0 3px;opacity:.92}
+@media(max-width:700px){.msg .msg-body{max-width:78%;padding:7px 9px}.msg .message-rank-icon{font-size:11px}#modal .modal-card:has(.admin-logs-modal){width:calc(100vw - 16px);max-width:calc(100vw - 16px);margin:0 auto}}
