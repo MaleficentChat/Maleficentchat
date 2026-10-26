@@ -1925,3 +1925,11 @@ input,textarea,select{background:rgba(255,255,255,.055);border-color:rgba(255,25
 .owner-settings-content,.owner-user-controls-content{padding-top:14px}
 .owner-user-controls-content .user-card{margin-top:8px}
 .owner-settings-card,.owner-user-controls-card{min-width:0}
+
+
+/* Owner Space searchable user controls */
+.owner-user-search{display:flex;align-items:center;gap:10px;margin:0 0 12px;position:sticky;top:0;z-index:2;padding:8px 0;background:var(--card,#111827)}
+.owner-user-search input{flex:1;min-width:0;width:100%;padding:12px 14px;border:1px solid rgba(192,132,252,.3);border-radius:11px;background:rgba(10,10,20,.75);color:var(--text,#edf2f5);outline:none}
+.owner-user-search input:focus{border-color:#c084fc;box-shadow:0 0 0 3px rgba(192,132,252,.12)}
+.owner-user-search-count{white-space:nowrap;font-size:12px}
+.owner-user-control-row[style*="display: none"]{display:none!important}
