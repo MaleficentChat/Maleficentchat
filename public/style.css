@@ -1939,7 +1939,7 @@ input,textarea,select{background:rgba(255,255,255,.055);border-color:rgba(255,25
 #modal{align-items:center;justify-content:center;overflow-y:auto;overscroll-behavior:contain}
 #modal .modal-card:not(:has(.profile-modal)){
   display:flex;flex-direction:column;min-height:0;
-  max-height:calc(100dvh - 24px);max-height:calc(100vh - 24px);
+  max-height:calc(100vh - 24px);max-height:calc(100dvh - 24px);
   overflow:hidden;box-sizing:border-box;
 }
 #modal .modal-card:not(:has(.profile-modal))>.modal-close{
@@ -1949,7 +1949,7 @@ input,textarea,select{background:rgba(255,255,255,.055);border-color:rgba(255,25
   background:#172730;border-radius:9px;line-height:1;
 }
 #modal .modal-card:not(:has(.profile-modal))>#modalBody{
-  min-height:0;max-height:calc(100dvh - 92px);max-height:calc(100vh - 92px);
+  min-height:0;max-height:calc(100vh - 92px);max-height:calc(100dvh - 92px);
   overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;
   padding:8px 4px 4px;box-sizing:border-box;scrollbar-gutter:stable;
 }
@@ -1961,5 +1961,5 @@ input,textarea,select{background:rgba(255,255,255,.055);border-color:rgba(255,25
 @media(max-width:700px){
   #modal{padding:8px!important;box-sizing:border-box}
   #modal .modal-card:not(:has(.profile-modal)){width:calc(100vw - 16px)!important;max-width:calc(100vw - 16px)!important;padding:16px!important;border-radius:14px}
-  #modal .modal-card:not(:has(.profile-modal))>#modalBody{max-height:calc(100dvh - 76px);max-height:calc(100vh - 76px);padding:8px 2px 4px}
+  #modal .modal-card:not(:has(.profile-modal))>#modalBody{max-height:calc(100vh - 76px);max-height:calc(100dvh - 76px);padding:8px 2px 4px}
 }
