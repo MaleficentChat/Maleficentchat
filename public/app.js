@@ -1540,6 +1540,12 @@ async function loadUsers() {
 
 $("userSearch").oninput = () => loadUsers();
 $("userRankFilter")?.addEventListener("change",()=>loadUsers());
+function invisibleDot(user){return user?.invisible?'<i class="invisible-staff-dot" title="Invisible mode active"></i>':'';}
+function invisibleToggleMarkup(user,compact=false){
+  if(String(user?.id)!==String(state.user?.id)||!canFeature("invisible_mode"))return "";
+  const enabled=!!user.invisible;
+  return `<button type="button" class="mini invisible-mode-toggle" title="${enabled?"Turn invisible mode off":"Turn invisible mode on"}" aria-label="Toggle invisible mode" onclick="toggleInvisibleMode(event)">${enabled?"😈":"👿"}${compact?"":" "+(enabled?"Invisible on":"Invisible off")}</button>`;
+}
 async function toggleInvisibleMode(event){
   event?.preventDefault?.();
   event?.stopPropagation?.();
