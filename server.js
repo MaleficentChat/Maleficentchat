@@ -2060,7 +2060,7 @@ async function auroraRoomMessage(text, roomId){
   db.messages.push(notice); save(); io.to('room:'+roomId).emit('message',notice); return notice;
 }
 function systemNotice(text, roomId=null){
-  const targetRoom=roomId||((db.rooms.find(x=>x.id==='main'||String(x.name).toLowerCase()==='main room')||db.rooms[0])?.id||null);
+  const targetRoom=roomId||((db.rooms.find(x=>/^main room 1$/i.test(String(x.name||'')))||db.rooms.find(x=>x.id==='main'||String(x.name).toLowerCase()==='main room')||db.rooms[0])?.id||null);
   if(targetRoom){auroraRoomMessage(text,targetRoom).catch(err=>console.error("Aurora notice failed:",err.message));}
   else {const notice={id:id(),system:true,username:'Aurora',displayName:'Aurora',rank:'BOT',text:String(text),roomId:null,time:Date.now(),reactions:{},pinned:false,deleted:false};io.emit('system-message',notice);}
 }
@@ -2215,7 +2215,7 @@ app.post(
     );
 
     save();
-    const actionText={MUTE:'muted',KICK:'kicked',BAN:'banned',UNMUTE:'unmuted',REVOKE_MUTE:'unmuted',REVOKE_BAN:'unbanned',REVOKE_KICK:'unkicked',WARN:'warned'}[action]||action.toLowerCase(); const mainRoom=db.rooms.find(x=>x.id==='main'||String(x.name).toLowerCase()==='main room')||db.rooms[0]; systemNotice(`@${target.username} has been ${actionText}.`,mainRoom?.id||null);
+    const actionText={MUTE:'muted',KICK:'kicked',BAN:'banned',UNMUTE:'unmuted',REVOKE_MUTE:'unmuted',REVOKE_BAN:'unbanned',REVOKE_KICK:'unkicked',WARN:'warned'}[action]||action.toLowerCase(); const mainRoom=db.rooms.find(x=>/^main room 1$/i.test(String(x.name||'')))||db.rooms.find(x=>x.id==='main'||String(x.name).toLowerCase()==='main room')||db.rooms[0]; systemNotice(`@${target.username} has been ${actionText}.`,mainRoom?.id||null);
 
     notify(
       target.id,
