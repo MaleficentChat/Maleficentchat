@@ -1543,9 +1543,10 @@ async function loadUsers() {
 
     const selectedRank=$("userRankFilter")?.value||"";
     const filtered=(data.users||[]).filter(user=>!selectedRank||user.rank===selectedRank);
-    const online=filtered.filter(user=>user.online).sort((a,b)=>(rankOrder[b.rank]||0)-(rankOrder[a.rank]||0)||a.username.localeCompare(b.username));
-    const offline=filtered.filter(user=>!user.online).sort((a,b)=>(rankOrder[b.rank]||0)-(rankOrder[a.rank]||0)||a.username.localeCompare(b.username));
-    $("users").innerHTML = `${online.length?`<section class="user-presence-section"><h3>🟢 Online users <small>${online.length}</small></h3><div class="user-grid">${online.map(userCard).join("")}</div></section>`:""}${offline.length?`<section class="user-presence-section"><h3>⚪ Offline users <small>${offline.length}</small></h3><div class="user-grid">${offline.map(userCard).join("")}</div></section>`:""}` || `<p class="muted">No users found.</p>`;
+    const invisible=filtered.filter(user=>user.invisible).sort((a,b)=>(rankOrder[b.rank]||0)-(rankOrder[a.rank]||0)||a.username.localeCompare(b.username));
+    const online=filtered.filter(user=>user.online&&!user.invisible).sort((a,b)=>(rankOrder[b.rank]||0)-(rankOrder[a.rank]||0)||a.username.localeCompare(b.username));
+    const offline=filtered.filter(user=>!user.online&&!user.invisible).sort((a,b)=>(rankOrder[b.rank]||0)-(rankOrder[a.rank]||0)||a.username.localeCompare(b.username));
+    $("users").innerHTML = `${online.length?`<section class="user-presence-section"><h3>🟢 Online users <small>${online.length}</small></h3><div class="user-grid">${online.map(userCard).join("")}</div></section>`:""}${offline.length?`<section class="user-presence-section"><h3>⚪ Offline users <small>${offline.length}</small></h3><div class="user-grid">${offline.map(userCard).join("")}</div></section>`:""}${invisible.length?`<section class="user-presence-section"><h3>🟢 Invisible mode <small>${invisible.length}</small></h3><div class="user-grid">${invisible.map(userCard).join("")}</div></section>`:""}` || `<p class="muted">No users found.</p>`;
   } catch (error) {
     toast(error.message);
   }
