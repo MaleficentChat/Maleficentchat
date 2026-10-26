@@ -877,6 +877,7 @@ function messageHTML(message) {
     return `<div class="system-message" data-mid="${esc(message.id)}"><span>✦</span><b>${esc(message.text||'')}</b><small>${fmt(message.time)}</small></div>`;
   }
   const user = {
+    id: message.userId,
     username: message.username,
     displayName: message.displayName,
     rank: message.rank,
@@ -1579,23 +1580,35 @@ function userCard(user) {
 }
 
 async function openQuickUserCard(id){
+  // Render immediately from chat data so the card still opens if an older
+  // deployed server does not yet expose the profile endpoint.
+  const message=(state.messages||[]).find(m=>String(m.userId)===String(id));
+  const localUser=message?{
+    id:message.userId,username:message.username,displayName:message.displayName,
+    rank:message.rank,avatar:message.avatar||"",level:message.level||1,
+    age:message.age,gender:message.gender,countryFlag:message.countryFlag||message.flag||""
+  }:null;
+  let user=localUser, data={likedByMe:false,profileLikes:0};
   try{
-    const data=await api(`/api/users/${encodeURIComponent(id)}/profile`);
-    const user=data.user;if(!user)return;
-    const isSelf=String(user.id)===String(state.user.id);
-    const countryFlag=user.countryFlag||user.flag||"";
-    modal(`<div class="quick-user-card">
-      <div class="quick-user-top"><span class="quick-user-level">⭐ ${Number(user.level||1)}</span><button class="quick-user-close" onclick="closeModal()" aria-label="Close">×</button>
-      <div class="quick-user-avatar">${avatar(user)}</div><h2>${esc(user.displayName||user.username)}</h2>
-      <p>${esc(user.age?user.age+" years":(user.dateOfBirth?"Member":""))}${user.gender?" · "+esc(user.gender):""}</p>${countryFlag?`<div class="quick-user-flag">${esc(countryFlag)}</div>`:""}
-      <small>@${esc(user.username)}</small></div>
-      <button class="quick-user-row" id="quickViewProfile"><span>👤</span><b>View profile</b><i>›</i></button>
-      ${!isSelf?`<button class="quick-user-row" id="quickPrivate"><span>🟢</span><b>Private</b><i>›</i></button><button class="quick-user-row" id="quickAction"><span>✔️</span><b>Action</b><i>›</i></button>`:`<button class="quick-user-row" id="quickAction"><span>⚙️</span><b>Account actions</b><i>›</i></button>`}
-    </div>`);
-    $('quickViewProfile')?.addEventListener('click',()=>{closeModal();openUser(user.id)});
-    $('quickPrivate')?.addEventListener('click',()=>{closeModal();openDM(user.id)});
-    $('quickAction')?.addEventListener('click',()=>{closeModal();openProfileActionDrawer(user,data)});
-  }catch(e){toast(e.message)}
+    const response=await api(`/api/users/${encodeURIComponent(id)}/profile`);
+    if(response.user){user={...localUser,...response.user};data=response;}
+  }catch(error){
+    if(!user){toast(error.message);return;}
+  }
+  if(!user){toast("User details are not available in this chat.");return;}
+  const isSelf=String(user.id)===String(state.user.id);
+  const countryFlag=user.countryFlag||user.flag||"";
+  modal(`<div class="quick-user-card">
+    <div class="quick-user-top"><span class="quick-user-level">⭐ ${Number(user.level||1)}</span><button class="quick-user-close" onclick="closeModal()" aria-label="Close">×</button>
+    <div class="quick-user-avatar">${avatar(user)}</div><h2>${esc(user.displayName||user.username)}</h2>
+    <p>${esc(user.age?user.age+" years":(user.dateOfBirth?"Member":""))}${user.gender?" · "+esc(user.gender):""}</p>${countryFlag?`<div class="quick-user-flag">${esc(countryFlag)}</div>`:""}
+    <small>@${esc(user.username)}</small></div>
+    <button class="quick-user-row" id="quickViewProfile"><span>👤</span><b>View profile</b><i>›</i></button>
+    ${!isSelf?`<button class="quick-user-row" id="quickPrivate"><span>🟢</span><b>Private</b><i>›</i></button><button class="quick-user-row" id="quickAction"><span>✔️</span><b>Action</b><i>›</i></button>`:`<button class="quick-user-row" id="quickAction"><span>⚙️</span><b>Account actions</b><i>›</i></button>`}
+  </div>`);
+  $('quickViewProfile')?.addEventListener('click',()=>{closeModal();openUser(user.id)});
+  $('quickPrivate')?.addEventListener('click',()=>{closeModal();openDM(user.id)});
+  $('quickAction')?.addEventListener('click',()=>{closeModal();openProfileActionDrawer(user,data)});
 }
 
 async function openUser(id) {
