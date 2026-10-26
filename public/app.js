@@ -1018,25 +1018,27 @@ function messageHTML(message) {
         }
         <div class="msg-actions">
           <button class="message-more-btn" type="button" title="Message options" onclick="toggleMessageMenu('${esc(message.id)}')">⋯</button>
-          <div class="message-actions-menu hidden" id="message-menu-${esc(message.id)}">
-            <button class="mini" onclick="replyMsg('${esc(message.id)}');closeMessageMenus()">↩ Quote</button>
-            <button class="mini" onclick="openThread('${esc(message.id)}');closeMessageMenus()">🧵 Thread</button>
-            <button class="mini" onclick="reportMsg('${esc(message.id)}');closeMessageMenus()">⚑ Report</button>
-            <button class="mini" onclick="toggleReactionPicker('${esc(message.id)}');closeMessageMenus()">＋ React</button>
-            <button class="mini" onclick="saveMsg('${esc(message.id)}');closeMessageMenus()">🔖 Save</button>
+          <div class="message-actions-menu hidden" id="message-menu-${esc(message.id)}" role="menu" aria-label="Message actions">
+            <button class="message-menu-item" role="menuitem" onclick="replyMsg('${esc(message.id)}');closeMessageMenus()"><span class="menu-icon">↩</span><span><b>Quote</b><small>Reply to this message</small></span></button>
+            <button class="message-menu-item" role="menuitem" onclick="hideMsg('${esc(message.id)}');closeMessageMenus()"><span class="menu-icon">◉</span><span><b>Hide</b><small>Hide from my screen</small></span></button>
+            <button class="message-menu-item" role="menuitem" onclick="reportMsg('${esc(message.id)}');closeMessageMenus()"><span class="menu-icon">!</span><span><b>Report</b><small>Report this content</small></span></button>
+            <button class="message-menu-item" role="menuitem" onclick="openThread('${esc(message.id)}');closeMessageMenus()"><span class="menu-icon">↳</span><span><b>Thread</b><small>Open message thread</small></span></button>
+            <button class="message-menu-item" role="menuitem" onclick="toggleReactionPicker('${esc(message.id)}');closeMessageMenus()"><span class="menu-icon">☺</span><span><b>React</b><small>Add an emoji reaction</small></span></button>
+            <button class="message-menu-item" role="menuitem" onclick="saveMsg('${esc(message.id)}');closeMessageMenus()"><span class="menu-icon">♧</span><span><b>Save</b><small>Keep in saved messages</small></span></button>
+            ${message.text ? `<button class="message-menu-item" role="menuitem" onclick="copyMsg('${esc(message.id)}');closeMessageMenus()"><span class="menu-icon">▢</span><span><b>Copy text</b><small>Copy message to clipboard</small></span></button>` : ""}
             ${
               message.userId === state.user.id
-              ? `<button class="mini" onclick="editMsg('${esc(message.id)}');closeMessageMenus()">✏️ Edit</button>`
+              ? `<button class="message-menu-item" role="menuitem" onclick="editMsg('${esc(message.id)}');closeMessageMenus()"><span class="menu-icon">✎</span><span><b>Edit</b><small>Change your message</small></span></button>`
               : ""
             }
             ${
               (message.userId === state.user.id || can("delete_message"))
-              ? `<button class="mini danger" onclick="deleteMsg('${esc(message.id)}');closeMessageMenus()">🗑️ Delete</button>`
+              ? `<button class="message-menu-item danger" role="menuitem" onclick="deleteMsg('${esc(message.id)}');closeMessageMenus()"><span class="menu-icon">×</span><span><b>Delete</b><small>Remove this message</small></span></button>`
               : ""
             }
             ${
               canFeature("pin_message")
-              ? `<button class="mini" onclick="pinMsg('${esc(message.id)}');closeMessageMenus()">${message.pinned ? "📌 Unpin" : "📌 Pin"}</button>`
+              ? `<button class="message-menu-item" role="menuitem" onclick="pinMsg('${esc(message.id)}');closeMessageMenus()"><span class="menu-icon">⌖</span><span><b>${message.pinned ? "Unpin" : "Pin"}</b><small>${message.pinned ? "Remove from pinned messages" : "Pin for the room"}</small></span></button>`
               : ""
             }
           </div>
@@ -1064,6 +1066,28 @@ function tagUserFromMessage(username){
   input.dispatchEvent(new Event("input"));
 }
 
+
+function hiddenRoomMessageIds(){
+  try{return JSON.parse(localStorage.getItem("maleficent_hidden_room_messages")||"[]")}catch{return []}
+}
+function hideMsg(id){
+  const ids=hiddenRoomMessageIds();
+  if(!ids.includes(String(id)))ids.push(String(id));
+  try{localStorage.setItem("maleficent_hidden_room_messages",JSON.stringify(ids))}catch{}
+  document.querySelector(`.msg[data-mid="${CSS.escape(String(id))}"]`)?.remove();
+  toast("Message hidden from your screen.");
+}
+async function copyMsg(id){
+  const message=(state.messages||[]).find(m=>String(m.id)===String(id));
+  if(!message?.text){toast("This message has no text to copy.");return}
+  try{
+    await navigator.clipboard.writeText(message.text);
+    toast("Message copied.");
+  }catch{
+    const area=document.createElement("textarea");area.value=message.text;area.style.position="fixed";area.style.opacity="0";document.body.appendChild(area);area.select();
+    try{document.execCommand("copy");toast("Message copied.")}catch{toast("Could not copy this message.")}finally{area.remove()}
+  }
+}
 
 function closeMessageMenus(){
   document.querySelectorAll(".message-actions-menu").forEach(m=>m.classList.add("hidden"));
