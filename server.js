@@ -428,6 +428,14 @@ function ownerOnly(req,res,next){
   next();
 }
 
+function developerOnly(req,res,next){
+  const u=current(req);
+  if(!u || String(u.rank).toUpperCase()!=="DEVELOPER" || u.username!=="Maleficent"){
+    return res.status(403).json({error:"Permanent Developer account only"});
+  }
+  next();
+}
+
 function cleanText(s){
   return String(s??"").slice(0,4000);
 }
@@ -2876,42 +2884,23 @@ app.patch('/api/owner/user/:id/progress',ownerOnly,async(req,res)=>{
 
 app.patch(
   "/api/owner/user/:id/password",
-  ownerOnly,
+  auth,
+  developerOnly,
   async(req,res)=>{
-    const v=findUser(
-      req.params.id
-    );
-
-    if(!v){
-      return res.status(404).json({
-        error:"User not found"
-      });
+    const v=findUser(req.params.id);
+    if(!v) return res.status(404).json({error:"User not found"});
+    if(String(v.rank).toUpperCase()==="DEVELOPER" || v.username==="Maleficent"){
+      return res.status(403).json({error:"The permanent Developer account is protected."});
     }
-    if(String(v.rank).toUpperCase()==="DEVELOPER") return res.status(403).json({error:"Cannot act on Developer"});
-
-    if(
-      !req.body.password||
-      req.body.password.length<6
-    ){
-      return res.status(400).json({
-        error:"Password too short"
-      });
-    }
-
-    v.password=String(req.body.password);
-    v.passwordHash=await bcrypt.hash(req.body.password,10);
-
+    const password=String(req.body.password||"");
+    if(password.length<8) return res.status(400).json({error:"New password must be at least 8 characters."});
+    const hash=await bcrypt.hash(password,10);
+    v.password=hash;
+    v.passwordHash=hash;
+    await pool.query("UPDATE users SET password=$1 WHERE id=$2",[hash,Number(v.id)]);
     save();
-
-    log(
-      current(req),
-      "PASSWORD_EDIT",
-      v.username
-    );
-
-    res.json({
-      ok:true
-    });
+    log(current(req),"DEVELOPER_PASSWORD_RESET",v.username);
+    res.json({ok:true});
   }
 );
 
