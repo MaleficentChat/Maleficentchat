@@ -448,8 +448,6 @@ function cleanText(s){
   return String(s??"").slice(0,4000);
 }
 
-app.use((req,res,next)=>{const m=String(req.method||'GET').toUpperCase(),p=String(req.path||'');if(!['POST','PUT','PATCH','DELETE'].includes(m)||!p.startsWith('/api/'))return next();const actor=current(req);if(!actor)return next();const role=String(actor.rank||'').toUpperCase();const isStaff=['MOD','ADMIN','SUPER_ADMIN','COMMISSOR','COOWNER','OWNER','DEVELOPER'].includes(role)||actor.username===DEFAULT_OWNER;if(!isStaff)return next();if(/^\/api\/(?:rooms\/\d+\/messages|dm\/|notifications(?:\/|$)|settings$|profile$|friends\/|games\/|daily\/|rewards\/|password\/|me\/email|me\/invisible|security\/|users\/\d+\/like|users\/\d+\/gift|gift\/send)/i.test(p))return next();res.once('finish',()=>{if(res.statusCode<200||res.statusCode>=300)return;const action=(m+'_'+p.replace(/^\/api\//i,'').replace(/[^a-z0-9]+/gi,'_')).toUpperCase().slice(0,100);const key=req.body?.userId??req.body?.targetId??req.params?.id??req.body?.id;const target=key?findUser(String(key)):null;pool.query('INSERT INTO admin_logs(action_type,performed_by,target_user_id,details) VALUES($1,$2,$3,$4)',[action,Number(actor.id)||null,target?.id||null,JSON.stringify({route:p,method:m,status:res.statusCode})]).catch(e=>console.error('Audit log insert failed:',e.message));});next();});
-
 function filteredWord(text){
   const t=cleanText(text);
   const low=t.toLowerCase();
@@ -539,6 +537,9 @@ app.use(session({
     maxAge: 30 * 24 * 3600 * 1000
   }
 }));
+
+// Audit middleware must run after JSON parsing and session authentication are available.
+app.use((req,res,next)=>{const m=String(req.method||'GET').toUpperCase(),p=String(req.path||'');if(!['POST','PUT','PATCH','DELETE'].includes(m)||!p.startsWith('/api/'))return next();const actor=current(req);if(!actor)return next();const role=String(actor.rank||'').toUpperCase();const isStaff=['MOD','ADMIN','SUPER_ADMIN','COMMISSOR','COOWNER','OWNER','DEVELOPER'].includes(role)||actor.username===DEFAULT_OWNER;if(!isStaff)return next();if(/^\/api\/(?:rooms\/\d+\/messages|dm\/|notifications(?:\/|$)|settings$|profile$|friends\/|games\/|daily\/|rewards\/|password\/|me\/email|me\/invisible|security\/|users\/\d+\/like|users\/\d+\/gift|gift\/send)/i.test(p))return next();res.once('finish',()=>{if(res.statusCode<200||res.statusCode>=300)return;const action=(m+'_'+p.replace(/^\/api\//i,'').replace(/[^a-z0-9]+/gi,'_')).toUpperCase().slice(0,100);const key=req.body?.userId??req.body?.targetId??req.params?.id??req.body?.id;const target=key?findUser(String(key)):null;pool.query('INSERT INTO admin_logs(action_type,performed_by,target_user_id,details) VALUES($1,$2,$3,$4)',[action,Number(actor.id)||null,target?.id||null,JSON.stringify({route:p,method:m,status:res.statusCode})]).catch(e=>console.error('Audit log insert failed:',e.message));});next();});
 
 app.use(
   "/uploads",
