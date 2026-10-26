@@ -261,7 +261,7 @@ function safeUser(u){
     mutedUntil:u.mutedUntil||null,
     createdAt:u.createdAt,
     lastSeen:u.lastSeen,
-    online:!!u.online,
+    online:!!u.online && !u.invisible,
     level:u.level||1,
     xp:u.xp||0,
     gold:u.gold||0,
@@ -1557,37 +1557,23 @@ function notifyStaff(
 app.post(
   "/api/rooms/:id/clear",
   auth,
-  (req,res)=>{
+  async(req,res)=>{
     const u=current(req);
-
+    const room=db.rooms.find(r=>String(r.id)===String(req.params.id));
+    if(!room)return res.status(404).json({error:"Room not found"});
     if(!hasFeature(u,"clear_room")){
       return res.status(403).json({
         error:`Clear room requires ${featureRank("clear_room")} or higher.`
       });
     }
 
-    db.messages=
-      db.messages.filter(
-        m=>m.roomId!==req.params.id
-      );
+    const removed=await pool.query("DELETE FROM room_messages WHERE room_id=$1",[Number(room.id)]);
+    db.messages=db.messages.filter(m=>String(m.roomId)!==String(room.id));
+    await save();
 
-    save();
-
-    log(
-      u,
-      "ROOM_CLEAR",
-      req.params.id
-    );
-
-    io.to(
-      "room:"+req.params.id
-    ).emit(
-      "room:clear"
-    );
-
-    res.json({
-      ok:true
-    });
+    log(u,"ROOM_CLEAR",room.id,{removed:Number(removed.rowCount||0)});
+    io.to("room:"+room.id).emit("room:clear");
+    res.json({ok:true,removed:Number(removed.rowCount||0)});
   }
 );
 
