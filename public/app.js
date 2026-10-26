@@ -591,22 +591,29 @@ async function openGifPicker(){
 /* ---------------- ROOMS ---------------- */
 
 async function loadRooms() {
-  try {
-    const data = await api("/api/rooms");
-    state.rooms = Array.isArray(data.rooms) ? data.rooms : [];
-    if (!state.rooms.length) {
-      const boot = await api("/api/bootstrap");
-      if (Array.isArray(boot.rooms) && boot.rooms.length) state.rooms = boot.rooms;
-    }
-  } catch (e) {
+  let lastError = null;
+  for (let attempt = 0; attempt < 2; attempt++) {
     try {
+      const data = await api("/api/rooms");
+      state.rooms = Array.isArray(data.rooms) ? data.rooms : [];
+      if (state.rooms.length) break;
       const boot = await api("/api/bootstrap");
-      state.rooms = Array.isArray(boot.rooms) ? boot.rooms : [];
-    } catch (_) {
-      throw e;
+      if (Array.isArray(boot.rooms) && boot.rooms.length) {
+        state.rooms = boot.rooms;
+        break;
+      }
+    } catch (e) {
+      lastError = e;
+      try {
+        const boot = await api("/api/bootstrap");
+        state.rooms = Array.isArray(boot.rooms) ? boot.rooms : [];
+        if (state.rooms.length) break;
+      } catch (_) {}
     }
+    if (attempt === 0) await new Promise(resolve => setTimeout(resolve, 500));
   }
   renderRooms();
+  if (!state.rooms.length && lastError) toast("Rooms could not load: " + lastError.message);
 }
 
 function joinedRoomIds(){
