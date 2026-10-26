@@ -2919,14 +2919,14 @@ app.post("/api/report",auth,async(req,res)=>{
 app.get("/api/staff/reports/:id/private-messages",auth,featureAllowed("view_staff_dashboard"),async(req,res)=>{
   const u=current(req);if(!hasRank(u,"MOD"))return res.status(403).json({error:"Staff only"});
   try{
-    const q=await pool.query("SELECT data FROM reports WHERE id=$1",[req.params.id]);
+    const q=await pool.query("SELECT r.data,reporter.username AS reporter_username,target.username AS reported_username,convo.username AS conversation_username FROM reports r LEFT JOIN users reporter ON reporter.id=r.reporter_id LEFT JOIN users target ON target.id=r.reported_id LEFT JOIN users convo ON convo.id=r.conversation_user_id WHERE r.id=$1",[req.params.id]);
     const cached=(db.reports||[]).find(r=>String(r.id)===String(req.params.id));
     if(!q.rowCount&&!cached)return res.status(404).json({error:"Report not found"});
-    const d=q.rowCount&&q.rows[0].data&&typeof q.rows[0].data==="object"?q.rows[0].data:cached||{};
+    const row=q.rows[0]||{},d=row.data&&typeof row.data==="object"?row.data:cached||{};
     if(!d.conversationUserId)return res.status(400).json({error:"This is not a private-message report."});
     let messages=Array.isArray(d.privateMessages)?d.privateMessages:[];
     if(!messages.length){const p=await pool.query("SELECT data FROM private_messages WHERE (sender_id=$1 AND receiver_id=$2) OR (sender_id=$2 AND receiver_id=$1) ORDER BY created_at DESC LIMIT 200",[Number(d.reportedUserId),Number(d.conversationUserId)]);messages=p.rows.map(x=>x.data).reverse();}
-    res.json({messages,report:{id:req.params.id,reason:d.reason||"No reason supplied",reporterUsername:d.reporterUsername||"",reportedUserUsername:d.reportedUserUsername||"",conversationUsername:d.conversationUsername||""}});
+    res.json({messages,report:{id:req.params.id,reason:d.reason||"No reason supplied",reporterUsername:d.reporterUsername||row.reporter_username||"",reportedUserUsername:d.reportedUserUsername||row.reported_username||"",conversationUsername:d.conversationUsername||row.conversation_username||"",reportedUserId:d.reportedUserId,conversationUserId:d.conversationUserId}});
   }catch(e){console.error("Private-message report evidence failed:",e);res.status(500).json({error:"Could not load the reported private-message evidence."});}
 });
 
