@@ -535,6 +535,15 @@ if ($("backRooms")) {
   };
 }
 
+// Floating mobile quick actions reuse the existing, tested room and People controls.
+$("floatingRoomsBtn")?.addEventListener("click",()=> $("backRooms")?.click());
+$("floatingPeopleBtn")?.addEventListener("click",()=>{
+  const panel=$("onlinePanel");
+  if(!panel)return;
+  panel.classList.toggle("mobile-open");
+  if(panel.classList.contains("mobile-open"))renderOnline();
+});
+
 if ($("topMessages")) $("topMessages").onclick = () => {
   state.view = "dms";
   document.querySelectorAll(".nav[data-view]").forEach(x => x.classList.toggle("active", x.dataset.view === "dms"));
