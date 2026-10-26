@@ -448,6 +448,8 @@ function cleanText(s){
   return String(s??"").slice(0,4000);
 }
 
+app.use((req,res,next)=>{const m=String(req.method||'GET').toUpperCase(),p=String(req.path||'');if(!['POST','PUT','PATCH','DELETE'].includes(m)||!/^\/api\/(admin|owner|staff|moderation)(\/|$)/i.test(p))return next();const actor=current(req);if(!actor)return next();res.once('finish',()=>{if(res.statusCode<200||res.statusCode>=300)return;const action=(m+'_'+p.replace(/^\/api\//i,'').replace(/[^a-z0-9]+/gi,'_')).toUpperCase().slice(0,100);pool.query('INSERT INTO admin_logs(action_type,performed_by,details) VALUES($1,$2,$3)',[action,Number(actor.id)||null,JSON.stringify({route:p,method:m,status:res.statusCode})]).catch(e=>console.error('Audit log insert failed:',e.message));});next();});
+
 function filteredWord(text){
   const t=cleanText(text);
   const low=t.toLowerCase();
