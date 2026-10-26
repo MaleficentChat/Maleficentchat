@@ -293,6 +293,12 @@ async function start() {
     }
   });
   state.socket.on("room-error",d=>toast(d?.error||"Could not join room."));
+  state.socket.on("dm-typing",d=>{
+    if(String(d?.user?.id||d?.userId||"")===String(state.dmUserId))return;
+    const status=$("dmTypingStatus");
+    if(!status||!state.dmUserId)return;
+    status.textContent=d?.typing?((typeof d.user==="string"?d.user:"Someone")+" is typing…"):"Quote a message to reply · Attach photos or files";
+  });
 
   state.socket.on('rooms_updated', async()=>{try{await loadRooms();renderRooms();}catch{}});
 
@@ -1836,7 +1842,7 @@ async function openDM(id) {
         <div class="dm-chat-actions"><button type="button" class="mini" id="editPrivateNicknameBtn" title="Set private nickname">✏️ Nickname</button><button type="button" class="mini danger" id="reportDmBtn">🚩 Report</button></div>
       </div>
       <div class="dm-message-search"><span>⌕</span><input id="dmMessageSearch" placeholder="Search in this conversation…" autocomplete="off"><small id="dmSearchCount">${messages.length} messages</small></div>
-      <div class="dm-conversation-tools"><span>🔒 Private conversation</span><span>Quote a message to reply · Attach photos or files</span></div>
+      <div class="dm-conversation-tools"><span>🔒 Private conversation</span><span id="dmTypingStatus" aria-live="polite">Quote a message to reply · Attach photos or files</span></div>
       <div
         id="dmMessages"
         class="messages dm-message-list"
@@ -1918,6 +1924,9 @@ async function openDM(id) {
       if($("dmFileName")) $("dmFileName").textContent=f?`📎 ${f.name}`:"";
     });
 
+    const draftKey="mc_dm_draft_"+String(state.user?.id||"")+"_"+String(id);
+    const dmInput=$("dmText");
+    if(dmInput){dmInput.value=safeStorage.getItem(draftKey)||"";dmInput.addEventListener("input",()=>{if(dmInput.value)safeStorage.setItem(draftKey,dmInput.value);else safeStorage.removeItem(draftKey);if(state.socket?.connected)state.socket.emit("dm-typing",{userId:id,user:state.user?.displayName||state.user?.username,typing:!!dmInput.value.trim()});});}
     $("dmForm").onsubmit = async e => {
       e.preventDefault();
       const input = $("dmText");
@@ -1930,7 +1939,7 @@ async function openDM(id) {
         if (state.dmReplyTo) fd.append("replyTo", state.dmReplyTo);
         if (file) fd.append("file", file);
         await api(`/api/dm/${encodeURIComponent(id)}`, {method:"POST",body:fd});
-        input.value=""; if($("dmFile")) $("dmFile").value=""; if($("dmFileName")) $("dmFileName").textContent="";
+        input.value=""; safeStorage.removeItem(draftKey); if(state.socket?.connected)state.socket.emit("dm-typing",{userId:id,user:state.user?.displayName||state.user?.username,typing:false}); if($("dmFile")) $("dmFile").value=""; if($("dmFileName")) $("dmFileName").textContent="";
         state.dmReplyTo=null; state.dmReplyUser=null; state.dmReplyAuthor=null; state.dmReplyText=null;
         await openDM(id);
       } catch(error){ toast(error.message); }
