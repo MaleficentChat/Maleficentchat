@@ -550,11 +550,8 @@ if ($("topMessages")) $("topMessages").onclick = () => toggleMessagesDropdown();
 if ($("topFriends")) $("topFriends").onclick = () => toggleFriendsDropdown();
 if ($("topNotifications")) $("topNotifications").onclick = () => { $("topFriendsDropdown")?.classList.add("hidden"); $("topMessagesDropdown")?.classList.add("hidden"); $("reportDropdown")?.classList.add("hidden"); toggleNotificationDropdown(); };
 if ($("topFlag")) $("topFlag").onclick = () => { $("topFriendsDropdown")?.classList.add("hidden"); $("topMessagesDropdown")?.classList.add("hidden"); $("notificationDropdown")?.classList.add("hidden"); toggleReportDropdown(); };
-if ($("topProfile")) $("topProfile").onclick = () => {
-  state.view = "profile";
-  document.querySelectorAll(".nav[data-view]").forEach(x => x.classList.toggle("active", x.dataset.view === "profile"));
-  renderView();
-};
+if ($("topProfile")) $("topProfile").onclick = () => { const box=$("topProfileDropdown"); if(box) box.classList.toggle("hidden"); };
+function openMyProfileFromHeader(){ $("topProfileDropdown")?.classList.add("hidden"); state.view="profile"; document.querySelectorAll(".nav[data-view]").forEach(x=>x.classList.toggle("active",x.dataset.view==="profile")); renderView(); }
 
 
 async function loadWall(){
