@@ -2127,10 +2127,15 @@ app.get("/api/staff/ip-inspection",auth,ownerOnly,async(req,res)=>{
   const actor=current(req);
   const search=String(req.query.q||"").trim().slice(0,100);
   const limit=Math.min(200,Math.max(1,Number(req.query.limit)||100));
-  const params=[]; let where="";
-  if(search){params.push("%"+search+"%");where="WHERE u.username ILIKE $1 OR COALESCE(u.email,'') ILIKE $1 OR h.ip_address::text ILIKE $1";}
+  const params=[];
+  let where="";
+  if(search){
+    params.push("%"+search+"%");
+    where="WHERE u.username ILIKE $1 OR COALESCE(u.email,'') ILIKE $1 OR COALESCE(h.ip_address::text,'') ILIKE $1";
+  }
   params.push(limit);
-  const q=await pool.query(`SELECT h.id,h.user_id,u.username,u.email,h.ip_address::text AS ip_address,h.event_type,h.user_agent,h.recorded_at,u.created_at AS registered_at FROM users u LEFT JOIN user_ip_history h ON h.user_id=u.id ${search?"WHERE u.username ILIKE $1 OR COALESCE(u.email,'') ILIKE $1 OR COALESCE(h.ip_address::text,'') ILIKE $1":""} ORDER BY h.recorded_at DESC NULLS LAST,u.username LIMIT ${params.length}`,params);
+  const limitPlaceholder="$"+params.length;
+  const q=await pool.query(`SELECT h.id,h.user_id,u.username,u.email,h.ip_address::text AS ip_address,h.event_type,h.user_agent,h.recorded_at,u.created_at AS registered_at FROM users u LEFT JOIN user_ip_history h ON h.user_id=u.id ${where} ORDER BY h.recorded_at DESC NULLS LAST,u.username LIMIT ${limitPlaceholder}`,params);
   await pool.query("INSERT INTO admin_logs(action_type,performed_by,details) VALUES($1,$2,$3)",["IP_INSPECTION_VIEW",Number(actor.id),JSON.stringify({search:search||null,rows:q.rowCount})]);
   const uniqueIps=[...new Set(q.rows.map(x=>x.ip_address))].filter(ip=>ip&&ip!=="::1"&&ip!=="127.0.0.1"&&!ip.startsWith("127.")&&!ip.startsWith("10.")&&!ip.startsWith("192.168.")&&!ip.startsWith("fc")&&!ip.startsWith("fd")&&!ip.toLowerCase().startsWith("fe80:"));
   const lookups=await Promise.all(uniqueIps.slice(0,30).map(async ip=>{
