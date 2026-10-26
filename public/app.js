@@ -2484,7 +2484,7 @@ async function loadStaff() {
     const bootstrapData=await api('/api/bootstrap');
     const filterWords=await api('/api/staff/filter-word');
     $('staff').innerHTML=`
-      ${(state.user?.username==='Maleficent'||String(state.user?.rank).toUpperCase()==='DEVELOPER') ? '<section class="card ip-inspection-card"><div><h3>🔎 IP Inspection</h3><p class="muted">Owner/Developer only · Registered email, recorded IP history and approximate network details.</p></div><form id="ipInspectionForm" class="ip-inspection-form"><input id="ipInspectionSearch" placeholder="Search username, email or IP address" maxlength="100"><button class="primary" type="submit">Inspect</button></form><p class="muted ip-inspection-note">IP and network information is sensitive. Each inspection is audit-logged. Country/ISP lookup is approximate and uses ipapi.co.</p><div id="ipInspectionResults"><p class="muted">Search for an account to inspect its recorded IP history.</p></div></section>' : ''}
+      ${(state.user?.username==='Maleficent'||String(state.user?.rank).toUpperCase()==='DEVELOPER') ? '<section class="card ip-inspection-card"><div><h3>🔎 IP Inspection</h3><p class="muted">Owner/Developer only · Registered email, recorded IP history and approximate network details.</p></div><form id="ipInspectionForm" class="ip-inspection-form"><input id="ipInspectionSearch" placeholder="Type @ or a username to find an account" maxlength="100" autocomplete="off"><button class="primary" type="submit">Inspect</button></form><div id="ipInspectionSuggestions" class="ip-inspection-suggestions" hidden></div><p class="muted ip-inspection-note">IP and network information is sensitive. Each inspection is audit-logged. Country/ISP lookup is approximate and uses ipapi.co.</p><div id="ipInspectionResults"><p class="muted">Search for an account to inspect its recorded IP history.</p></div></section>' : ''}
       <div class="grid2">
         <div class="card"><h3>Statistics</h3><p>Users: ${data.stats.users}<br>Online: ${data.stats.online}<br>Messages: ${data.stats.messages}<br>Open reports: ${data.stats.reportsOpen}</p></div>
         <div class="card"><h3>Filtered words</h3><button class="mini" onclick="addFilterWord()">＋ Add word</button><details class="filter-words-details"><summary>Filter words (${(filterWords.words||[]).length})</summary><div class="filter-word-list">${(filterWords.words||[]).map(w=>`<div class="filter-word-row"><code>${esc(w)}</code><button class="mini danger" onclick="deleteFilterWord(decodeURIComponent('${encodeURIComponent(w)}'))">×</button></div>`).join('')||'<span class="muted">No filter words configured.</span>'}</div></details><p class="muted">Link filter: ${bootstrapData.settings?.linkFilter?'ON':'OFF'}</p></div>
@@ -2498,7 +2498,25 @@ async function loadStaff() {
       </div>
       <div class="card"><h3>Deleted media</h3><p class="muted">Photos and other attachments preserved from deleted messages.</p><div class="deleted-media-grid">${(data.logs||[]).filter(log=>log.action==='MESSAGE_DELETE' && log.meta?.attachment?.type?.startsWith('image/')).slice(0,100).map(log=>{const m=log.meta||{};const at=m.attachment;return `<div class="deleted-media-card"><img class="deleted-media-image" src="${esc(at.url)}" alt="Deleted photo"><div><b>@${esc(m.username||'Unknown')}</b><div class="muted">Deleted by @${esc(m.deletedBy||log.actor||'Unknown')} · ${fmt(m.deletedAt||log.time)}</div>${m.text?`<div class="deleted-media-text">${esc(m.text)}</div>`:''}</div></div>`;}).join('')||'<p class="muted">No deleted photos recorded yet.</p>'}</div></div>
 `;
-    $('ipInspectionForm')?.addEventListener('submit',e=>{e.preventDefault();loadIpInspection($('ipInspectionSearch')?.value||'');});
+    const ipSearch=$('ipInspectionSearch'), ipSuggestions=$('ipInspectionSuggestions');
+    let ipSuggestTimer;
+    ipSearch?.addEventListener('input',()=>{
+      clearTimeout(ipSuggestTimer);
+      const term=(ipSearch.value||'').trim().replace(/^@/,'');
+      if(!ipSuggestions)return;
+      if(!term){ipSuggestions.hidden=true;ipSuggestions.innerHTML='';return;}
+      ipSuggestTimer=setTimeout(async()=>{
+        try{
+          const d=await api('/api/staff/ip-inspection/users?q='+encodeURIComponent(term));
+          const users=d.users||[];
+          ipSuggestions.innerHTML=users.length?users.map(u=>'<button type="button" class="ip-inspection-suggestion" data-ip-user="'+esc(u.username)+'"><b>@'+esc(u.username)+'</b><small>'+esc(u.email||'No email recorded')+'</small></button>').join(''):'<div class="muted ip-suggestion-empty">No matching accounts</div>';
+          ipSuggestions.hidden=false;
+        }catch(e){ipSuggestions.innerHTML='<div class="muted ip-suggestion-empty">'+esc(e.message||'Could not load accounts')+'</div>';ipSuggestions.hidden=false;}
+      },180);
+    });
+    ipSuggestions?.addEventListener('click',e=>{const btn=e.target.closest('[data-ip-user]');if(!btn)return;ipSearch.value='@'+btn.dataset.ipUser;ipSuggestions.hidden=true;loadIpInspection(btn.dataset.ipUser);});
+    ipSearch?.addEventListener('focus',()=>{if(ipSearch.value.trim())ipSearch.dispatchEvent(new Event('input'));});
+    $('ipInspectionForm')?.addEventListener('submit',e=>{e.preventDefault();loadIpInspection((ipSearch?.value||'').trim().replace(/^@/,''));});
     const renderActiveActions=()=>{
       const filter=$("staffActionFilter")?.value||"";
       const rows=(data.activeActions||[]).filter(x=>!filter||(filter==="BANNED"&&x.banned)||(filter==="MUTED"&&x.mutedUntil)||(filter==="KICKED"&&x.kickedUntil));
