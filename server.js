@@ -209,6 +209,13 @@ function hasFeature(u,key){
   if(String(u.rank).toUpperCase()==="DEVELOPER") return true;
   if(u.username===DEFAULT_OWNER && u.rank==="OWNER") return true;
   const granted=userFeatureGrant(u,key);if(granted!==null)return granted;
+  // Apply Owner Space's Feature Granting thresholds to every feature check,
+  // not just endpoints that happen to use featureAllowed().
+  ensureFeatureGrants();
+  const aliases={moderate_user:"moderate_users",create_room:"create_rooms",send_gift:"gift_sending",manage_filters:"manage_filter_words",publish_news:"news_posting",clear_room:"clear_history_button",wall_post:"friend_wall_posting",gift_share:"gift_sending",report_message:"reports_management"};
+  const grantKey=aliases[key]||key;
+  const rankGrants=db.settings?.feature_grants?.[grantKey];
+  if(Array.isArray(rankGrants)) return rankGrants.map(x=>String(x).toUpperCase()).includes(String(u.rank||"").toUpperCase());
   return hasRank(u,featureRank(key));
 }
 
@@ -2569,15 +2576,23 @@ app.put('/api/owner/user/:id/feature-grants',ownerOnly,async(req,res)=>{
   }catch(e){await client.query("ROLLBACK");console.error("Feature grant save failed:",e);return res.status(500).json({error:"Could not save permissions."});}finally{client.release();}
 });
 app.put('/api/owner/feature-grants',ownerOnly,async(req,res)=>{
-  ensureFeatureGrants(); const incoming=req.body?.grants||{};
-  for(const key of Object.keys(FEATURE_GRANT_DEFAULTS)){
-    let threshold=incoming[key];
+  ensureFeatureGrants();
+  const incoming=req.body?.grants;
+  if(!incoming||typeof incoming!=="object"||Array.isArray(incoming))return res.status(400).json({error:"Provide feature grants."});
+  for(const [key,value] of Object.entries(incoming)){
+    if(!Object.prototype.hasOwnProperty.call(FEATURE_GRANT_DEFAULTS,key))return res.status(400).json({error:"Unknown feature: "+key});
+    let threshold=value;
     if(Array.isArray(threshold)) threshold=threshold.find(x=>GRANT_RANKS.includes(String(x).toUpperCase()))||null;
-    threshold=String(threshold||'').toUpperCase(); const idx=GRANT_RANKS.indexOf(threshold);
-    if(idx>=0) db.settings.feature_grants[key]=GRANT_RANKS.slice(idx); else if(incoming[key]===null) db.settings.feature_grants[key]=[];
+    threshold=String(threshold||"").toUpperCase();
+    const idx=GRANT_RANKS.indexOf(threshold);
+    if(idx>=0) db.settings.feature_grants[key]=GRANT_RANKS.slice(idx);
+    else if(value===null||threshold==="OFF"||threshold==="") db.settings.feature_grants[key]=[];
+    else return res.status(400).json({error:"Invalid rank for feature "+key});
   }
-  await pool.query(`INSERT INTO settings(key,value) VALUES('feature_grants',$1::jsonb) ON CONFLICT(key) DO UPDATE SET value=EXCLUDED.value`,[JSON.stringify(db.settings.feature_grants)]);
-  res.json({ok:true,grants:db.settings.feature_grants});
+  try{
+    await pool.query(`INSERT INTO settings(key,value) VALUES('feature_grants',$1::jsonb) ON CONFLICT(key) DO UPDATE SET value=EXCLUDED.value`,[JSON.stringify(db.settings.feature_grants)]);
+    res.json({ok:true,grants:db.settings.feature_grants});
+  }catch(e){console.error("Feature grant settings save failed:",e);res.status(500).json({error:"Could not save feature grants."});}
 });
 
 app.get('/api/owner/feature-permissions',ownerOnly,(req,res)=>{
