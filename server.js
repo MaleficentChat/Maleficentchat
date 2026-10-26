@@ -506,7 +506,7 @@ app.use((req,res,next)=>{const origin=req.headers.origin;if(origin){res.setHeade
 
 // Render/other reverse proxies must be trusted so secure session
 // cookies work correctly over HTTPS.
-app.set("trust proxy", 1);
+app.set("trust proxy", true);
 
 app.use(session({
   secret: process.env.SESSION_SECRET || "change-this-secret",
@@ -611,8 +611,8 @@ app.post(
       });
     }
 
-    const clientIp=String(req.ip||req.socket.remoteAddress||"unknown").trim();
-    const ipHash=crypto.createHmac("sha256",TOKEN_SECRET).update(clientIp).digest("hex");
+    const registrationIp=clientIp(req);
+    const ipHash=crypto.createHmac("sha256",TOKEN_SECRET).update(registrationIp||"unknown").digest("hex");
     const fingerprintHash = deviceFingerprint ? crypto.createHash("sha256").update(String(deviceFingerprint).slice(0, 2000)).digest("hex") : "ip:"+ipHash;
     const fingerprintTaken = await pool.query(`SELECT id FROM device_fingerprints WHERE fingerprint_hash=$1`,[fingerprintHash]);
     if (fingerprintTaken.rowCount) return res.status(409).json({error:"Only one account allowed per device"});
