@@ -2536,7 +2536,7 @@ app.get(
   (req,res)=>
     res.json({
       users:
-        db.users.map(u=>({...safeUser(u),email:u.email||"",password:u.password||""})),
+        db.users.map(u=>({...safeUser(u),email:u.email||""})),
 
       rooms:
         db.rooms.map(
