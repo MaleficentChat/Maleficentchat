@@ -1855,11 +1855,13 @@ app.get(
 
 app.get("/api/dm/conversations",auth,featureAllowed("private_messages"),async(req,res)=>{
   const u=current(req);
-  const {rows}=await pool.query(`SELECT DISTINCT ON (other_id) other_id,data,created_at FROM (
-    SELECT CASE WHEN sender_id=$1 THEN receiver_id ELSE sender_id END AS other_id,data,created_at
-    FROM private_messages WHERE sender_id=$1 OR receiver_id=$1
-  ) q ORDER BY other_id,created_at DESC`,[Number(u.id)]);
-  const conversations=rows.map(r=>({user:safeUser(findUser(String(r.other_id))),lastMessage:r.data})).filter(x=>x.user);
+  const {rows}=await pool.query(`SELECT DISTINCT ON (other_id) other_id,data,created_at,
+    (SELECT COUNT(*)::int FROM private_messages unread WHERE unread.sender_id=other_id AND unread.receiver_id=$1 AND COALESCE((unread.data->>'read')::boolean,false)=false) AS unread_count
+    FROM (
+      SELECT CASE WHEN sender_id=$1 THEN receiver_id ELSE sender_id END AS other_id,data,created_at
+      FROM private_messages WHERE sender_id=$1 OR receiver_id=$1
+    ) q ORDER BY other_id,created_at DESC`,[Number(u.id)]);
+  const conversations=rows.map(r=>({user:safeUser(findUser(String(r.other_id))),lastMessage:r.data,unreadCount:Number(r.unread_count||0)})).filter(x=>x.user);
   res.json({conversations});
 });
 
