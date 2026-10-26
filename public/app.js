@@ -1574,6 +1574,7 @@ function userCard(user) {
       </button>
       <div class="instagram-user-actions">
         <button class="mini" onclick="openUser('${esc(user.id)}')">View profile</button>
+        ${invisibleToggleMarkup(user,false)}
       </div>
     </article>
   `;
