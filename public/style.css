@@ -1914,3 +1914,14 @@ input,textarea,select{background:rgba(255,255,255,.055);border-color:rgba(255,25
 .report-dropdown-copy small{font-size:11px;color:var(--muted);}
 .report-dropdown-item .toolbar{display:flex;gap:6px;flex-wrap:wrap;}
 .report-dropdown-item .toolbar button{flex:0 0 auto;}
+
+
+/* Owner Space: collapse Site Settings and User controls like Gift Catalog and Filter Words. */
+.owner-settings-dropdown,.owner-user-controls-dropdown{margin-top:10px}
+.owner-settings-dropdown>summary,.owner-user-controls-dropdown>summary{cursor:pointer;list-style:none;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 15px;border:1px solid rgba(192,132,252,.2);border-radius:12px;background:rgba(168,85,247,.07);color:var(--text,#edf2f5);font-weight:700}
+.owner-settings-dropdown>summary::-webkit-details-marker,.owner-user-controls-dropdown>summary::-webkit-details-marker{display:none}
+.owner-settings-dropdown>summary::after,.owner-user-controls-dropdown>summary::after{content:'＋';font-size:18px;color:#c084fc;flex:0 0 auto}
+.owner-settings-dropdown[open]>summary::after,.owner-user-controls-dropdown[open]>summary::after{content:'−'}
+.owner-settings-content,.owner-user-controls-content{padding-top:14px}
+.owner-user-controls-content .user-card{margin-top:8px}
+.owner-settings-card,.owner-user-controls-card{min-width:0}
