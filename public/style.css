@@ -2020,3 +2020,5 @@ input,textarea,select{background:rgba(255,255,255,.055);border-color:rgba(255,25
 @media(max-width:700px){.profile-quick-dropdown{position:fixed;top:66px;right:8px;width:calc(100vw - 16px);max-width:360px}}
 
 .msg .msg-body{background:var(--bubble-color,rgba(28,24,43,.88))}
+
+.msg .msg-body{background:transparent;border:0;box-shadow:none;padding:0}.msg .msg-text{display:table;max-width:100%;padding:7px 10px;border-radius:12px;background:var(--bubble-color,rgba(28,24,43,.88));border:1px solid rgba(164,117,255,.14)}.msg.mine .msg-text{margin-left:auto}.message-rank-icon{display:block;width:max-content;margin:2px 0 4px}
