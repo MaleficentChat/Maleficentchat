@@ -675,7 +675,8 @@ function renderRooms() {
   $('rooms').innerHTML=rooms.map(room=>{
     const locked=room.locked??!!room.passwordHash;
     const count=Number(room.onlineCount||0);
-    const canManage = canFeature("edit_room") || canFeature("delete_room") || room.ownerId===state.user?.id;
+    const isProtectedMainRoom = /^main room [12]$/i.test(String(room.name||"").trim()) || ["main1","main2","main-room-1","main-room-2","main_room_1","main_room_2"].includes(String(room.id||"").toLowerCase());
+    const canManage = !isProtectedMainRoom && (canFeature("edit_room") || canFeature("delete_room") || room.ownerId===state.user?.id);
     return `
       <article class="room room-list-card ${state.currentRoom===room.id?'selected':''}">
         <button class="room-open" onclick="joinRoom('${esc(room.id)}')">
