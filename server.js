@@ -1604,9 +1604,9 @@ app.post(
     const u=current(req);
     const room=db.rooms.find(r=>String(r.id)===String(req.params.id));
     if(!room)return res.status(404).json({error:"Room not found"});
-    if(!hasFeature(u,"clear_room")){
+    if(!commandAllowed(u,"clear")){
       return res.status(403).json({
-        error:`Clear room requires ${featureRank("clear_room")} or higher.`
+        error:`The /clear command requires ${commandSettings().clear.replace(/_/g," ")} or higher.`
       });
     }
 
@@ -2608,6 +2608,31 @@ app.get(
           .reverse()
     })
 );
+
+
+const COMMAND_SETTING_DEFS=[
+  {key:"clear",label:"/clear",description:"Clear all messages from the current room.",defaultRank:"ADMIN"}
+];
+function commandSettings(){
+  const saved=db.settings?.command_ranks||{},allowed=new Set(ranks),settings={};
+  for(const command of COMMAND_SETTING_DEFS){const candidate=String(saved[command.key]||command.defaultRank).toUpperCase();settings[command.key]=allowed.has(candidate)?candidate:command.defaultRank;}
+  return settings;
+}
+function commandAllowed(u,key){
+  if(!u)return false;
+  if(String(u.rank||"").toUpperCase()==="DEVELOPER")return true;
+  const minimum=commandSettings()[key];
+  return !!minimum&&hasRank(u,minimum);
+}
+app.get("/api/owner/command-settings",ownerOnly,(req,res)=>res.json({settings:commandSettings(),commands:COMMAND_SETTING_DEFS}));
+app.patch("/api/owner/command-settings",ownerOnly,async(req,res)=>{
+  const incoming=req.body?.settings;
+  if(!incoming||typeof incoming!=="object"||Array.isArray(incoming))return res.status(400).json({error:"Provide command rank settings."});
+  const allowed=new Set(ranks),definitions=new Set(COMMAND_SETTING_DEFS.map(x=>x.key)),next={...commandSettings()};
+  for(const [key,value] of Object.entries(incoming)){const rank=String(value||"").toUpperCase();if(!definitions.has(key)||!allowed.has(rank))return res.status(400).json({error:"Unknown command or invalid rank."});next[key]=rank;}
+  await pool.query("INSERT INTO settings(key,value) VALUES('command_ranks',$1::jsonb) ON CONFLICT(key) DO UPDATE SET value=EXCLUDED.value",[JSON.stringify(next)]);
+  db.settings.command_ranks=next;save();res.json({ok:true,settings:next});
+});
 
 app.get("/api/owner/log-settings",ownerOnly,(req,res)=>{res.json({settings:adminLogSettings(),definitions:ADMIN_LOG_SETTING_DEFS});});
 app.patch("/api/owner/log-settings",ownerOnly,async(req,res)=>{
