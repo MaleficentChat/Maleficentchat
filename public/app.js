@@ -785,7 +785,7 @@ let onlinePanelTab="online";
 let onlinePanelCache=[];
 
 function isStaffUser(user){
-  return ["MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"].includes(user.rank);
+  return ["MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER","DEVELOPER"].includes(user.rank);
 }
 
 async function renderOnline(tab=onlinePanelTab,searchQuery=""){
