@@ -1886,24 +1886,19 @@ app.post("/api/dm/:id",auth,featureAllowed("private_messages"),upload.single("fi
 app.post(
   "/api/dm/:id/read",
   auth,
-  (req,res)=>{
+  async(req,res)=>{
     const u=current(req);
-
+    const senderId=String(req.params.id);
     db.privateMessages
-      .filter(
-        m=>
-          m.from===req.params.id&&
-          m.to===u.id
-      )
-      .forEach(
-        m=>m.read=true
-      );
-
+      .filter(m=>String(m.from)===senderId&&String(m.to)===String(u.id))
+      .forEach(m=>m.read=true);
+    try {
+      await pool.query(`UPDATE private_messages SET data=jsonb_set(data,'{read}','true'::jsonb,true) WHERE sender_id=$1 AND receiver_id=$2`,[Number(senderId),Number(u.id)]);
+    } catch(err) {
+      console.error("Could not persist private-message read receipts:",err.message);
+    }
     save();
-
-    res.json({
-      ok:true
-    });
+    res.json({ok:true});
   }
 );
 
