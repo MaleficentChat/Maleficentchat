@@ -1987,3 +1987,12 @@ input,textarea,select{background:rgba(255,255,255,.055);border-color:rgba(255,25
   .friend-request-panel-row .toolbar{width:100%}
   .friend-request-panel-row .toolbar button{flex:1}
 }
+
+
+/* Invisible mode: compact devil toggle and staff-only green indicator. */
+.invisible-mode-toggle{flex:0 0 auto;min-width:34px;min-height:30px;padding:5px 9px!important;border:1px solid rgba(192,132,252,.32)!important;border-radius:9px!important;background:rgba(120,76,160,.14)!important;line-height:1.1;white-space:nowrap}
+.invisible-mode-toggle:hover{border-color:#c084fc!important;background:rgba(168,85,247,.22)!important}
+.invisible-staff-dot{display:inline-block;width:7px;height:7px;margin:0 3px 1px 4px;border-radius:50%;background:#39e58c;box-shadow:0 0 7px rgba(57,229,140,.85);vertical-align:middle}
+.online-user .invisible-mode-toggle{align-self:center;margin-left:auto}
+.instagram-user-actions .invisible-mode-toggle{margin-left:4px}
+@media(max-width:600px){.instagram-user-actions .invisible-mode-toggle{flex:1 1 auto}.online-user .invisible-mode-toggle{padding:4px 7px!important}}
