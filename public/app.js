@@ -1135,21 +1135,12 @@ $("composer").onsubmit = async e => {
   if(state.messageExpiry>0) form.append("expiresIn",String(state.messageExpiry));
 
   try {
-    const response =
-      await api(`/api/rooms/${encodeURIComponent(state.currentRoom)}/messages`, {
-        method: "POST",
-        body: form
-      });
-
-    const data =
-      await response.json()
-        .catch(() => ({}));
-
-    if (!response.ok) {
-      throw Error(
-        data.error || "Could not send message."
-      );
-    }
+    // api() already parses JSON and throws for non-2xx responses.
+    // Treat its return value as the response payload (not a Fetch Response).
+    const data = await api(`/api/rooms/${encodeURIComponent(state.currentRoom)}/messages`, {
+      method: "POST",
+      body: form
+    });
 
     $("message").value = "";
     $("file").value = "";
