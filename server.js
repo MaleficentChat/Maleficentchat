@@ -1405,7 +1405,7 @@ app.delete(
 
     save();
 
-    log(u,"MESSAGE_DELETE",m.id,deletedSnapshot);
+    log(u,"MESSAGE_DELETE",m.username||m.id,{...deletedSnapshot,room:db.rooms.find(r=>String(r.id)===String(m.roomId))?.name||m.roomId,reason:"MESSAGE_DELETE"});
 
     io.to(
       "room:"+m.roomId
@@ -1610,11 +1610,23 @@ app.post(
       });
     }
 
+    const removedMessages=db.messages.filter(m=>String(m.roomId)===String(room.id));
     const removed=await pool.query("DELETE FROM room_messages WHERE room_id=$1",[Number(room.id)]);
     db.messages=db.messages.filter(m=>String(m.roomId)!==String(room.id));
     await save();
 
-    log(u,"ROOM_CLEAR",room.id,{removed:Number(removed.rowCount||0)});
+    // Keep an audit snapshot for every message removed by Clear Room, not just the total.
+    const clearedAt=Date.now();
+    for(const message of removedMessages){
+      const snapshot=message.deletedSnapshot||{
+        id:message.id,roomId:message.roomId,room:room.name,userId:message.userId,
+        username:message.username,displayName:message.displayName,rank:message.rank,
+        text:message.text||"",time:message.time,attachment:message.attachment||null,
+        deletedBy:u.username,deletedAt:clearedAt,reason:"ROOM_CLEAR"
+      };
+      log(u,"MESSAGE_DELETE",message.username||message.id,{...snapshot,room:room.name,deletedBy:u.username,deletedAt:clearedAt,reason:"ROOM_CLEAR"});
+    }
+    log(u,"ROOM_CLEAR",room.id,{room:room.name,removed:Number(removed.rowCount||0),deletedBy:u.username});
     io.to("room:"+room.id).emit("room:clear");
     res.json({ok:true,removed:Number(removed.rowCount||0)});
   }
