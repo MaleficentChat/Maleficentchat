@@ -2022,3 +2022,15 @@ input,textarea,select{background:rgba(255,255,255,.055);border-color:rgba(255,25
 .msg .msg-body{background:var(--bubble-color,rgba(28,24,43,.88))}
 
 .msg .msg-body{background:transparent;border:0;box-shadow:none;padding:0}.msg .msg-text{display:table;max-width:100%;padding:7px 10px;border-radius:12px;background:var(--bubble-color,rgba(28,24,43,.88));border:1px solid rgba(164,117,255,.14)}.msg.mine .msg-text{margin-left:auto}.message-rank-icon{display:block;width:max-content;margin:2px 0 4px}
+
+/* Final chat polish: smaller, calmer message bubbles and centered audit modal */
+#modal .modal-card:has(.admin-logs-modal){width:min(1050px,calc(100vw - 32px))!important;max-width:calc(100vw - 32px)!important;padding:18px!important;margin:0 auto!important;left:0!important;right:0!important;transform:none!important;box-sizing:border-box!important}
+#modal .admin-logs-modal{width:100%!important;max-width:100%!important;min-width:0!important;margin:0!important;padding:clamp(12px,2vw,22px)!important;box-sizing:border-box!important;position:static!important;transform:none!important}
+#modal .admin-log-filters{grid-template-columns:minmax(0,2fr) minmax(0,1fr) minmax(0,1fr) auto}
+#modal .admin-log-filters>*{min-width:0}
+#viewRooms.chatting .msg .msg-body{max-width:min(58%,500px)!important;padding:0!important;background:transparent!important;border:0!important;box-shadow:none!important}
+#viewRooms.chatting .msg .msg-text{display:table;max-width:100%;padding:6px 9px!important;border-radius:10px!important;line-height:1.32!important;font-size:var(--chat-size,.96em)!important;overflow-wrap:anywhere}
+#viewRooms.chatting .msg .msg-top{gap:5px!important;margin-bottom:1px}
+#viewRooms.chatting .msg .message-author{font-size:12px!important}
+#viewRooms.chatting .msg .message-rank-icon{font-size:11px!important;margin:1px 0 3px!important}
+@media(max-width:700px){#modal .modal-card:has(.admin-logs-modal){width:calc(100vw - 16px)!important;max-width:calc(100vw - 16px)!important;padding:12px!important}#modal .admin-log-filters{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}#viewRooms.chatting .msg .msg-body{max-width:min(76%,calc(100vw - 92px))!important}#viewRooms.chatting .msg .msg-text{padding:6px 8px!important}}
