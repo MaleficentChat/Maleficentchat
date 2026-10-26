@@ -593,7 +593,7 @@ async function loadWall(){
 if($('newWallPost'))$('newWallPost').onclick=async()=>{
   modal(`<h2>New Wall Post</h2><textarea id="wallPostText" maxlength="5000" placeholder="Write something for your friends…"></textarea><input id="wallPostFile" type="file" accept="image/*,video/*"><div id="wallPreview" class="media-preview"></div><button class="primary" id="wallPostSend">Upload & Publish</button>`);
   $('wallPostFile').onchange=()=>{const f=$('wallPostFile').files?.[0],box=$('wallPreview');if(!f){box.innerHTML='';return}const u=URL.createObjectURL(f);box.innerHTML=f.type.startsWith('video/')?`<video controls src="${u}"></video>`:`<img src="${u}">`;};
-  $('wallPostSend').onclick=async()=>{try{const fd=new FormData();fd.append('content',$('wallPostText').value);const f=$('wallPostFile').files?.[0];if(f)fd.append('file',f);const r=await fetch('/api/wall/post',{method:'POST',body:fd,credentials:'same-origin'});const d=await r.json().catch(()=>({}));if(!r.ok)throw Error(d.error||'Could not publish wall post.');closeModal();loadWall()}catch(e){toast(e.message)}};
+  $('wallPostSend').onclick=async()=>{try{const fd=new FormData();fd.append('content',$('wallPostText').value);const f=$('wallPostFile').files?.[0];if(f)fd.append('file',f);const token=safeStorage.getItem("mc_token"); const headers=token?{"x-auth-token":token}:{}; const r=await fetch('/api/wall/post',{method:'POST',body:fd,headers,credentials:'same-origin'});const d=await r.json().catch(()=>({}));if(!r.ok)throw Error(d.error||'Could not publish wall post.');closeModal();loadWall()}catch(e){toast(e.message)}};
 };
 
 async function loadRankShop(){
@@ -2167,7 +2167,7 @@ function openPublishNews(){
     try{
       const form=new FormData(); form.append('title',title); form.append('body',body);
       const photo=$('nphoto')?.files?.[0]; if(photo) form.append('file',photo);
-      const resp=await fetch('/api/news',{method:'POST',body:form,credentials:'same-origin'}); const result=await resp.json().catch(()=>({}));
+      const token=safeStorage.getItem("mc_token"); const headers=token?{"x-auth-token":token}:{}; const resp=await fetch('/api/news',{method:'POST',body:form,headers,credentials:'same-origin'}); const result=await resp.json().catch(()=>({}));
       if(!resp.ok) throw Error(result.error||'Failed to publish news.');
       closeModal();
       await loadNews();
@@ -3096,11 +3096,12 @@ async function loadNotifications() {
   try {
     const [data,unreadData,dm,staffCounts]=await Promise.all([
       api("/api/notifications"),
-      api("/api/notifications/unread"),
-      api("/api/dm/unread-count"),
+      api("/api/notifications/unread").catch(()=>null),
+      api("/api/dm/unread-count").catch(()=>({count:0})),
       api("/api/staff/unread-count").catch(()=>({reports:0,staffNotifications:0,total:0}))
     ]);
-    const unread=unreadData.notifications||[];
+    // Fall back to the main notification response if the unread-only endpoint is unavailable.
+    const unread=unreadData?.notifications || (data.notifications||[]).filter(n=>!n.read);
     const notificationStaffCount=unread.filter(n=>["report","moderation","staff"].includes(n.type)).length;
     const reportCount=Math.max(Number(staffCounts.reports||0),notificationStaffCount);
     const counts={dm:Number(dm.count||0),report:reportCount,all:unread.length};
