@@ -987,7 +987,7 @@ function messageHTML(message) {
         ${message.type === "gif" && message.gifUrl ? `<a class="chat-gif" href="${esc(message.gifUrl)}" target="_blank" rel="noopener"><img src="${esc(message.gifUrl)}" alt="GIF" loading="lazy"></a>` : ""}
         ${
           message.text && message.type !== "gift" && message.type !== "gif"
-            ? `<div class="msg-text">${formatMentions(message.text)}</div>`
+            ? `<div class="message-rank-icon">${rankIcon[String(message.rank||"MEMBER").toUpperCase()]||"⚡"}</div><div class="msg-text">${formatMentions(message.text)}</div>`
             : ""
         }
 
