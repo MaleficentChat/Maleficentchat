@@ -177,6 +177,7 @@ const FEATURE_GRANT_DEFAULTS={
   chat_file_upload:GRANT_RANKS,
   clear_history_button:GRANT_RANKS,
   view_online_users:GRANT_RANKS,
+  invisible_mode:["OWNER"],
   manage_filter_words:["MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],
   premium_granting:["MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],
   reports_management:["MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],
@@ -571,7 +572,7 @@ app.get(
   "/api/bootstrap",
   (req,res)=>
     res.json({
-      user:safeUser(current(req)),
+      user:(()=>{const u=current(req);return u?{...safeUser(u),invisible:!!u.invisible}:null;})(),
 
       ranks:ranks.map(r=>({
         id:r,
@@ -1005,9 +1006,10 @@ app.get(
       req.query.q||""
     ).toLowerCase();
 
+    const viewer=current(req);
+    const viewerIsStaff=staff(viewer?.rank);
     let arr=db.users
-      .filter(
-        u=>
+      .filter(u=>(!u.invisible||viewerIsStaff||String(u.id)===String(viewer?.id))&&(
           !q||
           u.username
             .toLowerCase()
@@ -1015,7 +1017,7 @@ app.get(
           u.displayName
             .toLowerCase()
             .includes(q)
-      )
+      ))
       .sort(
         (a,b)=>
           (b.online-a.online)||
@@ -1029,10 +1031,19 @@ app.get(
       );
 
     res.json({
-      users:arr.map(safeUser)
+      users:arr.map(u=>({...safeUser(u),...((viewerIsStaff||String(u.id)===String(viewer?.id))?{invisible:!!u.invisible}:{})}))
     });
   }
 );
+
+app.post("/api/me/invisible",auth,featureAllowed("invisible_mode"),(req,res)=>{
+  const u=current(req);
+  u.invisible=!!req.body?.enabled;
+  save();
+  log(u,"INVISIBLE_MODE",u.username,{enabled:u.invisible});
+  io.emit("presence");
+  res.json({ok:true,invisible:u.invisible});
+});
 
 app.post(
   "/api/users/:id/block",
