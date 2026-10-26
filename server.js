@@ -3704,6 +3704,79 @@ app.post('/api/games/quick',auth,(req,res)=>{
   gameStats(); if(result==='win')u.gameStats.wins=(u.gameStats.wins||0)+1;if(result==='loss')u.gameStats.losses=(u.gameStats.losses||0)+1;if(result==='draw')u.gameStats.draws=(u.gameStats.draws||0)+1;
   awardXp(u,result==='win'?10:4); checkAchievements(u); save(); res.json({ok:true,title,message,result});
 });
+// Account-settings endpoints used by the frontend.
+app.get('/api/me/email',auth,(req,res)=>{
+  const u=current(req);
+  res.json({email:u.email||""});
+});
+app.put('/api/me/email',auth,async(req,res)=>{
+  const u=current(req),email=String(req.body.email||"").trim().toLowerCase();
+  if(email && !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email))return res.status(400).json({error:"Enter a valid email address."});
+  try{
+    const q=await pool.query("UPDATE users SET email=$1 WHERE id=$2 RETURNING email",[email||null,Number(u.id)]);
+    if(!q.rowCount)return res.status(404).json({error:"Account not found."});
+    u.email=q.rows[0].email||"";
+    await persistState(db);
+    log(u,"EMAIL_CHANGE",u.username);
+    res.json({ok:true,email:u.email});
+  }catch(e){
+    if(e.code==="23505")return res.status(409).json({error:"That email address is already in use."});
+    console.error("Email update failed:",e);
+    res.status(500).json({error:"Could not update email."});
+  }
+});
+app.post('/api/password/change',auth,async(req,res)=>{
+  const u=current(req),currentPassword=String(req.body.currentPassword||""),newPassword=String(req.body.newPassword||"");
+  if(newPassword.length<8)return res.status(400).json({error:"New password must be at least 8 characters."});
+  const valid=(u.password&&currentPassword===String(u.password))||(u.passwordHash&&await bcrypt.compare(currentPassword,String(u.passwordHash)));
+  if(!valid)return res.status(401).json({error:"Current password is incorrect."});
+  try{
+    const hash=await bcrypt.hash(newPassword,10);
+    await pool.query("UPDATE users SET password=$1 WHERE id=$2",[hash,Number(u.id)]);
+    u.password=hash;u.passwordHash=hash;
+    await persistState(db);
+    log(u,"PASSWORD_CHANGE",u.username);
+    res.json({ok:true});
+  }catch(e){console.error("Password change failed:",e);res.status(500).json({error:"Could not change password."});}
+});
+app.put('/api/notifications/preferences',auth,async(req,res)=>{
+  const u=current(req);
+  const allowed=["messages","mentions","replies","security","staff","gamification","other"];
+  u.settings ||= {};
+  u.settings.notificationPrefs=Object.fromEntries(allowed.map(k=>[k,req.body[k]===true]));
+  try{
+    await pool.query("UPDATE users SET settings=$1::jsonb WHERE id=$2",[JSON.stringify(u.settings),Number(u.id)]);
+    await persistState(db);
+    res.json({ok:true,preferences:u.settings.notificationPrefs});
+  }catch(e){console.error("Notification preferences update failed:",e);res.status(500).json({error:"Could not save notification preferences."});}
+});
+app.get('/api/security/login-history',auth,(req,res)=>{
+  const u=current(req);
+  res.json({history:Array.isArray(u.loginHistory)?u.loginHistory:[]});
+});
+app.get('/api/security/sessions',auth,(req,res)=>{
+  const u=current(req),store=req.sessionStore;
+  if(!store||typeof store.all!=="function")return res.json({sessions:[{id:"current",current:true,createdAt:null}]});
+  store.all((err,sessions)=>{
+    if(err)return res.status(500).json({error:"Could not load sessions."});
+    const rows=Object.entries(sessions||{}).filter(([,v])=>String(v.userId)===String(u.id)).map(([sid,v])=>({
+      id:sid,current:sid===req.sessionID,expiresAt:v.cookie?.expires||null
+    }));
+    res.json({sessions:rows});
+  });
+});
+app.post('/api/security/logout-all',auth,(req,res)=>{
+  const u=current(req),store=req.sessionStore;
+  if(!store||typeof store.all!=="function")return req.session.destroy(()=>res.json({ok:true}));
+  store.all((err,sessions)=>{
+    if(err)return res.status(500).json({error:"Could not close sessions."});
+    const ids=Object.entries(sessions||{}).filter(([,v])=>String(v.userId)===String(u.id)).map(([sid])=>sid);
+    let remaining=ids.length;
+    if(!remaining)return req.session.destroy(()=>res.json({ok:true}));
+    ids.forEach(sid=>store.destroy(sid,()=>{if(--remaining===0)res.json({ok:true});}));
+  });
+});
+
 app.get('/api/me/account',auth,async(req,res)=>{
   const u=current(req);
   const {rows}=await pool.query(`SELECT id,username,rank,gold,avatar,birth_date,gender,bio,email,vip_expires_at,is_premium,created_at FROM users WHERE id=$1`,[Number(u.id)]);
