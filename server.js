@@ -913,13 +913,10 @@ app.patch(
 
       u.usernameHistory??=[];
 
-      u.usernameHistory.push({
-        username:u.username,
-        time:Date.now()
-      });
-
-      u.username=
-        String(req.body.username);
+      const previousUsername=u.username;
+      u.usernameHistory.push({from:previousUsername,to:String(req.body.username),username:previousUsername,time:Date.now()});
+      u.username=String(req.body.username);
+      systemNotice(`@${previousUsername} has changed name to @${u.username}.`);
     }
 
     u.lastSeen=Date.now();
@@ -1278,6 +1275,24 @@ app.get("/api/rooms/:id/messages",auth,async(req,res)=>{
   res.json({messages});
 });
 
+function malReply(user,rawText){
+  const query=String(rawText||"").replace(/^@Mal\\s*/i,"").trim().toLowerCase();
+  if(!query)return "Hey @"+(user.displayName||user.username)+"! Try @Mal time, @Mal help, or ask me a question.";
+  if(/^(time|what time is it|current time|clock)$/.test(query)){
+    return "🕒 Current India time: "+new Intl.DateTimeFormat("en-IN",{timeZone:"Asia/Kolkata",dateStyle:"medium",timeStyle:"medium"}).format(new Date())+".";
+  }
+  if(/^(date|today|what is the date)$/.test(query)){
+    return "📅 Today is "+new Intl.DateTimeFormat("en-IN",{timeZone:"Asia/Kolkata",dateStyle:"full"}).format(new Date())+".";
+  }
+  if(/^(help|commands|guide)$/.test(query)){
+    return "✨ Mal commands: @Mal time · @Mal date · @Mal help. You can also ask me a general question.";
+  }
+  if(/^(hi|hello|hey|hii|heyy)[!. ]*$/.test(query))return "Hey @"+(user.displayName||user.username)+"! ✨ What can I help with?";
+  if(/^(who are you|what are you)$/.test(query))return "I'm Mal, the chat assistant for Maleficent Chat. ✨";
+  if(/^(thanks|thank you|ty)[!. ]*$/.test(query))return "You're welcome! 💜";
+  return "✨ I'm here, @"+(user.displayName||user.username)+". Try @Mal time, @Mal date, or @Mal help.";
+}
+
 app.post("/api/rooms/:id/messages",auth,featureAllowed("send_messages"),upload.single("file"),async(req,res)=>{
   const u=current(req); const r=db.rooms.find(x=>String(x.id)===String(req.params.id));
   if(!r)return res.status(404).json({error:"Room not found"});
@@ -1378,7 +1393,7 @@ app.post("/api/rooms/:id/messages",auth,featureAllowed("send_messages"),upload.s
 
   if(/^@Mal\s+/i.test(text)){const reply=malReply(u,text);if(reply){const bot={id:id(),system:false,isBot:true,userId:"bot-mal",username:"Mal",displayName:"Mal",rank:"BOT",text:reply,roomId:String(r.id),time:Date.now(),reactions:{},pinned:false,deleted:false};await pool.query(`INSERT INTO room_messages(id,room_id,data,created_at) VALUES($1,$2,$3::jsonb,NOW())`,[bot.id,Number(r.id),JSON.stringify(bot)]);db.messages.push(bot);io.to("room:"+r.id).emit("message",bot);}}
   const botMention=text.match(/^@([A-Za-z0-9_]+)\s+([\s\S]*)/);
-  if(botMention && !/^Mal$/i.test(botMention[1])){const bq=await pool.query(`SELECT * FROM bots WHERE LOWER(name)=LOWER($1) AND is_active=true LIMIT 1`,[botMention[1]]);const botRow=bq.rows[0];if(botRow && botRow.auto_reply){const bot={id:id(),system:false,isBot:true,userId:'bot-'+botRow.id,username:botRow.name,displayName:botRow.name,rank:'BOT',text:botRow.auto_reply,roomId:String(r.id),time:Date.now(),reactions:{},pinned:false,deleted:false};await pool.query(`INSERT INTO room_messages(id,room_id,data,created_at) VALUES($1,$2,$3::jsonb,NOW())`,[bot.id,Number(r.id),JSON.stringify(bot)]);db.messages.push(bot);io.to('room:'+r.id).emit('message',bot);}}
+  if(botMention && !/^Mal$/i.test(botMention[1]) && !(/^Aurora$/i.test(botMention[1]) && /^(truth|dare)\\b/i.test(String(botMention[2]||"").trim()))){const bq=await pool.query(`SELECT * FROM bots WHERE LOWER(name)=LOWER($1) AND is_active=true LIMIT 1`,[botMention[1]]);const botRow=bq.rows[0];if(botRow && botRow.auto_reply){const bot={id:id(),system:false,isBot:true,userId:'bot-'+botRow.id,username:botRow.name,displayName:botRow.name,rank:'BOT',text:botRow.auto_reply,roomId:String(r.id),time:Date.now(),reactions:{},pinned:false,deleted:false};await pool.query(`INSERT INTO room_messages(id,room_id,data,created_at) VALUES($1,$2,$3::jsonb,NOW())`,[bot.id,Number(r.id),JSON.stringify(bot)]);db.messages.push(bot);io.to('room:'+r.id).emit('message',bot);}}
   addActivity("message",`${u.username} sent a message in ${r.name||"a room"}`,u.id,{roomId:r.id});
   res.json({message:m,autoMuted});
 });
@@ -2365,6 +2380,19 @@ app.get("/api/staff/ip-inspection",auth,ownerOnly,async(req,res)=>{
   }
 });
 
+app.delete("/api/staff/deleted-media",auth,async(req,res)=>{
+  const actor=current(req);
+  if(!actor||!hasRank(actor,"MOD"))return res.status(403).json({error:"Staff only"});
+  const isImageLog=log=>log.action==="MESSAGE_DELETE"&&String(log.meta?.attachment?.type||"").startsWith("image/");
+  const before=db.logs.length;
+  db.logs=db.logs.filter(log=>!isImageLog(log));
+  const removed=before-db.logs.length;
+  try{
+    await pool.query("DELETE FROM admin_logs WHERE action_type='MESSAGE_DELETE' AND details->'meta'->'attachment'->>'type' LIKE 'image/%'");
+  }catch(e){console.error("Deleted media audit cleanup failed:",e.message);}
+  save();log(actor,"DELETED_MEDIA_CLEAR","Staff dashboard",{removed});
+  res.json({ok:true,removed});
+});
 app.get("/api/staff/dashboard",auth,featureAllowed("view_staff_dashboard"),async(req,res)=>{
   const u=current(req);
   if(!hasRank(u,"MOD"))return res.status(403).json({error:"Staff only"});
@@ -2765,7 +2793,7 @@ app.post('/api/settings/save',ownerOnly,async(req,res)=>{
 });
 
 function normalizeFeatureRanks(v,fallback){if(!Array.isArray(v))return [...fallback];const aliases={USER:'MEMBER',STAFF:'MOD',TRUSTED:'PREMIUM'};const allowed=new Set([...GRANT_RANKS,'DEVELOPER']);return [...new Set(v.map(x=>aliases[String(x||'').toUpperCase()]||String(x||'').toUpperCase()).filter(x=>allowed.has(x)))];}
-function featureGrantAllowed(u,key){if(!u)return false;if(String(u.rank).toUpperCase()==="DEVELOPER")return true;if(u.username===DEFAULT_OWNER)return true;const granted=userFeatureGrant(u,key);if(granted!==null)return granted;ensureFeatureGrants();const aliases={gift_sending:'gift_share',gift_share:'gift_share',wall_post:'wall_post'};const alias=aliases[key]||key;const configured=db.settings?.feature_grants?.[alias];if(Array.isArray(configured))return configured.map(x=>String(x).toUpperCase()).includes(String(u.rank||'').toUpperCase());return (db.settings?.feature_grants?.[key]||[]).map(x=>String(x).toUpperCase()).includes(String(u.rank||'').toUpperCase());}
+function featureGrantAllowed(u,key){if(!u)return false;if(String(u.rank).toUpperCase()==="DEVELOPER")return true;if(u.username===DEFAULT_OWNER)return true;const granted=userFeatureGrant(u,key);if(granted!==null)return granted;ensureFeatureGrants();const aliases={gift_sending:'gift_sending',gift_share:'gift_sending',wall_post:'wall_post'};const alias=aliases[key]||key;const configured=db.settings?.feature_grants?.[alias];if(Array.isArray(configured))return configured.map(x=>String(x).toUpperCase()).includes(String(u.rank||'').toUpperCase());return (db.settings?.feature_grants?.[key]||[]).map(x=>String(x).toUpperCase()).includes(String(u.rank||'').toUpperCase());}
 app.get('/api/owner/feature-grants',ownerOnly,(req,res)=>{ensureFeatureGrants();res.json({ranks:GRANT_RANKS,features:FEATURE_GRANT_DEFAULTS,grants:db.settings.feature_grants});});
 app.get('/api/owner/user/:id/feature-grants',ownerOnly,async(req,res)=>{
   const target=findUser(req.params.id);if(!target)return res.status(404).json({error:"User not found."});
@@ -2890,7 +2918,9 @@ app.patch('/api/staff/user/:id/account',auth,(req,res)=>{
     if(!/^[A-Za-z0-9_]{3,24}$/.test(nu)) return res.status(400).json({error:'Invalid username.'});
     if(db.users.some(x=>x.id!==target.id && x.username.toLowerCase()===nu.toLowerCase())) return res.status(409).json({error:'Username already exists.'});
     if(String(target.rank).toUpperCase()==='DEVELOPER' || target.username==='Maleficent') return res.status(403).json({error:'Developer account is protected.'});
-    target.usernameHistory ||= []; target.usernameHistory.push({from:target.username,to:nu,time:Date.now(),changedBy:actor.username}); target.username=nu;
+    const previousUsername=target.username;
+    target.usernameHistory ||= []; target.usernameHistory.push({from:previousUsername,to:nu,time:Date.now(),changedBy:actor.username}); target.username=nu;
+    systemNotice(`@${previousUsername} has changed name to @${nu}.`);
   }
   if(req.body.email!==undefined){if(!featureGrantAllowed(actor,'edit_email'))return res.status(403).json({error:'Email edit permission has not been granted.'});target.email=String(req.body.email||'').trim().slice(0,160);pool.query('UPDATE users SET email=$1 WHERE id=$2',[target.email,Number(target.id)]).catch(e=>console.error('Staff email update failed',e));}
   save();
