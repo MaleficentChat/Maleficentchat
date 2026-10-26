@@ -608,7 +608,7 @@ async function openChatGift(){
     document.querySelectorAll('[data-chat-gift]').forEach(b=>b.onclick=async()=>{try{const r=await api('/api/gift/send',{method:'POST',body:JSON.stringify({recipientId:$('giftRecipient').value,gift:b.dataset.chatGift})});state.user.gold=r.remainingGold;closeModal();toast(`🎁 ${r.gift.name} sent!`)}catch(e){toast(e.message)}});
   }catch(e){toast(e.message)}
 }
-if($('chatGiftBtn')){$('chatGiftBtn').textContent=' GIF';$('chatGiftBtn').title='Search and send a GIF';$('chatGiftBtn').onclick=openGifPicker;}
+if($('chatGiftBtn')){$('chatGiftBtn').textContent='🎁 Gift';$('chatGiftBtn').title='Send a virtual gift to another member';$('chatGiftBtn').onclick=openChatGift;}
 
 async function claimDailyReward(){try{const r=await api('/api/daily/claim',{method:'POST'});state.user.gold=r.gold;state.user.xp=r.xp;updateNav();const b=document.querySelector('[data-daily-reward]');if(b){b.disabled=true;b.querySelector('small').textContent='Already claimed today';}toast(`🎁 Daily reward: +${r.amount} gold, +${r.xpAmount} XP · Streak ${r.streak}`);return r;}catch(e){toast(e.message)}}
 
@@ -2665,8 +2665,18 @@ async function loadStaff() {
           return `<div class="report-card"><div class="report-main"><div><b>${esc(report.category||(report.conversationUserId?"Private message report":report.messageId?"Message report":"Profile report"))}</b> · ${esc(report.status)}</div><div><b>Reported by:</b> @${esc(report.reporterUsername||findUserName(report.reporter)||'Unknown')}</div><div class="report-target"><b>Report made on:</b> @${esc(report.reportedUserUsername||snap.username||'Unknown')} ${esc(report.reportedUserRank||snap.rank||'')}</div>${report.conversationUserId?`<div class="report-message"><b>Private conversation:</b> @${esc(report.conversationUsername||findUserName(report.conversationUserId)||"Conversation participant")}<p class="muted">Open the evidence viewer to inspect the reported conversation.</p></div>`:""}<div class="report-message"><b>Reported content:</b><br>${snap.text?`<div>${esc(snap.text)}</div>`:''}${snap.attachment?.type?.startsWith('image/')?`<img class="reported-image" src="${esc(snap.attachment.url)}" alt="Reported photo">`:snap.attachment?`<a href="${esc(snap.attachment.url)}" target="_blank" rel="noopener">Open reported attachment</a>`:''}</div><div class="muted">Time: ${fmt(report.time)}</div><div class="muted">Reason: ${esc(report.reason||'No reason supplied')}</div></div><div class="toolbar">${report.conversationUserId?`<button class="mini primary" onclick="viewPrivateMessageReport('${esc(report.id)}')">🔒 View private messages</button>`:''}${report.reportedUserId?`<button class="mini" onclick="moderate('${esc(report.reportedUserId)}')">⚙ Moderate user</button>`:''}${report.messageId?`<button class="mini danger" onclick="deleteReportedMessage('${esc(report.messageId)}')">🗑 Delete message</button>`:''}${report.status!=='RESOLVED'?`<button class="mini" onclick="resolveReport('${esc(report.id)}')">Resolve</button>`:''}</div></div>`;
         }).join('')||'<p class="muted">No reports.</p>'}
       </div>
-      <div class="card"><h3>Deleted media</h3><p class="muted">Photos and other attachments preserved from deleted messages.</p><div class="deleted-media-grid">${(data.logs||[]).filter(log=>log.action==='MESSAGE_DELETE' && log.meta?.attachment?.type?.startsWith('image/')).slice(0,100).map(log=>{const m=log.meta||{};const at=m.attachment;return `<div class="deleted-media-card"><img class="deleted-media-image" src="${esc(at.url)}" alt="Deleted photo"><div><b>@${esc(m.username||'Unknown')}</b><div class="muted">Deleted by @${esc(m.deletedBy||log.actor||'Unknown')} · ${fmt(m.deletedAt||log.time)}</div>${m.text?`<div class="deleted-media-text">${esc(m.text)}</div>`:''}</div></div>`;}).join('')||'<p class="muted">No deleted photos recorded yet.</p>'}</div></div>
+      <div class="card"><div class="toolbar deleted-media-heading"><div><h3>Deleted media</h3><p class="muted">Photos and other attachments preserved from deleted messages.</p></div><button class="mini danger" id="clearDeletedMediaBtn" type="button">Clear deleted media</button></div><div class="deleted-media-grid">${(data.logs||[]).filter(log=>log.action==='MESSAGE_DELETE' && log.meta?.attachment?.type?.startsWith('image/')).slice(0,100).map(log=>{const m=log.meta||{};const at=m.attachment;return `<div class="deleted-media-card"><img class="deleted-media-image" src="${esc(at.url)}" alt="Deleted photo"><div><b>@${esc(m.username||'Unknown')}</b><div class="muted">Deleted by @${esc(m.deletedBy||log.actor||'Unknown')} · ${fmt(m.deletedAt||log.time)}</div>${m.text?`<div class="deleted-media-text">${esc(m.text)}</div>`:''}</div></div>`;}).join('')||'<p class="muted">No deleted photos recorded yet.</p>'}</div></div>
 `;
+    $('clearDeletedMediaBtn')?.addEventListener('click',async()=>{
+      if(!confirm('Clear all deleted photo/media records from the staff dashboard? This removes the archived entries, not the original uploaded files.'))return;
+      const btn=$('clearDeletedMediaBtn');if(btn)btn.disabled=true;
+      try{
+        const result=await api('/api/staff/deleted-media',{method:'DELETE'});
+        const grid=document.querySelector('.deleted-media-grid');
+        if(grid)grid.innerHTML='<p class="muted">No deleted photos recorded yet.</p>';
+        toast('Deleted media records cleared ('+Number(result.removed||0)+').');
+      }catch(e){toast(e.message||'Could not clear deleted media.');if(btn)btn.disabled=false;}
+    });
     const ipSearch=$('ipInspectionSearch'), ipSuggestions=$('ipInspectionSuggestions');
     let ipSuggestTimer;
     ipSearch?.addEventListener('input',()=>{
@@ -3290,11 +3300,12 @@ async function toggleReportDropdown(refresh=false){
       const snap=r.messageSnapshot||{};
       const who=r.reportedUserUsername||snap.username||"Unknown";
       const category=r.category||(r.conversationUserId?"Private message":r.messageId?"Message":"Profile");
-      return `<div class="report-dropdown-item"><div class="report-dropdown-copy"><b>${esc(category)} · @${esc(who)}</b><span>${esc(r.reason||snap.text||"No reason supplied")}</span><small>${fmt(r.time)}</small></div><div class="toolbar">${r.reportedUserId?`<button class="mini" data-report-moderate="${esc(r.reportedUserId)}">Moderate</button>`:""}<button class="mini primary" data-report-resolve="${esc(r.id)}">Resolve</button></div></div>`;
+      return `<div class="report-dropdown-item"><div class="report-dropdown-copy"><b>${esc(category)} · @${esc(who)}</b><span>${esc(snap.text||r.messagePreview||r.reason||"No report text supplied")}</span>${r.conversationUserId?`<small class="report-evidence-hint">🔒 Private-message evidence available</small>`:""}<small>${fmt(r.time)}</small></div><div class="toolbar">${r.conversationUserId?`<button class="mini" data-report-evidence="${esc(r.id)}">View messages</button>`:""}${r.reportedUserId?`<button class="mini" data-report-moderate="${esc(r.reportedUserId)}">Moderate</button>`:""}<button class="mini primary" data-report-resolve="${esc(r.id)}">Resolve</button></div></div>`;
     }).join("")||'<p class="muted notification-empty">No open reports. ✨</p>'}`;
     box.classList.remove("hidden");
     $("openFullReports")?.addEventListener("click",async()=>{box.classList.add("hidden");state.view="staff";document.querySelectorAll(".nav[data-view]").forEach(x=>x.classList.toggle("active",x.dataset.view==="staff"));await renderView();});
     box.querySelectorAll("[data-report-moderate]").forEach(b=>b.onclick=()=>{box.classList.add("hidden");moderate(b.dataset.reportModerate);});
+    box.querySelectorAll("[data-report-evidence]").forEach(b=>b.onclick=()=>{box.classList.add("hidden");viewPrivateMessageReport(b.dataset.reportEvidence);});
     box.querySelectorAll("[data-report-resolve]").forEach(b=>b.onclick=async()=>{await resolveReport(b.dataset.reportResolve);});
   }catch(e){box.innerHTML=`<div class="notification-dropdown-head"><b>⚑ Reports</b></div><p class="muted">${esc(e.message||"Reports are available to authorized staff only.")}</p>`;box.classList.remove("hidden");}
 }
@@ -3369,7 +3380,6 @@ $("notifications").onclick=async()=>{
 async function showPinnedMessages(){
   try{ const data=await api(`/api/rooms/${encodeURIComponent(state.currentRoom)}/pinned`); const pinned=data.messages||[]; modal(`<h2>📌 Pinned messages</h2><p class="muted">Pinned messages in ${esc(state.rooms.find(r=>r.id===state.currentRoom)?.name||'this room')}.</p><div class="pinned-list">${pinned.map(m=>`<button class="pinned-result" onclick="closeModal();jumpToMessage('${esc(m.id)}')"><b>${esc(m.displayName||m.username)}</b><small>${fmt(m.time)}</small><span>${esc(m.text||'📎 Attachment')}</span></button>`).join('')||'<p class="muted">No pinned messages in this room.</p>'}</div>`); }catch(e){toast(e.message)}
 }
-function showAuroraHelp(){modal(`<h2>✨ Aurora</h2><p>Tag <b>@Aurora</b> and send <b>truth</b> or <b>dare</b> in any room. Aurora automatically replies with a randomized prompt.</p>`);}
 async function openYoutubePanel(){
   modal(`<div class="youtube-panel"><h2>▶️ YouTube</h2><div class="toolbar"><input id="ytQuery" placeholder="Search YouTube…"><button class="primary" id="ytSearch">Search</button></div><div id="ytResults" class="youtube-results"><p class="muted">Search for a video to share it in this room.</p></div></div>`);
   $('ytSearch').onclick=async()=>{const q=$('ytQuery').value.trim();if(!q)return;const r=await api('/api/youtube/search?q='+encodeURIComponent(q)).catch(e=>({error:e.message}));if(r.error){toast(r.error);return;} $('ytResults').innerHTML=(r.results||[]).map(v=>`<button class="youtube-result" onclick="sendYoutube('${esc(v.id)}','${esc(v.title)}')"><img src="${esc(v.thumbnail)}"><span><b>${esc(v.title)}</b><small>${esc(v.channel||'YouTube')}</small></span></button>`).join('')||'<p class="muted">No results.</p>';};
@@ -3408,7 +3418,6 @@ $("roomMenu").onclick = () => {
 
       <button class="mini" onclick="postRoomAnnouncement()">📢 Room announcement</button>
       <button class="mini" onclick="showPinnedMessages()">📌 Pinned messages</button>
-      <button class="mini" onclick="showAuroraHelp()">✨ Aurora Truth / Dare</button>
       <button class="mini" onclick="openYoutubePanel()">▶️ YouTube</button>
       <button class="mini" onclick="showInvite()">Invite link</button>
 
