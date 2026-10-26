@@ -1,5 +1,24 @@
 const $ = id => document.getElementById(id);
 
+// Some embedded login browsers deny access to the localStorage property itself.
+// Keep an in-memory fallback so storage restrictions never prevent login requests.
+const memoryStorage = new Map();
+const safeStorage = {
+  getItem(key) {
+    try { const value = window.safeStorage.getItem(key); if (value !== null) return value; } catch {}
+    return memoryStorage.has(key) ? memoryStorage.get(key) : null;
+  },
+  setItem(key, value) {
+    const text = String(value);
+    memoryStorage.set(key, text);
+    try { window.safeStorage.setItem(key, text); } catch {}
+  },
+  removeItem(key) {
+    memoryStorage.delete(key);
+    try { window.safeStorage.removeItem(key); } catch {}
+  }
+};
+
 let state = {
   user: null,
   rooms: [],
@@ -73,10 +92,10 @@ async function api(url, opt = {}) {
     headers["Content-Type"] = "application/json";
   }
 
-  const token=localStorage.getItem("mc_token");
+  const token=safeStorage.getItem("mc_token");
   if(token) headers["x-auth-token"]=token;
   const roomMatch=String(url).match(/\/api\/rooms\/(\d+)\/(?:messages|pinned)/);
-  if(roomMatch){try{const roomAccess=JSON.parse(localStorage.getItem('mc_room_join')||'null');if(roomAccess?.roomId===roomMatch[1])headers['x-room-join-token']=roomAccess.joinToken;}catch{}}
+  if(roomMatch){try{const roomAccess=JSON.parse(safeStorage.getItem('mc_room_join')||'null');if(roomAccess?.roomId===roomMatch[1])headers['x-room-join-token']=roomAccess.joinToken;}catch{}}
   const res = await fetch(url, {
     ...opt,
     headers,
@@ -204,7 +223,7 @@ $("authForm").onsubmit = async e => {
       }
     );
 
-    if (result.token) localStorage.setItem("mc_token", result.token);
+    if (result.token) safeStorage.setItem("mc_token", result.token);
     state.user = result.user;
     const boot = await api("/api/bootstrap");
     state.featurePermissions = boot.featurePermissions || {};
@@ -223,7 +242,7 @@ $("logout").onclick = async () => {
       method: "POST"
     });
   } finally {
-    localStorage.removeItem("mc_token");
+    safeStorage.removeItem("mc_token");
     location.reload();
   }
 };
@@ -266,11 +285,11 @@ async function start() {
   state.socket.on("connect", () => {
     loadNotifications();
     if (state.user) {
-      state.socket.emit("auth", {token:localStorage.getItem("mc_token")||""});
+      state.socket.emit("auth", {token:safeStorage.getItem("mc_token")||""});
     }
 
     if (state.currentRoom) {
-      try{const access=JSON.parse(localStorage.getItem('mc_room_join')||'null');if(access?.roomId===String(state.currentRoom))state.socket.emit("join-room",access);}catch{}
+      try{const access=JSON.parse(safeStorage.getItem('mc_room_join')||'null');if(access?.roomId===String(state.currentRoom))state.socket.emit("join-room",access);}catch{}
     }
   });
   state.socket.on("room-error",d=>toast(d?.error||"Could not join room."));
@@ -617,10 +636,10 @@ async function loadRooms() {
 }
 
 function joinedRoomIds(){
-  try{return new Set(JSON.parse(localStorage.getItem('mc_my_rooms_'+(state.user?.id||'guest'))||'[]').map(String));}catch{return new Set();}
+  try{return new Set(JSON.parse(safeStorage.getItem('mc_my_rooms_'+(state.user?.id||'guest'))||'[]').map(String));}catch{return new Set();}
 }
 function rememberMyRoom(id){
-  const ids=joinedRoomIds();ids.add(String(id));localStorage.setItem('mc_my_rooms_'+(state.user?.id||'guest'),JSON.stringify([...ids]));
+  const ids=joinedRoomIds();ids.add(String(id));safeStorage.setItem('mc_my_rooms_'+(state.user?.id||'guest'),JSON.stringify([...ids]));
 }
 function setRoomListMode(mode){
   state.roomListMode=mode==='mine'?'mine':'all';
@@ -722,7 +741,7 @@ async function joinRoom(id) {
     state.currentRoom = id;
     rememberMyRoom(id);
 
-    localStorage.setItem('mc_room_join',JSON.stringify({roomId:String(id),joinToken:access.joinToken}));
+    safeStorage.setItem('mc_room_join',JSON.stringify({roomId:String(id),joinToken:access.joinToken}));
     if (state.socket) state.socket.emit("join-room", {roomId:String(id),joinToken:access.joinToken});
 
     $("chatWrap").classList.remove("hidden");
@@ -1246,9 +1265,9 @@ async function toggleVoiceRecording(){
       if(blob.size<1) return;
       try{
         const fd=new FormData(); fd.append("text",""); fd.append("file",blob,"voice-message.webm");
-        const roomAccess=JSON.parse(localStorage.getItem('mc_room_join')||'null');
+        const roomAccess=JSON.parse(safeStorage.getItem('mc_room_join')||'null');
         const headers={};
-        const token=localStorage.getItem("mc_token");if(token)headers["x-auth-token"]=token;
+        const token=safeStorage.getItem("mc_token");if(token)headers["x-auth-token"]=token;
         if(roomAccess?.roomId===String(state.currentRoom))headers["x-room-join-token"]=roomAccess.joinToken;
         const r=await fetch(`/api/rooms/${encodeURIComponent(state.currentRoom)}/messages`,{method:"POST",body:fd,headers,credentials:"same-origin"});
         const d=await r.json().catch(()=>({})); if(!r.ok) throw Error(d.error||"Could not send voice message.");
