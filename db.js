@@ -34,6 +34,9 @@ async function initDB() {
 
     CREATE TABLE IF NOT EXISTS settings(key TEXT PRIMARY KEY, value JSONB);
     CREATE TABLE IF NOT EXISTS device_fingerprints(id SERIAL PRIMARY KEY,fingerprint_hash VARCHAR(255) UNIQUE,ip_hash VARCHAR(255),user_id INT REFERENCES users(id) ON DELETE CASCADE,created_at TIMESTAMP DEFAULT NOW());
+    CREATE TABLE IF NOT EXISTS user_ip_history(id BIGSERIAL PRIMARY KEY,user_id INT REFERENCES users(id) ON DELETE CASCADE,ip_address INET NOT NULL,event_type TEXT NOT NULL DEFAULT 'login',user_agent TEXT,recorded_at TIMESTAMPTZ NOT NULL DEFAULT NOW());
+    CREATE INDEX IF NOT EXISTS user_ip_history_user_time_idx ON user_ip_history(user_id,recorded_at DESC);
+    CREATE INDEX IF NOT EXISTS user_ip_history_ip_idx ON user_ip_history(ip_address);
     ALTER TABLE device_fingerprints ADD COLUMN IF NOT EXISTS ip_hash VARCHAR(255);
     CREATE TABLE IF NOT EXISTS private_nicknames(id SERIAL PRIMARY KEY,owner_id INT REFERENCES users(id) ON DELETE CASCADE,target_user_id INT REFERENCES users(id) ON DELETE CASCADE,nickname VARCHAR(50) NOT NULL,UNIQUE(owner_id,target_user_id));
     CREATE TABLE IF NOT EXISTS admin_logs(id SERIAL PRIMARY KEY,action_type VARCHAR(100),performed_by INT REFERENCES users(id) ON DELETE SET NULL,target_user_id INT REFERENCES users(id) ON DELETE SET NULL,details TEXT,created_at TIMESTAMP DEFAULT NOW());
