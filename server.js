@@ -289,7 +289,36 @@ function safeUser(u){
   };
 }
 
+const ADMIN_LOG_SETTING_DEFS = [
+  {key:"staff_moderation",label:"Staff moderation & rank changes",description:"Mutes, kicks, warnings, bans, rank edits, staff notes and permission grants."},
+  {key:"reports",label:"Reports & report handling",description:"New reports, report reviews and moderation decisions linked to reports."},
+  {key:"economy",label:"Gold, gifts & memberships",description:"Gold transfers, gifts, VIP/Premium grants and rewards."},
+  {key:"account_security",label:"Account & security events",description:"Registrations, profile/account edits, password/email changes and login/security events."},
+  {key:"room_changes",label:"Room changes",description:"Room creation, edits, deletion and configuration changes."},
+  {key:"site_settings",label:"Site settings & feature permissions",description:"Site configuration changes, feature grants and permission updates."},
+  {key:"content_deletions",label:"Deleted content & history clearing",description:"Deleted messages, cleared history and content removals."},
+  {key:"private_message_inspection",label:"Private-message inspections",description:"Owner/staff searches of private-message records, not message contents."},
+  {key:"ip_inspection",label:"IP history inspections",description:"Views and searches of account IP history and network lookup details."},
+  {key:"other_staff_actions",label:"Other staff actions",description:"Successful staff API actions that do not match another category."}
+];
+function adminLogSettings(){const configured=db.settings?.admin_log_settings||{};return Object.fromEntries(ADMIN_LOG_SETTING_DEFS.map(x=>[x.key,typeof configured[x.key]==="boolean"?configured[x.key]:true]));}
+function adminLogCategory(action){
+ const a=String(action||"").toUpperCase();
+ if(/IP_INSPECTION|IP_HISTORY/.test(a))return "ip_inspection";
+ if(/PRIVATE_SEARCH|PRIVATE_MESSAGE_INSPECTION|DM_INSPECTION|INSPECT_DM/.test(a))return "private_message_inspection";
+ if(/REPORT/.test(a))return "reports";
+ if(/DELETE|CLEAR_HISTORY|CLEAR_MESSAGES/.test(a))return "content_deletions";
+ if(/GOLD|GIFT|PREMIUM|VIP|MEMBERSHIP|ECONOMY|REWARD/.test(a))return "economy";
+ if(/ROOM/.test(a))return "room_changes";
+ if(/SETTING|CONFIG|FEATURE|PERMISSION/.test(a))return "site_settings";
+ if(/LOGIN|LOGOUT|REGISTER|PASSWORD|EMAIL|ACCOUNT|PROFILE|USERNAME/.test(a))return "account_security";
+ if(/MUTE|KICK|WARN|BAN|MODERAT|ROLE|RANK|STAFF|OWNER|ADMIN|NOTE|USER_ACTION/.test(a))return "staff_moderation";
+ return "other_staff_actions";
+}
+function adminLogEnabled(action){return adminLogSettings()[adminLogCategory(action)]!==false;}
+
 function log(actor,action,target="",meta={}){
+  if(!adminLogEnabled(action)) return;
   db.logs.push({
     id:id(),
     time:Date.now(),
@@ -2567,6 +2596,17 @@ app.get(
           .reverse()
     })
 );
+
+app.get("/api/owner/log-settings",ownerOnly,(req,res)=>{res.json({settings:adminLogSettings(),definitions:ADMIN_LOG_SETTING_DEFS});});
+app.patch("/api/owner/log-settings",ownerOnly,async(req,res)=>{
+ const incoming=req.body?.settings;
+ if(!incoming||typeof incoming!=="object"||Array.isArray(incoming))return res.status(400).json({error:"Provide log settings."});
+ const allowed=new Set(ADMIN_LOG_SETTING_DEFS.map(x=>x.key));
+ for(const [key,value] of Object.entries(incoming)){if(!allowed.has(key)||typeof value!=="boolean")return res.status(400).json({error:"Unknown log setting or invalid toggle."});}
+ const settings={...adminLogSettings(),...incoming};
+ await pool.query("INSERT INTO settings(key,value) VALUES('admin_log_settings',$1::jsonb) ON CONFLICT(key) DO UPDATE SET value=EXCLUDED.value",[JSON.stringify(settings)]);
+ db.settings.admin_log_settings=settings;save();res.json({ok:true,settings});
+});
 
 app.patch("/api/owner/settings",ownerOnly,async(req,res)=>{
   if(req.body.goldPerMessage!==undefined){db.settings.gold_per_message=Math.max(0,Number(req.body.goldPerMessage)||0);db.settings.goldPerMessage=db.settings.gold_per_message;}
