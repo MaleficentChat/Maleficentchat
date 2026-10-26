@@ -819,7 +819,7 @@ async function renderOnline(tab=onlinePanelTab,searchQuery=""){
         ${avatar(user)}
         <div class="online-user-copy">
           <b>${esc(user.displayName)}</b>
-          <small>@${esc(user.username)} · ${user.online?"Online":"Offline"}</small>
+          <small>@${esc(user.username)} ${invisibleDot(user)} · ${user.online?"Online":"Offline"}</small>
           ${rank(user.rank)}
         </div>
         <span class="status ${user.online?'on':''}"></span>
