@@ -2960,6 +2960,21 @@ app.get("/api/dm/unread-count",auth,(req,res)=>{
   res.json({count});
 });
 
+app.post('/api/reports',auth,async(req,res)=>{
+  const reporter=current(req),targetId=String(req.body.target||req.body.targetId||"").trim();
+  const target=findUser(targetId),reason=cleanText(req.body.reason||"").trim().slice(0,500);
+  if(!target)return res.status(404).json({error:"Reported user not found."});
+  if(String(target.id)===String(reporter.id))return res.status(400).json({error:"You cannot report your own account."});
+  if(!reason)return res.status(400).json({error:"Please provide a reason for this report."});
+  const reportId=id(),data={id:reportId,reporter:reporter.id,reportedUserId:target.id,reason,status:"OPEN",time:Date.now(),kind:"profile"};
+  try{
+    await pool.query('INSERT INTO reports(id,reporter_id,reported_id,conversation_user_id,reason,data,created_at) VALUES($1,$2,$3,NULL,$4,$5::jsonb,NOW())',[reportId,Number(reporter.id),Number(target.id),reason,JSON.stringify(data)]);
+    db.reports ||= [];db.reports.push(data);
+    notifyStaff("report","New profile report",`@${reporter.username} reported @${target.username}.`);
+    res.json({ok:true,report:data});
+  }catch(e){console.error("Profile report failed:",e);res.status(500).json({error:"Could not submit this report."});}
+});
+
 app.post("/api/report",auth,async(req,res)=>{
   const reporter=current(req), reported=findUser(req.body.reportedUserId), convo=findUser(req.body.conversationWithId);
   if(!reported||!convo)return res.status(400).json({error:"Reported user and conversation user are required."});
