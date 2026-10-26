@@ -1804,11 +1804,15 @@ async function openDM(id) {
     const nickData=(await api('/api/private-nicknames').catch(()=>({nicknames:{}}))).nicknames||{};
     const privateNickname=nickData[String(user.id)]||'';
     modal(`
-      <div class="toolbar" style="justify-content:space-between"><h2>Private chat with ${esc(privateNickname||user.displayName)} <small>@${esc(user.username)}</small></h2><div><button type="button" class="mini" id="editPrivateNicknameBtn">✏️</button><button type="button" class="mini danger" id="reportDmBtn">🚩 Report</button></div></div>
-
+      <div class="dm-chat-header">
+        <div class="dm-chat-person">${avatar(user)}<div class="dm-chat-person-copy"><h2>${esc(privateNickname||user.displayName)}</h2><span>@${esc(user.username)} · <i class="${user.online?'is-online':'is-offline'}"></i> ${user.online?'Online':'Offline'}</span></div></div>
+        <div class="dm-chat-actions"><button type="button" class="mini" id="editPrivateNicknameBtn" title="Set private nickname">✏️ Nickname</button><button type="button" class="mini danger" id="reportDmBtn">🚩 Report</button></div>
+      </div>
+      <div class="dm-message-search"><span>⌕</span><input id="dmMessageSearch" placeholder="Search in this conversation…" autocomplete="off"><small id="dmSearchCount">${messages.length} messages</small></div>
+      <div class="dm-conversation-tools"><span>🔒 Private conversation</span><span>Quote a message to reply · Attach photos or files</span></div>
       <div
         id="dmMessages"
-        class="messages"
+        class="messages dm-message-list"
         style="height:45vh"
       >
         ${
@@ -1844,19 +1848,39 @@ async function openDM(id) {
           : ""
       }
 
+      <div class="dm-quick-replies" aria-label="Quick emoji">
+        <button type="button" data-dm-emoji="❤️">❤️</button><button type="button" data-dm-emoji="😂">😂</button><button type="button" data-dm-emoji="😭">😭</button><button type="button" data-dm-emoji="✨">✨</button><button type="button" data-dm-emoji="👍">👍</button>
+      </div>
       <form id="dmForm" class="composer dm-composer">
-        <label class="dm-upload-btn" title="Send photo or file">📎
+        <label class="dm-upload-btn" title="Attach photo, audio, video or file">📎
           <input id="dmFile" type="file" accept="image/*,audio/*,video/*,.pdf,.txt" hidden>
         </label>
         <span id="dmFileName" class="muted dm-file-name"></span>
-        <input id="dmText" placeholder="Private message…" maxlength="4000" autocomplete="off">
-        <button class="send" type="submit">Send</button>
+        <input id="dmText" placeholder="Write a private message…" maxlength="4000" autocomplete="off">
+        <button class="send" type="submit">Send ↗</button>
       </form>
     `);
 
     $('editPrivateNicknameBtn')?.addEventListener('click',()=>{modal(`<h2>Set nickname for this user</h2><p class="muted">Only you can see this nickname. Their username and account identity stay unchanged.</p><input id="privateNicknameInput" maxlength="50" value="${esc(privateNickname)}" placeholder="Private nickname"><div class="toolbar"><button class="primary" id="savePrivateNicknameBtn">Save</button><button class="mini" onclick="closeModal()">Cancel</button></div>`);$('savePrivateNicknameBtn').onclick=async()=>{try{await api('/api/private-nickname',{method:'POST',body:JSON.stringify({targetId:user.id,nickname:$('privateNicknameInput').value.trim()})});closeModal();openDM(user.id);}catch(e){toast(e.message)}}});
     const box = $("dmMessages");
     if (box) box.scrollTop = box.scrollHeight;
+    const dmSearch=$("dmMessageSearch");
+    dmSearch?.addEventListener("input",()=>{
+      const q=dmSearch.value.trim().toLowerCase();
+      let visible=0;
+      box?.querySelectorAll(".dm-msg").forEach(node=>{
+        const match=!q||node.textContent.toLowerCase().includes(q);
+        node.hidden=!match;
+        if(match) visible++;
+      });
+      if($("dmSearchCount")) $("dmSearchCount").textContent=q?(`${visible} match${visible===1?"":"es"}`):(`${messages.length} messages`);
+    });
+    document.querySelectorAll("[data-dm-emoji]").forEach(button=>button.addEventListener("click",()=>{
+      const input=$("dmText"); if(!input)return;
+      const start=input.selectionStart??input.value.length, end=input.selectionEnd??input.value.length, emoji=button.dataset.dmEmoji;
+      input.value=input.value.slice(0,start)+emoji+input.value.slice(end);
+      input.focus(); input.setSelectionRange(start+emoji.length,start+emoji.length);
+    }));
 
     try {
       await api(`/api/dm/${id}/read`, { method: "POST" });
