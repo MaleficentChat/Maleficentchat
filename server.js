@@ -3734,6 +3734,40 @@ app.post('/api/games/quick',auth,(req,res)=>{
   awardXp(u,result==='win'?10:4); checkAchievements(u); save(); res.json({ok:true,title,message,result});
 });
 // Account-settings endpoints used by the frontend.
+app.post('/api/scheduled',auth,featureAllowed("schedule_message"),async(req,res)=>{
+  const u=current(req),roomId=String(req.body.roomId||""),messageText=String(req.body.text||"").trim(),sendAt=Number(req.body.sendAt);
+  const room=db.rooms.find(r=>String(r.id)===roomId);
+  if(!room)return res.status(404).json({error:"Room not found."});
+  if(!messageText||messageText.length>2000)return res.status(400).json({error:"Message must be between 1 and 2000 characters."});
+  if(!Number.isFinite(sendAt)||sendAt<=Date.now()||sendAt>Date.now()+30*86400000)return res.status(400).json({error:"Choose a future time within the next 30 days."});
+  db.scheduledMessages ||= [];
+  const scheduled={id:id(),userId:String(u.id),username:u.username,roomId,messageText,sendAt,status:"pending",createdAt:Date.now()};
+  db.scheduledMessages.push(scheduled);
+  await flushSave();
+  res.status(201).json({ok:true,scheduled:{id:scheduled.id,roomId,sendAt,status:scheduled.status}});
+});
+
+// Deliver due scheduled messages and persist their status so they are not sent twice.
+setInterval(async()=>{
+  const now=Date.now();
+  for(const scheduled of (db.scheduledMessages||[]).filter(x=>x.status==="pending"&&Number(x.sendAt)<=now)){
+    try{
+      const room=db.rooms.find(r=>String(r.id)===String(scheduled.roomId));
+      const sender=db.users.find(u=>String(u.id)===String(scheduled.userId));
+      if(!room||!sender){scheduled.status="failed";scheduled.error="Room or sender no longer exists.";continue;}
+      const m={id:id(),roomId:String(room.id),userId:sender.id,username:sender.username,displayName:sender.displayName,rank:sender.rank,text:String(scheduled.messageText||""),reactions:{},edited:false,deleted:false,pinned:false,time:now,delivered:true,scheduled:true};
+      await pool.query("INSERT INTO room_messages(id,room_id,user_id,data,created_at) VALUES($1,$2,$3,$4::jsonb,NOW())",[m.id,Number(room.id),Number(sender.id),JSON.stringify(m)]);
+      db.messages.push(m);
+      io.to("room:"+room.id).emit("message",m);
+      scheduled.status="sent";scheduled.sentAt=now;
+    }catch(err){
+      console.error("Scheduled message delivery failed:",err);
+      scheduled.status="failed";scheduled.error="Delivery failed.";
+    }
+  }
+  await flushSave();
+},10000);
+
 app.get('/api/me/email',auth,(req,res)=>{
   const u=current(req);
   res.json({email:u.email||""});
