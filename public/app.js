@@ -554,6 +554,8 @@ if ($("topProfile")) $("topProfile").onclick = () => { const box=$("topProfileDr
 function openMyProfileFromHeader(){ $("topProfileDropdown")?.classList.add("hidden"); state.view="profile"; document.querySelectorAll(".nav[data-view]").forEach(x=>x.classList.toggle("active",x.dataset.view==="profile")); renderView(); }
 
 
+function openHeaderChatOptions(){modal('<div class="header-chat-options"><h2>💬 Chat options</h2><p class="muted">Quick chat customization</p><label>Text size<select id="quickChatSize"><option>small</option><option selected>medium</option><option>large</option></select></label><label>Bubble color<input type="color" id="quickBubbleColor" value="#33244f"></label><label>Display-name color<input type="color" id="quickUsernameColor" value="#9b5cff"></label><label><input type="checkbox" id="quickCompact"> Compact chat spacing</label><button class="primary" id="quickChatSave">Save chat options</button></div>');}
+
 async function loadWall(){
   const d=await api('/api/wall');
   const feed=$('wallFeed'); if(!feed)return;
