@@ -382,7 +382,7 @@ function current(req){
 }
 
 function clientIp(req){
-  let ip=String(req.headers["x-forwarded-for"]||req.ip||req.socket.remoteAddress||"").split(",")[0].trim();
+  let ip=String(req.ip||req.socket.remoteAddress||"").split(",")[0].trim();
   if(ip.startsWith("::ffff:")) ip=ip.slice(7);
   return ip;
 }
@@ -2123,8 +2123,7 @@ app.get("/api/staff/ip-inspection",auth,ownerOnly,async(req,res)=>{
   const search=String(req.query.q||"").trim().slice(0,100);
   const limit=Math.min(200,Math.max(1,Number(req.query.limit)||100));
   const params=[]; let where="";
-  if(search){params.push("%"+search.replace(/[\\%_]/g,"\\\\app.get(
-  "/api/staff/dashboard",")+"%");where="WHERE u.username ILIKE $1 OR COALESCE(u.email,'') ILIKE $1 OR h.ip_address::text ILIKE $1";}
+  if(search){params.push("%"+search+"%");where="WHERE u.username ILIKE $1 OR COALESCE(u.email,'') ILIKE $1 OR h.ip_address::text ILIKE $1";}
   params.push(limit);
   const q=await pool.query(`SELECT h.id,h.user_id,u.username,u.email,h.ip_address::text AS ip_address,h.event_type,h.user_agent,h.recorded_at,u.created_at AS registered_at FROM user_ip_history h JOIN users u ON u.id=h.user_id ${where} ORDER BY h.recorded_at DESC LIMIT ${params.length}`,params);
   await pool.query("INSERT INTO admin_logs(action_type,performed_by,details) VALUES($1,$2,$3)",["IP_INSPECTION_VIEW",Number(actor.id),JSON.stringify({search:search||null,rows:q.rowCount})]);
