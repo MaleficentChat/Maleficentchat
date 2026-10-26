@@ -842,6 +842,12 @@ function openOnlinePanelMenu(){
 $("closeOnlinePanel")?.addEventListener("click",()=>{
   $("onlinePanel")?.classList.remove("mobile-open");
 });
+$("openOnlinePanel")?.addEventListener("click",()=>{
+  const panel=$("onlinePanel");
+  if(!panel)return;
+  panel.classList.toggle("mobile-open");
+  if(panel.classList.contains("mobile-open"))renderOnline();
+});
 
 document.querySelectorAll("#onlineTabs [data-online-tab]").forEach(btn=>{
   btn.addEventListener("click",()=>renderOnline(btn.dataset.onlineTab));
