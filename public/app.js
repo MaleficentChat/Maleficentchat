@@ -2859,7 +2859,7 @@ async function ownerEdit(id) {
 
     modal(`
       <h2>Manage @${esc(user.username)}</h2>
-      <p class="muted">${user.username==="Maleficent" ? "Permanent owner account. Gold and password can be managed; its OWNER rank is protected." : "Owner can assign any rank, including OWNER."}</p>
+      <p class="muted">${user.username==="Maleficent" ? "Permanent Developer account. Its identity and rank are protected." : "Manage this account. Password resets are available only to the permanent Developer account."}</p>
 
       ${String(state.user?.rank||"").toUpperCase()==="DEVELOPER" && state.user?.username==="Maleficent" ? `<div class="owner-password-box"><span>🔑 Password reset</span><p class="muted">Existing passwords cannot be viewed. Set a new password; it will be stored as a secure hash.</p><label>New password<input id="opass" type="password" minlength="8" autocomplete="new-password" placeholder="At least 8 characters"></label></div>` : ""}
       <p class="muted">Birth date: ${esc(user.birth_date||'—')} · Gender: ${esc(user.gender||'—')}</p>
