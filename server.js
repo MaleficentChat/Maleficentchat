@@ -2111,6 +2111,52 @@ app.get("/api/users/:id/action-history",auth,(req,res)=>{
   res.json({user:safeUser(target),history});
 });
 
+app.delete("/api/users/:id/action-history/:actionId",auth,(req,res)=>{
+  const actor=current(req);
+  if(!hasRank(actor,"MOD")) return res.status(403).json({error:"Staff only"});
+  const target=findUser(req.params.id);
+  if(!target) return res.status(404).json({error:"User not found"});
+  const before=db.moderationHistory.length;
+  db.moderationHistory=db.moderationHistory.filter(x=>!(String(x.target)===String(target.id)&&String(x.id)===String(req.params.actionId)));
+  if(db.moderationHistory.length===before) return res.status(404).json({error:"History action not found"});
+  save();
+  log(actor,"USER_HISTORY_ACTION_DELETE",target.username,{actionId:String(req.params.actionId)});
+  res.json({ok:true});
+});
+
+app.post("/api/users/:id/action-history/clear",auth,(req,res)=>{
+  const actor=current(req);
+  if(!hasRank(actor,"MOD")) return res.status(403).json({error:"Staff only"});
+  const target=findUser(req.params.id);
+  if(!target) return res.status(404).json({error:"User not found"});
+  const before=db.moderationHistory.length;
+  db.moderationHistory=db.moderationHistory.filter(x=>String(x.target)!==String(target.id));
+  const removed=before-db.moderationHistory.length;
+  save();
+  log(actor,"USER_HISTORY_CLEAR",target.username,{removed});
+  res.json({ok:true,removed});
+});
+
+app.post("/api/owner/refresh-site-messages",auth,ownerOnly,async(req,res)=>{
+  const client=await pool.connect();
+  try{
+    await client.query("BEGIN");
+    const roomResult=await client.query("DELETE FROM room_messages");
+    const privateResult=await client.query("DELETE FROM private_messages");
+    await client.query("COMMIT");
+    db.messages=[];
+    db.privateMessages=[];
+    save();
+    log(current(req),"SITE_MESSAGES_REFRESH",{roomMessages:Number(roomResult.rowCount||0),privateMessages:Number(privateResult.rowCount||0)});
+    io.emit("site:messages-cleared");
+    res.json({ok:true,roomMessages:Number(roomResult.rowCount||0),privateMessages:Number(privateResult.rowCount||0)});
+  }catch(error){
+    await client.query("ROLLBACK").catch(()=>{});
+    console.error("Site message refresh failed:",error);
+    res.status(500).json({error:"Could not clear site messages. No other site data was intentionally changed."});
+  }finally{client.release();}
+});
+
 app.get(
   "/api/moderation/history/:id",
   auth,
