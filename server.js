@@ -1332,10 +1332,14 @@ app.post("/api/rooms/:id/messages",auth,featureAllowed("send_messages"),upload.s
       }else if(commandKey==="fact"){
         response="🧠 Did you know? "+pick(["Octopuses have three hearts.","A group of flamingos is called a flamboyance.","Honey can remain edible for a very long time when properly sealed and stored.","The Moon moves away from Earth by a few centimetres each year.","Botanically, bananas are berries, while strawberries are not true berries."]);
       }else if(commandKey==="lock"){
-        r.locked=true; r.lockedBy=u.username; r.lockedAt=Date.now(); save();
+        r.locked=true; r.lockedBy=u.username; r.lockedAt=Date.now();
+        db.settings.locked_rooms ||= {}; db.settings.locked_rooms[String(r.id)]={by:u.username,at:Date.now()};
+        save();
         response="🔒 "+(u.displayName||u.username)+" locked "+r.name+". Only staff can chat until it is unlocked.";
       }else if(commandKey==="unlock"){
-        r.locked=false; r.lockedBy=null; r.lockedAt=null; save();
+        r.locked=false; r.lockedBy=null; r.lockedAt=null;
+        db.settings.locked_rooms ||= {}; delete db.settings.locked_rooms[String(r.id)];
+        save();
         response="🔓 "+(u.displayName||u.username)+" unlocked "+r.name+". Everyone can chat again.";
       }
       if(response){
@@ -1345,7 +1349,7 @@ app.post("/api/rooms/:id/messages",auth,featureAllowed("send_messages"),upload.s
       }
     }
   }
-  if(r.locked && !hasRank(u,"MOD") && String(u.rank).toUpperCase()!=="DEVELOPER")return res.status(403).json({error:"This room is locked. Only staff can send messages."});
+  if((r.locked||db.settings?.locked_rooms?.[String(r.id)]) && !hasRank(u,"MOD") && String(u.rank).toUpperCase()!=="DEVELOPER")return res.status(403).json({error:"This room is locked. Only staff can send messages."});
 
   const matchedFilter=filteredWord(text);
   const affected=(db.settings.filter_affected_ranks||[]).map(x=>String(x).toUpperCase());
