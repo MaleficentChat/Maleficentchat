@@ -1690,15 +1690,42 @@ async function removeFriend(id){
 
 /* ---------------- PRIVATE MESSAGES ---------------- */
 
+function dmPrefs(){try{return JSON.parse(safeStorage.getItem("mc_dm_prefs_"+String(state.user?.id||"guest"))||"{}")}catch{return {}}}
+function saveDMPrefs(p){safeStorage.setItem("mc_dm_prefs_"+String(state.user?.id||"guest"),JSON.stringify(p))}
+function dmSetPref(kind,id,value){const p=dmPrefs();p[kind]=p[kind]||{};if(value)p[kind][String(id)]=true;else delete p[kind][String(id)];saveDMPrefs(p)}
 async function loadDMList() {
   try {
     const data=await api("/api/dm/conversations");
     const conversations=data.conversations||[];
     const privateNicknames=(await api('/api/private-nicknames').catch(()=>({nicknames:{}}))).nicknames||{};
-    const replied=conversations.filter(c=>c.lastMessage?.from===state.user.id);
-    const unreplied=conversations.filter(c=>c.lastMessage?.from!==state.user.id);
-    const card=c=>{const nick=privateNicknames[String(c.user.id)];return `<div class="user-card dm-contact-card">${avatar(c.user)}<div class="dm-contact-copy"><b>${esc(nick||c.user.displayName||c.user.username)}</b>${nick?'<small class="dm-nickname-label">Private nickname</small>':''}<small>@${esc(c.user.username)}</small></div><button class="primary" onclick="openDM('${esc(c.user.id)}')">Chat</button></div>`};
-    $("dmList").innerHTML=`<section class="dm-group"><h3>↩ Replied <small>${replied.length}</small></h3>${replied.map(card).join('')||'<p class="muted">No replied conversations.</p>'}</section><section class="dm-group"><h3>✉ Unreplied <small>${unreplied.length}</small></h3>${unreplied.map(card).join('')||'<p class="muted">No unreplied conversations.</p>'}</section>`;
+    const prefs=dmPrefs();
+    const activeTab=safeStorage.getItem("mc_dm_tab_"+String(state.user?.id||""))||"all";
+    const card=c=>{
+      const id=String(c.user.id),nick=privateNicknames[id],name=nick||c.user.displayName||c.user.username;
+      const last=c.lastMessage||{},preview=last.attachment?"📎 Attachment":(last.text||"Start a conversation");
+      const unread=Number(c.unreadCount||0),pinned=!!prefs.pinned?.[id],archived=!!prefs.archived?.[id],muted=!!prefs.muted?.[id];
+      return `<div class="user-card dm-contact-card dm-inbox-card ${pinned?'dm-is-pinned':''}" data-dm-user="${esc(id)}">
+        ${avatar(c.user)}<div class="dm-contact-copy"><div class="dm-inbox-title"><b>${esc(name)}</b>${unread?'<span class="dm-unread-badge">'+unread+'</span>':''}</div>
+        <small>@${esc(c.user.username)} ${c.user.online?'<i class="is-online"></i>':''}</small><small class="dm-preview">${esc(preview).slice(0,90)}</small>
+        </div><div class="dm-inbox-actions"><button class="mini" data-dm-pref="pinned" data-id="${esc(id)}" title="Pin conversation">${pinned?'📌':'＋'}</button><button class="mini" data-dm-pref="muted" data-id="${esc(id)}" title="Mute notifications">${muted?'🔕':'🔔'}</button><button class="mini" data-dm-pref="archived" data-id="${esc(id)}" title="Archive conversation">${archived?'↩':'▣'}</button><button class="primary" onclick="openDM('${esc(id)}')">Chat</button></div>
+      </div>`;
+    };
+    const searchBox='<div class="dm-inbox-toolbar"><input id="dmInboxSearch" placeholder="Search conversations…" autocomplete="off"><div class="dm-inbox-tabs">'+[['all','All'],['unread','Unread'],['pinned','Pinned'],['archived','Archived']].map(([v,l])=>'<button class="mini '+(activeTab===v?'active':'')+'" data-dm-tab="'+v+'">'+l+'</button>').join('')+'</div></div>';
+    const render=()=>{
+      const q=($("dmInboxSearch")?.value||"").trim().toLowerCase(),p=dmPrefs();
+      let rows=conversations.filter(c=>{const id=String(c.user.id),name=(privateNicknames[id]||c.user.displayName||c.user.username)+" "+c.user.username,unread=Number(c.unreadCount||0)>0,pinned=!!p.pinned?.[id],archived=!!p.archived?.[id];
+        if(activeTab==="unread"&&!unread)return false;if(activeTab==="pinned"&&!pinned)return false;if(activeTab==="archived"&&!archived)return false;if(activeTab!=="archived"&&activeTab!=="all"&&archived)return false;
+        return name.toLowerCase().includes(q)||(c.lastMessage?.text||"").toLowerCase().includes(q);
+      });
+      rows.sort((a,b)=>Number(!!p.pinned?.[String(b.user.id)])-Number(!!p.pinned?.[String(a.user.id)]));
+      const list=rows.map(card).join('');
+      $("dmList").innerHTML=searchBox+'<div class="dm-inbox-list">'+(list||'<p class="muted dm-empty">No conversations here yet.</p>')+'</div>';
+      $("dmInboxSearch").value=q;
+      $("dmInboxSearch").addEventListener("input",()=>{const val=$("dmInboxSearch").value;render();const el=$("dmInboxSearch");el.focus();el.setSelectionRange(val.length,val.length)});
+      document.querySelectorAll("[data-dm-tab]").forEach(btn=>btn.addEventListener("click",()=>{safeStorage.setItem("mc_dm_tab_"+String(state.user?.id||""),btn.dataset.dmTab);loadDMList()}));
+      document.querySelectorAll("[data-dm-pref]").forEach(btn=>btn.addEventListener("click",()=>{const kind=btn.dataset.dmPref,id=btn.dataset.id,p=dmPrefs();dmSetPref(kind,id,!p[kind]?.[id]);loadDMList()}));
+    };
+    render();
     const search=async()=>{const q=$("dmUserSearch").value.trim();if(!q){$("dmSearchResults").innerHTML='';return;}const u=await api(`/api/users?q=${encodeURIComponent(q)}`);$("dmSearchResults").innerHTML=(u.users||[]).filter(x=>x.id!==state.user.id&&x.username.toLowerCase().includes(q.toLowerCase())).map(x=>`<div class="user-card">${avatar(x)}<div style="flex:1"><b>${esc(x.displayName)}</b><small>@${esc(x.username)}</small></div><button class="primary" onclick="openDM('${esc(x.id)}')">Chat</button></div>`).join('')||'<p class="muted">No matching username.</p>';};
     if($("dmSearchBtn"))$("dmSearchBtn").onclick=search;
     if($("dmUserSearch"))$("dmUserSearch").onkeydown=e=>{if(e.key==='Enter')search()};
