@@ -301,6 +301,7 @@ async function start() {
   });
 
   state.socket.on('rooms_updated', async()=>{try{await loadRooms();renderRooms();}catch{}});
+  state.socket.on('connect',()=>{loadRooms().catch(()=>{});});
 
   state.socket.on("presence", async () => {
     if (state.view === "rooms") {
@@ -638,6 +639,7 @@ async function loadRooms() {
   }
   renderRooms();
   if (!state.rooms.length && lastError) toast("Rooms could not load: " + lastError.message);
+  requestAnimationFrame(()=>renderRooms());
 }
 
 function joinedRoomIds(){
