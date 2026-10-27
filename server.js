@@ -101,7 +101,7 @@ function hasRank(u,r){
 }
 
 function featurePermissionKey(key){
-  const aliases={create_room:"can_create_rooms",create_rooms:"can_create_rooms",edit_room:"can_edit_rooms",edit_rooms:"can_edit_rooms",delete_room:"can_delete_rooms",delete_rooms:"can_delete_rooms",profile_note:"can_add_notes",view_staff_dashboard:"can_view_admin_logs",manage_gifts:"can_manage_gifts",edit_email:"can_edit_emails",share_gold:"can_share_gold",moderate_users:"can_mute",delete_message:"can_delete_messages",manage_staff_accounts:"can_edit_usernames",reports_management:"can_manage_reports",publish_news:"can_manage_news",manage_ranks:"can_manage_ranks",manage_clubs:"can_manage_clubs",manage_settings:"can_manage_settings",clear_history_button:"can_clear_history",account_modifications:"can_manage_profiles",manage_profiles:"can_manage_profiles"};
+  const aliases={create_room:"can_create_rooms",create_rooms:"can_create_rooms",edit_room:"can_edit_rooms",edit_rooms:"can_edit_rooms",delete_room:"can_delete_rooms",delete_rooms:"can_delete_rooms",profile_note:"can_add_notes",edit_email:"can_edit_emails",share_gold:"can_share_gold",moderate_users:"can_mute",delete_message:"can_delete_messages",manage_staff_accounts:"can_edit_usernames",reports_management:"can_manage_reports",publish_news:"can_manage_news",manage_ranks:"can_manage_ranks",manage_clubs:"can_manage_clubs",manage_settings:"can_manage_settings",clear_history_button:"can_clear_history",account_modifications:"can_manage_profiles",manage_profiles:"can_manage_profiles"};
   return aliases[key]|| (String(key).startsWith("can_")?key:null);
 }
 function userFeatureGrant(u,key){
@@ -134,7 +134,6 @@ const FEATURE_CONTROLS=[
   {key:"delete_room",name:"Delete rooms",category:"Rooms",defaultRank:"COOWNER"},
   {key:"publish_news",name:"Publish news",category:"News",defaultRank:"ADMIN"},
   {key:"delete_news",name:"Delete news",category:"News",defaultRank:"ADMIN"},
-  {key:"send_gift",name:"Send gifts",category:"Social",defaultRank:"MEMBER"},
   {key:"manage_staff_accounts",name:"Manage staff username/email",category:"Staff",defaultRank:"OWNER"},
   {key:"profile_note",name:"View and add staff profile notes",category:"Staff",defaultRank:"MOD"},
   {key:"staff_rank_assignment",name:"Assign MOD or lower",category:"Staff",defaultRank:"MOD"},
@@ -153,8 +152,6 @@ const FEATURE_GRANT_DEFAULTS={
   send_messages:GRANT_RANKS,
   private_messages:GRANT_RANKS,
   gif_sending:GRANT_RANKS,
-  gift_sending:GRANT_RANKS,
-  gift_receiving:GRANT_RANKS,
   profile_note:["MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],
   account_modifications:["MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],
   change_password:["OWNER"],
@@ -185,7 +182,7 @@ const FEATURE_GRANT_DEFAULTS={
   bypass_mute:["MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"]
 };
 const OWNER_USER_PERMISSIONS=[
-  "can_mute","can_kick","can_ban","can_warn","can_delete_messages","can_view_ips","can_view_emails","can_edit_rooms","can_delete_rooms","can_create_rooms","can_view_admin_logs","can_grant_features","can_manage_users","can_clear_history","can_add_notes","can_send_global_announcement","can_share_gold","can_manage_ranks","can_edit_usernames","can_edit_emails","can_manage_reports","can_manage_announcements","can_manage_clubs","can_manage_news","can_manage_profiles","can_view_deleted_messages","can_manage_settings"
+  "can_mute","can_kick","can_ban","can_warn","can_delete_messages","can_view_ips","can_view_emails","can_edit_rooms","can_delete_rooms","can_create_rooms","can_grant_features","can_manage_users","can_clear_history","can_add_notes","can_send_global_announcement","can_share_gold","can_manage_ranks","can_edit_usernames","can_edit_emails","can_manage_reports","can_manage_announcements","can_manage_clubs","can_manage_news","can_manage_profiles","can_view_deleted_messages","can_manage_settings"
 ];
 function ensureFeatureGrants(){
   db.settings ||= {}; db.settings.feature_grants ||= {};
@@ -212,7 +209,7 @@ function hasFeature(u,key){
   // Apply Owner Space's Feature Granting thresholds to every feature check,
   // not just endpoints that happen to use featureAllowed().
   ensureFeatureGrants();
-  const aliases={moderate_user:"moderate_users",create_room:"create_rooms",send_gift:"gift_sending",manage_filters:"manage_filter_words",publish_news:"news_posting",clear_room:"clear_history_button",wall_post:"friend_wall_posting",gift_share:"gift_sending",report_message:"reports_management"};
+  const aliases={moderate_user:"moderate_users",create_room:"create_rooms",manage_filters:"manage_filter_words",publish_news:"news_posting",clear_room:"clear_history_button",wall_post:"friend_wall_posting",report_message:"reports_management"};
   const grantKey=aliases[key]||key;
   const rankGrants=db.settings?.feature_grants?.[grantKey];
   if(Array.isArray(rankGrants)) return rankGrants.map(x=>String(x).toUpperCase()).includes(String(u.rank||"").toUpperCase());
@@ -623,8 +620,6 @@ app.use(session({
 }));
 
 // Audit middleware must run after JSON parsing and session authentication are available.
-app.use((req,res,next)=>{const m=String(req.method||'GET').toUpperCase(),p=String(req.path||'');if(!['POST','PUT','PATCH','DELETE'].includes(m)||!p.startsWith('/api/'))return next();const actor=current(req);if(!actor)return next();const role=String(actor.rank||'').toUpperCase();const isStaff=['MOD','ADMIN','SUPER_ADMIN','COMMISSOR','COOWNER','OWNER','DEVELOPER'].includes(role)||actor.username===DEFAULT_OWNER;if(!isStaff)return next();if(/^\/api\/(?:rooms\/\d+\/messages|dm\/|notifications(?:\/|$)|settings$|profile$|friends\/|games\/|daily\/|rewards\/|password\/|me\/email|me\/invisible|security\/|users\/\d+\/like|users\/\d+\/gift|gift\/send)/i.test(p))return next();res.once('finish',()=>{if(res.statusCode<200||res.statusCode>=300)return;const action=(m+'_'+p.replace(/^\/api\//i,'').replace(/[^a-z0-9]+/gi,'_')).toUpperCase().slice(0,100);if(!adminLogEnabled(action))return;const key=req.body?.userId??req.body?.targetId??req.params?.id??req.body?.id;const target=key?findUser(String(key)):null;queueAdminAudit(action,actor.id,target?.id,{route:p,method:m,status:res.statusCode});});next();});
-
 app.use(
   "/uploads",
   express.static(UP)
@@ -2821,16 +2816,9 @@ function featureGrantAllowed(u,key){
   if(rankName==='DEVELOPER'||u.username===DEFAULT_OWNER)return true;
   const granted=userFeatureGrant(u,key);if(granted!==null)return granted;
   ensureFeatureGrants();
-  const aliases={gift_sending:'gift_sending',gift_share:'gift_sending',gift_receiving:'gift_receiving',wall_post:'wall_post'};
+  const aliases={wall_post:'wall_post'};
   const alias=aliases[key]||key;
   let configured=db.settings?.feature_grants?.[alias];
-  // Older saved settings may contain an empty gift grant list or the legacy USER rank.
-  // Restore the documented defaults for the gift system and normalize USER to MEMBER.
-  if((!Array.isArray(configured)||configured.length===0)&&['gift_sending','gift_receiving'].includes(alias)){
-    configured=FEATURE_GRANT_DEFAULTS[alias];
-    db.settings.feature_grants[alias]=[...configured];
-    save();
-  }
   if(!Array.isArray(configured))configured=db.settings?.feature_grants?.[key]||[];
   return configured.map(x=>String(x).toUpperCase()==='USER'?'MEMBER':String(x).toUpperCase()).includes(rankName);
 }
@@ -4166,7 +4154,7 @@ app.get('/api/me/account',auth,async(req,res)=>{
 app.post('/api/private-nickname',auth,async(req,res)=>{try{const u=current(req),target=String(req.body.targetId||''),nickname=cleanText(req.body.nickname||'').trim().slice(0,50);if(!target||target===String(u.id))return res.status(400).json({error:'Choose another user.'});const exists=await pool.query('SELECT id FROM users WHERE id=$1',[target]);if(!exists.rowCount)return res.status(404).json({error:'User not found'});if(!nickname){await pool.query('DELETE FROM private_nicknames WHERE owner_id=$1 AND target_user_id=$2',[u.id,target]);return res.json({ok:true,nickname:''});}await pool.query(`INSERT INTO private_nicknames(owner_id,target_user_id,nickname) VALUES($1,$2,$3) ON CONFLICT(owner_id,target_user_id) DO UPDATE SET nickname=EXCLUDED.nickname`,[u.id,target,nickname]);res.json({ok:true,nickname});}catch(e){console.error(e);res.status(500).json({error:'Could not save nickname'});}});
 app.get('/api/private-nicknames',auth,async(req,res)=>{const u=current(req);const q=await pool.query('SELECT target_user_id,nickname FROM private_nicknames WHERE owner_id=$1',[u.id]);res.json({nicknames:Object.fromEntries(q.rows.map(x=>[String(x.target_user_id),x.nickname]))});});
 app.post('/api/admin/private-search',auth,ownerOnly,async(req,res)=>{const a=String(req.body.user1||'').trim(),b=String(req.body.user2||'').trim();if(!a)return res.status(400).json({error:'Enter at least one username'});const ua=await pool.query('SELECT id,username FROM users WHERE LOWER(username)=LOWER($1) LIMIT 1',[a]);if(!ua.rowCount)return res.status(404).json({error:`User not found: ${a}`});let sql,params,users=[ua.rows[0]];if(b){const ub=await pool.query('SELECT id,username FROM users WHERE LOWER(username)=LOWER($1) LIMIT 1',[b]);if(!ub.rowCount)return res.status(404).json({error:`User not found: ${b}`});users.push(ub.rows[0]);sql=`SELECT m.*,s.username AS sender_username,r.username AS receiver_username FROM private_messages m LEFT JOIN users s ON s.id=m.sender_id LEFT JOIN users r ON r.id=m.receiver_id WHERE (m.sender_id=$1 AND m.receiver_id=$2) OR (m.sender_id=$2 AND m.receiver_id=$1) ORDER BY m.created_at DESC LIMIT 100`;params=[ua.rows[0].id,ub.rows[0].id];}else{sql=`SELECT m.*,s.username AS sender_username,r.username AS receiver_username FROM private_messages m LEFT JOIN users s ON s.id=m.sender_id LEFT JOIN users r ON r.id=m.receiver_id WHERE m.sender_id=$1 OR m.receiver_id=$1 ORDER BY m.created_at DESC LIMIT 100`;params=[ua.rows[0].id];}const q=await pool.query(sql,params);res.json({messages:q.rows,users});});
-app.put('/api/admin/edit-email',auth,async(req,res)=>{const actor=current(req);const target=findUser(req.body.userId);if(!target)return res.status(404).json({error:'User not found'});if(target.username===DEFAULT_OWNER||String(target.rank).toUpperCase()==='DEVELOPER')return res.status(403).json({error:'The permanent owner account is protected.'});if(actor.username!==DEFAULT_OWNER&&String(actor.rank).toUpperCase()!=='DEVELOPER'&&rankOrder[target.rank]>=rankOrder[actor.rank])return res.status(403).json({error:'You cannot edit an equal or higher rank.'});if(!(hasFeature(actor,'edit_email')||actor?.username===DEFAULT_OWNER||String(actor?.rank).toUpperCase()==='DEVELOPER'))return res.status(403).json({error:'Email editing permission required.'});const id=Number(req.body.userId),email=String(req.body.newEmail||'').trim().toLowerCase();if(!Number.isInteger(id)||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))return res.status(400).json({error:'Enter a valid email address.'});try{const q=await pool.query('UPDATE users SET email=$1 WHERE id=$2 RETURNING id,email',[email,id]);if(!q.rowCount)return res.status(404).json({error:'User not found'});await pool.query('INSERT INTO admin_logs(action_type,performed_by,target_user_id,details) VALUES($1,$2,$3,$4)', ['EMAIL_EDIT',actor.id,id,'Email updated']);res.json({ok:true,user:q.rows[0]});}catch(e){if(e.code==='23505')return res.status(409).json({error:'Email already in use'});throw e;}});
+app.put('/api/admin/edit-email',auth,async(req,res)=>{const actor=current(req);const target=findUser(req.body.userId);if(!target)return res.status(404).json({error:'User not found'});if(target.username===DEFAULT_OWNER||String(target.rank).toUpperCase()==='DEVELOPER')return res.status(403).json({error:'The permanent owner account is protected.'});if(actor.username!==DEFAULT_OWNER&&String(actor.rank).toUpperCase()!=='DEVELOPER'&&rankOrder[target.rank]>=rankOrder[actor.rank])return res.status(403).json({error:'You cannot edit an equal or higher rank.'});if(!(hasFeature(actor,'edit_email')||actor?.username===DEFAULT_OWNER||String(actor?.rank).toUpperCase()==='DEVELOPER'))return res.status(403).json({error:'Email editing permission required.'});const id=Number(req.body.userId),email=String(req.body.newEmail||'').trim().toLowerCase();if(!Number.isInteger(id)||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))return res.status(400).json({error:'Enter a valid email address.'});try{const q=await pool.query('UPDATE users SET email=$1 WHERE id=$2 RETURNING id,email',[email,id]);if(!q.rowCount)return res.status(404).json({error:'User not found'});res.json({ok:true,user:q.rows[0]});}catch(e){if(e.code==='23505')return res.status(409).json({error:'Email already in use'});throw e;}});
 app.post('/api/admin/profile-note',auth,async(req,res)=>{const actor=current(req);if(!featureGrantAllowed(actor,'profile_note'))return res.status(403).json({error:'Staff profile-note permission required.'});const userId=Number(req.body.userId),note=cleanText(req.body.note||'').trim().slice(0,2000);const target=findUser(String(userId));if(!userId||!target||!note)return res.status(400).json({error:'User and note are required'});if(target.id===actor.id||rankOrder[target.rank]>=rankOrder[actor.rank])return res.status(403).json({error:'You cannot add a note to an equal or higher rank.'});await pool.query('INSERT INTO profile_notes(user_id,added_by,note) VALUES($1,$2,$3)',[userId,actor.id,note]);log(actor,'PROFILE_NOTE_ADD',String(userId),{note});res.json({ok:true});});
 app.get('/api/admin/profile-note/:userId',auth,async(req,res)=>{if(!featureGrantAllowed(current(req),'profile_note'))return res.status(403).json({error:'Staff profile-note permission required.'});const q=await pool.query('SELECT n.*,u.username AS added_by_username FROM profile_notes n LEFT JOIN users u ON u.id=n.added_by WHERE n.user_id=$1 ORDER BY n.created_at DESC LIMIT 20',[req.params.userId]);res.json({notes:q.rows});});
 app.delete('/api/admin/history/:historyId',auth,ownerOnly,async(req,res)=>{const q=await pool.query('DELETE FROM history WHERE id=$1 RETURNING id',[req.params.historyId]);if(!q.rowCount)return res.status(404).json({error:'History entry not found'});res.json({ok:true});});
