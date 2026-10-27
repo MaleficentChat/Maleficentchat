@@ -2701,3 +2701,14 @@ a { color: #65dcff; }
 .economy-inventory-panel{margin-top:18px;padding-top:16px;border-top:1px solid var(--border)}.economy-subhead{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}.cosmetic-inventory{display:flex;gap:8px;flex-wrap:wrap}.cosmetic-chip{padding:7px 10px;border:1px solid var(--border);border-radius:999px;background:var(--panel-2);font-size:12px}.cosmetic-chip.equipped{border-color:rgba(92,255,176,.45)}
 .economy-history{margin-top:16px;border-top:1px solid var(--border);padding-top:12px}.economy-history summary{cursor:pointer;font-weight:600;padding:5px 0}.economy-history-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:5px 12px;padding:10px 0;border-bottom:1px solid var(--border);font-size:12px}.economy-history-row small{grid-column:1/-1;color:var(--muted,#9fb0ba)}.gold-negative{color:#ff8e9a}.gold-positive{color:#5cffb0}
 @media(max-width:560px){.gold-economy-section{padding:13px}.cosmetic-card{gap:9px;padding:11px}.cosmetic-icon{width:38px;height:38px;flex-basis:38px;font-size:22px}.cosmetic-actions .primary,.cosmetic-actions .mini{padding:7px 9px}}
+
+
+/* Gold Boutique cosmetics applied to living profiles */
+.equipped-profile-frame{display:grid;place-items:center;border-radius:50%;padding:5px;margin-bottom:7px;border:3px solid transparent;box-shadow:0 0 0 2px rgba(255,255,255,.08)}
+.equipped-profile-frame .big-avatar{margin:0!important}
+.equipped-profile-frame.frame_moonlit{border-color:#b7d8f7;box-shadow:0 0 18px rgba(183,216,247,.45)}
+.equipped-profile-frame.frame_obsidian{border-color:#10161b;box-shadow:0 0 0 2px #71818b,0 0 18px rgba(0,0,0,.55)}
+.equipped-profile-frame.frame_arcane{border-color:#9b70ff;box-shadow:0 0 18px rgba(155,112,255,.5)}
+.equipped-profile-badge{display:inline-flex;align-items:center;gap:4px;margin-left:5px;padding:3px 8px;border-radius:999px;background:rgba(8,15,20,.68);border:1px solid var(--border-strong);font-size:11px;vertical-align:middle}
+.profile-settings-card.theme_twilight{--accent:#9c83ff;--accent-2:#c2a9ff}
+.profile-settings-card.theme_crimson{--accent:#d94b63;--accent-2:#ff7188}
