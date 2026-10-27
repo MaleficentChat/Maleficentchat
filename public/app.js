@@ -323,6 +323,7 @@ async function start() {
   state.socket.on("system-message", notice => {
     if(!notice.roomId || notice.roomId===state.currentRoom) appendMessage({...notice,system:true});
   });
+  state.socket.on("gravity:invite", invite => window.GravityRun && window.GravityRun.showInvite(invite));
 
   state.socket.on("message:update", message => {
     const element =
@@ -542,6 +543,8 @@ async function renderView() {
       return loadNews();
     case "wall":
       return loadWall();
+    case "games":
+      return window.GravityRun && window.GravityRun.render();
     case "shop":
       return loadRankShop();
 
