@@ -762,6 +762,25 @@ function renderRooms() {
   }).join('') || (state.roomListMode==='mine'
     ? '<div class="room-empty"><div>🏠</div><b>No rooms in My rooms yet</b><span>Join a room or create one and it will appear here.</span></div>'
     : '<div class="room-empty"><div>🏠</div><b>No rooms found</b><span>Try another search.</span></div>');
+  renderRoomQuickNav();
+}
+
+function renderRoomQuickNav() {
+  const nav = $('roomQuickNav');
+  if (!nav) return;
+  const rooms = Array.isArray(state.rooms) ? state.rooms : [];
+  if (!rooms.length) {
+    nav.innerHTML = '<span class="room-quick-empty">Loading rooms…</span>';
+    return;
+  }
+  nav.innerHTML = rooms.map(room => {
+    const id = String(room.id);
+    const selected = String(state.currentRoom || '') === id;
+    return `<button type="button" class="room-quick-chip ${selected ? 'active' : ''}" data-quick-room-id="${esc(id)}" aria-current="${selected ? 'page' : 'false'}"><span>${esc(room.icon || '💬')}</span><span>${esc(room.name || 'Room')}</span>${room.locked || room.passwordHash ? '<span class="room-quick-lock">🔒</span>' : ''}</button>`;
+  }).join('');
+  nav.querySelectorAll('[data-quick-room-id]').forEach(button => {
+    button.addEventListener('click', () => joinRoom(String(button.dataset.quickRoomId)));
+  });
 }
 function editRoomById(id){ state.currentRoom=id; editRoom(); }
 async function deleteRoomById(id){
