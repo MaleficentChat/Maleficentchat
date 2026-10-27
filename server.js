@@ -1212,14 +1212,17 @@ app.get("/api/rooms",auth,async(req,res)=>{
   await pool.query(`INSERT INTO rooms(name,created_by,icon,description,category,is_public,rank_required,invite_token,min_age,max_age,is_default)
     VALUES ('Main Room',(SELECT id FROM users WHERE username='Maleficent'),'🏠','The main community chat room.','Community',true,'MEMBER','main-room',0,120,true)
     ON CONFLICT(name) DO NOTHING`);
-  await pool.query(`UPDATE rooms SET is_default=(LOWER(TRIM(name))='main room'), min_age=0, max_age=120
-    WHERE LOWER(TRIM(name))='main room'`);
-  const legacy = await pool.query(`SELECT id FROM rooms WHERE LOWER(TRIM(name)) IN ('main room 1','main room 2')`);
-  if (legacy.rows.length) {
+  // Keep the API response canonical even if old room rows survived a previous deploy.
+  const legacy = await pool.query(`SELECT id FROM rooms
+    WHERE LOWER(TRIM(name)) IN ('main room 1','main room 2')
+       OR (LOWER(TRIM(name))='main room' AND name <> 'Main Room')`);
+  if (legacy.rowCount) {
     const legacyIds = legacy.rows.map(row => Number(row.id));
     await pool.query(`DELETE FROM room_messages WHERE room_id = ANY($1::int[])`, [legacyIds]);
     await pool.query(`DELETE FROM rooms WHERE id = ANY($1::int[])`, [legacyIds]);
   }
+  await pool.query(`UPDATE rooms SET is_default=(name='Main Room'), min_age=0, max_age=120 WHERE name='Main Room'`);
+  await pool.query(`UPDATE rooms SET is_default=false WHERE name <> 'Main Room'`);
   const {rows}=await pool.query(`SELECT r.*,u.username AS creator FROM rooms r LEFT JOIN users u ON r.created_by=u.id ORDER BY r.is_default DESC,r.created_at ASC,r.id ASC`);
   if(!rows.length) return res.status(503).json({error:'Rooms are not initialized yet. Please retry in a moment.',rooms:[]});
   const rooms=rows.map(r=>({id:String(r.id),name:r.name,icon:r.icon||"💬",description:r.description||"",category:r.category||"Community",public:r.is_public!==false,passwordHash:r.password_hash||null,rankRequired:String(r.rank_required||"MEMBER").toUpperCase(),limit:Number(r.room_limit||100),slowMode:Number(r.slow_mode||0),announcement:r.announcement||"",ownerId:r.created_by?String(r.created_by):null,banner:r.banner||"",inviteToken:r.invite_token||"",creator:r.creator||null,isDefault:!!r.is_default,minAge:Number(r.min_age??0),maxAge:Number(r.max_age??120),locked:!!r.password_hash,onlineCount:visibleRoomOnlineCount(r.id)}));
