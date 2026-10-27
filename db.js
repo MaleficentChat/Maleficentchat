@@ -178,13 +178,17 @@ async function initDB() {
     );
   `);
 
-  const developerHash = await bcryptHash(process.env.OWNER_PASSWORD || "Mal@123");
-  await pool.query(
-    `INSERT INTO users(username,password,rank,gold,xp)
-     VALUES('Maleficent',$1,'Developer',999999,999999)
-     ON CONFLICT(username) DO NOTHING`,
-    [developerHash]
-  );
+  // Never seed a publicly known default password. A new installation must
+  // supply OWNER_PASSWORD; existing Developer credentials are preserved.
+  if (process.env.OWNER_PASSWORD) {
+    const developerHash = await bcryptHash(process.env.OWNER_PASSWORD);
+    await pool.query(
+      `INSERT INTO users(username,password,rank,gold,xp)
+       VALUES('Maleficent',$1,'Developer',999999,999999)
+       ON CONFLICT(username) DO NOTHING`,
+      [developerHash]
+    );
+  }
 
   // Keep the two default community rooms persistent; room access is not age-gated.
   await pool.query(`INSERT INTO rooms(name,created_by,icon,description,category,is_public,rank_required,invite_token,min_age,max_age,is_default)
