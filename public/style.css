@@ -2345,3 +2345,33 @@ a { color: #65dcff; }
 #doodleCanvas{display:block;width:100%;height:auto;aspect-ratio:900/620;background:#fff;border:1px solid var(--border);border-radius:10px;touch-action:none;cursor:crosshair}
 .doodle-footer{flex-wrap:wrap}
 @media(max-width:600px){.social-feed-card{padding:14px}.social-reaction-summary{gap:8px;flex-wrap:wrap}.doodle-modal{width:100%}.doodle-tools button,.doodle-tools label{padding:6px}.doodle-footer .primary{width:100%}}
+
+
+/* Maleficent Chat — compact horizontal people rows and social-feed presentation */
+#viewUsers .user-grid{display:flex!important;flex-direction:column!important;gap:8px!important;padding:14px 18px 24px!important;align-content:stretch!important}
+#viewUsers .horizontal-user-card{width:100%;min-height:82px;box-sizing:border-box;display:flex!important;flex-direction:row!important;align-items:center!important;justify-content:flex-start!important;gap:13px;padding:11px 14px!important;text-align:left!important;border-radius:15px!important;background:linear-gradient(110deg,rgba(25,39,48,.98),rgba(16,25,33,.98))!important;border:1px solid var(--border-strong)!important;cursor:pointer}
+#viewUsers .horizontal-user-card:hover{transform:translateY(-1px);border-color:rgba(0,215,193,.48)!important;box-shadow:0 8px 22px rgba(0,0,0,.18)}
+#viewUsers .horizontal-user-card .instagram-avatar-ring{flex:0 0 54px;width:54px;height:54px;padding:2px;margin:0;box-sizing:border-box}
+#viewUsers .horizontal-user-card .instagram-avatar-ring .avatar,#viewUsers .horizontal-user-card .instagram-avatar-ring img{width:100%;height:100%;object-fit:cover;border-radius:50%}
+#viewUsers .horizontal-user-details{display:flex;flex:1;min-width:0;flex-direction:column;align-items:flex-start;gap:3px}
+#viewUsers .horizontal-user-details .instagram-user-name{font-size:14px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#viewUsers .horizontal-user-details .instagram-user-handle{font-size:11px;color:var(--muted);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#viewUsers .horizontal-user-details .instagram-user-rank{font-size:11px}
+#viewUsers .horizontal-user-details .instagram-user-meta{font-size:11px;display:flex;align-items:center;gap:5px;color:var(--muted)}
+#viewUsers .horizontal-user-chevron{font-size:26px;color:var(--muted);padding:0 4px}
+.online-user-grid{display:flex!important;flex-direction:column!important;gap:7px!important;padding:8px!important}
+.online-user-grid .online-user{width:100%;min-height:64px;aspect-ratio:auto!important;box-sizing:border-box;flex-direction:row!important;justify-content:flex-start!important;align-items:center!important;gap:10px!important;padding:9px 11px!important;border-radius:13px!important;text-align:left!important;background:rgba(255,255,255,.018);border:1px solid var(--border)!important}
+.online-user-grid .online-user .avatar{width:43px!important;height:43px!important;flex:0 0 43px;border-radius:50%}
+.online-user-grid .online-user-copy{flex:1!important;min-width:0!important;text-align:left!important}
+.online-user-grid .online-user-copy b{display:block;font-size:13px}
+.online-user-grid .online-user-copy small{display:block;font-size:11px!important}
+.online-user-grid .online-user-copy .rank-badge{display:inline-flex;margin-top:3px}
+.online-user-grid .online-user .status{flex:0 0 8px;margin-left:auto!important}
+#viewNews .stack,#viewWall .wall-feed{width:min(100%,760px);margin:0 auto;box-sizing:border-box}
+#viewNews .news-card,#viewWall .wall-post{overflow:hidden;border:1px solid var(--border)!important;border-radius:18px!important;background:linear-gradient(155deg,rgba(20,32,40,.98),rgba(11,19,25,.99))!important;box-shadow:0 8px 24px rgba(0,0,0,.12);margin-bottom:14px}
+#viewNews .social-feed-card,#viewWall .social-feed-card{padding:18px!important;border-bottom:1px solid var(--border)!important}
+#viewNews .news-body{overflow-wrap:anywhere}
+#viewWall .wall-content{line-height:1.55}
+#viewNews .news-actions,#viewWall .wall-actions{align-items:center;gap:7px;flex-wrap:wrap}
+#viewNews .news-actions .mini,#viewWall .wall-actions .mini{border-radius:999px}
+@media(max-width:600px){#viewUsers .user-grid{padding:10px!important}#viewUsers .horizontal-user-card{min-height:74px;padding:9px 10px!important;gap:10px}#viewUsers .horizontal-user-card .instagram-avatar-ring{flex-basis:47px;width:47px;height:47px}#viewNews .stack,#viewWall .wall-feed{padding:10px!important}#viewNews .social-feed-card,#viewWall .social-feed-card{padding:13px!important}}
