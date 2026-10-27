@@ -176,7 +176,8 @@ function setAuthMode(login) {
 
   if ($("confirmPassword")) $("confirmPassword").classList.toggle("hidden", login);
   if ($("passwordStrength")) $("passwordStrength").classList.toggle("hidden", login);
-  [$("displayName"),$("registerEmail"),$("gender"),$("confirmPassword")].forEach(el=>{if(el) el.required=!login;});
+  [$("displayName"),$("registerEmail"),$("dateOfBirth"),$("gender"),$("confirmPassword")].forEach(el=>{if(el) el.required=!login;});
+  if($("dateOfBirth"))$("dateOfBirth").max=new Date().toISOString().slice(0,10);
 
   $("authSubmit").textContent = login ? "Login" : "Register";
   $("authMsg").textContent = "";
@@ -218,6 +219,7 @@ $("authForm").onsubmit = async e => {
           username: $("username").value.trim(),
           displayName: $("displayName").value.trim(),
           email: $("registerEmail")?.value.trim(),
+          dateOfBirth: $("dateOfBirth")?.value,
           gender: $("gender")?.value,
           password: $("password").value,
           confirmPassword: $("confirmPassword")?.value,
