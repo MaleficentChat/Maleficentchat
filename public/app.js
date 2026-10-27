@@ -616,26 +616,26 @@ function openHeaderChatOptions(){
 }
 
 async function loadWall(){
-  const d=await api('/api/wall');
-  const feed=$('wallFeed'); if(!feed)return;
-  feed.innerHTML=(d.posts||[]).map(p=>`<article class="card wall-post social-feed-card" data-wall-id="${p.id}">
-    <div class="wall-author">${p.avatar?`<img src="${esc(p.avatar)}">`:''}<div><b>@${esc(p.username||'Unknown')}</b><small>${esc(p.rank||'')}</small></div><time>${fmt(p.created_at)}</time></div>
-    <div class="wall-content">${esc(p.content||'')}${p.media_url?(String(p.media_url).match(/\.(mp4|webm|ogg)(\?|$)/i)?`<video class="wall-media" controls src="${esc(p.media_url)}"></video>`:`<img class="wall-media" src="${esc(p.media_url)}" alt="Wall upload">`):''}</div>
-    <div class="wall-actions"><button class="mini" data-wall-like="${p.id}">♡ ${Number(p.likes||0)}</button><button class="mini" data-wall-comments="${p.id}">Comments</button><button class="mini danger" data-wall-report="${p.id}">Report</button>${state.user?.username==='Maleficent'?`<button class="mini" data-wall-pin="${p.id}">📌 Pin</button>`:''}</div>
-    <div class="wall-comments hidden" id="wallComments-${p.id}"></div>
-  </article>`).join('')||'<p class="muted">No wall posts yet.</p>';
-  document.querySelectorAll('[data-wall-like]').forEach(b=>b.onclick=async()=>{await api('/api/wall/'+b.dataset.wallLike+'/like',{method:'POST'});loadWall()});
-  document.querySelectorAll('[data-wall-report]').forEach(b=>b.onclick=async()=>{try{await api('/api/wall/'+b.dataset.wallReport+'/report',{method:'POST',body:JSON.stringify({reason:'Reported by community member'})});toast('Wall post reported.')}catch(e){toast(e.message)}});
-  document.querySelectorAll('[data-wall-pin]').forEach(b=>b.onclick=async()=>{await api('/api/wall/'+b.dataset.wallPin+'/pin',{method:'POST'});toast('Post pinned.');loadWall()});
-  document.querySelectorAll('[data-wall-comments]').forEach(b=>b.onclick=async()=>{
-    const box=$('wallComments-'+b.dataset.wallComments); box.classList.toggle('hidden');
-    if(!box.classList.contains('hidden')){
-      const d=await api('/api/wall/'+b.dataset.wallComments+'/comments');
-      box.innerHTML=(d.comments||[]).map(c=>`<div class="wall-comment"><b>@${esc(c.username)}</b> ${esc(c.content)}</div>`).join('')+
-        `<form class="wall-comment-form" data-comment-form="${b.dataset.wallComments}"><input placeholder="Write a comment…"><button class="mini">Send</button></form>`;
-      const f=box.querySelector('form'); f.onsubmit=async e=>{e.preventDefault();const input=f.querySelector('input');try{await api('/api/wall/'+b.dataset.wallComments+'/comments',{method:'POST',body:JSON.stringify({content:input.value})});input.value='';b.click();b.click()}catch(err){toast(err.message)}};
-    }
-  });
+  try {
+    const d=await api('/api/wall'),feed=$('wallFeed'); if(!feed)return;
+    const emojis=['👍','❤️','😂','😮','🔥','👏'];
+    feed.innerHTML=(d.posts||[]).map(p=>{
+      const rx=p.reactions&&typeof p.reactions==='object'?p.reactions:{};
+      return `<article class="card wall-post social-feed-card" data-wall-id="${esc(p.id)}">
+        <div class="news-card-top"><div class="social-author"><div class="social-author-avatar">${p.avatar?`<img src="${esc(p.avatar)}" alt="">`:'👤'}</div><div><h3>@${esc(p.username||'Unknown')}</h3><div class="muted">${esc(p.rank||'Member')} · ${fmt(p.created_at)}</div></div></div><button class="social-more" data-wall-more="${esc(p.id)}" aria-label="Post options">•••</button></div>
+        <div class="news-body wall-content">${esc(p.content||'')}${p.media_url?(String(p.media_url).match(/\.(mp4|webm|ogg)(\?|$)/i)?`<video class="wall-media" controls src="${esc(p.media_url)}"></video>`:`<img class="wall-media" src="${esc(p.media_url)}" alt="Wall upload">`):''}</div>
+        <div class="social-reaction-summary">${emojis.map(e=>`<span>${e} <b>${(Array.isArray(rx[e])?rx[e]:[]).length}</b></span>`).join('')}<button class="social-comments-shortcut" data-wall-comments="${esc(p.id)}">${Number(p.comment_count||0)} 💬</button></div>
+        <div class="news-actions social-reaction-actions">${emojis.map(e=>{const us=Array.isArray(rx[e])?rx[e].map(String):[];return `<button class="mini ${us.includes(String(state.user?.id))?'reacted':''}" type="button" data-wall-reaction="${esc(e)}" data-wall-id="${esc(p.id)}">${e} <b>${us.length}</b></button>`}).join('')}<button class="mini" data-wall-comments="${esc(p.id)}">💬 Comments</button></div>
+        <div class="social-post-options hidden" id="wallOptions-${esc(p.id)}"><button type="button" data-wall-report="${esc(p.id)}">⚑ Report</button>${state.user?.username==='Maleficent'?`<button type="button" data-wall-pin="${esc(p.id)}">📌 Pin post</button>`:''}</div>
+        <div class="wall-comments hidden" id="wallComments-${esc(p.id)}"></div>
+      </article>`;
+    }).join('')||'<p class="muted">No wall posts yet.</p>';
+    document.querySelectorAll('[data-wall-more]').forEach(b=>b.onclick=()=> $('wallOptions-'+b.dataset.wallMore)?.classList.toggle('hidden'));
+    document.querySelectorAll('[data-wall-reaction]').forEach(b=>b.onclick=async()=>{try{await api('/api/wall/'+encodeURIComponent(b.dataset.wallId)+'/reaction',{method:'POST',body:JSON.stringify({emoji:b.dataset.wallReaction})});await loadWall()}catch(e){toast(e.message||'Could not send reaction.')}});
+    document.querySelectorAll('[data-wall-report]').forEach(b=>b.onclick=async()=>{try{await api('/api/wall/'+encodeURIComponent(b.dataset.wallReport)+'/report',{method:'POST',body:JSON.stringify({reason:'Reported by community member'})});toast('Wall post reported.')}catch(e){toast(e.message)}});
+    document.querySelectorAll('[data-wall-pin]').forEach(b=>b.onclick=async()=>{try{await api('/api/wall/'+encodeURIComponent(b.dataset.wallPin)+'/pin',{method:'POST'});toast('Post pinned.');await loadWall()}catch(e){toast(e.message)}});
+    document.querySelectorAll('[data-wall-comments]').forEach(b=>b.onclick=async()=>{const id=b.dataset.wallComments,box=$('wallComments-'+id);if(!box)return;box.classList.toggle('hidden');if(!box.classList.contains('hidden'))try{const d=await api('/api/wall/'+encodeURIComponent(id)+'/comments');box.innerHTML=(d.comments||[]).map(v=>`<div class="news-comment"><div class="news-comment-main"><div class="news-comment-head"><b>@${esc(v.username)}</b><small>${esc(v.rank||'Member')}</small></div><div class="news-comment-text">${esc(v.content)}</div></div></div>`).join('')+`<form class="wall-comment-form news-comment-form"><input placeholder="Write a comment…" maxlength="1000" required><button class="mini">Send</button></form>`;box.querySelector('form').onsubmit=async e=>{e.preventDefault();const input=e.currentTarget.querySelector('input');try{await api('/api/wall/'+encodeURIComponent(id)+'/comments',{method:'POST',body:JSON.stringify({content:input.value})});await loadWall();$('wallComments-'+id)?.classList.remove('hidden')}catch(err){toast(err.message)}}}catch(e){toast(e.message)}});
+  } catch(e){toast(e.message||'Could not load Friends Wall.')}
 }
 if($('newWallPost'))$('newWallPost').onclick=async()=>{
   modal(`<h2>New Wall Post</h2><textarea id="wallPostText" maxlength="5000" placeholder="Write something for your friends…"></textarea><input id="wallPostFile" type="file" accept="image/*,video/*"><div id="wallPreview" class="media-preview"></div><button class="primary" id="wallPostSend">Upload & Publish</button>`);
@@ -2357,19 +2357,20 @@ async function loadNews() {
     const data=await api("/api/news");
     $("news").innerHTML=(data.news||[]).map(n=>{
       const comments=n.comments||[], rx=n.reactions||{};
-      const reactions=[["👍",Number(rx.like||rx.likes||0)],["👎",Number(rx.dislike||rx.dislikes||0)],["💗",Number(rx.love||0)],["😆",Number(rx.laugh||0)]];
+      const reactionKeys=[["👍","like"],["👎","dislike"],["💗","love"],["😆","laugh"]];
+      const reactions=reactionKeys.map(([emoji,legacy])=>{const users=Array.isArray(rx[emoji])?rx[emoji]:[];const old=Number(rx[legacy]||rx[legacy+'s']||0);return [emoji,users.length||old,users.map(String).includes(String(state.user?.id))]});
       return `<article class="card news-card social-feed-card" data-news-id="${esc(n.id)}">
         <div class="news-card-top"><div class="social-author"><div class="social-author-avatar">${n.avatar?`<img src="${esc(n.avatar)}" alt="">`:'📰'}</div><div><h3>${esc(n.author||'Maleficent Chat')}</h3><div class="muted">${fmt(n.time)}</div></div></div><button class="social-more" data-news-more="${esc(n.id)}" aria-label="Post options">•••</button></div>
         <div class="news-body">${esc(n.title? n.title+'\\n\\n'+n.body : n.body)}</div>
         ${n.attachment?.type?.startsWith('image/')?`<img class="news-attachment" src="${esc(n.attachment.url)}" alt="News photo">`:''}
         <div class="social-reaction-summary">${reactions.map(([emoji,count])=>`<span>${emoji} <b>${count}</b></span>`).join('')}<button class="social-comments-shortcut" onclick="openNewsComments('${esc(n.id)}')">${comments.length} 💬</button></div>
-        <div class="news-actions social-reaction-actions">${reactions.map(([emoji])=>`<button class="mini" type="button" data-news-reaction="${emoji}" data-news-id="${esc(n.id)}">${emoji}</button>`).join('')}<button class="mini" onclick="openNewsComments('${esc(n.id)}')">💬 <b>${comments.length}</b></button>${canFeature('delete_news')?`<button class="mini danger" onclick="deleteNews('${esc(n.id)}')">🗑 Delete</button>`:""}</div>
+        <div class="news-actions social-reaction-actions">${reactions.map(([emoji,count,reacted])=>`<button class="mini ${reacted?'reacted':''}" type="button" data-news-reaction="${emoji}" data-news-id="${esc(n.id)}">${emoji} <b>${count}</b></button>`).join('')<button class="mini" onclick="openNewsComments('${esc(n.id)}')">💬 <b>${comments.length}</b></button>${canFeature('delete_news')?`<button class="mini danger" onclick="deleteNews('${esc(n.id)}')">🗑 Delete</button>`:""}</div>
         <div class="social-post-options hidden" id="newsOptions-${esc(n.id)}"><button type="button" data-news-report="${esc(n.id)}">⚑ Report</button></div>
       </article>`;
     }).join("")||`<div class="room-empty"><div>📰</div><b>No news yet</b><span>Community announcements will appear here.</span></div>`;
     document.querySelectorAll('[data-news-more]').forEach(b=>b.onclick=()=>{$('newsOptions-'+b.dataset.newsMore)?.classList.toggle('hidden')});
     document.querySelectorAll('[data-news-report]').forEach(b=>b.onclick=async()=>{const id=b.dataset.newsReport;try{await api('/api/news/'+encodeURIComponent(id)+'/report',{method:'POST',body:JSON.stringify({reason:'Reported by community member'})});toast('Report submitted.')}catch(e){toast(e.message||'Reporting is unavailable for this post.')}});
-    document.querySelectorAll('[data-news-reaction]').forEach(b=>b.onclick=()=>toast('Reactions for news posts are not enabled on the server yet.'));
+    document.querySelectorAll('[data-news-reaction]').forEach(b=>b.onclick=async()=>{try{await api('/api/news/'+encodeURIComponent(b.dataset.newsId)+'/reaction',{method:'POST',body:JSON.stringify({emoji:b.dataset.newsReaction})});await loadNews()}catch(e){toast(e.message||'Could not send reaction.')}});
   } catch (error) { toast(error.message); }
 }
 
@@ -3132,13 +3133,18 @@ async function loadOwner() {
 
       </div>
 
-      <div class="card owner-audit-management">
-        <h3>📜 Audit Logs Management</h3>
-        <p class="muted">Control which event types appear in Staff Dashboard audit logs and choose the minimum rank allowed to view each type.</p>
-        <div class="owner-audit-toolbar"><input id="ownerAuditTypeSearch" type="search" placeholder="Search event types…"><button class="mini" type="button" id="ownerAuditAllOn">Turn all on</button><button class="mini" type="button" id="ownerAuditAllOff">Turn all off</button></div>
-        <div id="ownerAuditVisibilityRows" class="owner-audit-visibility-list"></div>
-        <div class="toolbar"><button class="primary" type="button" id="saveOwnerAuditVisibility">Save Audit Log Settings</button><span class="muted" id="ownerAuditSaveStatus">Unsaved changes stay here until saved.</span></div>
-      </div>
+      <details class="filter-words-details owner-settings-dropdown owner-audit-dropdown">
+        <summary>📜 Audit Logs Management — open to configure event visibility</summary>
+        <div class="owner-audit-dropdown-content">
+          <div class="card owner-audit-management">
+            <h3>📜 Audit Logs Management</h3>
+            <p class="muted">Control which event types appear in Staff Dashboard audit logs and choose the minimum rank allowed to view each type.</p>
+            <div class="owner-audit-toolbar"><input id="ownerAuditTypeSearch" type="search" placeholder="Search event types…"><button class="mini" type="button" id="ownerAuditAllOn">Turn all on</button><button class="mini" type="button" id="ownerAuditAllOff">Turn all off</button></div>
+            <div id="ownerAuditVisibilityRows" class="owner-audit-visibility-list"></div>
+            <div class="toolbar"><button class="primary" type="button" id="saveOwnerAuditVisibility">Save Audit Log Settings</button><span class="muted" id="ownerAuditSaveStatus">Unsaved changes stay here until saved.</span></div>
+          </div>
+        </div>
+      </details>
 
       <div class="card">
         <h3>🚫 Filter Words — Bulk Add</h3>
