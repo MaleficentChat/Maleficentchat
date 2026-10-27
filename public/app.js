@@ -895,7 +895,7 @@ async function renderOnline(tab=onlinePanelTab,searchQuery=""){
     const count=online.length;
     $("onlinePanelTitle").innerHTML=`${esc(title)} <span class="online-badge">${count}</span>`;
     $("onlineUsers").innerHTML=`${tab==="search"?'<input id="onlineUsernameSearch" type="search" placeholder="Search username…" autocomplete="off">':''}<div class="online-user-grid">${list.map(user=>`
-      <div class="online-user ${user.online?'is-online':'is-offline'}" onclick="openUser('${esc(user.id)}')">
+      <div class="online-user ${user.online?'is-online':'is-offline'}" onclick="openQuickUserCard('${esc(user.id)}')">
         ${avatar(user)}
         <div class="online-user-copy">
           <b>${esc(user.displayName)}</b>
@@ -2055,7 +2055,12 @@ async function openDM(id) {
     modal(`
       <div class="dm-chat-header">
         <div class="dm-chat-person">${avatar(user)}<div class="dm-chat-person-copy"><h2>${esc(privateNickname||user.displayName)}</h2><span>@${esc(user.username)} · <i class="${user.online?'is-online':'is-offline'}"></i> ${user.online?'Online':'Offline'}</span></div></div>
-        <div class="dm-chat-actions"><button type="button" class="mini" id="editPrivateNicknameBtn" title="Set private nickname">✏️ Nickname</button><button type="button" class="mini danger" id="reportDmBtn">🚩 Report</button></div>
+        <div class="dm-chat-actions"><button type="button" class="mini dm-settings-toggle" id="dmChatSettingsBtn" title="Conversation settings" aria-expanded="false">⚙️</button><button type="button" class="mini" id="dmCloseBtn" title="Close conversation">×</button><div class="dm-settings-menu hidden" id="dmChatSettingsMenu">
+<button type="button" data-dm-action="nickname">✏️ <span><b>Nickname</b><small>Set a private nickname</small></span></button>
+<button type="button" data-dm-action="ignore">🚫 <span><b>Ignore</b><small>Block this user</small></span></button>
+<button type="button" data-dm-action="mute">🔕 <span><b>Mute</b><small>Mute conversation notifications</small></span></button>
+<button type="button" data-dm-action="archive">▣ <span><b>Archive</b><small>Move conversation to Archived</small></span></button>
+<button type="button" data-dm-action="report">⚑ <span><b>Report</b><small>Report this conversation</small></span></button></div></div>
       </div>
       <div class="dm-message-search"><span>⌕</span><input id="dmMessageSearch" placeholder="Search in this conversation…" autocomplete="off"><small id="dmSearchCount">${messages.length} messages</small></div>
       <div class="dm-conversation-tools"><span>🔒 Private conversation</span><span id="dmTypingStatus" aria-live="polite">Quote a message to reply · Attach photos or files</span></div>
@@ -2110,7 +2115,17 @@ async function openDM(id) {
       </form>
     `);
 
-    $('editPrivateNicknameBtn')?.addEventListener('click',()=>{modal(`<h2>Set nickname for this user</h2><p class="muted">Only you can see this nickname. Their username and account identity stay unchanged.</p><input id="privateNicknameInput" maxlength="50" value="${esc(privateNickname)}" placeholder="Private nickname"><div class="toolbar"><button class="primary" id="savePrivateNicknameBtn">Save</button></div>`);$('savePrivateNicknameBtn').onclick=async()=>{try{await api('/api/private-nickname',{method:'POST',body:JSON.stringify({targetId:user.id,nickname:$('privateNicknameInput').value.trim()})});closeModal();openDM(user.id);}catch(e){toast(e.message)}}});
+    const dmTargetId=String(user.id),dmSettings=$('dmChatSettingsMenu'),dmSettingsBtn=$('dmChatSettingsBtn');
+    dmSettingsBtn?.addEventListener('click',()=>{dmSettings?.classList.toggle('hidden');dmSettingsBtn.setAttribute('aria-expanded',String(!dmSettings?.classList.contains('hidden')));});
+    $('dmCloseBtn')?.addEventListener('click',closeModal);
+    dmSettings?.querySelectorAll('[data-dm-action]').forEach(btn=>btn.addEventListener('click',async()=>{
+      const action=btn.dataset.dmAction;dmSettings.classList.add('hidden');
+      if(action==='nickname'){modal(`<h2>Set nickname for this user</h2><p class="muted">Only you can see this nickname. Their username and account identity stay unchanged.</p><input id="privateNicknameInput" maxlength="50" value="${esc(privateNickname)}" placeholder="Private nickname"><div class="toolbar"><button class="primary" id="savePrivateNicknameBtn">Save</button></div>`);$('savePrivateNicknameBtn').onclick=async()=>{try{await api('/api/private-nickname',{method:'POST',body:JSON.stringify({targetId:user.id,nickname:$('privateNicknameInput').value.trim()})});closeModal();openDM(user.id);}catch(e){toast(e.message)}};return;}
+      if(action==='ignore'){try{await block(user.id);closeModal();toast('User ignored.');}catch(e){toast(e.message)}return;}
+      if(action==='mute'){const muted=!!dmPrefs().muted?.[dmTargetId];dmSetPref('muted',dmTargetId,!muted);toast(muted?'Conversation unmuted.':'Conversation muted.');return;}
+      if(action==='archive'){const archived=!!dmPrefs().archived?.[dmTargetId];dmSetPref('archived',dmTargetId,!archived);closeModal();toast(archived?'Conversation unarchived.':'Conversation archived.');return;}
+      if(action==='report'){const reason=prompt('Reason for reporting this private conversation:','Inappropriate private message');if(reason===null)return;try{await api('/api/report',{method:'POST',body:JSON.stringify({reportedUserId:user.id,conversationWithId:state.user.id,reason})});toast('Report submitted.');}catch(e){toast(e.message)}}
+    }));
     const box = $("dmMessages");
     if (box) box.scrollTop = box.scrollHeight;
     const dmSearch=$("dmMessageSearch");
@@ -2506,21 +2521,22 @@ function shareGoldModal(user){
 function renderAchievementBadges(user){ return '<button class="mini" id="profileAchievementsBtn">🏆 Achievements</button>'; }
 async function showAchievements(user){try{const d=await api('/api/achievements/'+encodeURIComponent(user.id));modal(`<div class="achievement-modal"><h2>🏆 Achievements</h2><div class="stack achievement-scroll">${(d.achievements||[]).map(x=>`<div class="hub-row"><span style="font-size:1.5rem">${esc(x.icon||'🏆')}</span><div style="flex:1"><b>${esc(x.name)}</b><small class="muted">${fmt(x.earned_at)}</small></div></div>`).join('')||'<p class="muted">No achievements earned yet.</p>'}</div></div>`);}catch(e){toast(e.message)}}
 
-async function openProfileActionDrawer(user,data){
-  const isSelf=user.id===state.user.id;
-  const blocked=(state.user.blocked||[]).includes(user.id);
-  modal(`<div class="profile-drawer"><h2>Profile actions</h2><div class="toolbar profile-drawer-list">${!isSelf?`<button class="mini" id="drawerMessage">💬 Private message</button><button class="mini" id="drawerLike">${data.likedByMe?'💔 Unlike':'❤️ Like profile'}</button><button class="mini" id="drawerFriend">👥 Add friend</button><button class="mini" id="drawerBlock">${blocked?'🚫 Unblock':'🚫 Block'}</button><button class="mini" id="drawerGold">🪙 Share wallet</button>${canFeature('staff_rank_assignment')?`<button class="mini" id="drawerRank">🏅 Give rank</button>`:''}${canFeature('moderate_user')?`<button class="mini" id="drawerModerate">🛡️ Moderate user</button>`:''}${canFeature('manage_staff_accounts')?`<button class="mini" id="drawerStaff">⚙️ Staff account</button>`:''}${canFeature('account_modifications')?`<button class="mini" id="drawerAccountModifications">🛠️ Account modifications</button>`:''}${canFeature('profile_note')?`<button class="mini" id="drawerNote">📝 Profile note</button>`:''}${can('MOD')?`<button class="mini" id="drawerHistory">📜 User history</button>`:''}`:`<button class="mini" id="drawerEdit">✏️ Edit profile</button><button class="mini" id="drawerBlocked">🚫 Blocked users</button>`}</div></div>`);
-  $('drawerMessage')?.addEventListener('click',()=>{closeModal();openDM(user.id)});
-  $('drawerLike')?.addEventListener('click',async()=>{try{const r=await api(`/api/users/${user.id}/like`,{method:'POST'});data.likedByMe=r.liked;user.profileLikes=r.likes;closeModal();renderUserProfileModal(user,data);toast(r.liked?'Profile liked.':'Profile like removed.');}catch(e){toast(e.message)}});
-  $('drawerRank')?.addEventListener('click',()=>{closeModal();rankFromProfile(user)});
-  $('drawerHistory')?.addEventListener('click',()=>showUserActionHistory(user.id));
-  $('drawerFriend')?.addEventListener('click',async()=>{try{await friend(user.id);closeModal();toast('Friend request sent.')}catch(e){toast(e.message)}});
-  $('drawerBlock')?.addEventListener('click',async()=>{try{if(blocked) await api(`/api/users/${user.id}/block`,{method:'DELETE'}); else await block(user.id); closeModal(); toast(blocked?'User unblocked.':'User blocked.');}catch(e){toast(e.message)}});
-  $('drawerGold')?.addEventListener('click',()=>{closeModal();shareGoldModal(user)});
-  $('drawerModerate')?.addEventListener('click',()=>{closeModal();moderate(user.id)});
-  $('drawerStaff')?.addEventListener('click',()=>{closeModal();staffAccountModal(user)});$('drawerAccountModifications')?.addEventListener('click',()=>{closeModal();staffAccountModificationModal(user)});$('drawerNote')?.addEventListener('click',()=>{closeModal();staffProfileNoteModal(user)});
-  $('drawerEdit')?.addEventListener('click',()=>{closeModal();state.view='profile';renderView()});
-  $('drawerBlocked')?.addEventListener('click',showBlockedUsers);
+async function openProfileActionDrawer(user,data={}){
+  const isSelf=String(user.id)===String(state.user.id);
+  if(isSelf){modal(`<div class="profile-drawer"><h2>Account actions</h2><button class="quick-user-row" id="drawerEdit">✏️ Edit profile</button><button class="quick-user-row" id="drawerBlocked">🚫 Blocked users</button></div>`);$('drawerEdit')?.addEventListener('click',()=>{closeModal();state.view='profile';renderView()});$('drawerBlocked')?.addEventListener('click',showBlockedUsers);return;}
+  const prefs=dmPrefs(),id=String(user.id),muted=!!prefs.muted?.[id],archived=!!prefs.archived?.[id],blocked=(state.user.blocked||[]).map(String).includes(id);
+  modal(`<div class="profile-drawer quick-action-menu"><h2>Actions · @${esc(user.username||'user')}</h2>
+    <button class="quick-user-row" id="drawerNickname"><span>✏️</span><b>Nickname</b><i>›</i></button>
+    <button class="quick-user-row" id="drawerIgnore"><span>🚫</span><b>${blocked?'Unignore user':'Ignore user'}</b><i>›</i></button>
+    <button class="quick-user-row" id="drawerMute"><span>${muted?'🔔':'🔕'}</span><b>${muted?'Unmute conversation':'Mute conversation'}</b><i>›</i></button>
+    <button class="quick-user-row" id="drawerArchive"><span>▣</span><b>${archived?'Unarchive conversation':'Archive conversation'}</b><i>›</i></button>
+    <button class="quick-user-row" id="drawerReport"><span>⚑</span><b>Report user</b><i>›</i></button>
+  </div>`);
+  $('drawerNickname')?.addEventListener('click',()=>{closeModal();nicknameModal(user)});
+  $('drawerIgnore')?.addEventListener('click',async()=>{try{if(blocked)await api(`/api/users/${encodeURIComponent(id)}/block`,{method:'DELETE'});else await block(id);closeModal();toast(blocked?'User is no longer ignored.':'User ignored.');}catch(e){toast(e.message)}});
+  $('drawerMute')?.addEventListener('click',()=>{dmSetPref('muted',id,!muted);closeModal();toast(muted?'Conversation unmuted.':'Conversation muted.');});
+  $('drawerArchive')?.addEventListener('click',()=>{dmSetPref('archived',id,!archived);closeModal();toast(archived?'Conversation unarchived.':'Conversation archived.');});
+  $('drawerReport')?.addEventListener('click',async()=>{const reason=prompt('Why are you reporting this user?','Rule-breaking behavior');if(reason===null)return;try{await api('/api/report',{method:'POST',body:JSON.stringify({reportedUserId:id,reason})});closeModal();toast('Report submitted.');}catch(e){toast(e.message)}});
 }
 async function showBlockedUsers(){
   try{const r=await api('/api/users/blocked'); modal(`<h2>🚫 Blocked users</h2><div class="stack">${(r.users||[]).map(u=>`<div class="card blocked-user-row">${avatar(u)}<div><b>${esc(u.displayName)}</b><small>@${esc(u.username)}</small></div><button class="mini" onclick="unblockFromList('${esc(u.id)}')">Unblock</button></div>`).join('')||'<p class="muted">You have not blocked anyone.</p>'}</div>`);}catch(e){toast(e.message)}}
