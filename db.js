@@ -192,11 +192,20 @@ async function initDB() {
     );
   }
 
-  // Keep the two default community rooms persistent; room access is not age-gated.
-  await pool.query(`INSERT INTO rooms(name,created_by,icon,description,category,is_public,rank_required,invite_token,min_age,max_age,is_default)
-    VALUES ('Main room 1',(SELECT id FROM users WHERE username='Maleficent'),'🏠','Meet and chat with the community.','Community',true,'MEMBER','main-1',0,18,true),
-           ('Main room 2',(SELECT id FROM users WHERE username='Maleficent'),'🏠','A second open community room.','Community',true,'MEMBER','main-2',19,99,true)
-    ON CONFLICT(name) DO UPDATE SET description=EXCLUDED.description,min_age=CASE WHEN rooms.name='Main room 1' THEN 0 ELSE 19 END,max_age=CASE WHEN rooms.name='Main room 1' THEN 18 ELSE 99 END,is_default=true`);
+  // One-time room reset: replace legacy/default rooms with a single persistent Main Room.
+  // The marker prevents future deploys or page refreshes from deleting user-created rooms.
+  const roomStructure = await pool.query(`SELECT value FROM settings WHERE key='room_structure_v1'`);
+  if (!roomStructure.rowCount) {
+    await pool.query('DELETE FROM rooms');
+    await pool.query(`INSERT INTO rooms(name,created_by,icon,description,category,is_public,rank_required,invite_token,min_age,max_age,is_default)
+      VALUES ('Main Room',(SELECT id FROM users WHERE username='Maleficent'),'🏠','The main community chat room.','Community',true,'MEMBER','main-room',0,120,true)
+      ON CONFLICT(name) DO UPDATE SET description=EXCLUDED.description,min_age=0,max_age=120,is_default=true`);
+    await pool.query(`INSERT INTO settings(key,value) VALUES('room_structure_v1','true'::jsonb) ON CONFLICT(key) DO UPDATE SET value=EXCLUDED.value`);
+  } else {
+    await pool.query(`INSERT INTO rooms(name,created_by,icon,description,category,is_public,rank_required,invite_token,min_age,max_age,is_default)
+      VALUES ('Main Room',(SELECT id FROM users WHERE username='Maleficent'),'🏠','The main community chat room.','Community',true,'MEMBER','main-room',0,120,true)
+      ON CONFLICT(name) DO NOTHING`);
+  }
   const giftValues = `VALUES
     ('Rose','🌹',10),('Chocolate','🍫',15),('Heart','❤️',20),('Teddy Bear','🧸',25),('Diamond','💎',100),('Crown','👑',150),('Cake','🎂',30),('Flower','🌸',15),('Star','⭐',20),('Gift Box','🎁',50),
     ('Crown Jewel','💍',75),('Coffee','☕',10),('Cupcake','🧁',15),('Butterfly','🦋',20),('Moon','🌙',20),('Sun','☀️',20),('Music','🎵',10),('Paw','🐾',10),('Unicorn','🦄',40),('Castle','🏰',60)`;
@@ -247,19 +256,7 @@ async function loadState(defaultState) {
     dev.passwordHash=dev.password && dev.password.startsWith("$2") ? dev.password : undefined;
   }
 
-  // If a previous version had rooms in legacy_state, migrate them once into the real rooms table.
-  const roomCount = await pool.query(`SELECT COUNT(*)::int AS count FROM rooms`);
-  if (Array.isArray(state.rooms)) {
-    for (const r of state.rooms) {
-      await pool.query(
-        `INSERT INTO rooms(name,created_by,icon,description,category,is_public,password_hash,rank_required,room_limit,slow_mode,announcement,banner,invite_token)
-         VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) ON CONFLICT(name) DO NOTHING`,
-        [r.name||"New Room", Number(r.ownerId)||null, r.icon||"💬", r.description||"", r.category||"Community",
-         r.public!==false, r.passwordHash||null, r.rankRequired||"MEMBER", Number(r.limit)||100, Number(r.slowMode)||0,
-         r.announcement||"", r.banner||"", r.inviteToken||cryptoToken()]
-      );
-    }
-  }
+  // PostgreSQL is the source of truth for rooms; do not re-import stale legacy room lists.
   const { rows: roomRows } = await pool.query(`SELECT * FROM rooms ORDER BY created_at,id`);
   state.rooms = roomRows.map(r=>({
     id:String(r.id), name:r.name, icon:r.icon||"💬", description:r.description||"", category:r.category||"Community", isDefault:!!r.is_default,
