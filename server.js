@@ -1409,7 +1409,7 @@ app.post("/api/rooms/:id/messages",auth,featureAllowed("send_messages"),upload.s
     systemModerationWindows.set(key,prev);
     const repeated=prev.texts.filter(x=>x.text===signature).length;
     const mentionCount=(String(text||"").match(/@[A-Za-z0-9_]{2,24}/g)||[]).length;
-    const suspiciousShortener=/(?:https?:\\/\\/)?(?:bit\\.ly|tinyurl\\.com|t\\.co|is\\.gd|cutt\\.ly|rb\\.gy)\\//i.test(String(text||""));
+    const suspiciousShortener=/(?:bit[.]ly|tinyurl[.]com|t[.]co|is[.]gd|cutt[.]ly|rb[.]gy)/i.test(String(text||""));
     const flood=prev.times.length>6 || repeated>=4 || mentionCount>=7 || suspiciousShortener;
     const configured=db.settings?.system_moderation?.spam_flood;
     if(flood && configured?.enabled===true){
