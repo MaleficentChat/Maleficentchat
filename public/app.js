@@ -94,8 +94,11 @@ async function api(url, opt = {}) {
 
   const token=safeStorage.getItem("mc_token");
   if(token) headers["x-auth-token"]=token;
-  const roomMatch=String(url).match(/\/api\/rooms\/(\d+)\/(?:messages|pinned)/);
-  if(roomMatch){try{const roomAccess=JSON.parse(safeStorage.getItem('mc_room_join')||'null');if(roomAccess?.roomId===roomMatch[1])headers['x-room-join-token']=roomAccess.joinToken;}catch{}}
+  // Attach the room access token to every room-scoped API call that needs it,
+  // including YouTube sharing. Previously the token was only sent for messages
+  // and pinned messages, so the YouTube endpoint always rejected the request.
+  const roomMatch=String(url).match(/\/api\/rooms\/(\d+)(?:\/|$)/);
+  if(roomMatch){try{const roomAccess=JSON.parse(safeStorage.getItem('mc_room_join')||'null');if(roomAccess?.roomId===roomMatch[1]&&roomAccess.joinToken)headers['x-room-join-token']=roomAccess.joinToken;}catch{}}
   const res = await fetch(url, {
     ...opt,
     headers,
@@ -915,6 +918,15 @@ function messageHTML(message) {
   };
 
   let attachment = "";
+
+  // YouTube shares are stored as message.youtube, not message.attachment.
+  // Render the embedded player for the message shape returned by the server.
+  if (message.youtube?.videoId) {
+    const videoId = String(message.youtube.videoId);
+    if (/^[A-Za-z0-9_-]{11}$/.test(videoId)) {
+      attachment = `<div class="youtube-message"><iframe src="https://www.youtube-nocookie.com/embed/${esc(videoId)}" title="${esc(message.youtube.title||"YouTube video")}" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe></div>`;
+    }
+  }
 
   if (message.attachment) {
     if(message.attachment.type==='video/youtube' && message.attachment.videoId){
@@ -3457,10 +3469,36 @@ async function showPinnedMessages(){
   try{ const data=await api(`/api/rooms/${encodeURIComponent(state.currentRoom)}/pinned`); const pinned=data.messages||[]; modal(`<h2>📌 Pinned messages</h2><p class="muted">Pinned messages in ${esc(state.rooms.find(r=>r.id===state.currentRoom)?.name||'this room')}.</p><div class="pinned-list">${pinned.map(m=>`<button class="pinned-result" onclick="closeModal();jumpToMessage('${esc(m.id)}')"><b>${esc(m.displayName||m.username)}</b><small>${fmt(m.time)}</small><span>${esc(m.text||'📎 Attachment')}</span></button>`).join('')||'<p class="muted">No pinned messages in this room.</p>'}</div>`); }catch(e){toast(e.message)}
 }
 async function openYoutubePanel(){
-  modal(`<div class="youtube-panel"><h2>▶️ YouTube</h2><div class="toolbar"><input id="ytQuery" placeholder="Search YouTube…"><button class="primary" id="ytSearch">Search</button></div><div id="ytResults" class="youtube-results"><p class="muted">Search for a video to share it in this room.</p></div></div>`);
-  $('ytSearch').onclick=async()=>{const q=$('ytQuery').value.trim();if(!q)return;const r=await api('/api/youtube/search?q='+encodeURIComponent(q)).catch(e=>({error:e.message}));if(r.error){toast(r.error);return;} $('ytResults').innerHTML=(r.results||[]).map(v=>`<button class="youtube-result" onclick="sendYoutube('${esc(v.id)}','${esc(v.title)}')"><img src="${esc(v.thumbnail)}"><span><b>${esc(v.title)}</b><small>${esc(v.channel||'YouTube')}</small></span></button>`).join('')||'<p class="muted">No results.</p>';};
+  modal(`<div class="youtube-panel"><h2>▶️ YouTube</h2><p class="muted">Search for a video or paste a YouTube link.</p><div class="toolbar"><input id="ytQuery" placeholder="Search or paste YouTube URL…"><button class="primary" id="ytSearch">Search</button></div><div id="ytResults" class="youtube-results"><p class="muted">Search for a video to share it in this room.</p></div></div>`);
+  $('ytSearch').onclick=async()=>{
+    const q=$('ytQuery').value.trim();
+    if(!q)return;
+    // Direct links work even when YouTube search is temporarily unavailable
+    // or the deployment has no YouTube Data API key.
+    const match=q.match(/(?:youtu\.be\/|youtube(?:-nocookie)?\.com\/(?:watch\?(?:[^#]*&)?v=|embed\/|shorts\/|live\/))([A-Za-z0-9_-]{11})/i);
+    if(match){
+      const videoId=match[1];
+      const title="YouTube video";
+      $('ytResults').innerHTML=`<button class="youtube-result" onclick="sendYoutube('${videoId}','${title}')"><img src="https://i.ytimg.com/vi/${videoId}/mqdefault.jpg" alt=""><span><b>YouTube video</b><small>Share this video in chat</small></span></button>`;
+      return;
+    }
+    const button=$('ytSearch');button.disabled=true;button.textContent='Searching…';
+    try{
+      const r=await api('/api/youtube/search?q='+encodeURIComponent(q));
+      const results=(r.results||[]).filter(v=>/^[A-Za-z0-9_-]{11}$/.test(String(v.id||'')));
+      $('ytResults').innerHTML=results.map(v=>`<button class="youtube-result" onclick="sendYoutube('${esc(v.id)}','${esc(v.title)}')"><img src="${esc(v.thumbnail||('https://i.ytimg.com/vi/'+v.id+'/mqdefault.jpg'))}" alt=""><span><b>${esc(v.title)}</b><small>${esc(v.channel||'YouTube')}</small></span></button>`).join('')||`<p class="muted">${esc(r.notice||'No results. Try pasting a YouTube video link instead.')}</p>`;
+    }catch(e){toast(e.message||'YouTube search failed. Paste a YouTube video link instead.');}
+    finally{button.disabled=false;button.textContent='Search';}
+  };
 }
-async function sendYoutube(videoId,title){try{await api(`/api/rooms/${state.currentRoom}/youtube`,{method:'POST',body:JSON.stringify({videoId,title})});closeModal();toast('YouTube video shared in chat.');}catch(e){toast(e.message)}}
+async function sendYoutube(videoId,title){
+  try{
+    if(!state.currentRoom)throw new Error('Join Main Room before sharing a video.');
+    const result=await api(`/api/rooms/${encodeURIComponent(state.currentRoom)}/youtube`,{method:'POST',body:JSON.stringify({videoId,title})});
+    if(result.message)appendMessage(result.message);
+    closeModal();toast('YouTube video shared in chat.');
+  }catch(e){toast(e.message||'Could not share this video.')}
+}
 $("youtubeComposerBtn")?.addEventListener("click",()=>openYoutubePanel());
 
 /* ---------------- ROOM MENU ---------------- */
