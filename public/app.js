@@ -406,8 +406,24 @@ async function start() {
   await renderView();
   // Login should open Main Room immediately, not leave users on the room cards.
   if (mainRoom) {
-    const joined = await joinRoom(String(mainRoom.id));
-    if (joined === false) toast("Main Room could not open automatically. Please check the message above.");
+    let joined = await joinRoom(String(mainRoom.id));
+    // If the room list was stale during login, fetch the authoritative list and
+    // retry once rather than leaving the user stranded on an empty room screen.
+    if (joined === false) {
+      try {
+        await new Promise(resolve => setTimeout(resolve, 350));
+        const latest = await api("/api/rooms");
+        state.rooms = sanitizeRoomList(latest.rooms);
+        state.roomListMode = "all";
+        renderRooms();
+        mainRoom = state.rooms.find(room => room.isDefault) ||
+          state.rooms.find(room => String(room.name || "").trim().toLowerCase() === "main room");
+        if (mainRoom) joined = await joinRoom(String(mainRoom.id));
+      } catch (e) {
+        toast("Could not reload rooms: " + e.message);
+      }
+    }
+    if (joined === false) toast("Main Room could not open automatically. Please check the latest error.");
   } else {
     toast("Main Room is missing from the server room list. Please retry in a moment.");
   }
