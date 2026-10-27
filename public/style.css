@@ -2607,3 +2607,10 @@ a { color: #65dcff; }
     min-height: 180px !important;
   }
 }
+
+
+/* Readable audit evidence details */
+.audit-detail-list { display:grid; gap:5px; margin:7px 0 2px; }
+.audit-detail-item { padding:7px 9px; border-left:2px solid rgba(155,92,255,.5); border-radius:0 7px 7px 0; background:rgba(155,92,255,.055); overflow-wrap:anywhere; line-height:1.45; }
+.audit-detail-item b { color:#d9c8ff; }
+.audit-detail-empty { color:var(--muted); font-style:italic; }
