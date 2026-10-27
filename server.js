@@ -496,12 +496,14 @@ function clientIp(req){
   // Render forwards the original client address through proxy headers. Prefer
   // a public address from the forwarded chain instead of recording the
   // hosting container's private address (for example 10.x.x.x).
+  // With trust proxy enabled, Express resolves req.ip from the forwarded chain.
+  // Prefer this canonical client address before independently reading proxy headers.
   const forwarded=[
+    req.ip,
     ...(Array.isArray(req.ips)?req.ips:[]),
     req.headers["cf-connecting-ip"],
     req.headers["x-real-ip"],
     req.headers["x-forwarded-for"],
-    req.ip,
     req.socket?.remoteAddress
   ].flatMap(value=>String(value||"").split(",").map(normalize)).filter(Boolean);
   return forwarded.find(ip=>!isPrivateOrLocal(ip))||forwarded[0]||"unknown";
@@ -2398,9 +2400,10 @@ app.post("/api/owner/refresh-site-messages",auth,ownerOnly,async(req,res)=>{
     const roomResult=await client.query("DELETE FROM room_messages");
     const privateResult=await client.query("DELETE FROM private_messages");
     await client.query("COMMIT");
+    // These tables are the source of truth; clear in-memory caches only after
+    // the transaction succeeds and avoid scheduling a legacy-state write here.
     db.messages=[];
     db.privateMessages=[];
-    save();
     log(current(req),"SITE_MESSAGES_REFRESH","ALL",{roomMessages:Number(roomResult.rowCount||0),privateMessages:Number(privateResult.rowCount||0)});
     io.emit("site:messages-cleared");
     res.json({ok:true,roomMessages:Number(roomResult.rowCount||0),privateMessages:Number(privateResult.rowCount||0)});
