@@ -780,15 +780,16 @@ app.post(
       password.length<8||
       !normalizedEmail||
       !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)||
+      !normalizedDob||
       !normalizedGender
     ){
       return res.status(400).json({
         error:
-          "Display name, email, gender and password are required. Password must be 8+ characters."
+          "Display name, email, date of birth, gender and password are required. Password must be 8+ characters."
       });
     }
 
-    if(normalizedDob){const dobDate=new Date(normalizedDob+"T00:00:00Z");if(Number.isNaN(dobDate.getTime()) || dobDate>new Date()) return res.status(400).json({error:"Please enter a valid date of birth."});}
+    {const dobDate=new Date(normalizedDob+"T00:00:00Z");if(Number.isNaN(dobDate.getTime()) || dobDate>new Date()) return res.status(400).json({error:"Please enter a valid date of birth."});}
 
     const emailTaken=await pool.query(`SELECT id FROM users WHERE LOWER(email)=LOWER($1) LIMIT 1`,[normalizedEmail]);
     if(emailTaken.rows.length) return res.status(409).json({error:"Email is already registered."});
