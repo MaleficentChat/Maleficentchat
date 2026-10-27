@@ -38,10 +38,10 @@ function load(){
   return {
     users:[], rooms:[], messages:[], privateMessages:[], reports:[], logs:[],
     notifications:[], friends:[], goldTransactions:[], moderationHistory:[],
-    bannedWords:[], gifts:[], settings:{
+    bannedWords:[], settings:{
       xpPerLevel:100, dailyXpLimit:500, goldPerMinute:1, linkFilter:false, daily_reward_gold:25, daily_reward_xp:15,
       filterMuteMinRank:"MEMBER", filterMuteDurationMinutes:5,
-      wall_allowed_ranks:["OWNER","ADMIN"], clear_history_allowed_ranks:["OWNER","ADMIN"], feature_grants:{wall_post:["OWNER","ADMIN"],gift_share:["OWNER","ADMIN"]}
+      wall_allowed_ranks:["OWNER","ADMIN"], clear_history_allowed_ranks:["OWNER","ADMIN"], feature_grants:{wall_post:["OWNER","ADMIN"]}
     }
   };
 }
@@ -275,7 +275,6 @@ function safeUser(u){
     badgesStats:u.badgesStats||{},
     friendsCount:db.friends.filter(f=>f.status==="ACCEPTED"&&(f.a===u.id||f.b===u.id)).length,
     interests:u.interests||[],
-    giftsReceived:u.giftsReceived||[],
     usernameHistory:u.usernameHistory||[],
     privacy:u.privacy||{
       lastSeen:true,
