@@ -3628,6 +3628,7 @@ io.on(
       socket.join("gravity:"+gameId);
       const invite={gameId:gameId,hostId:String(u.id),hostName:match.hostName,roomId:String(main.id),gameName:"Maleficent's Gravity Run",difficulty:difficulty};
       io.to("room:"+main.id).emit("system-message",{id:id(),roomId:String(main.id),system:true,bot:"Aurora",text:match.hostName+" has started Maleficent's Gravity Run",time:Date.now(),gameInvite:invite});
+      io.to("room:"+main.id).emit("gravity:invite",invite);
       socket.emit("gravity:created",{gameId:gameId,hostId:String(u.id),hostName:match.hostName,difficulty:difficulty});
     });
 
