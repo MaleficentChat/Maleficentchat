@@ -2973,6 +2973,64 @@ app.post('/api/history/clear',auth,async(req,res)=>{
   res.json({ok:true});
 });
 
+// Gold economy: purchases are validated and committed in PostgreSQL, not trusted to the browser.
+app.get('/api/economy/catalog',auth,async(req,res)=>{
+  const u=current(req), userId=Number(u.id);
+  const [items,inventory,ledger]=await Promise.all([
+    pool.query(`SELECT id,name,description,category,icon,price FROM cosmetic_items WHERE enabled=true ORDER BY category,price,name`),
+    pool.query(`SELECT c.id,c.name,c.description,c.category,c.icon,c.price,uc.equipped,uc.purchased_at AS "purchasedAt"
+      FROM user_cosmetics uc JOIN cosmetic_items c ON c.id=uc.item_id
+      WHERE uc.user_id=$1 ORDER BY uc.purchased_at DESC`,[userId]),
+    pool.query(`SELECT id,entry_type AS type,amount,balance_after AS "balanceAfter",description,created_at AS time
+      FROM gold_ledger WHERE user_id=$1 ORDER BY created_at DESC,id DESC LIMIT 100`,[userId])
+  ]);
+  res.json({gold:Number(u.gold||0),items:items.rows,inventory:inventory.rows,transactions:ledger.rows});
+});
+app.post('/api/economy/purchase',auth,async(req,res)=>{
+  const u=current(req), userId=Number(u.id), itemId=String(req.body.itemId||'').trim().slice(0,80);
+  const client=await pool.connect();
+  try{
+    await client.query('BEGIN');
+    const itemQ=await client.query('SELECT id,name,description,category,icon,price FROM cosmetic_items WHERE id=$1 AND enabled=true FOR SHARE',[itemId]);
+    if(!itemQ.rowCount){await client.query('ROLLBACK');return res.status(404).json({error:'This cosmetic is no longer available.'});}
+    const item=itemQ.rows[0];
+    const owned=await client.query('SELECT 1 FROM user_cosmetics WHERE user_id=$1 AND item_id=$2',[userId,itemId]);
+    if(owned.rowCount){await client.query('ROLLBACK');return res.status(409).json({error:'You already own this cosmetic.'});}
+    const debit=await client.query('UPDATE users SET gold=gold-$1 WHERE id=$2 AND gold >= $1 RETURNING gold',[Number(item.price),userId]);
+    if(!debit.rowCount){await client.query('ROLLBACK');return res.status(400).json({error:'Not enough Gold for this cosmetic.'});}
+    const balance=Number(debit.rows[0].gold);
+    await client.query('INSERT INTO user_cosmetics(user_id,item_id) VALUES($1,$2)',[userId,itemId]);
+    await client.query(`INSERT INTO gold_ledger(user_id,actor_user_id,entry_type,amount,balance_after,item_id,description)
+      VALUES($1,$1,'COSMETIC_PURCHASE',$2,$3,$4,$5)`,[userId,-Number(item.price),balance,itemId,'Purchased '+item.name]);
+    await client.query('COMMIT');
+    u.gold=balance; save(); io.to('user:'+u.id).emit('gold:update',{gold:balance});
+    log(u,'GOLD_COSMETIC_PURCHASE',item.name,{itemId,price:Number(item.price),balance});
+    res.json({ok:true,gold:balance,item});
+  }catch(err){await client.query('ROLLBACK').catch(()=>{});console.error('Gold cosmetic purchase failed:',err);res.status(500).json({error:'Could not complete the purchase. Your Gold was not charged.'});}
+  finally{client.release();}
+});
+app.post('/api/economy/equip',auth,async(req,res)=>{
+  const u=current(req), userId=Number(u.id), itemId=String(req.body.itemId||'').trim().slice(0,80);
+  const client=await pool.connect();
+  try{
+    await client.query('BEGIN');
+    const owned=await client.query(`SELECT c.id,c.category FROM user_cosmetics uc JOIN cosmetic_items c ON c.id=uc.item_id
+      WHERE uc.user_id=$1 AND uc.item_id=$2 AND c.enabled=true`,[userId,itemId]);
+    if(!owned.rowCount){await client.query('ROLLBACK');return res.status(404).json({error:'You do not own this cosmetic.'});}
+    const item=owned.rows[0];
+    await client.query('UPDATE user_cosmetics uc SET equipped=false FROM cosmetic_items c WHERE uc.user_id=$1 AND uc.item_id=c.id AND c.category=$2',[userId,item.category]);
+    await client.query('UPDATE user_cosmetics SET equipped=true WHERE user_id=$1 AND item_id=$2',[userId,itemId]);
+    await client.query('COMMIT');
+    res.json({ok:true,itemId,category:item.category});
+  }catch(err){await client.query('ROLLBACK').catch(()=>{});console.error('Cosmetic equip failed:',err);res.status(500).json({error:'Could not equip this cosmetic.'});}
+  finally{client.release();}
+});
+app.get('/api/economy/history',auth,async(req,res)=>{
+  const q=await pool.query(`SELECT id,entry_type AS type,amount,balance_after AS "balanceAfter",item_id AS "itemId",description,created_at AS time
+    FROM gold_ledger WHERE user_id=$1 ORDER BY created_at DESC,id DESC LIMIT 100`,[Number(current(req).id)]);
+  res.json({transactions:q.rows});
+});
+
 // Rank shop: premium requests and gold-funded temporary VIP.
 app.get('/api/shop',auth,async(req,res)=>{
   res.json({

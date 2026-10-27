@@ -654,6 +654,35 @@ async function loadRankShop(){
   c.innerHTML=`<div class="panel shop-item"><div class="shop-icon">🏅</div><h3>Premium — $3 lifetime</h3><p>No payment details are collected here. Send a request to the owner.</p><button class="primary" id="requestPremium">Request Premium</button></div>${canBuyVip?d.vip.map(v=>`<div class="panel shop-item"><div class="shop-icon">💎</div><h3>VIP — ${v.label}</h3><p>${v.price} gold</p><button class="mini" data-vip-plan="${v.label.includes('7')?'7':v.label.includes('month')&&v.label.includes('3')?'90':v.label.includes('year')?'365':'30'}">${v.price} gold</button></div>`).join(''):'<div class="panel shop-item"><div class="shop-icon">💎</div><h3>VIP</h3><p>Higher ranks cannot buy VIP</p></div>'}`;
   $('requestPremium').onclick=async()=>{try{await api('/api/shop/premium/request',{method:'POST'});toast('Premium request sent to owner.')}catch(e){toast(e.message)}};
   document.querySelectorAll('[data-vip-plan]').forEach(b=>b.onclick=async()=>{try{const d=await api('/api/shop/vip',{method:'POST',body:JSON.stringify({plan:b.dataset.vipPlan})});state.user.gold=d.gold;toast('VIP activated.');updateNav();loadRankShop()}catch(e){toast(e.message)}});
+  await loadGoldEconomy();
+}
+
+async function loadGoldEconomy(){
+  const root=$('goldEconomyRoot'); if(!root)return;
+  try{
+    const data=await api('/api/economy/catalog');
+    const balance=$('economyGoldBalance'); if(balance)balance.textContent=Number(data.gold||0).toLocaleString();
+    const inventoryIds=new Set((data.inventory||[]).map(x=>x.id));
+    const categoryLabel={frame:'Profile Frames',theme:'Profile Themes',badge:'Collectible Badges'};
+    const items=(data.items||[]).map(item=>{
+      const owned=inventoryIds.has(item.id);
+      const equipped=(data.inventory||[]).some(x=>x.id===item.id&&x.equipped);
+      return `<article class="cosmetic-card ${owned?'is-owned':''}"><div class="cosmetic-icon">${esc(item.icon)}</div><div class="cosmetic-copy"><small>${esc(categoryLabel[item.category]||'Cosmetic')}</small><b>${esc(item.name)}</b><p>${esc(item.description||'')}</p></div><div class="cosmetic-actions">${owned?(equipped?'<span class="cosmetic-equipped">✓ Equipped</span>':`<button class="mini" data-equip-cosmetic="${esc(item.id)}">Equip</button>`):`<b class="cosmetic-price">🪙 ${Number(item.price).toLocaleString()}</b><button class="primary" data-buy-cosmetic="${esc(item.id)}">Buy</button>`}</div></article>`;
+    }).join('');
+    const inventory=(data.inventory||[]).length?`<div class="economy-subhead"><b>🎒 Your collection</b><span class="muted">${data.inventory.length} owned</span></div><div class="cosmetic-inventory">${data.inventory.map(item=>`<span class="cosmetic-chip ${item.equipped?'equipped':''}">${esc(item.icon)} ${esc(item.name)} ${item.equipped?'✓':''}</span>`).join('')}</div>`:'<p class="muted">Your collection is empty. Purchase a cosmetic to start it.</p>';
+    const history=(data.transactions||[]).slice(0,8);
+    root.innerHTML=`<div class="cosmetic-grid">${items||'<p class="muted">No cosmetics are available yet.</p>'}</div><div class="economy-inventory-panel">${inventory}</div><details class="economy-history"><summary>🧾 Recent Gold purchases</summary>${history.length?history.map(t=>`<div class="economy-history-row"><span>${esc(t.description||t.type)}</span><b class="${Number(t.amount)<0?'gold-negative':'gold-positive'}">${Number(t.amount)>0?'+':''}${Number(t.amount).toLocaleString()} Gold</b><small>${esc(new Date(t.time).toLocaleString())}</small></div>`).join(''):'<p class="muted">Your Gold purchase history will appear here.</p>'}</details>`;
+    root.querySelectorAll('[data-buy-cosmetic]').forEach(button=>button.addEventListener('click',async()=>{
+      button.disabled=true;
+      try{const result=await api('/api/economy/purchase',{method:'POST',body:JSON.stringify({itemId:button.dataset.buyCosmetic})});if(state.user)state.user.gold=result.gold;updateNav();toast('Purchased '+result.item.name+'!');await loadGoldEconomy();}
+      catch(error){toast(error.message);button.disabled=false;}
+    }));
+    root.querySelectorAll('[data-equip-cosmetic]').forEach(button=>button.addEventListener('click',async()=>{
+      button.disabled=true;
+      try{await api('/api/economy/equip',{method:'POST',body:JSON.stringify({itemId:button.dataset.equipCosmetic})});toast('Cosmetic equipped.');await loadGoldEconomy();}
+      catch(error){toast(error.message);button.disabled=false;}
+    }));
+  }catch(error){root.innerHTML=`<p class="muted">Could not load the Gold Boutique: ${esc(error.message)}</p><button class="mini" id="retryGoldEconomy">Retry</button>`;$('retryGoldEconomy')?.addEventListener('click',loadGoldEconomy);}
 }
 
 async function claimDailyReward(){try{const r=await api('/api/daily/claim',{method:'POST'});state.user.gold=r.gold;state.user.xp=r.xp;updateNav();const b=document.querySelector('[data-daily-reward]');if(b){b.disabled=true;b.querySelector('small').textContent='Already claimed today';}toast(`🎁 Daily reward: +${r.amount} gold, +${r.xpAmount} XP · Streak ${r.streak}`);return r;}catch(e){toast(e.message)}}
