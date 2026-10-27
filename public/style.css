@@ -308,7 +308,7 @@ audio { max-width:280px; margin-top:7px; }
 
 
 /* ===== Functional profile + owner feature controls ===== */
-.profile-handle{font-size:12px;color:#aebfc7;margin-top:2px}.about-card{background:rgba(12,24,30,.45);border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:14px}.about-card h3{margin:0 0 10px}.tag-list{display:flex;gap:7px;flex-wrap:wrap;margin:12px 0}.tag{padding:5px 9px;border-radius:999px;background:#22353d;color:#d7e6ea;font-size:12px}.gift-btn:hover{background:#2b414b}.profile-tabs{padding:0;background:#f0f2f3;color:#18252b;gap:0;overflow-x:auto;justify-content:flex-start}.profile-tab{border:0;background:transparent;color:#26343a;padding:13px 16px;font-weight:800;white-space:nowrap}.profile-tab:hover,.profile-tab.active{background:#d7e0e4}.profile-info{background:#3a4c56}.feature-grant-modal h2{margin-top:0}.feature-grant-list{display:grid;gap:7px;max-height:58vh;overflow:auto;margin:14px 0}.feature-grant-row{display:grid;grid-template-columns:1fr 190px;gap:12px;align-items:center;padding:10px 12px;background:#101b21;border:1px solid var(--border);border-radius:10px}.feature-grant-row small{display:block;color:var(--muted);margin-top:3px}.feature-grant-row select{margin:0}.profile-actions button{min-height:38px}
+.profile-handle{font-size:12px;color:#aebfc7;margin-top:2px}.about-card{background:rgba(12,24,30,.45);border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:14px}.about-card h3{margin:0 0 10px}.tag-list{display:flex;gap:7px;flex-wrap:wrap;margin:12px 0}.tag{padding:5px 9px;border-radius:999px;background:#22353d;color:#d7e6ea;font-size:12px}.profile-tabs{padding:0;background:#f0f2f3;color:#18252b;gap:0;overflow-x:auto;justify-content:flex-start}.profile-tab{border:0;background:transparent;color:#26343a;padding:13px 16px;font-weight:800;white-space:nowrap}.profile-tab:hover,.profile-tab.active{background:#d7e0e4}.profile-info{background:#3a4c56}.feature-grant-modal h2{margin-top:0}.feature-grant-list{display:grid;gap:7px;max-height:58vh;overflow:auto;margin:14px 0}.feature-grant-row{display:grid;grid-template-columns:1fr 190px;gap:12px;align-items:center;padding:10px 12px;background:#101b21;border:1px solid var(--border);border-radius:10px}.feature-grant-row small{display:block;color:var(--muted);margin-top:3px}.feature-grant-row select{margin:0}.profile-actions button{min-height:38px}
 @media (max-width:700px){
   :root{--header-h:52px;--rail-w:0px}
   .top-header{position:fixed;height:52px;padding:0 7px}
@@ -452,8 +452,8 @@ body:after{width:420px;height:420px;right:-130px;top:110px;background:rgba(236,7
 .social-section{margin:0 22px 14px;padding:16px}.section-title{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px}.section-title h3{margin:0}
 .friend-row{display:flex;align-items:center;gap:11px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.05)}.friend-row:last-child{border-bottom:0}.friend-copy{flex:1;min-width:0}.friend-copy b,.friend-copy small{display:block}.friend-copy small{color:var(--muted);margin-top:3px}
 
-.gift-btn:hover{border-color:rgba(168,85,247,.5);background:rgba(168,85,247,.08)}
-.received-gifts{display:flex;flex-wrap:wrap;gap:8px}.received-gift{padding:8px 10px;border-radius:999px;background:rgba(255,255,255,.06)}
+
+
 .modal{background:rgba(0,0,0,.70);backdrop-filter:blur(10px)}.modal-card{background:linear-gradient(160deg,rgba(27,32,45,.97),rgba(11,14,21,.98));border:1px solid rgba(255,255,255,.12);box-shadow:0 30px 100px rgba(0,0,0,.6)}
 input,textarea,select{background:rgba(255,255,255,.055);border-color:rgba(255,255,255,.09);color:#fff}input:focus,textarea:focus,select:focus{border-color:rgba(168,85,247,.65);box-shadow:0 0 0 3px rgba(139,92,246,.10)}
 @media (max-width:900px){
@@ -830,7 +830,7 @@ input,textarea,select{background:rgba(255,255,255,.055);border-color:rgba(255,25
 .account-modification-form label:nth-of-type(4),.account-modification-form .toolbar{grid-column:1/-1}
 .account-modification-form textarea{min-height:110px;resize:vertical}
 
-.gift-catalog-row>span{display:flex;align-items:center;gap:8px;min-width:0}
+
 
 
 
