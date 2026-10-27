@@ -3643,7 +3643,8 @@ io.on(
       match.status="started";
       socket.join("gravity:"+match.id);
       const payload={gameId:match.id,hostId:match.hostId,hostName:match.hostName,players:match.players,difficulty:match.difficulty};
-      io.to("gravity:"+match.id).emit("gravity:joined",payload);
+      const matchSockets=io.sockets.adapter.rooms.get("gravity:"+match.id)||new Set();
+      for(const socketId of matchSockets){const peer=io.sockets.sockets.get(socketId);if(peer)peer.emit("gravity:joined",{...payload,myUserId:String(peer.data.userId||"")});}
     });
 
     socket.on("gravity:input", data=>{
@@ -3665,7 +3666,7 @@ io.on(
       const u=findUser(socket.data.userId);
       const match=gravityMatches.get(String(data&&data.gameId||""));
       if(!u||!match||String(match.hostId)!==String(u.id))return;
-      io.to("gravity:"+match.id).emit("gravity:ended",{gameId:match.id,winnerId:String(data.winnerId||u.id),reason:String(data.reason||"finished")});
+      socket.to("gravity:"+match.id).emit("gravity:ended",{gameId:match.id,winnerId:String(data.winnerId||u.id),reason:String(data.reason||"finished")});
       gravityMatches.delete(match.id);
     });
 
