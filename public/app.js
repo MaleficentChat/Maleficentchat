@@ -1136,7 +1136,6 @@ function showStefanOptions(){
   const canDelete=canFeature("delete_room");
   const options=[
     canClear ? `<button class="stefan-option" onclick="clearRoom();closeStefanCard()">🧹 Clear room</button>` : "",
-    `<button class="stefan-option" onclick="openYoutubePanel();closeStefanCard()">▶️ YouTube</button>`,
     `<button class="stefan-option" onclick="postRoomAnnouncement();closeStefanCard()">📢 Announcement</button>`,
     `<button class="stefan-option" onclick="showPinnedMessages();closeStefanCard()">📌 Pinned messages</button>`,
     `<button class="stefan-option" onclick="showInvite();closeStefanCard()">🔗 Invite link</button>`,
@@ -1328,35 +1327,70 @@ function setupMentionAutocomplete(){
   document.addEventListener('click',e=>{if(!box.contains(e.target)&&e.target!==input)box.classList.remove('show');});
 }
 setupMentionAutocomplete();
-let voiceRecorder=null, voiceChunks=[], voiceStream=null;
+let voiceRecorder=null, voiceChunks=[], voiceStream=null, voiceRecordingRoom=null;
 async function toggleVoiceRecording(){
   const btn=$("voiceBtn");
-  if(!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder){ toast("Voice recording is not supported by this browser."); return; }
-  if(voiceRecorder && voiceRecorder.state!=="inactive"){ voiceRecorder.stop(); return; }
+  if(!btn)return;
+  if(voiceRecorder && voiceRecorder.state!=="inactive"){
+    voiceRecorder.stop();
+    return;
+  }
+  if(!state.user){toast("Please log in first.");return;}
+  if(!state.currentRoom){toast("Join a room before recording a voice message.");return;}
+  if(!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder){
+    toast("Voice recording needs microphone support in a secure browser. Open Maleficent Chat in Chrome and allow microphone access.");
+    return;
+  }
   try{
     voiceStream=await navigator.mediaDevices.getUserMedia({audio:true});
     voiceChunks=[];
-    const mime=MediaRecorder.isTypeSupported("audio/webm;codecs=opus")?"audio/webm;codecs=opus":"audio/webm";
-    voiceRecorder=new MediaRecorder(voiceStream,{mimeType:mime});
-    voiceRecorder.ondataavailable=e=>{if(e.data?.size)voiceChunks.push(e.data)};
-    voiceRecorder.onstop=async()=>{
-      voiceStream?.getTracks().forEach(t=>t.stop());
-      btn.textContent="🎙️ Voice"; btn.classList.remove("recording");
-      const blob=new Blob(voiceChunks,{type:voiceRecorder.mimeType||"audio/webm"});
-      if(blob.size<1) return;
+    voiceRecordingRoom=String(state.currentRoom);
+    const candidates=["audio/webm;codecs=opus","audio/webm","audio/ogg;codecs=opus","audio/mp4"];
+    const mime=candidates.find(type=>MediaRecorder.isTypeSupported?.(type));
+    voiceRecorder=mime?new MediaRecorder(voiceStream,{mimeType:mime}):new MediaRecorder(voiceStream);
+    const recorder=voiceRecorder;
+    recorder.ondataavailable=e=>{if(e.data?.size)voiceChunks.push(e.data);};
+    recorder.onerror=()=>toast("Recording failed. Please try again and check microphone permission.");
+    recorder.onstop=async()=>{
+      voiceStream?.getTracks().forEach(track=>track.stop());
+      voiceStream=null;
+      btn.textContent="🎙️ Voice";
+      btn.classList.remove("recording");
+      const blob=new Blob(voiceChunks,{type:recorder.mimeType||"application/octet-stream"});
+      voiceChunks=[];
+      const roomId=voiceRecordingRoom;
+      voiceRecordingRoom=null;
+      if(!blob.size){toast("No audio was recorded. Please try again.");return;}
+      if(!roomId){toast("Could not identify the room for this voice message.");return;}
+      if(String(state.currentRoom)!==roomId){
+        toast("Return to the room where you started recording, then record again.");
+        return;
+      }
       try{
-        const fd=new FormData(); fd.append("text",""); fd.append("file",blob,"voice-message.webm");
-        const roomAccess=JSON.parse(safeStorage.getItem('mc_room_join')||'null');
-        const headers={};
-        const token=safeStorage.getItem("mc_token");if(token)headers["x-auth-token"]=token;
-        if(roomAccess?.roomId===String(state.currentRoom))headers["x-room-join-token"]=roomAccess.joinToken;
-        const r=await fetch(`/api/rooms/${encodeURIComponent(state.currentRoom)}/messages`,{method:"POST",body:fd,headers,credentials:"same-origin"});
-        const d=await r.json().catch(()=>({})); if(!r.ok) throw Error(d.error||"Could not send voice message.");
+        const form=new FormData();
+        form.append("text","");
+        const type=recorder.mimeType||blob.type||"audio/webm";
+        const extension=type.includes("ogg")?"ogg":type.includes("mp4")?"mp4":"webm";
+        form.append("file",blob,"voice-message."+extension);
+        const data=await api("/api/rooms/"+encodeURIComponent(roomId)+"/messages",{method:"POST",body:form});
+        if(data.message && String(data.message.roomId)===String(state.currentRoom))appendMessage(data.message);
         toast("Voice message sent.");
-      }catch(e){toast(e.message)}
+      }catch(e){
+        toast(e.message||"Could not send voice message.");
+      }
     };
-    voiceRecorder.start(); btn.textContent="⏹ Stop"; btn.classList.add("recording"); toast("Recording… press Voice again to send.");
-  }catch(e){toast("Microphone permission was not granted.")}
+    recorder.start();
+    btn.textContent="⏹ Stop";
+    btn.classList.add("recording");
+    toast("Recording… press Stop to send.");
+  }catch(e){
+    voiceStream?.getTracks().forEach(track=>track.stop());
+    voiceStream=null;
+    voiceRecorder=null;
+    btn.textContent="🎙️ Voice";
+    btn.classList.remove("recording");
+    toast(e.name==="NotAllowedError"?"Microphone access was blocked. Allow microphone access for this site and try again.":(e.message||"Could not start voice recording."));
+  }
 }
 $("voiceBtn")?.addEventListener("click",toggleVoiceRecording);
 
