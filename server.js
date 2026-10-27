@@ -32,7 +32,6 @@ const UP=path.resolve(process.env.UPLOAD_DIR || path.join(process.env.PERSISTENT
 fs.mkdirSync(UP,{recursive:true});
 
 const DEFAULT_OWNER=process.env.OWNER_USERNAME||"Maleficent";
-const DEFAULT_OWNER_PASSWORD=process.env.OWNER_PASSWORD||"Mal@123";
 const OWNER_DISPLAY=process.env.OWNER_DISPLAY_NAME||"Maleficent";
 
 function load(){
@@ -365,8 +364,13 @@ function notificationPreferenceKey(type){
 async function notify(userId,type,title,text){
   const target=findUser(userId), key=notificationPreferenceKey(type), prefs=target?.settings?.notificationPrefs||{};
   if(prefs[key]===false)return;
-  try{await pool.query(`INSERT INTO notifications(user_id,type,message,is_read) VALUES($1,$2,$3,false)`,[Number(userId),String(type),String(text)]);io.to("user:"+userId).emit("notification");}
-  catch(err){console.error("Notification insert failed:",err);}
+  try{
+    await pool.query(
+      `INSERT INTO notifications(user_id,type,title,message,is_read) VALUES($1,$2,$3,$4,false)`,
+      [Number(userId),String(type),String(title||type),String(text)]
+    );
+    io.to("user:"+userId).emit("notification");
+  }catch(err){console.error("Notification insert failed:",err);}
 }
 
 
@@ -402,7 +406,9 @@ function findUser(x){
   );
 }
 
-const TOKEN_SECRET=process.env.SESSION_SECRET||"maleficent-chat-token-secret";
+const SESSION_SECRET = process.env.SESSION_SECRET || (process.env.NODE_ENV === "production" ? "" : crypto.randomBytes(32).toString("hex"));
+if (!SESSION_SECRET || SESSION_SECRET.length < 32) throw new Error("SESSION_SECRET must be configured in production with at least 32 characters of randomness.");
+const TOKEN_SECRET = SESSION_SECRET;
 function makeToken(userId){const b64=o=>Buffer.from(JSON.stringify(o)).toString("base64url");const h=b64({alg:"HS256",typ:"JWT"}),p=b64({sub:String(userId),exp:Math.floor(Date.now()/1000)+7*86400});const sig=crypto.createHmac("sha256",TOKEN_SECRET).update(h+"."+p).digest("base64url");return h+"."+p+"."+sig;}
 function verifyToken(token){try{const [h,p,sig]=String(token||"").split(".");if(!h||!p||!sig)return null;const e=crypto.createHmac("sha256",TOKEN_SECRET).update(h+"."+p).digest("base64url");if(sig!==e)return null;const x=JSON.parse(Buffer.from(p,"base64url").toString("utf8"));return x.exp>=Math.floor(Date.now()/1000)?x:null;}catch{return null;}}
 function makeRoomJoinToken(userId,room){
@@ -536,25 +542,57 @@ function awardXp(u,n=5){
 }
 
 async function ensureDeveloper(){
-  const hash=await bcrypt.hash(process.env.OWNER_PASSWORD||"Mal@123",10);
-  const q=await pool.query(`INSERT INTO users(username,password,rank,gold,xp) VALUES('Maleficent',$1,'Developer',999999,999999) ON CONFLICT(username) DO UPDATE SET rank='Developer' RETURNING *`,[hash]);
-  const row=q.rows[0]; let u=findUser("Maleficent");
-  if(!u){ u={id:String(row.id),username:"Maleficent",displayName:"Maleficent",password:row.password,passwordHash:row.password,rank:"DEVELOPER",gold:999999,xp:999999,verified:true,createdAt:Date.now(),lastSeen:Date.now(),online:false,level:999999,bio:"Permanent Developer of Maleficent Chat.",settings:{rememberLogin:true,theme:"obsidian",notificationPrefs:{messages:true,mentions:true,replies:true,security:true,staff:true,gamification:true,other:true}}}; db.users.push(u); }
-  else { u.rank="DEVELOPER"; u.password=row.password; u.passwordHash=row.password; }
+  let q;
+  if (process.env.OWNER_PASSWORD) {
+    const hash = await bcrypt.hash(process.env.OWNER_PASSWORD, 10);
+    q = await pool.query(`INSERT INTO users(username,password,rank,gold,xp) VALUES('Maleficent',$1,'Developer',999999,999999) ON CONFLICT(username) DO UPDATE SET rank='Developer',password=EXCLUDED.password RETURNING *`, [hash]);
+  } else {
+    q = await pool.query(`UPDATE users SET rank='Developer' WHERE username='Maleficent' RETURNING *`);
+    if (!q.rowCount) throw new Error('OWNER_PASSWORD is required to initialize the permanent Developer account.');
+  }
+  const row=q.rows[0]; let u=findUser('Maleficent');
+  if(!u){ u={id:String(row.id),username:'Maleficent',displayName:'Maleficent',password:row.password,passwordHash:row.password,rank:'DEVELOPER',gold:999999,xp:999999,verified:true,createdAt:Date.now(),lastSeen:Date.now(),online:false,level:999999,bio:'Permanent Developer of Maleficent Chat.',settings:{rememberLogin:true,theme:'obsidian',notificationPrefs:{messages:true,mentions:true,replies:true,security:true,staff:true,gamification:true,other:true}}}; db.users.push(u); }
+  else { u.rank='DEVELOPER'; u.password=row.password; u.passwordHash=row.password; }
 }
 ensureFeaturePermissions();
 
 app.use(express.json({limit:"2mb"}));
 app.use(express.urlencoded({extended:true}));
-app.use((req,res,next)=>{const origin=req.headers.origin;if(origin){res.setHeader("Access-Control-Allow-Origin",origin);res.setHeader("Vary","Origin");res.setHeader("Access-Control-Allow-Credentials","true");res.setHeader("Access-Control-Allow-Headers","Content-Type, Authorization, X-Auth-Token, X-Room-Join-Token");res.setHeader("Access-Control-Allow-Methods","GET,POST,PUT,PATCH,DELETE,OPTIONS");}if(req.method==="OPTIONS")return res.sendStatus(204);next();});
+const DEFAULT_ALLOWED_ORIGINS = [
+  "https://maleficentchat.onrender.com",
+  "https://maleficent-chat.onrender.com",
+  "https://maleficent-chat-4cce7c68.base44.app",
+  "https://6a9a41c01dd11f3876fff7f9--maleficent-chat.netlify.app"
+];
+const ALLOWED_ORIGINS = new Set(
+  String(process.env.ALLOWED_ORIGINS || DEFAULT_ALLOWED_ORIGINS.join(","))
+    .split(",").map(value => value.trim()).filter(Boolean)
+);
+app.use((req,res,next)=>{
+  const origin=req.headers.origin;
+  if(origin && ALLOWED_ORIGINS.has(origin)){
+    res.setHeader("Access-Control-Allow-Origin",origin);
+    res.setHeader("Vary","Origin");
+    res.setHeader("Access-Control-Allow-Credentials","true");
+    res.setHeader("Access-Control-Allow-Headers","Content-Type, Authorization, X-Auth-Token, X-Room-Join-Token");
+    res.setHeader("Access-Control-Allow-Methods","GET,POST,PUT,PATCH,DELETE,OPTIONS");
+  }
+  if(req.method==="OPTIONS"){
+    if(origin && !ALLOWED_ORIGINS.has(origin)) return res.status(403).json({error:"Origin is not allowed."});
+    return res.sendStatus(204);
+  }
+  next();
+});
 
 
 // Render/other reverse proxies must be trusted so secure session
 // cookies work correctly over HTTPS.
 app.set("trust proxy", true);
 
+const PgSession = require("connect-pg-simple")(session);
 app.use(session({
-  secret: process.env.SESSION_SECRET || "change-this-secret",
+  store: new PgSession({ pool, tableName: "user_sessions", createTableIfMissing: true }),
+  secret: SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
   proxy: true,
@@ -2038,19 +2076,32 @@ app.post("/api/dm/:id",auth,featureAllowed("private_messages"),upload.single("fi
 app.post(
   "/api/dm/:id/read",
   auth,
+  featureAllowed("private_messages"),
   async(req,res)=>{
     const u=current(req);
     const senderId=String(req.params.id);
-    db.privateMessages
-      .filter(m=>String(m.from)===senderId&&String(m.to)===String(u.id))
-      .forEach(m=>m.read=true);
+    const sender=findUser(senderId);
+    if(!sender) return res.status(404).json({error:"User not found"});
+    if(senderId===String(u.id)) return res.status(400).json({error:"Cannot mark your own messages as received."});
+    if((u.blocked||[]).includes(sender.id)||(sender.blocked||[]).includes(u.id))
+      return res.status(403).json({error:"Messaging blocked"});
     try {
-      await pool.query(`UPDATE private_messages SET data=jsonb_set(data,'{read}','true'::jsonb,true) WHERE sender_id=$1 AND receiver_id=$2`,[Number(senderId),Number(u.id)]);
+      // Persist first: never tell the client a receipt was saved if PostgreSQL failed.
+      await pool.query(
+        `UPDATE private_messages
+         SET data=jsonb_set(COALESCE(data,'{}'::jsonb),'{read}','true'::jsonb,true)
+         WHERE sender_id=$1 AND receiver_id=$2`,
+        [Number(senderId),Number(u.id)]
+      );
+      db.privateMessages
+        .filter(m=>String(m.from)===senderId&&String(m.to)===String(u.id))
+        .forEach(m=>m.read=true);
+      save();
+      res.json({ok:true});
     } catch(err) {
       console.error("Could not persist private-message read receipts:",err.message);
+      res.status(500).json({error:"Could not save read receipts. Please try again."});
     }
-    save();
-    res.json({ok:true});
   }
 );
 
@@ -2092,8 +2143,8 @@ app.get('/api/account/export',auth,(req,res)=>{
   res.json({exportedAt:Date.now(),account:{username:u.username,displayName:u.displayName,createdAt:u.createdAt,rank:u.rank,level:u.level,xp:u.xp,gold:u.gold,bio:u.bio,interests:u.interests,achievements:u.achievements},loginHistory:u.loginHistory||[]});
 });
 
-app.get('/api/notifications',auth,async(req,res)=>{const {rows}=await pool.query(`SELECT id,type,message,is_read,created_at FROM notifications WHERE user_id=$1 ORDER BY created_at DESC LIMIT 20`,[Number(current(req).id)]);res.json({notifications:rows.map(n=>({id:String(n.id),type:n.type,title:n.type,text:n.message,message:n.message,time:n.created_at,read:n.is_read}))});});
-app.get('/api/notifications/unread',auth,async(req,res)=>{const {rows}=await pool.query(`SELECT id,type,message,is_read,created_at FROM notifications WHERE user_id=$1 AND is_read=false ORDER BY created_at DESC LIMIT 100`,[Number(current(req).id)]);res.json({notifications:rows.map(n=>({id:String(n.id),type:n.type,title:n.type,text:n.message,message:n.message,time:n.created_at,read:n.is_read}))});});
+app.get('/api/notifications',auth,async(req,res)=>{const {rows}=await pool.query(`SELECT id,type,title,message,is_read,created_at FROM notifications WHERE user_id=$1 ORDER BY created_at DESC LIMIT 20`,[Number(current(req).id)]);res.json({notifications:rows.map(n=>({id:String(n.id),type:n.type,title:n.title||n.type,text:n.message,message:n.message,time:n.created_at,read:n.is_read}))});});
+app.get('/api/notifications/unread',auth,async(req,res)=>{const {rows}=await pool.query(`SELECT id,type,title,message,is_read,created_at FROM notifications WHERE user_id=$1 AND is_read=false ORDER BY created_at DESC LIMIT 100`,[Number(current(req).id)]);res.json({notifications:rows.map(n=>({id:String(n.id),type:n.type,title:n.title||n.type,text:n.message,message:n.message,time:n.created_at,read:n.is_read}))});});
 app.patch('/api/notifications/:id/read',auth,async(req,res)=>{const r=await pool.query(`UPDATE notifications SET is_read=true WHERE id=$1 AND user_id=$2 RETURNING id`,[req.params.id,Number(current(req).id)]);if(!r.rowCount)return res.status(404).json({error:'Notification not found'});res.json({ok:true});});
 app.post('/api/notifications/read',auth,async(req,res)=>{await pool.query(`UPDATE notifications SET is_read=true WHERE user_id=$1`,[Number(current(req).id)]);res.json({ok:true});});
 app.delete('/api/notifications/:id',auth,async(req,res)=>{await pool.query(`DELETE FROM notifications WHERE id=$1 AND user_id=$2`,[req.params.id,Number(current(req).id)]);res.json({ok:true});});
@@ -2404,7 +2455,9 @@ app.get("/api/staff/dashboard",auth,featureAllowed("view_staff_dashboard"),async
     });
     const ids=new Set(pgReports.map(r=>String(r.id)));
     const reports=[...pgReports,...(db.reports||[]).filter(r=>!ids.has(String(r.id)))].filter(r=>String(r.status||"OPEN").toUpperCase()==="OPEN").sort((a,b)=>Number(b.time||0)-Number(a.time||0));
-    res.json({reports,logs:db.logs.slice(-500).reverse(),history:db.moderationHistory.slice(-500).reverse(),activeActions:db.users.filter(x=>(x.banned===true)||(x.kickedUntil&&x.kickedUntil>Date.now())||(x.mutedUntil&&x.mutedUntil>Date.now())).map(x=>({id:x.id,username:x.username,displayName:x.displayName,rank:x.rank,gold:x.gold||0,banned:!!x.banned,kickedUntil:x.kickedUntil||null,mutedUntil:x.mutedUntil||null,reason:x.banReason||x.kickReason||x.muteReason||""})),stats:{users:db.users.length,online:db.users.filter(x=>x.online).length,messages:db.messages.length,reportsOpen:reports.length}});
+    const auditRows=await pool.query("SELECT l.id,l.action_type,l.performed_by,l.target_user_id,l.details,l.created_at,performer.username AS performer_username,target.username AS target_username FROM admin_logs l LEFT JOIN users performer ON performer.id=l.performed_by LEFT JOIN users target ON target.id=l.target_user_id ORDER BY l.created_at DESC,l.id DESC LIMIT 500");
+     const auditLogs=auditRows.rows.map(row=>{let details={};try{const parsed=typeof row.details==="string"?JSON.parse(row.details):row.details;if(parsed&&typeof parsed==="object")details=parsed;else if(parsed!=null)details={message:String(parsed)};}catch{if(row.details)details={message:String(row.details)};}return{id:String(row.id),time:row.created_at?new Date(row.created_at).getTime():Date.now(),actor:row.performer_username||"SYSTEM",action:row.action_type||"ACTION",target:row.target_username||details.target||(row.target_user_id?String(row.target_user_id):""),meta:details.meta&&typeof details.meta==="object"?details.meta:details};});
+     res.json({reports,logs:auditLogs,history:db.moderationHistory.slice(-500).reverse(),activeActions:db.users.filter(x=>(x.banned===true)||(x.kickedUntil&&x.kickedUntil>Date.now())||(x.mutedUntil&&x.mutedUntil>Date.now())).map(x=>({id:x.id,username:x.username,displayName:x.displayName,rank:x.rank,gold:x.gold||0,banned:!!x.banned,kickedUntil:x.kickedUntil||null,mutedUntil:x.mutedUntil||null,reason:x.banReason||x.kickReason||x.muteReason||""})),stats:{users:db.users.length,online:db.users.filter(x=>x.online).length,messages:db.messages.length,reportsOpen:reports.length}});
   }catch(e){console.error("Staff dashboard reports failed:",e);res.status(500).json({error:"Could not load staff reports. Please refresh and try again."});}
 });
 
@@ -3344,7 +3397,7 @@ async function sendGiftHandler(req,res){
   sender.gold=remainingGold;recipient.giftsReceived||=[];recipient.giftsReceived.push(giftRecord);
   sender.badgesStats||={goldSent:0,goldReceived:0,giftsSent:0,giftsReceived:0};recipient.badgesStats||={goldSent:0,goldReceived:0,giftsSent:0,giftsReceived:0};
   sender.badgesStats.giftsSent=Number(sender.badgesStats.giftsSent||0)+1;recipient.badgesStats.giftsReceived=Number(recipient.badgesStats.giftsReceived||0)+1;
-  db.goldTransactions||=[];db.goldTransactions.push({id:id(),time:Date.now(),actor:sender.id,userId:sender.id,type:'GIFT_SENT',delta:-gift.cost,gift:gift.name,to:recipient.id});
+  db.goldTransactions||=[];db.goldTransactions.push({id:id(),time:Date.now(),actor:sender.id,userId:sender.id,type:'GIFT_SENT',delta:String(sender.rank).toUpperCase()==='DEVELOPER'?0:-gift.cost,gift:gift.name,to:recipient.id});
   save();log(sender,'GIFT_SEND',recipient.username,{gift:gift.name,cost:gift.cost});
   io.to('user:'+sender.id).emit('gold:update',{gold:sender.gold});
   io.to('user:'+recipient.id).emit('gift:received',giftRecord);
@@ -3393,61 +3446,53 @@ app.get(
 app.post(
   "/api/gold/gift",
   auth,
-  (req,res)=>{
+  async(req,res)=>{
     const u=current(req);
-
-    const v=findUser(
-      req.body.userId
-    );
-
-    const amount=
-      Math.floor(
-        Number(
-          req.body.amount
-        )
-      );
-
-    if(
-      !v||
-      v.id===u.id||
-      amount<1||
-      u.gold<amount
-    ){
-      return res.status(400).json({
-        error:"Invalid gold gift"
-      });
+    const v=findUser(req.body.userId);
+    const amount=Math.floor(Number(req.body.amount));
+    if(!v||String(v.id)===String(u.id)||!Number.isSafeInteger(amount)||amount<1||amount>1000000){
+      return res.status(400).json({error:"Choose another user and a valid gold amount."});
     }
-
-    u.gold-=amount;
-
-    v.gold=
-      (v.gold||0)+amount;
-
-    db.goldTransactions.push({
-      id:id(),
-      time:Date.now(),
-      actor:u.id,
-      userId:v.id,
-      type:"GIFT",
-      delta:amount
-    });
-
-    save();
-
-    notify(
-      v.id,
-      "gold",
-      "Gold received",
-      "@"+u.username+
-      " gifted you "+
-      amount+
-      " gold."
+    const client=await pool.connect();
+    let fromGold,toGold;
+    try{
+      await client.query("BEGIN");
+      const debit=await client.query(
+        "UPDATE users SET gold=gold-$1 WHERE id=$2 AND gold >= $1 RETURNING gold",
+        [amount,Number(u.id)]
+      );
+      if(!debit.rowCount){
+        await client.query("ROLLBACK");
+        return res.status(400).json({error:"You do not have enough gold for this transfer."});
+      }
+      const credit=await client.query(
+        "UPDATE users SET gold=COALESCE(gold,0)+$1 WHERE id=$2 RETURNING gold",
+        [amount,Number(v.id)]
+      );
+      if(!credit.rowCount){
+        await client.query("ROLLBACK");
+        return res.status(404).json({error:"Recipient account no longer exists."});
+      }
+      await client.query("COMMIT");
+      fromGold=Number(debit.rows[0].gold);
+      toGold=Number(credit.rows[0].gold);
+    }catch(err){
+      await client.query("ROLLBACK").catch(()=>{});
+      console.error("Gold transfer failed:",err);
+      return res.status(500).json({error:"Could not transfer gold. Please try again."});
+    }finally{client.release();}
+    u.gold=fromGold;
+    v.gold=toGold;
+    db.goldTransactions ||= [];
+    db.goldTransactions.push(
+      {id:id(),time:Date.now(),actor:u.id,userId:u.id,type:"GOLD_SENT",delta:-amount,to:v.id},
+      {id:id(),time:Date.now(),actor:u.id,userId:v.id,type:"GOLD_RECEIVED",delta:amount,from:u.id}
     );
-
-    res.json({
-      from:safeUser(u),
-      to:safeUser(v)
-    });
+    save();
+    io.to("user:"+u.id).emit("gold:update",{gold:u.gold});
+    io.to("user:"+v.id).emit("gold:update",{gold:v.gold});
+    notify(v.id,"gold","Gold received",`@${u.username} gifted you ${amount} gold.`);
+    res.json({ok:true,from:safeUser(u),to:safeUser(v),amount});
   }
 );
 

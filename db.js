@@ -148,10 +148,12 @@ async function initDB() {
       id SERIAL PRIMARY KEY,
       user_id INT REFERENCES users(id) ON DELETE CASCADE,
       type TEXT,
+      title TEXT NOT NULL DEFAULT '',
       message TEXT,
       is_read BOOLEAN DEFAULT false,
       created_at TIMESTAMP DEFAULT NOW()
     );
+    ALTER TABLE notifications ADD COLUMN IF NOT EXISTS title TEXT NOT NULL DEFAULT '';
     CREATE TABLE IF NOT EXISTS wall_comments(
       id SERIAL PRIMARY KEY,
       post_id INT REFERENCES wall_posts(id) ON DELETE CASCADE,
@@ -178,13 +180,17 @@ async function initDB() {
     );
   `);
 
-  const developerHash = await bcryptHash(process.env.OWNER_PASSWORD || "Mal@123");
-  await pool.query(
-    `INSERT INTO users(username,password,rank,gold,xp)
-     VALUES('Maleficent',$1,'Developer',999999,999999)
-     ON CONFLICT(username) DO NOTHING`,
-    [developerHash]
-  );
+  // Never seed a publicly known default password. A new installation must
+  // supply OWNER_PASSWORD; existing Developer credentials are preserved.
+  if (process.env.OWNER_PASSWORD) {
+    const developerHash = await bcryptHash(process.env.OWNER_PASSWORD);
+    await pool.query(
+      `INSERT INTO users(username,password,rank,gold,xp)
+       VALUES('Maleficent',$1,'Developer',999999,999999)
+       ON CONFLICT(username) DO NOTHING`,
+      [developerHash]
+    );
+  }
 
   // Keep the two default community rooms persistent; room access is not age-gated.
   await pool.query(`INSERT INTO rooms(name,created_by,icon,description,category,is_public,rank_required,invite_token,min_age,max_age,is_default)
@@ -279,6 +285,36 @@ async function loadState(defaultState) {
 
   const { rows: reportRows } = await pool.query(`SELECT data FROM reports ORDER BY created_at`);
   state.reports = reportRows.map(r=>r.data).filter(Boolean);
+
+  // PostgreSQL is the source of truth for staff audit history. Restore it into
+  // the legacy dashboard shape so history survives restarts and redeploys.
+  const { rows: auditRows } = await pool.query(`
+    SELECT l.id,l.action_type,l.performed_by,l.target_user_id,l.details,l.created_at,
+           performer.username AS performer_username,target.username AS target_username
+    FROM admin_logs l
+    LEFT JOIN users performer ON performer.id=l.performed_by
+    LEFT JOIN users target ON target.id=l.target_user_id
+    ORDER BY l.created_at DESC,l.id DESC
+    LIMIT 5000
+  `);
+  state.logs = auditRows.reverse().map(row => {
+    let details = {};
+    try {
+      const parsed = typeof row.details === "string" ? JSON.parse(row.details) : row.details;
+      if (parsed && typeof parsed === "object") details = parsed;
+      else if (parsed != null) details = { message: String(parsed) };
+    } catch {
+      if (row.details) details = { message: String(row.details) };
+    }
+    return {
+      id: String(row.id),
+      time: row.created_at ? new Date(row.created_at).getTime() : Date.now(),
+      actor: row.performer_username || "SYSTEM",
+      action: row.action_type || "ACTION",
+      target: row.target_username || details.target || (row.target_user_id ? String(row.target_user_id) : ""),
+      meta: details.meta && typeof details.meta === "object" ? details.meta : details
+    };
+  });
 
   state.settings ||= {};
   state.settings.feature_grants = settingRows.find(x=>x.key==='feature_grants')?.value || state.settings.feature_grants || {};
