@@ -156,7 +156,7 @@ function canFeature(key){
   if(!state.user) return false;
   if(String(state.user.rank).toUpperCase()==='DEVELOPER') return true;
   if(state.user.username==='Maleficent'&&state.user.rank==='OWNER') return true;
-  const permissionMap={create_room:'can_create_rooms',create_rooms:'can_create_rooms',edit_room:'can_edit_rooms',edit_rooms:'can_edit_rooms',delete_room:'can_delete_rooms',delete_rooms:'can_delete_rooms',profile_note:'can_add_notes',manage_staff_accounts:'can_edit_usernames',account_modifications:'can_manage_profiles',manage_profiles:'can_manage_profiles',view_staff_dashboard:'can_view_admin_logs',manage_gifts:'can_manage_gifts',edit_email:'can_edit_emails',share_gold:'can_share_gold',delete_message:'can_delete_messages'};
+  const permissionMap={create_room:'can_create_rooms',create_rooms:'can_create_rooms',edit_room:'can_edit_rooms',edit_rooms:'can_edit_rooms',delete_room:'can_delete_rooms',delete_rooms:'can_delete_rooms',profile_note:'can_add_notes',manage_staff_accounts:'can_edit_usernames',account_modifications:'can_manage_profiles',manage_profiles:'can_manage_profiles',edit_email:'can_edit_emails',share_gold:'can_share_gold',delete_message:'can_delete_messages'};
   const permission=state.userPermissions?.[permissionMap[key]||key];if(permission)return !!permission.granted;
   const grantedRanks=state.featureGrants?.[key];
   if(Array.isArray(grantedRanks))return grantedRanks.includes(String(state.user.rank||'').toUpperCase());
@@ -1838,7 +1838,6 @@ function renderUserProfileModal(user,data={}){
     $('profileMessageBtn')?.addEventListener('click',()=>{closeModal();openDM(user.id);});
     $('profileFriendBtn')?.addEventListener('click',async()=>{if(data.friendship==='ACCEPTED'){toast('Already friends.');return;}try{await friend(user.id);data.friendship='PENDING';renderTab('info');}catch(e){}});
     $('profileBlockBtn')?.addEventListener('click',async()=>{await block(user.id);closeModal();});
-    $('profileGiftBtn')?.addEventListener('click',()=>renderTab('gifts'));
     $('profileGoldBtn')?.addEventListener('click',()=>shareGoldModal(user));
     $('profileNicknameBtn')?.addEventListener('click',()=>nicknameModal(user));
     $('profileModerateBtn')?.addEventListener('click',()=>moderate(user.id));
@@ -2911,7 +2910,7 @@ async function clearUserActionHistory(userId){
 /* ---------------- OWNER ---------------- */
 
 async function refreshSiteMessages(){
-  if(!confirm('This permanently deletes ALL room chat messages and ALL private messages for every user. Accounts, rooms, ranks, gold, settings, gifts, reports, and moderation history will remain. Continue?'))return;
+  if(!confirm('This permanently deletes ALL room chat messages and ALL private messages for every user. Accounts, rooms, ranks, gold, settings, reports, and moderation history will remain. Continue?'))return;
   try{
     const result=await api('/api/owner/refresh-site-messages',{method:'POST',body:JSON.stringify({})});
     state.messages=[];
@@ -3283,7 +3282,7 @@ async function ownerFeatureGrants(){
     const labels={
       send_messages:'Send chat messages',private_messages:'Send private messages',create_rooms:'Create rooms',edit_rooms:'Edit rooms',delete_rooms:'Delete rooms',join_rooms:'Join rooms',delete_own_room:'Delete own room',
       friend_wall_posting:'Friend Wall posting',wall_commenting:'Friend Wall comments',wall_liking:'Friend Wall likes',wall_upload:'Friend Wall uploads',
-      gift_sending:'Send gifts',gift_receiving:'Receive gifts',news_posting:'Publish news',change_avatar:'Change own avatar',change_bio:'Edit own profile',account_modifications:'Modify other user accounts',profile_note:'Staff profile notes',
+      news_posting:'Publish news',change_avatar:'Change own avatar',change_bio:'Edit own profile',account_modifications:'Modify other user accounts',profile_note:'Staff profile notes',
       emojis_stickers:'Use emojis and stickers',chat_file_upload:'Upload chat files',gif_sending:'Send GIFs',
       clear_history_button:'Clear personal history',view_online_users:'View online users',manage_filter_words:'Manage filtered words',premium_granting:'Grant Premium',reports_management:'Manage reports',moderate_users:'Moderate users',bypass_filter_words:'Bypass filtered words',bypass_mute:'Bypass mute',
       change_password:'Change user password',edit_email:'Edit user email',manage_xp_level:'Manage user XP and level'
