@@ -1064,15 +1064,9 @@ function messageHTML(message) {
     : ""
 }
 
-        ${
-          message.type === "gift" && message.gift
-            ? `<div class="gift-message-animation"><div class="gift-spark">✨</div><div class="gift-big">${esc(message.gift.icon||message.gift.image||"🎁")}</div><b>${esc(message.username)} sent a gift to @${esc(message.recipientUsername||"someone")}</b><span>${esc(message.gift.name)} · 🪙 ${Number(message.gift.cost||message.gift.price||0)}</span></div>`
-            : ""
-        }
-
         ${message.type === "gif" && message.gifUrl ? `<a class="chat-gif" href="${esc(message.gifUrl)}" target="_blank" rel="noopener"><img src="${esc(message.gifUrl)}" alt="GIF" loading="lazy"></a>` : ""}
         ${
-          message.text && message.type !== "gift" && message.type !== "gif"
+          message.text && message.type !== "gif"
             ? `<div class="msg-text">${formatMentions(message.text)}</div>`
             : ""
         }
@@ -1814,7 +1808,6 @@ function renderUserProfileModal(user,data={}){
       <button class="profile-tab active" data-tab="info">Account</button>
       <button class="profile-tab" data-tab="about">About Me</button>
       <button class="profile-tab" data-tab="friends">Friends</button>
-      <button class="profile-tab" data-tab="gifts">Gifts</button>
       <button class="profile-tab" data-tab="more">More</button>
     </div>
     <div id="profileTabContent" class="profile-info"></div>
@@ -1832,7 +1825,6 @@ function renderUserProfileModal(user,data={}){
       <div class="profile-actions"><button class="mini" id="profileAchievementsBtn">🏆 Achievements</button>${!isSelf&&canFeature('profile_note')?`<button class="mini" id="profileNoteBtn">📝 Add Note <span id="profileNoteDot" style="display:none">●</span></button>`:''}<div class="profile-action-hint">Tap ☰ above for profile actions.</div></div>`;
     else if(tab==='about') box.innerHTML=`<div class="about-card"><h3>About Me</h3><p>${esc(user.bio||'This user has not written an About Me yet.')}</p>${user.pronouns?`<div class="profile-info-row"><b>Pronouns</b><span>${esc(user.pronouns)}</span></div>`:''}${user.interests?.length?`<div class="tag-list">${user.interests.map(x=>`<span class="tag">${esc(x)}</span>`).join('')}</div>`:''}${isSelf?`<button class="primary" id="editAboutBtn">✏️ Edit About Me</button>`:''}</div>`;
     else if(tab==='friends') box.innerHTML=`<div class="about-card"><h3>Friends</h3><p class="muted">Friends and social connections for @${esc(user.username)}.</p><div class="profile-info-row"><b>👥 Friends</b><span>${user.friendsCount||0}</span></div><button class="mini" id="viewFriendsBtn">Open Friends</button></div>`;
-    else if(tab==='gifts') box.innerHTML=`<div class='about-card'><div class='gift-head'><div><h3>Virtual Gifts</h3><p class='muted'>Send a catalog gift with a personal note. Gifts are saved to the recipient's profile.</p></div></div>${!isSelf?`<div class='gift-balance'>Your gold: 🪙 <b>${state.user.gold||0}</b></div><label>Gift note <input id='giftMessage' maxlength='240' placeholder='Add a short personal note'></label><div class='gift-grid' id='giftGrid'><div class='muted'>Loading gifts…</div></div>`:`<div class='received-gift-list'>${(user.giftsReceived||[]).slice(-30).reverse().map(g=>`<article class='received-gift-card'><div class='received-gift-visual'>${/^https?:\/\//i.test(String(g.icon||''))?`<img src='${esc(g.icon)}' alt='${esc(g.gift||'Gift')}'>`:`<span>${esc(g.icon||'🎁')}</span>`}</div><div><b>${esc(g.gift||'Gift')}</b><small>From ${esc(g.fromDisplayName||g.fromUsername||'a community member')} · ${fmt(g.time)}</small>${g.message?`<p>${esc(g.message)}</p>`:''}</div></article>`).join('')||'<p class=muted>No gifts yet. Received gifts will appear here.</p>'}</div>`}</div>`;
     else box.innerHTML=`<div class="about-card"><div class="profile-info-row"><b>📝 About</b><span>${esc(user.bio||'No About Me')}</span></div><div class="profile-info-row"><b>📜 Username history</b><span>${(user.usernameHistory||[]).length} changes</span></div><div class="profile-info-row"><b>🔗 Profile ID</b><span>${esc(user.id)}</span></div>${can('MOD')?`<div class="toolbar"><button class="mini" id="profileHistoryBtn">📜 Staff action history</button></div><div id="profileHistoryBox"></div>`:''}<div class="profile-actions">${!isSelf?'<button class="mini danger" id="profileReportBtn">⚑ Report user</button>':''}</div></div>`;
     if(tab==='more' && can('MOD')) $('profileHistoryBtn')?.addEventListener('click',()=>showUserActionHistory(user.id));
     if(tab==='info'&&!isSelf&&canFeature('profile_note'))api(`/api/staff/user/${encodeURIComponent(user.id)}/note`).then(n=>{if(n.hasNote&&$('profileNoteDot'))$('profileNoteDot').style.display='inline';}).catch(()=>{});
@@ -1856,15 +1848,6 @@ function renderUserProfileModal(user,data={}){
     $('editProfileFromModal')?.addEventListener('click',()=>{closeModal();state.view='profile';renderView();});
     $('editAboutBtn')?.addEventListener('click',()=>{modal(`<h2>Edit About Me</h2><textarea id="aboutEdit" rows="7">${esc(state.user.bio||'')}</textarea><div class="toolbar"><button class="primary" id="saveAbout">Save</button></div>`);$('saveAbout').onclick=async()=>{try{const r=await api('/api/profile',{method:'PUT',body:JSON.stringify({bio:$('aboutEdit').value})});state.user=r.user;closeModal();toast('About Me saved.');}catch(e){toast(e.message)}};});
     $('viewFriendsBtn')?.addEventListener('click',()=>{closeModal();state.view='friends';renderView();});
-    if(tab==='gifts'){
-      if(!isSelf){
-        api('/api/gifts').then(gd=>{
-          const grid=$('giftGrid'); if(!grid)return;
-          grid.innerHTML=(gd.gifts||[]).map(g=>{const image=String(g.image||'');const visual=/^https?:\/\//i.test(image)?`<img src='${esc(image)}' class='gift-preview-img' alt='${esc(g.name)}'>`:`<span>${esc(g.icon||'🎁')}</span>`;return `<button class='gift-btn' data-gift='${esc(g.id)}'>${visual}<b>${esc(g.name)}</b><small>🪙 ${Number(g.cost||0)}</small></button>`}).join('')||'<p class=muted>No gifts are available yet.</p>';
-          grid.querySelectorAll('.gift-btn').forEach(b=>b.addEventListener('click',async()=>{try{const r=await api('/api/gift/send',{method:'POST',body:JSON.stringify({recipientId:user.id,gift:b.dataset.gift,message:$('giftMessage')?.value||''})});state.user.gold=r.remainingGold;updateNav();toast(`${r.gift.name} sent to @${user.username}.`);b.disabled=true;b.title='Gift sent';}catch(e){toast(e.message)}}));
-        }).catch(e=>toast(e.message));
-      }
-    }
     $('profileReportBtn')?.addEventListener('click',()=>{const reason=prompt('Why are you reporting this user?','Rule breaking behavior');if(reason)api('/api/reports',{method:'POST',body:JSON.stringify({target:user.id,reason})}).then(()=>toast('Report submitted.')).catch(e=>toast(e.message));});
   }
   document.querySelectorAll('.profile-tab').forEach(b=>b.addEventListener('click',()=>renderTab(b.dataset.tab)));
@@ -2784,7 +2767,7 @@ async function loadStaff() {
         <div class="card"><h3>Statistics</h3><p>Users: ${data.stats.users}<br>Online: ${data.stats.online}<br>Messages: ${data.stats.messages}<br>Open reports: ${data.stats.reportsOpen}</p></div>
         <div class="card"><h3>Filtered words</h3><button class="mini" onclick="addFilterWord()">＋ Add word</button><details class="filter-words-details"><summary>Filter words (${(filterWords.words||[]).length})</summary><div class="filter-word-list">${(filterWords.words||[]).map(w=>`<div class="filter-word-row"><code>${esc(w)}</code><button class="mini danger" onclick="deleteFilterWord(decodeURIComponent('${encodeURIComponent(w)}'))">×</button></div>`).join('')||'<span class="muted">No filter words configured.</span>'}</div></details><p class="muted">Link filter: ${bootstrapData.settings?.linkFilter?'ON':'OFF'}</p></div>
       </div>
-      <div class="card active-actions-card"><div class="toolbar"><div><h3>🛡️ Active moderation actions</h3><p class="muted">Only users currently muted, kicked or banned. Warnings are not listed.</p></div>${state.user?.username==='Maleficent'||state.userPermissions?.can_view_admin_logs?.granted?`<button class="mini" onclick="showAdminLogs()">📋 Admin Logs</button>`:''}<select id="staffActionFilter"><option value="">All actions</option><option value="BANNED">Banned</option><option value="MUTED">Muted</option><option value="KICKED">Kicked</option></select></div><div id="activeActionUsers"></div></div>
+      <div class="card active-actions-card"><div class="toolbar"><div><h3>🛡️ Active moderation actions</h3><p class="muted">Only users currently muted, kicked or banned. Warnings are not listed.</p></div>}<select id="staffActionFilter"><option value="">All actions</option><option value="BANNED">Banned</option><option value="MUTED">Muted</option><option value="KICKED">Kicked</option></select></div><div id="activeActionUsers"></div></div>
       <div class="card"><h3>Reports</h3>
         ${(data.reports||[]).filter(report=>report.status==='OPEN').map(report=>{
           const snap=report.messageSnapshot||{};
@@ -2957,7 +2940,7 @@ async function loadOwner() {
           Owner-only controls for
           users, ranks, gold, passwords,
           private-message inspection,
-          rooms, settings and audit logs.
+          rooms and settings.
         </p>
 
         <div class="toolbar">
@@ -2999,16 +2982,6 @@ async function loadOwner() {
 <label>Filter mute duration (minutes)<input id="ownerFilterDuration" type="number" min="1" value="${Number(data.settings?.filter_mute_duration??data.settings?.filterMuteDurationMinutes??5)}"></label>
 </div><b>Filter word affected ranks</b><div class="rank-check-grid">${['MEMBER','VIP','PREMIUM','MOD','ADMIN','SUPER_ADMIN','COMMISSOR','COOWNER','OWNER'].map(r=>`<label><input type="checkbox" data-filter-rank value="${r}" ${(data.settings?.filter_affected_ranks||['MEMBER','VIP','PREMIUM','MOD','ADMIN','SUPER_ADMIN','COMMISSOR','COOWNER','OWNER']).includes(r)?'checked':''}> ${r}</label>`).join('')}</div><button class="primary" onclick="saveOwnerSiteState()">Save Site Settings</button>
           </div>
-        </details>
-      </div>
-
-      <div class="card owner-log-settings-card">
-        <h3>📋 Logs settings</h3>
-        <p class="muted">Choose which events are recorded in Admin Audit Logs. Changes apply to new events and are saved permanently.</p>
-        <details class="filter-words-details owner-log-settings-dropdown">
-          <summary>Logs settings — manage recorded events</summary>
-          <div id="ownerLogSettingsRows" class="owner-log-settings-rows"><p class="muted">Loading log settings…</p></div>
-          <div class="toolbar"><button class="primary" id="saveOwnerLogSettings">Save Logs Settings</button></div>
         </details>
       </div>
 
@@ -3073,64 +3046,9 @@ async function loadOwner() {
     if($('filterSearch')) $('filterSearch').oninput=()=>{const q=$('filterSearch').value.toLowerCase();const rows=[...document.querySelectorAll('.filter-table-row')];let showing=0;rows.forEach(r=>{const show=r.dataset.word.toLowerCase().includes(q);r.style.display=show?'':'none';if(show)showing++});$('filterCounts').textContent=`Total: ${rows.length} | Showing: ${showing}`};
     document.querySelectorAll('[data-filter-delete]').forEach(b=>b.onclick=async()=>{try{await api('/api/filter-words/'+b.dataset.filterDelete,{method:'DELETE'});loadOwner()}catch(e){toast(e.message)}});
     document.querySelectorAll('[data-grant-premium]').forEach(b=>b.onclick=async()=>{try{await api('/api/owner/premium-requests/'+b.dataset.grantPremium+'/grant',{method:'POST'});toast('Premium granted.');loadOwner()}catch(e){toast(e.message)}}); document.querySelectorAll('[data-cancel-premium]').forEach(b=>b.onclick=async()=>{try{const r=await api('/api/premium/cancel',{method:'POST',body:JSON.stringify({userId:b.dataset.cancelPremium})});b.closest('.hub-row')?.remove();toast('Premium cancelled.');}catch(e){toast(e.message)}});
-    const giftList=await api('/api/gifts').catch(()=>({gifts:[]}));
-    const renderOwnerGifts=()=>{
-      if(!$('ownerGiftList'))return;
-      $('ownerGiftList').innerHTML=(giftList.gifts||[]).map(g=>`<div class='filter-table-row gift-catalog-row'><span>${/^https?:\/\//i.test(String(g.image||''))?`<img class='gift-preview-img' src='${esc(g.image)}' alt=''>`:esc(g.icon||'🎁')} <b>${esc(g.name)}</b> · 🪙 ${Number(g.cost||0)}</span><div class='toolbar'><button class='mini' data-edit-gift='${esc(g.id)}'>Edit</button><button class='mini danger' data-delete-gift='${esc(g.id)}'>Delete</button></div></div>`).join('')||'<p class=muted>No gifts in the catalog.</p>';
-      document.querySelectorAll('[data-edit-gift]').forEach(b=>b.onclick=()=>ownerGiftEditor(giftList.gifts.find(g=>String(g.id)===String(b.dataset.editGift))));
-      document.querySelectorAll('[data-delete-gift]').forEach(b=>b.onclick=async()=>{if(!confirm('Delete this gift from the catalog?'))return;try{await api('/api/owner/gifts/'+encodeURIComponent(b.dataset.deleteGift),{method:'DELETE'});toast('Gift removed.');loadOwner();}catch(e){toast(e.message)}});
-    };
-    renderOwnerGifts();
-    $('ownerAddGift')?.addEventListener('click',()=>ownerGiftEditor());
   } catch (error) {
     toast(error.message);
   }
-}
-
-async function loadOwnerLogSettings(){
-  const host=$('ownerLogSettingsRows');if(!host)return;
-  try{
-    const d=await api('/api/owner/log-settings');
-    host.innerHTML=(d.definitions||[]).map(item=>{
-      const enabled=d.settings?.[item.key]!==false;
-      return '<label class="owner-log-setting-row"><span class="owner-log-setting-copy"><b>'+esc(item.label)+'</b><small>'+esc(item.description)+'</small></span><span class="owner-log-setting-toggle"><span data-log-state="'+esc(item.key)+'">'+(enabled?'ON':'OFF')+'</span><input type="checkbox" role="switch" data-log-setting="'+esc(item.key)+'" '+(enabled?'checked':'')+' aria-label="Record '+esc(item.label)+'"></span></label>';
-    }).join('');
-    host.querySelectorAll('[data-log-setting]').forEach(input=>input.addEventListener('change',()=>{
-      const stateLabel=host.querySelector('[data-log-state="'+input.dataset.logSetting+'"]');
-      if(stateLabel)stateLabel.textContent=input.checked?'ON':'OFF';
-    }));
-  }catch(e){host.innerHTML='<p class="muted">Could not load log settings: '+esc(e.message||'Please retry.')+'</p>';}
-}
-async function saveOwnerLogSettings(){
-  const inputs=[...document.querySelectorAll('[data-log-setting]')];
-  if(!inputs.length){toast('Log settings are not loaded yet.');return;}
-  const settings=Object.fromEntries(inputs.map(input=>[input.dataset.logSetting,input.checked]));
-  const button=$('saveOwnerLogSettings');if(button){button.disabled=true;button.textContent='Saving…';}
-  try{
-    await api('/api/owner/log-settings',{method:'PATCH',body:JSON.stringify({settings})});
-    toast('Logs settings saved. New audit events will follow these switches.');
-  }catch(e){toast(e.message||'Could not save log settings.');}
-  finally{if(button){button.disabled=false;button.textContent='Save Logs Settings';}}
-}
-
-function ownerGiftEditor(gift=null){
-  const editing=!!gift;
-  modal(`<div class='gift-editor'><h2>${editing?'Edit gift':'Add a gift'}</h2><label>Name<input id='giftOwnerName' maxlength='80' value='${esc(gift?.name||'')}' required></label><label>Icon or image URL<input id='giftOwnerImage' maxlength='500' value='${esc(gift?.image||gift?.icon||'')}' placeholder='🌹 or https://…' required></label><label>Gold price<input id='giftOwnerPrice' type='number' min='1' max='100000' value='${Number(gift?.cost||10)}' required></label><div class='toolbar'><button class='primary' id='giftOwnerSave'>${editing?'Save gift':'Add gift'}</button></div></div>`);
-  $('giftOwnerSave').onclick=async()=>{try{const body={name:$('giftOwnerName').value.trim(),image:$('giftOwnerImage').value.trim(),price:Number($('giftOwnerPrice').value)};if(!body.name||!body.image||body.price<1)throw Error('Enter a name, icon or image, and price.');if(editing)await api('/api/owner/gifts/'+encodeURIComponent(gift.id),{method:'PATCH',body:JSON.stringify(body)});else await api('/api/gifts',{method:'POST',body:JSON.stringify(body)});closeModal();toast(editing?'Gift updated.':'Gift added.');loadOwner();}catch(e){toast(e.message)}};
-}
-
-async function showAdminLogs(){
-  const tabs=[['all','All events'],['staff','Moderation & staff'],['economy','Gold & memberships'],['system','Accounts & settings'],['delete','Deleted content']];
-  modal(`<div class="admin-logs-modal"><div class="admin-logs-heading"><div><h2>📋 Admin Audit Logs</h2><p class="muted">A clear timeline of staff actions and important site changes.</p></div></div><div class="admin-log-tabs">${tabs.map(([key,label])=>`<button class="mini" data-log-tab="${key}">${label}</button>`).join('')}</div><div class="admin-log-filters"><input id="adminLogSearch" type="search" placeholder="Search username, action, reason or details"><label>From<input id="adminLogFrom" type="date"></label><label>To<input id="adminLogTo" type="date"></label><button class="primary" id="adminLogApply">Apply filters</button></div><div id="adminLogSummary" class="admin-log-summary">Loading audit events…</div><div id="adminLogRows" class="admin-log-rows" aria-live="polite"></div><div class="admin-log-pagination"><button class="mini" id="adminLogPrev">← Newer</button><span id="adminLogPage">Page 1</span><button class="mini" id="adminLogNext">Older →</button></div></div>`);
-  let type='all',page=1,lastPages=1;
-  const humanize=v=>String(v||'Event').replace(/[_-]+/g,' ').toLowerCase().replace(/\b\w/g,m=>m.toUpperCase());
-  const parseDetails=value=>{if(value&&typeof value==='object')return value;if(typeof value==='string'){try{return JSON.parse(value)}catch{return {description:value}}}return {}};
-  const prettyValue=value=>{if(value===null||value===undefined||value==='')return '—';if(typeof value==='object')return JSON.stringify(value);return String(value)};
-  const detailsHtml=value=>{const d=parseDetails(value),entries=[];const add=(label,val)=>{if(val!==undefined&&val!==null&&val!==''&&typeof val!=='object')entries.push(`<div class="admin-log-detail"><b>${esc(label)}</b><span>${esc(prettyValue(val))}</span></div>`)};for(const k of ['reason','description','note','message','search','field','oldValue','old_value','previous','before','newValue','new_value','next','after','amount','gold','rank','oldRank','newRank','room','count','rows','granted','permission'])add(humanize(k),d[k]);if(d.meta&&typeof d.meta==='object'){for(const [k,v] of Object.entries(d.meta))add(humanize(k),v)}if(d.target&&typeof d.target!=='object')add('Target detail',d.target);const summary=entries.length?entries.slice(0,8).join(''):`<div class="admin-log-detail"><span>${esc(prettyValue(d.description||d.reason||d.message||Object.keys(d).length?d.description||d.reason||d.message||JSON.stringify(d):'No extra details were recorded for this event.'))}</span></div>`;return `<details class="admin-log-details"><summary>View event details</summary><div class="admin-log-detail-list">${summary}</div></details>`};
-  const load=async()=>{const rows=$('adminLogRows');rows.innerHTML='<p class="muted">Loading audit events…</p>';try{const q=new URLSearchParams({type,search:$('adminLogSearch').value,from:$('adminLogFrom').value,to:$('adminLogTo').value,page:String(page)});const d=await api('/api/admin/logs?'+q.toString());const logs=d.logs||[];lastPages=d.pages||1;$('adminLogSummary').textContent=`${Number(d.total||0).toLocaleString()} matching event${Number(d.total||0)===1?'':'s'} · newest first`;$('adminLogPage').textContent=`Page ${d.page||page} of ${lastPages}`;$('adminLogPrev').disabled=page<=1;$('adminLogNext').disabled=page>=lastPages;rows.innerHTML=logs.map(x=>{const action=humanize(x.action_type||'Action'),actor=x.performer_username||'SYSTEM',target=x.target_username||'—',date=x.created_at?new Date(x.created_at).toLocaleString():'Time not recorded';const kind=/BAN|MUTE|KICK|WARN|REPORT|MODERAT/.test(String(x.action_type).toUpperCase())?'staff':/GOLD|GIFT|VIP|PREMIUM|MEMBERSHIP/.test(String(x.action_type).toUpperCase())?'economy':/DELETE|CLEAR/.test(String(x.action_type).toUpperCase())?'delete':'system';return `<article class="admin-log-row"><div class="admin-log-row-top"><span class="admin-log-kind ${kind}">${esc(kind==='staff'?'STAFF':kind==='economy'?'ECONOMY':kind==='delete'?'DELETION':'SYSTEM')}</span><time>${esc(date)}</time></div><h3>${esc(action)}</h3><div class="admin-log-who"><span><small>Performed by</small><b>${esc(actor)}</b></span><span class="admin-log-arrow">→</span><span><small>Target / affected account</small><b>${esc(target)}</b></span></div>${detailsHtml(x.details)}</article>`}).join('')||'<div class="admin-logs-empty"><b>No matching audit events</b><p>Try another category or widen the date range.</p></div>';}catch(e){rows.innerHTML=`<div class="admin-logs-empty"><b>Could not load audit logs</b><p>${esc(e.message||'Please try again.')}</p></div>`;$('adminLogSummary').textContent='Audit events unavailable';}};
-  document.querySelectorAll('[data-log-tab]').forEach(b=>b.onclick=()=>{type=b.dataset.logTab;page=1;document.querySelectorAll('[data-log-tab]').forEach(t=>t.classList.toggle('active',t===b));load()});
-  $('adminLogApply').onclick=()=>{page=1;load()};$('adminLogSearch').addEventListener('keydown',e=>{if(e.key==='Enter'){page=1;load()}});$('adminLogPrev').onclick=()=>{if(page>1){page--;load()}};$('adminLogNext').onclick=()=>{if(page<lastPages){page++;load()}};
-  document.querySelector('[data-log-tab="all"]')?.classList.add('active');await load();
 }
 
 async function ownerEdit(id) {
