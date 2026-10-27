@@ -3460,6 +3460,9 @@ async function toggleNotificationDropdown(){
 /* ---------------- NOTIFICATIONS ---------------- */
 
 async function loadNotifications() {
+  // This runs on a timer and socket reconnects. Do not hit authenticated APIs
+  // while the login screen is active, otherwise a logged-out tab spams 401s.
+  if (!state.user) return;
   try {
     const [data,unreadData,dm,staffCounts,friendsData]=await Promise.all([
       api("/api/notifications"),
@@ -3493,8 +3496,8 @@ async function loadNotifications() {
     console.warn("Notification refresh failed",error);
   }
 }
-setInterval(loadNotifications,5000);
-setTimeout(loadNotifications,500);
+setInterval(()=>{if(state.user)loadNotifications();},5000);
+setTimeout(()=>{if(state.user)loadNotifications();},500);
 
 $("notifications").onclick=async()=>{
   try{
