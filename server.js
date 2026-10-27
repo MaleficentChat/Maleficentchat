@@ -1250,11 +1250,9 @@ app.get('/api/users/blocked',auth,(req,res)=>{
 });
 
 app.get("/api/rooms",auth,async(req,res)=>{
-  // Keep one permanent, unrestricted default room and remove the obsolete age-split rooms.
-  await pool.query(`INSERT INTO rooms(name,created_by,icon,description,category,is_public,rank_required,invite_token,min_age,max_age,is_default)
-    VALUES ('Main Room',(SELECT id FROM users WHERE username='Maleficent'),'🏠','The main community chat room.','Community',true,'MEMBER','main-room',0,120,true)
-    ON CONFLICT(name) DO NOTHING`);
-  // Keep the API response canonical even if old room rows survived a previous deploy.
+  // Remove legacy defaults before inserting the canonical room. A lowercase
+  // "main room" can otherwise block the insert via UNIQUE(name), then be
+  // deleted, leaving no Main Room until someone creates another room.
   const legacy = await pool.query(`SELECT id FROM rooms
     WHERE LOWER(TRIM(name)) IN ('main room 1','main room 2')
        OR (LOWER(TRIM(name))='main room' AND name <> 'Main Room')`);
@@ -1263,6 +1261,9 @@ app.get("/api/rooms",auth,async(req,res)=>{
     await pool.query(`DELETE FROM room_messages WHERE room_id = ANY($1::int[])`, [legacyIds]);
     await pool.query(`DELETE FROM rooms WHERE id = ANY($1::int[])`, [legacyIds]);
   }
+  await pool.query(`INSERT INTO rooms(name,created_by,icon,description,category,is_public,rank_required,invite_token,min_age,max_age,is_default)
+    VALUES ('Main Room',(SELECT id FROM users WHERE username='Maleficent'),'🏠','The main community chat room.','Community',true,'MEMBER','main-room',0,120,true)
+    ON CONFLICT(name) DO NOTHING`);
   await pool.query(`UPDATE rooms SET is_default=(name='Main Room'), min_age=0, max_age=120 WHERE name='Main Room'`);
   await pool.query(`UPDATE rooms SET is_default=false WHERE name <> 'Main Room'`);
   const {rows}=await pool.query(`SELECT r.*,u.username AS creator FROM rooms r LEFT JOIN users u ON r.created_by=u.id ORDER BY r.is_default DESC,r.created_at ASC,r.id ASC`);
