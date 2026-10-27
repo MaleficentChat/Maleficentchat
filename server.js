@@ -2395,11 +2395,77 @@ app.get("/api/staff/ip-inspection/users",auth,ownerOnly,async(req,res)=>{
     if(!res.headersSent) return res.status(500).json({error:"IP Inspection account search failed. Check server logs for [IP_INSPECTION]."});
   }
 });
+const ipGeoCache = new Map();
+async function lookupIpNetworkDetails(ip){
+  const now=Date.now();
+  const cached=ipGeoCache.get(ip);
+  if(cached&&cached.expiresAt>now)return cached.value;
+  const unavailable={lookupStatus:"Unavailable"};
+  // Provider one: no-key IP Info API, which returns geolocation and ASN/network fields.
+  try{
+    const response=await fetch("https://ip-info.com/json?ip="+encodeURIComponent(ip),{
+      headers:{"Accept":"application/json","User-Agent":"MaleficentChat-IPInspection/1.1"},
+      signal:AbortSignal.timeout(6500)
+    });
+    if(response.ok){
+      const d=await response.json();
+      const value={
+        country:d.country||d.country_name||"",
+        region:d.region||d.region_name||"",
+        city:d.city||"",
+        networkProvider:d.isp||d.org||d.organization||d.asn_name||"",
+        organization:d.org||d.organization||"",
+        asn:d.asn||d.as_number||"",
+        hostname:d.hostname||"",
+        timezone:d.timezone||d.time_zone||"",
+        coordinates:d.loc||([d.latitude,d.longitude].every(v=>v!==undefined&&v!==null)?d.latitude+","+d.longitude:""),
+        networkType:d.connection_type||d.type||"",
+        lookupStatus:"Success",
+        lookupSource:"IP Info"
+      };
+      if(value.country||value.region||value.city||value.networkProvider||value.asn){
+        ipGeoCache.set(ip,{value,expiresAt:now+6*60*60*1000});
+        return value;
+      }
+    }
+  }catch{}
+  // Fallback provider in case the primary service is unavailable or rate-limited.
+  try{
+    const response=await fetch("https://ipapi.co/"+encodeURIComponent(ip)+"/json/",{
+      headers:{"Accept":"application/json","User-Agent":"MaleficentChat-IPInspection/1.1"},
+      signal:AbortSignal.timeout(6500)
+    });
+    if(response.ok){
+      const d=await response.json();
+      if(!d.error){
+        const value={
+          country:d.country_name||"",
+          region:d.region||"",
+          city:d.city||"",
+          networkProvider:d.org||d.asn||"",
+          organization:d.org||"",
+          asn:d.asn||"",
+          hostname:d.hostname||"",
+          timezone:d.timezone||"",
+          coordinates:d.latitude!=null&&d.longitude!=null?d.latitude+","+d.longitude:"",
+          networkType:d.version||"",
+          lookupStatus:"Success",
+          lookupSource:"ipapi.co"
+        };
+        if(value.country||value.region||value.city||value.networkProvider||value.asn){
+          ipGeoCache.set(ip,{value,expiresAt:now+6*60*60*1000});
+          return value;
+        }
+      }
+    }
+  }catch{}
+  ipGeoCache.set(ip,{value:unavailable,expiresAt:now+5*60*1000});
+  return unavailable;
+}
 app.get("/api/staff/ip-inspection",auth,ownerOnly,async(req,res)=>{
   let stage="prepare-query";
   try{
-    const actor=current(req);
-    const search=String(req.query.q||"").trim().slice(0,100);
+    const search=String(req.query.q||"").trim().slice(0,100).replace(/^@/,"");
     const limit=Math.min(200,Math.max(1,Number(req.query.limit)||100));
     const params=[];
     let where="";
@@ -2412,16 +2478,32 @@ app.get("/api/staff/ip-inspection",auth,ownerOnly,async(req,res)=>{
     stage="query-ip-history";
     const q=await pool.query(`SELECT h.id,h.user_id,u.username,u.email,h.ip_address::text AS ip_address,h.event_type,h.user_agent,h.recorded_at,u.created_at AS registered_at FROM users u LEFT JOIN user_ip_history h ON h.user_id=u.id ${where} ORDER BY h.recorded_at DESC NULLS LAST,u.username LIMIT ${limitPlaceholder}`,params);
     stage="lookup-network-details";
-    const normalizedIp=ip=>String(ip||"").trim().replace(/\/\d{1,3}$/,"");
-    const uniqueIps=[...new Set(q.rows.map(x=>normalizedIp(x.ip_address)))].filter(ip=>ip&&ip!=="::1"&&ip!=="127.0.0.1"&&!ip.startsWith("127.")&&!ip.startsWith("10.")&&!ip.startsWith("192.168.")&&!ip.startsWith("fc")&&!ip.startsWith("fd")&&!ip.toLowerCase().startsWith("fe80:"));
-    const lookups=await Promise.all(uniqueIps.slice(0,30).map(async ip=>{
-      try{const response=await fetch("https://ipapi.co/"+encodeURIComponent(ip)+"/json/",{headers:{"User-Agent":"MaleficentChat-IPInspection/1.0"},signal:AbortSignal.timeout(5000)});if(!response.ok)return [ip,{}];const d=await response.json();if(d.error)return [ip,{}];return [ip,{country:d.country_name||"",region:d.region||"",city:d.city||"",networkProvider:d.org||d.asn||"",networkType:d.version||"",isProxy:d.proxy===true}];}catch{return [ip,{}];}
-    }));
+    const normalizeIp=ip=>String(ip||"").trim().replace(/^::ffff:/i,"").replace(/^\[|\]$/g,"").replace(/\/\d{1,3}$/,"");
+    const isPrivateOrLocal=ip=>{
+      const value=normalizeIp(ip).toLowerCase();
+      return !value||["unknown","unavailable","::1","127.0.0.1","0.0.0.0"].includes(value)||
+        value.startsWith("127.")||value.startsWith("10.")||value.startsWith("192.168.")||
+        /^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(value)||value.startsWith("169.254.")||
+        /^100\.(6[4-9]|[7-9][0-9]|1[01][0-9]|12[0-7])\./.test(value)||
+        value.startsWith("fc")||value.startsWith("fd")||value.startsWith("fe80:")||
+        value.startsWith("2001:db8:")||value.startsWith("192.0.2.")||
+        value.startsWith("198.51.100.")||value.startsWith("203.0.113.");
+    };
+    const uniqueIps=[...new Set(q.rows.map(x=>normalizeIp(x.ip_address)))].filter(ip=>!isPrivateOrLocal(ip));
+    const lookups=await Promise.all(uniqueIps.slice(0,60).map(async ip=>[ip,await lookupIpNetworkDetails(ip)]));
     const geo=Object.fromEntries(lookups);
-    return res.json({records:q.rows.map(row=>({...row,network:geo[normalizedIp(row.ip_address)]||{}})),limit,geolocationNote:"Country and network details are approximate and may be unavailable. Normalized IP addresses are sent to ipapi.co for lookup when this panel is opened."});
+    return res.json({
+      records:q.rows.map(row=>{
+        const ip=normalizeIp(row.ip_address);
+        const privateIp=isPrivateOrLocal(ip);
+        return {...row,network:privateIp?{lookupStatus:ip?"Private/local IP — no public geolocation":"No IP recorded"}:(geo[ip]||{lookupStatus:"Not looked up"})};
+      }),
+      limit,
+      geolocationNote:"Approximate IP location and network data are retrieved server-side from IP Info, with ipapi.co as a fallback. Results may be missing or inaccurate, especially for VPNs, mobile networks, or private addresses."
+    });
   }catch(err){
     console.error("[IP_INSPECTION] request failed at "+stage+":",err?.stack||err?.message||err);
-    if(!res.headersSent) return res.status(500).json({error:"IP Inspection failed during "+stage+". Check server logs for [IP_INSPECTION]."});
+    if(!res.headersSent)return res.status(500).json({error:"IP Inspection failed during "+stage+". Check server logs for [IP_INSPECTION]."});
   }
 });
 
