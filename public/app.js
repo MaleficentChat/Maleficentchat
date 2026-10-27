@@ -2843,6 +2843,36 @@ async function doModerate(id, action) {
   }
 }
 
+function formatAuditDetail(value) {
+  const raw = value == null || value === "" ? "No reason recorded" : String(value);
+  let parsed;
+  try { parsed = JSON.parse(raw); } catch (_) { return esc(raw); }
+  if (!parsed || typeof parsed !== "object") return esc(String(parsed));
+  const entries = Object.entries(parsed);
+  if (!entries.length) return '<span class="audit-detail-empty">No additional details</span>';
+  return '<div class="audit-detail-list">' + entries.map(([key, val]) => {
+    const label = key.replace(/([A-Z])/g, " $1").replace(/[_-]+/g, " ").replace(/^./, c => c.toUpperCase());
+    let display;
+    if (Array.isArray(val)) {
+      display = val.map(item => {
+        if (item && typeof item === "object") {
+          const name = item.key || item.name || item.feature || "";
+          const rank = item.minimumRank || item.minimum_rank || "";
+          return (name ? String(name).replace(/[_-]+/g, " ") : JSON.stringify(item)) + (rank ? " (" + rank + ")" : "");
+        }
+        return String(item);
+      }).join(", ");
+    } else if (val && typeof val === "object") {
+      display = Object.entries(val).map(([k,v]) => k.replace(/[_-]+/g, " ") + ": " + (v == null ? "—" : String(v))).join(" · ");
+    } else if (typeof val === "boolean") {
+      display = val ? "Yes" : "No";
+    } else {
+      display = val == null || val === "" ? "—" : String(val);
+    }
+    return '<div class="audit-detail-item"><b>' + esc(label) + ':</b> ' + esc(display) + '</div>';
+  }).join("") + '</div>';
+}
+
 /* ---------------- STAFF ---------------- */
 
 async function loadStaff() {
@@ -2864,7 +2894,7 @@ async function loadStaff() {
       <div class="grid2"><div class="about-card"><b>Server</b><p>${systemCenter?.health?.server==='ok'?'🟢 Online':'⚪ Unknown'}</p><small>Uptime ${Math.floor((systemCenter?.health?.uptimeSeconds||0)/3600)}h</small></div><div class="about-card"><b>Database</b><p>${systemCenter?.health?.database?.ok?'🟢 Connected':'🔴 Unavailable'}</p><small>${systemCenter?.health?.database?.latencyMs??'—'} ms</small></div><div class="about-card"><b>Accounts</b><p>${systemCenter?.stats?.online||0} online / ${systemCenter?.stats?.users||0} total</p></div><div class="about-card"><b>Moderation</b><p>${systemCenter?.stats?.activeModerations||0} active actions</p><small>${(systemCenter?.rules||[]).length} AutoGuard rules enabled</small></div></div>
       <details class="filter-words-details" open><summary>🛡️ Enabled AutoGuard rules</summary>${(systemCenter?.rules||[]).map(r=>`<div class="user-card"><div><b>${esc(r.key.replace(/_/g,' '))}</b><div class="muted">${esc(r.action)} · ${Number(r.durationMinutes)||0} min · ${esc(r.reason||'')}</div></div></div>`).join('')||'<p class="muted">No rules enabled. Configure rules in Owner Space → System Moderation.</p>'}</details>
       <details class="filter-words-details system-admin-tools"><summary>👤 Account Administration — open to manage accounts</summary><div class="system-admin-tools-content"><p class="muted">Search users and apply moderation actions. Rank protections still apply.</p><form id="staffAdminSearchForm" class="ip-inspection-form"><input id="staffAdminSearch" placeholder="Username, display name, or ID" maxlength="80"><button class="primary" type="submit">Search</button></form><div id="staffAdminUsers"><p class="muted">Search to load accounts.</p></div></div></details>
-      <details class="filter-words-details system-admin-tools"><summary>📜 Audit & Evidence — all events (${(systemCenter?.audit||[]).length})</summary><div class="system-admin-tools-content"><form id="systemAuditSearchForm" class="ip-inspection-form"><input id="systemAuditSearch" placeholder="Optional filter across all audit records" maxlength="100"><button class="primary" type="submit">Filter</button><button class="mini" type="button" id="showAllAuditRows">Show all</button></form><div id="systemAuditRows">${(systemCenter?.audit||[]).map(x=>`<div class="system-audit-row"><b>${esc(x.action||'EVENT')}</b> · ${esc(x.source||'system')}<div>${esc(x.reason||'No reason recorded')}</div><small>Target: ${esc(x.target||'—')} · Actor: ${esc(x.actorUsername||x.actor||'System')} · ${x.time?fmt(x.time):'Time unavailable'}</small></div>`).join('')||'<p class="muted">No audit events recorded.</p>'}</div></div></details></section>` : ''}
+      <details class="filter-words-details system-admin-tools"><summary>📜 Audit & Evidence — all events (${(systemCenter?.audit||[]).length})</summary><div class="system-admin-tools-content"><form id="systemAuditSearchForm" class="ip-inspection-form"><input id="systemAuditSearch" placeholder="Optional filter across all audit records" maxlength="100"><button class="primary" type="submit">Filter</button><button class="mini" type="button" id="showAllAuditRows">Show all</button></form><div id="systemAuditRows">${(systemCenter?.audit||[]).map(x=>`<div class="system-audit-row"><b>${esc(x.action||'EVENT')}</b> · ${esc(x.source||'system')}<div>${formatAuditDetail(x.reason||'No reason recorded')}</div><small>Target: ${esc(x.target||'—')} · Actor: ${esc(x.actorUsername||x.actor||'System')} · ${x.time?fmt(x.time):'Time unavailable'}</small></div>`).join('')||'<p class="muted">No audit events recorded.</p>'}</div></div></details></section>` : ''}
       <div class="card active-actions-card"><div class="toolbar"><div><h3>🛡️ Active moderation actions</h3><p class="muted">Only users currently muted, kicked or banned. Warnings are not listed.</p></div><select id="staffActionFilter"><option value="">All actions</option><option value="BANNED">Banned</option><option value="MUTED">Muted</option><option value="KICKED">Kicked</option></select></div><div id="activeActionUsers"></div></div>
       <div class="card"><h3>Reports</h3>
         ${(data.reports||[]).filter(report=>report.status==='OPEN').map(report=>{
@@ -2894,7 +2924,7 @@ async function loadStaff() {
     $('ipInspectionForm')?.addEventListener('submit',e=>{e.preventDefault();loadIpInspection((ipSearch?.value||'').trim().replace(/^@/,''));});
 
     $('refreshSystemCenter')?.addEventListener('click',()=>loadStaff());
-    $('showAllAuditRows')?.addEventListener('click',async()=>{try{const d=await api('/api/staff/system-center/audit');const target=$('systemAuditRows');target.innerHTML=(d.audit||[]).map(x=>`<div class="system-audit-row"><b>${esc(x.action||'EVENT')}</b> · ${esc(x.source||'system')}<div>${esc(x.reason||'No reason recorded')}</div><small>Target: ${esc(x.target||'—')} · Actor: ${esc(x.actorUsername||x.actor||'System')} · ${x.time?fmt(x.time):'Time unavailable'}</small></div>`).join('')||'<p class="muted">No audit events recorded.</p>';if($('systemAuditSearch'))$('systemAuditSearch').value='';}catch(err){toast(err.message);}});
+    $('showAllAuditRows')?.addEventListener('click',async()=>{try{const d=await api('/api/staff/system-center/audit');const target=$('systemAuditRows');target.innerHTML=(d.audit||[]).map(x=>`<div class="system-audit-row"><b>${esc(x.action||'EVENT')}</b> · ${esc(x.source||'system')}<div>${formatAuditDetail(x.reason||'No reason recorded')}</div><small>Target: ${esc(x.target||'—')} · Actor: ${esc(x.actorUsername||x.actor||'System')} · ${x.time?fmt(x.time):'Time unavailable'}</small></div>`).join('')||'<p class="muted">No audit events recorded.</p>';if($('systemAuditSearch'))$('systemAuditSearch').value='';}catch(err){toast(err.message);}});
     $('staffAdminSearchForm')?.addEventListener('submit',async e=>{
       e.preventDefault();const target=$('staffAdminUsers');target.innerHTML='<p class="muted">Searching…</p>';
       try{const d=await api('/api/staff/admin/users?q='+encodeURIComponent(($('staffAdminSearch').value||'').trim()));
@@ -2903,7 +2933,7 @@ async function loadStaff() {
       target.querySelectorAll('.system-admin-apply').forEach(btn=>btn.onclick=async()=>{const row=btn.closest('[data-admin-user]'),action=row.querySelector('.system-admin-action').value,needsDuration=['MUTE','KICK'].includes(action),minutes=Number(row.querySelector('.system-admin-duration').value),reason=row.querySelector('.system-admin-reason').value.trim();if(!reason){toast('Enter a reason.');return;}if(needsDuration&&(!Number.isFinite(minutes)||minutes<1||minutes>10080)){toast('Duration must be 1–10080 minutes for mute/kick.');return;}btn.disabled=true;try{await api('/api/moderation/'+action,{method:'POST',body:JSON.stringify({userId:row.dataset.adminUser,minutes:needsDuration?minutes:0,reason})});toast(action+' applied.');await loadStaff();}catch(err){toast(err.message);btn.disabled=false;}});
       }catch(err){target.innerHTML='<p class="muted">'+esc(err.message)+'</p>';}
     });
-    $('systemAuditSearchForm')?.addEventListener('submit',async e=>{e.preventDefault();const target=$('systemAuditRows');target.innerHTML='<p class="muted">Loading…</p>';try{const d=await api('/api/staff/system-center/audit?q='+encodeURIComponent(($('systemAuditSearch').value||'').trim()));target.innerHTML=(d.audit||[]).map(x=>`<div class="system-audit-row"><b>${esc(x.action||'EVENT')}</b> · ${esc(x.source||'system')}<div>${esc(x.reason||'No reason recorded')}</div><small>Target: ${esc(x.target||'—')} · Actor: ${esc(x.actorUsername||x.actor||'System')} · ${x.time?fmt(x.time):'Time unavailable'}</small></div>`).join('')||'<p class="muted">No matches.</p>';}catch(err){target.innerHTML='<p class="muted">'+esc(err.message)+'</p>';}});
+    $('systemAuditSearchForm')?.addEventListener('submit',async e=>{e.preventDefault();const target=$('systemAuditRows');target.innerHTML='<p class="muted">Loading…</p>';try{const d=await api('/api/staff/system-center/audit?q='+encodeURIComponent(($('systemAuditSearch').value||'').trim()));target.innerHTML=(d.audit||[]).map(x=>`<div class="system-audit-row"><b>${esc(x.action||'EVENT')}</b> · ${esc(x.source||'system')}<div>${formatAuditDetail(x.reason||'No reason recorded')}</div><small>Target: ${esc(x.target||'—')} · Actor: ${esc(x.actorUsername||x.actor||'System')} · ${x.time?fmt(x.time):'Time unavailable'}</small></div>`).join('')||'<p class="muted">No matches.</p>';}catch(err){target.innerHTML='<p class="muted">'+esc(err.message)+'</p>';}});
     const renderActiveActions=()=>{
       const filter=$("staffActionFilter")?.value||"";
       const rows=(data.activeActions||[]).filter(x=>!filter||(filter==="BANNED"&&x.banned)||(filter==="MUTED"&&x.mutedUntil)||(filter==="KICKED"&&x.kickedUntil));
