@@ -2306,6 +2306,7 @@ app.post(
       }
     );
 
+    systemAudit({target:target.id,actor:actor.id,actorUsername:actor.username,action,reason:cleanText(req.body.reason)||action,source:"staff",durationMinutes:(action==="MUTE"||action==="KICK")?Math.max(1,Number(req.body.minutes)||10):0});
     save();
     const actionText={MUTE:'muted',KICK:'kicked',BAN:'banned',UNMUTE:'unmuted',REVOKE_MUTE:'unmuted',REVOKE_BAN:'unbanned',REVOKE_KICK:'unkicked',WARN:'warned'}[action]||action.toLowerCase(); const mainRoom=db.rooms.find(x=>/^main room 1$/i.test(String(x.name||'')))||db.rooms.find(x=>x.id==='main'||String(x.name).toLowerCase()==='main room')||db.rooms[0]; systemNotice(`@${target.username} has been ${actionText}.`,mainRoom?.id||null);
 
