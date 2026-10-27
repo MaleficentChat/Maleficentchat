@@ -3469,38 +3469,74 @@ async function ownerFeatureGrants(){
   try{
     const d=await api('/api/owner/feature-grants');
     const labels={
-      send_messages:'Send chat messages',private_messages:'Send private messages',create_rooms:'Create rooms',edit_rooms:'Edit rooms',delete_rooms:'Delete rooms',join_rooms:'Join rooms',delete_own_room:'Delete own room',
-      friend_wall_posting:'Friend Wall posting',wall_commenting:'Friend Wall comments',wall_liking:'Friend Wall likes',wall_upload:'Friend Wall uploads',
-      news_posting:'Publish news',change_avatar:'Change own avatar',change_bio:'Edit own profile',account_modifications:'Modify other user accounts',profile_note:'Staff profile notes',
-      emojis_stickers:'Use emojis and stickers',chat_file_upload:'Upload chat files',gif_sending:'Send GIFs',
-      clear_history_button:'Clear personal history',view_online_users:'View online users',manage_filter_words:'Manage filtered words',premium_granting:'Grant Premium',reports_management:'Manage reports',moderate_users:'Moderate users',bypass_filter_words:'Bypass filtered words',bypass_mute:'Bypass mute',
-      change_password:'Change user password',edit_email:'Edit user email',manage_xp_level:'Manage user XP and level'
+      send_messages:'Send messages',private_messages:'Private messages',create_rooms:'Create rooms',edit_rooms:'Edit rooms',delete_rooms:'Delete rooms',join_rooms:'Join rooms',delete_own_room:'Delete own room',
+      friend_wall_posting:'Post on Friends Wall',wall_commenting:'Comment on Friends Wall',wall_liking:'Like Friends Wall posts',wall_upload:'Upload to Friends Wall',news_posting:'Publish news',
+      change_avatar:'Change own avatar',change_bio:'Edit own bio',account_modifications:'Edit other accounts',profile_note:'Staff profile notes',emojis_stickers:'Use emojis and stickers',
+      chat_file_upload:'Upload chat files',gif_sending:'Send GIFs',clear_history_button:'Clear personal history',view_online_users:'View online users',
+      manage_filter_words:'Manage filtered words',premium_granting:'Grant Premium',reports_management:'Manage reports',moderate_users:'Moderate users',
+      bypass_filter_words:'Bypass filtered words',bypass_mute:'Bypass mute',change_password:'Change another user password',edit_email:'Edit another user email',
+      manage_xp_level:'Manage XP and levels',invisible_mode:'Invisible mode',share_gold:'Share gold',delete_message:'Delete chat messages',view_ips:'View IP inspection',
+      view_emails:'View account emails',manage_ranks:'Manage ranks',manage_settings:'Manage site settings',manage_clubs:'Manage clubs',manage_bots:'Manage bots',
+      manage_mal_ai:'Manage Mal AI',manage_aurora:'Manage Aurora bot',manage_feature_lab:'Manage Feature Lab',report_message:'Report messages',
+      moderate_user:'Moderate users',clear_room:'Clear room messages',edit_message:'Edit own messages',pin_message:'Pin messages',save_message:'Save messages',
+      react_message:'React to messages',schedule_message:'Schedule messages',expire_message:'Use expiring messages',use_youtube:'Share YouTube content',
+      room_announcement:'Post room announcements',view_pinned:'View pinned messages',manage_filters:'Manage filtered words',delete_news:'Delete news',
+      manage_staff_accounts:'Manage staff account details',staff_rank_assignment:'Assign staff ranks',manage_gold:'Manage user gold',profile_like:'Like profiles',
+      enter_private_club:'Enter private clubs',wall_post:'Friends Wall posting',manage_news:'Manage news'
     };
-    for(const key of Object.keys(d.features||{}))if(!labels[key])labels[key]=key.replaceAll('_',' ').replace(/^./,c=>c.toUpperCase());
-    const groups={
-      'Account and profiles':['change_avatar','change_bio','account_modifications','profile_note','change_password','edit_email'],
-      'Chat and media':['send_messages','emojis_stickers','chat_file_upload','gif_sending'],
-      'Private messages':['private_messages'],
-      'Rooms':['join_rooms','create_rooms','edit_rooms','delete_rooms','delete_own_room'],
-      'Social and rewards':['friend_wall_posting','wall_commenting','wall_liking','wall_upload','clear_history_button'],
-      'Staff dashboard':['view_online_users','manage_filter_words','reports_management','moderate_users','premium_granting','bypass_filter_words','bypass_mute'],
-      'Owner tools':['manage_xp_level']
+    const descriptions={
+      send_messages:'Send text in public rooms.',private_messages:'Start and reply to private conversations.',create_rooms:'Create new chat rooms.',edit_rooms:'Change room details.',delete_rooms:'Delete rooms.',join_rooms:'Enter rooms.',delete_own_room:'Delete rooms created by this account.',
+      friend_wall_posting:'Create posts on the Friends Wall.',wall_commenting:'Comment on wall posts.',wall_liking:'React to wall posts.',wall_upload:'Attach uploads to wall posts.',news_posting:'Publish site news.',
+      change_avatar:'Change this account’s avatar.',change_bio:'Edit this account’s bio.',account_modifications:'Edit another user’s account details.',profile_note:'View or add staff notes.',emojis_stickers:'Send emojis and stickers.',
+      chat_file_upload:'Attach files in chat.',gif_sending:'Send GIFs.',clear_history_button:'Clear personal chat history.',view_online_users:'View the online user list.',
+      manage_filter_words:'Edit blocked-word settings.',premium_granting:'Grant Premium status.',reports_management:'Review and resolve reports.',moderate_users:'Warn, mute, kick or ban users.',
+      bypass_filter_words:'Bypass filtered-word restrictions.',bypass_mute:'Bypass mute restrictions.',change_password:'Change another user’s password.',edit_email:'Edit another user’s email address.',
+      manage_xp_level:'Change another user’s XP or level.',invisible_mode:'Use invisible presence mode.',share_gold:'Send gold to another user.',delete_message:'Delete chat messages.',
+      view_ips:'Access IP inspection details.',view_emails:'View registered email addresses.',manage_ranks:'Change account ranks.',manage_settings:'Change site-wide settings.',
+      manage_clubs:'Manage clubs.',manage_bots:'Manage community bots.',manage_mal_ai:'Edit Mal AI commands.',manage_aurora:'Manage Aurora bot.',manage_feature_lab:'Manage Feature Lab.',
+      report_message:'Submit reports about messages.',moderate_user:'Access moderation actions.',clear_room:'Clear room messages.',edit_message:'Edit messages you sent.',pin_message:'Pin chat messages.',
+      save_message:'Save messages.',react_message:'React to messages.',schedule_message:'Schedule messages.',expire_message:'Send expiring messages.',use_youtube:'Share YouTube content.',
+      room_announcement:'Post room announcements.',view_pinned:'View pinned messages.',manage_filters:'Manage filtered-word settings.',delete_news:'Delete published news.',
+      manage_staff_accounts:'Edit staff account details.',staff_rank_assignment:'Assign eligible staff ranks.',manage_gold:'Adjust user gold.',profile_like:'Like user profiles.',enter_private_club:'Enter private clubs.'
+    };
+    const categoryFor={
+      send_messages:'Chat & media',emojis_stickers:'Chat & media',chat_file_upload:'Chat & media',gif_sending:'Chat & media',private_messages:'Chat & media',edit_message:'Chat & media',pin_message:'Chat & media',save_message:'Chat & media',react_message:'Chat & media',schedule_message:'Chat & media',expire_message:'Chat & media',use_youtube:'Chat & media',
+      create_rooms:'Rooms',edit_rooms:'Rooms',delete_rooms:'Rooms',join_rooms:'Rooms',delete_own_room:'Rooms',clear_room:'Rooms',room_announcement:'Rooms',view_pinned:'Rooms',
+      friend_wall_posting:'Social & community',wall_post:'Social & community',wall_commenting:'Social & community',wall_liking:'Social & community',wall_upload:'Social & community',profile_like:'Social & community',manage_clubs:'Social & community',enter_private_club:'Social & community',share_gold:'Gold & rewards',
+      news_posting:'News & content',manage_news:'News & content',delete_news:'News & content',
+      change_avatar:'Accounts & profiles',change_bio:'Accounts & profiles',account_modifications:'Accounts & profiles',change_password:'Accounts & profiles',edit_email:'Accounts & profiles',profile_note:'Accounts & profiles',view_emails:'Accounts & profiles',
+      view_online_users:'Staff & moderation',manage_filter_words:'Staff & moderation',manage_filters:'Staff & moderation',premium_granting:'Staff & moderation',reports_management:'Staff & moderation',moderate_users:'Staff & moderation',moderate_user:'Staff & moderation',bypass_filter_words:'Staff & moderation',bypass_mute:'Staff & moderation',delete_message:'Staff & moderation',view_ips:'Staff & moderation',manage_staff_accounts:'Staff & moderation',staff_rank_assignment:'Staff & moderation',invisible_mode:'Staff & moderation',
+      manage_xp_level:'Owner tools',manage_ranks:'Owner tools',manage_settings:'Owner tools',manage_gold:'Owner tools',manage_bots:'Owner tools',manage_mal_ai:'Owner tools',manage_aurora:'Owner tools',manage_feature_lab:'Owner tools',clear_history_button:'Owner tools'
     };
     const ranks=d.ranks||['MEMBER','VIP','PREMIUM','MOD','ADMIN','SUPER_ADMIN','COMMISSOR','COOWNER','OWNER'];
     const rankLabels={MEMBER:'Member',VIP:'VIP',PREMIUM:'Premium',MOD:'Moderator',ADMIN:'Admin',SUPER_ADMIN:'Super Admin',COMMISSOR:'Commissor',COOWNER:'Co-owner',OWNER:'Owner'};
-    const render=key=>{
-      const allowed=d.grants?.[key]||[];
-      const selected=ranks.find(r=>allowed.includes(r));
-      return `<div class='feature-grant-row'><div><b>${esc(labels[key])}</b><small>Selected rank and every higher rank can use this feature.</small></div><select data-grant='${key}'><option value='off' ${selected?'':'selected'}>Disabled</option>${ranks.map(r=>`<option value='${r}' ${r===selected?'selected':''}>${rankLabels[r]||r}</option>`).join('')}</select><button class='mini' data-grant-save='${key}'>Save</button></div>`;
-    };
-    const used=new Set(Object.values(groups).flat());
-    const grouped=Object.entries(groups).map(([name,keys])=>{const rows=keys.filter(k=>d.features?.[k]);return rows.length?`<details class='grant-category' open><summary>${name}</summary>${rows.map(render).join('')}</details>`:''}).join('');
-    const extra=Object.keys(d.features||{}).filter(k=>!used.has(k)).map(render).join('');
-    modal(`<div class='feature-grant-modal'><h2>🧩 Feature Granting Panel</h2><p class='muted'>Set the minimum rank for each active feature, or disable it. Direct user permissions remain managed in User Permissions.</p>${grouped}${extra?`<details class='grant-category'><summary>Other active features</summary>${extra}</details>`:''}</div>`);
-    document.querySelectorAll('[data-grant-save]').forEach(b=>b.onclick=async()=>{const key=b.dataset.grantSave,select=document.querySelector(`[data-grant='${key}']`);try{await api('/api/owner/feature-grants',{method:'PUT',body:JSON.stringify({grants:{[key]:select.value==='off'?null:select.value}})});toast('Feature permission saved.');}catch(e){toast(e.message)}});
-  }catch(e){toast(e.message)}
+    const keys=Object.keys(d.features||{}), categories={};
+    keys.forEach(key=>{const category=categoryFor[key]||'Other site features';if(!categories[category])categories[category]=[];categories[category].push(key);});
+    function renderRow(key){
+      const allowed=d.grants?.[key]||[], selected=ranks.find(rank=>allowed.includes(rank));
+      const name=labels[key]||key.replaceAll('_',' ').replace(/^./,c=>c.toUpperCase());
+      const description=descriptions[key]||'Controls which ranks can use this site feature.';
+      return '<div class="feature-grant-row" data-feature-row="'+esc(key)+'" data-feature-search="'+esc((name+' '+key+' '+description).toLowerCase())+'"><div><b>'+esc(name)+'</b><small>'+esc(description)+'</small></div><select data-grant="'+esc(key)+'" aria-label="Minimum rank for '+esc(name)+'"><option value="off" '+(selected?'':'selected')+'>Disabled</option>'+ranks.map(rank=>'<option value="'+rank+'" '+(rank===selected?'selected':'')+'>'+(rankLabels[rank]||rank)+'</option>').join('')+'</select></div>';
+    }
+    const grouped=Object.entries(categories).map(([name,items])=>'<details class="grant-category" '+(name==='Chat & media'?'open':'')+'><summary>'+esc(name)+' <span class="muted">('+items.length+')</span></summary>'+items.map(renderRow).join('')+'</details>').join('');
+    modal('<div class="feature-grant-modal feature-grant-simple"><h2>🧩 Feature Access</h2><p class="muted">Choose the lowest rank allowed to use each feature. That rank and higher ranks will be allowed. Choose Disabled to block the feature for regular ranks. Developer and the protected owner account keep built-in access.</p><label class="feature-grant-search-label">🔎 Find a feature<input id="featureGrantSearch" type="search" placeholder="Search messages, rooms, gold, reports…"></label><div class="feature-grant-summary">'+keys.length+' feature controls · Changes are saved together</div><div id="featureGrantCategories">'+(grouped||'<p class="muted">No feature controls are available.</p>')+'</div><div class="toolbar feature-grant-footer"><button class="primary" id="saveAllFeatureGrants">Save all changes</button><button class="mini" id="closeFeatureGrants">Close</button></div><p class="muted feature-grant-note">These are rank-based permissions. Individual account exceptions are managed separately in User Permissions.</p></div>');
+    const search=$('featureGrantSearch');
+    search?.addEventListener('input',()=>{
+      const query=search.value.trim().toLowerCase();
+      document.querySelectorAll('[data-feature-row]').forEach(el=>{el.hidden=!!query&&!el.dataset.featureSearch.includes(query);});
+      document.querySelectorAll('#featureGrantCategories .grant-category').forEach(el=>{const visible=el.querySelectorAll('[data-feature-row]:not([hidden])').length;el.hidden=visible===0;if(query&&visible)el.open=true;});
+    });
+    $('closeFeatureGrants')?.addEventListener('click',()=>document.querySelector('.modal-overlay')?.remove());
+    $('saveAllFeatureGrants')?.addEventListener('click',async event=>{
+      const button=event.currentTarget;button.disabled=true;button.textContent='Saving…';
+      try{
+        const grants={};document.querySelectorAll('[data-grant]').forEach(select=>{grants[select.dataset.grant]=select.value==='off'?null:select.value;});
+        await api('/api/owner/feature-grants',{method:'PUT',body:JSON.stringify({grants})});
+        toast('All feature access settings saved.');await ownerFeatureGrants();
+      }catch(error){toast(error.message||'Could not save feature access.');button.disabled=false;button.textContent='Save all changes';}
+    });
+  }catch(error){toast(error.message||'Could not load feature access.');}
 }
-
 async function toggleFriendsDropdown(refresh=false){
   const box=$("topFriendsDropdown");if(!box)return;
   if(!refresh&&!box.classList.contains("hidden")){box.classList.add("hidden");return;}
