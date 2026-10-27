@@ -287,6 +287,7 @@ function safeUser(u){
     settings:{usernameColor:u.settings?.usernameColor||'',chatFont:u.settings?.chatFont||'',messageEffects:u.settings?.messageEffects||'',fontSize:u.settings?.fontSize||'medium',compactMode:!!u.settings?.compactMode},
     profileColor:u.profileColor||"",
     badge:u.badge||"",
+    equippedCosmetics:Array.isArray(u.equippedCosmetics)?u.equippedCosmetics.map(x=>({id:x.id,name:x.name,category:x.category,icon:x.icon,description:x.description})):[],
     verified:!!u.verified,
     banned:!!u.banned,
     kickedUntil:u.kickedUntil||null,
@@ -3045,7 +3046,9 @@ app.post('/api/economy/equip',auth,async(req,res)=>{
     await client.query('UPDATE user_cosmetics uc SET equipped=false FROM cosmetic_items c WHERE uc.user_id=$1 AND uc.item_id=c.id AND c.category=$2',[userId,item.category]);
     await client.query('UPDATE user_cosmetics SET equipped=true WHERE user_id=$1 AND item_id=$2',[userId,itemId]);
     await client.query('COMMIT');
-    res.json({ok:true,itemId,category:item.category});
+    const equipped=await pool.query(`SELECT c.id,c.name,c.category,c.icon,c.description FROM user_cosmetics uc JOIN cosmetic_items c ON c.id=uc.item_id WHERE uc.user_id=$1 AND uc.equipped=true AND c.enabled=true ORDER BY c.category`,[userId]);
+    u.equippedCosmetics=equipped.rows;
+    res.json({ok:true,itemId,category:item.category,equippedCosmetics:u.equippedCosmetics});
   }catch(err){await client.query('ROLLBACK').catch(()=>{});console.error('Cosmetic equip failed:',err);res.status(500).json({error:'Could not equip this cosmetic.'});}
   finally{client.release();}
 });
