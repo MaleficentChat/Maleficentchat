@@ -2071,19 +2071,32 @@ app.post("/api/dm/:id",auth,featureAllowed("private_messages"),upload.single("fi
 app.post(
   "/api/dm/:id/read",
   auth,
+  featureAllowed("private_messages"),
   async(req,res)=>{
     const u=current(req);
     const senderId=String(req.params.id);
-    db.privateMessages
-      .filter(m=>String(m.from)===senderId&&String(m.to)===String(u.id))
-      .forEach(m=>m.read=true);
+    const sender=findUser(senderId);
+    if(!sender) return res.status(404).json({error:"User not found"});
+    if(senderId===String(u.id)) return res.status(400).json({error:"Cannot mark your own messages as received."});
+    if((u.blocked||[]).includes(sender.id)||(sender.blocked||[]).includes(u.id))
+      return res.status(403).json({error:"Messaging blocked"});
     try {
-      await pool.query(`UPDATE private_messages SET data=jsonb_set(data,'{read}','true'::jsonb,true) WHERE sender_id=$1 AND receiver_id=$2`,[Number(senderId),Number(u.id)]);
+      // Persist first: never tell the client a receipt was saved if PostgreSQL failed.
+      await pool.query(
+        `UPDATE private_messages
+         SET data=jsonb_set(COALESCE(data,'{}'::jsonb),'{read}','true'::jsonb,true)
+         WHERE sender_id=$1 AND receiver_id=$2`,
+        [Number(senderId),Number(u.id)]
+      );
+      db.privateMessages
+        .filter(m=>String(m.from)===senderId&&String(m.to)===String(u.id))
+        .forEach(m=>m.read=true);
+      save();
+      res.json({ok:true});
     } catch(err) {
       console.error("Could not persist private-message read receipts:",err.message);
+      res.status(500).json({error:"Could not save read receipts. Please try again."});
     }
-    save();
-    res.json({ok:true});
   }
 );
 
