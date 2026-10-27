@@ -3110,6 +3110,9 @@ async function loadOwner() {
 
       <div class="card owner-system-moderation-card">
         <h3>🛡️ System Moderation</h3>
+        <details class="filter-words-details owner-system-moderation-dropdown">
+          <summary>System Moderation — open to configure automated protection</summary>
+          <div class="owner-system-moderation-content">
         <p class="muted">Configure automated responses for suspicious account activity and chat abuse. Each rule has its own action, duration, reason template and enable switch.</p>
         <div class="system-moderation-rules">
           <div class="system-moderation-rule">
@@ -3146,6 +3149,8 @@ async function loadOwner() {
           </div>
         </div>
         <div class="toolbar"><button class="primary" id="saveSystemModeration">Save System Moderation</button><span class="muted">Settings are saved separately for each rule.</span></div>
+          </div>
+        </details>
       </div>
 
       <div class="card owner-user-controls-card">
