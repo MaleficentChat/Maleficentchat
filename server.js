@@ -46,7 +46,32 @@ function load(){
   };
 }
 
+
 let db=load();
+// Short-window in-memory signals support flood protection; durable actions remain in db.
+const systemModerationWindows = new Map();
+function systemAudit(entry){
+  db.moderationHistory ||= [];
+  db.moderationHistory.push({id:id(),target:String(entry.target||""),actor:String(entry.actor||"SYSTEM"),actorUsername:String(entry.actorUsername||"System Moderation"),action:String(entry.action||"EVENT"),reason:String(entry.reason||""),time:Date.now(),source:String(entry.source||"system"),durationMinutes:Number(entry.durationMinutes)||0});
+  if(db.moderationHistory.length>2000) db.moderationHistory.splice(0,db.moderationHistory.length-2000);
+  save();
+}
+function applySystemRule(target, rule, reason, source){
+  if(!target||!rule||rule.enabled!==true) return false;
+  const action=String(rule.action||"WARN").toUpperCase();
+  const minutes=Math.max(1,Math.min(10080,Number(rule.durationMinutes)||5));
+  const until=Date.now()+minutes*60000;
+  const why=cleanText(reason||rule.reason||"Automated moderation").slice(0,240);
+  if(String(target.rank||"").toUpperCase()==="DEVELOPER") return false;
+  if(action==="WARN"){target.warnings=(target.warnings||0)+1;target.lastWarningReason=why;}
+  else if(action==="MUTE"){target.mutedUntil=until;target.muteReason=why;}
+  else if(action==="KICK"){target.kickedUntil=until;target.kickReason=why;target.online=false;}
+  else if(action==="BAN"){target.banned=true;target.banReason=why;target.online=false;}
+  else return false;
+  systemAudit({target:target.id,actor:"SYSTEM",action,reason:why,source,durationMinutes:action==="BAN"||action==="WARN"?0:minutes});
+  return true;
+}
+
 let saveTimer=null;
 let saveInFlight=Promise.resolve();
 function save(){
@@ -1367,6 +1392,27 @@ app.post("/api/rooms/:id/messages",auth,featureAllowed("send_messages"),upload.s
   if(String(u.rank).toUpperCase()!=="DEVELOPER" && req.file&&!/^image\/|^audio\//.test(req.file.mimetype))return res.status(400).json({error:"Only image/audio uploads are allowed."});
   let text=cleanText(req.body.text);
   if(!text&&!req.file)return res.status(400).json({error:"Message is empty."});
+  // Configurable AutoGuard: flood and repeated-message checks run on the server.
+  if(!req.file && String(u.rank||"").toUpperCase()!=="DEVELOPER"){
+    const now=Date.now(), key=String(u.id), signature=String(text||"").toLowerCase().replace(/\\s+/g," ").trim().slice(0,300);
+    const prev=systemModerationWindows.get(key)||{times:[],texts:[]};
+    prev.times=prev.times.filter(t=>now-t<10000); prev.times.push(now);
+    prev.texts=prev.texts.filter(x=>now-x.time<60000); prev.texts.push({text:signature,time:now});
+    systemModerationWindows.set(key,prev);
+    const repeated=prev.texts.filter(x=>x.text===signature).length;
+    const flood=prev.times.length>6 || repeated>=4;
+    const configured=db.settings?.system_moderation?.spam_flood;
+    if(flood && configured?.enabled===true){
+      const applied=applySystemRule(u,configured,configured.reason||"Spam/flood detected","spam_flood");
+      if(applied){
+        if(String(configured.action).toUpperCase()==="WARN") return res.status(429).json({error:"AutoGuard warning: "+(configured.reason||"Please slow down.")});
+        if(String(configured.action).toUpperCase()==="MUTE") return res.status(429).json({error:"AutoGuard muted you for "+(configured.durationMinutes||5)+" minutes."});
+        if(String(configured.action).toUpperCase()==="KICK") return res.status(429).json({error:"AutoGuard temporarily kicked you."});
+        if(String(configured.action).toUpperCase()==="BAN") return res.status(403).json({error:"AutoGuard blocked this account."});
+      }
+      return res.status(429).json({error:"Please slow down and avoid repeating messages."});
+    }
+  }
 
   // Slash commands execute on the server so permission checks cannot be bypassed in the browser.
   const commandMatch=!req.file&&text.match(/^\/([a-z0-9]+)(?:\s+([\s\S]*))?$/i);
@@ -2552,6 +2598,26 @@ app.get("/api/staff/ip-inspection",auth,ownerOnly,async(req,res)=>{
   }
 });
 
+
+app.get("/api/staff/system-center",auth,async(req,res)=>{
+  const actor=current(req);
+  if(!hasRank(actor,"ADMIN")) return res.status(403).json({error:"Admin rank or higher required."});
+  let database={ok:false,latencyMs:null};
+  const started=Date.now();
+  try{await pool.query("SELECT 1");database={ok:true,latencyMs:Date.now()-started};}
+  catch(e){database={ok:false,latencyMs:Date.now()-started,error:"Database health check failed"};}
+  const users=db.users||[], now=Date.now();
+  const recent=(db.moderationHistory||[]).slice(-500).reverse();
+  const enabledRules=Object.entries(db.settings?.system_moderation||{}).filter(([,v])=>v?.enabled===true).map(([key,v])=>({key,action:v.action,durationMinutes:v.durationMinutes,reason:v.reason}));
+  res.json({health:{server:"ok",database,uptimeSeconds:Math.floor(process.uptime()),checkedAt:now},stats:{users:users.length,online:users.filter(x=>x.online&&!x.invisible).length,rooms:(db.rooms||[]).length,messages:(db.messages||[]).length,openReports:(db.reports||[]).filter(x=>String(x.status||"OPEN").toUpperCase()==="OPEN").length,activeModerations:users.filter(x=>x.banned||(x.mutedUntil&&x.mutedUntil>now)||(x.kickedUntil&&x.kickedUntil>now)).length},rules:enabledRules,audit:recent});
+});
+app.get("/api/staff/system-center/audit",auth,async(req,res)=>{
+  const actor=current(req);
+  if(!hasRank(actor,"ADMIN")) return res.status(403).json({error:"Admin rank or higher required."});
+  const q=String(req.query.q||"").trim().toLowerCase().slice(0,100);
+  const rows=(db.moderationHistory||[]).slice().reverse().filter(x=>!q||[x.target,x.actor,x.actorUsername,x.action,x.reason,x.source].some(v=>String(v||"").toLowerCase().includes(q))).slice(0,500);
+  res.json({audit:rows});
+});
 app.get("/api/staff/dashboard",auth,featureAllowed("view_staff_dashboard"),async(req,res)=>{
   const u=current(req);
   if(!hasRank(u,"MOD"))return res.status(403).json({error:"Staff only"});
