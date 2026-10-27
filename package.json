@@ -5,7 +5,8 @@
   "description": "Maleficent Chat 3.6.9 - request error handling and room repair",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "check": "node scripts/check-security.js && node --check server.js && node --check db.js"
   },
   "engines": {
     "node": ">=20"
