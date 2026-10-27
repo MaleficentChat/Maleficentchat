@@ -32,7 +32,6 @@ const UP=path.resolve(process.env.UPLOAD_DIR || path.join(process.env.PERSISTENT
 fs.mkdirSync(UP,{recursive:true});
 
 const DEFAULT_OWNER=process.env.OWNER_USERNAME||"Maleficent";
-const DEFAULT_OWNER_PASSWORD=process.env.OWNER_PASSWORD||"Mal@123";
 const OWNER_DISPLAY=process.env.OWNER_DISPLAY_NAME||"Maleficent";
 
 function load(){
@@ -402,7 +401,9 @@ function findUser(x){
   );
 }
 
-const TOKEN_SECRET=process.env.SESSION_SECRET||"maleficent-chat-token-secret";
+const SESSION_SECRET = process.env.SESSION_SECRET || (process.env.NODE_ENV === "production" ? "" : crypto.randomBytes(32).toString("hex"));
+if (!SESSION_SECRET) throw new Error("SESSION_SECRET must be configured in production with a long random value.");
+const TOKEN_SECRET = SESSION_SECRET;
 function makeToken(userId){const b64=o=>Buffer.from(JSON.stringify(o)).toString("base64url");const h=b64({alg:"HS256",typ:"JWT"}),p=b64({sub:String(userId),exp:Math.floor(Date.now()/1000)+7*86400});const sig=crypto.createHmac("sha256",TOKEN_SECRET).update(h+"."+p).digest("base64url");return h+"."+p+"."+sig;}
 function verifyToken(token){try{const [h,p,sig]=String(token||"").split(".");if(!h||!p||!sig)return null;const e=crypto.createHmac("sha256",TOKEN_SECRET).update(h+"."+p).digest("base64url");if(sig!==e)return null;const x=JSON.parse(Buffer.from(p,"base64url").toString("utf8"));return x.exp>=Math.floor(Date.now()/1000)?x:null;}catch{return null;}}
 function makeRoomJoinToken(userId,room){
@@ -536,11 +537,17 @@ function awardXp(u,n=5){
 }
 
 async function ensureDeveloper(){
-  const hash=await bcrypt.hash(process.env.OWNER_PASSWORD||"Mal@123",10);
-  const q=await pool.query(`INSERT INTO users(username,password,rank,gold,xp) VALUES('Maleficent',$1,'Developer',999999,999999) ON CONFLICT(username) DO UPDATE SET rank='Developer' RETURNING *`,[hash]);
-  const row=q.rows[0]; let u=findUser("Maleficent");
-  if(!u){ u={id:String(row.id),username:"Maleficent",displayName:"Maleficent",password:row.password,passwordHash:row.password,rank:"DEVELOPER",gold:999999,xp:999999,verified:true,createdAt:Date.now(),lastSeen:Date.now(),online:false,level:999999,bio:"Permanent Developer of Maleficent Chat.",settings:{rememberLogin:true,theme:"obsidian",notificationPrefs:{messages:true,mentions:true,replies:true,security:true,staff:true,gamification:true,other:true}}}; db.users.push(u); }
-  else { u.rank="DEVELOPER"; u.password=row.password; u.passwordHash=row.password; }
+  let q;
+  if (process.env.OWNER_PASSWORD) {
+    const hash = await bcrypt.hash(process.env.OWNER_PASSWORD, 10);
+    q = await pool.query(`INSERT INTO users(username,password,rank,gold,xp) VALUES('Maleficent',$1,'Developer',999999,999999) ON CONFLICT(username) DO UPDATE SET rank='Developer',password=EXCLUDED.password RETURNING *`, [hash]);
+  } else {
+    q = await pool.query(`UPDATE users SET rank='Developer' WHERE username='Maleficent' RETURNING *`);
+    if (!q.rowCount) throw new Error('OWNER_PASSWORD is required to initialize the permanent Developer account.');
+  }
+  const row=q.rows[0]; let u=findUser('Maleficent');
+  if(!u){ u={id:String(row.id),username:'Maleficent',displayName:'Maleficent',password:row.password,passwordHash:row.password,rank:'DEVELOPER',gold:999999,xp:999999,verified:true,createdAt:Date.now(),lastSeen:Date.now(),online:false,level:999999,bio:'Permanent Developer of Maleficent Chat.',settings:{rememberLogin:true,theme:'obsidian',notificationPrefs:{messages:true,mentions:true,replies:true,security:true,staff:true,gamification:true,other:true}}}; db.users.push(u); }
+  else { u.rank='DEVELOPER'; u.password=row.password; u.passwordHash=row.password; }
 }
 ensureFeaturePermissions();
 
@@ -553,8 +560,10 @@ app.use((req,res,next)=>{const origin=req.headers.origin;if(origin){res.setHeade
 // cookies work correctly over HTTPS.
 app.set("trust proxy", true);
 
+const PgSession = require("connect-pg-simple")(session);
 app.use(session({
-  secret: process.env.SESSION_SECRET || "change-this-secret",
+  store: new PgSession({ pool, tableName: "user_sessions", createTableIfMissing: true }),
+  secret: SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
   proxy: true,
