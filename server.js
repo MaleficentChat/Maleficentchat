@@ -3647,6 +3647,14 @@ io.on(
       for(const socketId of matchSockets){const peer=io.sockets.sockets.get(socketId);if(peer)peer.emit("gravity:joined",{...payload,myUserId:String(peer.data.userId||"")});}
     });
 
+    socket.on("gravity:cancel", data=>{
+      const u=findUser(socket.data.userId);
+      const match=gravityMatches.get(String(data&&data.gameId||""));
+      if(!u||!match||String(match.hostId)!==String(u.id))return;
+      socket.to("gravity:"+match.id).emit("gravity:ended",{gameId:match.id,winnerId:"",reason:"cancelled"});
+      gravityMatches.delete(match.id);
+    });
+
     socket.on("gravity:input", data=>{
       const u=findUser(socket.data.userId);
       const match=gravityMatches.get(String(data&&data.gameId||""));
