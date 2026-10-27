@@ -3526,7 +3526,7 @@ async function ownerFeatureGrants(){
       document.querySelectorAll('[data-feature-row]').forEach(el=>{el.hidden=!!query&&!el.dataset.featureSearch.includes(query);});
       document.querySelectorAll('#featureGrantCategories .grant-category').forEach(el=>{const visible=el.querySelectorAll('[data-feature-row]:not([hidden])').length;el.hidden=visible===0;if(query&&visible)el.open=true;});
     });
-    $('closeFeatureGrants')?.addEventListener('click',()=>document.querySelector('.modal-overlay')?.remove());
+    $('closeFeatureGrants')?.addEventListener('click',()=>$('modal')?.classList.add('hidden'));
     $('saveAllFeatureGrants')?.addEventListener('click',async event=>{
       const button=event.currentTarget;button.disabled=true;button.textContent='Saving…';
       try{
