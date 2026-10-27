@@ -1761,18 +1761,17 @@ function userCard(user) {
   const displayName = user.displayName || user.username || "User";
   const onlineNow = !!(user.online || user.isOnline || user.status === "online");
   return `
-    <article class="user-card instagram-user-card">
-      <button class="instagram-user-main" onclick="openUser('${esc(user.id)}')" aria-label="Open profile of ${esc(displayName)}">
-        <span class="instagram-avatar-ring">${avatar(user)}</span>
-        <span class="instagram-user-name">${esc(displayName)}</span>
-        <span class="instagram-user-handle">@${esc(user.username)} ${invisibleDot(user)}</span>
+    <article class="user-card instagram-user-card horizontal-user-card" role="button" tabindex="0"
+      onclick="openQuickUserCard('${esc(user.id)}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openQuickUserCard('${esc(user.id)}')}"
+      aria-label="Open actions for ${esc(displayName)}">
+      <span class="instagram-avatar-ring">${avatar(user)}</span>
+      <span class="horizontal-user-details">
+        <b class="instagram-user-name">${esc(displayName)}</b>
+        <small class="instagram-user-handle">@${esc(user.username)} ${invisibleDot(user)}</small>
         <span class="instagram-user-rank">${rank(user.rank)}</span>
         <span class="instagram-user-meta"><span class="instagram-presence-dot ${onlineNow ? "is-online" : ""}"></span>${onlineNow ? "Online" : "Member"} <span>·</span> Lv ${Number(user.level || 1)}</span>
-      </button>
-      <div class="instagram-user-actions">
-        <button class="mini" onclick="openUser('${esc(user.id)}')">View profile</button>
-        ${invisibleToggleMarkup(user,false)}
-      </div>
+      </span>
+      <span class="horizontal-user-chevron" aria-hidden="true">›</span>
     </article>
   `;
 }
