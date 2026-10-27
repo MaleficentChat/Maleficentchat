@@ -2553,3 +2553,57 @@ a { color: #65dcff; }
 .feature-grant-footer{position:sticky;bottom:0;background:var(--panel,#171126);padding:12px 4px;border-top:1px solid rgba(155,92,255,.25);z-index:2}
 .feature-grant-note{font-size:.85rem;margin-top:12px}
 @media(max-width:700px){.feature-grant-simple .feature-grant-row{grid-template-columns:1fr}.feature-grant-simple .feature-grant-row select{width:100%}.feature-grant-footer{flex-wrap:wrap}}
+
+
+/* Final room visibility safeguard based on the uploaded 3.6.6 room-first layout.
+   Keep the room browser in the visible flex column and give it a scrollable area;
+   these rules intentionally do not override .hidden or the active chat layout. */
+#viewRooms:not(.hidden):not(.chatting) {
+  display: flex !important;
+  flex-direction: column !important;
+  min-height: 0 !important;
+  height: 100% !important;
+  overflow: hidden !important;
+}
+#viewRooms:not(.hidden):not(.chatting) > .topbar {
+  flex: 0 0 auto !important;
+  min-height: max-content !important;
+}
+#viewRooms:not(.hidden):not(.chatting) > #rooms.room-grid {
+  display: flex !important;
+  flex: 1 1 auto !important;
+  flex-direction: column !important;
+  align-items: stretch !important;
+  justify-content: flex-start !important;
+  gap: 10px !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  min-height: 180px !important;
+  height: auto !important;
+  max-height: none !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  box-sizing: border-box !important;
+}
+#viewRooms:not(.hidden):not(.chatting) > #rooms.room-grid > .room-list-card,
+#viewRooms:not(.hidden):not(.chatting) > #rooms.room-grid > .room-empty {
+  display: block !important;
+  flex: 0 0 auto !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+#viewRooms:not(.hidden):not(.chatting) > #rooms.room-grid > .room-empty {
+  min-height: 180px !important;
+  padding: 28px 18px !important;
+  box-sizing: border-box !important;
+}
+@media (max-width: 768px) {
+  #viewRooms:not(.hidden):not(.chatting) > #rooms.room-grid {
+    padding: 10px 12px calc(22px + env(safe-area-inset-bottom)) !important;
+    min-height: 180px !important;
+  }
+}
