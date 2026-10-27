@@ -2014,10 +2014,10 @@ input,textarea,select{background:rgba(255,255,255,.055);border-color:rgba(255,25
 .online-user:has(.invisible-staff-dot) .status{display:none!important}
 
 /* Center audit logs and tighten chat bubbles */
-#modal .modal-card:has(.admin-logs-modal){width:min(1050px,calc(100vw - 28px));max-width:calc(100vw - 28px);margin:0 auto;align-self:center;box-sizing:border-box;position:relative;left:auto;right:auto}
+
 #modal 
 .msg .msg-body{max-width:min(65%,600px);padding:7px 10px}.msg .msg-top{gap:6px;min-height:16px}.msg .message-author{font-size:12px;font-weight:700}.msg .msg-time{font-size:9px}.msg .msg-text{font-size:var(--chat-size,1em);line-height:1.35;margin-top:2px}.message-rank-icon{font-size:12px;line-height:1;margin:2px 0 3px;opacity:.92}
-@media(max-width:700px){.msg .msg-body{max-width:78%;padding:7px 9px}.msg .message-rank-icon{font-size:11px}#modal .modal-card:has(.admin-logs-modal){width:calc(100vw - 16px);max-width:calc(100vw - 16px);margin:0 auto}}
+@media(max-width:700px){.msg .msg-body{max-width:78%;padding:7px 9px}.msg .message-rank-icon{font-size:11px}}
 
 /* Compact profile menu and chat options dialog */
 .top-header-actions{position:relative}/* Owner Space: compact audit logging controls */
@@ -2042,7 +2042,7 @@ input,textarea,select{background:rgba(255,255,255,.055);border-color:rgba(255,25
 .msg .msg-body{background:transparent;border:0;box-shadow:none;padding:0}.msg .msg-text{display:table;max-width:100%;padding:7px 10px;border-radius:12px;background:var(--bubble-color,rgba(28,24,43,.88));border:1px solid rgba(164,117,255,.14)}.msg.mine .msg-text{margin-left:auto}.message-rank-icon{display:block;width:max-content;margin:2px 0 4px}
 
 /* Final chat polish: smaller, calmer message bubbles and centered audit modal */
-#modal .modal-card:has(.admin-logs-modal){width:min(1050px,calc(100vw - 32px))!important;max-width:calc(100vw - 32px)!important;padding:18px!important;margin:0 auto!important;left:0!important;right:0!important;transform:none!important;box-sizing:border-box!important}
+
 #modal 
 #modal 
 #modal .admin-log-filters>*{min-width:0}
@@ -2051,7 +2051,7 @@ input,textarea,select{background:rgba(255,255,255,.055);border-color:rgba(255,25
 #viewRooms.chatting .msg .msg-top{gap:5px!important;margin-bottom:1px}
 #viewRooms.chatting .msg .message-author{font-size:12px!important}
 #viewRooms.chatting .msg .message-rank-icon{font-size:11px!important;margin:1px 0 3px!important}
-@media(max-width:700px){#modal .modal-card:has(.admin-logs-modal){width:calc(100vw - 16px)!important;max-width:calc(100vw - 16px)!important;padding:12px!important}#modal #viewRooms.chatting .msg .msg-body{max-width:min(76%,calc(100vw - 92px))!important}#viewRooms.chatting .msg .msg-text{padding:6px 8px!important}}
+@media(max-width:700px){#viewRooms.chatting .msg .msg-text{padding:6px 8px!important}}
 
 
 /* Message header stays above the actual compact bubble; rank icon sits beside the name. */
