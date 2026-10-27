@@ -46,4 +46,15 @@ assert.match(server, /u\.equippedCosmetics=equipped\.rows/,
   "equipping a cosmetic must update the live profile state");
 assert.match(fs.readFileSync("public/app.js", "utf8"), /equipped-profile-frame[\s\S]*equipped-profile-badge/,
   "profile UI must render equipped frames and badges");
+assert.match(server, /Owner private-message inspection failed/,
+  "owner private-message inspection must report database failures clearly");
+assert.match(server, /sender_username:row\.sender_username\|\|data\.fromUsername/,
+  "owner private-message inspection must normalize sender/receiver fields from PostgreSQL");
+assert.match(server, /Private-message report evidence failed/,
+  "staff private-message evidence endpoint must handle lookup errors");
+assert.match(server, /isPermanentMainRoom[\s\S]*!hasFeature\(u,"join_rooms"\)/,
+  "joining the permanent Main Room must not depend on optional room-join grants");
+assert.match(fs.readFileSync("public/app.js", "utf8"), /state\.rooms\.find\(r => String\(r\.id\) === String\(id\)\)/,
+  "room join must tolerate numeric/string room IDs");
+
 console.log("Security, audit-log, messaging persistence, and profile cosmetic static checks passed.");
