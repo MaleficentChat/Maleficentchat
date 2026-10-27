@@ -1880,8 +1880,8 @@ function renderUserProfileModal(user,data={}){
   modal(`<div class="profile-modal">
     <div class="profile-banner" ${bannerStyle}>
       <div class="profile-stats"><span class="profile-stat">⭐ ${user.level||1}</span><span class="profile-stat">XP ${user.xp||0}</span><span class="profile-stat">❤️ ${user.profileLikes||data.profileLikes||0}</span><button class="mini profile-hamburger" id="profileMenuBtn" title="Profile actions">☰</button>${!isSelf && (state.user?.username==="Maleficent" || canFeature("staff_rank_assignment")) ? `<button class="mini profile-rank-btn" id="profileRankBtn">🏅 Rank</button>` : ""}</div>
-      ${avatar(user,'big-avatar')}
-      <div class="profile-rank">${rank(user.rank)}${user.verified?' · ✓ Verified':''}</div>
+      <div class="equipped-profile-frame ${frame?esc(frame.id):''}" title="${frame?esc(frame.name):'Profile avatar'}">${avatar(user,'big-avatar')}</div>
+      <div class="profile-rank">${rank(user.rank)}${user.verified?' · ✓ Verified':''}${profileBadge?` <span class="equipped-profile-badge" title="${esc(profileBadge.name)}">${esc(profileBadge.icon)} ${esc(profileBadge.name)}</span>`:''}</div>
       <div class="profile-name">${esc(user.displayName)}${user._nickname?` <span class="nickname-badge">“${esc(user._nickname)}”</span>`:''}</div>
       <div class="profile-handle">@${esc(user.username)}</div>
     </div>
@@ -2655,8 +2655,12 @@ async function unblockFromList(id){try{await api(`/api/users/${id}/block`,{metho
 
 async function loadProfile(user){
   if(!user) return;
+  const cosmetics=Array.isArray(user.equippedCosmetics)?user.equippedCosmetics:[];
+  const frame=cosmetics.find(x=>x.category==='frame');
+  const profileTheme=cosmetics.find(x=>x.category==='theme');
+  const profileBadge=cosmetics.find(x=>x.category==='badge');
   const banner=user.banner?`style="background-image:linear-gradient(180deg,rgba(0,0,0,.05),rgba(0,0,0,.72)),url('${esc(user.banner)}')"`:'';
-  $('profile').innerHTML=`<div class="my-profile-wrap"><div class="profile-settings-card">
+  $('profile').innerHTML=`<div class="my-profile-wrap"><div class="profile-settings-card ${profileTheme?esc(profileTheme.id):''}">
     <div class="profile-settings-head" ${banner}>
       <div class="profile-settings-top"><span>⭐ ${user.level||1}</span><span>❤️ ${user.profileLikes||0}</span><button class="mini" onclick="uploadAvatar()">📷</button><button class="mini" onclick="editProfileInfo()" title="Edit profile">✏️</button><button class="mini" id="myProfileMenuBtn" title="More">☰</button></div>
       ${avatar(user,'big-avatar')}
