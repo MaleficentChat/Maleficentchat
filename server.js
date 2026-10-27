@@ -333,7 +333,9 @@ function log(actor,action,target="",meta={}){
 
   save();
   const targetUser=db.users.find(x=>String(x.id)===String(target)||String(x.username).toLowerCase()===String(target).toLowerCase());
-  pool.query(`INSERT INTO admin_logs(action_type,performed_by,target_user_id,details) VALUES($1,$2,$3,$4)`,[String(action||'ACTION').slice(0,100),actor?.id||null,targetUser?.id||null,JSON.stringify({target,meta})]).catch(e=>console.error('Admin log persistence failed:',e.message));
+  const logDetails=JSON.stringify({target,meta:meta&&typeof meta==='object'?meta:{message:String(meta??'')}});
+  pool.query(`INSERT INTO admin_logs(action_type,performed_by,target_user_id,details) VALUES($1,$2,$3,$4)`,[String(action||'ACTION').slice(0,100),actor?.id?Number(actor.id):null,targetUser?.id?Number(targetUser.id):null,logDetails])
+    .catch(e=>console.error('Admin log persistence failed:',e.message));
 }
 
 // Record a lightweight per-user activity entry. This is used by the activity timeline UI.
@@ -2846,7 +2848,25 @@ app.post('/api/settings/save',ownerOnly,async(req,res)=>{
 });
 
 function normalizeFeatureRanks(v,fallback){if(!Array.isArray(v))return [...fallback];const aliases={USER:'MEMBER',STAFF:'MOD',TRUSTED:'PREMIUM'};const allowed=new Set([...GRANT_RANKS,'DEVELOPER']);return [...new Set(v.map(x=>aliases[String(x||'').toUpperCase()]||String(x||'').toUpperCase()).filter(x=>allowed.has(x)))];}
-function featureGrantAllowed(u,key){if(!u)return false;if(String(u.rank).toUpperCase()==="DEVELOPER")return true;if(u.username===DEFAULT_OWNER)return true;const granted=userFeatureGrant(u,key);if(granted!==null)return granted;ensureFeatureGrants();const aliases={gift_sending:'gift_sending',gift_share:'gift_sending',wall_post:'wall_post'};const alias=aliases[key]||key;const configured=db.settings?.feature_grants?.[alias];if(Array.isArray(configured))return configured.map(x=>String(x).toUpperCase()).includes(String(u.rank||'').toUpperCase());return (db.settings?.feature_grants?.[key]||[]).map(x=>String(x).toUpperCase()).includes(String(u.rank||'').toUpperCase());}
+function featureGrantAllowed(u,key){
+  if(!u)return false;
+  const rankName=String(u.rank||'MEMBER').toUpperCase()==='USER'?'MEMBER':String(u.rank||'MEMBER').toUpperCase();
+  if(rankName==='DEVELOPER'||u.username===DEFAULT_OWNER)return true;
+  const granted=userFeatureGrant(u,key);if(granted!==null)return granted;
+  ensureFeatureGrants();
+  const aliases={gift_sending:'gift_sending',gift_share:'gift_sending',gift_receiving:'gift_receiving',wall_post:'wall_post'};
+  const alias=aliases[key]||key;
+  let configured=db.settings?.feature_grants?.[alias];
+  // Older saved settings may contain an empty gift grant list or the legacy USER rank.
+  // Restore the documented defaults for the gift system and normalize USER to MEMBER.
+  if((!Array.isArray(configured)||configured.length===0)&&['gift_sending','gift_receiving'].includes(alias)){
+    configured=FEATURE_GRANT_DEFAULTS[alias];
+    db.settings.feature_grants[alias]=[...configured];
+    save();
+  }
+  if(!Array.isArray(configured))configured=db.settings?.feature_grants?.[key]||[];
+  return configured.map(x=>String(x).toUpperCase()==='USER'?'MEMBER':String(x).toUpperCase()).includes(rankName);
+}
 app.get('/api/owner/feature-grants',ownerOnly,(req,res)=>{ensureFeatureGrants();res.json({ranks:GRANT_RANKS,features:FEATURE_GRANT_DEFAULTS,grants:db.settings.feature_grants});});
 app.get('/api/owner/user/:id/feature-grants',ownerOnly,async(req,res)=>{
   const target=findUser(req.params.id);if(!target)return res.status(404).json({error:"User not found."});
