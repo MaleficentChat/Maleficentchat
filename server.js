@@ -1193,9 +1193,13 @@ app.get("/api/rooms",auth,async(req,res)=>{
     await pool.query(`DELETE FROM rooms WHERE id = ANY($1::int[])`, [legacyIds]);
   }
   await pool.query(`INSERT INTO rooms(name,created_by,icon,description,category,is_public,rank_required,invite_token,min_age,max_age,is_default)
-    VALUES ('Main Room',(SELECT id FROM users WHERE username='Maleficent'),'🏠','The main community chat room.','Community',true,'MEMBER','main-room',0,120,true)
+    VALUES ('Main Room',(SELECT id FROM users WHERE username='Maleficent'),'🏠','The main Maleficent Chat community room.','Community',true,'MEMBER','main-room',0,120,true)
     ON CONFLICT(name) DO NOTHING`);
-  await pool.query(`UPDATE rooms SET is_default=(name='Main Room'), min_age=0, max_age=120 WHERE name='Main Room'`);
+  await pool.query(`INSERT INTO rooms(name,created_by,icon,description,category,is_public,rank_required,invite_token,min_age,max_age,is_default)
+    VALUES ('Chill Zone',(SELECT id FROM users WHERE username='Maleficent'),'🌙','Relax, talk and meet people.','Social',true,'MEMBER','chill-zone',0,120,false)
+    ON CONFLICT(name) DO NOTHING`);
+  await pool.query(`UPDATE rooms SET description='The main Maleficent Chat community room.',icon='🏠',category='Community',is_public=true,is_default=true,min_age=0,max_age=120 WHERE name='Main Room'`);
+  await pool.query(`UPDATE rooms SET description='Relax, talk and meet people.',icon='🌙',category='Social',is_public=true,is_default=false,min_age=0,max_age=120 WHERE name='Chill Zone'`);
   await pool.query(`UPDATE rooms SET is_default=false WHERE name <> 'Main Room'`);
   const {rows}=await pool.query(`SELECT r.*,u.username AS creator FROM rooms r LEFT JOIN users u ON r.created_by=u.id ORDER BY r.is_default DESC,r.created_at ASC,r.id ASC`);
   if(!rows.length) return res.status(503).json({error:'Rooms are not initialized yet. Please retry in a moment.',rooms:[]});
@@ -4079,9 +4083,13 @@ app.get('/api/me/account',auth,async(req,res)=>{
       await pool.query(`DELETE FROM rooms WHERE id = ANY($1::int[])`, [legacyIds]);
     }
     await pool.query(`INSERT INTO rooms(name,created_by,icon,description,category,is_public,rank_required,invite_token,min_age,max_age,is_default)
-      VALUES ('Main Room',(SELECT id FROM users WHERE username='Maleficent'),'🏠','The main community chat room.','Community',true,'MEMBER','main-room',0,120,true)
+      VALUES ('Main Room',(SELECT id FROM users WHERE username='Maleficent'),'🏠','The main Maleficent Chat community room.','Community',true,'MEMBER','main-room',0,120,true)
       ON CONFLICT(name) DO NOTHING`);
-    await pool.query(`UPDATE rooms SET is_default=(name='Main Room'), min_age=0, max_age=120 WHERE name='Main Room'`);
+    await pool.query(`INSERT INTO rooms(name,created_by,icon,description,category,is_public,rank_required,invite_token,min_age,max_age,is_default)
+      VALUES ('Chill Zone',(SELECT id FROM users WHERE username='Maleficent'),'🌙','Relax, talk and meet people.','Social',true,'MEMBER','chill-zone',0,120,false)
+      ON CONFLICT(name) DO NOTHING`);
+    await pool.query(`UPDATE rooms SET description='The main Maleficent Chat community room.',icon='🏠',category='Community',is_public=true,is_default=true,min_age=0,max_age=120 WHERE name='Main Room'`);
+    await pool.query(`UPDATE rooms SET description='Relax, talk and meet people.',icon='🌙',category='Social',is_public=true,is_default=false,min_age=0,max_age=120 WHERE name='Chill Zone'`);
     await pool.query(`UPDATE rooms SET is_default=false WHERE name <> 'Main Room'`);
 
     db = await loadState(load());
