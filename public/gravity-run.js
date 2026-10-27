@@ -12,7 +12,6 @@
     socket.on("gravity:created",data=>{
       if(!current)return;
       current.gameId=data.gameId;current.hostId=String(data.hostId);current.isHost=true;current.status="waiting";
-      socket.emit("gravity:hello",{gameId:data.gameId});
       renderStatus("Invitation posted in Main Room. Waiting for a player to join…");
     });
     socket.on("gravity:joined",data=>{
@@ -85,7 +84,6 @@
     const messages=document.getElementById("messages");
     if(messages){messages.appendChild(box);messages.scrollTop=messages.scrollHeight;}
     else {const nav=document.querySelector('.nav[data-view="games"]');if(nav)nav.click();setTimeout(()=>{const root=$("gamesRoot");if(root)root.prepend(box);},50);}
-    box.querySelector("[data-gravity-join]").addEventListener("click",()=>join(invite.gameId));
   }
   document.addEventListener("click",e=>{
     const btn=e.target.closest("[data-gravity-join]");if(btn){e.preventDefault();join(btn.getAttribute("data-gravity-join"));}
