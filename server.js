@@ -553,7 +553,31 @@ ensureFeaturePermissions();
 
 app.use(express.json({limit:"2mb"}));
 app.use(express.urlencoded({extended:true}));
-app.use((req,res,next)=>{const origin=req.headers.origin;if(origin){res.setHeader("Access-Control-Allow-Origin",origin);res.setHeader("Vary","Origin");res.setHeader("Access-Control-Allow-Credentials","true");res.setHeader("Access-Control-Allow-Headers","Content-Type, Authorization, X-Auth-Token, X-Room-Join-Token");res.setHeader("Access-Control-Allow-Methods","GET,POST,PUT,PATCH,DELETE,OPTIONS");}if(req.method==="OPTIONS")return res.sendStatus(204);next();});
+const DEFAULT_ALLOWED_ORIGINS = [
+  "https://maleficentchat.onrender.com",
+  "https://maleficent-chat.onrender.com",
+  "https://maleficent-chat-4cce7c68.base44.app",
+  "https://6a9a41c01dd11f3876fff7f9--maleficent-chat.netlify.app"
+];
+const ALLOWED_ORIGINS = new Set(
+  String(process.env.ALLOWED_ORIGINS || DEFAULT_ALLOWED_ORIGINS.join(","))
+    .split(",").map(value => value.trim()).filter(Boolean)
+);
+app.use((req,res,next)=>{
+  const origin=req.headers.origin;
+  if(origin && ALLOWED_ORIGINS.has(origin)){
+    res.setHeader("Access-Control-Allow-Origin",origin);
+    res.setHeader("Vary","Origin");
+    res.setHeader("Access-Control-Allow-Credentials","true");
+    res.setHeader("Access-Control-Allow-Headers","Content-Type, Authorization, X-Auth-Token, X-Room-Join-Token");
+    res.setHeader("Access-Control-Allow-Methods","GET,POST,PUT,PATCH,DELETE,OPTIONS");
+  }
+  if(req.method==="OPTIONS"){
+    if(origin && !ALLOWED_ORIGINS.has(origin)) return res.status(403).json({error:"Origin is not allowed."});
+    return res.sendStatus(204);
+  }
+  next();
+});
 
 
 // Render/other reverse proxies must be trusted so secure session
