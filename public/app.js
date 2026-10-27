@@ -1876,8 +1876,9 @@ function renderUserProfileModal(user,data={}){
       <div class="profile-actions"><button class="mini" id="profileAchievementsBtn">🏆 Achievements</button>${!isSelf&&canFeature('profile_note')?`<button class="mini" id="profileNoteBtn">📝 Add Note <span id="profileNoteDot" style="display:none">●</span></button>`:''}<div class="profile-action-hint">Tap ☰ above for profile actions.</div></div>`;
     else if(tab==='about') box.innerHTML=`<div class="about-card"><h3>About Me</h3><p>${esc(user.bio||'This user has not written an About Me yet.')}</p>${user.pronouns?`<div class="profile-info-row"><b>Pronouns</b><span>${esc(user.pronouns)}</span></div>`:''}${user.interests?.length?`<div class="tag-list">${user.interests.map(x=>`<span class="tag">${esc(x)}</span>`).join('')}</div>`:''}${isSelf?`<button class="primary" id="editAboutBtn">✏️ Edit About Me</button>`:''}</div>`;
     else if(tab==='friends') box.innerHTML=`<div class="about-card"><h3>Friends</h3><p class="muted">Friends and social connections for @${esc(user.username)}.</p><div class="profile-info-row"><b>👥 Friends</b><span>${user.friendsCount||0}</span></div><button class="mini" id="viewFriendsBtn">Open Friends</button></div>`;
-    else box.innerHTML=`<div class="about-card"><div class="profile-info-row"><b>📝 About</b><span>${esc(user.bio||'No About Me')}</span></div><div class="profile-info-row"><b>📜 Username history</b><span>${(user.usernameHistory||[]).length} changes</span></div><div class="profile-info-row"><b>🔗 Profile ID</b><span>${esc(user.id)}</span></div>${can('MOD')?`<div class="toolbar"><button class="mini" id="profileHistoryBtn">📜 Staff action history</button></div><div id="profileHistoryBox"></div>`:''}<div class="profile-actions">${!isSelf?'<button class="mini danger" id="profileReportBtn">⚑ Report user</button>':''}</div></div>`;
+    else box.innerHTML=`<div class="about-card"><div class="profile-info-row"><b>📝 About</b><span>${esc(user.bio||'No About Me')}</span></div><div class="profile-info-row"><b>📜 Username history</b><span>${(user.usernameHistory||[]).length} changes</span></div><div class="profile-info-row"><b>🔗 Profile ID</b><span>${esc(user.id)}</span></div>${can('MOD')?`<div class="toolbar"><button class="mini" id="profileHistoryBtn">📜 Staff action history</button><button class="mini" id="profileIpInsightsBtn">🔎 View insights</button></div><div id="profileHistoryBox"></div>`:''}<div class="profile-actions">${!isSelf?'<button class="mini danger" id="profileReportBtn">⚑ Report user</button>':''}</div></div>`;
     if(tab==='more' && can('MOD')) $('profileHistoryBtn')?.addEventListener('click',()=>showUserActionHistory(user.id));
+    if(tab==='more' && can('MOD') && !isSelf) $('profileIpInsightsBtn')?.addEventListener('click',()=>showIpInsights(user));
     if(tab==='info'&&!isSelf&&canFeature('profile_note'))api(`/api/staff/user/${encodeURIComponent(user.id)}/note`).then(n=>{if(n.hasNote&&$('profileNoteDot'))$('profileNoteDot').style.display='inline';}).catch(()=>{});
     wireProfileTabActions();
   };
@@ -2881,7 +2882,7 @@ async function loadIpInspection(query=''){
   results.innerHTML='<p class="muted">Loading IP history and approximate network details…</p>';
   try{
     const d=await api('/api/staff/ip-inspection?q='+encodeURIComponent(query));
-    const rows=d.records||[];
+    const rows=d.records||[], matches=d.sameIpAccounts||[];
     if(!rows.length){results.innerHTML='<p class="muted">No accounts matched that search.</p>';return;}
     const rowHtml=rows.map(r=>{
       const n=r.network||{};
@@ -2890,9 +2891,31 @@ async function loadIpInspection(query=''){
       const technical=[n.timezone?'TZ: '+n.timezone:'',n.coordinates?'Approx. coordinates: '+n.coordinates:'',n.hostname?'Host: '+n.hostname:''].filter(Boolean).join(' · ');
       return '<tr><td><b>@'+esc(r.username||'Unknown')+'</b><small>'+esc(r.email||'No email recorded')+'</small><small>Registered: '+(r.registered_at?fmt(new Date(r.registered_at).getTime()):'Unknown')+'</small></td><td><code>'+esc(r.ip_address||'Unavailable')+'</code></td><td>'+esc(location||'Unavailable')+(n.networkType?'<small>'+esc(n.networkType)+'</small>':'')+'</td><td>'+esc(network||'Unavailable')+'</td><td>'+esc(technical||'Unavailable')+'</td><td><span class="ip-lookup-status">'+esc(n.lookupStatus||'Unavailable')+'</span>'+(n.lookupSource?'<small>Source: '+esc(n.lookupSource)+'</small>':'')+'</td><td>'+esc(r.event_type||'No event')+'<small>'+(r.recorded_at?fmt(new Date(r.recorded_at).getTime()):'No IP event recorded')+'</small></td><td class="ip-user-agent">'+esc(r.user_agent||'Unavailable')+'</td></tr>';
     }).join('');
-    results.innerHTML='<div class="ip-inspection-table-wrap"><table class="ip-inspection-table"><thead><tr><th>Account / email</th><th>IP address</th><th>Approx. location</th><th>ISP / ASN / organization</th><th>Timezone / coordinates / host</th><th>Lookup status</th><th>Event / time</th><th>Browser</th></tr></thead><tbody>'+rowHtml+'</tbody></table></div><p class="muted">'+esc(d.geolocationNote||'IP location is approximate and may be unavailable.')+'</p>';
+    const matchRows=matches.map(r=>{
+      const n=r.network||{};
+      return '<tr><td><b>@'+esc(r.username||'Unknown')+'</b><small>'+esc(r.email||'No email recorded')+'</small><small>Registered: '+(r.created_at?fmt(new Date(r.created_at).getTime()):'Unknown')+'</small></td><td><code>'+esc(r.ip_address||'Unavailable')+'</code></td><td>'+esc([n.city,n.region,n.country].filter(Boolean).join(', ')||'Unavailable')+'</td><td>'+esc([n.networkProvider,n.asn,n.organization&&n.organization!==n.networkProvider?n.organization:''].filter(Boolean).join(' · ')||'Unavailable')+'</td><td>'+esc(r.event_type||'login')+'<small>'+(r.recorded_at?fmt(new Date(r.recorded_at).getTime()):'Unknown')+'</small></td></tr>';
+    }).join('');
+    const sameIpSection='<section class="about-card" style="margin-top:16px"><h3>🔗 Accounts with matching IP addresses ('+matches.length+')</h3><p class="muted">Accounts below have at least one recorded IP address matching an account in the search results. A shared IP can be caused by shared Wi-Fi, schools, workplaces, mobile carriers or VPNs; it does not prove the same person owns the accounts.</p>'+(matches.length?'<div class="ip-inspection-table-wrap"><table class="ip-inspection-table"><thead><tr><th>Matching account</th><th>Matching IP</th><th>Approx. location</th><th>ISP / ASN</th><th>Event / time</th></tr></thead><tbody>'+matchRows+'</tbody></table></div>':'<p class="muted">No other accounts with matching recorded IP addresses were found.</p>')+'</section>';
+    results.innerHTML=sameIpSection+'<div class="ip-inspection-table-wrap" style="margin-top:16px"><table class="ip-inspection-table"><thead><tr><th>Account / email</th><th>IP address</th><th>Approx. location</th><th>ISP / ASN / organization</th><th>Timezone / coordinates / host</th><th>Lookup status</th><th>Event / time</th><th>Browser</th></tr></thead><tbody>'+rowHtml+'</tbody></table></div><p class="muted">'+esc(d.geolocationNote||'IP location is approximate and may be unavailable.')+'</p>';
   }catch(e){results.innerHTML='<p class="muted">'+esc(e.message||'Could not load IP history.')+'</p>';}
 }
+async function showIpInsights(user){
+  modal('<div class="about-card"><h2>🔎 Account insights</h2><p class="muted">Loading shared-IP matches and username history…</p></div>');
+  try{
+    const d=await api('/api/staff/user/'+encodeURIComponent(user.id)+'/ip-insights');
+    const fmtDate=value=>value?fmt(new Date(value).getTime()):'Unknown';
+    const history=d.user?.usernameHistory||[];
+    const historyHtml=history.length?history.map(h=>'<div class="profile-info-row"><b>@'+esc(h.from||'Unknown')+' → @'+esc(h.to||'Unknown')+'</b><span>'+esc(fmtDate(h.time))+(h.changedBy?' · changed by @'+esc(h.changedBy):'')+'</span></div>').join(''):'<p class="muted">No previous username changes are recorded.</p>';
+    const matches=d.matches||[];
+    const matchHtml=matches.length?matches.map(m=>{
+      const names=(m.usernameHistory||[]).length?m.usernameHistory.map(h=>'<small>@'+esc(h.from||'Unknown')+' → @'+esc(h.to||'Unknown')+' · '+esc(fmtDate(h.time))+'</small>').join(''):'<small>No previous usernames recorded</small>';
+      return '<div class="about-card" style="margin-top:10px"><div class="profile-info-row"><b>👤 @'+esc(m.username)+'</b><span>Registered '+esc(fmtDate(m.registeredAt))+'</span></div><div class="profile-info-row"><b>Shared-IP events</b><span>'+esc(m.sharedIpEvents)+'</span></div><div style="margin-top:8px"><b>📜 Previous usernames</b>'+names+'</div></div>';
+    }).join(''):'<p class="muted">No other accounts with a matching recorded IP were found.</p>';
+    modal('<div class="profile-drawer"><h2>🔎 View insights · @'+esc(d.user?.username||user.username)+'</h2><div class="about-card"><div class="profile-info-row"><b>📅 Registration date</b><span>'+esc(fmtDate(d.user?.registeredAt))+'</span></div><h3>📜 Previous usernames</h3>'+historyHtml+'</div><h3 style="margin-top:16px">🔗 Accounts with matching IP ('+matches.length+')</h3>'+matchHtml+'<p class="muted" style="margin-top:12px">'+esc(d.note||'IP matches are not proof of common ownership.')+'</p><div class="toolbar"><button class="primary" id="closeIpInsights">Close</button></div></div>');
+    $('closeIpInsights')?.addEventListener('click',closeModal);
+  }catch(e){modal('<div class="about-card"><h2>🔎 Account insights</h2><p class="muted">'+esc(e.message||'Could not load insights.')+'</p><button class="primary" id="closeIpInsightsError">Close</button></div>');$('closeIpInsightsError')?.addEventListener('click',closeModal);}
+}
+
 function findUserName(id){
   return state.allUsers?.find(u=>u.id===id)?.username || (id?String(id).slice(0,12):'Unknown');
 }
