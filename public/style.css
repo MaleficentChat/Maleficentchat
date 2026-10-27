@@ -2306,3 +2306,16 @@ a { color: #65dcff; }
 .quick-user-top h2{font-size:20px!important}
 .quick-user-row{min-height:54px!important;padding:11px 16px!important;font-size:15px!important}
 @media(max-width:768px){#modal:has(.quick-user-card){padding:10px!important;align-items:flex-end!important;justify-content:center!important}#modal:has(.quick-user-card) .modal-card{width:min(360px,calc(100vw - 20px))!important;max-width:calc(100vw - 20px)!important;margin:0 auto calc(76px + env(safe-area-inset-bottom,0px))!important;max-height:62dvh!important}.quick-user-card{max-height:62dvh!important}}
+
+/* DM gear dropdown and quick-action panel */
+.dm-chat-actions{position:relative;display:flex;align-items:center;gap:7px}
+.dm-settings-menu{position:absolute;right:0;top:calc(100% + 9px);z-index:1300;width:min(280px,calc(100vw - 36px));padding:7px;border:1px solid rgba(255,255,255,.09);border-radius:15px;background:#203038;box-shadow:0 15px 42px rgba(0,0,0,.42)}
+.dm-settings-menu button{width:100%;display:flex;align-items:center;gap:12px;text-align:left;padding:10px;border:0;border-radius:10px;background:transparent;color:var(--text);cursor:pointer}
+.dm-settings-menu button:hover{background:rgba(255,255,255,.07)}
+.dm-settings-menu button>span{display:flex;flex-direction:column;gap:2px}
+.dm-settings-menu small{font-size:11px;color:var(--muted)}
+.quick-action-menu{padding:14px!important}
+.quick-action-menu h2{margin:0 0 10px}
+.quick-action-menu .quick-user-row{width:100%;display:flex;align-items:center;gap:12px;border:0;border-top:1px solid rgba(255,255,255,.05);background:transparent;color:inherit;text-align:left}
+.quick-action-menu .quick-user-row b{flex:1;font-weight:600}
+@media(max-width:600px){.dm-settings-menu{right:0;max-height:60dvh;overflow:auto}.dm-chat-actions .mini{min-width:36px;min-height:36px}}
