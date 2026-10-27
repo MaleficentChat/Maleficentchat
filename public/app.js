@@ -616,7 +616,7 @@ function openHeaderChatOptions(){
 async function loadWall(){
   const d=await api('/api/wall');
   const feed=$('wallFeed'); if(!feed)return;
-  feed.innerHTML=(d.posts||[]).map(p=>`<article class="card wall-post" data-wall-id="${p.id}">
+  feed.innerHTML=(d.posts||[]).map(p=>`<article class="card wall-post social-feed-card" data-wall-id="${p.id}">
     <div class="wall-author">${p.avatar?`<img src="${esc(p.avatar)}">`:''}<div><b>@${esc(p.username||'Unknown')}</b><small>${esc(p.rank||'')}</small></div><time>${fmt(p.created_at)}</time></div>
     <div class="wall-content">${esc(p.content||'')}${p.media_url?(String(p.media_url).match(/\.(mp4|webm|ogg)(\?|$)/i)?`<video class="wall-media" controls src="${esc(p.media_url)}"></video>`:`<img class="wall-media" src="${esc(p.media_url)}" alt="Wall upload">`):''}</div>
     <div class="wall-actions"><button class="mini" data-wall-like="${p.id}">♡ ${Number(p.likes||0)}</button><button class="mini" data-wall-comments="${p.id}">Comments</button><button class="mini danger" data-wall-report="${p.id}">Report</button>${state.user?.username==='Maleficent'?`<button class="mini" data-wall-pin="${p.id}">📌 Pin</button>`:''}</div>
