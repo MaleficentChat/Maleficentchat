@@ -731,9 +731,10 @@ function setRoomListMode(mode){
 $('allRoomsBtn')?.addEventListener('click',()=>setRoomListMode('all'));
 $('myRoomsBtn')?.addEventListener('click',()=>setRoomListMode('mine'));
 function renderRooms() {
-  const search=($('roomSearch').value||'').trim().toLowerCase();
+  const search=(($('roomSearch')?.value)||'').trim().toLowerCase();
   const visited=joinedRoomIds();
-  const rooms=state.rooms.filter(room=>{
+  const allRooms=Array.isArray(state.rooms)?state.rooms:[];
+  const rooms=allRooms.filter(room=>{
     if(state.roomListMode==='mine'&&String(room.ownerId)!==String(state.user?.id)&&!visited.has(String(room.id)))return false;
     const hay=[room.name,room.description,room.category].join(' ').toLowerCase();
     return !search || hay.includes(search);
@@ -759,9 +760,11 @@ function renderRooms() {
           ${canFeature("delete_room")?`<button class="mini danger" type="button" onclick="event.stopPropagation();deleteRoomById('${esc(room.id)}')">🗑️ Delete</button>`:""}
         </div>` : ""}
       </article>`;
-  }).join('') || (state.roomListMode==='mine'
-    ? '<div class="room-empty"><div>🏠</div><b>No rooms in My rooms yet</b><span>Join a room or create one and it will appear here.</span></div>'
-    : '<div class="room-empty"><div>🏠</div><b>No rooms found</b><span>Try another search.</span></div>');
+  }).join('') || (search
+    ? '<div class="room-empty"><div>🔎</div><b>No matching rooms</b><span>Try a different search.</span><button class="mini" type="button" onclick="document.getElementById(\'roomSearch\').value=\'\';renderRooms()">Clear search</button></div>'
+    : state.roomListMode==='mine'
+      ? '<div class="room-empty"><div>🏠</div><b>No rooms in My rooms yet</b><span>Choose All rooms to see available rooms.</span><button class="mini" type="button" onclick="setRoomListMode(\'all\')">Show all rooms</button></div>'
+      : '<div class="room-empty"><div>🏠</div><b>Rooms are not loading yet</b><span>Retry loading the room list. If this continues, check the server logs and database connection.</span><button class="primary" type="button" onclick="loadRooms()">↻ Reload rooms</button></div>');
   renderRoomQuickNav();
 }
 
