@@ -25,5 +25,9 @@ assert.match(server, /featureAllowed\("private_messages"\)[\s\S]*Could not save 
   "private-message read receipts must be access-checked and report persistence failures");
 assert.match(server, /Persist first: never tell the client a receipt was saved if PostgreSQL failed/,
   "read receipts must only update in-memory state after PostgreSQL succeeds");
+assert.match(server, /app\.post\(\s*"\/api\/gold\/gift",[\s\S]*?await client\.query\("BEGIN"\)[\s\S]*?gold >= \$1[\s\S]*?await client\.query\("COMMIT"\)/,
+  "gold transfers must use a transaction and prevent overspending");
+assert.match(server, /GOLD_SENT[\s\S]*GOLD_RECEIVED/,
+  "gold transfer history must record both sender and receiver entries");
 
 console.log("Security, audit-log, and messaging persistence static checks passed.");
