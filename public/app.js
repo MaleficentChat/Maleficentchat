@@ -2968,9 +2968,7 @@ async function loadOwner() {
         <details class="filter-words-details"><summary>Filter words (${filterData.total||0})</summary><div id="ownerFilterTable">${(filterData.words||[]).map(w=>`<div class="filter-table-row" data-word="${esc(w.word||w)}"><code>${esc(w.word||w)}</code><small>${w.created_at?fmt(w.created_at):''}</small><button class="mini danger" data-filter-delete="${w.id||''}">×</button></div>`).join('')||'<p class="muted">No filter words.</p>'}</div></details>
       </div>
 
-      <div class="card"><h3>💎 Premium Requests</h3>${(premiumRequests.requests||[]).map(r=>`<div class="hub-row"><span>@${esc(r.username||'Unknown')} · ${esc(r.created_at||'')}</span><button class="mini" data-grant-premium="${r.id}">Grant Premium</button><button class="mini danger" data-cancel-premium="${r.user_id||r.id}">Cancel Premium</button></div>`).join('')||'<p class="muted">No requests.</p>'}</div><div class="card owner-gift-catalog-card"><div class="section-title"><div><h3>🎁 Gift Catalog</h3><p class="muted">Manage the catalog used by profiles. Gifts are saved and delivered privately.</p></div><button class="primary" id="ownerAddGift">＋ Add gift</button></div><details class="filter-words-details owner-gift-dropdown"><summary>Gift list — open to view and manage gifts</summary><div id="ownerGiftList"></div></details></div>
-
-      <div class="card owner-settings-card">
+      <div class="card"><h3>💎 Premium Requests</h3>${(premiumRequests.requests||[]).map(r=>`<div class="hub-row"><span>@${esc(r.username||'Unknown')} · ${esc(r.created_at||'')}</span><button class="mini" data-grant-premium="${r.id}">Grant Premium</button><button class="mini danger" data-cancel-premium="${r.user_id||r.id}">Cancel Premium</button></div>`).join('')||'<p class="muted">No requests.</p>'}</div><div class="card owner-settings-card">
         <h3>⚙️ Site Settings</h3>
         <details class="filter-words-details owner-settings-dropdown">
           <summary>Site settings — open to view and manage options</summary>
@@ -3039,8 +3037,8 @@ async function loadOwner() {
 
     `;
 
-    await loadOwnerLogSettings();
-    $('saveOwnerLogSettings')?.addEventListener('click',saveOwnerLogSettings);
+    
+    
     if($('ownerUserSearch')) $('ownerUserSearch').oninput=()=>{const q=$('ownerUserSearch').value.trim().toLowerCase();const rows=[...document.querySelectorAll('.owner-user-control-row')];let showing=0;rows.forEach(row=>{const match=(row.dataset.userSearch||'').includes(q);row.style.display=match?'':'none';if(match)showing++});if($('ownerUserSearchCount'))$('ownerUserSearchCount').textContent=q?(`${showing} of ${rows.length} users`):(`${rows.length} users`)};
     if($('addBulkFilter')) $('addBulkFilter').onclick=async()=>{try{await api('/api/filter-words/bulk',{method:'POST',body:JSON.stringify({text:$('bulkFilterWords').value})});$('bulkFilterWords').value='';await loadOwner();}catch(e){toast(e.message)}};
     if($('filterSearch')) $('filterSearch').oninput=()=>{const q=$('filterSearch').value.toLowerCase();const rows=[...document.querySelectorAll('.filter-table-row')];let showing=0;rows.forEach(r=>{const show=r.dataset.word.toLowerCase().includes(q);r.style.display=show?'':'none';if(show)showing++});$('filterCounts').textContent=`Total: ${rows.length} | Showing: ${showing}`};
