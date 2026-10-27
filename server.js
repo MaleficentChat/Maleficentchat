@@ -288,6 +288,9 @@ function safeUser(u){
   };
 }
 
+// Admin audit logging has been removed; retain a no-op for legacy action call sites.
+function log(){ return Promise.resolve(); }
+
 function addActivity(type, message, userId, details = {}) {
   db.activityTimeline ||= {};
   const key = String(userId);
