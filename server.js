@@ -1625,49 +1625,32 @@ app.post(
   "/api/messages/:id/reaction",
   auth,
   featureAllowed("react_message"),
-  (req,res)=>{
-    const m=db.messages.find(
-      x=>x.id===req.params.id
-    );
-
+  async(req,res)=>{
     const u=current(req);
-
+    const emoji=String(req.body?.emoji||"👍");
+    const allowed=["❤️","😂","😭","😮","🔥","👏","👍","👎","🥰","🎉"];
+    if(!allowed.includes(emoji))return res.status(400).json({error:"Unsupported reaction."});
+    let m=db.messages.find(x=>String(x.id)===String(req.params.id));
+    // PostgreSQL is authoritative: a message may not be cached after a restart.
     if(!m){
-      return res.status(404).json({
-        error:"Message not found"
-      });
+      const found=await pool.query("SELECT data FROM room_messages WHERE id=$1 LIMIT 1",[String(req.params.id)]);
+      if(!found.rowCount)return res.status(404).json({error:"Message not found"});
+      m=found.rows[0].data;
+      if(!m||typeof m!=="object")return res.status(404).json({error:"Message not found"});
+      db.messages.push(m);
     }
-
-    let e=
-      m.reactions[
-        req.body.emoji||"👍"
-      ]??[];
-
-    e=e.includes(u.id)
-      ?e.filter(
-          x=>x!==u.id
-        )
-      :[
-          ...e,
-          u.id
-        ];
-
-    m.reactions[
-      req.body.emoji||"👍"
-    ]=e;
-
-    save();
-
-    io.to(
-      "room:"+m.roomId
-    ).emit(
-      "message:update",
-      m
-    );
-
-    res.json({
-      message:m
-    });
+    if(m.deleted)return res.status(400).json({error:"This message has been deleted."});
+    m.reactions=m.reactions&&typeof m.reactions==="object"?m.reactions:{};
+    const users=Array.isArray(m.reactions[emoji])?m.reactions[emoji].map(String):[];
+    const userId=String(u.id);
+    m.reactions[emoji]=users.includes(userId)?users.filter(x=>x!==userId):[...users,userId];
+    const saved=await pool.query("UPDATE room_messages SET data=data || jsonb_build_object($3, $2::jsonb) WHERE id=$1 RETURNING data",[String(m.id),JSON.stringify(m.reactions),"reactions"]);
+    if(!saved.rowCount)return res.status(404).json({error:"Message could not be saved."});
+    m=saved.rows[0].data;
+    const index=db.messages.findIndex(x=>String(x.id)===String(m.id));
+    if(index>=0)db.messages[index]=m;else db.messages.push(m);
+    io.to("room:"+m.roomId).emit("message:update",m);
+    res.json({message:m});
   }
 );
 
