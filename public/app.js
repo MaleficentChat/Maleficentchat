@@ -625,17 +625,23 @@ async function openGifPicker(){
 /* Defensive room-list cleanup: never display the retired age-split defaults, even if an older server response is cached. */
 function sanitizeRoomList(input) {
   const rooms = Array.isArray(input) ? input : [];
-  const canonicalMain = rooms.find(room => String(room?.name || "").trim() === "Main Room");
+  const seenMain = new Set();
   return rooms.filter(room => {
-    const name = String(room?.name || "").trim();
-    const normalized = name.toLowerCase();
-    if (normalized === "main room 1" || normalized === "main room 2") return false;
-    if (normalized === "main room" && name !== "Main Room") return false;
+    const name = String(room?.name || "").trim().replace(/^🏠\s*/, "");
+    const normalized = name.toLowerCase().replace(/\s+/g, " ");
+    // Retire the two old age-split rooms, even if whitespace/case varies.
+    if (/^main room\s*[12]\b/i.test(normalized)) return false;
+    // Keep only one canonical Main Room.
+    if (normalized === "main room") {
+      if (seenMain.has("main room")) return false;
+      seenMain.add("main room");
+      return true;
+    }
     return true;
-  }).map(room => ({
-    ...room,
-    isDefault: String(room?.name || "").trim() === "Main Room"
-  }));
+  }).map(room => {
+    const name = String(room?.name || "").trim().replace(/^🏠\s*/, "");
+    return { ...room, isDefault: name.toLowerCase() === "main room" };
+  });
 }
 
 async function loadRooms() {
