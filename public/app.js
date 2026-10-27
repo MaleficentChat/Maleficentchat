@@ -2510,7 +2510,7 @@ async function showAchievements(user){try{const d=await api('/api/achievements/'
 async function openProfileActionDrawer(user,data){
   const isSelf=user.id===state.user.id;
   const blocked=(state.user.blocked||[]).includes(user.id);
-  modal(`<div class="profile-drawer"><h2>Profile actions</h2><div class="toolbar profile-drawer-list">${!isSelf?`<button class="mini" id="drawerMessage">💬 Private message</button><button class="mini" id="drawerLike">${data.likedByMe?'💔 Unlike':'❤️ Like profile'}</button><button class="mini" id="drawerFriend">👥 Add friend</button><button class="mini" id="drawerBlock">${blocked?'🚫 Unblock':'🚫 Block'}</button><button class="mini" id="drawerGift">🎁 Send gift</button><button class="mini" id="drawerGold">🪙 Share wallet</button>${canFeature('staff_rank_assignment')?`<button class="mini" id="drawerRank">🏅 Give rank</button>`:''}${canFeature('moderate_user')?`<button class="mini" id="drawerModerate">🛡️ Moderate user</button>`:''}${canFeature('manage_staff_accounts')?`<button class="mini" id="drawerStaff">⚙️ Staff account</button>`:''}${canFeature('account_modifications')?`<button class="mini" id="drawerAccountModifications">🛠️ Account modifications</button>`:''}${canFeature('profile_note')?`<button class="mini" id="drawerNote">📝 Profile note</button>`:''}${can('MOD')?`<button class="mini" id="drawerHistory">📜 User history</button>`:''}`:`<button class="mini" id="drawerEdit">✏️ Edit profile</button><button class="mini" id="drawerBlocked">🚫 Blocked users</button>`}</div></div>`);
+  modal(`<div class="profile-drawer"><h2>Profile actions</h2><div class="toolbar profile-drawer-list">${!isSelf?`<button class="mini" id="drawerMessage">💬 Private message</button><button class="mini" id="drawerLike">${data.likedByMe?'💔 Unlike':'❤️ Like profile'}</button><button class="mini" id="drawerFriend">👥 Add friend</button><button class="mini" id="drawerBlock">${blocked?'🚫 Unblock':'🚫 Block'}</button><button class="mini" id="drawerGold">🪙 Share wallet</button>${canFeature('staff_rank_assignment')?`<button class="mini" id="drawerRank">🏅 Give rank</button>`:''}${canFeature('moderate_user')?`<button class="mini" id="drawerModerate">🛡️ Moderate user</button>`:''}${canFeature('manage_staff_accounts')?`<button class="mini" id="drawerStaff">⚙️ Staff account</button>`:''}${canFeature('account_modifications')?`<button class="mini" id="drawerAccountModifications">🛠️ Account modifications</button>`:''}${canFeature('profile_note')?`<button class="mini" id="drawerNote">📝 Profile note</button>`:''}${can('MOD')?`<button class="mini" id="drawerHistory">📜 User history</button>`:''}`:`<button class="mini" id="drawerEdit">✏️ Edit profile</button><button class="mini" id="drawerBlocked">🚫 Blocked users</button>`}</div></div>`);
   $('drawerMessage')?.addEventListener('click',()=>{closeModal();openDM(user.id)});
   $('drawerLike')?.addEventListener('click',async()=>{try{const r=await api(`/api/users/${user.id}/like`,{method:'POST'});data.likedByMe=r.liked;user.profileLikes=r.likes;closeModal();renderUserProfileModal(user,data);toast(r.liked?'Profile liked.':'Profile like removed.');}catch(e){toast(e.message)}});
   $('drawerRank')?.addEventListener('click',()=>{closeModal();rankFromProfile(user)});
@@ -2911,7 +2911,15 @@ async function clearUserActionHistory(userId){
 
 async function refreshSiteMessages(){
   if(!confirm('This permanently deletes ALL room chat messages and ALL private messages for every user. Accounts, rooms, ranks, gold, settings, gifts, reports, and moderation history will remain. Continue?'))return;
-  try{const result=await api('/api/owner/refresh-site-messages',{method:'POST',body:JSON.stringify({})});toast('Site messages cleared: '+Number(result.roomMessages||0)+' room messages and '+Number(result.privateMessages||0)+' private messages.')}catch(e){toast(e.message)}
+  try{
+    const result=await api('/api/owner/refresh-site-messages',{method:'POST',body:JSON.stringify({})});
+    state.messages=[];
+    if($('messages'))$('messages').innerHTML='';
+    if($('messages'))$('messages').scrollTop=0;
+    if(state.dmUserId){try{await openDM(state.dmUserId);}catch{}}
+    toast('Site messages cleared: '+Number(result.roomMessages||0)+' room messages and '+Number(result.privateMessages||0)+' private messages.');
+    if(state.view==='owner')loadOwner();
+  }catch(e){toast('Could not clear site messages: '+e.message)}
 }
 async function loadOwner() {
   try {
