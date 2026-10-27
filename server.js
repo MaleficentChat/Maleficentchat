@@ -2599,6 +2599,14 @@ app.get("/api/staff/ip-inspection",auth,ownerOnly,async(req,res)=>{
 });
 
 
+
+app.get("/api/staff/admin/users",auth,async(req,res)=>{
+  const actor=current(req);
+  if(!hasRank(actor,"ADMIN")) return res.status(403).json({error:"Admin rank or higher required."});
+  const term=String(req.query.q||"").trim().replace(/^@/,"").toLowerCase().slice(0,80);
+  const users=(db.users||[]).filter(u=>!term||[u.username,u.displayName,u.rank,String(u.id)].some(v=>String(v||"").toLowerCase().includes(term))).slice(0,50).map(u=>({id:String(u.id),username:u.username,displayName:u.displayName||u.username,rank:u.rank,online:!!u.online&&!u.invisible,banned:!!u.banned,mutedUntil:u.mutedUntil||null,kickedUntil:u.kickedUntil||null}));
+  res.json({users});
+});
 app.get("/api/staff/system-center",auth,async(req,res)=>{
   const actor=current(req);
   if(!hasRank(actor,"ADMIN")) return res.status(403).json({error:"Admin rank or higher required."});
