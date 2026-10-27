@@ -621,7 +621,11 @@ async function loadRooms() {
     try {
       const data = await api("/api/rooms");
       state.rooms = Array.isArray(data.rooms) ? data.rooms : [];
-      if (state.rooms.length) break;
+      // The room endpoint is the source of truth; always display all available rooms on initial load.
+      if (state.rooms.length) {
+        state.roomListMode = "all";
+        break;
+      }
       const boot = await api("/api/bootstrap");
       if (Array.isArray(boot.rooms) && boot.rooms.length) {
         state.rooms = boot.rooms;
@@ -640,6 +644,9 @@ async function loadRooms() {
   renderRooms();
   if (!state.rooms.length && lastError) toast("Rooms could not load: " + lastError.message);
   requestAnimationFrame(()=>renderRooms());
+  if (!state.rooms.length) {
+    setTimeout(async()=>{try{const retry=await api("/api/rooms");if(Array.isArray(retry.rooms)&&retry.rooms.length){state.rooms=retry.rooms;state.roomListMode="all";renderRooms();}}catch(e){console.warn("Room list retry failed:",e.message)}},1500);
+  }
 }
 
 function joinedRoomIds(){
@@ -1240,6 +1247,7 @@ $("composer").onsubmit = async e => {
 };
 $("attach").onclick = () =>
   $("file").click();
+if ($("chatGifBtn")) $("chatGifBtn").onclick = () => openGifPicker();
 
 $("message").oninput = () => {
   if (
