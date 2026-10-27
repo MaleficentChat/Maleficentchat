@@ -528,7 +528,9 @@ async function renderView() {
 
   switch (state.view) {
     case "rooms":
-      return renderRooms();
+      // Re-fetch the authoritative room list whenever the Rooms view opens.
+      // This recovers default rooms if the first login request ran before DB seeding completed.
+      return loadRooms();
 
     case "users":
       return loadUsers();
