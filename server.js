@@ -288,71 +288,6 @@ function safeUser(u){
   };
 }
 
-const ADMIN_LOG_SETTING_DEFS = [
-  {key:"staff_moderation",label:"Staff moderation & rank changes",description:"Mutes, kicks, warnings, bans, rank edits, staff notes and permission grants."},
-  {key:"reports",label:"Reports & report handling",description:"New reports, report reviews and moderation decisions linked to reports."},
-  {key:"economy",label:"Gold, gifts & memberships",description:"Gold transfers, gifts, VIP/Premium grants and rewards."},
-  {key:"account_security",label:"Account & security events",description:"Registrations, profile/account edits, password/email changes and login/security events."},
-  {key:"room_changes",label:"Room changes",description:"Room creation, edits, deletion and configuration changes."},
-  {key:"site_settings",label:"Site settings & feature permissions",description:"Site configuration changes, feature grants and permission updates."},
-  {key:"content_deletions",label:"Deleted content & history clearing",description:"Deleted messages, cleared history and content removals."},
-  {key:"private_message_inspection",label:"Private-message inspections",description:"Owner/staff searches of private-message records, not message contents."},
-  {key:"ip_inspection",label:"IP history inspections",description:"Views and searches of account IP history and network lookup details."},
-  {key:"other_staff_actions",label:"Other staff actions",description:"Successful staff API actions that do not match another category."}
-];
-function adminLogSettings(){const configured=db.settings?.admin_log_settings||{};return Object.fromEntries(ADMIN_LOG_SETTING_DEFS.map(x=>[x.key,typeof configured[x.key]==="boolean"?configured[x.key]:true]));}
-function adminLogCategory(action){
- const a=String(action||"").toUpperCase();
- if(/IP_INSPECTION|IP_HISTORY/.test(a))return "ip_inspection";
- if(/PRIVATE_SEARCH|PRIVATE_MESSAGE_INSPECTION|DM_INSPECTION|INSPECT_DM/.test(a))return "private_message_inspection";
- if(/REPORT/.test(a))return "reports";
- if(/DELETE|CLEAR_HISTORY|CLEAR_MESSAGES/.test(a))return "content_deletions";
- if(/GOLD|GIFT|PREMIUM|VIP|MEMBERSHIP|ECONOMY|REWARD/.test(a))return "economy";
- if(/ROOM/.test(a))return "room_changes";
- if(/SETTING|CONFIG|FEATURE|PERMISSION/.test(a))return "site_settings";
- if(/LOGIN|LOGOUT|REGISTER|PASSWORD|EMAIL|ACCOUNT|PROFILE|USERNAME/.test(a))return "account_security";
- if(/MUTE|KICK|WARN|BAN|MODERAT|ROLE|RANK|STAFF|NOTE|USER_ACTION/.test(a))return "staff_moderation";
- return "other_staff_actions";
-}
-function adminLogEnabled(action){return adminLogSettings()[adminLogCategory(action)]!==false;}
-
-let adminLogWriteQueue=Promise.resolve();
-function queueAdminAudit(actionType,performedBy,targetUserId,details){
-  const actorId=Number(performedBy),targetId=Number(targetUserId);
-  const values=[
-    String(actionType||'ACTION').slice(0,100),
-    Number.isSafeInteger(actorId)&&actorId>0?actorId:null,
-    Number.isSafeInteger(targetId)&&targetId>0?targetId:null,
-    JSON.stringify(details&&typeof details==='object'?details:{message:String(details??'')})
-  ];
-  adminLogWriteQueue=adminLogWriteQueue
-    .then(()=>pool.query(`INSERT INTO admin_logs(action_type,performed_by,target_user_id,details) VALUES($1,$2,$3,$4)`,values))
-    .catch(e=>console.error('Admin log persistence failed:',e.message));
-  return adminLogWriteQueue;
-}
-function log(actor,action,target="",meta={}){
-  if(!adminLogEnabled(action)) return;
-  db.logs.push({
-    id:id(),
-    time:Date.now(),
-    actor:actor?.username||"SYSTEM",
-    action,
-    target,
-    meta
-  });
-
-  if(db.logs.length>5000){
-    db.logs.shift();
-  }
-
-  save();
-  const targetUser=db.users.find(x=>String(x.id)===String(target)||String(x.username).toLowerCase()===String(target).toLowerCase());
-  const logDetails=JSON.stringify({target,meta:meta&&typeof meta==='object'?meta:{message:String(meta??'')}});
-  queueAdminAudit(action,actor?.id,targetUser?.id,{target,meta:meta&&typeof meta==='object'?meta:{message:String(meta??'')}});
-  return adminLogWriteQueue;
-}
-
-// Record a lightweight per-user activity entry. This is used by the activity timeline UI.
 function addActivity(type, message, userId, details = {}) {
   db.activityTimeline ||= {};
   const key = String(userId);
@@ -2710,37 +2645,6 @@ app.post('/api/history/clear',auth,async(req,res)=>{
   res.json({ok:true});
 });
 
-// Curated gift catalog. Gifts are simple catalog items with a stable price and visual.
-async function addOwnerGift(req,res){
-  const name=cleanText(req.body.name||'').trim().slice(0,80);
-  const image=String(req.body.image||req.body.icon||(req.file?'/uploads/'+req.file.filename:'🎁')).trim().slice(0,500);
-  const price=Math.floor(Number(req.body.price??req.body.cost));
-  if(!name||!image||!Number.isInteger(price)||price<1||price>100000)return res.status(400).json({error:'Enter a name, icon or image, and a price from 1 to 100000.'});
-  if(/^https?:/i.test(image)){try{const url=new URL(image);if(!['https:','http:'].includes(url.protocol))throw new Error();}catch{return res.status(400).json({error:'Gift image must use a valid http or https URL.'});}}
-  const {rows}=await pool.query(`INSERT INTO gifts(name,image,price,is_predefined) VALUES($1,$2,$3,true) RETURNING id,name,image,price`,[name,image,price]);
-  const gift={id:String(rows[0].id),name:rows[0].name,image:rows[0].image,icon:rows[0].image,cost:Number(rows[0].price),price:Number(rows[0].price)};
-  db.gifts||=[];db.gifts.push({...gift,custom:false});log(current(req),'GIFT_CATALOG_ADD',gift.name,{price:gift.price});res.status(201).json({gift});
-}
-app.post('/api/gifts',auth,ownerOnly,upload.single('file'),addOwnerGift);
-app.post('/api/owner/gifts',auth,ownerOnly,upload.single('file'),addOwnerGift);
-app.patch('/api/owner/gifts/:id',auth,ownerOnly,async(req,res)=>{
-  const name=req.body.name===undefined?null:cleanText(req.body.name).trim().slice(0,80);
-  const image=req.body.image===undefined?null:String(req.body.image).trim().slice(0,500);
-  const price=req.body.price===undefined?null:Math.floor(Number(req.body.price));
-  if(name!==null&&!name)return res.status(400).json({error:'Gift name cannot be empty.'});
-  if(price!==null&&(!Number.isInteger(price)||price<1||price>100000))return res.status(400).json({error:'Gift price must be from 1 to 100000.'});
-  if(image&&/^https?:/i.test(image)){try{const url=new URL(image);if(!['https:','http:'].includes(url.protocol))throw new Error();}catch{return res.status(400).json({error:'Gift image must use a valid http or https URL.'});}}
-  const {rows}=await pool.query(`UPDATE gifts SET name=COALESCE($2,name),image=COALESCE($3,image),price=COALESCE($4,price),is_predefined=true WHERE id=$1 RETURNING id,name,image,price`,[req.params.id,name,image,price]);
-  if(!rows[0])return res.status(404).json({error:'Gift not found.'});
-  db.gifts=(db.gifts||[]).map(g=>String(g.id)===String(rows[0].id)?{...g,name:rows[0].name,image:rows[0].image,icon:rows[0].image,cost:Number(rows[0].price),price:Number(rows[0].price)}:g);
-  log(current(req),'GIFT_CATALOG_EDIT',rows[0].name,{price:Number(rows[0].price)});res.json({gift:{...rows[0],id:String(rows[0].id),cost:Number(rows[0].price),icon:rows[0].image}});
-});
-app.delete('/api/owner/gifts/:id',auth,ownerOnly,async(req,res)=>{
-  const {rows}=await pool.query(`DELETE FROM gifts WHERE id=$1 AND is_predefined=true RETURNING id,name`,[req.params.id]);
-  if(!rows[0])return res.status(404).json({error:'Gift not found.'});
-  db.gifts=(db.gifts||[]).filter(g=>String(g.id)!==String(req.params.id));log(current(req),'GIFT_CATALOG_DELETE',rows[0].name);res.json({ok:true});
-});
-
 // Rank shop: premium requests and gold-funded temporary VIP.
 app.get('/api/shop',auth,async(req,res)=>{
   res.json({
@@ -2867,17 +2771,6 @@ app.patch("/api/owner/command-settings",ownerOnly,async(req,res)=>{
   for(const [key,value] of Object.entries(incoming)){const rank=String(value||"").toUpperCase();if(!definitions.has(key)||!allowed.has(rank))return res.status(400).json({error:"Unknown command or invalid rank."});next[key]=rank;}
   await pool.query("INSERT INTO settings(key,value) VALUES('command_ranks',$1::jsonb) ON CONFLICT(key) DO UPDATE SET value=EXCLUDED.value",[JSON.stringify(next)]);
   db.settings.command_ranks=next;save();res.json({ok:true,settings:next});
-});
-
-app.get("/api/owner/log-settings",ownerOnly,(req,res)=>{res.json({settings:adminLogSettings(),definitions:ADMIN_LOG_SETTING_DEFS});});
-app.patch("/api/owner/log-settings",ownerOnly,async(req,res)=>{
- const incoming=req.body?.settings;
- if(!incoming||typeof incoming!=="object"||Array.isArray(incoming))return res.status(400).json({error:"Provide log settings."});
- const allowed=new Set(ADMIN_LOG_SETTING_DEFS.map(x=>x.key));
- for(const [key,value] of Object.entries(incoming)){if(!allowed.has(key)||typeof value!=="boolean")return res.status(400).json({error:"Unknown log setting or invalid toggle."});}
- const settings={...adminLogSettings(),...incoming};
- await pool.query("INSERT INTO settings(key,value) VALUES('admin_log_settings',$1::jsonb) ON CONFLICT(key) DO UPDATE SET value=EXCLUDED.value",[JSON.stringify(settings)]);
- db.settings.admin_log_settings=settings;save();res.json({ok:true,settings});
 });
 
 app.patch("/api/owner/settings",ownerOnly,async(req,res)=>{
@@ -3454,58 +3347,6 @@ app.delete('/api/news/:newsId/comments/:commentId',auth,(req,res)=>{
 });
 
 
-app.get('/api/gifts',auth,async(req,res)=>{
-  try {
-    const defaults=[['Rose','🌹',10],['Chocolate','🍫',15],['Heart','❤️',20],['Teddy Bear','🧸',25],['Diamond','💎',100],['Crown','👑',150],['Cake','🎂',30],['Flower','🌸',15],['Star','⭐',20],['Gift Box','🎁',50],['Crown Jewel','💍',75],['Coffee','☕',10],['Cupcake','🧁',15],['Butterfly','🦋',20],['Moon','🌙',20],['Sun','☀️',20],['Music','🎵',10],['Paw','🐾',10],['Unicorn','🦄',40],['Castle','🏰',60]];
-    for (const [name,image,price] of defaults) {
-      await pool.query(`INSERT INTO gifts(name,image,price,is_predefined) SELECT $1,$2,$3,true WHERE NOT EXISTS (SELECT 1 FROM gifts WHERE name=$1)`,[name,image,price]);
-    }
-    const {rows}=await pool.query(`SELECT id,name,image,price FROM gifts WHERE is_predefined=true ORDER BY id`);
-    res.json({gifts:rows.map(g=>({id:String(g.id),name:g.name,icon:g.image||'🎁',image:g.image||'',cost:Number(g.price||0),price:Number(g.price||0)}))});
-  } catch(e) {
-    console.error('Gift catalog load failed:',e);
-    res.status(500).json({error:'Could not load the gift catalog. Please try again.'});
-  }
-});
-app.get('/api/gifts/catalog',auth,async(req,res)=>{
-  const {rows}=await pool.query(`SELECT id,name,image,price FROM gifts WHERE is_predefined=true ORDER BY id`);
-  res.json({gifts:rows.map(g=>({id:String(g.id),name:g.name,icon:g.image||'🎁',image:g.image||'',cost:Number(g.price||0),price:Number(g.price||0)}))});
-});
-async function sendGiftHandler(req,res){
-  const sender=current(req),recipient=findUser(req.params.id||req.body.recipientId);
-  if(!featureGrantAllowed(sender,'gift_sending'))return res.status(403).json({error:'Gift sending has not been granted to your rank.'});
-  if(!recipient||String(recipient.id)===String(sender.id))return res.status(400).json({error:'Choose another registered user.'});
-  if(!featureGrantAllowed(recipient,'gift_receiving'))return res.status(403).json({error:'This user cannot receive gifts.'});
-  const note=cleanText(req.body.message||'').trim().slice(0,240);
-  const client=await pool.connect();
-  let giftRecord,gift,remainingGold=Number(sender.gold||0);
-  try{
-    await client.query('BEGIN');
-    const q=await client.query(`SELECT id,name,image,price FROM gifts WHERE id=$1 AND is_predefined=true FOR SHARE`,[req.body.gift]);
-    if(!q.rowCount){await client.query('ROLLBACK');return res.status(400).json({error:'Choose a gift from the catalog.'});}
-    const row=q.rows[0];gift={id:String(row.id),name:row.name,icon:row.image||'🎁',image:row.image||'',cost:Number(row.price||0),price:Number(row.price||0)};
-    if(String(sender.rank).toUpperCase()!=='DEVELOPER'){
-      const debit=await client.query(`UPDATE users SET gold=gold-$1 WHERE id=$2 AND gold >= $1 RETURNING gold`,[gift.cost,Number(sender.id)]);
-      if(!debit.rowCount){await client.query('ROLLBACK');return res.status(400).json({error:`You need ${gift.cost} gold to send this gift.`});}
-      remainingGold=Number(debit.rows[0].gold);
-    }
-    const saved=await client.query(`INSERT INTO user_gifts(sender_user_id,receiver_user_id,sender_username,sender_display_name,gift_id,gift_name,gift_icon,gold_cost,message) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id,created_at`,[Number(sender.id),Number(recipient.id),sender.username,sender.displayName||sender.username,Number(row.id),gift.name,gift.icon,gift.cost,note]);
-    await client.query('COMMIT');
-    giftRecord={id:String(saved.rows[0].id),from:String(sender.id),fromUsername:sender.username,fromDisplayName:sender.displayName||sender.username,gift:gift.name,icon:gift.icon,cost:gift.cost,message:note,time:new Date(saved.rows[0].created_at).getTime()};
-  }catch(e){await client.query('ROLLBACK').catch(()=>{});console.error('Gift send failed:',e);return res.status(500).json({error:'Could not send this gift. Please try again.'});}
-  finally{client.release();}
-  sender.gold=remainingGold;recipient.giftsReceived||=[];recipient.giftsReceived.push(giftRecord);
-  sender.badgesStats||={goldSent:0,goldReceived:0,giftsSent:0,giftsReceived:0};recipient.badgesStats||={goldSent:0,goldReceived:0,giftsSent:0,giftsReceived:0};
-  sender.badgesStats.giftsSent=Number(sender.badgesStats.giftsSent||0)+1;recipient.badgesStats.giftsReceived=Number(recipient.badgesStats.giftsReceived||0)+1;
-  db.goldTransactions||=[];db.goldTransactions.push({id:id(),time:Date.now(),actor:sender.id,userId:sender.id,type:'GIFT_SENT',delta:String(sender.rank).toUpperCase()==='DEVELOPER'?0:-gift.cost,gift:gift.name,to:recipient.id});
-  save();log(sender,'GIFT_SEND',recipient.username,{gift:gift.name,cost:gift.cost});
-  io.to('user:'+sender.id).emit('gold:update',{gold:sender.gold});
-  io.to('user:'+recipient.id).emit('gift:received',giftRecord);
-  notify(recipient.id,'gift','A new gift arrived',`@${sender.username} sent you ${gift.name}${note?`: ${note}`:''}`);
-  res.json({ok:true,gift,giftRecord,remainingGold:sender.gold});
-}
-app.post('/api/gift/send',auth,sendGiftHandler);
-app.post('/api/users/:id/gift',auth,sendGiftHandler);
 app.get(
   "/api/leaderboard",
   auth,
@@ -4321,12 +4162,6 @@ app.get('/api/me/account',auth,async(req,res)=>{
 // Master repair APIs: privacy-aware admin controls and persistent records.
 app.post('/api/private-nickname',auth,async(req,res)=>{try{const u=current(req),target=String(req.body.targetId||''),nickname=cleanText(req.body.nickname||'').trim().slice(0,50);if(!target||target===String(u.id))return res.status(400).json({error:'Choose another user.'});const exists=await pool.query('SELECT id FROM users WHERE id=$1',[target]);if(!exists.rowCount)return res.status(404).json({error:'User not found'});if(!nickname){await pool.query('DELETE FROM private_nicknames WHERE owner_id=$1 AND target_user_id=$2',[u.id,target]);return res.json({ok:true,nickname:''});}await pool.query(`INSERT INTO private_nicknames(owner_id,target_user_id,nickname) VALUES($1,$2,$3) ON CONFLICT(owner_id,target_user_id) DO UPDATE SET nickname=EXCLUDED.nickname`,[u.id,target,nickname]);res.json({ok:true,nickname});}catch(e){console.error(e);res.status(500).json({error:'Could not save nickname'});}});
 app.get('/api/private-nicknames',auth,async(req,res)=>{const u=current(req);const q=await pool.query('SELECT target_user_id,nickname FROM private_nicknames WHERE owner_id=$1',[u.id]);res.json({nicknames:Object.fromEntries(q.rows.map(x=>[String(x.target_user_id),x.nickname]))});});
-app.get('/api/admin/logs',auth,async(req,res)=>{try{const actor=current(req);await adminLogWriteQueue;if(!(actor?.username===DEFAULT_OWNER||String(actor?.rank).toUpperCase()==='DEVELOPER'||hasFeature(actor,'view_staff_dashboard')||hasFeature(actor,'can_view_admin_logs')||userFeatureGrant(actor,'can_view_admin_logs')===true))return res.status(403).json({error:'Admin log permission required.'});const type=String(req.query.type||'all').toLowerCase(),search=String(req.query.search||'').slice(0,100),from=req.query.from||null,to=req.query.to||null,page=Math.max(1,Math.min(100000,parseInt(req.query.page,10)||1)),limit=50;const groups={staff:['MUTE','KICK','WARN','BAN','ROLE','RANK','USERNAME','MODERATION','NOTE','REPORT','STAFF','OWNER','ADMIN','FEATURE_GRANT','USER_ACTION'],economy:['GOLD','GIFT','PREMIUM','VIP','MEMBERSHIP','ECONOMY'],system:['ROOM','ACCOUNT','REGISTER','PASSWORD','EMAIL','SETTING','CONFIG','NEWS','LOGIN','LOGOUT','IP_','PERMISSION','FEATURE','PROFILE'],delete:['DELETE','CLEAR']};if(!['staff','economy','system','delete','all'].includes(type))return res.status(400).json({error:'Invalid log type.'});let terms=groups[type]||[];let params=[],where=[];if(terms.length){where.push('('+terms.map(t=>{params.push('%'+t+'%');return `UPPER(l.action_type) LIKE $${params.length}`}).join(' OR ')+')');}if(search){params.push('%'+search+'%');where.push(`(COALESCE(l.details::text,'') ILIKE ${params.length} OR l.action_type ILIKE ${params.length} OR p.username ILIKE ${params.length} OR t.username ILIKE ${params.length})`);}if(from){params.push(from);where.push(`l.created_at >= ${params.length}::date`);}if(to){params.push(to);where.push(`l.created_at < (${params.length}::date + INTERVAL '1 day')`);}const clause=where.length?'WHERE '+where.join(' AND '):'',count=await pool.query(`SELECT COUNT(*)::int AS total FROM admin_logs l LEFT JOIN users p ON p.id=l.performed_by LEFT JOIN users t ON t.id=l.target_user_id ${clause}`,params);const total=count.rows[0]?.total||0;params.push(limit,(page-1)*limit);const q=await pool.query(`SELECT l.*,p.username AS performer_username,t.username AS target_username FROM admin_logs l LEFT JOIN users p ON p.id=l.performed_by LEFT JOIN users t ON t.id=l.target_user_id ${clause} ORDER BY l.created_at DESC LIMIT ${params.length-1} OFFSET ${params.length}`,params);let resultRows=q.rows,resultTotal=total;
-if(!total&&type==='all'&&!search&&!from&&!to&&page===1&&Array.isArray(db.logs)&&db.logs.length){
-  resultRows=db.logs.slice(-limit).reverse().map(item=>({id:String(item.id||''),action_type:item.action||'ACTION',performer_username:item.actor||'SYSTEM',target_username:item.target||'—',details:JSON.stringify({target:item.target||'',meta:item.meta||{}}),created_at:item.time?new Date(item.time):null}));
-  resultTotal=db.logs.length;
-}
-res.json({logs:resultRows,total:resultTotal,page,limit,pages:Math.max(1,Math.ceil(resultTotal/limit))});}catch(e){console.error('Admin logs query failed:',e);res.status(500).json({error:'Could not load admin logs right now.'});}});
 app.post('/api/admin/private-search',auth,ownerOnly,async(req,res)=>{const a=String(req.body.user1||'').trim(),b=String(req.body.user2||'').trim();if(!a)return res.status(400).json({error:'Enter at least one username'});const ua=await pool.query('SELECT id,username FROM users WHERE LOWER(username)=LOWER($1) LIMIT 1',[a]);if(!ua.rowCount)return res.status(404).json({error:`User not found: ${a}`});let sql,params,users=[ua.rows[0]];if(b){const ub=await pool.query('SELECT id,username FROM users WHERE LOWER(username)=LOWER($1) LIMIT 1',[b]);if(!ub.rowCount)return res.status(404).json({error:`User not found: ${b}`});users.push(ub.rows[0]);sql=`SELECT m.*,s.username AS sender_username,r.username AS receiver_username FROM private_messages m LEFT JOIN users s ON s.id=m.sender_id LEFT JOIN users r ON r.id=m.receiver_id WHERE (m.sender_id=$1 AND m.receiver_id=$2) OR (m.sender_id=$2 AND m.receiver_id=$1) ORDER BY m.created_at DESC LIMIT 100`;params=[ua.rows[0].id,ub.rows[0].id];}else{sql=`SELECT m.*,s.username AS sender_username,r.username AS receiver_username FROM private_messages m LEFT JOIN users s ON s.id=m.sender_id LEFT JOIN users r ON r.id=m.receiver_id WHERE m.sender_id=$1 OR m.receiver_id=$1 ORDER BY m.created_at DESC LIMIT 100`;params=[ua.rows[0].id];}const q=await pool.query(sql,params);res.json({messages:q.rows,users});});
 app.put('/api/admin/edit-email',auth,async(req,res)=>{const actor=current(req);const target=findUser(req.body.userId);if(!target)return res.status(404).json({error:'User not found'});if(target.username===DEFAULT_OWNER||String(target.rank).toUpperCase()==='DEVELOPER')return res.status(403).json({error:'The permanent owner account is protected.'});if(actor.username!==DEFAULT_OWNER&&String(actor.rank).toUpperCase()!=='DEVELOPER'&&rankOrder[target.rank]>=rankOrder[actor.rank])return res.status(403).json({error:'You cannot edit an equal or higher rank.'});if(!(hasFeature(actor,'edit_email')||actor?.username===DEFAULT_OWNER||String(actor?.rank).toUpperCase()==='DEVELOPER'))return res.status(403).json({error:'Email editing permission required.'});const id=Number(req.body.userId),email=String(req.body.newEmail||'').trim().toLowerCase();if(!Number.isInteger(id)||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))return res.status(400).json({error:'Enter a valid email address.'});try{const q=await pool.query('UPDATE users SET email=$1 WHERE id=$2 RETURNING id,email',[email,id]);if(!q.rowCount)return res.status(404).json({error:'User not found'});await pool.query('INSERT INTO admin_logs(action_type,performed_by,target_user_id,details) VALUES($1,$2,$3,$4)', ['EMAIL_EDIT',actor.id,id,'Email updated']);res.json({ok:true,user:q.rows[0]});}catch(e){if(e.code==='23505')return res.status(409).json({error:'Email already in use'});throw e;}});
 app.post('/api/admin/profile-note',auth,async(req,res)=>{const actor=current(req);if(!featureGrantAllowed(actor,'profile_note'))return res.status(403).json({error:'Staff profile-note permission required.'});const userId=Number(req.body.userId),note=cleanText(req.body.note||'').trim().slice(0,2000);const target=findUser(String(userId));if(!userId||!target||!note)return res.status(400).json({error:'User and note are required'});if(target.id===actor.id||rankOrder[target.rank]>=rankOrder[actor.rank])return res.status(403).json({error:'You cannot add a note to an equal or higher rank.'});await pool.query('INSERT INTO profile_notes(user_id,added_by,note) VALUES($1,$2,$3)',[userId,actor.id,note]);log(actor,'PROFILE_NOTE_ADD',String(userId),{note});res.json({ok:true});});
