@@ -1251,7 +1251,7 @@ app.post("/api/rooms/create",auth,createRoomHandler);
 
 app.patch("/api/rooms/:id",auth,async(req,res)=>{
   const u=current(req),r=db.rooms.find(x=>String(x.id)===String(req.params.id)); if(!r)return res.status(404).json({error:"Room not found"});
-  if(r.isDefault || ["Main room 1","Main room 2"].includes(r.name))return res.status(403).json({error:"Permanent default rooms cannot be modified."});
+  if(r.isDefault || /^main room$/i.test(String(r.name||"").trim()))return res.status(403).json({error:"The permanent Main Room cannot be modified."});
   if(!featureGrantAllowed(u,"edit_rooms"))return res.status(403).json({error:"No permission"});
   const fields={}; for(const k of ["name","icon","description","category","rankRequired","limit","slowMode","banner","public","minAge","maxAge"]) if(req.body[k]!==undefined) fields[k]=req.body[k];
   if(req.body.password!==undefined) fields.passwordHash=req.body.password?await bcrypt.hash(String(req.body.password),10):null;
@@ -1264,7 +1264,7 @@ app.patch("/api/rooms/:id",auth,async(req,res)=>{
 app.delete("/api/rooms/:id",auth,async(req,res)=>{
   const u=current(req); const r=db.rooms.find(x=>String(x.id)===String(req.params.id));
   if(!r)return res.status(404).json({error:"Room not found"});
-  if(r.isDefault || ["Main room 1","Main room 2"].includes(r.name)) return res.status(400).json({error:"Cannot delete a permanent default room."});
+  if(r.isDefault || /^main room$/i.test(String(r.name||"").trim())) return res.status(400).json({error:"Cannot delete the permanent Main Room."});
   if(!featureGrantAllowed(u,"delete_rooms")) return res.status(403).json({error:"Room deletion permission required."});
   await pool.query(`DELETE FROM rooms WHERE id=$1`,[Number(req.params.id)]);
   db.rooms=db.rooms.filter(x=>String(x.id)!==String(req.params.id)); db.messages=db.messages.filter(m=>String(m.roomId)!==String(req.params.id));
