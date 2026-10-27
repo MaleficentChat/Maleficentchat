@@ -297,24 +297,30 @@ async function loadState(defaultState) {
     ORDER BY l.created_at DESC,l.id DESC
     LIMIT 5000
   `);
-  state.logs = auditRows.reverse().map(row => {
-    let details = {};
-    try {
-      const parsed = typeof row.details === "string" ? JSON.parse(row.details) : row.details;
-      if (parsed && typeof parsed === "object") details = parsed;
-      else if (parsed != null) details = { message: String(parsed) };
-    } catch {
-      if (row.details) details = { message: String(row.details) };
-    }
-    return {
-      id: String(row.id),
-      time: row.created_at ? new Date(row.created_at).getTime() : Date.now(),
-      actor: row.performer_username || "SYSTEM",
-      action: row.action_type || "ACTION",
-      target: row.target_username || details.target || (row.target_user_id ? String(row.target_user_id) : ""),
-      meta: details.meta && typeof details.meta === "object" ? details.meta : details
-    };
-  });
+  // Prefer the durable audit table, but preserve legacy saved logs if an older deployment
+  // could not write admin_logs. This avoids making the Staff Dashboard look empty on restart.
+  if (auditRows.length) {
+    state.logs = auditRows.reverse().map(row => {
+      let details = {};
+      try {
+        const parsed = typeof row.details === "string" ? JSON.parse(row.details) : row.details;
+        if (parsed && typeof parsed === "object") details = parsed;
+        else if (parsed != null) details = { message: String(parsed) };
+      } catch {
+        if (row.details) details = { message: String(row.details) };
+      }
+      return {
+        id: String(row.id),
+        time: row.created_at ? new Date(row.created_at).getTime() : Date.now(),
+        actor: row.performer_username || "SYSTEM",
+        action: row.action_type || "ACTION",
+        target: row.target_username || details.target || (row.target_user_id ? String(row.target_user_id) : ""),
+        meta: details.meta && typeof details.meta === "object" ? details.meta : details
+      };
+    });
+  } else {
+    state.logs = Array.isArray(state.logs) ? state.logs : [];
+  }
 
   state.settings ||= {};
   state.settings.feature_grants = settingRows.find(x=>x.key==='feature_grants')?.value || state.settings.feature_grants || {};
