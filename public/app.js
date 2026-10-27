@@ -622,12 +622,28 @@ async function openGifPicker(){
 
 /* ---------------- ROOMS ---------------- */
 
+/* Defensive room-list cleanup: never display the retired age-split defaults, even if an older server response is cached. */
+function sanitizeRoomList(input) {
+  const rooms = Array.isArray(input) ? input : [];
+  const canonicalMain = rooms.find(room => String(room?.name || "").trim() === "Main Room");
+  return rooms.filter(room => {
+    const name = String(room?.name || "").trim();
+    const normalized = name.toLowerCase();
+    if (normalized === "main room 1" || normalized === "main room 2") return false;
+    if (normalized === "main room" && name !== "Main Room") return false;
+    return true;
+  }).map(room => ({
+    ...room,
+    isDefault: String(room?.name || "").trim() === "Main Room"
+  }));
+}
+
 async function loadRooms() {
   let lastError = null;
   for (let attempt = 0; attempt < 2; attempt++) {
     try {
       const data = await api("/api/rooms");
-      state.rooms = Array.isArray(data.rooms) ? data.rooms : [];
+      state.rooms = sanitizeRoomList(data.rooms);
       // The room endpoint is the source of truth; always display all available rooms on initial load.
       if (state.rooms.length) {
         state.roomListMode = "all";
@@ -635,14 +651,14 @@ async function loadRooms() {
       }
       const boot = await api("/api/bootstrap");
       if (Array.isArray(boot.rooms) && boot.rooms.length) {
-        state.rooms = boot.rooms;
+        state.rooms = sanitizeRoomList(boot.rooms);
         break;
       }
     } catch (e) {
       lastError = e;
       try {
         const boot = await api("/api/bootstrap");
-        state.rooms = Array.isArray(boot.rooms) ? boot.rooms : [];
+        state.rooms = sanitizeRoomList(boot.rooms);
         if (state.rooms.length) break;
       } catch (_) {}
     }
@@ -652,7 +668,7 @@ async function loadRooms() {
   if (!state.rooms.length && lastError) toast("Rooms could not load: " + lastError.message);
   requestAnimationFrame(()=>renderRooms());
   if (!state.rooms.length) {
-    setTimeout(async()=>{try{const retry=await api("/api/rooms");if(Array.isArray(retry.rooms)&&retry.rooms.length){state.rooms=retry.rooms;state.roomListMode="all";renderRooms();}}catch(e){console.warn("Room list retry failed:",e.message)}},1500);
+    setTimeout(async()=>{try{const retry=await api("/api/rooms");if(Array.isArray(retry.rooms)&&retry.rooms.length){state.rooms=sanitizeRoomList(retry.rooms);state.roomListMode="all";renderRooms();}}catch(e){console.warn("Room list retry failed:",e.message)}},1500);
   }
 }
 
