@@ -2532,7 +2532,7 @@ async function openProfileActionDrawer(user,data={}){
     <button class="quick-user-row" id="drawerArchive"><span>▣</span><b>${archived?'Unarchive conversation':'Archive conversation'}</b><i>›</i></button>
     <button class="quick-user-row" id="drawerReport"><span>⚑</span><b>Report user</b><i>›</i></button>
   </div>`);
-  $('drawerNickname')?.addEventListener('click',()=>{closeModal();nicknameModal(user)});
+  $('drawerNickname')?.addEventListener('click',async()=>{const current=(await api('/api/private-nicknames').catch(()=>({nicknames:{}}))).nicknames||{};const value=prompt('Private nickname for @'+(user.username||'user')+' (only you can see it):',current[id]||'');if(value===null)return;try{await api('/api/private-nickname',{method:'POST',body:JSON.stringify({targetId:id,nickname:value.trim()})});closeModal();toast(value.trim()?'Private nickname saved.':'Private nickname cleared.');}catch(e){toast(e.message)}});
   $('drawerIgnore')?.addEventListener('click',async()=>{try{if(blocked)await api(`/api/users/${encodeURIComponent(id)}/block`,{method:'DELETE'});else await block(id);closeModal();toast(blocked?'User is no longer ignored.':'User ignored.');}catch(e){toast(e.message)}});
   $('drawerMute')?.addEventListener('click',()=>{dmSetPref('muted',id,!muted);closeModal();toast(muted?'Conversation unmuted.':'Conversation muted.');});
   $('drawerArchive')?.addEventListener('click',()=>{dmSetPref('archived',id,!archived);closeModal();toast(archived?'Conversation unarchived.':'Conversation archived.');});
