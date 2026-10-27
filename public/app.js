@@ -3132,6 +3132,14 @@ async function loadOwner() {
 
       </div>
 
+      <div class="card owner-audit-management">
+        <h3>📜 Audit Logs Management</h3>
+        <p class="muted">Control which event types appear in Staff Dashboard audit logs and choose the minimum rank allowed to view each type.</p>
+        <div class="owner-audit-toolbar"><input id="ownerAuditTypeSearch" type="search" placeholder="Search event types…"><button class="mini" type="button" id="ownerAuditAllOn">Turn all on</button><button class="mini" type="button" id="ownerAuditAllOff">Turn all off</button></div>
+        <div id="ownerAuditVisibilityRows" class="owner-audit-visibility-list"></div>
+        <div class="toolbar"><button class="primary" type="button" id="saveOwnerAuditVisibility">Save Audit Log Settings</button><span class="muted" id="ownerAuditSaveStatus">Unsaved changes stay here until saved.</span></div>
+      </div>
+
       <div class="card">
         <h3>🚫 Filter Words — Bulk Add</h3>
         <label>Bulk Add - One word per line (ENTER)<textarea id="bulkFilterWords" placeholder="Father\nMother\nHello\nInshalla"></textarea></label>
@@ -3272,6 +3280,47 @@ async function loadOwner() {
       try{await api('/api/owner/settings',{method:'PATCH',body:JSON.stringify({systemModeration:rules})});toast('System Moderation settings saved.');}
       catch(e){toast(e.message);}
     };
+    const auditTypes = [
+      ["deleted_messages","Deleted messages","MESSAGE_DELETE, DELETE_MESSAGE, MESSAGE_DELETED"],
+      ["edited_messages","Edited messages","MESSAGE_EDIT, EDIT_MESSAGE, MESSAGE_UPDATED"],
+      ["rank_changes","Rank changes","RANK_CHANGE, USER_RANK, RANK_UPDATE"],
+      ["account_changes","Account changes","ACCOUNT_MODIFY, USER_UPDATE, ACCOUNT_UPDATE"],
+      ["login_activity","Login / logout activity","LOGIN, LOGOUT"],
+      ["invisible_mode","Invisible mode changes","INVISIBLE_MODE"],
+      ["feature_permissions","Feature permission changes","FEATURE_ACCESS_BULK_SAVE, FEATURE_ACCESS"],
+      ["moderation_actions","Bans, mutes and kicks","BAN, UNBAN, MUTE, KICK, MODERATION"],
+      ["reports","Reports and report resolution","REPORT"],
+      ["room_changes","Room creation / edits / deletion","ROOM_CREATE, ROOM_EDIT, ROOM_DELETE, ROOM_CLEAR"],
+      ["gold_transactions","Gold and currency changes","GOLD, GOLD_SHARE, GOLD_TRANSFER"],
+      ["site_settings","Site settings changes","SETTINGS_UPDATE, SITE_SETTINGS"],
+      ["private_messages","Private message moderation","PRIVATE_MESSAGE, DM_"],
+      ["file_uploads","Uploads and attachments","UPLOAD, ATTACHMENT"],
+      ["profile_changes","Profile and avatar changes","PROFILE, AVATAR, BIO"],
+      ["staff_actions","Staff dashboard actions","STAFF_"]
+    ];
+    const auditRanks = ["MEMBER","VIP","PREMIUM","MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER","DEVELOPER"];
+    const defaultAuditVisibility = Object.fromEntries(auditTypes.map(([key])=>[key,{enabled:true,minimumRank:"ADMIN"}]));
+    const auditVisibility = {...defaultAuditVisibility,...(data.settings?.audit_log_visibility||{})};
+    const renderOwnerAuditVisibility = (query="") => {
+      const host=$("ownerAuditVisibilityRows"); if(!host)return;
+      const q=query.trim().toLowerCase();
+      host.innerHTML=auditTypes.filter(([key,label,actions])=>!q||(key+" "+label+" "+actions).toLowerCase().includes(q)).map(([key,label,actions])=>{
+        const rule={...defaultAuditVisibility[key],...(auditVisibility[key]||{})};
+        return '<div class="owner-audit-rule" data-audit-rule="'+esc(key)+'"><div class="owner-audit-rule-main"><b>'+esc(label)+'</b><small>Events: '+esc(actions.split(", ").join(" · "))+'</small></div><label class="owner-audit-toggle"><input type="checkbox" data-audit-enabled="'+esc(key)+'" '+(rule.enabled!==false?'checked':'')+'><span>Visible</span></label><label class="owner-audit-rank-label">Minimum rank<select data-audit-rank="'+esc(key)+'">'+auditRanks.map(rankName=>'<option value="'+rankName+'" '+(String(rule.minimumRank||"ADMIN").toUpperCase()===rankName?'selected':'')+'>'+rankName.replace(/_/g," ")+'</option>').join("")+'</select></label></div>';
+      }).join("")||'<p class="muted">No event types match your search.</p>';
+      host.querySelectorAll("[data-audit-enabled]").forEach(el=>el.addEventListener("change",()=>{auditVisibility[el.dataset.auditEnabled]={...(auditVisibility[el.dataset.auditEnabled]||{}),enabled:el.checked};$("ownerAuditSaveStatus").textContent="Unsaved changes";}));
+      host.querySelectorAll("[data-audit-rank]").forEach(el=>el.addEventListener("change",()=>{auditVisibility[el.dataset.auditRank]={...(auditVisibility[el.dataset.auditRank]||{}),minimumRank:el.value};$("ownerAuditSaveStatus").textContent="Unsaved changes";}));
+    };
+    renderOwnerAuditVisibility();
+    $("ownerAuditTypeSearch")?.addEventListener("input",e=>renderOwnerAuditVisibility(e.target.value));
+    $("ownerAuditAllOn")?.addEventListener("click",()=>{auditTypes.forEach(([key])=>auditVisibility[key]={...(auditVisibility[key]||{}),enabled:true});renderOwnerAuditVisibility($("ownerAuditTypeSearch")?.value||"");$("ownerAuditSaveStatus").textContent="Unsaved changes";});
+    $("ownerAuditAllOff")?.addEventListener("click",()=>{auditTypes.forEach(([key])=>auditVisibility[key]={...(auditVisibility[key]||{}),enabled:false});renderOwnerAuditVisibility($("ownerAuditTypeSearch")?.value||"");$("ownerAuditSaveStatus").textContent="Unsaved changes";});
+    $("saveOwnerAuditVisibility")?.addEventListener("click",async()=>{
+      const btn=$("saveOwnerAuditVisibility");btn.disabled=true;
+      try{const result=await api("/api/owner/settings",{method:"PATCH",body:JSON.stringify({auditLogVisibility:auditVisibility})});Object.assign(auditVisibility,result.settings?.audit_log_visibility||{});$("ownerAuditSaveStatus").textContent="Saved successfully.";toast("Audit log visibility settings saved.");}
+      catch(error){$("ownerAuditSaveStatus").textContent="Save failed: "+(error.message||"Unknown error");toast(error.message||"Could not save audit settings.");}
+      finally{btn.disabled=false;}
+    });
     if($('ownerUserSearch')) $('ownerUserSearch').oninput=()=>{const q=$('ownerUserSearch').value.trim().toLowerCase();const rows=[...document.querySelectorAll('.owner-user-control-row')];let showing=0;rows.forEach(row=>{const match=(row.dataset.userSearch||'').includes(q);row.style.display=match?'':'none';if(match)showing++});if($('ownerUserSearchCount'))$('ownerUserSearchCount').textContent=q?(`${showing} of ${rows.length} users`):(`${rows.length} users`)};
     if($('addBulkFilter')) $('addBulkFilter').onclick=async()=>{try{await api('/api/filter-words/bulk',{method:'POST',body:JSON.stringify({text:$('bulkFilterWords').value})});$('bulkFilterWords').value='';await loadOwner();}catch(e){toast(e.message)}};
     if($('filterSearch')) $('filterSearch').oninput=()=>{const q=$('filterSearch').value.toLowerCase();const rows=[...document.querySelectorAll('.filter-table-row')];let showing=0;rows.forEach(r=>{const show=r.dataset.word.toLowerCase().includes(q);r.style.display=show?'':'none';if(show)showing++});$('filterCounts').textContent=`Total: ${rows.length} | Showing: ${showing}`};
