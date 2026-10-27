@@ -120,11 +120,7 @@
   <div id="viewUsers" class="view hidden"><div class="topbar"><div><h2>User Search</h2><p class="muted">Rank ordered, online users first.</p></div><input id="userSearch" placeholder="Search username or display name…"><select id="userRankFilter"><option value="">All ranks</option><option>MEMBER</option><option>VIP</option><option>PREMIUM</option><option>MOD</option><option>ADMIN</option><option>SUPER_ADMIN</option><option>COMMISSOR</option><option>COOWNER</option><option>OWNER</option></select></div><div id="users" class="user-grid"></div></div>
   <div id="viewFriends" class="view hidden"><div class="topbar"><h2>Friends & Requests</h2></div><div id="friends"></div></div>
   <div id="viewDms" class="view hidden"><div class="topbar"><div><h2>Private Messages</h2><p class="muted">Your conversations, or search by username to start a chat.</p></div><input id="dmUserSearch" placeholder="Search username…"><button class="primary" id="dmSearchBtn">Find user</button></div><div id="dmSearchResults" class="user-grid"></div><div id="dmList" class="user-grid"></div></div>
-    <div id="viewGames" class="view hidden"><div class="topbar"><div><h2>🎮 Games Hub</h2><p class="muted">Local games, daily challenges, XP, gold and leaderboards.</p></div></div><div class="game-hub-grid">
-  <div class="panel"><h3>❌ Tic-Tac-Toe</h3><button class="primary" onclick="openTicTacToe()">Play</button></div>
-  <div class="panel"><h3>🔢 Daily Number Challenge</h3><button class="primary" onclick="openNumberGuess()">Play</button></div>
-  <div class="panel"><h3>🏆 Your Progress</h3><div id="gamesProgress" class="game-progress"></div><button class="mini" onclick="showGameScores()">View leaderboard</button></div>
-  </div><div id="gamesResult" class="game-result large"></div></div>
+    <div id="viewGames" class="view hidden"><div class="topbar"><div><h2>🎮 Maleficent Arcade</h2><p class="muted">Run the Thorn Castle. Flip gravity, dodge the gates, and challenge a friend.</p></div></div><div id="gamesRoot" class="games-root"></div></div>
   <div id="viewNews" class="view hidden"><div class="topbar"><div><h2>📰 News</h2><p class="muted">Community announcements.</p></div><button class="primary admin-only hidden" id="publishNews">Publish</button></div><div id="news" class="stack"></div></div>
   <div id="viewLeaderboard" class="view hidden"><div class="topbar"><h2>🏆 XP & Gold Leaderboards</h2></div><div id="leaderboard" class="grid2"></div></div>
   <div id="viewSaved" class="view hidden"><div class="topbar"><h2>🔖 Saved / Bookmarked Messages</h2></div><div id="saved" class="stack"></div></div>
@@ -140,7 +136,7 @@
 
 <div id="modal" class="modal hidden"><div class="modal-card"><button class="modal-close" onclick="closeModal()">×</button><div id="modalBody"></div></div></div>
 <div id="toast"></div><div id="actionLock" class="action-lock hidden"></div>
-<script src="/app.js?v=horizontal-social-3"></script>
-<script src="/gravity-run.js?v=remove-gifts-logs-dice-1"></script>
+<script src="/app.js?v=gravity-run-main-1"></script>
+<script src="/gravity-run.js?v=gravity-run-main-1"></script>
 </body>
 </html>
