@@ -2462,6 +2462,38 @@ async function lookupIpNetworkDetails(ip){
   ipGeoCache.set(ip,{value:unavailable,expiresAt:now+5*60*1000});
   return unavailable;
 }
+app.get('/api/staff/user/:id/ip-insights',auth,async(req,res)=>{
+  try{
+    const actor=current(req), target=findUser(req.params.id);
+    if(!target)return res.status(404).json({error:'User not found'});
+    if(!hasRank(actor,'MOD')||String(target.id)===String(actor.id)||rankOrder[String(target.rank).toUpperCase()]>=rankOrder[String(actor.rank).toUpperCase()]){
+      return res.status(403).json({error:'Staff permission required to view these insights.'});
+    }
+    const targetIps=await pool.query('SELECT DISTINCT host(ip_address) AS ip_address FROM user_ip_history WHERE user_id=$1',[Number(target.id)]);
+    const ips=targetIps.rows.map(r=>r.ip_address).filter(Boolean);
+    let matches=[];
+    if(ips.length){
+      const found=await pool.query(`SELECT u.id,u.username,u.created_at,MIN(h.recorded_at) AS first_seen,MAX(h.recorded_at) AS last_seen,COUNT(h.id)::int AS shared_ip_events
+        FROM users u JOIN user_ip_history h ON h.user_id=u.id
+        WHERE u.id<>$1 AND host(h.ip_address)=ANY($2::text[])
+        GROUP BY u.id,u.username,u.created_at
+        ORDER BY u.created_at ASC NULLS LAST,LOWER(u.username)`,[Number(target.id),ips]);
+      matches=found.rows.map(row=>{
+        const historic=findUser(String(row.id));
+        return {id:String(row.id),username:row.username,registeredAt:row.created_at,firstSeen:row.first_seen,lastSeen:row.last_seen,sharedIpEvents:row.shared_ip_events,usernameHistory:(historic?.usernameHistory||[]).map(item=>({from:item.from||item.username||'',to:item.to||'',time:item.time||item.changedAt||null,changedBy:item.changedBy||''}))};
+      });
+    }
+    res.json({
+      user:{id:String(target.id),username:target.username,registeredAt:target.createdAt||null,usernameHistory:(target.usernameHistory||[]).map(item=>({from:item.from||item.username||'',to:item.to||'',time:item.time||item.changedAt||null,changedBy:item.changedBy||''}))},
+      matches,
+      note:'Shared IP addresses can be used by families, schools, workplaces, mobile carriers, VPNs, and public networks. A match alone does not prove that accounts belong to the same person. IP addresses are intentionally hidden in this profile insights view.'
+    });
+  }catch(err){
+    console.error('[IP_INSIGHTS] failed:',err?.stack||err?.message||err);
+    res.status(500).json({error:'Could not load account insights.'});
+  }
+});
+
 app.get("/api/staff/ip-inspection",auth,ownerOnly,async(req,res)=>{
   let stage="prepare-query";
   try{
@@ -2490,9 +2522,21 @@ app.get("/api/staff/ip-inspection",auth,ownerOnly,async(req,res)=>{
         value.startsWith("198.51.100.")||value.startsWith("203.0.113.");
     };
     const uniqueIps=[...new Set(q.rows.map(x=>normalizeIp(x.ip_address)))].filter(ip=>!isPrivateOrLocal(ip));
+    const sourceUserIds=[...new Set(q.rows.filter(row=>row.ip_address&&!isPrivateOrLocal(normalizeIp(row.ip_address))).map(row=>Number(row.user_id)).filter(Number.isFinite))];
+    const matchedIps=[...new Set(q.rows.map(row=>normalizeIp(row.ip_address)).filter(ip=>ip&&!isPrivateOrLocal(ip)))];
+    let sameIpAccounts=[];
+    if(matchedIps.length&&sourceUserIds.length){
+      const matches=await pool.query(`SELECT DISTINCT u.id,u.username,u.email,u.created_at,host(h.ip_address) AS ip_address,h.event_type,h.recorded_at,h.user_agent
+        FROM users u JOIN user_ip_history h ON h.user_id=u.id
+        WHERE host(h.ip_address)=ANY($1::text[]) AND NOT (u.id=ANY($2::int[]))
+        ORDER BY u.username,h.recorded_at DESC`,[matchedIps,sourceUserIds]);
+      const seen=new Set();
+      sameIpAccounts=matches.rows.filter(row=>{const key=String(row.id)+'|'+row.ip_address;if(seen.has(key))return false;seen.add(key);return true;});
+    }
     const lookups=await Promise.all(uniqueIps.slice(0,60).map(async ip=>[ip,await lookupIpNetworkDetails(ip)]));
     const geo=Object.fromEntries(lookups);
     return res.json({
+      sameIpAccounts:sameIpAccounts.map(row=>({...row,network:geo[row.ip_address]||{lookupStatus:"Not looked up"}})),
       records:q.rows.map(row=>{
         const ip=normalizeIp(row.ip_address);
         const privateIp=isPrivateOrLocal(ip);
