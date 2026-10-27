@@ -2687,6 +2687,85 @@ app.get("/api/staff/system-center/audit",auth,async(req,res)=>{
   const rows=visibleRows.filter(x=>!q||[x.target,x.actor,x.actorUsername,x.action,x.reason,x.source].some(v=>String(v||"").toLowerCase().includes(q)));
   res.json({audit:rows});
 });
+
+/* Staff applications persist in PostgreSQL so submissions survive redeploys. */
+async function ensureStaffApplicationsTable(){
+  await pool.query(`CREATE TABLE IF NOT EXISTS staff_applications(
+    id BIGSERIAL PRIMARY KEY,
+    user_id BIGINT NOT NULL,
+    username TEXT NOT NULL,
+    display_name TEXT NOT NULL DEFAULT '',
+    requested_rank TEXT NOT NULL,
+    activity TEXT NOT NULL,
+    reason TEXT NOT NULL,
+    experience TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'PENDING',
+    reviewed_by BIGINT,
+    reviewed_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  )`);
+}
+app.get('/api/staff-applications/mine',auth,async(req,res)=>{
+  try{
+    await ensureStaffApplicationsTable();
+    const u=current(req);
+    const q=await pool.query('SELECT id,requested_rank AS "requestedRank",activity,reason,experience,status,created_at AS "createdAt" FROM staff_applications WHERE user_id=$1 ORDER BY created_at DESC,id DESC LIMIT 1',[Number(u.id)]);
+    const r=q.rows[0];res.json({application:r?{...r,id:String(r.id),createdAt:new Date(r.createdAt).getTime()}:null});
+  }catch(e){console.error('Staff application lookup failed:',e);res.status(500).json({error:'Could not load your staff application.'});}
+});
+app.post('/api/staff-applications',auth,async(req,res)=>{
+  try{
+    await ensureStaffApplicationsTable();
+    const u=current(req),requestedRank=String(req.body.requestedRank||'').toUpperCase();
+    const activity=String(req.body.activity||'').trim().slice(0,180),reason=String(req.body.reason||'').trim().slice(0,2500),experience=String(req.body.experience||'').trim().slice(0,2000);
+    if(!['MOD','ADMIN','SUPER_ADMIN','COMMISSOR','COOWNER'].includes(requestedRank))return res.status(400).json({error:'Choose a rank from Moderator to Co-owner.'});
+    if(!activity||!reason||!experience)return res.status(400).json({error:'Please complete every question before submitting.'});
+    const pending=await pool.query("SELECT id FROM staff_applications WHERE user_id=$1 AND status IN ('PENDING','APPROVED') LIMIT 1",[Number(u.id)]);
+    if(pending.rowCount)return res.status(409).json({error:'You already have a pending or approved staff application.'});
+    const q=await pool.query("INSERT INTO staff_applications(user_id,username,display_name,requested_rank,activity,reason,experience,status) VALUES($1,$2,$3,$4,$5,$6,$7,'PENDING') RETURNING id",[Number(u.id),u.username,u.displayName||u.username,requestedRank,activity,reason,experience]);
+    log(u,'STAFF_APPLICATION_SUBMIT',u.username,{applicationId:String(q.rows[0].id),requestedRank});
+    res.json({ok:true,id:String(q.rows[0].id),status:'PENDING'});
+  }catch(e){console.error('Staff application submission failed:',e);res.status(500).json({error:'Could not submit your application. Please try again.'});}
+});
+app.get('/api/staff/applications',auth,featureAllowed('view_staff_dashboard'),async(req,res)=>{
+  const actor=current(req);if(!hasRank(actor,'MOD'))return res.status(403).json({error:'Staff only.'});
+  try{await ensureStaffApplicationsTable();const q=await pool.query("SELECT a.id,a.user_id AS \"userId\",a.username,a.display_name AS \"displayName\",a.requested_rank AS \"requestedRank\",a.activity,a.reason,a.experience,a.status,a.created_at AS \"createdAt\",a.reviewed_at AS \"reviewedAt\",reviewer.username AS \"reviewedBy\" FROM staff_applications a LEFT JOIN users reviewer ON reviewer.id=a.reviewed_by ORDER BY CASE WHEN a.status='PENDING' THEN 0 ELSE 1 END,a.created_at DESC LIMIT 300");res.json({applications:q.rows.map(x=>({...x,id:String(x.id),userId:String(x.userId),createdAt:new Date(x.createdAt).getTime(),reviewedAt:x.reviewedAt?new Date(x.reviewedAt).getTime():null}))});}
+  catch(e){console.error('Staff application list failed:',e);res.status(500).json({error:'Could not load staff applications.'});}
+});
+app.post('/api/staff/applications/:id/reject',auth,featureAllowed('view_staff_dashboard'),async(req,res)=>{
+  const actor=current(req);if(!hasRank(actor,'MOD'))return res.status(403).json({error:'Staff only.'});
+  try{await ensureStaffApplicationsTable();const q=await pool.query("UPDATE staff_applications SET status='REJECTED',reviewed_by=$2,reviewed_at=NOW() WHERE id=$1 AND status='PENDING' RETURNING username",[req.params.id,Number(actor.id)]);if(!q.rowCount)return res.status(404).json({error:'Pending application not found.'});log(actor,'STAFF_APPLICATION_REJECT',q.rows[0].username,{applicationId:req.params.id});res.json({ok:true});}
+  catch(e){console.error('Staff application rejection failed:',e);res.status(500).json({error:'Could not reject this application.'});}
+});
+app.post('/api/staff/applications/:id/grant',auth,featureAllowed('view_staff_dashboard'),async(req,res)=>{
+  const actor=current(req);if(!hasRank(actor,'MOD'))return res.status(403).json({error:'Staff only.'});
+  const requested=String(req.body.rank||'').toUpperCase();
+  if(!['MOD','ADMIN','SUPER_ADMIN','COMMISSOR','COOWNER'].includes(requested))return res.status(400).json({error:'Choose a rank from Moderator to Co-owner.'});
+  try{
+    await ensureStaffApplicationsTable();
+    const client=await pool.connect();
+    try{
+      await client.query('BEGIN');
+      const appResult=await client.query("SELECT * FROM staff_applications WHERE id=$1 AND status='PENDING' FOR UPDATE",[req.params.id]);
+      if(!appResult.rowCount){await client.query('ROLLBACK');return res.status(404).json({error:'Pending application not found.'});}
+      const application=appResult.rows[0],target=findUser(application.user_id);
+      if(!target){await client.query('ROLLBACK');return res.status(404).json({error:'Applicant account not found.'});}
+      if(target.username==='Maleficent'||String(target.rank).toUpperCase()==='DEVELOPER'){await client.query('ROLLBACK');return res.status(403).json({error:'Protected account cannot be changed.'});}
+      const ownerPower=String(actor.rank).toUpperCase()==='DEVELOPER'||(String(actor.rank).toUpperCase()==='OWNER'&&actor.username==='Maleficent');
+      if(!hasFeature(actor,'staff_rank_assignment')){await client.query('ROLLBACK');return res.status(403).json({error:'You do not have rank-assignment permission.'});}
+      if(!ownerPower&&rankOrder[requested]>rankOrder.MOD){await client.query('ROLLBACK');return res.status(403).json({error:'Your permissions allow granting Moderator or below only.'});}
+      if(!ownerPower&&rankOrder[String(target.rank).toUpperCase()]>=rankOrder[String(actor.rank).toUpperCase()]){await client.query('ROLLBACK');return res.status(403).json({error:'You cannot change an equal or higher rank.'});}
+      target.rank=requested;
+      await client.query("UPDATE users SET rank=$1 WHERE id=$2",[requested.toLowerCase(),Number(target.id)]);
+      await client.query("UPDATE staff_applications SET status='APPROVED',reviewed_by=$2,reviewed_at=NOW() WHERE id=$1",[req.params.id,Number(actor.id)]);
+      await client.query('COMMIT');
+      save();log(actor,'STAFF_APPLICATION_GRANT',target.username,{applicationId:req.params.id,rank:requested});
+      systemNotice(`@${actor.username} granted ${requested} to @${target.username} after staff application review.`);
+      res.json({ok:true,rank:requested});
+    }catch(e){try{await client.query('ROLLBACK')}catch{}throw e;}finally{client.release();}
+  }catch(e){console.error('Staff application rank grant failed:',e);res.status(500).json({error:'Could not grant this rank. Check rank-assignment permissions and try again.'});}
+});
+
 app.get("/api/staff/dashboard",auth,featureAllowed("view_staff_dashboard"),async(req,res)=>{
   const u=current(req);
   if(!hasRank(u,"MOD"))return res.status(403).json({error:"Staff only"});
