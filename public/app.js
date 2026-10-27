@@ -2517,7 +2517,6 @@ async function openProfileActionDrawer(user,data){
   $('drawerHistory')?.addEventListener('click',()=>showUserActionHistory(user.id));
   $('drawerFriend')?.addEventListener('click',async()=>{try{await friend(user.id);closeModal();toast('Friend request sent.')}catch(e){toast(e.message)}});
   $('drawerBlock')?.addEventListener('click',async()=>{try{if(blocked) await api(`/api/users/${user.id}/block`,{method:'DELETE'}); else await block(user.id); closeModal(); toast(blocked?'User unblocked.':'User blocked.');}catch(e){toast(e.message)}});
-  $('drawerGift')?.addEventListener('click',async()=>{closeModal();renderUserProfileModal(user,data);setTimeout(()=>document.querySelector('.profile-tab[data-tab=\"gifts\"]')?.click(),0);});
   $('drawerGold')?.addEventListener('click',()=>{closeModal();shareGoldModal(user)});
   $('drawerModerate')?.addEventListener('click',()=>{closeModal();moderate(user.id)});
   $('drawerStaff')?.addEventListener('click',()=>{closeModal();staffAccountModal(user)});$('drawerAccountModifications')?.addEventListener('click',()=>{closeModal();staffAccountModificationModal(user)});$('drawerNote')?.addEventListener('click',()=>{closeModal();staffProfileNoteModal(user)});
