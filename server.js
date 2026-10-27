@@ -1636,7 +1636,6 @@ app.delete(
 app.post(
   "/api/messages/:id/reaction",
   auth,
-  featureAllowed("react_message"),
   async(req,res)=>{
     const u=current(req);
     const emoji=String(req.body?.emoji||"👍");
