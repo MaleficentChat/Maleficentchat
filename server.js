@@ -441,9 +441,28 @@ function current(req){
 }
 
 function clientIp(req){
-  let ip=String(req.ip||req.socket.remoteAddress||"").split(",")[0].trim();
-  if(ip.startsWith("::ffff:")) ip=ip.slice(7);
-  return ip;
+  const normalize=value=>String(value||"").trim().replace(/^::ffff:/i,"").replace(/^\[|\]$/g,"");
+  const isPrivateOrLocal=value=>{
+    const ip=normalize(value).toLowerCase();
+    return !ip||ip==="unknown"||ip==="unavailable"||ip==="::1"||ip==="127.0.0.1"||
+      ip.startsWith("127.")||ip.startsWith("10.")||ip.startsWith("192.168.")||
+      /^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(ip)||ip.startsWith("169.254.")||
+      ip.startsWith("100.64.")||ip.startsWith("100.65.")||ip.startsWith("100.66.")||ip.startsWith("100.67.")||
+      ip.startsWith("fc")||ip.startsWith("fd")||ip.startsWith("fe80:")||
+      ip==="0.0.0.0"||ip.startsWith("192.0.2.")||ip.startsWith("198.51.100.")||ip.startsWith("203.0.113.");
+  };
+  // Render forwards the original client address through proxy headers. Prefer
+  // a public address from the forwarded chain instead of recording the
+  // hosting container's private address (for example 10.x.x.x).
+  const forwarded=[
+    ...(Array.isArray(req.ips)?req.ips:[]),
+    req.headers["cf-connecting-ip"],
+    req.headers["x-real-ip"],
+    req.headers["x-forwarded-for"],
+    req.ip,
+    req.socket?.remoteAddress
+  ].flatMap(value=>String(value||"").split(",").map(normalize)).filter(Boolean);
+  return forwarded.find(ip=>!isPrivateOrLocal(ip))||forwarded[0]||"unknown";
 }
 async function recordUserIp(req,user,eventType){
   const ip=clientIp(req);
