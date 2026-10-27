@@ -2643,7 +2643,7 @@ app.get("/api/staff/system-center",auth,async(req,res)=>{
   try{await pool.query("SELECT 1");database={ok:true,latencyMs:Date.now()-started};}
   catch(e){database={ok:false,latencyMs:Date.now()-started,error:"Database health check failed"};}
   const users=db.users||[], now=Date.now();
-  const recent=(db.moderationHistory||[]).slice().reverse();
+  const recent=filterAuditRowsForRank((db.moderationHistory||[]).slice().reverse(),actor);
   const enabledRules=Object.entries(db.settings?.system_moderation||{}).filter(([,v])=>v?.enabled===true).map(([key,v])=>({key,action:v.action,durationMinutes:v.durationMinutes,reason:v.reason}));
   res.json({health:{server:"ok",database,uptimeSeconds:Math.floor(process.uptime()),checkedAt:now},stats:{users:users.length,online:users.filter(x=>x.online&&!x.invisible).length,rooms:(db.rooms||[]).length,messages:(db.messages||[]).length,openReports:(db.reports||[]).filter(x=>String(x.status||"OPEN").toUpperCase()==="OPEN").length,activeModerations:users.filter(x=>x.banned||(x.mutedUntil&&x.mutedUntil>now)||(x.kickedUntil&&x.kickedUntil>now)).length},rules:enabledRules,audit:recent});
 });
