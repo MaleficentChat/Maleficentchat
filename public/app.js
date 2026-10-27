@@ -2586,12 +2586,32 @@ async function openProfileActionDrawer(user,data={}){
   if(isSelf){modal(`<div class="profile-drawer"><h2>Account actions</h2><button class="quick-user-row" id="drawerEdit">✏️ Edit profile</button><button class="quick-user-row" id="drawerBlocked">🚫 Blocked users</button></div>`);$('drawerEdit')?.addEventListener('click',()=>{closeModal();state.view='profile';renderView()});$('drawerBlocked')?.addEventListener('click',showBlockedUsers);return;}
   const prefs=dmPrefs(),id=String(user.id),muted=!!prefs.muted?.[id],archived=!!prefs.archived?.[id],blocked=(state.user.blocked||[]).map(String).includes(id);
   modal(`<div class="profile-drawer quick-action-menu"><h2>Actions · @${esc(user.username||'user')}</h2>
+    <button class="quick-user-row" id="drawerPM"><span>💬</span><b>Private message</b><i>›</i></button>
+    <button class="quick-user-row" id="drawerLikeProfile"><span>❤️</span><b>Like profile</b><i>›</i></button>
+    <button class="quick-user-row" id="drawerAddFriend"><span>👥</span><b>Add friend</b><i>›</i></button>
+    <button class="quick-user-row" id="drawerBlock"><span>🚫</span><b>Block</b><i>›</i></button>
+    <button class="quick-user-row" id="drawerStaffModification"><span>🛠️</span><b>Staff modification</b><i>›</i></button>
+    <button class="quick-user-row" id="drawerWallet"><span>🪙</span><b>Share wallet</b><i>›</i></button>
+    <button class="quick-user-row" id="drawerGiveRank"><span>🏅</span><b>Give rank</b><i>›</i></button>
+    <button class="quick-user-row" id="drawerModerateUser"><span>🛡️</span><b>Moderate user</b><i>›</i></button>
+    <button class="quick-user-row" id="drawerStaffAccount"><span>⚙️</span><b>Staff account</b><i>›</i></button>
+    <button class="quick-user-row" id="drawerUserHistory"><span>📜</span><b>User history</b><i>›</i></button>
     <button class="quick-user-row" id="drawerNickname"><span>✏️</span><b>Nickname</b><i>›</i></button>
     <button class="quick-user-row" id="drawerIgnore"><span>🚫</span><b>${blocked?'Unignore user':'Ignore user'}</b><i>›</i></button>
     <button class="quick-user-row" id="drawerMute"><span>${muted?'🔔':'🔕'}</span><b>${muted?'Unmute conversation':'Mute conversation'}</b><i>›</i></button>
     <button class="quick-user-row" id="drawerArchive"><span>▣</span><b>${archived?'Unarchive conversation':'Archive conversation'}</b><i>›</i></button>
     <button class="quick-user-row" id="drawerReport"><span>⚑</span><b>Report user</b><i>›</i></button>
   </div>`);
+  $('drawerPM')?.addEventListener('click',()=>{closeModal();openDM(id)});
+  $('drawerLikeProfile')?.addEventListener('click',async()=>{try{const r=await api(`/api/users/${encodeURIComponent(id)}/like`,{method:'POST'});closeModal();toast(r.liked?'Profile liked.':'Like removed.');}catch(e){toast(e.message)}});
+  $('drawerAddFriend')?.addEventListener('click',async()=>{try{await friend(id);closeModal();}catch(e){toast(e.message)}});
+  $('drawerBlock')?.addEventListener('click',async()=>{try{await block(id);closeModal();}catch(e){toast(e.message)}});
+  $('drawerStaffModification')?.addEventListener('click',()=>staffProfileNoteModal(user));
+  $('drawerWallet')?.addEventListener('click',()=>shareGoldModal(user));
+  $('drawerGiveRank')?.addEventListener('click',()=>rankFromProfile(user));
+  $('drawerModerateUser')?.addEventListener('click',()=>moderate(id));
+  $('drawerStaffAccount')?.addEventListener('click',()=>staffAccountModal(user));
+  $('drawerUserHistory')?.addEventListener('click',()=>showUserActionHistory(id));
   $('drawerNickname')?.addEventListener('click',async()=>{const current=(await api('/api/private-nicknames').catch(()=>({nicknames:{}}))).nicknames||{};const value=prompt('Private nickname for @'+(user.username||'user')+' (only you can see it):',current[id]||'');if(value===null)return;try{await api('/api/private-nickname',{method:'POST',body:JSON.stringify({targetId:id,nickname:value.trim()})});closeModal();toast(value.trim()?'Private nickname saved.':'Private nickname cleared.');}catch(e){toast(e.message)}});
   $('drawerIgnore')?.addEventListener('click',async()=>{try{if(blocked)await api(`/api/users/${encodeURIComponent(id)}/block`,{method:'DELETE'});else await block(id);closeModal();toast(blocked?'User is no longer ignored.':'User ignored.');}catch(e){toast(e.message)}});
   $('drawerMute')?.addEventListener('click',()=>{dmSetPref('muted',id,!muted);closeModal();toast(muted?'Conversation unmuted.':'Conversation muted.');});
