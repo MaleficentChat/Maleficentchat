@@ -16,6 +16,14 @@ assert.doesNotMatch(server, /if\(origin\)\s*\{\s*res\.setHeader\(["']Access-Cont
 assert.match(database, /SELECT l\.id,l\.action_type[\s\S]*FROM admin_logs l/,
   "audit history must be restored from PostgreSQL");
 assert.match(server, /const auditRows=await pool\.query\(["']SELECT l\.id,l\.action_type/,
+assert.match(server, /INSERT INTO admin_logs\\(action_type,performed_by,target_user_id,details,created_at\\)/,
+  "staff audit events must be written to the durable PostgreSQL audit table");
+assert.match(server, /await log\\(actor,'STAFF_APPLICATION_REJECT'/,
+  "staff application rejections must await durable audit logging");
+assert.match(server, /await log\\(actor,'STAFF_APPLICATION_GRANT'/,
+  "staff rank grants must await durable audit logging");
+assert.match(server, /target\.rank=requested;[\\s\\S]*after the database transaction commits/,
+  "in-memory rank state must only update after a successful database commit");
   "staff dashboard must read audit history from PostgreSQL");
 assert.match(render, /key:\s*OWNER_PASSWORD/,
   "Render configuration must expose the owner password as a secret");
