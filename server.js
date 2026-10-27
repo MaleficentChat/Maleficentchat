@@ -224,7 +224,7 @@ function featureAllowed(key){
     if(String(u.rank).toUpperCase()==="DEVELOPER") return next();
     const individual=userFeatureGrant(u,key);
     if(individual!==null)return individual?next():res.status(403).json({error:"This feature has not been granted to your account."});
-    const alias={create_room:"create_rooms",send_gift:"gift_sending",manage_filters:"manage_filter_words",moderate_user:"moderate_users",publish_news:"news_posting",clear_room:"clear_history_button",wall_post:"friend_wall_posting",gift_share:"gift_sending",report_message:"reports_management"}[key]||key;
+    const alias={create_room:"create_rooms",manage_filters:"manage_filter_words",moderate_user:"moderate_users",publish_news:"news_posting",clear_room:"clear_history_button",wall_post:"friend_wall_posting",report_message:"reports_management"}[key]||key;
     const grants=db.settings.feature_grants?.[alias];
     if(Array.isArray(grants) && !grants.map(x=>String(x).toUpperCase()).includes(String(u.rank).toUpperCase())) return res.status(403).json({error:"Your rank does not have this feature."});
     if(!grants && !hasFeature(u,key)) return res.status(403).json({error:`${FEATURE_CONTROLS.find(x=>x.key===key)?.name||"Feature"} requires ${featureRank(key)} or higher.`});
@@ -272,7 +272,6 @@ function safeUser(u){
     profileAccentColor:u.profileAccentColor||u.settings?.profileAccentColor||'',
     location:u.location||'',
     website:u.website||'',
-    giftsReceived:u.giftsReceived||[],
     badgesStats:u.badgesStats||{},
     friendsCount:db.friends.filter(f=>f.status==="ACCEPTED"&&(f.a===u.id||f.b===u.id)).length,
     interests:u.interests||[],
@@ -2421,8 +2420,6 @@ app.get("/api/staff/ip-inspection",auth,ownerOnly,async(req,res)=>{
     const limitPlaceholder="$"+params.length;
     stage="query-ip-history";
     const q=await pool.query(`SELECT h.id,h.user_id,u.username,u.email,h.ip_address::text AS ip_address,h.event_type,h.user_agent,h.recorded_at,u.created_at AS registered_at FROM users u LEFT JOIN user_ip_history h ON h.user_id=u.id ${where} ORDER BY h.recorded_at DESC NULLS LAST,u.username LIMIT ${limitPlaceholder}`,params);
-    stage="write-audit-log";
-    await pool.query("INSERT INTO admin_logs(action_type,performed_by,details) VALUES($1,$2,$3)",["IP_INSPECTION_VIEW",Number(actor.id),JSON.stringify({search:search||null,rows:q.rowCount})]);
     stage="lookup-network-details";
     const normalizedIp=ip=>String(ip||"").trim().replace(/\/\d{1,3}$/,"");
     const uniqueIps=[...new Set(q.rows.map(x=>normalizedIp(x.ip_address)))].filter(ip=>ip&&ip!=="::1"&&ip!=="127.0.0.1"&&!ip.startsWith("127.")&&!ip.startsWith("10.")&&!ip.startsWith("192.168.")&&!ip.startsWith("fc")&&!ip.startsWith("fd")&&!ip.toLowerCase().startsWith("fe80:"));
@@ -2444,9 +2441,6 @@ app.delete("/api/staff/deleted-media",auth,async(req,res)=>{
   const before=db.logs.length;
   db.logs=db.logs.filter(log=>!isImageLog(log));
   const removed=before-db.logs.length;
-  try{
-    await pool.query("DELETE FROM admin_logs WHERE action_type='MESSAGE_DELETE' AND details->'meta'->'attachment'->>'type' LIKE 'image/%'");
-  }catch(e){console.error("Deleted media audit cleanup failed:",e.message);}
   save();log(actor,"DELETED_MEDIA_CLEAR","Staff dashboard",{removed});
   res.json({ok:true,removed});
 });
@@ -2461,9 +2455,7 @@ app.get("/api/staff/dashboard",auth,featureAllowed("view_staff_dashboard"),async
     });
     const ids=new Set(pgReports.map(r=>String(r.id)));
     const reports=[...pgReports,...(db.reports||[]).filter(r=>!ids.has(String(r.id)))].filter(r=>String(r.status||"OPEN").toUpperCase()==="OPEN").sort((a,b)=>Number(b.time||0)-Number(a.time||0));
-    const auditRows=await pool.query("SELECT l.id,l.action_type,l.performed_by,l.target_user_id,l.details,l.created_at,performer.username AS performer_username,target.username AS target_username FROM admin_logs l LEFT JOIN users performer ON performer.id=l.performed_by LEFT JOIN users target ON target.id=l.target_user_id ORDER BY l.created_at DESC,l.id DESC LIMIT 500");
-     const auditLogs=auditRows.rows.map(row=>{let details={};try{const parsed=typeof row.details==="string"?JSON.parse(row.details):row.details;if(parsed&&typeof parsed==="object")details=parsed;else if(parsed!=null)details={message:String(parsed)};}catch{if(row.details)details={message:String(row.details)};}return{id:String(row.id),time:row.created_at?new Date(row.created_at).getTime():Date.now(),actor:row.performer_username||"SYSTEM",action:row.action_type||"ACTION",target:row.target_username||details.target||(row.target_user_id?String(row.target_user_id):""),meta:details.meta&&typeof details.meta==="object"?details.meta:details};});
-     res.json({reports,logs:auditLogs,history:db.moderationHistory.slice(-500).reverse(),activeActions:db.users.filter(x=>(x.banned===true)||(x.kickedUntil&&x.kickedUntil>Date.now())||(x.mutedUntil&&x.mutedUntil>Date.now())).map(x=>({id:x.id,username:x.username,displayName:x.displayName,rank:x.rank,gold:x.gold||0,banned:!!x.banned,kickedUntil:x.kickedUntil||null,mutedUntil:x.mutedUntil||null,reason:x.banReason||x.kickReason||x.muteReason||""})),stats:{users:db.users.length,online:db.users.filter(x=>x.online).length,messages:db.messages.length,reportsOpen:reports.length}});
+     res.json({reports,history:db.moderationHistory.slice(-500).reverse(),activeActions:db.users.filter(x=>(x.banned===true)||(x.kickedUntil&&x.kickedUntil>Date.now())||(x.mutedUntil&&x.mutedUntil>Date.now())).map(x=>({id:x.id,username:x.username,displayName:x.displayName,rank:x.rank,gold:x.gold||0,banned:!!x.banned,kickedUntil:x.kickedUntil||null,mutedUntil:x.mutedUntil||null,reason:x.banReason||x.kickReason||x.muteReason||""})),stats:{users:db.users.length,online:db.users.filter(x=>x.online).length,messages:db.messages.length,reportsOpen:reports.length}});
   }catch(e){console.error("Staff dashboard reports failed:",e);res.status(500).json({error:"Could not load staff reports. Please refresh and try again."});}
 });
 
@@ -3702,7 +3694,7 @@ function ensureUserSchema(u){
   u.saved ||= [];
   u.badges ||= [];
   u.achievements ||= [];
-  u.badgesStats ||= {goldSent:0,goldReceived:0,giftsSent:0,giftsReceived:0,likes:u.profileLikes||0};
+  u.badgesStats ||= {goldSent:0,goldReceived:0,likes:u.profileLikes||0};
   u.stats ||= {messages:0,rooms:0,friends:0};
   u.gameStats ||= {played:0,wins:0,losses:0,draws:0};
 }
