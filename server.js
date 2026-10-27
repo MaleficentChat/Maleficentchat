@@ -3398,8 +3398,17 @@ app.delete('/api/news/:newsId/comments/:commentId',auth,(req,res)=>{
 
 
 app.get('/api/gifts',auth,async(req,res)=>{
-  const {rows}=await pool.query(`SELECT id,name,image,price FROM gifts WHERE is_predefined=true ORDER BY id`);
-  res.json({gifts:rows.map(g=>({id:String(g.id),name:g.name,icon:g.image||'🎁',image:g.image||'',cost:Number(g.price||0),price:Number(g.price||0)}))});
+  try {
+    const defaults=[['Rose','🌹',10],['Chocolate','🍫',15],['Heart','❤️',20],['Teddy Bear','🧸',25],['Diamond','💎',100],['Crown','👑',150],['Cake','🎂',30],['Flower','🌸',15],['Star','⭐',20],['Gift Box','🎁',50],['Crown Jewel','💍',75],['Coffee','☕',10],['Cupcake','🧁',15],['Butterfly','🦋',20],['Moon','🌙',20],['Sun','☀️',20],['Music','🎵',10],['Paw','🐾',10],['Unicorn','🦄',40],['Castle','🏰',60]];
+    for (const [name,image,price] of defaults) {
+      await pool.query(`INSERT INTO gifts(name,image,price,is_predefined) SELECT $1,$2,$3,true WHERE NOT EXISTS (SELECT 1 FROM gifts WHERE name=$1)`,[name,image,price]);
+    }
+    const {rows}=await pool.query(`SELECT id,name,image,price FROM gifts WHERE is_predefined=true ORDER BY id`);
+    res.json({gifts:rows.map(g=>({id:String(g.id),name:g.name,icon:g.image||'🎁',image:g.image||'',cost:Number(g.price||0),price:Number(g.price||0)}))});
+  } catch(e) {
+    console.error('Gift catalog load failed:',e);
+    res.status(500).json({error:'Could not load the gift catalog. Please try again.'});
+  }
 });
 app.get('/api/gifts/catalog',auth,async(req,res)=>{
   const {rows}=await pool.query(`SELECT id,name,image,price FROM gifts WHERE is_predefined=true ORDER BY id`);
