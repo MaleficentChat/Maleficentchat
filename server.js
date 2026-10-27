@@ -1093,9 +1093,10 @@ app.get(
     ).toLowerCase();
 
     const viewer=current(req);
-    const viewerIsStaff=staff(viewer?.rank);
+    const viewerCanSeeInvisible=(target)=>!!viewer&&staff(viewer.rank)&&
+      (rankOrder[viewer.rank]??-1)>(rankOrder[target?.rank]??-1);
     let arr=db.users
-      .filter(u=>(!u.invisible||viewerIsStaff||String(u.id)===String(viewer?.id))&&(
+      .filter(u=>(!u.invisible||viewerCanSeeInvisible(u)||String(u.id)===String(viewer?.id))&&(
           !q||
           u.username
             .toLowerCase()
@@ -1117,7 +1118,7 @@ app.get(
       );
 
     res.json({
-      users:arr.map(u=>({...safeUser(u),...((viewerIsStaff||String(u.id)===String(viewer?.id))?{invisible:!!u.invisible}:{})}))
+      users:arr.map(u=>({...safeUser(u),...((viewerCanSeeInvisible(u)||String(u.id)===String(viewer?.id))?{invisible:!!u.invisible}:{})}))
     });
   }
 );
