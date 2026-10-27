@@ -50,6 +50,7 @@ function load(){
 let db=load();
 // Short-window in-memory signals support flood protection; durable actions remain in db.
 const systemModerationWindows = new Map();
+const systemNetworkWindows = new Map();
 function systemAudit(entry){
   db.moderationHistory ||= [];
   db.moderationHistory.push({id:id(),target:String(entry.target||""),actor:String(entry.actor||"SYSTEM"),actorUsername:String(entry.actorUsername||"System Moderation"),action:String(entry.action||"EVENT"),reason:String(entry.reason||""),time:Date.now(),source:String(entry.source||"system"),durationMinutes:Number(entry.durationMinutes)||0});
@@ -1392,6 +1393,13 @@ app.post("/api/rooms/:id/messages",auth,featureAllowed("send_messages"),upload.s
   if(String(u.rank).toUpperCase()!=="DEVELOPER" && req.file&&!/^image\/|^audio\//.test(req.file.mimetype))return res.status(400).json({error:"Only image/audio uploads are allowed."});
   let text=cleanText(req.body.text);
   if(!text&&!req.file)return res.status(400).json({error:"Message is empty."});
+  // Network-level burst guard: protect the message endpoint without treating shared IPs as proof of ban evasion.
+  if(!req.file){
+    const networkKey=String(clientIp(req)||"unknown"), now=Date.now();
+    const recent=(systemNetworkWindows.get(networkKey)||[]).filter(t=>now-t<60000);recent.push(now);systemNetworkWindows.set(networkKey,recent);
+    if(recent.length>80){systemAudit({target:u.id,actor:"SYSTEM",action:"NETWORK_RATE_LIMIT",reason:"More than 80 chat message requests in one minute from the same network address.",source:"network_protection"});return res.status(429).json({error:"Network protection: too many message requests. Please wait a moment."});}
+    if(systemNetworkWindows.size>5000){for(const [k,v] of systemNetworkWindows)if(!v.length||now-v[v.length-1]>120000)systemNetworkWindows.delete(k);}
+  }
   // Configurable AutoGuard: flood and repeated-message checks run on the server.
   if(!req.file && String(u.rank||"").toUpperCase()!=="DEVELOPER"){
     const now=Date.now(), key=String(u.id), signature=String(text||"").toLowerCase().replace(/\\s+/g," ").trim().slice(0,300);
@@ -1400,7 +1408,9 @@ app.post("/api/rooms/:id/messages",auth,featureAllowed("send_messages"),upload.s
     prev.texts=prev.texts.filter(x=>now-x.time<60000); prev.texts.push({text:signature,time:now});
     systemModerationWindows.set(key,prev);
     const repeated=prev.texts.filter(x=>x.text===signature).length;
-    const flood=prev.times.length>6 || repeated>=4;
+    const mentionCount=(String(text||"").match(/@[A-Za-z0-9_]{2,24}/g)||[]).length;
+    const suspiciousShortener=/(?:https?:\\/\\/)?(?:bit\\.ly|tinyurl\\.com|t\\.co|is\\.gd|cutt\\.ly|rb\\.gy)\\//i.test(String(text||""));
+    const flood=prev.times.length>6 || repeated>=4 || mentionCount>=7 || suspiciousShortener;
     const configured=db.settings?.system_moderation?.spam_flood;
     if(flood && configured?.enabled===true){
       const applied=applySystemRule(u,configured,configured.reason||"Spam/flood detected","spam_flood");
