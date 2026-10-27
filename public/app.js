@@ -2771,18 +2771,6 @@ async function loadStaff() {
           return `<div class="report-card"><div class="report-main"><div><b>${esc(report.category||(report.conversationUserId?"Private message report":report.messageId?"Message report":"Profile report"))}</b> · ${esc(report.status)}</div><div><b>Reported by:</b> @${esc(report.reporterUsername||findUserName(report.reporter)||'Unknown')}</div><div class="report-target"><b>Report made on:</b> @${esc(report.reportedUserUsername||snap.username||'Unknown')} ${esc(report.reportedUserRank||snap.rank||'')}</div>${report.conversationUserId?`<div class="report-message"><b>Private conversation:</b> @${esc(report.conversationUsername||findUserName(report.conversationUserId)||"Conversation participant")}<p class="muted">Open the evidence viewer to inspect the reported conversation.</p></div>`:""}<div class="report-message"><b>Reported content:</b><br>${snap.text?`<div>${esc(snap.text)}</div>`:''}${snap.attachment?.type?.startsWith('image/')?`<img class="reported-image" src="${esc(snap.attachment.url)}" alt="Reported photo">`:snap.attachment?`<a href="${esc(snap.attachment.url)}" target="_blank" rel="noopener">Open reported attachment</a>`:''}</div><div class="muted">Time: ${fmt(report.time)}</div><div class="muted">Reason: ${esc(report.reason||'No reason supplied')}</div></div><div class="toolbar">${report.conversationUserId?`<button class="mini primary" onclick="viewPrivateMessageReport('${esc(report.id)}')">🔒 View private messages</button>`:''}${report.reportedUserId?`<button class="mini" onclick="moderate('${esc(report.reportedUserId)}')">⚙ Moderate user</button>`:''}${report.messageId?`<button class="mini danger" onclick="deleteReportedMessage('${esc(report.messageId)}')">🗑 Delete message</button>`:''}${report.status!=='RESOLVED'?`<button class="mini" onclick="resolveReport('${esc(report.id)}')">Resolve</button>`:''}</div></div>`;
         }).join('')||'<p class="muted">No reports.</p>'}
       </div>
-      <div class="card"><div class="toolbar deleted-media-heading"><div><h3>Deleted media</h3><p class="muted">Photos and other attachments preserved from deleted messages.</p></div><button class="mini danger" id="clearDeletedMediaBtn" type="button">Clear deleted media</button></div><div class="deleted-media-grid">${(data.logs||[]).filter(log=>log.action==='MESSAGE_DELETE' && log.meta?.attachment?.type?.startsWith('image/')).slice(0,100).map(log=>{const m=log.meta||{};const at=m.attachment;return `<div class="deleted-media-card"><img class="deleted-media-image" src="${esc(at.url)}" alt="Deleted photo"><div><b>@${esc(m.username||'Unknown')}</b><div class="muted">Deleted by @${esc(m.deletedBy||log.actor||'Unknown')} · ${fmt(m.deletedAt||log.time)}</div>${m.text?`<div class="deleted-media-text">${esc(m.text)}</div>`:''}</div></div>`;}).join('')||'<p class="muted">No deleted photos recorded yet.</p>'}</div></div>
-`;
-    $('clearDeletedMediaBtn')?.addEventListener('click',async()=>{
-      if(!confirm('Clear all deleted photo/media records from the staff dashboard? This removes the archived entries, not the original uploaded files.'))return;
-      const btn=$('clearDeletedMediaBtn');if(btn)btn.disabled=true;
-      try{
-        const result=await api('/api/staff/deleted-media',{method:'DELETE'});
-        const grid=document.querySelector('.deleted-media-grid');
-        if(grid)grid.innerHTML='<p class="muted">No deleted photos recorded yet.</p>';
-        toast('Deleted media records cleared ('+Number(result.removed||0)+').');
-      }catch(e){toast(e.message||'Could not clear deleted media.');if(btn)btn.disabled=false;}
-    });
     const ipSearch=$('ipInspectionSearch'), ipSuggestions=$('ipInspectionSuggestions');
     let ipSuggestTimer;
     ipSearch?.addEventListener('input',()=>{
