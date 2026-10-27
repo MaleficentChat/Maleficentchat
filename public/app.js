@@ -3293,7 +3293,7 @@ async function ownerFeatureGrants(){
       'Chat and media':['send_messages','emojis_stickers','chat_file_upload','gif_sending'],
       'Private messages':['private_messages'],
       'Rooms':['join_rooms','create_rooms','edit_rooms','delete_rooms','delete_own_room'],
-      'Social and rewards':['friend_wall_posting','wall_commenting','wall_liking','wall_upload','gift_sending','gift_receiving','clear_history_button'],
+      'Social and rewards':['friend_wall_posting','wall_commenting','wall_liking','wall_upload','clear_history_button'],
       'Staff dashboard':['view_online_users','manage_filter_words','reports_management','moderate_users','premium_granting','bypass_filter_words','bypass_mute'],
       'Owner tools':['manage_xp_level']
     };
