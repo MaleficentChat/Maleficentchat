@@ -166,6 +166,35 @@ async function initDB() {
       name TEXT NOT NULL, icon TEXT DEFAULT '🏆', earned_at TIMESTAMP DEFAULT NOW(),
       UNIQUE(user_id,name)
     );
+    CREATE TABLE IF NOT EXISTS gold_ledger(
+      id BIGSERIAL PRIMARY KEY,
+      user_id INT REFERENCES users(id) ON DELETE CASCADE,
+      actor_user_id INT REFERENCES users(id) ON DELETE SET NULL,
+      entry_type TEXT NOT NULL,
+      amount INT NOT NULL,
+      balance_after INT NOT NULL,
+      item_id TEXT,
+      description TEXT NOT NULL DEFAULT '',
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+    CREATE INDEX IF NOT EXISTS gold_ledger_user_created_idx ON gold_ledger(user_id,created_at DESC);
+    CREATE TABLE IF NOT EXISTS cosmetic_items(
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      description TEXT NOT NULL DEFAULT '',
+      category TEXT NOT NULL CHECK(category IN ('frame','theme','badge')),
+      icon TEXT NOT NULL DEFAULT '✨',
+      price INT NOT NULL CHECK(price >= 0),
+      enabled BOOLEAN NOT NULL DEFAULT true
+    );
+    CREATE TABLE IF NOT EXISTS user_cosmetics(
+      user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      item_id TEXT NOT NULL REFERENCES cosmetic_items(id) ON DELETE CASCADE,
+      equipped BOOLEAN NOT NULL DEFAULT false,
+      purchased_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      PRIMARY KEY(user_id,item_id)
+    );
+    CREATE INDEX IF NOT EXISTS user_cosmetics_user_idx ON user_cosmetics(user_id,equipped);
     CREATE TABLE IF NOT EXISTS daily_rewards(
       user_id INT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
       last_claim TIMESTAMP, streak INT DEFAULT 0
@@ -229,6 +258,16 @@ async function initDB() {
     ('Crown Jewel','💍',75),('Coffee','☕',10),('Cupcake','🧁',15),('Butterfly','🦋',20),('Moon','🌙',20),('Sun','☀️',20),('Music','🎵',10),('Paw','🐾',10),('Unicorn','🦄',40),('Castle','🏰',60)`;
   await pool.query(`UPDATE gifts g SET image=x.emoji,price=x.price,is_predefined=true FROM (${giftValues}) AS x(name,emoji,price) WHERE g.name=x.name`);
   await pool.query(`INSERT INTO gifts(name,image,price,is_predefined) SELECT x.name,x.emoji,x.price,true FROM (${giftValues}) AS x(name,emoji,price) WHERE NOT EXISTS (SELECT 1 FROM gifts g WHERE g.name=x.name)`);
+  await pool.query(`INSERT INTO cosmetic_items(id,name,description,category,icon,price) VALUES
+    ('frame_moonlit','Moonlit Frame','A silver lunar frame for your profile.','frame','🌙',250),
+    ('frame_obsidian','Obsidian Frame','A dark, polished frame with a gothic feel.','frame','🖤',500),
+    ('frame_arcane','Arcane Frame','A violet magical frame.','frame','🔮',900),
+    ('theme_twilight','Twilight Theme','A subtle purple accent for your profile.','theme','🌌',350),
+    ('theme_crimson','Crimson Theme','A deep crimson profile accent.','theme','🩸',450),
+    ('badge_nightowl','Night Owl Badge','For members who love the late-night lounge.','badge','🦉',200),
+    ('badge_stargazer','Stargazer Badge','A little cosmic flair for your profile.','badge','✨',300),
+    ('badge_royal','Royal Badge','A regal collectible profile badge.','badge','👑',1200)
+  ON CONFLICT(id) DO NOTHING`);
 }
 
 // bcryptjs is synchronous, but keeping the helper makes the init sequence explicit.
