@@ -21,5 +21,9 @@ assert.match(render, /key:\s*OWNER_PASSWORD/,
   "Render configuration must expose the owner password as a secret");
 assert.doesNotMatch(database, /Mal@123/,
   "the public default owner password must not be seeded");
+assert.match(server, /featureAllowed\("private_messages"\)[\s\S]*Could not save read receipts/,
+  "private-message read receipts must be access-checked and report persistence failures");
+assert.match(server, /Persist first: never tell the client a receipt was saved if PostgreSQL failed/,
+  "read receipts must only update in-memory state after PostgreSQL succeeds");
 
-console.log("Security and audit-log static checks passed.");
+console.log("Security, audit-log, and messaging persistence static checks passed.");
