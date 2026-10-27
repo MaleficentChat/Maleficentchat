@@ -54,7 +54,7 @@ const systemNetworkWindows = new Map();
 function systemAudit(entry){
   db.moderationHistory ||= [];
   db.moderationHistory.push({id:id(),target:String(entry.target||""),actor:String(entry.actor||"SYSTEM"),actorUsername:String(entry.actorUsername||"System Moderation"),action:String(entry.action||"EVENT"),reason:String(entry.reason||""),time:Date.now(),source:String(entry.source||"system"),durationMinutes:Number(entry.durationMinutes)||0});
-  if(db.moderationHistory.length>2000) db.moderationHistory.splice(0,db.moderationHistory.length-2000);
+  // Keep the complete audit trail; older evidence is not silently discarded.
   save();
 }
 function applySystemRule(target, rule, reason, source){
@@ -309,8 +309,15 @@ function safeUser(u){
   };
 }
 
-// Admin audit logging has been removed; retain a no-op for legacy action call sites.
-function log(){ return Promise.resolve(); }
+// Central audit adapter for existing feature endpoints.
+function log(actor, action, target, details = {}) {
+  const actorName = typeof actor === 'string' ? actor : (actor?.username || actor?.displayName || 'System');
+  const actorId = typeof actor === 'object' && actor ? actor.id : actorName;
+  const info = details && typeof details === 'object' ? details : { value: details };
+  const reason = String(info.reason || info.note || JSON.stringify(info) || action).slice(0, 1800);
+  systemAudit({target:String(target || info.targetUsername || info.target || '—'),actor:String(actorId || actorName),actorUsername:String(actorName),action:String(action || 'EVENT').toUpperCase(),reason,source:'application',durationMinutes:Number(info.minutes || info.durationMinutes || 0)});
+  return Promise.resolve();
+}
 
 function addActivity(type, message, userId, details = {}) {
   db.activityTimeline ||= {};
@@ -2626,7 +2633,7 @@ app.get("/api/staff/system-center",auth,async(req,res)=>{
   try{await pool.query("SELECT 1");database={ok:true,latencyMs:Date.now()-started};}
   catch(e){database={ok:false,latencyMs:Date.now()-started,error:"Database health check failed"};}
   const users=db.users||[], now=Date.now();
-  const recent=(db.moderationHistory||[]).slice(-500).reverse();
+  const recent=(db.moderationHistory||[]).slice().reverse();
   const enabledRules=Object.entries(db.settings?.system_moderation||{}).filter(([,v])=>v?.enabled===true).map(([key,v])=>({key,action:v.action,durationMinutes:v.durationMinutes,reason:v.reason}));
   res.json({health:{server:"ok",database,uptimeSeconds:Math.floor(process.uptime()),checkedAt:now},stats:{users:users.length,online:users.filter(x=>x.online&&!x.invisible).length,rooms:(db.rooms||[]).length,messages:(db.messages||[]).length,openReports:(db.reports||[]).filter(x=>String(x.status||"OPEN").toUpperCase()==="OPEN").length,activeModerations:users.filter(x=>x.banned||(x.mutedUntil&&x.mutedUntil>now)||(x.kickedUntil&&x.kickedUntil>now)).length},rules:enabledRules,audit:recent});
 });
@@ -2634,7 +2641,7 @@ app.get("/api/staff/system-center/audit",auth,async(req,res)=>{
   const actor=current(req);
   if(!hasRank(actor,"ADMIN")) return res.status(403).json({error:"Admin rank or higher required."});
   const q=String(req.query.q||"").trim().toLowerCase().slice(0,100);
-  const rows=(db.moderationHistory||[]).slice().reverse().filter(x=>!q||[x.target,x.actor,x.actorUsername,x.action,x.reason,x.source].some(v=>String(v||"").toLowerCase().includes(q))).slice(0,500);
+  const rows=(db.moderationHistory||[]).slice().reverse().filter(x=>!q||[x.target,x.actor,x.actorUsername,x.action,x.reason,x.source].some(v=>String(v||"").toLowerCase().includes(q)));
   res.json({audit:rows});
 });
 app.get("/api/staff/dashboard",auth,featureAllowed("view_staff_dashboard"),async(req,res)=>{
@@ -2962,10 +2969,12 @@ app.patch("/api/owner/settings",ownerOnly,async(req,res)=>{
     for(const key of keys){
       const rule=incoming[key];
       if(!rule||typeof rule!=="object"||!actions.has(String(rule.action||"").toUpperCase()))return res.status(400).json({error:"Each System Moderation rule needs a valid action."});
-      const duration=Number(rule.durationMinutes);
+      const action=String(rule.action).toUpperCase();
+      const needsDuration=action==="MUTE"||action==="KICK";
+      const duration=needsDuration?Number(rule.durationMinutes):0;
       const reason=cleanText(rule.reason||"").slice(0,240);
-      if(!Number.isFinite(duration)||duration<1||duration>10080||!reason)return res.status(400).json({error:"Enter a valid duration and reason for every System Moderation rule."});
-      next[key]={enabled:rule.enabled===true,action:String(rule.action).toUpperCase(),durationMinutes:Math.floor(duration),reason};
+      if((needsDuration&&(!Number.isFinite(duration)||duration<1||duration>10080))||!reason)return res.status(400).json({error:needsDuration?"Enter a duration from 1 to 10080 minutes and a reason.":"Enter a reason for every System Moderation rule."});
+      next[key]={enabled:rule.enabled===true,action,durationMinutes:needsDuration?Math.floor(duration):0,reason};
     }
     db.settings.system_moderation=next;
   }
