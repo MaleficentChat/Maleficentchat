@@ -324,9 +324,26 @@ function log(actor, action, target, details = {}) {
   const actorName = typeof actor === 'string' ? actor : (actor?.username || actor?.displayName || 'System');
   const actorId = typeof actor === 'object' && actor ? actor.id : actorName;
   const info = details && typeof details === 'object' ? details : { value: details };
-  const reason = String(info.reason || info.note || JSON.stringify(info) || action).slice(0, 1800);
-  systemAudit({target:String(target || info.targetUsername || info.target || '—'),actor:String(actorId || actorName),actorUsername:String(actorName),action:String(action || 'EVENT').toUpperCase(),reason,source:'application',durationMinutes:Number(info.minutes || info.durationMinutes || 0)});
-  return Promise.resolve();
+  const targetValue = String(target || info.targetUsername || info.target || '—');
+  const actionName = String(action || 'EVENT').toUpperCase();
+  const reason = String(info.reason || info.note || JSON.stringify(info) || actionName).slice(0, 1800);
+  systemAudit({target:targetValue,actor:String(actorId || actorName),actorUsername:String(actorName),action:actionName,reason,source:'application',durationMinutes:Number(info.minutes || info.durationMinutes || 0)});
+  // Keep the staff-facing audit stream in its own durable PostgreSQL table.
+  // The legacy in-memory history remains populated for existing UI components.
+  const actorUser = typeof actor === 'object' && actor ? actor : findUser(actorName);
+  const targetUser = findUser(targetValue) || db.users.find(u=>String(u.id)===targetValue);
+  return pool.query(
+    'INSERT INTO admin_logs(action_type,performed_by,target_user_id,details,created_at) VALUES($1,$2,$3,$4,NOW())',
+    [
+      actionName,
+      Number.isFinite(Number(actorUser?.id)) ? Number(actorUser.id) : null,
+      Number.isFinite(Number(targetUser?.id)) ? Number(targetUser.id) : null,
+      JSON.stringify({...info,actorUsername:actorName,target:targetValue,source:'application',reason})
+    ]
+  ).catch(error=>{
+    console.error('Durable staff audit write failed:',error);
+    return null;
+  });
 }
 
 function addActivity(type, message, userId, details = {}) {
@@ -2740,7 +2757,7 @@ app.get('/api/staff/applications',auth,featureAllowed('view_staff_dashboard'),as
 });
 app.post('/api/staff/applications/:id/reject',auth,featureAllowed('view_staff_dashboard'),async(req,res)=>{
   const actor=current(req);if(!hasRank(actor,'MOD'))return res.status(403).json({error:'Staff only.'});
-  try{await ensureStaffApplicationsTable();const q=await pool.query("UPDATE staff_applications SET status='REJECTED',reviewed_by=$2,reviewed_at=NOW() WHERE id=$1 AND status='PENDING' RETURNING username",[req.params.id,Number(actor.id)]);if(!q.rowCount)return res.status(404).json({error:'Pending application not found.'});log(actor,'STAFF_APPLICATION_REJECT',q.rows[0].username,{applicationId:req.params.id});res.json({ok:true});}
+  try{await ensureStaffApplicationsTable();const q=await pool.query("UPDATE staff_applications SET status='REJECTED',reviewed_by=$2,reviewed_at=NOW() WHERE id=$1 AND status='PENDING' RETURNING username",[req.params.id,Number(actor.id)]);if(!q.rowCount)return res.status(404).json({error:'Pending application not found.'});await log(actor,'STAFF_APPLICATION_REJECT',q.rows[0].username,{applicationId:req.params.id});res.json({ok:true});}
   catch(e){console.error('Staff application rejection failed:',e);res.status(500).json({error:'Could not reject this application.'});}
 });
 app.post('/api/staff/applications/:id/grant',auth,featureAllowed('view_staff_dashboard'),async(req,res)=>{
@@ -2761,11 +2778,12 @@ app.post('/api/staff/applications/:id/grant',auth,featureAllowed('view_staff_das
       if(!hasFeature(actor,'staff_rank_assignment')){await client.query('ROLLBACK');return res.status(403).json({error:'You do not have rank-assignment permission.'});}
       if(!ownerPower&&rankOrder[requested]>rankOrder.MOD){await client.query('ROLLBACK');return res.status(403).json({error:'Your permissions allow granting Moderator or below only.'});}
       if(!ownerPower&&rankOrder[String(target.rank).toUpperCase()]>=rankOrder[String(actor.rank).toUpperCase()]){await client.query('ROLLBACK');return res.status(403).json({error:'You cannot change an equal or higher rank.'});}
-      target.rank=requested;
       await client.query("UPDATE users SET rank=$1 WHERE id=$2",[requested.toLowerCase(),Number(target.id)]);
       await client.query("UPDATE staff_applications SET status='APPROVED',reviewed_by=$2,reviewed_at=NOW() WHERE id=$1",[req.params.id,Number(actor.id)]);
       await client.query('COMMIT');
-      save();log(actor,'STAFF_APPLICATION_GRANT',target.username,{applicationId:req.params.id,rank:requested});
+      // Update the in-memory account only after the database transaction commits.
+      target.rank=requested;
+      save();await log(actor,'STAFF_APPLICATION_GRANT',target.username,{applicationId:req.params.id,rank:requested});
       systemNotice(`@${actor.username} granted ${requested} to @${target.username} after staff application review.`);
       res.json({ok:true,rank:requested});
     }catch(e){try{await client.query('ROLLBACK')}catch{}throw e;}finally{client.release();}
