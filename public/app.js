@@ -2936,6 +2936,30 @@ async function loadStaffApplication(){
 
 /* ---------------- STAFF ---------------- */
 
+
+async function renderStaffApplications(){
+  try{
+  // Staff applications: compact applicant rows with a separate full-form viewer.
+  const staffApps=await api('/api/staff/applications').catch(()=>({applications:[]}));
+  const appRows=staffApps.applications||[];
+  const appList=$('staffApplicationsList'),appCount=$('staffApplicationCount');
+  if(appCount)appCount.textContent=String(appRows.filter(x=>x.status==='PENDING').length)+' pending · '+appRows.length+' total';
+  if(appList)appList.innerHTML=appRows.map(x=>`<div class="staff-application-row"><div class="staff-application-user"><div class="staff-application-avatar">${esc((x.displayName||x.username||'?').slice(0,1).toUpperCase())}</div><div><b>${esc(x.displayName||x.username)}</b><div class="muted">@${esc(x.username)} · ${esc(x.requestedRank.replace(/_/g,' '))}</div><small class="staff-application-status-text">${esc(x.status)} · ${fmt(x.createdAt)}</small></div></div><button class="mini primary" type="button" data-staff-app-form="${esc(x.id)}">Form</button></div>`).join('')||'<p class="muted">No staff applications yet.</p>';
+  appList?.querySelectorAll('[data-staff-app-form]').forEach(btn=>btn.onclick=()=>{
+    const x=appRows.find(v=>String(v.id)===String(btn.dataset.staffAppForm));if(!x)return;
+    modal(`<div class="staff-application-review"><h2>📝 Staff Application</h2><p class="muted">@${esc(x.username)} · Submitted ${fmt(x.createdAt)} · Status: ${esc(x.status)}</p>
+    <div class="staff-application-answer"><small>REQUESTED RANK</small><b>${esc(x.requestedRank.replace(/_/g,' '))}</b></div>
+    <div class="staff-application-answer"><small>DAILY ACTIVE TIME</small><p>${esc(x.activity)}</p></div>
+    <div class="staff-application-answer"><small>WHY SHOULD WE HIRE YOU?</small><p>${esc(x.reason)}</p></div>
+    <div class="staff-application-answer"><small>PAST MODERATION EXPERIENCE</small><p>${esc(x.experience)}</p></div>
+    ${x.status==='PENDING'?'<label>Rank to grant<select id="staffAppGrantRank"><option value="MOD">Moderator</option><option value="ADMIN">Admin</option><option value="SUPER_ADMIN">Super Admin</option><option value="COMMISSOR">Commissor</option><option value="COOWNER">Co-owner</option></select></label><div class="toolbar staff-application-review-actions"><button class="mini danger" id="staffAppReject">Reject</button><button class="primary" id="staffAppGrant">Grant Rank</button></div><p id="staffAppReviewMessage" class="muted"></p>':'<p class="muted">This application has already been reviewed.</p>'}
+    </div>`);
+    $('staffAppReject')?.addEventListener('click',async()=>{const b=$('staffAppReject');b.disabled=true;try{await api('/api/staff/applications/'+encodeURIComponent(x.id)+'/reject',{method:'POST'});closeModal();toast('Application rejected.');await loadStaff();}catch(e){$('staffAppReviewMessage').textContent=e.message;b.disabled=false;}});
+    $('staffAppGrant')?.addEventListener('click',async()=>{const b=$('staffAppGrant');b.disabled=true;try{await api('/api/staff/applications/'+encodeURIComponent(x.id)+'/grant',{method:'POST',body:JSON.stringify({rank:$('staffAppGrantRank').value})});closeModal();toast('Rank granted and application approved.');await loadStaff();}catch(e){$('staffAppReviewMessage').textContent=e.message;b.disabled=false;}});
+  });
+  }catch(e){const list=$('staffApplicationsList');if(list)list.innerHTML='<p class="muted">'+esc(e.message||'Could not load applications.')+'</p>';}
+}
+
 async function loadStaff() {
   try {
     const data=await api('/api/staff/dashboard');
@@ -2944,24 +2968,7 @@ async function loadStaff() {
     const systemCenter=await api('/api/staff/system-center').catch(()=>null);
     const canUseAdminPanel=['ADMIN','SUPER_ADMIN','COMMISSOR','COOWNER','OWNER','DEVELOPER'].includes(String(state.user?.rank||'').toUpperCase());
 
-    // Staff applications: compact applicant rows with a separate full-form viewer.
-    const staffApps=await api('/api/staff/applications').catch(()=>({applications:[]}));
-    const appRows=staffApps.applications||[];
-    const appList=$('staffApplicationsList'),appCount=$('staffApplicationCount');
-    if(appCount)appCount.textContent=String(appRows.filter(x=>x.status==='PENDING').length)+' pending · '+appRows.length+' total';
-    if(appList)appList.innerHTML=appRows.map(x=>`<div class="staff-application-row"><div class="staff-application-user"><div class="staff-application-avatar">${esc((x.displayName||x.username||'?').slice(0,1).toUpperCase())}</div><div><b>${esc(x.displayName||x.username)}</b><div class="muted">@${esc(x.username)} · ${esc(x.requestedRank.replace(/_/g,' '))}</div><small class="staff-application-status-text">${esc(x.status)} · ${fmt(x.createdAt)}</small></div></div><button class="mini primary" type="button" data-staff-app-form="${esc(x.id)}">Form</button></div>`).join('')||'<p class="muted">No staff applications yet.</p>';
-    appList?.querySelectorAll('[data-staff-app-form]').forEach(btn=>btn.onclick=()=>{
-      const x=appRows.find(v=>String(v.id)===String(btn.dataset.staffAppForm));if(!x)return;
-      modal(`<div class="staff-application-review"><h2>📝 Staff Application</h2><p class="muted">@${esc(x.username)} · Submitted ${fmt(x.createdAt)} · Status: ${esc(x.status)}</p>
-      <div class="staff-application-answer"><small>REQUESTED RANK</small><b>${esc(x.requestedRank.replace(/_/g,' '))}</b></div>
-      <div class="staff-application-answer"><small>DAILY ACTIVE TIME</small><p>${esc(x.activity)}</p></div>
-      <div class="staff-application-answer"><small>WHY SHOULD WE HIRE YOU?</small><p>${esc(x.reason)}</p></div>
-      <div class="staff-application-answer"><small>PAST MODERATION EXPERIENCE</small><p>${esc(x.experience)}</p></div>
-      ${x.status==='PENDING'?'<label>Rank to grant<select id="staffAppGrantRank"><option value="MOD">Moderator</option><option value="ADMIN">Admin</option><option value="SUPER_ADMIN">Super Admin</option><option value="COMMISSOR">Commissor</option><option value="COOWNER">Co-owner</option></select></label><div class="toolbar staff-application-review-actions"><button class="mini danger" id="staffAppReject">Reject</button><button class="primary" id="staffAppGrant">Grant Rank</button></div><p id="staffAppReviewMessage" class="muted"></p>':'<p class="muted">This application has already been reviewed.</p>'}
-      </div>`);
-      $('staffAppReject')?.addEventListener('click',async()=>{const b=$('staffAppReject');b.disabled=true;try{await api('/api/staff/applications/'+encodeURIComponent(x.id)+'/reject',{method:'POST'});closeModal();toast('Application rejected.');await loadStaff();}catch(e){$('staffAppReviewMessage').textContent=e.message;b.disabled=false;}});
-      $('staffAppGrant')?.addEventListener('click',async()=>{const b=$('staffAppGrant');b.disabled=true;try{await api('/api/staff/applications/'+encodeURIComponent(x.id)+'/grant',{method:'POST',body:JSON.stringify({rank:$('staffAppGrantRank').value})});closeModal();toast('Rank granted and application approved.');await loadStaff();}catch(e){$('staffAppReviewMessage').textContent=e.message;b.disabled=false;}});
-    });
+
 
     $('staff').innerHTML=`
       ${(state.user?.username==='Maleficent'||String(state.user?.rank).toUpperCase()==='DEVELOPER') ? '<section class="card ip-inspection-card"><div><h3>🔎 IP Inspection</h3><p class="muted">Owner/Developer only · Registered email, recorded IP history and approximate network details.</p></div><form id="ipInspectionForm" class="ip-inspection-form"><input id="ipInspectionSearch" placeholder="Type @ or a username to find an account" maxlength="100" autocomplete="off"><button class="primary" type="submit">Inspect</button></form><div id="ipInspectionSuggestions" class="ip-inspection-suggestions" hidden></div><p class="muted ip-inspection-note">IP and network information is sensitive. Location is approximate. Lookups use IP Info with ipapi.co as a fallback.</p><div id="ipInspectionResults"><p class="muted">Search for an account to inspect its recorded IP history.</p></div></section>' : ''}
@@ -2985,6 +2992,7 @@ async function loadStaff() {
         }).join('')||'<p class="muted">No reports.</p>'}
       </div>
     `;
+    await renderStaffApplications();
     const ipSearch=$('ipInspectionSearch'), ipSuggestions=$('ipInspectionSuggestions');
     let ipSuggestTimer;
     ipSearch?.addEventListener('input',()=>{
