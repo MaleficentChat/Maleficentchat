@@ -2295,3 +2295,14 @@ a { color: #65dcff; }
 .gravity-room-invite{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:10px 4px;padding:13px;border:1px solid rgba(48,220,198,.42);border-radius:13px;background:linear-gradient(110deg,rgba(0,177,160,.18),rgba(35,80,142,.22));box-shadow:0 8px 24px rgba(0,0,0,.2)}
 .gravity-invite-icon{width:42px;height:42px;flex:0 0 42px;display:grid;place-items:center;border-radius:12px;background:#122c3a;font-size:22px}.gravity-invite-copy{display:flex;flex:1;min-width:150px;flex-direction:column;gap:3px}.gravity-invite-copy b{color:#66e9d3;font-size:10px;letter-spacing:.1em}.gravity-invite-copy strong{font-size:13px}.gravity-invite-copy small{font-size:10px;color:#91aebe}.gravity-room-invite .primary{white-space:nowrap}
 @media(max-width:760px){.games-root{padding:10px}.gravity-card{grid-template-columns:1fr}.gravity-hero{padding:22px 18px}.gravity-preview{height:180px;margin-top:17px}.gravity-setup{padding:20px 18px;border-left:0;border-top:1px solid rgba(255,255,255,.06)}.gravity-arena-card{padding:10px}.gravity-arena-head h2{font-size:17px}.gravity-arena-controls{align-items:flex-start;flex-direction:column}.gravity-flip{width:100%;min-height:54px}.gravity-room-invite{gap:9px}.gravity-room-invite .primary{flex:1}}
+
+/* Quick profile opens as a compact corner panel, not a blurred full-screen modal */
+#modal:has(.quick-user-card){background:transparent!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;align-items:flex-end!important;justify-content:flex-end!important;padding:18px!important;pointer-events:none!important}
+#modal:has(.quick-user-card) .modal-card{pointer-events:auto!important;width:min(360px,calc(100vw - 36px))!important;max-width:360px!important;max-height:min(72dvh,620px)!important;margin:0 0 72px auto!important;padding:0!important;overflow:auto!important;border-radius:20px!important;background:transparent!important;border:0!important;box-shadow:none!important}
+#modal:has(.quick-user-card) .modal-close{display:none!important}
+.quick-user-card{width:100%!important;max-height:min(72dvh,620px);overflow:auto!important;border-radius:20px!important;box-shadow:0 18px 48px rgba(0,0,0,.42)!important}
+.quick-user-top{padding:18px 16px 14px!important}
+.quick-user-avatar{width:72px!important;height:72px!important;margin:8px auto 5px!important}
+.quick-user-top h2{font-size:20px!important}
+.quick-user-row{min-height:54px!important;padding:11px 16px!important;font-size:15px!important}
+@media(max-width:768px){#modal:has(.quick-user-card){padding:10px!important;align-items:flex-end!important;justify-content:center!important}#modal:has(.quick-user-card) .modal-card{width:min(360px,calc(100vw - 20px))!important;max-width:calc(100vw - 20px)!important;margin:0 auto calc(76px + env(safe-area-inset-bottom,0px))!important;max-height:62dvh!important}.quick-user-card{max-height:62dvh!important}}
