@@ -206,6 +206,24 @@ async function initDB() {
       VALUES ('Main Room',(SELECT id FROM users WHERE username='Maleficent'),'🏠','The main community chat room.','Community',true,'MEMBER','main-room',0,120,true)
       ON CONFLICT(name) DO NOTHING`);
   }
+
+  // Enforce the room structure on EVERY startup, not only on the first migration.
+  // Keep user-created rooms; remove only obsolete age-split rooms and duplicate
+  // case-variants of Main Room. Remove messages before removing their room rows.
+  await pool.query(`INSERT INTO rooms(name,created_by,icon,description,category,is_public,rank_required,invite_token,min_age,max_age,is_default)
+    VALUES ('Main Room',(SELECT id FROM users WHERE username='Maleficent'),'🏠','The main community chat room.','Community',true,'MEMBER','main-room',0,120,true)
+    ON CONFLICT(name) DO NOTHING`);
+  const obsoleteRooms = await pool.query(`SELECT id FROM rooms
+    WHERE LOWER(TRIM(name)) IN ('main room 1','main room 2')
+       OR (LOWER(TRIM(name))='main room' AND name <> 'Main Room')`);
+  if (obsoleteRooms.rowCount) {
+    const obsoleteIds = obsoleteRooms.rows.map(row => Number(row.id));
+    await pool.query(`DELETE FROM room_messages WHERE room_id = ANY($1::int[])`, [obsoleteIds]);
+    await pool.query(`DELETE FROM rooms WHERE id = ANY($1::int[])`, [obsoleteIds]);
+  }
+  await pool.query(`UPDATE rooms SET is_default=(name='Main Room'), min_age=0, max_age=120 WHERE name='Main Room'`);
+  await pool.query(`UPDATE rooms SET is_default=false WHERE name <> 'Main Room'`);
+
   const giftValues = `VALUES
     ('Rose','🌹',10),('Chocolate','🍫',15),('Heart','❤️',20),('Teddy Bear','🧸',25),('Diamond','💎',100),('Crown','👑',150),('Cake','🎂',30),('Flower','🌸',15),('Star','⭐',20),('Gift Box','🎁',50),
     ('Crown Jewel','💍',75),('Coffee','☕',10),('Cupcake','🧁',15),('Butterfly','🦋',20),('Moon','🌙',20),('Sun','☀️',20),('Music','🎵',10),('Paw','🐾',10),('Unicorn','🦄',40),('Castle','🏰',60)`;
