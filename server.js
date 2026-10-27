@@ -2868,6 +2868,23 @@ app.patch("/api/owner/command-settings",ownerOnly,async(req,res)=>{
 });
 
 app.patch("/api/owner/settings",ownerOnly,async(req,res)=>{
+  if(req.body.systemModeration!==undefined){
+    const incoming=req.body.systemModeration;
+    const keys=["multi_account","ban_evasion","spam_flood","vpn_proxy"];
+    const actions=new Set(["WARN","MUTE","KICK","BAN"]);
+    if(!incoming||typeof incoming!=="object"||Array.isArray(incoming))return res.status(400).json({error:"Invalid System Moderation settings."});
+    const next={...(db.settings.system_moderation||{})};
+    for(const key of keys){
+      const rule=incoming[key];
+      if(!rule||typeof rule!=="object"||!actions.has(String(rule.action||"").toUpperCase()))return res.status(400).json({error:"Each System Moderation rule needs a valid action."});
+      const duration=Number(rule.durationMinutes);
+      const reason=cleanText(rule.reason||"").slice(0,240);
+      if(!Number.isFinite(duration)||duration<1||duration>10080||!reason)return res.status(400).json({error:"Enter a valid duration and reason for every System Moderation rule."});
+      next[key]={enabled:rule.enabled===true,action:String(rule.action).toUpperCase(),durationMinutes:Math.floor(duration),reason};
+    }
+    db.settings.system_moderation=next;
+  }
+
   if(req.body.goldPerMessage!==undefined){db.settings.gold_per_message=Math.max(0,Number(req.body.goldPerMessage)||0);db.settings.goldPerMessage=db.settings.gold_per_message;}
   if(req.body.xpPerMessage!==undefined){db.settings.xp_per_message=Math.max(0,Number(req.body.xpPerMessage)||0);db.settings.xpPerMessage=db.settings.xp_per_message;}
   if(req.body.dailyXpLimit!==undefined){db.settings.daily_xp_limit=Math.max(1,Number(req.body.dailyXpLimit)||500);db.settings.dailyXpLimit=db.settings.daily_xp_limit;}
