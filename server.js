@@ -3392,7 +3392,7 @@ async function sendGiftHandler(req,res){
   sender.gold=remainingGold;recipient.giftsReceived||=[];recipient.giftsReceived.push(giftRecord);
   sender.badgesStats||={goldSent:0,goldReceived:0,giftsSent:0,giftsReceived:0};recipient.badgesStats||={goldSent:0,goldReceived:0,giftsSent:0,giftsReceived:0};
   sender.badgesStats.giftsSent=Number(sender.badgesStats.giftsSent||0)+1;recipient.badgesStats.giftsReceived=Number(recipient.badgesStats.giftsReceived||0)+1;
-  db.goldTransactions||=[];db.goldTransactions.push({id:id(),time:Date.now(),actor:sender.id,userId:sender.id,type:'GIFT_SENT',delta:-gift.cost,gift:gift.name,to:recipient.id});
+  db.goldTransactions||=[];db.goldTransactions.push({id:id(),time:Date.now(),actor:sender.id,userId:sender.id,type:'GIFT_SENT',delta:String(sender.rank).toUpperCase()==='DEVELOPER'?0:-gift.cost,gift:gift.name,to:recipient.id});
   save();log(sender,'GIFT_SEND',recipient.username,{gift:gift.name,cost:gift.cost});
   io.to('user:'+sender.id).emit('gold:update',{gold:sender.gold});
   io.to('user:'+recipient.id).emit('gift:received',giftRecord);
