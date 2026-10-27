@@ -601,14 +601,7 @@ async function loadRankShop(){
   document.querySelectorAll('[data-vip-plan]').forEach(b=>b.onclick=async()=>{try{const d=await api('/api/shop/vip',{method:'POST',body:JSON.stringify({plan:b.dataset.vipPlan})});state.user.gold=d.gold;toast('VIP activated.');updateNav();loadRankShop()}catch(e){toast(e.message)}});
 }
 
-async function openChatGift(){
-  try{
-    const [users,gifts]=await Promise.all([api('/api/users?q='),api('/api/gifts')]);
-    modal(`<h2>🎁 Send a Gift</h2><select id="giftRecipient">${(users.users||[]).filter(u=>u.id!==state.user.id).map(u=>`<option value="${esc(u.id)}">@${esc(u.username)}</option>`).join('')}</select><div class="gift-chat-grid">${(gifts.gifts||[]).map(g=>`<button class="gift-btn" data-chat-gift="${g.id}"><span>${esc(g.icon||g.image||'🎁')}</span><b>${esc(g.name)}</b><small>🪙 ${g.cost}</small></button>`).join('')||'<p class="muted">No gifts configured.</p>'}</div>`);
-    document.querySelectorAll('[data-chat-gift]').forEach(b=>b.onclick=async()=>{try{const r=await api('/api/gift/send',{method:'POST',body:JSON.stringify({recipientId:$('giftRecipient').value,gift:b.dataset.chatGift})});state.user.gold=r.remainingGold;closeModal();toast(`🎁 ${r.gift.name} sent!`)}catch(e){toast(e.message)}});
-  }catch(e){toast(e.message)}
-}
-if($('chatGiftBtn')){$('chatGiftBtn').textContent='🎁 Gift';$('chatGiftBtn').title='Send a virtual gift to another member';$('chatGiftBtn').onclick=openChatGift;}
+/* Virtual gifts remain available from member profiles; the composer shortcut was removed. */
 
 async function claimDailyReward(){try{const r=await api('/api/daily/claim',{method:'POST'});state.user.gold=r.gold;state.user.xp=r.xp;updateNav();const b=document.querySelector('[data-daily-reward]');if(b){b.disabled=true;b.querySelector('small').textContent='Already claimed today';}toast(`🎁 Daily reward: +${r.amount} gold, +${r.xpAmount} XP · Streak ${r.streak}`);return r;}catch(e){toast(e.message)}}
 
