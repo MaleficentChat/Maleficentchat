@@ -1327,7 +1327,6 @@ app.delete("/api/rooms/:id",auth,async(req,res)=>{
 app.post(
   "/api/rooms/:id/join",
   auth,
-  featureAllowed("join_rooms"),
   async(req,res)=>{
     const u=current(req);
 
@@ -1339,6 +1338,10 @@ app.post(
       return res.status(404).json({
         error:"Room not found"
       });
+    }
+    const isPermanentMainRoom=!!r.isDefault||/^main room$/i.test(String(r.name||"").trim());
+    if(!isPermanentMainRoom&&!hasFeature(u,"join_rooms")){
+      return res.status(403).json({error:"Your account does not have permission to join rooms."});
     }
 
     if(u.banned===true){
@@ -3668,8 +3671,8 @@ app.get("/api/staff/reports/:id/private-messages",auth,featureAllowed("view_staf
     if(!q.rowCount&&!cached)return res.status(404).json({error:"Report not found"});
     const row=q.rows[0]||{},d=row.data&&typeof row.data==="object"?row.data:cached||{};
     if(!d.conversationUserId)return res.status(400).json({error:"This is not a private-message report."});
-    let messages=Array.isArray(d.privateMessages)?d.privateMessages:[];
-    if(!messages.length){const p=await pool.query("SELECT data FROM private_messages WHERE (sender_id=$1 AND receiver_id=$2) OR (sender_id=$2 AND receiver_id=$1) ORDER BY created_at DESC LIMIT 200",[Number(d.reportedUserId),Number(d.conversationUserId)]);messages=p.rows.map(x=>x.data).reverse();}
+    let messages=(Array.isArray(d.privateMessages)?d.privateMessages:[]).map(item=>{const data=item?.data&&typeof item.data==="object"?item.data:item||{};const senderId=item?.sender_id??data.from??data.senderId,receiverId=item?.receiver_id??data.to??data.receiverId;const sender=db.users.find(user=>String(user.id)===String(senderId)),receiver=db.users.find(user=>String(user.id)===String(receiverId));return {...data,id:item?.id??data.id,from:senderId,to:receiverId,senderId,receiverId,senderUsername:item?.sender_username||sender?.username||data.fromUsername||data.senderUsername||"Unknown",receiverUsername:item?.receiver_username||receiver?.username||data.toUsername||data.receiverUsername||"Unknown",text:data.text??item?.message??data.message??data.content??"",message:data.message??item?.message??data.text??data.content??"",time:data.time??(item?.created_at?new Date(item.created_at).getTime():Date.now())};});
+    if(!messages.length){const p=await pool.query("SELECT m.id,m.sender_id,m.receiver_id,m.message,m.data,m.created_at,s.username AS sender_username,r.username AS receiver_username FROM private_messages m LEFT JOIN users s ON s.id=m.sender_id LEFT JOIN users r ON r.id=m.receiver_id WHERE (m.sender_id=$1 AND m.receiver_id=$2) OR (m.sender_id=$2 AND m.receiver_id=$1) ORDER BY m.created_at ASC LIMIT 200",[Number(d.reportedUserId),Number(d.conversationUserId)]);messages=p.rows;}
     res.json({messages,report:{id:req.params.id,reason:d.reason||"No reason supplied",reporterUsername:d.reporterUsername||row.reporter_username||"",reportedUserUsername:d.reportedUserUsername||row.reported_username||"",conversationUsername:d.conversationUsername||row.conversation_username||"",reportedUserId:d.reportedUserId,conversationUserId:d.conversationUserId}});
   }catch(e){console.error("Private-message report evidence failed:",e);res.status(500).json({error:"Could not load the reported private-message evidence."});}
 });
@@ -4621,7 +4624,26 @@ app.get('/api/me/account',auth,async(req,res)=>{
 // Master repair APIs: privacy-aware admin controls and persistent records.
 app.post('/api/private-nickname',auth,async(req,res)=>{try{const u=current(req),target=String(req.body.targetId||''),nickname=cleanText(req.body.nickname||'').trim().slice(0,50);if(!target||target===String(u.id))return res.status(400).json({error:'Choose another user.'});const exists=await pool.query('SELECT id FROM users WHERE id=$1',[target]);if(!exists.rowCount)return res.status(404).json({error:'User not found'});if(!nickname){await pool.query('DELETE FROM private_nicknames WHERE owner_id=$1 AND target_user_id=$2',[u.id,target]);return res.json({ok:true,nickname:''});}await pool.query(`INSERT INTO private_nicknames(owner_id,target_user_id,nickname) VALUES($1,$2,$3) ON CONFLICT(owner_id,target_user_id) DO UPDATE SET nickname=EXCLUDED.nickname`,[u.id,target,nickname]);res.json({ok:true,nickname});}catch(e){console.error(e);res.status(500).json({error:'Could not save nickname'});}});
 app.get('/api/private-nicknames',auth,async(req,res)=>{const u=current(req);const q=await pool.query('SELECT target_user_id,nickname FROM private_nicknames WHERE owner_id=$1',[u.id]);res.json({nicknames:Object.fromEntries(q.rows.map(x=>[String(x.target_user_id),x.nickname]))});});
-app.post('/api/admin/private-search',auth,ownerOnly,async(req,res)=>{const a=String(req.body.user1||'').trim(),b=String(req.body.user2||'').trim();if(!a)return res.status(400).json({error:'Enter at least one username'});const ua=await pool.query('SELECT id,username FROM users WHERE LOWER(username)=LOWER($1) LIMIT 1',[a]);if(!ua.rowCount)return res.status(404).json({error:`User not found: ${a}`});let sql,params,users=[ua.rows[0]];if(b){const ub=await pool.query('SELECT id,username FROM users WHERE LOWER(username)=LOWER($1) LIMIT 1',[b]);if(!ub.rowCount)return res.status(404).json({error:`User not found: ${b}`});users.push(ub.rows[0]);sql=`SELECT m.*,s.username AS sender_username,r.username AS receiver_username FROM private_messages m LEFT JOIN users s ON s.id=m.sender_id LEFT JOIN users r ON r.id=m.receiver_id WHERE (m.sender_id=$1 AND m.receiver_id=$2) OR (m.sender_id=$2 AND m.receiver_id=$1) ORDER BY m.created_at DESC LIMIT 100`;params=[ua.rows[0].id,ub.rows[0].id];}else{sql=`SELECT m.*,s.username AS sender_username,r.username AS receiver_username FROM private_messages m LEFT JOIN users s ON s.id=m.sender_id LEFT JOIN users r ON r.id=m.receiver_id WHERE m.sender_id=$1 OR m.receiver_id=$1 ORDER BY m.created_at DESC LIMIT 100`;params=[ua.rows[0].id];}const q=await pool.query(sql,params);res.json({messages:q.rows,users});});
+app.post('/api/admin/private-search',auth,ownerOnly,async(req,res)=>{
+  const username1=String(req.body.user1||'').trim(),username2=String(req.body.user2||'').trim();
+  if(!username1)return res.status(400).json({error:'Enter at least one username'});
+  try{
+    const first=await pool.query('SELECT id,username FROM users WHERE LOWER(username)=LOWER($1) LIMIT 1',[username1]);
+    if(!first.rowCount)return res.status(404).json({error:'User not found: '+username1});
+    const users=[first.rows[0]];let sql,params;
+    if(username2){
+      const second=await pool.query('SELECT id,username FROM users WHERE LOWER(username)=LOWER($1) LIMIT 1',[username2]);
+      if(!second.rowCount)return res.status(404).json({error:'User not found: '+username2});
+      users.push(second.rows[0]);
+      sql='SELECT m.id,m.sender_id,m.receiver_id,m.message,m.data,m.created_at,s.username AS sender_username,r.username AS receiver_username FROM private_messages m LEFT JOIN users s ON s.id=m.sender_id LEFT JOIN users r ON r.id=m.receiver_id WHERE (m.sender_id=$1 AND m.receiver_id=$2) OR (m.sender_id=$2 AND m.receiver_id=$1) ORDER BY m.created_at DESC LIMIT 200';params=[first.rows[0].id,second.rows[0].id];
+    }else{
+      sql='SELECT m.id,m.sender_id,m.receiver_id,m.message,m.data,m.created_at,s.username AS sender_username,r.username AS receiver_username FROM private_messages m LEFT JOIN users s ON s.id=m.sender_id LEFT JOIN users r ON r.id=m.receiver_id WHERE m.sender_id=$1 OR m.receiver_id=$1 ORDER BY m.created_at DESC LIMIT 200';params=[first.rows[0].id];
+    }
+    const q=await pool.query(sql,params);
+    const messages=q.rows.map(row=>{const data=row.data&&typeof row.data==='object'?row.data:{};return {...data,id:row.id,from:row.sender_id??data.from,to:row.receiver_id??data.to,sender_id:row.sender_id,receiver_id:row.receiver_id,sender_username:row.sender_username||data.fromUsername||data.senderUsername||'Unknown',receiver_username:row.receiver_username||data.toUsername||data.receiverUsername||'Unknown',message:row.message??data.text??data.message??data.content??'',text:data.text??row.message??data.message??data.content??'',created_at:row.created_at,time:data.time??new Date(row.created_at).getTime()};});
+    res.json({messages,users});
+  }catch(error){console.error('Owner private-message inspection failed:',error);res.status(500).json({error:'Could not inspect private messages. Please retry.'});}
+});
 app.put('/api/admin/edit-email',auth,async(req,res)=>{const actor=current(req);const target=findUser(req.body.userId);if(!target)return res.status(404).json({error:'User not found'});if(target.username===DEFAULT_OWNER||String(target.rank).toUpperCase()==='DEVELOPER')return res.status(403).json({error:'The permanent owner account is protected.'});if(actor.username!==DEFAULT_OWNER&&String(actor.rank).toUpperCase()!=='DEVELOPER'&&rankOrder[target.rank]>=rankOrder[actor.rank])return res.status(403).json({error:'You cannot edit an equal or higher rank.'});if(!(hasFeature(actor,'edit_email')||actor?.username===DEFAULT_OWNER||String(actor?.rank).toUpperCase()==='DEVELOPER'))return res.status(403).json({error:'Email editing permission required.'});const id=Number(req.body.userId),email=String(req.body.newEmail||'').trim().toLowerCase();if(!Number.isInteger(id)||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))return res.status(400).json({error:'Enter a valid email address.'});try{const q=await pool.query('UPDATE users SET email=$1 WHERE id=$2 RETURNING id,email',[email,id]);if(!q.rowCount)return res.status(404).json({error:'User not found'});res.json({ok:true,user:q.rows[0]});}catch(e){if(e.code==='23505')return res.status(409).json({error:'Email already in use'});throw e;}});
 app.post('/api/admin/profile-note',auth,async(req,res)=>{const actor=current(req);if(!featureGrantAllowed(actor,'profile_note'))return res.status(403).json({error:'Staff profile-note permission required.'});const userId=Number(req.body.userId),note=cleanText(req.body.note||'').trim().slice(0,2000);const target=findUser(String(userId));if(!userId||!target||!note)return res.status(400).json({error:'User and note are required'});if(target.id===actor.id||rankOrder[target.rank]>=rankOrder[actor.rank])return res.status(403).json({error:'You cannot add a note to an equal or higher rank.'});await pool.query('INSERT INTO profile_notes(user_id,added_by,note) VALUES($1,$2,$3)',[userId,actor.id,note]);log(actor,'PROFILE_NOTE_ADD',String(userId),{note});res.json({ok:true});});
 app.get('/api/admin/profile-note/:userId',auth,async(req,res)=>{if(!featureGrantAllowed(current(req),'profile_note'))return res.status(403).json({error:'Staff profile-note permission required.'});const q=await pool.query('SELECT n.*,u.username AS added_by_username FROM profile_notes n LEFT JOIN users u ON u.id=n.added_by WHERE n.user_id=$1 ORDER BY n.created_at DESC LIMIT 20',[req.params.userId]);res.json({notes:q.rows});});
