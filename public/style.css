@@ -2468,3 +2468,56 @@ a { color: #65dcff; }
   .room-quick-nav { padding: 7px 9px; gap: 6px; }
   .room-quick-chip { min-height: 32px; padding: 6px 9px; max-width: 170px; }
 }
+
+
+/* Final room visibility safeguard based on the supplied 3.6.6 room-first layout. */
+#viewRooms:not(.chatting) {
+  display: flex !important;
+  flex-direction: column !important;
+  min-height: 0 !important;
+  height: 100% !important;
+  overflow: hidden !important;
+}
+#viewRooms:not(.chatting) > .topbar {
+  display: flex !important;
+  flex: 0 0 auto !important;
+  position: relative !important;
+  z-index: 2 !important;
+}
+#viewRooms:not(.chatting) > #rooms.room-grid {
+  display: flex !important;
+  flex: 1 1 auto !important;
+  flex-direction: column !important;
+  align-items: stretch !important;
+  align-content: flex-start !important;
+  min-height: 120px !important;
+  height: auto !important;
+  max-height: none !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  position: relative !important;
+  z-index: 1 !important;
+  box-sizing: border-box !important;
+}
+#viewRooms:not(.chatting) > #rooms.room-grid > .room-list-card {
+  display: block !important;
+  flex: 0 0 auto !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  box-sizing: border-box !important;
+}
+#viewRooms:not(.chatting) > #rooms.room-grid > .room-empty {
+  display: flex !important;
+  flex: 1 0 180px !important;
+  min-height: 180px !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+@media (max-width: 768px) {
+  #viewRooms:not(.chatting) { height: 100% !important; min-height: 0 !important; }
+  #viewRooms:not(.chatting) > #rooms.room-grid { padding: 12px !important; min-height: 120px !important; }
+}
