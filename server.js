@@ -1208,10 +1208,18 @@ app.get('/api/users/blocked',auth,(req,res)=>{
 });
 
 app.get("/api/rooms",auth,async(req,res)=>{
-  // Defensive fallback: ensure the one default room exists without reseeding legacy rooms.
+  // Keep one permanent, unrestricted default room and remove the obsolete age-split rooms.
   await pool.query(`INSERT INTO rooms(name,created_by,icon,description,category,is_public,rank_required,invite_token,min_age,max_age,is_default)
     VALUES ('Main Room',(SELECT id FROM users WHERE username='Maleficent'),'🏠','The main community chat room.','Community',true,'MEMBER','main-room',0,120,true)
     ON CONFLICT(name) DO NOTHING`);
+  await pool.query(`UPDATE rooms SET is_default=(LOWER(TRIM(name))='main room'), min_age=0, max_age=120
+    WHERE LOWER(TRIM(name))='main room'`);
+  const legacy = await pool.query(`SELECT id FROM rooms WHERE LOWER(TRIM(name)) IN ('main room 1','main room 2')`);
+  if (legacy.rows.length) {
+    const legacyIds = legacy.rows.map(row => Number(row.id));
+    await pool.query(`DELETE FROM room_messages WHERE room_id = ANY($1::int[])`, [legacyIds]);
+    await pool.query(`DELETE FROM rooms WHERE id = ANY($1::int[])`, [legacyIds]);
+  }
   const {rows}=await pool.query(`SELECT r.*,u.username AS creator FROM rooms r LEFT JOIN users u ON r.created_by=u.id ORDER BY r.is_default DESC,r.created_at ASC,r.id ASC`);
   if(!rows.length) return res.status(503).json({error:'Rooms are not initialized yet. Please retry in a moment.',rooms:[]});
   const rooms=rows.map(r=>({id:String(r.id),name:r.name,icon:r.icon||"💬",description:r.description||"",category:r.category||"Community",public:r.is_public!==false,passwordHash:r.password_hash||null,rankRequired:String(r.rank_required||"MEMBER").toUpperCase(),limit:Number(r.room_limit||100),slowMode:Number(r.slow_mode||0),announcement:r.announcement||"",ownerId:r.created_by?String(r.created_by):null,banner:r.banner||"",inviteToken:r.invite_token||"",creator:r.creator||null,isDefault:!!r.is_default,minAge:Number(r.min_age??0),maxAge:Number(r.max_age??120),locked:!!r.password_hash,onlineCount:visibleRoomOnlineCount(r.id)}));
@@ -1228,11 +1236,9 @@ function userAge(user){
   if(now.getUTCMonth()<dob.getUTCMonth()||(now.getUTCMonth()===dob.getUTCMonth()&&now.getUTCDate()<dob.getUTCDate()))age--;
   return age>=0?age:null;
 }
-function roomAgeAllowed(user,room){
-  const min=Number(room.minAge??room.min_age??0),max=Number(room.maxAge??room.max_age??120);
-  if(min===0&&max>=120)return true;
-  const age=userAge(user);
-  return age!==null&&age>=min&&age<=max;
+function roomAgeAllowed(_user,_room){
+  // Maleficent Chat rooms are not age-gated; all users may enter any room.
+  return true;
 }
 
 async function createRoomHandler(req,res){
@@ -1286,10 +1292,6 @@ app.post(
       return res.status(404).json({
         error:"Room not found"
       });
-    }
-
-    if(!roomAgeAllowed(u,r)){
-      return res.status(403).json({error:"You cannot join this room due to age restriction"});
     }
 
     if(u.banned===true){
@@ -3610,7 +3612,6 @@ io.on(
       const r=db.rooms.find(x=>x.id===roomId);
       if(!u||!r) return;
       if(!verifyRoomJoinToken(joinRequest?.joinToken,u.id,r)){socket.emit("room-error",{error:"Join this room through the room access flow first."});return;}
-      if(!roomAgeAllowed(u,r)){socket.emit("room-error",{error:"You cannot join this room due to age restriction"});return;}
       if(rankOrder[u.rank]<rankOrder[r.rankRequired]){socket.emit("room-error",{error:"Your rank cannot enter this room."});return;}
       if(u.banned===true) return;
       if(u.kickedUntil&&u.kickedUntil>Date.now()) return;
