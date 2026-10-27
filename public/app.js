@@ -1320,6 +1320,36 @@ $("attach").onclick = () =>
   $("file").click();
 if ($("chatGifBtn")) $("chatGifBtn").onclick = () => openGifPicker();
 
+/* Doodle pad: draw locally and send the result as a normal room image. */
+function openDoodleComposer(){
+  if(!state.currentRoom){toast('Join the Main Room before sending a doodle.');return;}
+  modal(`<div class="doodle-modal"><div class="doodle-head"><h2>🖌️ Doodle</h2><button type="button" class="mini" id="doodleClose">×</button></div>
+    <div class="doodle-tools"><button type="button" id="doodlePen">🖌️ Pen</button><button type="button" id="doodleEraser">🧽 Eraser</button><label>Color <input type="color" id="doodleColor" value="#111111"></label><label>Size <input type="range" id="doodleSize" min="2" max="24" value="5"></label><button type="button" id="doodleUndo">↶ Undo</button><button type="button" id="doodleClear">🗑 Clear</button></div>
+    <canvas id="doodleCanvas" width="900" height="620" aria-label="Draw your doodle here"></canvas>
+    <div class="doodle-footer"><span class="muted">Your drawing will be sent to the current room.</span><button type="button" class="primary" id="doodleSend">➤ Send to Main Chat</button></div></div>`);
+  const canvas=$('doodleCanvas'),ctx=canvas.getContext('2d');ctx.fillStyle='#ffffff';ctx.fillRect(0,0,canvas.width,canvas.height);
+  let drawing=false,erase=false,color='#111111',size=5,history=[];
+  const snapshot=()=>{try{history.push(ctx.getImageData(0,0,canvas.width,canvas.height));if(history.length>20)history.shift()}catch{}};
+  snapshot();
+  const point=e=>{const r=canvas.getBoundingClientRect();return{x:(e.clientX-r.left)*canvas.width/r.width,y:(e.clientY-r.top)*canvas.height/r.height}};
+  canvas.onpointerdown=e=>{e.preventDefault();drawing=true;canvas.setPointerCapture?.(e.pointerId);const p=point(e);ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineCap='round';ctx.lineJoin='round';ctx.strokeStyle=erase?'#ffffff':color;ctx.lineWidth=size;ctx.lineTo(p.x+.01,p.y+.01);ctx.stroke();};
+  canvas.onpointermove=e=>{if(!drawing)return;const p=point(e);ctx.strokeStyle=erase?'#ffffff':color;ctx.lineWidth=size;ctx.lineTo(p.x,p.y);ctx.stroke();};
+  const finish=()=>{if(drawing){drawing=false;snapshot()}};canvas.onpointerup=finish;canvas.onpointercancel=finish;
+  $('doodlePen').onclick=()=>erase=false;$('doodleEraser').onclick=()=>erase=true;$('doodleColor').oninput=e=>{color=e.target.value;erase=false};$('doodleSize').oninput=e=>size=Number(e.target.value);
+  $('doodleUndo').onclick=()=>{if(history.length>1){history.pop();ctx.putImageData(history[history.length-1],0,0)}};
+  $('doodleClear').onclick=()=>{ctx.fillStyle='#ffffff';ctx.fillRect(0,0,canvas.width,canvas.height);snapshot()};
+  $('doodleClose').onclick=closeModal;
+  $('doodleSend').onclick=async()=>{const btn=$('doodleSend');btn.disabled=true;btn.textContent='Sending…';try{
+    const blob=await new Promise((resolve,reject)=>canvas.toBlob(b=>b?resolve(b):reject(Error('Could not export the doodle.')),'image/png'));
+    const file=new File([blob],'maleficent-doodle.png',{type:'image/png'}),form=new FormData();form.append('text','');form.append('file',file);
+    const data=await api('/api/rooms/'+encodeURIComponent(state.currentRoom)+'/messages',{method:'POST',body:form});
+    if(data.message&&String(data.message.roomId)===String(state.currentRoom))appendMessage(data.message);
+    closeModal();toast('Doodle sent to the room!');
+  }catch(e){btn.disabled=false;btn.textContent='➤ Send to Main Chat';toast(e.message||'Could not send doodle.')}};
+}
+$('doodleBtn')?.addEventListener('click',openDoodleComposer);
+
+
 $("message").oninput = () => {
   if (
     state.socket &&
@@ -2306,14 +2336,20 @@ async function loadNews() {
   try {
     const data=await api("/api/news");
     $("news").innerHTML=(data.news||[]).map(n=>{
-      const comments=n.comments||[];
-      return `<article class="card news-card">
-        <div class="news-card-top"><div><h3>${esc(n.title)}</h3><div class="muted">${fmt(n.time)} · @${esc(n.author)}</div></div><span class="news-count">💬 ${comments.length}</span></div>
-        <p class="news-body">${esc(n.body)}</p>
+      const comments=n.comments||[], rx=n.reactions||{};
+      const reactions=[["👍",Number(rx.like||rx.likes||0)],["👎",Number(rx.dislike||rx.dislikes||0)],["💗",Number(rx.love||0)],["😆",Number(rx.laugh||0)]];
+      return `<article class="card news-card social-feed-card" data-news-id="${esc(n.id)}">
+        <div class="news-card-top"><div class="social-author"><div class="social-author-avatar">${n.avatar?`<img src="${esc(n.avatar)}" alt="">`:'📰'}</div><div><h3>${esc(n.author||'Maleficent Chat')}</h3><div class="muted">${fmt(n.time)}</div></div></div><button class="social-more" data-news-more="${esc(n.id)}" aria-label="Post options">•••</button></div>
+        <div class="news-body">${esc(n.title? n.title+'\\n\\n'+n.body : n.body)}</div>
         ${n.attachment?.type?.startsWith('image/')?`<img class="news-attachment" src="${esc(n.attachment.url)}" alt="News photo">`:''}
-        <div class="news-actions"><button class="mini" onclick="openNewsComments('${esc(n.id)}')">💬 Comments <b>${comments.length}</b></button>${canFeature('delete_news')?`<button class="mini danger" onclick="deleteNews('${esc(n.id)}')">🗑 Delete</button>`:""}</div>
+        <div class="social-reaction-summary">${reactions.map(([emoji,count])=>`<span>${emoji} <b>${count}</b></span>`).join('')}<button class="social-comments-shortcut" onclick="openNewsComments('${esc(n.id)}')">${comments.length} 💬</button></div>
+        <div class="news-actions social-reaction-actions">${reactions.map(([emoji])=>`<button class="mini" type="button" data-news-reaction="${emoji}" data-news-id="${esc(n.id)}">${emoji}</button>`).join('')}<button class="mini" onclick="openNewsComments('${esc(n.id)}')">💬 <b>${comments.length}</b></button>${canFeature('delete_news')?`<button class="mini danger" onclick="deleteNews('${esc(n.id)}')">🗑 Delete</button>`:""}</div>
+        <div class="social-post-options hidden" id="newsOptions-${esc(n.id)}"><button type="button" data-news-report="${esc(n.id)}">⚑ Report</button></div>
       </article>`;
     }).join("")||`<div class="room-empty"><div>📰</div><b>No news yet</b><span>Community announcements will appear here.</span></div>`;
+    document.querySelectorAll('[data-news-more]').forEach(b=>b.onclick=()=>{$('newsOptions-'+b.dataset.newsMore)?.classList.toggle('hidden')});
+    document.querySelectorAll('[data-news-report]').forEach(b=>b.onclick=async()=>{const id=b.dataset.newsReport;try{await api('/api/news/'+encodeURIComponent(id)+'/report',{method:'POST',body:JSON.stringify({reason:'Reported by community member'})});toast('Report submitted.')}catch(e){toast(e.message||'Reporting is unavailable for this post.')}});
+    document.querySelectorAll('[data-news-reaction]').forEach(b=>b.onclick=()=>toast('Reactions for news posts are not enabled on the server yet.'));
   } catch (error) { toast(error.message); }
 }
 
