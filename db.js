@@ -306,6 +306,16 @@ async function loadState(defaultState) {
     createdAt: row.created_at ? new Date(row.created_at).getTime() : Date.now()
   }));
 
+  // Load equipped Gold Boutique cosmetics from PostgreSQL so they persist across restarts.
+  const { rows: equippedCosmetics } = await pool.query(`SELECT uc.user_id,c.id,c.name,c.category,c.icon,c.description FROM user_cosmetics uc JOIN cosmetic_items c ON c.id=uc.item_id WHERE uc.equipped=true AND c.enabled=true ORDER BY c.category`);
+  const cosmeticsByUser = new Map();
+  for (const item of equippedCosmetics) {
+    const key=String(item.user_id);
+    if(!cosmeticsByUser.has(key)) cosmeticsByUser.set(key,[]);
+    cosmeticsByUser.get(key).push({id:item.id,name:item.name,category:item.category,icon:item.icon,description:item.description});
+  }
+  for (const user of state.users) user.equippedCosmetics=cosmeticsByUser.get(String(user.id))||[];
+
   // The permanent Developer can never be demoted, muted or otherwise changed by stale legacy state.
   const dev = state.users.find(u=>u.username.toLowerCase()==='maleficent');
   if (dev) {
