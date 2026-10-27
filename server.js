@@ -3611,9 +3611,69 @@ setInterval(()=>{
   if(changed) save();
 },60000);
 
+const gravityMatches = new Map();
+
 io.on(
   "connection",
   socket=>{
+    socket.on("gravity:invite", data=>{
+      const u=findUser(socket.data.userId);
+      if(!u)return socket.emit("gravity:error",{error:"Please log in before starting a game."});
+      const main=db.rooms.find(r=>r.isDefault||/^main room$/i.test(String(r.name||"")));
+      if(!main)return socket.emit("gravity:error",{error:"Main Room is not available right now."});
+      const gameId=id();
+      const difficulty=Math.max(0,Math.min(100,Number(data&&data.difficulty)||25));
+      const match={id:gameId,hostId:String(u.id),hostName:u.displayName||u.username,players:[{userId:String(u.id),username:u.username,displayName:u.displayName||u.username,side:0}],status:"waiting",difficulty,createdAt:Date.now(),state:null};
+      gravityMatches.set(gameId,match);
+      socket.join("gravity:"+gameId);
+      const invite={gameId:gameId,hostId:String(u.id),hostName:match.hostName,roomId:String(main.id),gameName:"Maleficent's Gravity Run",difficulty:difficulty};
+      io.to("room:"+main.id).emit("system-message",{id:id(),roomId:String(main.id),system:true,bot:"Aurora",text:match.hostName+" has started Maleficent's Gravity Run",time:Date.now(),gameInvite:invite});
+      socket.emit("gravity:created",{gameId:gameId,hostId:String(u.id),hostName:match.hostName,difficulty:difficulty});
+    });
+
+    socket.on("gravity:join", data=>{
+      const u=findUser(socket.data.userId);
+      const match=gravityMatches.get(String(data&&data.gameId||""));
+      if(!u)return socket.emit("gravity:error",{error:"Please log in before joining a game."});
+      if(!match||match.status!=="waiting")return socket.emit("gravity:error",{error:"This game is no longer waiting for a player."});
+      if(String(match.hostId)===String(u.id))return socket.emit("gravity:error",{error:"Invite another player to join your game."});
+      if(match.players.length>=2)return socket.emit("gravity:error",{error:"This game already has two players."});
+      match.players.push({userId:String(u.id),username:u.username,displayName:u.displayName||u.username,side:1});
+      match.status="started";
+      socket.join("gravity:"+match.id);
+      const payload={gameId:match.id,hostId:match.hostId,hostName:match.hostName,players:match.players,difficulty:match.difficulty};
+      io.to("gravity:"+match.id).emit("gravity:joined",payload);
+    });
+
+    socket.on("gravity:input", data=>{
+      const u=findUser(socket.data.userId);
+      const match=gravityMatches.get(String(data&&data.gameId||""));
+      if(!u||!match||match.status!=="started"||!match.players.some(p=>String(p.userId)===String(u.id)))return;
+      socket.to("gravity:"+match.id).emit("gravity:input",{gameId:match.id,playerId:String(u.id),action:String(data.action||"flip")});
+    });
+
+    socket.on("gravity:state", data=>{
+      const u=findUser(socket.data.userId);
+      const match=gravityMatches.get(String(data&&data.gameId||""));
+      if(!u||!match||String(match.hostId)!==String(u.id)||match.status!=="started")return;
+      match.state=data.state||null;
+      socket.to("gravity:"+match.id).emit("gravity:state",{gameId:match.id,state:match.state});
+    });
+
+    socket.on("gravity:end", data=>{
+      const u=findUser(socket.data.userId);
+      const match=gravityMatches.get(String(data&&data.gameId||""));
+      if(!u||!match||String(match.hostId)!==String(u.id))return;
+      io.to("gravity:"+match.id).emit("gravity:ended",{gameId:match.id,winnerId:String(data.winnerId||u.id),reason:String(data.reason||"finished")});
+      gravityMatches.delete(match.id);
+    });
+
+    socket.on("gravity:leave", data=>{
+      const gameId=String(data&&data.gameId||"");
+      socket.leave("gravity:"+gameId);
+    });
+
+
     socket.on(
       "auth",
       credentials=>{
