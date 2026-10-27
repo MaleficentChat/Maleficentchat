@@ -4,7 +4,7 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Maleficent Chat</title>
-<link rel="stylesheet" href="/style.css?v=registration-dob-fix-1">
+<link rel="stylesheet" href="/style.css?v=auth-syntax-fix-1">
  <link rel="manifest" href="/manifest.json">
 <script src="/socket.io/socket.io.js"></script>
 </head>
@@ -13,7 +13,7 @@
   <div class="auth-card">
     <div class="brand-mark">🖤</div><h1>Maleficent Chat</h1>
     <p class="muted">Enter the community. Login or create your account.</p>
-    <div class="auth-tabs"><button id="tabLogin" class="active">Login</button><button id="tabRegister">Register</button></div>
+    <div class="auth-tabs"><button id="tabLogin" class="active" type="button">Login</button><button id="tabRegister" type="button">Register</button></div>
     <form id="authForm">
       <input id="username" placeholder="Username" required maxlength="24" autocomplete="username">
       <input id="displayName" class="register-only hidden" placeholder="Display name" maxlength="32">
@@ -130,7 +130,7 @@
 
 <div id="modal" class="modal hidden"><div class="modal-card"><button class="modal-close" onclick="closeModal()">×</button><div id="modalBody"></div></div></div>
 <div id="toast"></div><div id="actionLock" class="action-lock hidden"></div>
-<script src="/app.js?v=registration-dob-fix-1"></script>
+<script src="/app.js?v=auth-syntax-fix-1"></script>
 <script src="/gravity-run.js?v=gravity-run-main-1"></script>
 </body>
 </html>
