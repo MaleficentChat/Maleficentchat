@@ -140,6 +140,11 @@ input:focus,textarea:focus,select:focus { border-color:rgba(0,215,193,.55); box-
 .room p { color:var(--muted); min-height:38px; }
 .room-meta { color:#6fd5c9; font-size:12px; }
 
+/* Room list and other views must keep a real scroll area instead of being clipped by the viewport. */
+#viewRooms:not(.chatting) { display:flex; flex-direction:column; min-height:0; overflow:hidden; }
+#viewRooms:not(.chatting) > .topbar { flex:0 0 auto; min-width:0; }
+#viewRooms:not(.chatting) > #rooms.room-grid { flex:1 1 auto; min-height:0; height:auto; overflow-x:hidden; overflow-y:auto; align-content:start; }
+.view:not(#viewRooms) { min-height:0; overflow-x:hidden; overflow-y:auto; }
 #viewRooms.chatting > .topbar,#viewRooms.chatting > #rooms { display:none; }
 #viewRooms.chatting > .chat-wrap { height:100%; margin-top:0; }
 .chat-wrap { display:grid; grid-template-columns:minmax(0,1fr) var(--online-w); gap:0; height:100%; margin:0; }
