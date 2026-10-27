@@ -2818,11 +2818,27 @@ app.delete('/api/filter-words/:id',ownerOnly,async(req,res)=>{
 
 // Friend Wall
 app.get('/api/wall',auth,async(req,res)=>{
+  await pool.query(`CREATE TABLE IF NOT EXISTS wall_post_reactions(post_id BIGINT NOT NULL,user_id BIGINT NOT NULL,emoji TEXT NOT NULL,created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),PRIMARY KEY(post_id,user_id,emoji))`);
   const {rows}=await pool.query(`
-    SELECT w.*,u.username,u.avatar,u.rank FROM wall_posts w
-    LEFT JOIN users u ON u.id=w.user_id
-    WHERE w.status IN ('approved','pinned') ORDER BY CASE WHEN w.status='pinned' THEN 0 ELSE 1 END, w.created_at DESC LIMIT 100`);
+    SELECT w.*,u.username,u.avatar,u.rank,
+      COALESCE((SELECT jsonb_object_agg(r.emoji,r.users) FROM (SELECT emoji,jsonb_agg(user_id::text) AS users FROM wall_post_reactions WHERE post_id=w.id GROUP BY emoji) r),'{}'::jsonb) AS reactions,
+      (SELECT COUNT(*)::int FROM wall_comments wc WHERE wc.post_id=w.id) AS comment_count
+    FROM wall_posts w LEFT JOIN users u ON u.id=w.user_id
+    WHERE w.status IN ('approved','pinned')
+    ORDER BY CASE WHEN w.status='pinned' THEN 0 ELSE 1 END,w.created_at DESC LIMIT 100`);
   res.json({posts:rows});
+});
+app.post('/api/wall/:id/reaction',auth,async(req,res)=>{
+  const emoji=String(req.body?.emoji||'👍'),allowed=['👍','❤️','😂','😮','🔥','👏'];
+  if(!allowed.includes(emoji))return res.status(400).json({error:'Unsupported reaction.'});
+  await pool.query(`CREATE TABLE IF NOT EXISTS wall_post_reactions(post_id BIGINT NOT NULL,user_id BIGINT NOT NULL,emoji TEXT NOT NULL,created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),PRIMARY KEY(post_id,user_id,emoji))`);
+  const post=await pool.query('SELECT id FROM wall_posts WHERE id=$1',[req.params.id]);
+  if(!post.rowCount)return res.status(404).json({error:'Wall post not found.'});
+  const uid=Number(current(req).id),pid=Number(req.params.id);
+  const existing=await pool.query('SELECT 1 FROM wall_post_reactions WHERE post_id=$1 AND user_id=$2 AND emoji=$3',[pid,uid,emoji]);
+  if(existing.rowCount)await pool.query('DELETE FROM wall_post_reactions WHERE post_id=$1 AND user_id=$2 AND emoji=$3',[pid,uid,emoji]);
+  else await pool.query('INSERT INTO wall_post_reactions(post_id,user_id,emoji) VALUES($1,$2,$3) ON CONFLICT DO NOTHING',[pid,uid,emoji]);
+  res.json({ok:true,reacted:!existing.rowCount});
 });
 async function wallPostHandler(req,res){
   const u=current(req), grants=db.settings?.feature_grants?.wall_post||["OWNER","ADMIN"], rank=String(u.rank||'').toUpperCase();
@@ -3551,6 +3567,18 @@ app.post("/api/news",auth,upload.single("file"),(req,res)=>{
     });
   }
 );
+
+app.post('/api/news/:id/reaction',auth,(req,res)=>{
+  const u=current(req),emoji=String(req.body?.emoji||'👍'),allowed=['👍','👎','💗','😆'];
+  if(!allowed.includes(emoji))return res.status(400).json({error:'Unsupported reaction.'});
+  const n=(db.news||[]).find(x=>String(x.id)===String(req.params.id));
+  if(!n)return res.status(404).json({error:'News item not found.'});
+  n.reactions=n.reactions&&typeof n.reactions==='object'?n.reactions:{};
+  const old=n.reactions[emoji],users=Array.isArray(old)?old.map(String):(Number(old)>0?Array.from({length:Math.min(Number(old),100)},(_,i)=>'legacy-'+i):[]);
+  const userId=String(u.id),reacted=users.includes(userId);
+  n.reactions[emoji]=reacted?users.filter(x=>x!==userId):[...users,userId];
+  save();io.emit('news');res.json({ok:true,reactions:n.reactions,reacted:!reacted});
+});
 
 app.delete(
   "/api/news/:id",
