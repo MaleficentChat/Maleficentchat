@@ -385,13 +385,31 @@ async function start() {
   });
 
   await loadRooms();
-  await renderView();
-  // Enter the persistent Main Room automatically after login; users can switch rooms any time.
-  const mainRoom = state.rooms.find(room => room.isDefault) ||
+
+  // Retry the server's authoritative room list before showing an empty room
+  // screen. Main Room is seeded on the server before it accepts logins.
+  let mainRoom = state.rooms.find(room => room.isDefault) ||
     state.rooms.find(room => String(room.name || "").trim().toLowerCase() === "main room");
+  if (!mainRoom) {
+    try {
+      const latest = await api("/api/rooms");
+      state.rooms = sanitizeRoomList(latest.rooms);
+      state.roomListMode = "all";
+      mainRoom = state.rooms.find(room => room.isDefault) ||
+        state.rooms.find(room => String(room.name || "").trim().toLowerCase() === "main room");
+      renderRooms();
+    } catch (e) {
+      toast("Rooms could not load: " + e.message);
+    }
+  }
+
+  await renderView();
+  // Login should open Main Room immediately, not leave users on the room cards.
   if (mainRoom) {
-    try { await joinRoom(String(mainRoom.id)); }
-    catch (e) { console.warn("Could not auto-join Main Room:", e.message); }
+    const joined = await joinRoom(String(mainRoom.id));
+    if (joined === false) toast("Main Room could not open automatically. Please check the message above.");
+  } else {
+    toast("Main Room is missing from the server room list. Please retry in a moment.");
   }
   await loadNotifications();
 }
@@ -756,7 +774,7 @@ async function joinRoom(id) {
   const room =
     state.rooms.find(r => r.id === id);
 
-  if (!room) return;
+  if (!room) return false;
 
   try {
     let password = "";
@@ -819,8 +837,10 @@ $("messages").innerHTML =
 
     renderOnline();
     renderRooms();
+    return true;
   } catch (error) {
     toast(error.message);
+    return false;
   }
 }
 
@@ -3495,7 +3515,7 @@ async function sendYoutube(videoId,title){
   try{
     if(!state.currentRoom)throw new Error('Join Main Room before sharing a video.');
     const result=await api(`/api/rooms/${encodeURIComponent(state.currentRoom)}/youtube`,{method:'POST',body:JSON.stringify({videoId,title})});
-    if(result.message)appendMessage(result.message);
+    if(result.message && !document.querySelector(`[data-mid="${CSS.escape(String(result.message.id))}"]`))appendMessage(result.message);
     closeModal();toast('YouTube video shared in chat.');
   }catch(e){toast(e.message||'Could not share this video.')}
 }
