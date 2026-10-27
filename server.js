@@ -2647,11 +2647,44 @@ app.get("/api/staff/system-center",auth,async(req,res)=>{
   const enabledRules=Object.entries(db.settings?.system_moderation||{}).filter(([,v])=>v?.enabled===true).map(([key,v])=>({key,action:v.action,durationMinutes:v.durationMinutes,reason:v.reason}));
   res.json({health:{server:"ok",database,uptimeSeconds:Math.floor(process.uptime()),checkedAt:now},stats:{users:users.length,online:users.filter(x=>x.online&&!x.invisible).length,rooms:(db.rooms||[]).length,messages:(db.messages||[]).length,openReports:(db.reports||[]).filter(x=>String(x.status||"OPEN").toUpperCase()==="OPEN").length,activeModerations:users.filter(x=>x.banned||(x.mutedUntil&&x.mutedUntil>now)||(x.kickedUntil&&x.kickedUntil>now)).length},rules:enabledRules,audit:recent});
 });
+function auditVisibilityKey(row){
+  const action=String(row?.action||"").toUpperCase();
+  const source=String(row?.source||"").toUpperCase();
+  if(/FEATURE_ACCESS/.test(action))return "feature_permissions";
+  if(/INVISIBLE_MODE/.test(action))return "invisible_mode";
+  if(/LOGIN|LOGOUT/.test(action))return "login_activity";
+  if(/RANK/.test(action))return "rank_changes";
+  if(/MESSAGE.*DELETE|DELETE.*MESSAGE/.test(action))return "deleted_messages";
+  if(/MESSAGE.*EDIT|EDIT.*MESSAGE/.test(action))return "edited_messages";
+  if(/REPORT/.test(action))return "reports";
+  if(/BAN|UNBAN|MUTE|KICK|WARN|MODERAT/.test(action))return "moderation_actions";
+  if(/ROOM/.test(action))return "room_changes";
+  if(/GOLD|TRANSFER|CURRENCY/.test(action))return "gold_transactions";
+  if(/PRIVATE|\bDM\b/.test(action))return "private_messages";
+  if(/UPLOAD|ATTACHMENT|FILE/.test(action))return "file_uploads";
+  if(/PROFILE|AVATAR|BIO/.test(action))return "profile_changes";
+  if(/SETTING|CONFIG/.test(action))return "site_settings";
+  if(/ACCOUNT|USER_/.test(action))return "account_changes";
+  if(/STAFF/.test(source+" "+action))return "staff_actions";
+  return "staff_actions";
+}
+function filterAuditRowsForRank(rows,user){
+  const settings=db.settings?.audit_log_visibility||{};
+  const rankNames=["MEMBER","VIP","PREMIUM","MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER","DEVELOPER"];
+  const viewerRank=String(user?.rank||"MEMBER").toUpperCase(), viewerLevel=rankNames.indexOf(viewerRank);
+  return (rows||[]).filter(row=>{
+    const key=auditVisibilityKey(row), rule=settings[key]||{enabled:true,minimumRank:"ADMIN"};
+    if(rule.enabled===false)return false;
+    const minimum=rankNames.indexOf(String(rule.minimumRank||"ADMIN").toUpperCase());
+    return viewerRank==="DEVELOPER"||viewerRank==="OWNER"||(viewerLevel>=0&&minimum>=0&&viewerLevel>=minimum);
+  });
+}
 app.get("/api/staff/system-center/audit",auth,async(req,res)=>{
   const actor=current(req);
   if(!hasRank(actor,"ADMIN")) return res.status(403).json({error:"Admin rank or higher required."});
   const q=String(req.query.q||"").trim().toLowerCase().slice(0,100);
-  const rows=(db.moderationHistory||[]).slice().reverse().filter(x=>!q||[x.target,x.actor,x.actorUsername,x.action,x.reason,x.source].some(v=>String(v||"").toLowerCase().includes(q)));
+  const visibleRows=filterAuditRowsForRank((db.moderationHistory||[]).slice().reverse(),actor);
+  const rows=visibleRows.filter(x=>!q||[x.target,x.actor,x.actorUsername,x.action,x.reason,x.source].some(v=>String(v||"").toLowerCase().includes(q)));
   res.json({audit:rows});
 });
 app.get("/api/staff/dashboard",auth,featureAllowed("view_staff_dashboard"),async(req,res)=>{
@@ -2987,6 +3020,23 @@ app.patch("/api/owner/settings",ownerOnly,async(req,res)=>{
       next[key]={enabled:rule.enabled===true,action,durationMinutes:needsDuration?Math.floor(duration):0,reason};
     }
     db.settings.system_moderation=next;
+  }
+
+  if(req.body.auditLogVisibility!==undefined){
+    const incoming=req.body.auditLogVisibility;
+    const keys=["deleted_messages","edited_messages","rank_changes","account_changes","login_activity","invisible_mode","feature_permissions","moderation_actions","reports","room_changes","gold_transactions","site_settings","private_messages","file_uploads","profile_changes","staff_actions"];
+    const allowedRanks=["MEMBER","VIP","PREMIUM","MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER","DEVELOPER"];
+    if(!incoming||typeof incoming!=="object"||Array.isArray(incoming))return res.status(400).json({error:"Invalid audit log visibility settings."});
+    const next={...(db.settings.audit_log_visibility||{})};
+    for(const key of keys){
+      if(incoming[key]===undefined)continue;
+      const rule=incoming[key];
+      const minimumRank=String(rule?.minimumRank||"ADMIN").toUpperCase();
+      if(!rule||typeof rule!=="object"||!allowedRanks.includes(minimumRank))return res.status(400).json({error:"Invalid audit visibility rule for "+key+"."});
+      next[key]={enabled:rule.enabled!==false,minimumRank};
+    }
+    db.settings.audit_log_visibility=next;
+    await pool.query("INSERT INTO settings(key,value) VALUES('audit_log_visibility',$1::jsonb) ON CONFLICT(key) DO UPDATE SET value=EXCLUDED.value",[JSON.stringify(next)]);
   }
 
   if(req.body.goldPerMessage!==undefined){db.settings.gold_per_message=Math.max(0,Number(req.body.goldPerMessage)||0);db.settings.goldPerMessage=db.settings.gold_per_message;}
