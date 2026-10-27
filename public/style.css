@@ -2319,3 +2319,29 @@ a { color: #65dcff; }
 .quick-action-menu .quick-user-row{width:100%;display:flex;align-items:center;gap:12px;border:0;border-top:1px solid rgba(255,255,255,.05);background:transparent;color:inherit;text-align:left}
 .quick-action-menu .quick-user-row b{flex:1;font-weight:600}
 @media(max-width:600px){.dm-settings-menu{right:0;max-height:60dvh;overflow:auto}.dm-chat-actions .mini{min-width:36px;min-height:36px}}
+
+/* Social-feed styling for News and Friends Wall */
+.social-feed-card{padding:20px;border-radius:0;background:transparent;border:0;border-bottom:1px solid var(--border);box-shadow:none}
+.news-card-top{align-items:center;margin-bottom:22px}
+.social-author{display:flex;align-items:center;gap:12px;min-width:0}
+.social-author h3{font-size:16px;font-weight:800;margin:0}
+.social-author-avatar{width:48px;height:48px;flex:0 0 48px;border-radius:50%;overflow:hidden;background:var(--panel);display:grid;place-items:center;font-size:24px}
+.social-author-avatar img{width:100%;height:100%;object-fit:cover}
+.social-more{border:0;background:transparent;color:var(--muted);font-weight:900;letter-spacing:2px;font-size:20px;padding:8px;cursor:pointer}
+.social-feed-card .news-body{white-space:pre-wrap;line-height:1.5;font-size:16px;color:var(--text);margin:0 0 20px}
+.social-reaction-summary{display:flex;align-items:center;gap:14px;padding:12px 0;border-bottom:1px solid var(--border);font-size:14px}
+.social-reaction-summary span{display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
+.social-comments-shortcut{margin-left:auto;border:0;background:transparent;color:var(--text);cursor:pointer}
+.social-reaction-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding-top:10px}
+.social-post-options{margin-top:8px;padding:10px;border-radius:12px;background:var(--panel)}
+.social-post-options button{width:100%;text-align:left;border:0;background:transparent;color:var(--text);padding:10px}
+.doodle-modal{display:flex;flex-direction:column;gap:12px;min-width:0}
+.doodle-head,.doodle-footer{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.doodle-head h2{margin:0}
+.doodle-tools{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.doodle-tools button,.doodle-tools label{border:1px solid var(--border);border-radius:9px;background:var(--panel);padding:7px 9px;color:var(--text);display:flex;align-items:center;gap:6px}
+.doodle-tools input[type=range]{width:85px}
+.doodle-tools input[type=color]{width:28px;height:26px;border:0;background:transparent;padding:0}
+#doodleCanvas{display:block;width:100%;height:auto;aspect-ratio:900/620;background:#fff;border:1px solid var(--border);border-radius:10px;touch-action:none;cursor:crosshair}
+.doodle-footer{flex-wrap:wrap}
+@media(max-width:600px){.social-feed-card{padding:14px}.social-reaction-summary{gap:8px;flex-wrap:wrap}.doodle-modal{width:100%}.doodle-tools button,.doodle-tools label{padding:6px}.doodle-footer .primary{width:100%}}
