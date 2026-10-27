@@ -342,8 +342,6 @@ function checkAchievements(u){
   const games=Number(u.gameStats?.played||0);
   if(games>=1) awardAchievement(u,"first-game","Gamer","You played your first game.");
   if(games>=25) awardAchievement(u,"game-25","Game Night","You played 25 games.");
-  const gifts=Number(u.badgesStats?.giftsSent||0);
-  if(gifts>=1) awardAchievement(u,"first-gift","Generous","You sent your first gift.");
   if((u.profileLikes||0)>=10) awardAchievement(u,"liked-10","Popular","Your profile received 10 likes.");
   return u.achievements;
 }
