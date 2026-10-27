@@ -1013,21 +1013,15 @@ function messageHTML(message) {
     }
   }
 
-  const reactions =
-    Object.entries(message.reactions || {})
+  const reactionData = message.reactions && typeof message.reactions === "object" ? message.reactions : {};
+  const reactions = Object.entries(reactionData)
+      .map(([emoji, value]) => [emoji, Array.isArray(value) ? value.map(String) : (Number(value)>0 ? Array.from({length:Math.min(Number(value),100)},(_,i)=>"legacy-"+i) : [])])
       .filter(([, users]) => users.length)
       .map(([emoji, users]) => `
-        <button
-          class="mini"
-          onclick="reactMsg(
-            '${esc(message.id)}',
-            '${esc(emoji)}'
-          )"
-        >
-          ${emoji} ${users.length}
-        </button>
-      `)
-      .join("");
+        <button class="mini reaction-chip ${users.includes(String(state.user?.id)) ? "reacted" : ""}" type="button"
+          aria-label="${esc(emoji)} reaction, ${users.length} reactions"
+          onclick="reactMsg('${esc(message.id)}','${esc(emoji)}')">${emoji} ${users.length}</button>
+      `).join("");
 
   return `
     <div
@@ -1140,7 +1134,7 @@ function messageHTML(message) {
         <div class="reaction">
           ${reactions}
           <button class="reaction-add" type="button" title="Add reaction" onclick="toggleReactionPicker('${esc(message.id)}')">＋</button>
-          <div class="reaction-picker hidden" id="reactionPicker-${esc(message.id)}">${['❤️','😂','😭','😮','🔥','👏','👍','👎','🥰','🎉'].map(e=>`<button type="button" onclick="reactMsg('${esc(message.id)}','${e}');toggleReactionPicker('${esc(message.id)}')">${e}</button>`).join('')}</div>
+          <div class="reaction-picker hidden" id="reactionPicker-${esc(message.id)}">${['❤️','😂','😭','😮','🔥','👏','👍','👎','🥰','🎉'].map(e=>`<button type="button" onclick="reactMsg('${esc(message.id)}','${e}').finally(()=>toggleReactionPicker('${esc(message.id)}'))">${e}</button>`).join('')}</div>
         </div>
 
       </div>
@@ -1669,9 +1663,11 @@ async function reactMsg(id, emoji) {
     // even if the Socket.IO update arrives late or the socket reconnects.
     if (result.message) {
       const message = result.message;
-      state.messages = (state.messages || []).map(item =>
-        String(item.id) === String(message.id) ? message : item
-      );
+      const messages = state.messages || [];
+      const index = messages.findIndex(item => String(item.id) === String(message.id));
+      if (index >= 0) messages[index] = message;
+      else messages.push(message);
+      state.messages = messages;
       const element = document.querySelector(`[data-mid="${CSS.escape(String(message.id))}"]`);
       if (element) element.outerHTML = messageHTML(message);
     }
