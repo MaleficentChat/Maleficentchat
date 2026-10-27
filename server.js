@@ -3446,61 +3446,53 @@ app.get(
 app.post(
   "/api/gold/gift",
   auth,
-  (req,res)=>{
+  async(req,res)=>{
     const u=current(req);
-
-    const v=findUser(
-      req.body.userId
-    );
-
-    const amount=
-      Math.floor(
-        Number(
-          req.body.amount
-        )
-      );
-
-    if(
-      !v||
-      v.id===u.id||
-      amount<1||
-      u.gold<amount
-    ){
-      return res.status(400).json({
-        error:"Invalid gold gift"
-      });
+    const v=findUser(req.body.userId);
+    const amount=Math.floor(Number(req.body.amount));
+    if(!v||String(v.id)===String(u.id)||!Number.isSafeInteger(amount)||amount<1||amount>1000000){
+      return res.status(400).json({error:"Choose another user and a valid gold amount."});
     }
-
-    u.gold-=amount;
-
-    v.gold=
-      (v.gold||0)+amount;
-
-    db.goldTransactions.push({
-      id:id(),
-      time:Date.now(),
-      actor:u.id,
-      userId:v.id,
-      type:"GIFT",
-      delta:amount
-    });
-
-    save();
-
-    notify(
-      v.id,
-      "gold",
-      "Gold received",
-      "@"+u.username+
-      " gifted you "+
-      amount+
-      " gold."
+    const client=await pool.connect();
+    let fromGold,toGold;
+    try{
+      await client.query("BEGIN");
+      const debit=await client.query(
+        "UPDATE users SET gold=gold-$1 WHERE id=$2 AND gold >= $1 RETURNING gold",
+        [amount,Number(u.id)]
+      );
+      if(!debit.rowCount){
+        await client.query("ROLLBACK");
+        return res.status(400).json({error:"You do not have enough gold for this transfer."});
+      }
+      const credit=await client.query(
+        "UPDATE users SET gold=COALESCE(gold,0)+$1 WHERE id=$2 RETURNING gold",
+        [amount,Number(v.id)]
+      );
+      if(!credit.rowCount){
+        await client.query("ROLLBACK");
+        return res.status(404).json({error:"Recipient account no longer exists."});
+      }
+      await client.query("COMMIT");
+      fromGold=Number(debit.rows[0].gold);
+      toGold=Number(credit.rows[0].gold);
+    }catch(err){
+      await client.query("ROLLBACK").catch(()=>{});
+      console.error("Gold transfer failed:",err);
+      return res.status(500).json({error:"Could not transfer gold. Please try again."});
+    }finally{client.release();}
+    u.gold=fromGold;
+    v.gold=toGold;
+    db.goldTransactions ||= [];
+    db.goldTransactions.push(
+      {id:id(),time:Date.now(),actor:u.id,userId:u.id,type:"GOLD_SENT",delta:-amount,to:v.id},
+      {id:id(),time:Date.now(),actor:u.id,userId:v.id,type:"GOLD_RECEIVED",delta:amount,from:u.id}
     );
-
-    res.json({
-      from:safeUser(u),
-      to:safeUser(v)
-    });
+    save();
+    io.to("user:"+u.id).emit("gold:update",{gold:u.gold});
+    io.to("user:"+v.id).emit("gold:update",{gold:v.gold});
+    notify(v.id,"gold","Gold received",`@${u.username} gifted you ${amount} gold.`);
+    res.json({ok:true,from:safeUser(u),to:safeUser(v),amount});
   }
 );
 
