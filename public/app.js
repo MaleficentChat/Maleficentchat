@@ -3089,6 +3089,46 @@ async function loadOwner() {
         </details>
       </div>
 
+      <div class="card owner-system-moderation-card">
+        <h3>🛡️ System Moderation</h3>
+        <p class="muted">Configure automated responses for suspicious account activity and chat abuse. Each rule has its own action, duration, reason template and enable switch.</p>
+        <div class="system-moderation-rules">
+          <div class="system-moderation-rule">
+            <div class="system-moderation-rule-head"><div><b>👥 Multi-account detection</b><p class="muted">Repeated accounts associated with the same device or network. Shared networks alone are not proof.</p></div><label class="system-moderation-toggle"><input type="checkbox" id="sm_multi_account_enabled" ${data.settings?.system_moderation?.["multi_account"]?.enabled===true?'checked':''}><span>Enabled</span></label></div>
+            <div class="owner-settings-grid">
+              <label>Automated action<select id="sm_multi_account_action">${["WARN","MUTE","KICK","BAN"].map(v=>`<option value="${v}" ${String(data.settings?.system_moderation?.["multi_account"]?.action||('WARN')).toUpperCase()===v?'selected':''}>${v==="WARN"?"Automated warning":v==="MUTE"?"Mute":v==="KICK"?"Kick":"Ban"}</option>`).join("")}</select></label>
+              <label>Duration (minutes; mute/kick)<input id="sm_multi_account_duration" type="number" min="1" max="10080" value="${Number(data.settings?.system_moderation?.["multi_account"]?.durationMinutes||10)}"></label>
+              <label>Reason template<input id="sm_multi_account_reason" maxlength="240" value="${esc(data.settings?.system_moderation?.["multi_account"]?.reason||"Possible multi-account activity")}" placeholder="Reason shown in moderation history"></label>
+            </div>
+          </div>
+          <div class="system-moderation-rule">
+            <div class="system-moderation-rule-head"><div><b>🚫 Ban-evasion detection</b><p class="muted">Signals that a previously banned account may be returning. Review uncertain matches.</p></div><label class="system-moderation-toggle"><input type="checkbox" id="sm_ban_evasion_enabled" ${data.settings?.system_moderation?.["ban_evasion"]?.enabled===true?'checked':''}><span>Enabled</span></label></div>
+            <div class="owner-settings-grid">
+              <label>Automated action<select id="sm_ban_evasion_action">${["WARN","MUTE","KICK","BAN"].map(v=>`<option value="${v}" ${String(data.settings?.system_moderation?.["ban_evasion"]?.action||('WARN')).toUpperCase()===v?'selected':''}>${v==="WARN"?"Automated warning":v==="MUTE"?"Mute":v==="KICK"?"Kick":"Ban"}</option>`).join("")}</select></label>
+              <label>Duration (minutes; mute/kick)<input id="sm_ban_evasion_duration" type="number" min="1" max="10080" value="${Number(data.settings?.system_moderation?.["ban_evasion"]?.durationMinutes||10)}"></label>
+              <label>Reason template<input id="sm_ban_evasion_reason" maxlength="240" value="${esc(data.settings?.system_moderation?.["ban_evasion"]?.reason||"Possible ban evasion")}" placeholder="Reason shown in moderation history"></label>
+            </div>
+          </div>
+          <div class="system-moderation-rule">
+            <div class="system-moderation-rule-head"><div><b>💬 Spam and flood protection</b><p class="muted">Repeated messages, duplicate text and rapid posting.</p></div><label class="system-moderation-toggle"><input type="checkbox" id="sm_spam_flood_enabled" ${data.settings?.system_moderation?.["spam_flood"]?.enabled===true?'checked':''}><span>Enabled</span></label></div>
+            <div class="owner-settings-grid">
+              <label>Automated action<select id="sm_spam_flood_action">${["WARN","MUTE","KICK","BAN"].map(v=>`<option value="${v}" ${String(data.settings?.system_moderation?.["spam_flood"]?.action||('MUTE')).toUpperCase()===v?'selected':''}>${v==="WARN"?"Automated warning":v==="MUTE"?"Mute":v==="KICK"?"Kick":"Ban"}</option>`).join("")}</select></label>
+              <label>Duration (minutes; mute/kick)<input id="sm_spam_flood_duration" type="number" min="1" max="10080" value="${Number(data.settings?.system_moderation?.["spam_flood"]?.durationMinutes||5)}"></label>
+              <label>Reason template<input id="sm_spam_flood_reason" maxlength="240" value="${esc(data.settings?.system_moderation?.["spam_flood"]?.reason||"Spam or message flooding")}" placeholder="Reason shown in moderation history"></label>
+            </div>
+          </div>
+          <div class="system-moderation-rule">
+            <div class="system-moderation-rule-head"><div><b>🌐 VPN and proxy detection</b><p class="muted">Network risk signals; VPN use alone can be legitimate and should not automatically imply abuse.</p></div><label class="system-moderation-toggle"><input type="checkbox" id="sm_vpn_proxy_enabled" ${data.settings?.system_moderation?.["vpn_proxy"]?.enabled===true?'checked':''}><span>Enabled</span></label></div>
+            <div class="owner-settings-grid">
+              <label>Automated action<select id="sm_vpn_proxy_action">${["WARN","MUTE","KICK","BAN"].map(v=>`<option value="${v}" ${String(data.settings?.system_moderation?.["vpn_proxy"]?.action||('WARN')).toUpperCase()===v?'selected':''}>${v==="WARN"?"Automated warning":v==="MUTE"?"Mute":v==="KICK"?"Kick":"Ban"}</option>`).join("")}</select></label>
+              <label>Duration (minutes; mute/kick)<input id="sm_vpn_proxy_duration" type="number" min="1" max="10080" value="${Number(data.settings?.system_moderation?.["vpn_proxy"]?.durationMinutes||10)}"></label>
+              <label>Reason template<input id="sm_vpn_proxy_reason" maxlength="240" value="${esc(data.settings?.system_moderation?.["vpn_proxy"]?.reason||"VPN/proxy risk signal")}" placeholder="Reason shown in moderation history"></label>
+            </div>
+          </div>
+        </div>
+        <div class="toolbar"><button class="primary" id="saveSystemModeration">Save System Moderation</button><span class="muted">Settings are saved separately for each rule.</span></div>
+      </div>
+
       <div class="card owner-user-controls-card">
         <h3>👥 User controls</h3>
         <details class="filter-words-details owner-user-controls-dropdown">
@@ -3145,6 +3185,20 @@ async function loadOwner() {
 
     
     
+    if($('saveSystemModeration')) $('saveSystemModeration').onclick=async()=>{
+      const rules={};
+      for(const key of ['multi_account','ban_evasion','spam_flood','vpn_proxy']){
+        const action=$('sm_'+key+'_action').value;
+        const duration=Number($('sm_'+key+'_duration').value);
+        const reason=$('sm_'+key+'_reason').value.trim();
+        if(!['WARN','MUTE','KICK','BAN'].includes(action)){toast('Choose a valid action.');return;}
+        if(!Number.isFinite(duration)||duration<1||duration>10080){toast('Duration must be between 1 and 10080 minutes.');return;}
+        if(!reason){toast('Enter a reason for each System Moderation rule.');return;}
+        rules[key]={enabled:$('sm_'+key+'_enabled').checked,action,durationMinutes:duration,reason};
+      }
+      try{await api('/api/owner/settings',{method:'PATCH',body:JSON.stringify({systemModeration:rules})});toast('System Moderation settings saved.');}
+      catch(e){toast(e.message);}
+    };
     if($('ownerUserSearch')) $('ownerUserSearch').oninput=()=>{const q=$('ownerUserSearch').value.trim().toLowerCase();const rows=[...document.querySelectorAll('.owner-user-control-row')];let showing=0;rows.forEach(row=>{const match=(row.dataset.userSearch||'').includes(q);row.style.display=match?'':'none';if(match)showing++});if($('ownerUserSearchCount'))$('ownerUserSearchCount').textContent=q?(`${showing} of ${rows.length} users`):(`${rows.length} users`)};
     if($('addBulkFilter')) $('addBulkFilter').onclick=async()=>{try{await api('/api/filter-words/bulk',{method:'POST',body:JSON.stringify({text:$('bulkFilterWords').value})});$('bulkFilterWords').value='';await loadOwner();}catch(e){toast(e.message)}};
     if($('filterSearch')) $('filterSearch').oninput=()=>{const q=$('filterSearch').value.toLowerCase();const rows=[...document.querySelectorAll('.filter-table-row')];let showing=0;rows.forEach(r=>{const show=r.dataset.word.toLowerCase().includes(q);r.style.display=show?'':'none';if(show)showing++});$('filterCounts').textContent=`Total: ${rows.length} | Showing: ${showing}`};
