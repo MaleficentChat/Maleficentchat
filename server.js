@@ -4201,6 +4201,22 @@ app.get('/api/me/account',auth,async(req,res)=>{
 (async function bootstrap(){
   try {
     await initDB();
+
+    // Initialize the permanent Main Room during server startup, before the
+    // first browser request. This prevents an empty room list after login.
+    const legacyDefaults = await pool.query(`SELECT id FROM rooms
+      WHERE LOWER(TRIM(name)) IN ('main room 1','main room 2')
+         OR (LOWER(TRIM(name))='main room' AND name <> 'Main Room')`);
+    if (legacyDefaults.rowCount) {
+      const legacyIds = legacyDefaults.rows.map(row => Number(row.id));
+      await pool.query(`DELETE FROM rooms WHERE id = ANY($1::int[])`, [legacyIds]);
+    }
+    await pool.query(`INSERT INTO rooms(name,created_by,icon,description,category,is_public,rank_required,invite_token,min_age,max_age,is_default)
+      VALUES ('Main Room',(SELECT id FROM users WHERE username='Maleficent'),'🏠','The main community chat room.','Community',true,'MEMBER','main-room',0,120,true)
+      ON CONFLICT(name) DO NOTHING`);
+    await pool.query(`UPDATE rooms SET is_default=(name='Main Room'), min_age=0, max_age=120 WHERE name='Main Room'`);
+    await pool.query(`UPDATE rooms SET is_default=false WHERE name <> 'Main Room'`);
+
     db = await loadState(load());
     await ensureDeveloper();
 
