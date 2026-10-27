@@ -847,9 +847,10 @@ function postRoomAnnouncement(){
 
 async function joinRoom(id) {
   const room =
-    state.rooms.find(r => r.id === id);
+    state.rooms.find(r => String(r.id) === String(id));
 
   if (!room) return false;
+  id=String(room.id);
 
   try {
     let password = "";
@@ -3599,7 +3600,7 @@ async function ownerDelete(id) {
 async function inspectDMs(){
   try{
     modal(`<h2>Private-message inspection</h2><div class="toolbar"><input id="dmSearch1" placeholder="Search Username 1"><input id="dmSearch2" placeholder="Search Username 2"><button class="primary" id="dmSearchBtn">Search</button></div><div id="ownerDmResults" class="stack"><p class="muted">Enter one username for all their DMs, or two usernames for a conversation.</p></div>`);
-    const load=async()=>{try{const d=await api('/api/admin/private-search',{method:'POST',body:JSON.stringify({user1:$('dmSearch1').value.trim(),user2:$('dmSearch2').value.trim()})});$('ownerDmResults').innerHTML=(d.messages||[]).map(m=>`<div class="card"><b>@${esc(m.sender_username||'Unknown')} → @${esc(m.receiver_username||'Unknown')}</b><div>${esc(m.message||m.data?.text||m.data?.message||'')}</div><small class="muted">${fmt(m.created_at||m.data?.time)}</small></div>`).join('')||'<p class="muted">No private messages found.</p>';}catch(e){$('ownerDmResults').innerHTML=`<p class="error">${esc(e.message)}</p>`;}};$('dmSearchBtn').onclick=load;
+    const load=async()=>{try{const d=await api('/api/admin/private-search',{method:'POST',body:JSON.stringify({user1:$('dmSearch1').value.trim(),user2:$('dmSearch2').value.trim()})});$('ownerDmResults').innerHTML=(d.messages||[]).map(m=>`<div class="card"><b>@${esc(m.sender_username||m.senderUsername||'Unknown')} → @${esc(m.receiver_username||m.receiverUsername||'Unknown')}</b><div>${esc(m.message||m.text||m.data?.text||m.data?.message||m.data?.content||'')}</div><small class="muted">${fmt(m.created_at||m.time||m.data?.time)}</small></div>`).join('')||'<p class="muted">No private messages found.</p>';}catch(e){$('ownerDmResults').innerHTML=`<p class="error">${esc(e.message)}</p>`;}};$('dmSearchBtn').onclick=load;
   }catch(e){toast(e.message)}
 }
 
