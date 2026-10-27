@@ -1583,7 +1583,7 @@ app.post(
     const users=Array.isArray(m.reactions[emoji])?m.reactions[emoji].map(String):[];
     const userId=String(u.id);
     m.reactions[emoji]=users.includes(userId)?users.filter(x=>x!==userId):[...users,userId];
-    const saved=await pool.query("UPDATE room_messages SET data=data || jsonb_build_object($3, $2::jsonb) WHERE id=$1 RETURNING data",[String(m.id),JSON.stringify(m.reactions),"reactions"]);
+    const saved=await pool.query("UPDATE room_messages SET data=jsonb_set(COALESCE(data,'{}'::jsonb),'{reactions}',$2::jsonb,true) WHERE id=$1 RETURNING data",[String(m.id),JSON.stringify(m.reactions)]);
     if(!saved.rowCount)return res.status(404).json({error:"Message could not be saved."});
     m=saved.rows[0].data;
     const index=db.messages.findIndex(x=>String(x.id)===String(m.id));
