@@ -316,6 +316,7 @@ function adminLogCategory(action){
 }
 function adminLogEnabled(action){return adminLogSettings()[adminLogCategory(action)]!==false;}
 
+let adminLogWriteQueue=Promise.resolve();
 function log(actor,action,target="",meta={}){
   if(!adminLogEnabled(action)) return;
   db.logs.push({
@@ -334,8 +335,10 @@ function log(actor,action,target="",meta={}){
   save();
   const targetUser=db.users.find(x=>String(x.id)===String(target)||String(x.username).toLowerCase()===String(target).toLowerCase());
   const logDetails=JSON.stringify({target,meta:meta&&typeof meta==='object'?meta:{message:String(meta??'')}});
-  pool.query(`INSERT INTO admin_logs(action_type,performed_by,target_user_id,details) VALUES($1,$2,$3,$4)`,[String(action||'ACTION').slice(0,100),actor?.id?Number(actor.id):null,targetUser?.id?Number(targetUser.id):null,logDetails])
-    .catch(e=>console.error('Admin log persistence failed:',e.message));
+  const actorId=Number(actor?.id),targetId=Number(targetUser?.id);
+  const values=[String(action||'ACTION').slice(0,100),Number.isSafeInteger(actorId)&&actorId>0?actorId:null,Number.isSafeInteger(targetId)&&targetId>0?targetId:null,logDetails];
+  adminLogWriteQueue=adminLogWriteQueue.then(()=>pool.query(`INSERT INTO admin_logs(action_type,performed_by,target_user_id,details) VALUES($1,$2,$3,$4)`,values)).catch(e=>{console.error('Admin log persistence failed:',e.message);});
+  return adminLogWriteQueue;
 }
 
 // Record a lightweight per-user activity entry. This is used by the activity timeline UI.
