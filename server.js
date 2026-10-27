@@ -364,8 +364,13 @@ function notificationPreferenceKey(type){
 async function notify(userId,type,title,text){
   const target=findUser(userId), key=notificationPreferenceKey(type), prefs=target?.settings?.notificationPrefs||{};
   if(prefs[key]===false)return;
-  try{await pool.query(`INSERT INTO notifications(user_id,type,message,is_read) VALUES($1,$2,$3,false)`,[Number(userId),String(type),String(text)]);io.to("user:"+userId).emit("notification");}
-  catch(err){console.error("Notification insert failed:",err);}
+  try{
+    await pool.query(
+      `INSERT INTO notifications(user_id,type,title,message,is_read) VALUES($1,$2,$3,$4,false)`,
+      [Number(userId),String(type),String(title||type),String(text)]
+    );
+    io.to("user:"+userId).emit("notification");
+  }catch(err){console.error("Notification insert failed:",err);}
 }
 
 
@@ -2138,8 +2143,8 @@ app.get('/api/account/export',auth,(req,res)=>{
   res.json({exportedAt:Date.now(),account:{username:u.username,displayName:u.displayName,createdAt:u.createdAt,rank:u.rank,level:u.level,xp:u.xp,gold:u.gold,bio:u.bio,interests:u.interests,achievements:u.achievements},loginHistory:u.loginHistory||[]});
 });
 
-app.get('/api/notifications',auth,async(req,res)=>{const {rows}=await pool.query(`SELECT id,type,message,is_read,created_at FROM notifications WHERE user_id=$1 ORDER BY created_at DESC LIMIT 20`,[Number(current(req).id)]);res.json({notifications:rows.map(n=>({id:String(n.id),type:n.type,title:n.type,text:n.message,message:n.message,time:n.created_at,read:n.is_read}))});});
-app.get('/api/notifications/unread',auth,async(req,res)=>{const {rows}=await pool.query(`SELECT id,type,message,is_read,created_at FROM notifications WHERE user_id=$1 AND is_read=false ORDER BY created_at DESC LIMIT 100`,[Number(current(req).id)]);res.json({notifications:rows.map(n=>({id:String(n.id),type:n.type,title:n.type,text:n.message,message:n.message,time:n.created_at,read:n.is_read}))});});
+app.get('/api/notifications',auth,async(req,res)=>{const {rows}=await pool.query(`SELECT id,type,title,message,is_read,created_at FROM notifications WHERE user_id=$1 ORDER BY created_at DESC LIMIT 20`,[Number(current(req).id)]);res.json({notifications:rows.map(n=>({id:String(n.id),type:n.type,title:n.title||n.type,text:n.message,message:n.message,time:n.created_at,read:n.is_read}))});});
+app.get('/api/notifications/unread',auth,async(req,res)=>{const {rows}=await pool.query(`SELECT id,type,title,message,is_read,created_at FROM notifications WHERE user_id=$1 AND is_read=false ORDER BY created_at DESC LIMIT 100`,[Number(current(req).id)]);res.json({notifications:rows.map(n=>({id:String(n.id),type:n.type,title:n.title||n.type,text:n.message,message:n.message,time:n.created_at,read:n.is_read}))});});
 app.patch('/api/notifications/:id/read',auth,async(req,res)=>{const r=await pool.query(`UPDATE notifications SET is_read=true WHERE id=$1 AND user_id=$2 RETURNING id`,[req.params.id,Number(current(req).id)]);if(!r.rowCount)return res.status(404).json({error:'Notification not found'});res.json({ok:true});});
 app.post('/api/notifications/read',auth,async(req,res)=>{await pool.query(`UPDATE notifications SET is_read=true WHERE user_id=$1`,[Number(current(req).id)]);res.json({ok:true});});
 app.delete('/api/notifications/:id',auth,async(req,res)=>{await pool.query(`DELETE FROM notifications WHERE id=$1 AND user_id=$2`,[req.params.id,Number(current(req).id)]);res.json({ok:true});});
