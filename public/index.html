@@ -4,7 +4,7 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Maleficent Chat</title>
-<link rel="stylesheet" href="/style.css?v=auth-syntax-fix-1">
+<link rel="stylesheet" href="/style.css?v=staff-application-v1">
  <link rel="manifest" href="/manifest.json">
 <script src="/socket.io/socket.io.js"></script>
 </head>
@@ -58,6 +58,7 @@
   <button class="nav" data-view="search">🔎 <span>Advanced Search</span></button>
   <button class="nav" data-view="profile">👤 <span>My Profile</span></button>
   <button class="nav" data-view="settings">⚙️ <span>Settings</span></button>
+  <button class="nav" data-view="staffApplications">📝 <span>Staff Application</span></button>
   <button class="nav staff-only hidden" data-view="staff">🛡️ <span>Staff Dashboard</span><i id="reportDot"></i></button>
   <button class="nav owner-only hidden" data-view="owner">👑 <span>Owner Space</span></button>
   <div class="side-spacer"></div>
@@ -121,6 +122,7 @@
   <div id="viewSearch" class="view hidden"><div class="topbar"><div><h2>🔎 Advanced Message Search</h2><p class="muted">Search text, room or author.</p></div></div><form id="searchForm" class="searchbar"><input id="sq" placeholder="Keyword"><input id="sa" placeholder="Author username"><select id="sr"><option value="">All rooms</option></select><button class="primary">Search</button></form><div id="searchResults" class="stack"></div></div>
   <div id="viewProfile" class="view hidden"><div id="profile"></div></div>
   <div id="viewSettings" class="view hidden"><div class="topbar"><div><h2>⚙️ Account Settings</h2><p class="muted">Security, status, appearance and notification controls.</p></div></div><div id="settings" class="settings-grid"></div></div>
+  <div id="viewStaffApplications" class="view hidden"><div class="topbar"><div><h2>📝 Staff Application</h2><p class="muted">Apply to join the Maleficent Chat moderation team.</p></div></div><div id="staffApplicationFormRoot"></div></div>
   <div id="viewStaff" class="view hidden"><div class="topbar"><h2>🛡️ Moderation Dashboard</h2></div><div id="staff"></div></div>
   <div id="viewWall" class="view hidden"><div class="topbar"><div><h2>🧱 Friend Wall</h2><p class="muted">Community posts, likes and comments.</p></div><button class="primary" id="newWallPost">＋ Post</button></div><div id="wallFeed" class="wall-feed"></div></div>
   <div id="viewShop" class="view hidden"><div class="topbar"><div><h2>🛍️ Premium / VIP</h2><p class="muted">Premium requests and gold-funded temporary VIP.</p></div></div><div id="rankShop" class="shop-grid"></div></div>
@@ -130,7 +132,7 @@
 
 <div id="modal" class="modal hidden"><div class="modal-card"><button class="modal-close" onclick="closeModal()">×</button><div id="modalBody"></div></div></div>
 <div id="toast"></div><div id="actionLock" class="action-lock hidden"></div>
-<script src="/app.js?v=auth-syntax-fix-1"></script>
+<script src="/app.js?v=staff-application-v1"></script>
 <script src="/gravity-run.js?v=gravity-run-main-1"></script>
 </body>
 </html>
