@@ -2863,8 +2863,8 @@ async function loadStaff() {
       <div class="toolbar"><div><h3>🖥️ System Center & Admin Panel</h3><p class="muted">Health, AutoGuard rules, audit evidence, and account actions.</p></div><button class="mini" id="refreshSystemCenter">↻ Refresh</button></div>
       <div class="grid2"><div class="about-card"><b>Server</b><p>${systemCenter?.health?.server==='ok'?'🟢 Online':'⚪ Unknown'}</p><small>Uptime ${Math.floor((systemCenter?.health?.uptimeSeconds||0)/3600)}h</small></div><div class="about-card"><b>Database</b><p>${systemCenter?.health?.database?.ok?'🟢 Connected':'🔴 Unavailable'}</p><small>${systemCenter?.health?.database?.latencyMs??'—'} ms</small></div><div class="about-card"><b>Accounts</b><p>${systemCenter?.stats?.online||0} online / ${systemCenter?.stats?.users||0} total</p></div><div class="about-card"><b>Moderation</b><p>${systemCenter?.stats?.activeModerations||0} active actions</p><small>${(systemCenter?.rules||[]).length} AutoGuard rules enabled</small></div></div>
       <details class="filter-words-details" open><summary>🛡️ Enabled AutoGuard rules</summary>${(systemCenter?.rules||[]).map(r=>`<div class="user-card"><div><b>${esc(r.key.replace(/_/g,' '))}</b><div class="muted">${esc(r.action)} · ${Number(r.durationMinutes)||0} min · ${esc(r.reason||'')}</div></div></div>`).join('')||'<p class="muted">No rules enabled. Configure rules in Owner Space → System Moderation.</p>'}</details>
-      <div class="system-admin-tools"><h4>👤 Account Administration</h4><p class="muted">Search users and apply moderation actions. Rank protections still apply.</p><form id="staffAdminSearchForm" class="ip-inspection-form"><input id="staffAdminSearch" placeholder="Username, display name, or ID" maxlength="80"><button class="primary" type="submit">Search</button></form><div id="staffAdminUsers"><p class="muted">Search to load accounts.</p></div></div>
-      <div class="system-admin-tools"><h4>📜 Audit & Evidence</h4><form id="systemAuditSearchForm" class="ip-inspection-form"><input id="systemAuditSearch" placeholder="Filter by target, action, source, or reason" maxlength="100"><button class="primary" type="submit">Filter</button></form><div id="systemAuditRows">${(systemCenter?.audit||[]).slice(0,20).map(x=>`<div class="system-audit-row"><b>${esc(x.action||'EVENT')}</b> · ${esc(x.source||'system')}<div>${esc(x.reason||'No reason recorded')}</div><small>Target: ${esc(x.target||'—')} · Actor: ${esc(x.actorUsername||x.actor||'System')} · ${x.time?fmt(x.time):'Time unavailable'}</small></div>`).join('')||'<p class="muted">No audit events recorded.</p>'}</div></div></section>` : ''}
+      <details class="filter-words-details system-admin-tools"><summary>👤 Account Administration — open to manage accounts</summary><div class="system-admin-tools-content><p class="muted">Search users and apply moderation actions. Rank protections still apply.</p><form id="staffAdminSearchForm" class="ip-inspection-form"><input id="staffAdminSearch" placeholder="Username, display name, or ID" maxlength="80"><button class="primary" type="submit">Search</button></form><div id="staffAdminUsers"><p class="muted">Search to load accounts.</p></div></div></details>
+      <details class="filter-words-details system-admin-tools"><summary>📜 Audit & Evidence — all events (${(systemCenter?.audit||[]).length})</summary><div class="system-admin-tools-content><form id="systemAuditSearchForm" class="ip-inspection-form"><input id="systemAuditSearch" placeholder="Optional filter across all audit records" maxlength="100"><button class="primary" type="submit">Filter</button><button class="mini" type="button" id="showAllAuditRows">Show all</button></form><div id="systemAuditRows">${(systemCenter?.audit||[]).map(x=>`<div class="system-audit-row"><b>${esc(x.action||'EVENT')}</b> · ${esc(x.source||'system')}<div>${esc(x.reason||'No reason recorded')}</div><small>Target: ${esc(x.target||'—')} · Actor: ${esc(x.actorUsername||x.actor||'System')} · ${x.time?fmt(x.time):'Time unavailable'}</small></div>`).join('')||'<p class="muted">No audit events recorded.</p>'}</div></div></section>` : ''}
       <div class="card active-actions-card"><div class="toolbar"><div><h3>🛡️ Active moderation actions</h3><p class="muted">Only users currently muted, kicked or banned. Warnings are not listed.</p></div><select id="staffActionFilter"><option value="">All actions</option><option value="BANNED">Banned</option><option value="MUTED">Muted</option><option value="KICKED">Kicked</option></select></div><div id="activeActionUsers"></div></div>
       <div class="card"><h3>Reports</h3>
         ${(data.reports||[]).filter(report=>report.status==='OPEN').map(report=>{
@@ -2894,6 +2894,7 @@ async function loadStaff() {
     $('ipInspectionForm')?.addEventListener('submit',e=>{e.preventDefault();loadIpInspection((ipSearch?.value||'').trim().replace(/^@/,''));});
 
     $('refreshSystemCenter')?.addEventListener('click',()=>loadStaff());
+    $('showAllAuditRows')?.addEventListener('click',async()=>{try{const d=await api('/api/staff/system-center/audit');const target=$('systemAuditRows');target.innerHTML=(d.audit||[]).map(x=>`<div class="system-audit-row"><b>${esc(x.action||'EVENT')}</b> · ${esc(x.source||'system')}<div>${esc(x.reason||'No reason recorded')}</div><small>Target: ${esc(x.target||'—')} · Actor: ${esc(x.actorUsername||x.actor||'System')} · ${x.time?fmt(x.time):'Time unavailable'}</small></div>`).join('')||'<p class="muted">No audit events recorded.</p>';if($('systemAuditSearch'))$('systemAuditSearch').value='';}catch(err){toast(err.message);}});
     $('staffAdminSearchForm')?.addEventListener('submit',async e=>{
       e.preventDefault();const target=$('staffAdminUsers');target.innerHTML='<p class="muted">Searching…</p>';
       try{const d=await api('/api/staff/admin/users?q='+encodeURIComponent(($('staffAdminSearch').value||'').trim()));
@@ -3209,16 +3210,18 @@ async function loadOwner() {
 
     
     
+    for(const key of ['multi_account','ban_evasion','spam_flood','vpn_proxy']){const actionSelect=$('sm_'+key+'_action'),durationInput=$('sm_'+key+'_duration'),label=durationInput?.closest('label');const sync=()=>{const needed=['MUTE','KICK'].includes(actionSelect?.value);if(durationInput)durationInput.disabled=!needed;if(label)label.firstChild.nodeValue=needed?'Duration (minutes)':'No duration required';};actionSelect?.addEventListener('change',sync);sync();}
     if($('saveSystemModeration')) $('saveSystemModeration').onclick=async()=>{
       const rules={};
       for(const key of ['multi_account','ban_evasion','spam_flood','vpn_proxy']){
         const action=$('sm_'+key+'_action').value;
-        const duration=Number($('sm_'+key+'_duration').value);
+        const needsDuration=['MUTE','KICK'].includes(action);
+        const duration=needsDuration?Number($('sm_'+key+'_duration').value):0;
         const reason=$('sm_'+key+'_reason').value.trim();
         if(!['WARN','MUTE','KICK','BAN'].includes(action)){toast('Choose a valid action.');return;}
-        if(!Number.isFinite(duration)||duration<1||duration>10080){toast('Duration must be between 1 and 10080 minutes.');return;}
+        if(needsDuration&&(!Number.isFinite(duration)||duration<1||duration>10080)){toast('Duration must be between 1 and 10080 minutes for mute/kick.');return;}
         if(!reason){toast('Enter a reason for each System Moderation rule.');return;}
-        rules[key]={enabled:$('sm_'+key+'_enabled').checked,action,durationMinutes:duration,reason};
+        rules[key]={enabled:$('sm_'+key+'_enabled').checked,action,durationMinutes:needsDuration?duration:0,reason};
       }
       try{await api('/api/owner/settings',{method:'PATCH',body:JSON.stringify({systemModeration:rules})});toast('System Moderation settings saved.');}
       catch(e){toast(e.message);}
