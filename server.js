@@ -2454,12 +2454,13 @@ app.get("/api/staff/ip-inspection",auth,ownerOnly,async(req,res)=>{
     stage="write-audit-log";
     await pool.query("INSERT INTO admin_logs(action_type,performed_by,details) VALUES($1,$2,$3)",["IP_INSPECTION_VIEW",Number(actor.id),JSON.stringify({search:search||null,rows:q.rowCount})]);
     stage="lookup-network-details";
-    const uniqueIps=[...new Set(q.rows.map(x=>x.ip_address))].filter(ip=>ip&&ip!=="::1"&&ip!=="127.0.0.1"&&!ip.startsWith("127.")&&!ip.startsWith("10.")&&!ip.startsWith("192.168.")&&!ip.startsWith("fc")&&!ip.startsWith("fd")&&!ip.toLowerCase().startsWith("fe80:"));
+    const normalizedIp=ip=>String(ip||"").trim().replace(/\\/\\d{1,3}$/,"");
+    const uniqueIps=[...new Set(q.rows.map(x=>normalizedIp(x.ip_address)))].filter(ip=>ip&&ip!=="::1"&&ip!=="127.0.0.1"&&!ip.startsWith("127.")&&!ip.startsWith("10.")&&!ip.startsWith("192.168.")&&!ip.startsWith("fc")&&!ip.startsWith("fd")&&!ip.toLowerCase().startsWith("fe80:"));
     const lookups=await Promise.all(uniqueIps.slice(0,30).map(async ip=>{
-      try{const response=await fetch("https://ipapi.co/"+encodeURIComponent(ip)+"/json/",{headers:{"User-Agent":"MaleficentChat-IPInspection/1.0"},signal:AbortSignal.timeout(2500)});if(!response.ok)return [ip,{}];const d=await response.json();return [ip,{country:d.country_name||"",region:d.region||"",city:d.city||"",networkProvider:d.org||d.asn||"",networkType:d.version||"",isProxy:d.proxy===true}];}catch{return [ip,{}];}
+      try{const response=await fetch("https://ipapi.co/"+encodeURIComponent(ip)+"/json/",{headers:{"User-Agent":"MaleficentChat-IPInspection/1.0"},signal:AbortSignal.timeout(5000)});if(!response.ok)return [ip,{}];const d=await response.json();if(d.error)return [ip,{}];return [ip,{country:d.country_name||"",region:d.region||"",city:d.city||"",networkProvider:d.org||d.asn||"",networkType:d.version||"",isProxy:d.proxy===true}];}catch{return [ip,{}];}
     }));
     const geo=Object.fromEntries(lookups);
-    return res.json({records:q.rows.map(row=>({...row,network:geo[row.ip_address]||{}})),limit,geolocationNote:"Country and network details are approximate and may be unavailable. IP addresses are sent to ipapi.co for lookup when this panel is opened."});
+    return res.json({records:q.rows.map(row=>({...row,network:geo[normalizedIp(row.ip_address)]||{}})),limit,geolocationNote:"Country and network details are approximate and may be unavailable. Normalized IP addresses are sent to ipapi.co for lookup when this panel is opened."});
   }catch(err){
     console.error("[IP_INSPECTION] request failed at "+stage+":",err?.stack||err?.message||err);
     if(!res.headersSent) return res.status(500).json({error:"IP Inspection failed during "+stage+". Check server logs for [IP_INSPECTION]."});
