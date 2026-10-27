@@ -3079,6 +3079,7 @@ app.put('/api/owner/feature-grants',ownerOnly,async(req,res)=>{
   }
   try{
     await pool.query(`INSERT INTO settings(key,value) VALUES('feature_grants',$1::jsonb) ON CONFLICT(key) DO UPDATE SET value=EXCLUDED.value`,[JSON.stringify(db.settings.feature_grants)]);
+    const actor=current(req);log(actor,'FEATURE_ACCESS_BULK_SAVE','site',{features:Object.keys(incoming).map(key=>({key,minimumRank:db.settings.feature_grants[key]?.[0]||'DISABLED'}))});
     res.json({ok:true,grants:db.settings.feature_grants});
   }catch(e){console.error("Feature grant settings save failed:",e);res.status(500).json({error:"Could not save feature grants."});}
 });
