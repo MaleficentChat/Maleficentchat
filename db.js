@@ -148,10 +148,12 @@ async function initDB() {
       id SERIAL PRIMARY KEY,
       user_id INT REFERENCES users(id) ON DELETE CASCADE,
       type TEXT,
+      title TEXT NOT NULL DEFAULT '',
       message TEXT,
       is_read BOOLEAN DEFAULT false,
       created_at TIMESTAMP DEFAULT NOW()
     );
+    ALTER TABLE notifications ADD COLUMN IF NOT EXISTS title TEXT NOT NULL DEFAULT '';
     CREATE TABLE IF NOT EXISTS wall_comments(
       id SERIAL PRIMARY KEY,
       post_id INT REFERENCES wall_posts(id) ON DELETE CASCADE,
