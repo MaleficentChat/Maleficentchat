@@ -185,7 +185,7 @@ const OWNER_USER_PERMISSIONS=[
   "can_mute","can_kick","can_ban","can_warn","can_delete_messages","can_view_ips","can_view_emails","can_edit_rooms","can_delete_rooms","can_create_rooms","can_grant_features","can_manage_users","can_clear_history","can_add_notes","can_send_global_announcement","can_share_gold","can_manage_ranks","can_edit_usernames","can_edit_emails","can_manage_reports","can_manage_announcements","can_manage_clubs","can_manage_news","can_manage_profiles","can_view_deleted_messages","can_manage_settings"
 ];
 function ensureFeatureGrants(){
-  db.settings ||= {}; db.settings.feature_grants ||= {};
+  db.settings ||= {}; db.settings.feature_grants ||= {}; delete db.settings.feature_grants.gift_sending; delete db.settings.feature_grants.gift_receiving; delete db.settings.feature_grants.gift_share;
   for(const [k,v] of Object.entries(FEATURE_GRANT_DEFAULTS)) if(!Array.isArray(db.settings.feature_grants[k])) db.settings.feature_grants[k]=[...v];
 }
 function ensureFeaturePermissions(){
@@ -2431,16 +2431,6 @@ app.get("/api/staff/ip-inspection",auth,ownerOnly,async(req,res)=>{
   }
 });
 
-app.delete("/api/staff/deleted-media",auth,async(req,res)=>{
-  const actor=current(req);
-  if(!actor||!hasRank(actor,"MOD"))return res.status(403).json({error:"Staff only"});
-  const isImageLog=log=>log.action==="MESSAGE_DELETE"&&String(log.meta?.attachment?.type||"").startsWith("image/");
-  const before=db.logs.length;
-  db.logs=db.logs.filter(log=>!isImageLog(log));
-  const removed=before-db.logs.length;
-  save();log(actor,"DELETED_MEDIA_CLEAR","Staff dashboard",{removed});
-  res.json({ok:true,removed});
-});
 app.get("/api/staff/dashboard",auth,featureAllowed("view_staff_dashboard"),async(req,res)=>{
   const u=current(req);
   if(!hasRank(u,"MOD"))return res.status(403).json({error:"Staff only"});
@@ -2857,9 +2847,9 @@ app.put('/api/owner/feature-grants',ownerOnly,async(req,res)=>{
 
 app.get('/api/owner/feature-permissions',ownerOnly,(req,res)=>{
   ensureFeaturePermissions();
-  const controls=[...FEATURE_CONTROLS.map(f=>({...f,implemented:true})),{key:'wall_posting',name:'Friend Wall Posting',category:'Social',specialGrant:true},{key:'gift_sharing',name:'Gift Sharing',category:'Social',specialGrant:true}];
+  const controls=[...FEATURE_CONTROLS.map(f=>({...f,implemented:true})),{key:'wall_posting',name:'Friend Wall Posting',category:'Social',specialGrant:true},];
   save();
-  res.json({controls,permissions:db.featurePermissions,ranks,featureGrants:db.settings?.feature_grants||{wall_post:['OWNER','ADMIN'],gift_share:['OWNER','ADMIN']}});
+  res.json({controls,permissions:db.featurePermissions,ranks,featureGrants:db.settings?.feature_grants||{wall_post:['OWNER','ADMIN']}});
 });
 
 app.patch('/api/owner/feature-permissions/:key',ownerOnly,async(req,res)=>{
@@ -2867,7 +2857,7 @@ app.patch('/api/owner/feature-permissions/:key',ownerOnly,async(req,res)=>{
   const key=String(req.params.key);
   const f=FEATURE_CONTROLS.find(x=>x.key===key);
   const r=req.body.rank;
-  if(key==='wall_posting'||key==='gift_sharing'){const grantKey=key==='wall_posting'?'wall_post':'gift_share';db.settings.feature_grants ||= {};db.settings.feature_grants[grantKey]=normalizeFeatureRanks(req.body.ranks,[]);await pool.query(`INSERT INTO settings(key,value) VALUES('feature_grants',$1::jsonb) ON CONFLICT(key) DO UPDATE SET value=EXCLUDED.value`,[JSON.stringify(db.settings.feature_grants)]);return res.json({ok:true,key,featureGrants:db.settings.feature_grants});}
+  if(key==='wall_posting'){const grantKey='wall_post';db.settings.feature_grants ||= {};db.settings.feature_grants[grantKey]=normalizeFeatureRanks(req.body.ranks,[]);await pool.query(`INSERT INTO settings(key,value) VALUES('feature_grants',$1::jsonb) ON CONFLICT(key) DO UPDATE SET value=EXCLUDED.value`,[JSON.stringify(db.settings.feature_grants)]);return res.json({ok:true,key,featureGrants:db.settings.feature_grants});}
   if(!f) return res.status(404).json({error:'Feature control not found'});
   if(!ranks.includes(r)) return res.status(400).json({error:'Invalid rank'});
   db.featurePermissions[key]=r;
