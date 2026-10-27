@@ -1561,15 +1561,25 @@ async function deleteMsg(id) {
 
 async function reactMsg(id, emoji) {
   try {
-    await api(
-      `/api/messages/${id}/reaction`,
+    const result = await api(
+      `/api/messages/${encodeURIComponent(id)}/reaction`,
       {
         method: "POST",
         body: JSON.stringify({ emoji })
       }
     );
+    // Update this browser immediately from the server-confirmed reaction,
+    // even if the Socket.IO update arrives late or the socket reconnects.
+    if (result.message) {
+      const message = result.message;
+      state.messages = (state.messages || []).map(item =>
+        String(item.id) === String(message.id) ? message : item
+      );
+      const element = document.querySelector(`[data-mid="${CSS.escape(String(message.id))}"]`);
+      if (element) element.outerHTML = messageHTML(message);
+    }
   } catch (error) {
-    toast(error.message);
+    toast(error.message || "Could not send reaction.");
   }
 }
 
