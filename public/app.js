@@ -679,7 +679,7 @@ async function loadGoldEconomy(){
     }));
     root.querySelectorAll('[data-equip-cosmetic]').forEach(button=>button.addEventListener('click',async()=>{
       button.disabled=true;
-      try{await api('/api/economy/equip',{method:'POST',body:JSON.stringify({itemId:button.dataset.equipCosmetic})});toast('Cosmetic equipped.');await loadGoldEconomy();}
+      try{const result=await api('/api/economy/equip',{method:'POST',body:JSON.stringify({itemId:button.dataset.equipCosmetic})});if(state.user)state.user.equippedCosmetics=result.equippedCosmetics||[];toast('Cosmetic equipped.');await loadGoldEconomy();if(state.view==='profile')await loadProfile(state.user);}
       catch(error){toast(error.message);button.disabled=false;}
     }));
   }catch(error){root.innerHTML=`<p class="muted">Could not load the Gold Boutique: ${esc(error.message)}</p><button class="mini" id="retryGoldEconomy">Retry</button>`;$('retryGoldEconomy')?.addEventListener('click',loadGoldEconomy);}
