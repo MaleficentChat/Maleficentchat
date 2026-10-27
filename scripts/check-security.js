@@ -38,4 +38,12 @@ assert.match(server, /app\.post\(\s*"\/api\/gold\/gift",[\s\S]*?await client\.qu
 assert.match(server, /GOLD_SENT[\s\S]*GOLD_RECEIVED/,
   "gold transfer history must record both sender and receiver entries");
 
-console.log("Security, audit-log, and messaging persistence static checks passed.");
+assert.match(database, /equippedCosmetics/,
+  "equipped cosmetics must be restored from PostgreSQL");
+assert.match(server, /equippedCosmetics:Array\.isArray\(u\.equippedCosmetics\)/,
+  "equipped cosmetics must be included in safe profile data");
+assert.match(server, /u\.equippedCosmetics=equipped\.rows/,
+  "equipping a cosmetic must update the live profile state");
+assert.match(fs.readFileSync("public/app.js", "utf8"), /equipped-profile-frame[\s\S]*equipped-profile-badge/,
+  "profile UI must render equipped frames and badges");
+console.log("Security, audit-log, messaging persistence, and profile cosmetic static checks passed.");
