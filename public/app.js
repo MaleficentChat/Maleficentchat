@@ -3573,14 +3573,16 @@ async function clearRoom() {
   }
 
   try {
-    await api(
-      `/api/rooms/${state.currentRoom}/clear`,
+    const result=await api(
+      `/api/rooms/${encodeURIComponent(state.currentRoom)}/clear`,
       {
         method: "POST"
       }
     );
-
+    state.messages=(state.messages||[]).filter(m=>String(m.roomId)!==String(state.currentRoom));
+    $("messages").innerHTML="";
     closeModal();
+    toast("Room cleared. "+Number(result.removed||0)+" messages removed.");
   } catch (error) {
     toast(error.message);
   }
