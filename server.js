@@ -205,7 +205,17 @@ const FEATURE_GRANT_DEFAULTS={
   reports_management:["MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],
   moderate_users:["MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],
   bypass_filter_words:["MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],
-  bypass_mute:["MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"]
+  bypass_mute:["MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],
+  share_gold:["VIP","PREMIUM","MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],
+  delete_message:["MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],
+  view_ips:["ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],
+  view_emails:["OWNER"],
+  manage_ranks:["OWNER"],manage_settings:["OWNER"],manage_gold:["OWNER"],manage_bots:["OWNER"],manage_mal_ai:["OWNER"],manage_aurora:["OWNER"],manage_feature_lab:["OWNER"],
+  manage_news:["ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],delete_news:["ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],
+  report_message:GRANT_RANKS,moderate_user:["MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],clear_room:["COOWNER","OWNER"],
+  edit_message:GRANT_RANKS,pin_message:["MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],save_message:GRANT_RANKS,react_message:GRANT_RANKS,
+  schedule_message:GRANT_RANKS,expire_message:GRANT_RANKS,use_youtube:GRANT_RANKS,room_announcement:["MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],view_pinned:GRANT_RANKS,
+  manage_staff_accounts:["OWNER"],staff_rank_assignment:["MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],profile_like:GRANT_RANKS,enter_private_club:GRANT_RANKS,wall_post:GRANT_RANKS
 };
 const OWNER_USER_PERMISSIONS=[
   "can_mute","can_kick","can_ban","can_warn","can_delete_messages","can_view_ips","can_view_emails","can_edit_rooms","can_delete_rooms","can_create_rooms","can_grant_features","can_manage_users","can_clear_history","can_add_notes","can_send_global_announcement","can_share_gold","can_manage_ranks","can_edit_usernames","can_edit_emails","can_manage_reports","can_manage_announcements","can_manage_clubs","can_manage_news","can_manage_profiles","can_view_deleted_messages","can_manage_settings"
