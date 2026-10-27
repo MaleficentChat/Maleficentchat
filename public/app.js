@@ -567,6 +567,9 @@ async function renderView() {
     case "settings":
       return loadSettings();
 
+    case "staffApplications":
+      return loadStaffApplication();
+
     case "staff":
       return loadStaff();
 
@@ -2891,6 +2894,46 @@ function renderAuditRow(x) {
     (raw != null ? '<details class="audit-raw-details"><summary>View raw evidence</summary><pre>' + esc(typeof raw === "string" ? raw : JSON.stringify(raw, null, 2)) + '</pre></details>' : '') + '</div></details></article>';
 }
 
+
+/* ---------------- STAFF APPLICATION ---------------- */
+async function loadStaffApplication(){
+  const root=$("staffApplicationFormRoot"); if(!root)return;
+  root.innerHTML='<section class="card staff-application-card"><p class="muted">Loading your application…</p></section>';
+  try{
+    const data=await api('/api/staff-applications/mine');
+    const existing=data.application;
+    const locked=!!existing&&['PENDING','APPROVED'].includes(String(existing.status).toUpperCase());
+    const rankOptions=['MOD','ADMIN','SUPER_ADMIN','COMMISSOR','COOWNER'];
+    root.innerHTML=`<section class="card staff-application-card">
+      <div class="staff-application-heading"><span class="staff-application-icon">🛡️</span><div><h3>Join the Staff Team</h3><p class="muted">Answer every question thoughtfully. Staff applications are reviewed by the team.</p></div></div>
+      ${existing?`<div class="staff-application-status"><b>Latest application: ${esc(existing.status||'PENDING')}</b><span>${esc(existing.status==='REJECTED'?'You may submit a new application.':existing.status==='APPROVED'?'Your application was approved.':'Your application is waiting for review.')}</span></div>`:''}
+      ${locked?'<p class="muted">You already have an application awaiting review or have been approved. You cannot submit another right now.</p>':`
+      <form id="staffApplicationForm" class="staff-application-form">
+        <label>1. Which rank are you applying for?
+          <select id="staffAppRank" required><option value="">Choose a rank</option>${rankOptions.map(r=>`<option value="${r}">${r.replace(/_/g,' ')}</option>`).join('')}</select>
+        </label>
+        <label>2. How much time can you stay active each day?
+          <input id="staffAppActivity" maxlength="180" placeholder="e.g. 2–3 hours daily, mostly evenings" required>
+        </label>
+        <label>3. Why should we choose you for this role?
+          <textarea id="staffAppWhy" rows="5" maxlength="2500" placeholder="Tell us about your strengths, judgement and how you would help the community…" required></textarea>
+        </label>
+        <label>4. Do you have past moderation experience?
+          <textarea id="staffAppExperience" rows="4" maxlength="2000" placeholder="Describe previous roles, responsibilities, or write “No previous experience”." required></textarea>
+        </label>
+        <button class="primary" type="submit">Submit Staff Application</button>
+        <p id="staffAppMessage" class="muted" aria-live="polite"></p>
+      </form>`}
+    </section>`;
+    $('staffApplicationForm')?.addEventListener('submit',async e=>{
+      e.preventDefault();const button=e.currentTarget.querySelector('button[type="submit"]'),message=$('staffAppMessage');
+      button.disabled=true;message.textContent='Submitting…';
+      try{await api('/api/staff-applications',{method:'POST',body:JSON.stringify({requestedRank:$('staffAppRank').value,activity:$('staffAppActivity').value.trim(),reason:$('staffAppWhy').value.trim(),experience:$('staffAppExperience').value.trim()})});toast('Staff application submitted.');await loadStaffApplication();}
+      catch(err){message.textContent=err.message||'Could not submit your application.';button.disabled=false;}
+    });
+  }catch(e){root.innerHTML='<section class="card"><p class="error">'+esc(e.message||'Could not load staff application.')+'</p></section>';}
+}
+
 /* ---------------- STAFF ---------------- */
 
 async function loadStaff() {
@@ -2900,8 +2943,29 @@ async function loadStaff() {
     const filterWords=await api('/api/staff/filter-word');
     const systemCenter=await api('/api/staff/system-center').catch(()=>null);
     const canUseAdminPanel=['ADMIN','SUPER_ADMIN','COMMISSOR','COOWNER','OWNER','DEVELOPER'].includes(String(state.user?.rank||'').toUpperCase());
+
+    // Staff applications: compact applicant rows with a separate full-form viewer.
+    const staffApps=await api('/api/staff/applications').catch(()=>({applications:[]}));
+    const appRows=staffApps.applications||[];
+    const appList=$('staffApplicationsList'),appCount=$('staffApplicationCount');
+    if(appCount)appCount.textContent=String(appRows.filter(x=>x.status==='PENDING').length)+' pending · '+appRows.length+' total';
+    if(appList)appList.innerHTML=appRows.map(x=>`<div class="staff-application-row"><div class="staff-application-user"><div class="staff-application-avatar">${esc((x.displayName||x.username||'?').slice(0,1).toUpperCase())}</div><div><b>${esc(x.displayName||x.username)}</b><div class="muted">@${esc(x.username)} · ${esc(x.requestedRank.replace(/_/g,' '))}</div><small class="staff-application-status-text">${esc(x.status)} · ${fmt(x.createdAt)}</small></div></div><button class="mini primary" type="button" data-staff-app-form="${esc(x.id)}">Form</button></div>`).join('')||'<p class="muted">No staff applications yet.</p>';
+    appList?.querySelectorAll('[data-staff-app-form]').forEach(btn=>btn.onclick=()=>{
+      const x=appRows.find(v=>String(v.id)===String(btn.dataset.staffAppForm));if(!x)return;
+      modal(`<div class="staff-application-review"><h2>📝 Staff Application</h2><p class="muted">@${esc(x.username)} · Submitted ${fmt(x.createdAt)} · Status: ${esc(x.status)}</p>
+      <div class="staff-application-answer"><small>REQUESTED RANK</small><b>${esc(x.requestedRank.replace(/_/g,' '))}</b></div>
+      <div class="staff-application-answer"><small>DAILY ACTIVE TIME</small><p>${esc(x.activity)}</p></div>
+      <div class="staff-application-answer"><small>WHY SHOULD WE HIRE YOU?</small><p>${esc(x.reason)}</p></div>
+      <div class="staff-application-answer"><small>PAST MODERATION EXPERIENCE</small><p>${esc(x.experience)}</p></div>
+      ${x.status==='PENDING'?'<label>Rank to grant<select id="staffAppGrantRank"><option value="MOD">Moderator</option><option value="ADMIN">Admin</option><option value="SUPER_ADMIN">Super Admin</option><option value="COMMISSOR">Commissor</option><option value="COOWNER">Co-owner</option></select></label><div class="toolbar staff-application-review-actions"><button class="mini danger" id="staffAppReject">Reject</button><button class="primary" id="staffAppGrant">Grant Rank</button></div><p id="staffAppReviewMessage" class="muted"></p>':'<p class="muted">This application has already been reviewed.</p>'}
+      </div>`);
+      $('staffAppReject')?.addEventListener('click',async()=>{const b=$('staffAppReject');b.disabled=true;try{await api('/api/staff/applications/'+encodeURIComponent(x.id)+'/reject',{method:'POST'});closeModal();toast('Application rejected.');await loadStaff();}catch(e){$('staffAppReviewMessage').textContent=e.message;b.disabled=false;}});
+      $('staffAppGrant')?.addEventListener('click',async()=>{const b=$('staffAppGrant');b.disabled=true;try{await api('/api/staff/applications/'+encodeURIComponent(x.id)+'/grant',{method:'POST',body:JSON.stringify({rank:$('staffAppGrantRank').value})});closeModal();toast('Rank granted and application approved.');await loadStaff();}catch(e){$('staffAppReviewMessage').textContent=e.message;b.disabled=false;}});
+    });
+
     $('staff').innerHTML=`
       ${(state.user?.username==='Maleficent'||String(state.user?.rank).toUpperCase()==='DEVELOPER') ? '<section class="card ip-inspection-card"><div><h3>🔎 IP Inspection</h3><p class="muted">Owner/Developer only · Registered email, recorded IP history and approximate network details.</p></div><form id="ipInspectionForm" class="ip-inspection-form"><input id="ipInspectionSearch" placeholder="Type @ or a username to find an account" maxlength="100" autocomplete="off"><button class="primary" type="submit">Inspect</button></form><div id="ipInspectionSuggestions" class="ip-inspection-suggestions" hidden></div><p class="muted ip-inspection-note">IP and network information is sensitive. Location is approximate. Lookups use IP Info with ipapi.co as a fallback.</p><div id="ipInspectionResults"><p class="muted">Search for an account to inspect its recorded IP history.</p></div></section>' : ''}
+      <details class="filter-words-details staff-applications-dropdown" id="staffApplicationsDropdown"><summary>📝 Staff Applications <span class="staff-app-count" id="staffApplicationCount">Loading…</span></summary><div class="staff-applications-content" id="staffApplicationsList"><p class="muted">Loading applications…</p></div></details>
       <div class="grid2">
         <div class="card"><h3>Statistics</h3><p>Users: ${data.stats.users}<br>Online: ${data.stats.online}<br>Messages: ${data.stats.messages}<br>Open reports: ${data.stats.reportsOpen}</p></div>
         <div class="card"><h3>Filtered words</h3><button class="mini" onclick="addFilterWord()">＋ Add word</button><details class="filter-words-details"><summary>Filter words (${(filterWords.words||[]).length})</summary><div class="filter-word-list">${(filterWords.words||[]).map(w=>`<div class="filter-word-row"><code>${esc(w)}</code><button class="mini danger" onclick="deleteFilterWord(decodeURIComponent('${encodeURIComponent(w)}'))">×</button></div>`).join('')||'<span class="muted">No filter words configured.</span>'}</div></details><p class="muted">Link filter: ${bootstrapData.settings?.linkFilter?'ON':'OFF'}</p></div>
