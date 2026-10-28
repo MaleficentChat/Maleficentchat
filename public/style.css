@@ -2738,3 +2738,19 @@ a { color: #65dcff; }
 
 
 .online-status-control{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 8px;padding:9px 10px;border:1px solid var(--border);border-radius:10px;background:var(--panel);font-size:12px;color:var(--muted)}.online-status-control select{max-width:58%;background:var(--panel-2);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:7px}
+
+/* Owner Space: granular room-rank permissions */
+.room-role-permission-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:12px 0 16px}
+.room-role-permission-card{min-width:0;padding:14px;border:1px solid var(--border,rgba(155,92,255,.35));border-radius:14px;background:rgba(17,13,29,.58)}
+.room-role-permission-card h3{margin:0 0 12px;font-size:1rem;color:var(--text,#f5efff)}
+.room-role-permission-option{display:flex;align-items:flex-start;gap:9px;padding:8px 0;border-top:1px solid rgba(155,92,255,.14);font-size:.92rem;line-height:1.35;cursor:pointer}
+.room-role-permission-option input{margin-top:3px;accent-color:var(--accent,#9b5cff);flex:0 0 auto}
+.room-role-grants>p{margin:10px 0}
+.dm-inspection-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;align-items:end;margin:14px 0}
+.dm-inspection-picker{position:relative;min-width:0}
+.dm-inspection-picker label{display:block;margin-bottom:6px;font-weight:600}
+.dm-inspection-picker input{width:100%;min-width:0;box-sizing:border-box}
+#dmSearchBtn{grid-column:1/-1;justify-self:start}
+.dm-inspection-message{overflow-wrap:anywhere}
+.dm-inspection-body{margin:8px 0;white-space:normal;line-height:1.5}
+@media(max-width:620px){.room-role-permission-grid{grid-template-columns:minmax(0,1fr)}.dm-inspection-fields{grid-template-columns:minmax(0,1fr)}#dmSearchBtn{grid-column:auto;width:100%}}
