@@ -3307,3 +3307,17 @@ button,input,select,textarea { max-width:100%; }
 @media(max-width:768px) {
   .quick-user-avatar {width:84px!important;height:84px!important}
 }
+
+
+/* Restore navigation icon presence while keeping the People rows compact. */
+.sidebar .nav {
+  font-size:19px!important;
+  min-height:38px!important;height:38px!important;
+  padding:6px 9px!important;gap:8px!important;
+}
+.sidebar .nav > span {font-size:14px!important;line-height:1.15!important}
+.sidebar .nav-group summary {min-height:36px!important;font-size:14px!important;padding:6px 9px!important}
+@media(max-width:700px) {
+  .sidebar .nav {font-size:19px!important;min-height:38px!important;height:38px!important}
+  .sidebar .nav > span {font-size:14px!important}
+}
