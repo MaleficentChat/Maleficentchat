@@ -2892,15 +2892,29 @@ app.get("/api/staff/dashboard",auth,featureAllowed("view_staff_dashboard"),async
   }catch(e){console.error("Staff dashboard reports failed:",e);res.status(500).json({error:"Could not load staff reports. Please refresh and try again."});}
 });
 
+app.post("/api/staff/reports/:id/assign",auth,async(req,res)=>{
+  const actor=current(req);if(!hasRank(actor,"MOD"))return res.status(403).json({error:"Staff only"});
+  const assignee=findUser(req.body.staffUserId||req.body.username||"");
+  if(!assignee||!hasRank(assignee,"MOD"))return res.status(400).json({error:"Choose an existing site staff member."});
+  try{
+    const data={assignedTo:String(assignee.id),assignedToUsername:assignee.username,assignedBy:String(actor.id),assignedByUsername:actor.username,assignedAt:Date.now()};
+    const pg=await pool.query("UPDATE reports SET data=COALESCE(data,jsonb_build_object())||$2::jsonb WHERE id=$1 RETURNING data",[req.params.id,JSON.stringify(data)]);
+    const report=(db.reports||[]).find(x=>String(x.id)===String(req.params.id));
+    if(report)Object.assign(report,data);
+    if(!pg.rowCount&&!report)return res.status(404).json({error:"Report not found."});
+    save();log(actor,"REPORT_ASSIGN",req.params.id,{assignedTo:assignee.username});
+    res.json({ok:true,...data});
+  }catch(e){console.error("Report assignment failed:",e);res.status(500).json({error:"Could not assign this report."});}
+});
 app.post("/api/staff/reports/:id/resolve",auth,async(req,res)=>{
   const u=current(req);
   if(!hasRank(u,"MOD"))return res.status(403).json({error:"Staff only"});
   const status=String(req.body.status||"RESOLVED").toUpperCase();
   if(!["RESOLVED","DISMISSED","OPEN"].includes(status))return res.status(400).json({error:"Invalid report status."});
   try{
-    const pg=await pool.query("UPDATE reports SET data=COALESCE(data,jsonb_build_object())||$2::jsonb WHERE id=$1 RETURNING data",[req.params.id,JSON.stringify({status,resolvedBy:u.id,resolvedByUsername:u.username,resolvedAt:Date.now()})]);
+    const pg=await pool.query("UPDATE reports SET data=COALESCE(data,jsonb_build_object())||$2::jsonb WHERE id=$1 RETURNING data",[req.params.id,JSON.stringify({status,resolutionNote:cleanText(req.body.resolutionNote||"").slice(0,1200),resolvedBy:u.id,resolvedByUsername:u.username,resolvedAt:Date.now()})]);
     const r=(db.reports||[]).find(x=>String(x.id)===String(req.params.id));
-    if(r){r.status=status;r.resolvedBy=u.id;r.resolvedByUsername=u.username;r.resolvedAt=Date.now();}
+    if(r){r.status=status;r.resolutionNote=cleanText(req.body.resolutionNote||"").slice(0,1200);r.resolvedBy=u.id;r.resolvedByUsername=u.username;r.resolvedAt=Date.now();}
     if(!pg.rowCount&&!r)return res.status(404).json({error:"Report not found"});
     save();log(u,"REPORT_RESOLVE",req.params.id,{status});
     res.json({report:pg.rowCount?{...(pg.rows[0].data||{}),id:req.params.id,status}:r});
