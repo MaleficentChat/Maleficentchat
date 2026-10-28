@@ -1415,6 +1415,41 @@ function openDoodleComposer(){
 $('doodleBtn')?.addEventListener('click',openDoodleComposer);
 
 
+const composer=$("composer");
+if(composer && !composer.dataset.submitBound){
+  composer.dataset.submitBound="true";
+  composer.addEventListener("submit",async e=>{
+    e.preventDefault();
+    if(!state.user){toast("Your session is not ready. Please log in again.");return;}
+    if(!state.currentRoom){toast("Join a room before sending a message.");return;}
+    const input=$("message"),fileInput=$("file"),sendButton=composer.querySelector(".send");
+    const textValue=(input?.value||"").trim(),file=fileInput?.files?.[0];
+    if(!textValue&&!file){input?.focus();return;}
+    const form=new FormData();
+    form.append("text",textValue);
+    if(file)form.append("file",file);
+    if(state.replyTo)form.append("replyTo",String(state.replyTo));
+    if(sendButton){sendButton.disabled=true;sendButton.textContent="Sending…";}
+    try{
+      const result=await api("/api/rooms/"+encodeURIComponent(state.currentRoom)+"/messages",{method:"POST",body:form});
+      if(result.message)appendMessage(result.message);
+      if(input)input.value="";
+      if(fileInput)fileInput.value="";
+      const fileName=$("fileName");if(fileName)fileName.textContent="";
+      if(state.replyTo!==null&&typeof cancelReply==="function")cancelReply();
+      input?.focus();
+    }catch(error){
+      toast(error.message||"Could not send message.");
+      if(String(error.message||"").toLowerCase().includes("login required")){
+        // Preserve the typed message and do not silently navigate away.
+        toast("Your login session expired. Please log in again.");
+      }
+    }finally{
+      if(sendButton){sendButton.disabled=false;sendButton.textContent="Send";}
+    }
+  });
+}
+
 $("message").oninput = () => {
   if (
     state.socket &&
