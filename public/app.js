@@ -1340,21 +1340,28 @@ function appendMessage(message) {
 
 function openPresenceModes(){
   if(!["OWNER","DEVELOPER"].includes(String(state.user?.rank||"").toUpperCase())){toast("Only Owner and Developer can use presence modes.");return;}
-  modal(`<div class="mode-control-panel"><h2>🕶️ Presence Modes</h2><p class="muted">Choose how you appear in Maleficent Chat. Only Owner and Developer can use these modes.</p>
-    <label class="mode-control-row"><input type="checkbox" id="modePopupHide" ${state.user?.hideMode&&!state.user?.deadMode?'checked':''}> <span><b>Hide Mode</b><small>Your messages appear as Aurora system messages rather than regular user bubbles.</small></span></label>
-    <label class="mode-control-row"><input type="checkbox" id="modePopupDead" ${state.user?.deadMode?'checked':''}> <span><b>Dead Mode</b><small>Hide your presence and suppress Aurora join notices. Messages remain anonymous.</small></span></label>
-    <p class="muted" id="modePopupStatus" aria-live="polite"></p><div class="toolbar"><button type="button" class="primary" id="applyModePopup">Apply modes</button><button type="button" class="mini" onclick="closeModal()">Cancel</button></div></div>`);
-  const hide=$("modePopupHide"),dead=$("modePopupDead"),apply=$("applyModePopup");
-  hide?.addEventListener("change",()=>{if(hide.checked)dead.checked=false;});
-  dead?.addEventListener("change",()=>{if(dead.checked)hide.checked=false;});
+  modal(`<div class="mode-control-panel" style="width:min(100%,390px);max-width:390px;padding:14px 16px;box-sizing:border-box">
+    <h2 style="font-size:18px;margin:0 0 5px">🕶️ Presence Modes</h2>
+    <p class="muted" style="font-size:12px;line-height:1.4;margin:0 0 10px">Choose one mode. Each option works differently:</p>
+    <label class="mode-control-row"><input type="checkbox" id="modePopupHide" ${state.user?.hideMode&&!state.user?.deadMode?'checked':''}> <span><b>👻 Ghost Mode</b><small>Your chat messages appear as Aurora system messages instead of normal message bubbles. Your account remains visible.</small></span></label>
+    <label class="mode-control-row"><input type="checkbox" id="modePopupDead" ${state.user?.deadMode?'checked':''}> <span><b>💀 Dead Mode</b><small>Hides your presence and suppresses Aurora join notices. Your chat activity stays hidden.</small></span></label>
+    <label class="mode-control-row"><input type="checkbox" id="modePopupInvisible" ${state.user?.invisible&&!state.user?.deadMode?'checked':''}> <span><b>😈 Invisible Mode</b><small>Removes you from normal online-user lists. Staff can still identify you as invisible.</small></span></label>
+    <p class="muted" id="modePopupStatus" aria-live="polite" style="font-size:12px;min-height:14px;margin:6px 0"></p>
+    <div class="toolbar" style="gap:6px"><button type="button" class="primary" id="applyModePopup">Apply</button><button type="button" class="mini" onclick="closeModal()">Cancel</button></div></div>`);
+  const hide=$("modePopupHide"),dead=$("modePopupDead"),invisible=$("modePopupInvisible"),apply=$("applyModePopup");
+  const boxes=[hide,dead,invisible].filter(Boolean);
+  boxes.forEach(box=>box.addEventListener("change",()=>{if(box.checked)boxes.filter(other=>other!==box).forEach(other=>other.checked=false);}));
   apply?.addEventListener("click",async()=>{
     const status=$("modePopupStatus");apply.disabled=true;if(status)status.textContent="Saving…";
     try{
       let result;
-      if(dead.checked) result=await api("/api/me/dead-mode",{method:"POST",body:JSON.stringify({enabled:true})});
-      else {
+      if(dead.checked) {
+        result=await api("/api/me/dead-mode",{method:"POST",body:JSON.stringify({enabled:true})});
+      } else {
         await api("/api/me/dead-mode",{method:"POST",body:JSON.stringify({enabled:false})});
-        result=await api("/api/me/hide-mode",{method:"POST",body:JSON.stringify({enabled:hide.checked})});
+        const ghostResult=await api("/api/me/hide-mode",{method:"POST",body:JSON.stringify({enabled:hide.checked})});
+        const invisibleResult=await api("/api/me/invisible",{method:"POST",body:JSON.stringify({enabled:invisible.checked})});
+        result={...ghostResult,...invisibleResult,hideMode:!!hide.checked,deadMode:false,invisible:!!invisible.checked};
       }
       state.user.hideMode=!!result.hideMode;state.user.deadMode=!!result.deadMode;state.user.invisible=!!result.invisible||!!result.deadMode;
       closeModal();toast("Presence modes updated.");updateNav();
