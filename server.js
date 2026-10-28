@@ -1637,6 +1637,23 @@ app.post("/api/rooms/:id/messages",auth,featureAllowed("send_messages"),upload.s
   const commandMatch=!req.file&&text.match(/^\/([a-z0-9]+)(?:\s+([\s\S]*))?$/i);
   if(commandMatch){
     const commandKey=commandMatch[1].toLowerCase(),args=String(commandMatch[2]||"").trim();
+    if(commandKey==="abrakadabra"){
+      if(args)return res.status(400).json({error:"Use /Abrakadabra without an amount."});
+      const before=Math.max(0,Math.min(1000000,Math.floor(Number(u.gold)||0)));
+      const magnitude=Math.floor(Math.random()*1000001);
+      const delta=(Math.random()<0.5?-1:1)*magnitude;
+      const after=Math.max(0,Math.min(1000000,before+delta));
+      u.gold=after;
+      db.goldTransactions ||= [];
+      db.goldTransactions.push({id:id(),time:Date.now(),actor:u.id,userId:u.id,type:"ABRAKADABRA",before,after,delta:after-before});
+      save();
+      io.to("user:"+u.id).emit("gold:update",{gold:after});
+      log(u,"GOLD_ABRAKADABRA",u.username,{before,after,delta:after-before});
+      const outcome=after-before;
+      const response="🪄 Abrakadabra! "+(outcome>0?"You gained "+outcome.toLocaleString()+" Gold!":outcome<0?"You lost "+Math.abs(outcome).toLocaleString()+" Gold!":"Your Gold balance stayed the same.")+" Balance: "+after.toLocaleString()+"/1,000,000 Gold.";
+      const notice=await auroraRoomMessage(response,r.id);
+      return res.json({message:notice,command:true,gold:after,delta:outcome});
+    }
     const commandDef=COMMAND_SETTING_DEFS.find(c=>c.key===commandKey);
     if(commandDef && commandKey!=="clear"){
       if(!commandAllowed(u,commandKey))return res.status(403).json({error:"The /"+commandKey+" command requires "+commandSettings()[commandKey].replace(/_/g," ")+" or higher."});
