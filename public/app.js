@@ -345,6 +345,14 @@ async function start() {
     }
   });
 
+  state.socket.on("room:kicked", data => {
+    if(String(data?.roomId)!==String(state.currentRoom))return;
+    state.messages=[];
+    if($("messages"))$("messages").innerHTML="";
+    toast("You were removed from this room. Reason: "+String(data?.reason||"Room rules"));
+    const main=state.rooms.find(r=>/^main room$/i.test(String(r.name||"")));
+    if(main&&String(main.id)!==String(state.currentRoom))joinRoom(main.id).catch(()=>{});
+  });
   state.socket.on("room:clear", () => {
     if (state.currentRoom) {
       state.messages=(state.messages||[]).filter(m=>String(m.roomId)!==String(state.currentRoom));
