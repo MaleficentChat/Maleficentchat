@@ -4302,10 +4302,15 @@ app.put('/api/profile',auth,(req,res)=>{
     if(req.body.privacy.lastSeen!==undefined)u.privacy.lastSeen=!!req.body.privacy.lastSeen;
     if(req.body.privacy.online!==undefined)u.privacy.online=!!req.body.privacy.online;
   }
-  const next={displayName:req.body.displayName,bio:req.body.bio,pronouns:req.body.pronouns,relationship:req.body.relationship,mood:req.body.mood,location:req.body.location,website:req.body.website,interests:req.body.interests,profileColor:req.body.profileColor,profileAccentColor:req.body.profileAccentColor};
+  const next={displayName:req.body.displayName,bio:req.body.bio,pronouns:req.body.pronouns,relationship:req.body.relationship,mood:req.body.mood,location:req.body.location,website:req.body.website,interests:req.body.interests,profileColor:req.body.profileColor,profileAccentColor:req.body.profileAccentColor,theme:req.body.theme,badge:req.body.badge,banner:req.body.banner};
   for(const [k,v] of Object.entries(next)) if(v!==undefined){
     if(k==='displayName') u[k]=String(v).trim().slice(0,40);
     else if(k==='interests') u[k]=Array.isArray(v)?v.map(x=>String(x).slice(0,40)).slice(0,20):String(v).split(',').map(x=>x.trim()).filter(Boolean).slice(0,20);
+    else if(k==='profileColor'||k==='profileAccentColor'){
+      const color=String(v).trim();
+      if(color && !/^#[0-9a-f]{6}$/i.test(color)) return res.status(400).json({error:'Profile colors must be valid hex colors.'});
+      u[k]=color;
+    } else if(k==='banner') u[k]=String(v).trim().slice(0,500);
     else u[k]=cleanText(v).slice(0,500);
   }
   if(oldDisplay!==u.displayName) u.displayNameHistory.push({value:u.displayName,time:Date.now()});
