@@ -3377,7 +3377,7 @@ app.get('/api/community-rules',auth,(req,res)=>{
   const rules=Array.isArray(db.settings?.community_rules)?db.settings.community_rules:[];
   res.json({rules:rules.map((r,i)=>({id:String(r.id||i+1),number:i+1,text:String(r.text||''),updatedAt:r.updatedAt||null,updatedBy:r.updatedBy||''})).filter(r=>r.text.trim())});
 });
-app.put('/api/owner/community-rules',auth,developerOnly,async(req,res)=>{
+app.put('/api/owner/community-rules',ownerOnly,async(req,res)=>{
   const input=Array.isArray(req.body?.rules)?req.body.rules:[];
   if(input.length>100)return res.status(400).json({error:'You can publish up to 100 rules.'});
   const rules=[];
