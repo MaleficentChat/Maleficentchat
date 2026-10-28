@@ -3537,11 +3537,11 @@ async function ownerEdit(id) {
     const data =
       await api("/api/owner/overview");
 
-    const user =
-      (data.users || [])
-        .find(u => u.id === id);
-
-    if (!user) return;
+    const user = (data.users || []).find(u => String(u.id) === String(id));
+    if (!user) {
+      toast("This account could not be found. Refresh Owner Space and try again.");
+      return;
+    }
 
     const editableRanks = [
       "MEMBER",
