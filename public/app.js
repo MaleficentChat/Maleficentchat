@@ -3689,8 +3689,42 @@ async function ownerDelete(id) {
 
 async function inspectDMs(){
   try{
-    modal(`<h2>Private-message inspection</h2><div class="toolbar"><input id="dmSearch1" placeholder="Search Username 1"><input id="dmSearch2" placeholder="Search Username 2"><button class="primary" id="dmSearchBtn">Search</button></div><div id="ownerDmResults" class="stack"><p class="muted">Enter one username for all their DMs, or two usernames for a conversation.</p></div>`);
-    const load=async()=>{try{const d=await api('/api/admin/private-search',{method:'POST',body:JSON.stringify({user1:$('dmSearch1').value.trim(),user2:$('dmSearch2').value.trim()})});$('ownerDmResults').innerHTML=(d.messages||[]).map(m=>`<div class="card"><b>@${esc(m.sender_username||m.senderUsername||'Unknown')} → @${esc(m.receiver_username||m.receiverUsername||'Unknown')}</b><div>${esc(m.message||m.text||m.data?.text||m.data?.message||m.data?.content||'')}</div><small class="muted">${fmt(m.created_at||m.time||m.data?.time)}</small></div>`).join('')||'<p class="muted">No private messages found.</p>';}catch(e){$('ownerDmResults').innerHTML=`<p class="error">${esc(e.message)}</p>`;}};$('dmSearchBtn').onclick=load;
+    modal(`<h2>Private-message inspection</h2><p class="muted">Choose an account from the suggestions, or type a username beginning with @. Select a second account to inspect only their conversation.</p><div class="dm-inspection-fields"><div class="dm-inspection-picker"><label for="dmSearch1">Account 1</label><input id="dmSearch1" placeholder="Type @ or username" autocomplete="off"><div id="dmSuggestions1" class="ip-inspection-suggestions" hidden></div></div><div class="dm-inspection-picker"><label for="dmSearch2">Account 2 (optional)</label><input id="dmSearch2" placeholder="Optional: second user" autocomplete="off"><div id="dmSuggestions2" class="ip-inspection-suggestions" hidden></div></div><button class="primary" id="dmSearchBtn">Inspect messages</button></div><div id="ownerDmResults" class="stack"><p class="muted">Select an account and press Inspect messages.</p></div>`);
+    const wirePicker=(inputId,suggestId)=>{
+      const input=$(inputId),suggestions=$(suggestId);let timer;
+      input?.addEventListener('input',()=>{
+        clearTimeout(timer);const term=(input.value||'').trim().replace(/^@/,'');
+        if(!term){suggestions.hidden=true;suggestions.innerHTML='';return;}
+        timer=setTimeout(async()=>{try{
+          const d=await api('/api/staff/ip-inspection/users?q='+encodeURIComponent(term));
+          const users=d.users||[];
+          suggestions.innerHTML=users.length?users.map(u=>'<button type="button" class="ip-inspection-suggestion" data-dm-username="'+esc(u.username)+'"><b>@'+esc(u.username)+'</b><small>'+esc(u.email||'Account')+'</small></button>').join(''):'<div class="muted ip-suggestion-empty">No matching accounts</div>';
+          suggestions.hidden=false;
+        }catch(e){suggestions.innerHTML='<div class="muted ip-suggestion-empty">'+esc(e.message||'Could not load accounts')+'</div>';suggestions.hidden=false;}},180);
+      });
+      suggestions?.addEventListener('click',e=>{const option=e.target.closest('[data-dm-username]');if(!option)return;input.value='@'+option.dataset.dmUsername;suggestions.hidden=true;suggestions.innerHTML='';});
+      input?.addEventListener('focus',()=>{if(input.value.trim())input.dispatchEvent(new Event('input'));});
+    };
+    wirePicker('dmSearch1','dmSuggestions1');wirePicker('dmSearch2','dmSuggestions2');
+    const load=async()=>{
+      const user1=($('dmSearch1').value||'').trim().replace(/^@/,'');
+      const user2=($('dmSearch2').value||'').trim().replace(/^@/,'');
+      const target=$('ownerDmResults');if(!user1){target.innerHTML='<p class="error">Select or enter the first username.</p>';return;}
+      target.innerHTML='<p class="muted">Loading private messages…</p>';
+      try{
+        const d=await api('/api/admin/private-search',{method:'POST',body:JSON.stringify({user1,user2})});
+        const messages=d.messages||[];
+        target.innerHTML='<p class="muted">'+messages.length+' message(s) found'+(user2?' between @'+esc(user1)+' and @'+esc(user2):' involving @'+esc(user1))+'.</p>'+
+          (messages.map(m=>{
+            const body=m.text??m.message??m.data?.text??m.data?.message??m.data?.content??'';
+            const attachment=m.attachment||m.data?.attachment;
+            return '<div class="card dm-inspection-message"><b>@'+esc(m.sender_username||m.senderUsername||'Unknown')+' → @'+esc(m.receiver_username||m.receiverUsername||'Unknown')+'</b><div class="dm-inspection-body">'+(String(body).trim()?esc(body).replace(/\n/g,'<br>'):'<span class="muted">'+(attachment?'Attachment message (text is empty).':'Message has no text content.')+'</span>')+'</div>'+(attachment?'<div class="muted">📎 '+esc(attachment.name||attachment.type||'Attachment')+'</div>':'')+'<small class="muted">'+esc(fmt(m.created_at||m.time||m.data?.time))+'</small></div>';
+          }).join('')||'<p class="muted">No private messages were returned for this account. Confirm the username and try again.</p>');
+      }catch(e){target.innerHTML='<p class="error">'+esc(e.message||'Could not inspect private messages.')+'</p>';}
+    };
+    $('dmSearchBtn').onclick=load;
+    $('dmSearch1')?.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();load();}});
+    $('dmSearch2')?.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();load();}});
   }catch(e){toast(e.message)}
 }
 
