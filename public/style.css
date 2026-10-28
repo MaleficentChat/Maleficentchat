@@ -3428,6 +3428,12 @@ button,input,select,textarea { max-width:100%; }
 
 /* FINAL MOBILE PEOPLE DRAWER OVERRIDE: narrow like the navigation drawer, tall, and compact. */
 @media(max-width:700px){
+ #viewRooms.chatting .online-panel{
+   display:none!important;
+ }
+ #viewRooms.chatting .online-panel.mobile-open{
+   display:flex!important;
+ }
  #viewRooms.chatting .online-panel,
  #viewRooms.chatting .online-panel.mobile-open{
    position:fixed!important;top:calc(var(--header-h,54px) + 8px)!important;
