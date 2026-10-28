@@ -1396,10 +1396,11 @@ function recordRoomModeration(roomId,entry){
 app.put("/api/rooms/:id/staff/:userId",auth,(req,res)=>{
   const actor=current(req),room=db.rooms.find(x=>String(x.id)===String(req.params.id)),target=db.users.find(x=>String(x.id)===String(req.params.userId));
   if(!room||!target)return res.status(404).json({error:"Room or user not found"});
-  if(!roomOwnerOrGlobal(actor,room)&&!roomRoleCan(room.id,actor.id,"assign_ranks"))return res.status(403).json({error:"Room-rank assignment permission is not granted to your room role."});
-  if(!Array.isArray(db.settings?.feature_grants?.room_rank_assign)||!db.settings.feature_grants.room_rank_assign.length)return res.status(403).json({error:"Room-rank assignment is disabled in Feature Granting."});
   const role=String(req.body.role||"USER").toUpperCase();
   if(!["USER","ROOM_MODERATOR","ROOM_ADMIN"].includes(role))return res.status(400).json({error:"Invalid room rank. Choose User, Room Moderator, or Room Admin."});
+  const permissionNeeded=role==="USER"?"manage_staff":"assign_ranks";
+  if(!roomOwnerOrGlobal(actor,room)&&!roomRoleCan(room.id,actor.id,permissionNeeded))return res.status(403).json({error:"Your room role does not have permission to "+(role==="USER"?"manage or remove room staff.":"assign room ranks.")});
+  if(role!=="USER"&&(!Array.isArray(db.settings?.feature_grants?.room_rank_assign)||!db.settings.feature_grants.room_rank_assign.length))return res.status(403).json({error:"Room-rank assignment is disabled in Feature Granting."});
   if(String(target.rank||"").toUpperCase()==="DEVELOPER"&&String(actor.rank||"").toUpperCase()!=="DEVELOPER")return res.status(403).json({error:"Only the Developer can change this account's room rank."});
   const settings=roomStaffStore(),key=String(room.id);settings.room_staff[key] ||= {};
   if(role==="USER")delete settings.room_staff[key][String(target.id)];else settings.room_staff[key][String(target.id)]=role;
