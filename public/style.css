@@ -360,6 +360,13 @@ audio { max-width:280px; margin-top:7px; }
 .theme-chip { display:flex; align-items:center; gap:8px; padding:10px; border-radius:11px; border:1px solid var(--border); background:rgba(255,255,255,.025); color:var(--text); }
 .theme-chip.active { border-color:var(--accent); box-shadow:0 0 0 2px var(--accent-soft); }
 .theme-dot { width:20px; height:20px; border-radius:50%; background:linear-gradient(135deg,var(--accent),var(--purple)); flex:none; }
+html[data-theme="obsidian"] { --bg:#071016; --panel:#101b24; --panel-2:#15242f; --panel-3:#1c303d; --accent:#9b5cff; --accent-2:#ff4fd8; --accent-soft:rgba(155,92,255,.15); --bubble:#1e2a32; --mine:#45316a; }
+.theme-chip[data-theme-choice="midnight"] .theme-dot{background:linear-gradient(135deg,#6d7cff,#8c96ff)}
+.theme-chip[data-theme-choice="forest"] .theme-dot{background:linear-gradient(135deg,#35c77a,#55e49a)}
+.theme-chip[data-theme-choice="rose"] .theme-dot{background:linear-gradient(135deg,#ff5b9a,#ff78ac)}
+.theme-chip[data-theme-choice="lavender"] .theme-dot{background:linear-gradient(135deg,#a878ff,#c09aff)}
+.theme-chip[data-theme-choice="sunset"] .theme-dot{background:linear-gradient(135deg,#ff8a4c,#ffab72)}
+.theme-chip[data-theme-choice="ocean"] .theme-dot{background:linear-gradient(135deg,#3db9ff,#72ceff)}
 html[data-theme="midnight"] { --bg:#050816; --panel:#0d1426; --panel-2:#131d34; --panel-3:#1a2840; --accent:#6d7cff; --accent-2:#8c96ff; --accent-soft:rgba(109,124,255,.14); --bubble:#202b44; --mine:#4655c8; }
 html[data-theme="forest"] { --bg:#06100c; --panel:#0c1a13; --panel-2:#11251a; --panel-3:#183022; --accent:#35c77a; --accent-2:#55e49a; --accent-soft:rgba(53,199,122,.14); --bubble:#20372a; --mine:#18764a; }
 html[data-theme="rose"] { --bg:#12080f; --panel:#21101a; --panel-2:#2d1723; --panel-3:#391d2c; --accent:#ff5b9a; --accent-2:#ff78ac; --accent-soft:rgba(255,91,154,.14); --bubble:#452535; --mine:#a82e61; }
