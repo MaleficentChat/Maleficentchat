@@ -958,6 +958,7 @@ function isStaffUser(user){
 }
 
 let onlineFavorites=new Set();
+let onlineSortMode="online-rank";
 async function toggleFavoriteUser(userId){try{const result=await api("/api/favorites/"+encodeURIComponent(userId),{method:"POST"});if(result.favorite)onlineFavorites.add(String(userId));else onlineFavorites.delete(String(userId));toast(result.favorite?"Added to favorites.":"Removed from favorites.");await renderOnline(onlinePanelTab);}catch(e){toast(e.message||"Could not update favorite.");}}
 
 async function renderOnline(tab=onlinePanelTab,searchQuery=""){
@@ -1000,11 +1001,14 @@ async function renderOnline(tab=onlinePanelTab,searchQuery=""){
       title=`Search · ${needle||"all usernames"}`;
     } else { list=online; title="Online"; }
 
-    list.sort((a,b)=>(Number(b.online)-Number(a.online))||(rankOrder[b.rank]-rankOrder[a.rank])||a.username.localeCompare(b.username));
+    if(onlineSortMode==="global-rank")list.sort((a,b)=>(rankOrder[b.rank]??-1)-(rankOrder[a.rank]??-1)||a.username.localeCompare(b.username));
+    else if(onlineSortMode==="room-rank")list.sort((a,b)=>(({ROOM_ADMIN:3,ROOM_MODERATOR:2,ROOM_OWNER:4}[roomRoleByUser[String(b.id)]||"USER"]||0)-({ROOM_ADMIN:3,ROOM_MODERATOR:2,ROOM_OWNER:4}[roomRoleByUser[String(a.id)]||"USER"]||0))||a.username.localeCompare(b.username));
+    else if(onlineSortMode==="recent")list.sort((a,b)=>Number(b.lastActive||0)-Number(a.lastActive||0));
+    else list.sort((a,b)=>(Number(b.online)-Number(a.online))||((rankOrder[b.rank]??-1)-(rankOrder[a.rank]??-1))||a.username.localeCompare(b.username));
 
     const count=online.length;
     $("onlinePanelTitle").innerHTML=`${esc(title)} <span class="online-badge">${count}</span>`;
-    $("onlineUsers").innerHTML=`${tab==="search"?'<input id="onlineUsernameSearch" type="search" placeholder="Search username…" autocomplete="off">':''}<div class="online-status-control"><label for="myCustomStatus">My status</label><select id="myCustomStatus"><option>Available</option><option>Busy</option><option>Away</option><option>Do Not Disturb</option></select></div><div class="online-user-grid">${list.map(user=>`
+    $("onlineUsers").innerHTML=`${tab==="search"?'<input id="onlineUsernameSearch" type="search" placeholder="Search username…" autocomplete="off">':''}<div class="online-status-control"><label for="myCustomStatus">My status</label><select id="myCustomStatus"><option>Available</option><option>Busy</option><option>Away</option><option>Do Not Disturb</option></select></div><div class="online-status-control"><label for="onlineSortMode">Sort users</label><select id="onlineSortMode"><option value="online-rank">Online status</option><option value="global-rank">Global rank</option><option value="room-rank">Room rank</option><option value="recent">Recently active</option></select></div><div class="online-user-grid">${list.map(user=>`
       <div class="online-user ${user.online?'is-online':'is-offline'}" onclick="openQuickUserCard('${esc(user.id)}')">
         ${avatar(user)}
         <div class="online-user-copy">
@@ -1017,6 +1021,7 @@ async function renderOnline(tab=onlinePanelTab,searchQuery=""){
         <span class="status ${!user.invisible&&user.online?'on':''}"></span>
       </div>
     `).join("") || `<div class="online-empty"><div>${tab==="staff"?"🛡️":tab==="friends"?"💜":"👥"}</div><b>No users here</b><span>Try another tab.</span></div>`}</div>`;
+    const sortSelect=$("onlineSortMode");if(sortSelect){sortSelect.value=onlineSortMode;sortSelect.onchange=()=>{onlineSortMode=sortSelect.value;renderOnline(onlinePanelTab);};}
     const statusSelect=$("myCustomStatus");if(statusSelect){statusSelect.value=state.user?.customStatus||"Available";statusSelect.onchange=async()=>{try{const result=await api("/api/me/status",{method:"POST",body:JSON.stringify({status:statusSelect.value})});state.user.customStatus=result.status;toast("Status updated.");await renderOnline(onlinePanelTab);}catch(e){toast(e.message||"Could not update status.");}};}
     const searchInput=$("onlineUsernameSearch");if(searchInput){searchInput.value=searchQuery;searchInput.oninput=()=>{const value=searchInput.value;renderOnline("search",value).then(()=>{const next=$("onlineUsernameSearch");if(next){next.focus();next.setSelectionRange(value.length,value.length);}});};}
 
