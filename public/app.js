@@ -1823,6 +1823,17 @@ async function loadUsers() {
         `/api/users?q=${encodeURIComponent(query)}`
       );
 
+    // Use room-specific ranks in user lists only. Unassigned users fall back
+    // to the site's normal rank icon; message headers always use global rank.
+    state.roomRankByUser={};
+    if(state.currentRoom){
+      try{
+        const roomStaff=await api(`/api/rooms/${encodeURIComponent(state.currentRoom)}/staff`);
+        for(const item of (roomStaff.staff||[])){
+          if(item.user?.id) state.roomRankByUser[String(item.user.id)]=item.role;
+        }
+      }catch{}
+    }
     const selectedRank=$("userRankFilter")?.value||"";
     const filtered=(data.users||[]).filter(user=>!selectedRank||user.rank===selectedRank);
     const invisible=filtered.filter(user=>user.invisible).sort((a,b)=>(rankOrder[b.rank]||0)-(rankOrder[a.rank]||0)||a.username.localeCompare(b.username));
@@ -1866,7 +1877,7 @@ function userCard(user) {
       <span class="horizontal-user-details">
         <b class="instagram-user-name">${esc(displayName)}</b>
         <small class="instagram-user-handle">@${esc(user.username)} ${invisibleDot(user)}</small>
-        <span class="instagram-user-rank">${rank(user.rank)}</span>
+        <span class="instagram-user-rank">${({ROOM_MODERATOR:"🛡️ Room Moderator",ROOM_ADMIN:"👑 Room Admin",ROOM_OWNER:"🎩 Room Owner"})[state.roomRankByUser?.[String(user.id)]] ? esc(({ROOM_MODERATOR:"🛡️ Room Moderator",ROOM_ADMIN:"👑 Room Admin",ROOM_OWNER:"🎩 Room Owner"})[state.roomRankByUser[String(user.id)]]) : rank(user.rank)}</span>
         <span class="instagram-user-meta"><span class="instagram-presence-dot ${onlineNow ? "is-online" : ""}"></span>${onlineNow ? "Online" : "Member"} <span>·</span> Lv ${Number(user.level || 1)}</span>
       </span>
       <span class="horizontal-user-chevron" aria-hidden="true">›</span>
