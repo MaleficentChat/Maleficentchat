@@ -301,7 +301,7 @@ function safeUser(u){
     mutedUntil:u.mutedUntil||null,
     createdAt:u.createdAt,
     lastSeen:u.lastSeen,
-    online:!!u.online && !u.invisible,
+    online:!!u.online && !u.invisible && !u.deadMode,
     customStatus:u.customStatus||"Available",
     lastActive:u.lastSeen||u.last_active||null,
     level:u.level||1,
@@ -742,7 +742,7 @@ app.get(
   "/api/bootstrap",
   (req,res)=>
     res.json({
-      user:(()=>{const u=current(req);return u?{...safeUser(u),invisible:!!u.invisible}:null;})(),
+      user:(()=>{const u=current(req);return u?{...safeUser(u),invisible:!!u.invisible,hideMode:!!u.hideMode,deadMode:!!u.deadMode}:null;})(),
 
       ranks:ranks.map(r=>({
         id:r,
@@ -992,7 +992,7 @@ app.get(
   auth,
   (req,res)=>{
     const u=current(req);
-    res.json({user:{...safeUser(u),invisible:!!u.invisible}});
+    res.json({user:{...safeUser(u),invisible:!!u.invisible,hideMode:!!u.hideMode,deadMode:!!u.deadMode}});
   }
 );
 
@@ -1178,7 +1178,7 @@ app.get(
     const viewerCanSeeInvisible=(target)=>!!viewer&&staff(viewer.rank)&&
       (rankOrder[viewer.rank]??-1)>(rankOrder[target?.rank]??-1);
     let arr=db.users
-      .filter(u=>(!u.invisible||viewerCanSeeInvisible(u)||String(u.id)===String(viewer?.id))&&(
+      .filter(u=>(!u.deadMode||String(u.id)===String(viewer?.id))&&(!u.invisible||viewerCanSeeInvisible(u)||String(u.id)===String(viewer?.id))&&(
           !q||
           u.username
             .toLowerCase()
@@ -1214,6 +1214,22 @@ app.post("/api/me/status",auth,(req,res)=>{
   log(u,"CUSTOM_STATUS",u.username,{status});res.json({ok:true,status});
 });
 
+app.post("/api/me/hide-mode",auth,(req,res)=>{
+  const u=current(req),rank=String(u?.rank||"").toUpperCase();
+  if(!["OWNER","DEVELOPER"].includes(rank))return res.status(403).json({error:"Hide mode is available only to Owner and Developer."});
+  u.hideMode=!!req.body?.enabled;
+  if(u.hideMode)u.deadMode=false;
+  save();log(u,"HIDE_MODE",u.username,{enabled:u.hideMode});io.emit("presence");
+  res.json({ok:true,hideMode:!!u.hideMode,deadMode:!!u.deadMode});
+});
+app.post("/api/me/dead-mode",auth,(req,res)=>{
+  const u=current(req),rank=String(u?.rank||"").toUpperCase();
+  if(!["OWNER","DEVELOPER"].includes(rank))return res.status(403).json({error:"Dead mode is available only to Owner and Developer."});
+  u.deadMode=!!req.body?.enabled;
+  if(u.deadMode){u.hideMode=true;u.invisible=true;}
+  save();log(u,"DEAD_MODE",u.username,{enabled:u.deadMode});io.emit("presence");
+  res.json({ok:true,hideMode:!!u.hideMode,deadMode:!!u.deadMode,invisible:!!u.invisible});
+});
 app.post("/api/me/invisible",auth,featureAllowed("invisible_mode"),(req,res)=>{
   const u=current(req);
   u.invisible=!!req.body?.enabled;
@@ -1516,7 +1532,7 @@ app.post(
       });
     }
 
-    systemNotice(`${u.displayName||u.username} has joined the room ${r.name}.`,r.id);
+    if(!u.deadMode)systemNotice(`${u.displayName||u.username} has joined the room ${r.name}.`,r.id);
     res.json({
       ok:true,
       joinToken:makeRoomJoinToken(u.id,r),
@@ -1678,7 +1694,7 @@ app.post("/api/rooms/:id/messages",auth,featureAllowed("send_messages"),upload.s
   const matchedFilter=filteredWord(text);
   const affected=(db.settings.filter_affected_ranks||[]).map(x=>String(x).toUpperCase());
   let autoMuted=false;
-  if(matchedFilter && String(u.rank).toUpperCase()!=="DEVELOPER" && affected.includes(String(u.rank).toUpperCase())){
+  if(matchedFilter && !u.deadMode && String(u.rank).toUpperCase()!=="DEVELOPER" && affected.includes(String(u.rank).toUpperCase())){
     const minutes=Math.max(1,Number(db.settings.filterMuteDurationMinutes||5));
     const stars="*".repeat(Math.max(3,String(matchedFilter).length));
     const re=new RegExp(String(matchedFilter).replace(/[.*+?^${}()|[\]\\]/g,"\\$&"),"gi");
@@ -1687,7 +1703,7 @@ app.post("/api/rooms/:id/messages",auth,featureAllowed("send_messages"),upload.s
     notify(u.id,"moderation","Auto-mute",`Your message matched the room filter and you were muted for ${minutes} minute${minutes===1?"":"s"}.`);
   }
   const roomRank=roomRole(r.id,u.id);
-  const m={id:id(),roomId:String(r.id),userId:u.id,username:u.username,displayName:u.displayName,rank:u.rank,roomRank,roomRankBadge:({USER:"✨",ROOM_MODERATOR:"🪄",ROOM_ADMIN:"💫",ROOM_OWNER:"🎩"})[roomRank]||"✨",
+  const anonymousMode=!!(u.hideMode||u.deadMode);\n   const m={id:id(),roomId:String(r.id),userId:anonymousMode?null:u.id,username:anonymousMode?"Aurora":u.username,displayName:anonymousMode?"Aurora":u.displayName,rank:anonymousMode?"BOT":u.rank,system:anonymousMode,isBot:anonymousMode,bot:anonymousMode?"Aurora":undefined,anonymous:anonymousMode,roomRank:anonymousMode?"USER":roomRank,roomRankBadge:({USER:"✨",ROOM_MODERATOR:"🪄",ROOM_ADMIN:"💫",ROOM_OWNER:"🎩"})[roomRank]||"✨",
     usernameColor:u.settings?.usernameColor||"",chatFont:u.settings?.chatFont||"",text,
     attachment:req.file?{url:"/uploads/"+req.file.filename,type:req.file.mimetype,name:req.file.originalname}:null,
     replyTo:req.body.replyTo||null,forwardedFrom:req.body.forwardedFrom||null,reactions:{},edited:false,deleted:false,pinned:false,time:Date.now(),delivered:true};
@@ -1701,8 +1717,8 @@ app.post("/api/rooms/:id/messages",auth,featureAllowed("send_messages"),upload.s
   checkAchievements(u); awardXp(u,Number(db.settings.xpPerMessage||5)); u.gold=(u.gold||0)+Number(db.settings.goldPerMessage||0); save();
   io.to("room:"+r.id).emit("message",m);
 
-  if(/^@Mal\s+/i.test(text)){const reply=malReply(u,text);if(reply){const bot={id:id(),system:false,isBot:true,userId:"bot-mal",username:"Mal",displayName:"Mal",rank:"BOT",text:reply,roomId:String(r.id),time:Date.now(),reactions:{},pinned:false,deleted:false};await pool.query(`INSERT INTO room_messages(id,room_id,data,created_at) VALUES($1,$2,$3::jsonb,NOW())`,[bot.id,Number(r.id),JSON.stringify(bot)]);db.messages.push(bot);io.to("room:"+r.id).emit("message",bot);}}
-  const botMention=text.match(/^@([A-Za-z0-9_]+)\s+([\s\S]*)/);
+  if(!anonymousMode && if(/^@Mal\s+/i.test(text)){const reply=malReply(u,text);if(reply){const bot={id:id(),system:false,isBot:true,userId:"bot-mal",username:"Mal",displayName:"Mal",rank:"BOT",text:reply,roomId:String(r.id),time:Date.now(),reactions:{},pinned:false,deleted:false};await pool.query(`INSERT INTO room_messages(id,room_id,data,created_at) VALUES($1,$2,$3::jsonb,NOW())`,[bot.id,Number(r.id),JSON.stringify(bot)]);db.messages.push(bot);io.to("room:"+r.id).emit("message",bot);}}
+  const botMention=anonymousMode?null:text.match(/^@([A-Za-z0-9_]+)\s+([\s\S]*)/);
   if(botMention && !/^Mal$/i.test(botMention[1]) && !(/^Aurora$/i.test(botMention[1]) && /^(truth|dare)\b/i.test(String(botMention[2]||"").trim()))){const bq=await pool.query(`SELECT * FROM bots WHERE LOWER(name)=LOWER($1) AND is_active=true LIMIT 1`,[botMention[1]]);const botRow=bq.rows[0];if(botRow && botRow.auto_reply){const bot={id:id(),system:false,isBot:true,userId:'bot-'+botRow.id,username:botRow.name,displayName:botRow.name,rank:'BOT',text:botRow.auto_reply,roomId:String(r.id),time:Date.now(),reactions:{},pinned:false,deleted:false};await pool.query(`INSERT INTO room_messages(id,room_id,data,created_at) VALUES($1,$2,$3::jsonb,NOW())`,[bot.id,Number(r.id),JSON.stringify(bot)]);db.messages.push(bot);io.to('room:'+r.id).emit('message',bot);}}
   addActivity("message",`${u.username} sent a message in ${r.name||"a room"}`,u.id,{roomId:r.id});
   res.json({message:m,autoMuted});
