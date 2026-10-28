@@ -417,9 +417,11 @@ function checkAchievements(u){
 }
 
 function findUser(x){
-  return db.users.find(
-    u=>u.id===x||
-    u.username.toLowerCase()===String(x).toLowerCase()
+  const key=String(x??"").trim();
+  if(!key)return undefined;
+  return db.users.find(u=>
+    String(u.id)===key||
+    String(u.username||"").toLowerCase()===key.toLowerCase()
   );
 }
 
@@ -1725,7 +1727,7 @@ app.post("/api/rooms/:id/messages",auth,featureAllowed("send_messages"),upload.s
     notify(u.id,"moderation","Auto-mute",`Your message matched the room filter and you were muted for ${minutes} minute${minutes===1?"":"s"}.`);
   }
   const roomRank=roomRole(r.id,u.id);
-  const anonymousMode=!!(u.hideMode||u.deadMode);
+  const anonymousMode=!!u.hideMode; // Dead Mode keeps normal identity; it only suppresses Aurora join announcements.
    const m={id:id(),roomId:String(r.id),userId:anonymousMode?null:u.id,username:anonymousMode?"Aurora":u.username,displayName:anonymousMode?"Aurora":u.displayName,rank:anonymousMode?"BOT":u.rank,system:anonymousMode,isBot:anonymousMode,bot:anonymousMode?"Aurora":undefined,anonymous:anonymousMode,roomRank:anonymousMode?"USER":roomRank,roomRankBadge:({USER:"✨",ROOM_MODERATOR:"🪄",ROOM_ADMIN:"💫",ROOM_OWNER:"🎩"})[anonymousMode?"USER":roomRank]||"✨",
     usernameColor:u.settings?.usernameColor||"",chatFont:u.settings?.chatFont||"",text,
     attachment:req.file?{url:"/uploads/"+req.file.filename,type:req.file.mimetype,name:req.file.originalname}:null,
