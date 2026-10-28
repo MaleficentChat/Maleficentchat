@@ -1445,7 +1445,7 @@ app.get("/api/rooms/:id/messages",auth,async(req,res)=>{
   if(!verifyRoomJoinToken(req.headers['x-room-join-token'],actor.id,room))return res.status(403).json({error:"Join this room before viewing its messages."});
   const {rows}=await pool.query(`SELECT data FROM room_messages WHERE room_id=$1 ORDER BY created_at DESC LIMIT 300`,[Number(req.params.id)]);
   const now=Date.now();
-  const messages=rows.reverse().map(r=>r.data).filter(m=>m && (!m.expiresAt||Number(m.expiresAt)>now) && !m.deleted);
+  const messages=rows.reverse().map(r=>r.data).filter(m=>m && (!m.expiresAt||Number(m.expiresAt)>now) && !m.deleted).map(m=>({...m,roomRank:roomRole(room.id,m.userId),roomRankBadge:({USER:"✨",ROOM_MODERATOR:"🪄",ROOM_ADMIN:"💫",ROOM_OWNER:"🎩"})[roomRole(room.id,m.userId)]||"✨"}));
   db.messages=db.messages.filter(m=>String(m.roomId)!==String(req.params.id)).concat(messages);
   res.json({messages});
 });
@@ -1588,7 +1588,8 @@ app.post("/api/rooms/:id/messages",auth,featureAllowed("send_messages"),upload.s
     db.moderationHistory.push({id:id(),time:Date.now(),target:u.id,actor:"SYSTEM",action:"AUTO_MUTE",reason:`Filtered word: ${matchedFilter}`,minutes});
     notify(u.id,"moderation","Auto-mute",`Your message matched the room filter and you were muted for ${minutes} minute${minutes===1?"":"s"}.`);
   }
-  const m={id:id(),roomId:String(r.id),userId:u.id,username:u.username,displayName:u.displayName,rank:u.rank,
+  const roomRank=roomRole(r.id,u.id);
+  const m={id:id(),roomId:String(r.id),userId:u.id,username:u.username,displayName:u.displayName,rank:u.rank,roomRank,roomRankBadge:({USER:"✨",ROOM_MODERATOR:"🪄",ROOM_ADMIN:"💫",ROOM_OWNER:"🎩"})[roomRank]||"✨",
     usernameColor:u.settings?.usernameColor||"",chatFont:u.settings?.chatFont||"",text,
     attachment:req.file?{url:"/uploads/"+req.file.filename,type:req.file.mimetype,name:req.file.originalname}:null,
     replyTo:req.body.replyTo||null,forwardedFrom:req.body.forwardedFrom||null,reactions:{},edited:false,deleted:false,pinned:false,time:Date.now(),delivered:true};
