@@ -2423,15 +2423,26 @@ app.post('/api/staff/system-notifications',auth,featureAllowed('view_staff_dashb
   const title=String(req.body?.title||'').trim().slice(0,100);
   const message=String(req.body?.message||'').trim().slice(0,2000);
   const targetRank=String(req.body?.targetRank||'ALL').trim().toUpperCase();
+  const targetRange=String(req.body?.targetRange||'EXACT').trim().toUpperCase();
   const allowedTargets=['ALL','MEMBER','VIP','PREMIUM','MOD','ADMIN','SUPER_ADMIN','COMMISSOR','COOWNER','OWNER','DEVELOPER'];
+  const allowedRanges=['EXACT','AND_ABOVE','AND_BELOW'];
   if(!title||!message)return res.status(400).json({error:'Enter both a notification title and message.'});
   if(!allowedTargets.includes(targetRank))return res.status(400).json({error:'Choose a valid recipient rank.'});
+  if(!allowedRanges.includes(targetRange))return res.status(400).json({error:'Choose a valid recipient range.'});
   try{
-    const q=targetRank==='ALL'
-      ? await pool.query('SELECT id FROM users ORDER BY id')
-      : await pool.query('SELECT id FROM users WHERE UPPER(rank)=$1 ORDER BY id',[targetRank]);
-    if(!q.rows.length)return res.status(400).json({error:'No users were found for that audience.'});
-    const ids=q.rows.map(row=>Number(row.id)).filter(Number.isFinite);
+    const q=await pool.query('SELECT id,rank FROM users ORDER BY id');
+    const rankLevels={MEMBER:0,USER:0,VIP:1,PREMIUM:2,MOD:3,MODERATOR:3,ADMIN:4,SUPER_ADMIN:5,COMMISSOR:6,COOWNER:7,OWNER:8,DEVELOPER:9};
+    const selectedLevel=rankLevels[targetRank];
+    const audience=q.rows.filter(row=>{
+      if(targetRank==='ALL')return true;
+      const userLevel=rankLevels[String(row.rank||'MEMBER').toUpperCase()];
+      if(userLevel===undefined||selectedLevel===undefined)return false;
+      if(targetRange==='AND_ABOVE')return userLevel>=selectedLevel;
+      if(targetRange==='AND_BELOW')return userLevel<=selectedLevel;
+      return userLevel===selectedLevel;
+    });
+    if(!audience.length)return res.status(400).json({error:'No users were found for that audience.'});
+    const ids=audience.map(row=>Number(row.id)).filter(Number.isFinite);
     const client=await pool.connect();
     let inserted=[];
     try{
@@ -2446,8 +2457,8 @@ app.post('/api/staff/system-notifications',auth,featureAllowed('view_staff_dashb
       await client.query('COMMIT');
     }catch(err){try{await client.query('ROLLBACK')}catch{}throw err;}finally{client.release();}
     for(const userId of inserted)io.to('user:'+userId).emit('notification');
-    try{await pool.query("INSERT INTO admin_audit_logs(actor_id,action,target_type,target_id,details) VALUES($1,$2,$3,$4,$5)",[Number(actor.id),'system_notification_sent','notification_audience',targetRank,JSON.stringify({title,recipientCount:inserted.length})]);}catch{}
-    res.json({ok:true,sent:inserted.length,targetRank,title});
+    try{await pool.query("INSERT INTO admin_audit_logs(actor_id,action,target_type,target_id,details) VALUES($1,$2,$3,$4,$5)",[Number(actor.id),'system_notification_sent','notification_audience',targetRank,JSON.stringify({title,recipientCount:inserted.length,targetRank,targetRange})]);}catch{}
+    res.json({ok:true,sent:inserted.length,targetRank,targetRange,title});
   }catch(err){console.error('System notification send failed:',err);res.status(500).json({error:'Could not send the system notification. Please try again.'});}
 });
 
