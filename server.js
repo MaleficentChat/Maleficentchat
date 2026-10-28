@@ -1674,13 +1674,12 @@ app.delete(
       });
     }
 
-    if(
-      m.userId!==u.id&&
-      !hasRank(u,"MOD")
-    ){
-      return res.status(403).json({
-        error:"No permission"
-      });
+    const room=db.rooms.find(r=>String(r.id)===String(m.roomId));
+    const roomRoleValue=room?roomRole(room.id,u.id):"USER";
+    const roomDeleteEnabled=Array.isArray(db.settings?.feature_grants?.room_delete_messages)&&db.settings.feature_grants.room_delete_messages.length>0;
+    const roomStaffCanDelete=!!room&&roomRoleLevel(roomRoleValue)>=1&&roomDeleteEnabled;
+    if(m.userId!==u.id&&!hasRank(u,"MOD")&&!roomStaffCanDelete){
+      return res.status(403).json({error:"No permission"});
     }
 
     const deletedSnapshot={
