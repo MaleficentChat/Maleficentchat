@@ -1873,6 +1873,11 @@ async function openUser(id) {
 }
 
 function renderUserProfileModal(user,data={}){
+  // Resolve equipped cosmetics locally for the viewed user's profile. These variables
+  // previously existed only inside loadProfile(), causing a ReferenceError here.
+  const cosmetics=Array.isArray(user.equippedCosmetics)?user.equippedCosmetics:[];
+  const frame=cosmetics.find(x=>x.category==='frame');
+  const profileBadge=cosmetics.find(x=>x.category==='badge');
   const memberSince=user.createdAt?new Date(user.createdAt).toLocaleDateString():'Unknown';
   const lastSeen=user.privacy?.lastSeen!==false&&user.lastSeen?new Date(user.lastSeen).toLocaleString():'Hidden';
   const bannerStyle=user.banner?`style="background-image:linear-gradient(180deg,rgba(0,0,0,.05),rgba(0,0,0,.78)),url('${esc(user.banner)}')"`:'';
