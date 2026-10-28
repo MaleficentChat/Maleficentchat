@@ -3280,33 +3280,6 @@ async function refreshSiteMessages(){
     if(state.view==='owner')loadOwner();
   }catch(e){toast('Could not clear site messages: '+e.message)}
 }
-async function loadOwnerPasswordSecurity(){
-  const host=$('ownerPasswordSecurityRows');if(!host)return;
-  try{
-    const data=await api('/api/owner/password-security');
-    const users=data.users||[];
-    const render=(query='')=>{
-      const q=query.trim().toLowerCase();
-      const shown=users.filter(u=>[u.username,u.displayName,u.rank].join(' ').toLowerCase().includes(q));
-      host.innerHTML=shown.map(u=>{
-        const safe=u.credentialStorage==='BCRYPT_HASH';
-        const reset=u.passwordResetAvailable?'<button class="mini primary" type="button" data-owner-password-reset="'+esc(u.id)+'" data-owner-password-name="'+esc(u.username)+'">Secure reset</button>':'<span class="muted">Protected account</span>';
-        return '<div class="user-card owner-password-security-row"><div style="flex:1;min-width:0"><b>@'+esc(u.username)+'</b><br><small>'+esc(u.rank||'MEMBER')+' · '+(safe?'🔒 Hashed credential stored':'⚠️ Storage needs review')+'</small></div>'+reset+'</div>';
-      }).join('')||'<p class="muted">No matching accounts.</p>';
-      if($('ownerPasswordSecurityCount'))$('ownerPasswordSecurityCount').textContent=q?shown.length+' of '+users.length+' accounts':users.length+' accounts';
-    };
-    render();
-    if($('ownerPasswordSecuritySearch'))$('ownerPasswordSecuritySearch').oninput=()=>render($('ownerPasswordSecuritySearch').value);
-    host.querySelectorAll('[data-owner-password-reset]').forEach(btn=>btn.onclick=()=>{
-      const userId=btn.dataset.ownerPasswordReset,username=btn.dataset.ownerPasswordName;
-      modal('<h2>🔐 Secure password reset</h2><p>Set a new password for <b>@'+esc(username)+'</b>. The current password cannot be viewed. The user will need the new password to sign in.</p><label>New password<input id="ownerSecurityNewPassword" type="password" minlength="12" autocomplete="new-password" placeholder="Use a long, unique password"></label><p class="muted">Use at least 12 characters; a longer passphrase is recommended.</p><div class="toolbar"><button class="primary" id="ownerSecuritySavePassword">Reset password</button><button class="mini" id="ownerSecurityCancelPassword">Cancel</button></div>');
-      $('ownerSecurityCancelPassword').onclick=closeModal;
-      $('ownerSecuritySavePassword').onclick=async()=>{const password=$('ownerSecurityNewPassword').value;if(password.length<12){toast('Use at least 12 characters for this security reset.');return;}if(!confirm('Reset the password for @'+username+'? The current password will not be recoverable.'))return;try{await api('/api/owner/user/'+encodeURIComponent(userId)+'/password',{method:'PATCH',body:JSON.stringify({password})});closeModal();toast('Password reset successfully.');await loadOwnerPasswordSecurity();}catch(e){toast(e.message||'Could not reset password.')}};
-    });
-  }catch(e){if(host)host.innerHTML='<p class="muted">Could not load password security: '+esc(e.message)+'</p>';}
-}
-
-
 async function loadCommunityRules(){
  const host=$('communityRules');if(!host)return;
  const owner=String(state.user?.rank||'').toUpperCase()==='DEVELOPER'||(String(state.user?.rank||'').toUpperCase()==='OWNER'&&state.user?.username==='Maleficent');
@@ -3333,7 +3306,7 @@ async function loadOwner() {
 
         <p>
           Owner-only controls for
-          users, ranks, gold, passwords,
+          users, ranks, gold,
           private-message inspection,
           rooms and settings.
         </p>
@@ -3434,13 +3407,6 @@ async function loadOwner() {
         <div class="toolbar"><button class="primary" id="saveSystemModeration">Save System Moderation</button><span class="muted">Settings are saved separately for each rule.</span></div>
           </div>
         </details>
-      </div>
-
-      <div class="card owner-password-security-card">
-        <h3>🔐 Password Security</h3>
-        <p class="muted">Developer-only security overview. Passwords are never displayed. Storage status shows whether a bcrypt hash is present; it cannot reveal the original password or prove its strength.</p>
-        <div class="owner-user-search"><input id="ownerPasswordSecuritySearch" type="search" placeholder="Search accounts by username or rank…" autocomplete="off"><span id="ownerPasswordSecurityCount" class="muted">Loading accounts…</span></div>
-        <div id="ownerPasswordSecurityRows" class="stack"><p class="muted">Loading password security status…</p></div>
       </div>
 
       <div class="card owner-user-controls-card">
@@ -3556,7 +3522,6 @@ async function loadOwner() {
       catch(error){$("ownerAuditSaveStatus").textContent="Save failed: "+(error.message||"Unknown error");toast(error.message||"Could not save audit settings.");}
       finally{btn.disabled=false;}
     });
-    loadOwnerPasswordSecurity();
     if($('ownerUserSearch')) $('ownerUserSearch').oninput=()=>{const q=$('ownerUserSearch').value.trim().toLowerCase();const rows=[...document.querySelectorAll('.owner-user-control-row')];let showing=0;rows.forEach(row=>{const match=(row.dataset.userSearch||'').includes(q);row.style.display=match?'':'none';if(match)showing++});if($('ownerUserSearchCount'))$('ownerUserSearchCount').textContent=q?(`${showing} of ${rows.length} users`):(`${rows.length} users`)};
     if($('addBulkFilter')) $('addBulkFilter').onclick=async()=>{try{await api('/api/filter-words/bulk',{method:'POST',body:JSON.stringify({text:$('bulkFilterWords').value})});$('bulkFilterWords').value='';await loadOwner();}catch(e){toast(e.message)}};
     if($('filterSearch')) $('filterSearch').oninput=()=>{const q=$('filterSearch').value.toLowerCase();const rows=[...document.querySelectorAll('.filter-table-row')];let showing=0;rows.forEach(r=>{const show=r.dataset.word.toLowerCase().includes(q);r.style.display=show?'':'none';if(show)showing++});$('filterCounts').textContent=`Total: ${rows.length} | Showing: ${showing}`};
@@ -3592,9 +3557,8 @@ async function ownerEdit(id) {
 
     modal(`
       <h2>Manage @${esc(user.username)}</h2>
-      <p class="muted">${user.username==="Maleficent" ? "Permanent Developer account. Its identity and rank are protected." : "Manage this account. Password resets are available only to the permanent Developer account."}</p>
+      <p class="muted">${user.username==="Maleficent" ? "Permanent Developer account. Its identity and rank are protected." : "Manage this account’s rank, Gold, XP and level."}</p>
 
-      ${String(state.user?.rank||"").toUpperCase()==="DEVELOPER" && state.user?.username==="Maleficent" ? `<div class="owner-password-box"><span>🔑 Password reset</span><p class="muted">Existing passwords cannot be viewed. Set a new password; it will be stored as a secure hash.</p><label>New password<input id="opass" type="password" minlength="8" autocomplete="new-password" placeholder="At least 8 characters"></label></div>` : ""}
       <p class="muted">Birth date: ${esc(user.birth_date||'—')} · Gender: ${esc(user.gender||'—')}</p>
       <select id="orank">
 
@@ -3671,19 +3635,6 @@ async function saveOwnerUser(id) {
     );
 
     if($("oxp") && $("olevel")) await api(`/api/owner/user/${id}/progress`,{method:"PATCH",body:JSON.stringify({xp:$("oxp").value,level:$("olevel").value})});
-
-    if ($("opass") && $("opass").value) {
-      if($("opass").value.length<8) throw Error("New password must be at least 8 characters.");
-      await api(
-        `/api/owner/user/${id}/password`,
-        {
-          method: "PATCH",
-          body: JSON.stringify({
-            password: $("opass").value
-          })
-        }
-      );
-    }
 
     if(id===state.user?.id){const refreshed=await api("/api/me");if(refreshed.user){state.user=refreshed.user;updateNav();}}
     closeModal();
