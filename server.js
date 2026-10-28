@@ -170,7 +170,13 @@ const FEATURE_CONTROLS=[
   {key:"manage_feature_lab",name:"Manage Feature Lab",category:"Owner",defaultRank:"OWNER"},
   {key:"manage_clubs",name:"Manage clubs",category:"Community",defaultRank:"ADMIN"},
   {key:"enter_private_club",name:"Enter private clubs",category:"Community",defaultRank:"MEMBER"},
-  {key:"manage_aurora",name:"Manage Aurora bot",category:"AI",defaultRank:"OWNER"}
+  {key:"manage_aurora",name:"Manage Aurora bot",category:"AI",defaultRank:"OWNER"},
+  {key:"room_rank_assign",name:"Assign room-specific ranks",category:"Room Staff",defaultRank:"OWNER"},
+  {key:"room_moderate",name:"Mute or remove users in a room",category:"Room Staff",defaultRank:"MOD"},
+  {key:"room_manage_staff",name:"Manage room staff",category:"Room Staff",defaultRank:"OWNER"},
+  {key:"room_edit_own",name:"Edit or delete owned rooms",category:"Room Staff",defaultRank:"OWNER"},
+  {key:"room_delete_messages",name:"Delete messages in managed rooms",category:"Room Staff",defaultRank:"MOD"},
+  {key:"room_clear_own",name:"Clear messages in owned rooms",category:"Room Staff",defaultRank:"OWNER"}
 ];
 
 const GRANT_RANKS=["MEMBER","VIP","PREMIUM","MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"];
@@ -1302,6 +1308,47 @@ async function createRoomHandler(req,res){
 app.post("/api/rooms",auth,createRoomHandler);
 app.post("/api/rooms/create",auth,createRoomHandler);
 
+function roomStaffStore(){ db.settings ||= {}; db.settings.room_staff ||= {}; db.settings.room_mutes ||= {}; db.settings.room_blocks ||= {}; return db.settings; }
+function roomRole(roomId,userId){return roomStaffStore().room_staff[String(roomId)]?.[String(userId)]||"USER";}
+function roomRoleLevel(role){return ({USER:0,ROOM_MODERATOR:1,ROOM_ADMIN:2,ROOM_OWNER:3})[String(role||"USER").toUpperCase()]||0;}
+function roomOwnerOrGlobal(u,room){return roomRole(room.id,u.id)==="ROOM_OWNER"||["OWNER","COOWNER","COMMISSOR","DEVELOPER"].includes(String(u.rank||"").toUpperCase())||String(room.createdBy||room.created_by||"")===String(u.id);}
+app.get("/api/rooms/:id/staff",auth,(req,res)=>{
+  const room=db.rooms.find(x=>String(x.id)===String(req.params.id));if(!room)return res.status(404).json({error:"Room not found"});
+  const store=roomStaffStore().room_staff[String(room.id)]||{};
+  const staff=Object.entries(store).filter(([,role])=>role!=="USER").map(([userId,role])=>({user:safeUser(db.users.find(u=>String(u.id)===String(userId))||{}),role,badge:role==="ROOM_OWNER"?"🎩":role==="ROOM_ADMIN"?"💫":"🪄"})).filter(x=>x.user.id);
+  res.json({roomId:String(room.id),myRole:roomRole(room.id,current(req).id),staff});
+});
+app.put("/api/rooms/:id/staff/:userId",auth,(req,res)=>{
+  const actor=current(req),room=db.rooms.find(x=>String(x.id)===String(req.params.id)),target=db.users.find(x=>String(x.id)===String(req.params.userId));
+  if(!room||!target)return res.status(404).json({error:"Room or user not found"});
+  if(!featureGrantAllowed(actor,"room_rank_assign"))return res.status(403).json({error:"Room-rank assignment is disabled for your rank in Feature Granting."});
+  if(!roomOwnerOrGlobal(actor,room))return res.status(403).json({error:"Only this room's owner or authorized global staff can assign room ranks."});
+  const role=String(req.body.role||"USER").toUpperCase();
+  if(!["USER","ROOM_MODERATOR","ROOM_ADMIN","ROOM_OWNER"].includes(role))return res.status(400).json({error:"Invalid room rank."});
+  if(String(target.rank||"").toUpperCase()==="DEVELOPER"&&String(actor.rank||"").toUpperCase()!=="DEVELOPER")return res.status(403).json({error:"Only the Developer can change this account's room rank."});
+  const settings=roomStaffStore(),key=String(room.id);settings.room_staff[key] ||= {};
+  if(role==="USER")delete settings.room_staff[key][String(target.id)];else settings.room_staff[key][String(target.id)]=role;
+  save();log(actor,"ROOM_RANK_CHANGE",target.username,{roomId:String(room.id),role});
+  res.json({ok:true,roomId:String(room.id),userId:String(target.id),role,badge:role==="ROOM_OWNER"?"🎩":role==="ROOM_ADMIN"?"💫":role==="ROOM_MODERATOR"?"🪄":"✨"});
+});
+app.post("/api/rooms/:id/staff-action",auth,async(req,res)=>{
+  const actor=current(req),room=db.rooms.find(x=>String(x.id)===String(req.params.id)),target=db.users.find(x=>String(x.id)===String(req.body.userId));
+  if(!room||!target)return res.status(404).json({error:"Room or user not found"});
+  const role=roomRole(room.id,actor.id),level=roomRoleLevel(role),global=["OWNER","COOWNER","COMMISSOR","DEVELOPER"].includes(String(actor.rank||"").toUpperCase());
+  const action=String(req.body.action||"").toUpperCase(),reason=cleanText(req.body.reason||"Room rule violation").slice(0,240);
+  if(target.id===actor.id)return res.status(400).json({error:"You cannot moderate yourself."});
+  if(roomRoleLevel(roomRole(room.id,target.id))>=level&&!global)return res.status(403).json({error:"You cannot moderate someone with an equal or higher room rank."});
+  const settings=roomStaffStore(),key=String(room.id),targetId=String(target.id);
+  if(action==="MUTE"&&(level<1&&!global||!featureGrantAllowed(actor,"room_moderate")))return res.status(403).json({error:"Room moderator permission required."});
+  if(["BLOCK","KICK"].includes(action)&&(level<2&&!global||!featureGrantAllowed(actor,"room_moderate")))return res.status(403).json({error:"Room admin permission required."});
+  if(action==="UNBLOCK"&&(level<2&&!global||!featureGrantAllowed(actor,"room_moderate")))return res.status(403).json({error:"Room admin permission required."});
+  if(action==="MUTE"){settings.room_mutes[key] ||= {};settings.room_mutes[key][targetId]={until:Date.now()+Math.max(1,Math.min(60,Number(req.body.minutes)||5))*60000,reason,by:String(actor.id)};}
+  else if(action==="BLOCK"||action==="KICK"){settings.room_blocks[key] ||= {};settings.room_blocks[key][targetId]={reason,by:String(actor.id),time:Date.now()};}
+  else if(action==="UNBLOCK"){delete settings.room_blocks[key]?.[targetId];}
+  else return res.status(400).json({error:"Unsupported room action."});
+  save();log(actor,"ROOM_STAFF_ACTION",target.username,{roomId:key,action,reason});
+  res.json({ok:true,action,reason});
+});
 app.patch("/api/rooms/:id",auth,async(req,res)=>{
   const u=current(req),r=db.rooms.find(x=>String(x.id)===String(req.params.id)); if(!r)return res.status(404).json({error:"Room not found"});
   if(r.isDefault || /^main room$/i.test(String(r.name||"").trim()))return res.status(403).json({error:"The permanent Main Room cannot be modified."});
@@ -1425,6 +1472,12 @@ app.post("/api/rooms/:id/messages",auth,featureAllowed("send_messages"),upload.s
   const u=current(req); const r=db.rooms.find(x=>String(x.id)===String(req.params.id));
   if(!r)return res.status(404).json({error:"Room not found"});
   if(!verifyRoomJoinToken(req.headers['x-room-join-token'],u.id,r))return res.status(403).json({error:"Join this room before sending messages."});
+  const roomSettings=roomStaffStore(),roomKey=String(r.id),uid=String(u.id);
+  const roomBlock=roomSettings.room_blocks[roomKey]?.[uid];
+  if(roomBlock)return res.status(403).json({error:"You are blocked from this room. Reason: "+String(roomBlock.reason||"Room rules").slice(0,240)});
+  const roomMute=roomSettings.room_mutes[roomKey]?.[uid];
+  if(roomMute&&Number(roomMute.until)>Date.now())return res.status(403).json({error:"You are muted in this room until "+new Date(Number(roomMute.until)).toLocaleTimeString()+". Reason: "+String(roomMute.reason||"Room rules").slice(0,240)});
+  if(roomMute&&Number(roomMute.until)<=Date.now())delete roomSettings.room_mutes[roomKey][uid];
   if(u.banned===true)return res.status(403).json({error:"You have been banned"});
   if(u.kickedUntil&&u.kickedUntil>Date.now())return res.status(403).json({error:`You have been kicked. You will be able to come back after ${new Date(u.kickedUntil).toLocaleTimeString()}`,kickedUntil:u.kickedUntil});
   if(u.mutedUntil&&u.mutedUntil>Date.now())return res.status(403).json({error:"You are muted until "+new Date(u.mutedUntil).toLocaleString()});
