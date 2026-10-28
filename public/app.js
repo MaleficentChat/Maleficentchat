@@ -407,7 +407,10 @@ async function start() {
   }
 
   await renderView();
-  // Login should open Main Room immediately, not leave users on the room cards.
+  // Remember the previous room before Main Room's safe startup join updates the last-room key.
+  const lastRoomKey='mc_last_room_'+(state.user?.id||'guest');
+  const previousRoomId=safeStorage.getItem(lastRoomKey);
+  // New accounts enter Main Room; returning users can resume a previously visited public room.
   if (mainRoom) {
     let joined = await joinRoom(String(mainRoom.id));
     // If the room list was stale during login, fetch the authoritative list and
@@ -427,6 +430,13 @@ async function start() {
       }
     }
     if (joined === false) toast("Main Room could not open automatically. Please check the latest error.");
+    if(joined!==false && previousRoomId && String(previousRoomId)!==String(mainRoom.id)){
+      const previousRoom=state.rooms.find(room=>String(room.id)===String(previousRoomId));
+      // Never prompt for a password during login; locked/private rooms stay on Main Room.
+      if(previousRoom && previousRoom.public!==false && !previousRoom.passwordHash){
+        await joinRoom(String(previousRoom.id));
+      }
+    }
   } else {
     toast("Main Room is missing from the server room list. Please retry in a moment.");
   }
@@ -756,6 +766,7 @@ function joinedRoomIds(){
 }
 function rememberMyRoom(id){
   const ids=joinedRoomIds();ids.add(String(id));safeStorage.setItem('mc_my_rooms_'+(state.user?.id||'guest'),JSON.stringify([...ids]));
+  safeStorage.setItem('mc_last_room_'+(state.user?.id||'guest'),String(id));
 }
 function setRoomListMode(mode){
   state.roomListMode=mode==='mine'?'mine':'all';
