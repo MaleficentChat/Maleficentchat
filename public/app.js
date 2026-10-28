@@ -1004,7 +1004,7 @@ async function renderOnline(tab=onlinePanelTab,searchQuery=""){
 
     const count=online.length;
     $("onlinePanelTitle").innerHTML=`${esc(title)} <span class="online-badge">${count}</span>`;
-    $("onlineUsers").innerHTML=`${tab==="search"?'<input id="onlineUsernameSearch" type="search" placeholder="Search username…" autocomplete="off">':''}<div class="online-user-grid">${list.map(user=>`
+    $("onlineUsers").innerHTML=`${tab==="search"?'<input id="onlineUsernameSearch" type="search" placeholder="Search username…" autocomplete="off">':''}<div class="online-status-control"><label for="myCustomStatus">My status</label><select id="myCustomStatus"><option>Available</option><option>Busy</option><option>Away</option><option>Do Not Disturb</option></select></div><div class="online-user-grid">${list.map(user=>`
       <div class="online-user ${user.online?'is-online':'is-offline'}" onclick="openQuickUserCard('${esc(user.id)}')">
         ${avatar(user)}
         <div class="online-user-copy">
@@ -1017,6 +1017,7 @@ async function renderOnline(tab=onlinePanelTab,searchQuery=""){
         <span class="status ${!user.invisible&&user.online?'on':''}"></span>
       </div>
     `).join("") || `<div class="online-empty"><div>${tab==="staff"?"🛡️":tab==="friends"?"💜":"👥"}</div><b>No users here</b><span>Try another tab.</span></div>`}</div>`;
+    const statusSelect=$("myCustomStatus");if(statusSelect){statusSelect.value=state.user?.customStatus||"Available";statusSelect.onchange=async()=>{try{const result=await api("/api/me/status",{method:"POST",body:JSON.stringify({status:statusSelect.value})});state.user.customStatus=result.status;toast("Status updated.");await renderOnline(onlinePanelTab);}catch(e){toast(e.message||"Could not update status.");}};}
     const searchInput=$("onlineUsernameSearch");if(searchInput){searchInput.value=searchQuery;searchInput.oninput=()=>{const value=searchInput.value;renderOnline("search",value).then(()=>{const next=$("onlineUsernameSearch");if(next){next.focus();next.setSelectionRange(value.length,value.length);}});};}
 
     $("onlineCount").textContent=`${count} online`;
