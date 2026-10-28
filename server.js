@@ -1637,10 +1637,7 @@ app.patch(
     }
 
     const room=db.rooms.find(r=>String(r.id)===String(m.roomId));
-    const roomRoleValue=room?roomRole(room.id,u.id):"USER";
-    const roomDeleteEnabled=Array.isArray(db.settings?.feature_grants?.room_delete_messages)&&db.settings.feature_grants.room_delete_messages.length>0;
-    const roomStaffCanDelete=!!room&&roomRoleLevel(roomRoleValue)>=1&&roomDeleteEnabled;
-    if(m.userId!==u.id&&!hasRank(u,"MOD")&&!(roomStaffCanDelete&&Array.isArray(db.settings?.feature_grants?.room_delete_messages)&&db.settings.feature_grants.room_delete_messages.length)){
+    if(m.userId!==u.id&&!hasRank(u,"MOD")){
       return res.status(403).json({error:"No permission"});
     }
 
@@ -1684,7 +1681,7 @@ app.delete(
     const room=db.rooms.find(r=>String(r.id)===String(m.roomId));
     const roomRoleValue=room?roomRole(room.id,u.id):"USER";
     const roomDeleteEnabled=Array.isArray(db.settings?.feature_grants?.room_delete_messages)&&db.settings.feature_grants.room_delete_messages.length>0;
-    const roomStaffCanDelete=!!room&&roomRoleLevel(roomRoleValue)>=1&&roomDeleteEnabled;
+    const roomStaffCanDelete=!!room&&roomRoleValue==="ROOM_OWNER"&&roomDeleteEnabled;
     if(m.userId!==u.id&&!hasRank(u,"MOD")&&!roomStaffCanDelete){
       return res.status(403).json({error:"No permission"});
     }
@@ -1881,7 +1878,8 @@ app.post(
     const u=current(req);
     const room=db.rooms.find(r=>String(r.id)===String(req.params.id));
     if(!room)return res.status(404).json({error:"Room not found"});
-    if(!commandAllowed(u,"clear")&&!(roomRole(room.id,u.id)==="ROOM_OWNER"&&featureGrantAllowed(u,"room_clear_own"))&&!roomOwnerOrGlobal(u,room)){
+    const roomOwnerCanClear=roomRole(room.id,u.id)==="ROOM_OWNER"&&Array.isArray(db.settings?.feature_grants?.room_clear_own)&&db.settings.feature_grants.room_clear_own.length>0;
+    if(!commandAllowed(u,"clear")&&!roomOwnerCanClear){
       return res.status(403).json({
         error:`The /clear command requires ${commandSettings().clear.replace(/_/g," ")} or higher.`
       });
