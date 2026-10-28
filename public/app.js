@@ -2699,6 +2699,20 @@ function editRelationship(){modal(`<h2>Edit relationship</h2><select id="rel"><o
 function editUsername(){modal(`<h2>Edit username</h2><input id="newUsername" maxlength="24" value="${esc(state.user.username)}"><p class="muted">3–24 letters, numbers and underscores.</p><button class="primary" id="saveUsername">Save</button>`);$('saveUsername').onclick=()=>saveMyProfile({username:$('newUsername').value.trim()},'Username saved.');}
 function editAboutMe(){modal(`<h2>Edit about me</h2><textarea id="aboutMeEdit" rows="7" maxlength="500">${esc(state.user.bio||'')}</textarea><button class="primary" id="saveAboutMe">Save</button>`);$('saveAboutMe').onclick=()=>saveMyProfile({bio:$('aboutMeEdit').value},'About Me saved.');}
 function editMood(){modal(`<h2>Edit mood</h2><input id="moodEdit" maxlength="120" value="${esc(state.user.mood||'')}" placeholder="How are you feeling?"><button class="primary" id="saveMood">Save</button>`);$('saveMood').onclick=()=>saveMyProfile({mood:$('moodEdit').value.trim()},'Mood saved.');}
+function editProfileStyle(){
+  const u=state.user||{};
+  modal(`<h2>✨ Profile appearance</h2>
+    <p class="muted">Personalize your profile card. Changes are saved to your account.</p>
+    <label>Display name color<input id="profileColorEdit" type="color" value="${/^#[0-9a-f]{6}$/i.test(u.profileColor||'')?u.profileColor:'#00bfae'}"></label>
+    <label>Profile theme<select id="profileThemeEdit"><option value="obsidian">Obsidian</option><option value="midnight">Midnight</option><option value="rose">Rose</option><option value="emerald">Emerald</option></select></label>
+    <label>Profile badge text<input id="profileBadgeEdit" maxlength="32" value="${esc(u.badge||'')}" placeholder="e.g. Artist, Gamer"></label>
+    <label>Pronouns / status<input id="profilePronounsEdit" maxlength="40" value="${esc(u.pronouns||'')}" placeholder="Pronouns (optional)"></label>
+    <label>Profile background image URL<input id="profileBannerEdit" maxlength="500" value="${esc(u.banner||'')}" placeholder="https://…"></label>
+    <button class="primary" id="saveProfileStyle">Save appearance</button>`);
+  $('profileThemeEdit').value=['obsidian','midnight','rose','emerald'].includes(u.theme)?u.theme:'obsidian';
+  $('saveProfileStyle').onclick=()=>saveMyProfile({profileColor:$('profileColorEdit').value,theme:$('profileThemeEdit').value,badge:$('profileBadgeEdit').value.trim(),pronouns:$('profilePronounsEdit').value.trim(),banner:$('profileBannerEdit').value.trim()},'Profile appearance saved.');
+}
+
 async function editEmail(){try{const r=await api('/api/me/email');modal(`<h2>Edit email</h2><p class="muted">Email is optional. It is not required on the registration screen.</p><input id="emailEdit" type="email" value="${esc(r.email||'')}" placeholder="Email address"><div class="toolbar"><button class="primary" id="saveEmail">Save</button></div>`);$('saveEmail').onclick=async()=>{try{await api('/api/me/email',{method:'PUT',body:JSON.stringify({email:$('emailEdit').value.trim()})});closeModal();toast('Email saved.');}catch(e){toast(e.message)}}}catch(e){toast(e.message)}}
 function changePasswordModal(){modal(`<h2>Change password</h2><input id="oldPassword" type="password" placeholder="Current password"><input id="newPassword" type="password" placeholder="New password (8+ characters)"><button class="primary" id="savePassword">Change password</button>`);$('savePassword').onclick=async()=>{try{await api('/api/password/change',{method:'POST',body:JSON.stringify({currentPassword:$('oldPassword').value,newPassword:$('newPassword').value})});closeModal();toast('Password changed.');}catch(e){toast(e.message)}}}
 
@@ -3997,17 +4011,14 @@ function editRoom() {
       placeholder="Slow mode"
     >
 
-    <input
-      id="rp"
-      placeholder="New password (blank removes)"
-    >
-
-    <button
-      class="primary"
-      onclick="saveRoom()"
-    >
-      Save
-    </button>
+    <input id="rTopic" value="${esc(room.category || "Community")}" placeholder="Room topic / category">
+    <input id="rLimit" type="number" min="2" max="500" value="${Number(room.limit || 100)}" placeholder="Member limit (2–500)">
+    <input id="rBanner" value="${esc(room.banner || "")}" placeholder="Room banner image URL (optional)">
+    <div class="settings-row"><label for="rPublic">Room visibility</label><select id="rPublic"><option value="true" ${room.public !== false ? "selected" : ""}>Public</option><option value="false" ${room.public === false ? "selected" : ""}>Private</option></select></div>
+    <div class="grid2"><label>Minimum age<input id="rMinAge" type="number" min="0" max="120" value="${Number(room.minAge || 0)}"></label><label>Maximum age<input id="rMaxAge" type="number" min="0" max="120" value="${Number(room.maxAge ?? 120)}"></label></div>
+    <input id="rp" type="password" placeholder="Set/change password (blank removes)">
+    <p class="muted">Room owner: @${esc(room.creator || "Unknown")}. Main Room stays protected.</p>
+    <button class="primary" onclick="saveRoom()">Save room identity</button>
   `);
 }
 
@@ -4021,8 +4032,13 @@ async function saveRoom() {
           name: $("rn").value,
           icon: $("ri").value,
           description: $("rd").value,
-          category: $("rc").value,
-          slowMode: $("rs").value,
+          category: $("rTopic").value.trim() || $("rc").value,
+          slowMode: Number($("rs").value || 0),
+          limit: Math.max(2, Math.min(500, Number($("rLimit").value || 100))),
+          banner: $("rBanner").value.trim(),
+          public: $("rPublic").value === "true",
+          minAge: Math.max(0, Math.min(120, Number($("rMinAge").value || 0))),
+          maxAge: Math.max(0, Math.min(120, Number($("rMaxAge").value || 120))),
           password: $("rp").value
         })
       }
@@ -4233,6 +4249,7 @@ async function loadSettings(){
       <div class="panel"><h3>👤 Account</h3><p class="muted">Manage the information connected to your account.</p><div class="settings-list">
         <button class="settings-row" onclick="editProfileInfo()"><span>🪪</span><b>Profile information</b><small>Display name, pronouns and basic details</small><strong>›</strong></button>
         <button class="settings-row" onclick="editAboutMe()"><span>💬</span><b>About Me</b><small>Update your profile description</small><strong>›</strong></button>
+        <button class="settings-row" onclick="editProfileStyle()"><span>🎨</span><b>Profile appearance</b><small>Colors, theme, badge, pronouns and background</small><strong>›</strong></button>
         <button class="settings-row" onclick="editEmail()"><span>✉</span><b>Email</b><small>Optional recovery/contact email</small><strong>›</strong></button>
         <button class="settings-row" onclick="changePasswordModal()"><span>🔑</span><b>Change password</b><small>Update your login password</small><strong>›</strong></button>
       </div></div>
