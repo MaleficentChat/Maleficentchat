@@ -962,6 +962,19 @@ async function renderOnline(tab=onlinePanelTab,searchQuery=""){
   try{
     const data=await api("/api/users");
     onlinePanelCache=data.users||[];
+    // Room roles are only badges in the user list; global ranks remain the
+    // authority for message headers and the rest of the site.
+    let roomRoleByUser={};
+    if(state.currentRoom){
+      try{
+        const roomStaff=await api(`/api/rooms/${encodeURIComponent(state.currentRoom)}/staff`);
+        for(const item of (roomStaff.staff||[])){
+          if(item.user?.id) roomRoleByUser[String(item.user.id)]=item.role;
+        }
+      }catch{}
+    }
+    const roomRoleIcon={ROOM_MODERATOR:"🛡️",ROOM_ADMIN:"👑",ROOM_OWNER:"🎩"};
+    const roomRoleLabel={ROOM_MODERATOR:"Room Moderator",ROOM_ADMIN:"Room Admin",ROOM_OWNER:"Room Owner"};
     const online=onlinePanelCache.filter(u=>u.online&&!u.invisible);
     const friendsData=await api("/api/friends").catch(()=>({users:[]}));
     const friendIds=new Set((friendsData.users||[]).map(u=>u.id));
@@ -989,7 +1002,7 @@ async function renderOnline(tab=onlinePanelTab,searchQuery=""){
         <div class="online-user-copy">
           <b>${esc(user.displayName)}</b>
           <small>@${esc(user.username)} ${invisibleDot(user)}${user.invisible?"":" · "+(user.online?"Online":"Offline")}</small>
-          ${rank(user.rank)}
+          <span class="room-user-rank" title="${esc(roomRoleLabel[roomRoleByUser[String(user.id)]]||user.rank||'Member')}">${roomRoleByUser[String(user.id)] ? (roomRoleIcon[roomRoleByUser[String(user.id)]]||'✨') : (rankIcon[String(user.rank||'MEMBER').toUpperCase()]||'⚡')} ${esc(roomRoleLabel[roomRoleByUser[String(user.id)]]||String(user.rank||'MEMBER').replaceAll('_',' '))}</span>
         </div>
         ${invisibleToggleMarkup(user,true)}
         <span class="status ${!user.invisible&&user.online?'on':''}"></span>
@@ -1100,7 +1113,6 @@ function messageHTML(message) {
         <div class="msg-top">
           <span class="message-rank-icon" title="${esc(message.rank||"MEMBER")}" aria-label="${esc(message.rank||"MEMBER")}">${rankIcon[String(message.rank||"MEMBER").toUpperCase()]||"⚡"}</span>
           <button class="message-author tag-author" type="button" title="Tag @${esc(message.username)}" onclick="tagUserFromMessage('${esc(message.username)}')" style="color:${esc(message.usernameColor||state.user?.settings?.usernameColor||'var(--username-color)')}">${esc(message.displayName)}</button>
-          <span class="room-rank-badge" title="${esc(({USER:'Room User',ROOM_MODERATOR:'Room Moderator',ROOM_ADMIN:'Room Admin',ROOM_OWNER:'Room Owner'})[message.roomRank]||'Room User')}">${esc(message.roomRankBadge||'✨')}</span>
           <span class="msg-time">${fmt(message.time)}${message.edited ? " · edited" : ""}</span>
         </div>
 
@@ -2697,7 +2709,7 @@ async function roomModerationModal(user){
 async function roomRankModal(user){
   const room=state.rooms.find(r=>String(r.id)===String(state.currentRoom));
   if(!room){toast('Join a room first.');return;}
-  const roleOptions=[['USER','✨ User'],['ROOM_MODERATOR','🪄 Room Moderator'],['ROOM_ADMIN','💫 Room Admin'],['ROOM_OWNER','🎩 Room Owner']];
+  const roleOptions=[['USER','User'],['ROOM_MODERATOR','🛡️ Room Moderator'],['ROOM_ADMIN','👑 Room Admin']];
   let current='USER';
   try{const d=await api(`/api/rooms/${encodeURIComponent(room.id)}/staff`);current=d.staff?.find(x=>String(x.user.id)===String(user.id))?.role||'USER';}catch(e){toast(e.message);return;}
   modal(`<h2>✨ Room rank</h2><p class="muted">Set @${esc(user.username)}'s rank in <b>${esc(room.name)}</b> only. Their global rank is unchanged.</p><label>Room rank<select id="roomRankChoice">${roleOptions.map(([v,label])=>`<option value="${v}" ${current===v?'selected':''}>${label}</option>`).join('')}</select></label><button class="primary" id="saveRoomRank">Save room rank</button>`);
