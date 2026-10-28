@@ -4798,17 +4798,22 @@ app.post('/api/admin/private-search',auth,ownerOnly,async(req,res)=>{
     // Also use this path if the SQL table/schema is unavailable, instead of returning
     // a blank inspection panel or a generic 500 error.
     const legacyMessages=Array.isArray(db.privateMessages)?db.privateMessages:[];
-    const sourceRows=q.rows.length?q.rows:legacyMessages.filter(m=>{
-      const from=String(m.from??m.senderId??m.sender_id??'');
-      const to=String(m.to??m.receiverId??m.receiver_id??'');
-      return username2
-        ? ((from===String(users[0].id)&&to===String(users[1].id))||(from===String(users[1].id)&&to===String(users[0].id)))
-        : (from===String(users[0].id)||to===String(users[0].id));
+    const legacyRows=legacyMessages.filter(m=>{
+      const from=String(m.from??m.senderId??m.sender_id??m.senderUsername??m.fromUsername??'').replace(/^@/,'').toLowerCase();
+      const to=String(m.to??m.receiverId??m.receiver_id??m.receiverUsername??m.toUsername??'').replace(/^@/,'').toLowerCase();
+      const firstId=String(users[0].id),firstName=String(users[0].username).toLowerCase();
+      const secondId=username2?String(users[1].id):'',secondName=username2?String(users[1].username).toLowerCase():'';
+      const matchesFirst=from===firstId||to===firstId||from===firstName||to===firstName;
+      const matchesPair=(from===firstId&&to===secondId)||(from===secondId&&to===firstId)||(from===firstName&&to===secondName)||(from===secondName&&to===firstName);
+      return username2?matchesPair:matchesFirst;
     }).map(m=>{
       const from=m.from??m.senderId??m.sender_id,to=m.to??m.receiverId??m.receiver_id;
-      const sender=db.users.find(user=>String(user.id)===String(from)),receiver=db.users.find(user=>String(user.id)===String(to));
-      return {...m,sender_id:from,receiver_id:to,message:m.text??m.message??m.data?.text??'',created_at:m.created_at??m.time,sender_username:sender?.username||m.fromUsername||m.senderUsername,receiver_username:receiver?.username||m.toUsername||m.receiverUsername};
+      const sender=db.users.find(user=>String(user.id)===String(from)||String(user.username).toLowerCase()===String(from??m.fromUsername??m.senderUsername??'').replace(/^@/,'').toLowerCase());
+      const receiver=db.users.find(user=>String(user.id)===String(to)||String(user.username).toLowerCase()===String(to??m.toUsername??m.receiverUsername??'').replace(/^@/,'').toLowerCase());
+      return {...m,sender_id:sender?.id??from,receiver_id:receiver?.id??to,message:m.text??m.message??m.data?.text??m.data?.message??m.data?.content??'',created_at:m.created_at??m.time,sender_username:sender?.username||m.fromUsername||m.senderUsername,receiver_username:receiver?.username||m.toUsername||m.receiverUsername};
     });
+    const sqlIds=new Set(q.rows.map(row=>String(row.id)));
+    const sourceRows=[...q.rows,...legacyRows.filter(row=>!sqlIds.has(String(row.id)))].sort((x,y)=>new Date(y.created_at||y.time||0).getTime()-new Date(x.created_at||x.time||0).getTime()).slice(0,200);
     const messages=sourceRows.map(row=>{const data=row.data&&typeof row.data==='object'?row.data:{};return {...data,id:row.id,from:row.sender_id??data.from,to:row.receiver_id??data.to,sender_id:row.sender_id,receiver_id:row.receiver_id,sender_username:row.sender_username||data.fromUsername||data.senderUsername||'Unknown',receiver_username:row.receiver_username||data.toUsername||data.receiverUsername||'Unknown',message:row.message??data.text??data.message??data.content??'',text:data.text??row.message??data.message??data.content??'',attachment:row.attachment??data.attachment??null,created_at:row.created_at,time:data.time??(row.created_at?new Date(row.created_at).getTime():Date.now())};});
     res.json({messages,users});
   }catch(error){console.error('Owner private-message inspection failed:',error);res.status(500).json({error:'Could not inspect private messages. Please retry.'});}
