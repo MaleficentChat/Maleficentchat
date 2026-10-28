@@ -30,7 +30,7 @@
   "description": "Join Maleficent Chat for online chat rooms, friends, private messages, community posts and mini-games."
 }
 </script>
-<link rel="stylesheet" href="/style.css?v=instagram-v1">
+<link rel="stylesheet" href="/style.css?v=compact-layout-v2">
  <link rel="manifest" href="/manifest.json">
 <script src="/socket.io/socket.io.js"></script>
 </head>
@@ -96,21 +96,29 @@
 <aside class="sidebar" id="sidebar">
   <div class="logo"><div class="rail-logo">MC</div><div class="rail-brand"><b>Maleficent</b><span>Chat</span></div></div>
   <button class="nav active" data-view="rooms">🏠 <span>Rooms</span></button>
-  <button class="nav" data-view="users">👥 <span>Users</span></button>
-  <button class="nav" data-view="friends">💜 <span>Friends</span></button>
-  <button class="nav" data-view="dms">✉️ <span>Private Messages</span><i id="dmDot"></i></button>
+  <details class="nav-group" open><summary>✦ <span>Community</span><i>⌄</i></summary>
+    <button class="nav" data-view="users">👥 <span>Users</span></button>
+    <button class="nav" data-view="friends">💜 <span>Friends</span></button>
+    <button class="nav" data-view="dms">✉️ <span>Private Messages</span><i id="dmDot"></i></button>
     <button class="nav" data-view="news">📰 <span>News</span></button>
-  <button class="nav" data-view="wall">🧱 <span>Friend Wall</span></button>
-  <button class="nav" data-view="games">🎮 <span>Games</span></button>
-  <button class="nav" data-view="shop">🛍️ <span>Premium / VIP</span></button>
-  <button class="nav" data-view="leaderboard">🏆 <span>Leaderboards</span></button>
-  <button class="nav" data-view="saved">🔖 <span>Saved Messages</span></button>
-  <button class="nav" data-view="search">🔎 <span>Advanced Search</span></button>
-  <button class="nav" data-view="profile">👤 <span>My Profile</span></button>
-  <button class="nav" data-view="settings">⚙️ <span>Settings</span></button>
-  <button class="nav" data-view="staffApplications">📝 <span>Staff Application</span></button>
-  <button class="nav staff-only hidden" data-view="staff">🛡️ <span>Staff Dashboard</span><i id="reportDot"></i></button>
-  <button class="nav owner-only hidden" data-view="owner">👑 <span>Owner Space</span></button>
+    <button class="nav" data-view="wall">🧱 <span>Friend Wall</span></button>
+  </details>
+  <details class="nav-group"><summary>✧ <span>Explore</span><i>⌄</i></summary>
+    <button class="nav" data-view="games">🎮 <span>Games & Doodles</span></button>
+    <button class="nav" data-view="shop">🛍️ <span>Premium / VIP</span></button>
+    <button class="nav" data-view="leaderboard">🏆 <span>Leaderboards</span></button>
+  </details>
+  <details class="nav-group"><summary>⌕ <span>My space</span><i>⌄</i></summary>
+    <button class="nav" data-view="saved">🔖 <span>Saved Messages</span></button>
+    <button class="nav" data-view="search">🔎 <span>Advanced Search</span></button>
+    <button class="nav" data-view="profile">👤 <span>My Profile</span></button>
+    <button class="nav" data-view="settings">⚙️ <span>Settings</span></button>
+  </details>
+  <details class="nav-group"><summary>♜ <span>Staff tools</span><i>⌄</i></summary>
+    <button class="nav" data-view="staffApplications">📝 <span>Staff Application</span></button>
+    <button class="nav staff-only hidden" data-view="staff">🛡️ <span>Staff Dashboard</span><i id="reportDot"></i></button>
+    <button class="nav owner-only hidden" data-view="owner">👑 <span>Owner Space</span></button>
+  </details>
   <div class="side-spacer"></div>
   <button class="nav" id="notifications">🔔 <span>Notifications</span><i id="notifDot"></i></button>
   <button class="nav" id="logout">🚪 <span>Logout</span></button>
