@@ -1339,6 +1339,30 @@ function appendMessage(message) {
   }
 }
 
+function openPresenceModes(){
+  if(!["OWNER","DEVELOPER"].includes(String(state.user?.rank||"").toUpperCase())){toast("Only Owner and Developer can use presence modes.");return;}
+  modal(`<div class="mode-control-panel"><h2>🕶️ Presence Modes</h2><p class="muted">Choose how you appear in Maleficent Chat. Only Owner and Developer can use these modes.</p>
+    <label class="mode-control-row"><input type="checkbox" id="modePopupHide" ${state.user?.hideMode&&!state.user?.deadMode?'checked':''}> <span><b>Hide Mode</b><small>Your messages appear as Aurora system messages rather than regular user bubbles.</small></span></label>
+    <label class="mode-control-row"><input type="checkbox" id="modePopupDead" ${state.user?.deadMode?'checked':''}> <span><b>Dead Mode</b><small>Hide your presence and suppress Aurora join notices. Messages remain anonymous.</small></span></label>
+    <p class="muted" id="modePopupStatus" aria-live="polite"></p><div class="toolbar"><button type="button" class="primary" id="applyModePopup">Apply modes</button><button type="button" class="mini" onclick="closeModal()">Cancel</button></div></div>`);
+  const hide=$("modePopupHide"),dead=$("modePopupDead"),apply=$("applyModePopup");
+  hide?.addEventListener("change",()=>{if(hide.checked)dead.checked=false;});
+  dead?.addEventListener("change",()=>{if(dead.checked)hide.checked=false;});
+  apply?.addEventListener("click",async()=>{
+    const status=$("modePopupStatus");apply.disabled=true;if(status)status.textContent="Saving…";
+    try{
+      let result;
+      if(dead.checked) result=await api("/api/me/dead-mode",{method:"POST",body:JSON.stringify({enabled:true})});
+      else {
+        await api("/api/me/dead-mode",{method:"POST",body:JSON.stringify({enabled:false})});
+        result=await api("/api/me/hide-mode",{method:"POST",body:JSON.stringify({enabled:hide.checked})});
+      }
+      state.user.hideMode=!!result.hideMode;state.user.deadMode=!!result.deadMode;state.user.invisible=!!result.invisible||!!result.deadMode;
+      closeModal();toast("Presence modes updated.");updateNav();
+    }catch(error){if(status)status.textContent=error.message||"Could not update modes.";toast(error.message||"Could not update modes.");apply.disabled=false;}
+  });
+}
+
 $("composer").onsubmit = async e => {
   e.preventDefault();
 
@@ -1350,6 +1374,12 @@ $("composer").onsubmit = async e => {
   const text =
     $("message").value.trim();
 
+  if(/^\/mode$/i.test(text)){
+    if($("file").files[0]){toast("Send /Mode without an attachment.");return;}
+    $("message").value="";$("message").dispatchEvent(new Event("input"));
+    openPresenceModes();
+    return;
+  }
   if(/^\/guide(?:\s|$)/i.test(text)){
     $("message").value="";$("message").dispatchEvent(new Event("input"));
     openCommandGuide();
@@ -4432,7 +4462,6 @@ async function loadSettings(){
         <button class="settings-row" onclick="editEmail()"><span>✉</span><b>Email</b><small>Optional recovery/contact email</small><strong>›</strong></button>
         <button class="settings-row" onclick="changePasswordModal()"><span>🔑</span><b>Change password</b><small>Update your login password</small><strong>›</strong></button>
       </div></div>
-      <div id="presenceModePanel" class="panel mode-control-panel"><h3>🕶️ Presence modes</h3><p class="muted">Owner / Developer controls for room presence and anonymous system-style messages.</p><label class="mode-control-row"><input type="checkbox" id="setHideMode"> <span><b>Hide mode</b><small>Messages you send appear as Aurora system messages, not regular user bubbles.</small></span></label><label class="mode-control-row"><input type="checkbox" id="setDeadMode"> <span><b>Dead mode</b><small>Hide your presence from user lists and profiles, suppress Aurora join notices, and send messages anonymously as Aurora.</small></span></label><button class="primary" id="savePresenceModes">Apply presence modes</button></div>
       <div class="panel"><h3>🔒 Privacy & visibility</h3><label><input type="checkbox" id="setLastSeen" ${s.lastSeen!==false?'checked':''}> Show last seen</label><label><input type="checkbox" id="setOnline" ${s.online!==false?'checked':''}> Show online status</label><button class="primary" id="savePrivacy">Save privacy</button></div>
     </div>
     <div class="panel"><h3>🎨 Profile colors</h3><p class="muted">Choose extra colors for your profile and profile banner.</p><label>Profile color <input type="color" id="profileColor" value="${esc(state.user.profileColor||'#9b5cff')}"></label><label>Profile accent <input type="color" id="profileAccentColor" value="${esc(s.profileAccentColor||'#ff4fd8')}"></label><button class="primary" id="saveProfileColors">Save profile colors</button></div>
@@ -4445,21 +4474,6 @@ async function loadSettings(){
   $('v3Theme').value=s.theme||'obsidian'; $('v3Font').value=s.fontSize||'medium'; $('v3ChatFont').value=s.chatFont||'Inter'; $('v3Effects').value=s.messageEffects||'none'; $('v3Compact').checked=!!s.compactMode; $('v3Motion').checked=!!s.reducedMotion; $('v3Contrast').checked=!!s.highContrast; applyTheme(s.theme||'obsidian');
   document.querySelectorAll('[data-theme-choice]').forEach(b=>b.onclick=async()=>{ const theme=b.dataset.themeChoice; $('v3Theme').value=theme; applyTheme(theme); document.querySelectorAll('[data-theme-choice]').forEach(x=>x.classList.toggle('active',x===b)); try{const r=await api('/api/settings',{method:'PUT',body:JSON.stringify({theme})});state.user.settings={...(state.user.settings||{}),...(r.settings||{}),theme};state.user.theme=theme;toast(theme[0].toUpperCase()+theme.slice(1)+' theme applied and saved.');}catch(e){toast('Theme preview applied, but saving failed: '+e.message);} });
   $('saveProfileColors').onclick=async()=>{try{const r=await api('/api/profile',{method:'PUT',body:JSON.stringify({profileColor:$('profileColor').value,profileAccentColor:$('profileAccentColor').value})});state.user=r.user;toast('Profile colors saved.');await loadProfile(state.user);}catch(e){toast(e.message)}};
-  if(!["OWNER","DEVELOPER"].includes(String(state.user?.rank||"").toUpperCase()))$("presenceModePanel")?.remove();
-   else {
-     $('setHideMode').checked=!!state.user?.hideMode;$('setDeadMode').checked=!!state.user?.deadMode;
-     $('savePresenceModes').onclick=async()=>{
-       const hideMode=$('setHideMode').checked,deadMode=$('setDeadMode').checked;
-       try{
-         let result;
-         if(deadMode) result=await api('/api/me/dead-mode',{method:'POST',body:JSON.stringify({enabled:true})});
-         else {await api('/api/me/dead-mode',{method:'POST',body:JSON.stringify({enabled:false})});result=await api('/api/me/hide-mode',{method:'POST',body:JSON.stringify({enabled:hideMode})});}
-         state.user.hideMode=!!result.hideMode;state.user.deadMode=!!result.deadMode;state.user.invisible=!!result.invisible||!!result.deadMode;
-         $('setHideMode').checked=state.user.hideMode;$('setDeadMode').checked=state.user.deadMode;
-         toast('Presence modes updated.');
-       }catch(e){toast(e.message)}
-     };
-   }
    $('savePrivacy').onclick=async()=>{try{await api('/api/profile',{method:'PUT',body:JSON.stringify({privacy:{lastSeen:$('setLastSeen').checked,online:$('setOnline').checked}})});toast('Privacy saved.');}catch(e){toast(e.message)}};
   $('saveAppearance').onclick=async()=>{try{const payload={theme:$('v3Theme').value,fontSize:$('v3Font').value,compactMode:$('v3Compact').checked,reducedMotion:$('v3Motion').checked,highContrast:$('v3Contrast').checked,usernameColor:$('v3UsernameColor').value,chatFont:$('v3ChatFont').value,messageEffects:$('v3Effects').value,bubbleColor:$('v3BubbleColor').value};const r=await api('/api/settings',{method:'PUT',body:JSON.stringify(payload)});state.user.settings={...(state.user.settings||{}),...(r.settings||payload),theme:payload.theme};applyTheme(state.user.settings.theme);applyUserAppearance();renderMessages();toast('Appearance saved and applied.');}catch(e){toast(e.message)}};
   $('saveNotifications').onclick=async()=>{await api('/api/notifications/preferences',{method:'PUT',body:JSON.stringify({messages:$('nMessages').checked,mentions:$('nMentions').checked,replies:$('nReplies').checked,security:$('nSecurity').checked,staff:$('nStaff').checked,gamification:$('nGamification').checked,other:$('nOther').checked})});toast('Notification preferences saved.');};
