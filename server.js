@@ -1322,7 +1322,46 @@ app.post("/api/rooms/create",auth,createRoomHandler);
 function roomStaffStore(){ db.settings ||= {}; db.settings.room_staff ||= {}; db.settings.room_mutes ||= {}; db.settings.room_blocks ||= {}; db.settings.room_kicks ||= {}; return db.settings; }
 function roomRole(roomId,userId){return roomStaffStore().room_staff[String(roomId)]?.[String(userId)]||"USER";}
 function roomRoleLevel(role){return ({USER:0,ROOM_MODERATOR:1,ROOM_ADMIN:2,ROOM_OWNER:3})[String(role||"USER").toUpperCase()]||0;}
+const ROOM_ROLE_PERMISSION_DEFAULTS={
+  ROOM_MODERATOR:{mute:true,kick:false,block:false,delete_messages:true,clear_room:false,edit_rules:false,manage_staff:false,assign_ranks:false},
+  ROOM_ADMIN:{mute:true,kick:true,block:true,delete_messages:true,clear_room:true,edit_rules:false,manage_staff:false,assign_ranks:false}
+};
+const ROOM_ROLE_PERMISSION_KEYS=["mute","kick","block","delete_messages","clear_room","edit_rules","manage_staff","assign_ranks"];
+function roomRoleCan(roomId,userId,permission){
+  const role=roomRole(roomId,userId);
+  if(!ROOM_ROLE_PERMISSION_DEFAULTS[role])return false;
+  const configured=db.settings?.room_role_permissions?.[role];
+  return typeof configured?.[permission]==="boolean"?configured[permission]:!!ROOM_ROLE_PERMISSION_DEFAULTS[role][permission];
+}
 function roomOwnerOrGlobal(u,room){return roomRole(room.id,u.id)==="ROOM_OWNER"||["OWNER","COOWNER","COMMISSOR","DEVELOPER"].includes(String(u.rank||"").toUpperCase())||String(room.ownerId||room.owner_id||room.createdBy||room.created_by||"")===String(u.id);}
+app.get("/api/owner/room-role-permissions",ownerOnly,(req,res)=>{
+  db.settings ||= {};db.settings.room_role_permissions ||= {};
+  const permissions={};
+  for(const role of Object.keys(ROOM_ROLE_PERMISSION_DEFAULTS)){
+    permissions[role]={...ROOM_ROLE_PERMISSION_DEFAULTS[role],...(db.settings.room_role_permissions[role]||{})};
+  }
+  res.json({roles:Object.keys(ROOM_ROLE_PERMISSION_DEFAULTS),keys:ROOM_ROLE_PERMISSION_KEYS,permissions});
+});
+app.put("/api/owner/room-role-permissions",ownerOnly,async(req,res)=>{
+  const incoming=req.body?.permissions;
+  if(!incoming||typeof incoming!=="object"||Array.isArray(incoming))return res.status(400).json({error:"Provide room-role permissions."});
+  const clean={};
+  for(const role of Object.keys(ROOM_ROLE_PERMISSION_DEFAULTS)){
+    const supplied=incoming[role];
+    if(!supplied||typeof supplied!=="object"||Array.isArray(supplied))return res.status(400).json({error:"Missing permissions for "+role});
+    clean[role]={};
+    for(const key of ROOM_ROLE_PERMISSION_KEYS){
+      if(typeof supplied[key]!=="boolean")return res.status(400).json({error:"Invalid permission "+role+"."+key});
+      clean[role][key]=supplied[key];
+    }
+  }
+  db.settings ||= {};db.settings.room_role_permissions=clean;
+  try{
+    await pool.query("INSERT INTO settings(key,value) VALUES('room_role_permissions',$1::jsonb) ON CONFLICT(key) DO UPDATE SET value=EXCLUDED.value",[JSON.stringify(clean)]);
+    save();log(current(req),"ROOM_ROLE_PERMISSIONS_UPDATE","room roles",{permissions:clean});
+    res.json({ok:true,permissions:clean});
+  }catch(error){console.error("Room role permission save failed:",error);res.status(500).json({error:"Could not save room-role permissions."});}
+});
 app.get("/api/rooms/:id/staff",auth,(req,res)=>{
   const room=db.rooms.find(x=>String(x.id)===String(req.params.id));if(!room)return res.status(404).json({error:"Room not found"});
   const store=roomStaffStore().room_staff[String(room.id)]||{};
@@ -1336,7 +1375,7 @@ app.get("/api/rooms/:id/rules",auth,(req,res)=>{
 });
 app.put("/api/rooms/:id/rules",auth,(req,res)=>{
   const actor=current(req),room=db.rooms.find(x=>String(x.id)===String(req.params.id));if(!room)return res.status(404).json({error:"Room not found"});
-  if(!roomOwnerOrGlobal(actor,room))return res.status(403).json({error:"Only this room's owner or authorized global staff can edit its rules."});
+  if(!roomOwnerOrGlobal(actor,room)&&!roomRoleCan(room.id,actor.id,"edit_rules"))return res.status(403).json({error:"Room-rules permission is not granted to your room role."});
   const rules=cleanText(req.body?.rules||"").trim().slice(0,4000);
   db.settings ||= {};db.settings.room_rules ||= {};db.settings.room_rules[String(room.id)]=rules;
   save();log(actor,"ROOM_RULES_UPDATE",room.name,{roomId:String(room.id)});
@@ -1356,7 +1395,7 @@ function recordRoomModeration(roomId,entry){
 app.put("/api/rooms/:id/staff/:userId",auth,(req,res)=>{
   const actor=current(req),room=db.rooms.find(x=>String(x.id)===String(req.params.id)),target=db.users.find(x=>String(x.id)===String(req.params.userId));
   if(!room||!target)return res.status(404).json({error:"Room or user not found"});
-  if(!roomOwnerOrGlobal(actor,room))return res.status(403).json({error:"Only this room's owner or authorized global staff can assign room ranks."});
+  if(!roomOwnerOrGlobal(actor,room)&&!roomRoleCan(room.id,actor.id,"assign_ranks"))return res.status(403).json({error:"Room-rank assignment permission is not granted to your room role."});
   if(!Array.isArray(db.settings?.feature_grants?.room_rank_assign)||!db.settings.feature_grants.room_rank_assign.length)return res.status(403).json({error:"Room-rank assignment is disabled in Feature Granting."});
   const role=String(req.body.role||"USER").toUpperCase();
   if(!["USER","ROOM_MODERATOR","ROOM_ADMIN"].includes(role))return res.status(400).json({error:"Invalid room rank. Choose User, Room Moderator, or Room Admin."});
@@ -1375,8 +1414,8 @@ app.post("/api/rooms/:id/staff-action",auth,async(req,res)=>{
   if(roomRoleLevel(roomRole(room.id,target.id))>=level&&!global)return res.status(403).json({error:"You cannot moderate someone with an equal or higher room rank."});
   const settings=roomStaffStore(),key=String(room.id),targetId=String(target.id);
   const roomModerationEnabled=Array.isArray(db.settings?.feature_grants?.room_moderate)&&db.settings.feature_grants.room_moderate.length>0;
-  if(action==="MUTE"&&(!roomModerationEnabled||(level<1&&!global)))return res.status(403).json({error:"Room moderator permission required or room moderation is disabled in Feature Granting."});
-  if(["BLOCK","KICK","UNBLOCK"].includes(action)&&(!roomModerationEnabled||(level<2&&!global)))return res.status(403).json({error:"Room admin permission required or room moderation is disabled in Feature Granting."});
+  const actionPermission={MUTE:"mute",KICK:"kick",BLOCK:"block",UNBLOCK:"block"}[action];
+  if(actionPermission&&(!roomModerationEnabled||(!global&&!roomRoleCan(room.id,actor.id,actionPermission))))return res.status(403).json({error:"This room role does not have permission for "+action.toLowerCase()+"."});
   if(action==="MUTE"){settings.room_mutes[key] ||= {};settings.room_mutes[key][targetId]={until:Date.now()+Math.max(1,Math.min(60,Number(req.body.minutes)||5))*60000,reason,by:String(actor.id)};}
   else if(action==="BLOCK"){settings.room_blocks[key] ||= {};settings.room_blocks[key][targetId]={reason,by:String(actor.id),time:Date.now()};} else if(action==="KICK"){settings.room_kicks[key] ||= {};settings.room_kicks[key][targetId]={reason,by:String(actor.id),until:Date.now()+60000};}
   else if(action==="UNBLOCK"){delete settings.room_blocks[key]?.[targetId];}
@@ -4751,10 +4790,14 @@ app.post('/api/admin/private-search',auth,ownerOnly,async(req,res)=>{
     }else{
       sql='SELECT m.id,m.sender_id,m.receiver_id,m.message,m.data,m.created_at,s.username AS sender_username,r.username AS receiver_username FROM private_messages m LEFT JOIN users s ON s.id=m.sender_id LEFT JOIN users r ON r.id=m.receiver_id WHERE m.sender_id=$1 OR m.receiver_id=$1 ORDER BY m.created_at DESC LIMIT 200';params=[first.rows[0].id];
     }
-    const q=await pool.query(sql,params);
-    // Some older deployments still have private messages in the persisted app store
-    // rather than the SQL table. Fall back to that store only when SQL returned none.
-    const sourceRows=q.rows.length?q.rows:(db.privateMessages||[]).filter(m=>{
+    let q={rows:[]};
+    try { q=await pool.query(sql,params); }
+    catch(sqlError) { console.error('Private-message SQL inspection failed; checking persisted message store:',sqlError?.message||sqlError); }
+    // Older deployments may contain messages only in the persisted application store.
+    // Also use this path if the SQL table/schema is unavailable, instead of returning
+    // a blank inspection panel or a generic 500 error.
+    const legacyMessages=Array.isArray(db.privateMessages)?db.privateMessages:[];
+    const sourceRows=q.rows.length?q.rows:legacyMessages.filter(m=>{
       const from=String(m.from??m.senderId??m.sender_id??'');
       const to=String(m.to??m.receiverId??m.receiver_id??'');
       return username2
