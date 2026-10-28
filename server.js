@@ -1627,13 +1627,11 @@ app.patch(
       });
     }
 
-    if(
-      m.userId!==u.id&&
-      !hasRank(u,"MOD")
-    ){
-      return res.status(403).json({
-        error:"No permission"
-      });
+    const room=db.rooms.find(r=>String(r.id)===String(m.roomId));
+    const roomRoleValue=room?roomRole(room.id,u.id):"USER";
+    const roomStaffCanDelete=!!room&&roomRoleLevel(roomRoleValue)>=1&&featureGrantAllowed(u,"room_delete_messages");
+    if(m.userId!==u.id&&!hasRank(u,"MOD")&&!roomStaffCanDelete){
+      return res.status(403).json({error:"No permission"});
     }
 
     m.text=
@@ -1660,7 +1658,6 @@ app.patch(
 app.delete(
   "/api/messages/:id",
   auth,
-  featureAllowed("delete_message"),
   (req,res)=>{
     const u=current(req);
 
