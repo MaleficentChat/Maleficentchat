@@ -2754,3 +2754,17 @@ a { color: #65dcff; }
 .dm-inspection-message{overflow-wrap:anywhere}
 .dm-inspection-body{margin:8px 0;white-space:normal;line-height:1.5}
 @media(max-width:620px){.room-role-permission-grid{grid-template-columns:minmax(0,1fr)}.dm-inspection-fields{grid-template-columns:minmax(0,1fr)}#dmSearchBtn{grid-column:auto;width:100%}}
+
+/* SEO landing copy: crawlable, readable and consistent with the existing dark interface. */
+.seo-intro{width:min(760px,94vw);margin:22px auto 0;padding:22px 24px;border:1px solid rgba(0,183,255,.18);border-radius:18px;background:rgba(4,14,29,.78);color:var(--text);text-align:left}
+.seo-intro h2{font-size:1.18rem;margin:0 0 9px;color:#f0f7ff}
+.seo-intro p{font-size:.9rem;line-height:1.65;color:var(--muted);margin:0 0 12px}
+.seo-feature-links{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0 16px}
+.seo-feature-links a{display:inline-block;padding:7px 10px;border:1px solid rgba(0,183,255,.24);border-radius:999px;color:#a8eaff;text-decoration:none;font-size:.82rem}
+.seo-feature-links a:hover,.seo-feature-links a:focus{background:rgba(0,183,255,.12);text-decoration:underline}
+.seo-info-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.seo-info-grid article{padding:13px;border-radius:12px;background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.07);scroll-margin-top:16px}
+.seo-info-grid h3{font-size:.92rem;line-height:1.4;margin:0 0 7px;color:#d9f4ff}
+.seo-info-grid p{font-size:.82rem;margin:0;line-height:1.6}
+.seo-note{margin-top:14px!important;padding-top:12px;border-top:1px solid rgba(255,255,255,.08);font-size:.8rem!important}
+@media(max-width:700px){.seo-intro{width:min(430px,94vw);padding:18px;margin-top:16px}.seo-info-grid{grid-template-columns:1fr}.seo-info-grid article{padding:12px}.auth-screen{align-content:start!important;padding-top:18px!important;padding-bottom:24px!important}}
