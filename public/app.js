@@ -2642,6 +2642,7 @@ async function openProfileActionDrawer(user,data={}){
     <button class="quick-user-row" id="drawerWallet"><span>🪙</span><b>Share wallet</b><i>›</i></button>
     <button class="quick-user-row" id="drawerGiveRank"><span>🏅</span><b>Give rank</b><i>›</i></button>
     <button class="quick-user-row" id="drawerRoomRank"><span>✨</span><b>Room rank</b><i>›</i></button>
+    <button class="quick-user-row" id="drawerRoomModerate"><span>🛡️</span><b>Room moderation</b><i>›</i></button>
     <button class="quick-user-row" id="drawerModerateUser"><span>🛡️</span><b>Moderate user</b><i>›</i></button>
     <button class="quick-user-row" id="drawerStaffAccount"><span>⚙️</span><b>Staff account</b><i>›</i></button>
     <button class="quick-user-row" id="drawerUserHistory"><span>📜</span><b>User history</b><i>›</i></button>
@@ -2656,11 +2657,22 @@ async function openProfileActionDrawer(user,data={}){
   $('drawerWallet')?.addEventListener('click',()=>shareGoldModal(user));
   $('drawerGiveRank')?.addEventListener('click',()=>rankFromProfile(user));
   $('drawerRoomRank')?.addEventListener('click',()=>roomRankModal(user));
+  $('drawerRoomModerate')?.addEventListener('click',()=>roomModerationModal(user));
   $('drawerModerateUser')?.addEventListener('click',()=>moderate(id));
   $('drawerStaffAccount')?.addEventListener('click',()=>staffAccountModal(user));
   $('drawerUserHistory')?.addEventListener('click',()=>showUserActionHistory(id));
   $('drawerNickname')?.addEventListener('click',async()=>{const current=(await api('/api/private-nicknames').catch(()=>({nicknames:{}}))).nicknames||{};const value=prompt('Private nickname for @'+(user.username||'user')+' (only you can see it):',current[id]||'');if(value===null)return;try{await api('/api/private-nickname',{method:'POST',body:JSON.stringify({targetId:id,nickname:value.trim()})});closeModal();toast(value.trim()?'Private nickname saved.':'Private nickname cleared.');}catch(e){toast(e.message)}});
   $('drawerReport')?.addEventListener('click',async()=>{const reason=prompt('Why are you reporting this user?','Rule-breaking behavior');if(reason===null)return;try{await api('/api/report',{method:'POST',body:JSON.stringify({reportedUserId:id,reason})});closeModal();toast('Report submitted.');}catch(e){toast(e.message)}});
+}
+async function roomModerationModal(user){
+  const room=state.rooms.find(r=>String(r.id)===String(state.currentRoom));
+  if(!room){toast('Join a room first.');return;}
+  modal(`<h2>🛡️ Room moderation</h2><p class="muted">Action applies to @${esc(user.username)} in <b>${esc(room.name)}</b> only.</p>
+    <label>Action<select id="roomModAction"><option value="MUTE">Mute in room</option><option value="BLOCK">Block from room</option><option value="UNBLOCK">Unblock from room</option></select></label>
+    <label>Mute duration (minutes)<input id="roomModMinutes" type="number" min="1" max="60" value="5"></label>
+    <label>Reason<textarea id="roomModReason" maxlength="240" placeholder="Explain the room rule violation"></textarea></label>
+    <button class="primary" id="submitRoomMod">Apply action</button>`);
+  $('submitRoomMod').onclick=async()=>{const action=$('roomModAction').value,reason=$('roomModReason').value.trim();if(!reason){toast('Please provide a reason.');return;}try{await api(`/api/rooms/${encodeURIComponent(room.id)}/staff-action`,{method:'POST',body:JSON.stringify({userId:user.id,action,minutes:Number($('roomModMinutes').value)||5,reason})});closeModal();toast('Room moderation action recorded.');}catch(e){toast(e.message)}};
 }
 async function roomRankModal(user){
   const room=state.rooms.find(r=>String(r.id)===String(state.currentRoom));
