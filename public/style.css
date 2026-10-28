@@ -3038,3 +3038,55 @@ button,input,select,textarea { max-width:100%; }
   .profile-info-row { grid-template-columns:minmax(0,1fr) minmax(0,1.2fr) !important; gap:8px !important; }
   .chat-card, .messages { overflow-x:hidden; }
 }
+
+
+/* Compact panel + flush mobile content pass */
+@media (max-width:700px) {
+  .main { margin:0!important; width:100%!important; padding-left:0!important; padding-right:0!important; }
+  .view:not(.hidden) { margin:0!important; padding-left:0!important; padding-right:0!important; width:100%!important; max-width:100%!important; }
+  .view > .topbar { margin:0!important; width:100%!important; padding:12px 14px!important; }
+  #viewFriends #friends, #viewSearch #searchForm, #viewSearch #searchResults,
+  #viewNews #news, #viewWall .wall-feed, #viewProfile #profile,
+  #viewDms #dmList, #viewDms #dmSearchResults {
+    width:100%!important; max-width:100%!important; margin-left:0!important; margin-right:0!important;
+    padding-left:12px!important; padding-right:12px!important; box-sizing:border-box!important;
+  }
+  #viewSearch .searchbar { display:flex; flex-wrap:wrap; gap:6px; }
+  #viewSearch .searchbar > * { min-width:0; flex:1 1 42%; }
+  #viewFriends .topbar, #viewNews .topbar, #viewWall .topbar { padding-left:14px!important; padding-right:14px!important; }
+  #viewRooms.chatting .online-panel,
+  #viewRooms.chatting .online-panel.mobile-open {
+    position:fixed!important; z-index:250!important; top:calc(var(--header-h,54px) + 10px)!important;
+    right:10px!important; bottom:auto!important; left:auto!important;
+    width:min(350px,calc(100vw - 28px))!important; max-width:350px!important;
+    height:auto!important; max-height:68vh!important; overflow-y:auto!important;
+    border:1px solid rgba(190,145,255,.24)!important; border-radius:18px!important;
+    box-shadow:0 18px 50px rgba(0,0,0,.55)!important; padding:8px!important;
+  }
+  #viewRooms.chatting .online-panel .online-tabs { padding:4px 2px!important; }
+  #viewRooms.chatting .online-panel .panel-head { padding:9px 10px!important; }
+  #viewRooms.chatting .online-panel #onlineUsers { max-height:32vh; overflow-y:auto; }
+  .notification-dropdown, #topMessagesDropdown, #topFriendsDropdown, #notificationDropdown, #reportDropdown, #topProfileDropdown {
+    position:fixed!important; top:calc(var(--header-h,54px) + 8px)!important; right:10px!important; left:auto!important;
+    width:min(340px,calc(100vw - 28px))!important; max-width:340px!important;
+    max-height:58vh!important; overflow-y:auto!important; border-radius:15px!important;
+    margin:0!important; padding:10px!important;
+  }
+  .notification-dropdown-head { padding:8px 4px 10px!important; }
+  .notification-dropdown-item { padding:9px 8px!important; }
+  .notification-dropdown-item span { font-size:12px!important; }
+  #notificationDropdown > * { max-width:100%; }
+  #viewProfile .profile-modal, #viewProfile .profile-settings-card { width:100%!important; max-width:100%!important; margin:0!important; }
+  #viewNews .news-card, #viewWall .wall-post { width:100%!important; margin:0 0 10px!important; }
+}
+@media (max-width:430px) {
+  .top-header { padding:0 6px!important; }
+  .top-brand { gap:6px!important; }
+  .top-menu { width:28px!important; flex-basis:28px!important; }
+  .brand-avatar { width:34px!important; height:34px!important; min-width:34px!important; }
+  .top-brand-copy b { font-size:16px!important; }
+  .top-header-actions .top-icon { width:28px!important; min-width:28px!important; flex-basis:28px!important; font-size:15px!important; }
+  .top-profile { width:30px!important; min-width:30px!important; }
+  #viewFriends #friends, #viewSearch #searchForm, #viewSearch #searchResults,
+  #viewNews #news, #viewWall .wall-feed, #viewProfile #profile { padding-left:8px!important;padding-right:8px!important; }
+}
