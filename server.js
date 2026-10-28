@@ -1584,7 +1584,7 @@ function malReply(user,rawText){
 
 app.post("/api/rooms/:id/messages",auth,featureAllowed("send_messages"),upload.single("file"),async(req,res)=>{
   const u=current(req);
-  if(u.hideMode)return res.status(403).json({error:"Ghost Mode is active. Turn it off before sending visible room messages."});
+  // Ghost Mode hides the sender identity; it must never disable message sending.
   const r=db.rooms.find(x=>String(x.id)===String(req.params.id));
   if(!r)return res.status(404).json({error:"Room not found"});
   if(!verifyRoomJoinToken(req.headers['x-room-join-token'],u.id,r))return res.status(403).json({error:"Join this room before sending messages."});
