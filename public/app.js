@@ -2113,7 +2113,7 @@ function dmMessageHTML(message, messages, user) {
 async function openDM(id) {
   try {
     const users = await api("/api/users");
-    const user = (users.users || []).find(x => x.id === id);
+    const user = (users.users || []).find(x => String(x.id) === String(id));
 
     if (!user) {
       toast("User not found.");
