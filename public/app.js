@@ -3127,10 +3127,11 @@ async function loadStaff() {
       <div class="card"><h3>Reports</h3>
         ${(data.reports||[]).filter(report=>report.status==='OPEN').map(report=>{
           const snap=report.messageSnapshot||{};
-          return `<div class="report-card"><div class="report-main"><div><b>${esc(report.category||(report.conversationUserId?"Private message report":report.messageId?"Message report":"Profile report"))}</b> · ${esc(report.status)}</div><div><b>Reported by:</b> @${esc(report.reporterUsername||findUserName(report.reporter)||'Unknown')}</div><div class="report-target"><b>Report made on:</b> @${esc(report.reportedUserUsername||snap.username||'Unknown')} ${esc(report.reportedUserRank||snap.rank||'')}</div>${report.conversationUserId?`<div class="report-message"><b>Private conversation:</b> @${esc(report.conversationUsername||findUserName(report.conversationUserId)||"Conversation participant")}<p class="muted">Open the evidence viewer to inspect the reported conversation.</p></div>`:""}<div class="report-message"><b>Reported content:</b><br>${snap.text?`<div>${esc(snap.text)}</div>`:''}${snap.attachment?.type?.startsWith('image/')?`<img class="reported-image" src="${esc(snap.attachment.url)}" alt="Reported photo">`:snap.attachment?`<a href="${esc(snap.attachment.url)}" target="_blank" rel="noopener">Open reported attachment</a>`:''}</div><div class="muted">Time: ${fmt(report.time)}</div><div class="muted">Reason: ${esc(report.reason||'No reason supplied')}</div></div><div class="toolbar">${report.conversationUserId?`<button class="mini primary" onclick="viewPrivateMessageReport('${esc(report.id)}')">🔒 View private messages</button>`:''}${report.reportedUserId?`<button class="mini" onclick="moderate('${esc(report.reportedUserId)}')">⚙ Moderate user</button>`:''}${report.messageId?`<button class="mini danger" onclick="deleteReportedMessage('${esc(report.messageId)}')">🗑 Delete message</button>`:''}${report.status!=='RESOLVED'?`<button class="mini" onclick="resolveReport('${esc(report.id)}')">Resolve</button>`:''}</div></div>`;
+          return `<div class="report-card"><div class="report-main"><div><b>${esc(report.category||(report.conversationUserId?"Private message report":report.messageId?"Message report":"Profile report"))}</b> · ${esc(report.status)}</div><div><b>Reported by:</b> @${esc(report.reporterUsername||findUserName(report.reporter)||'Unknown')}</div><div class="report-target"><b>Report made on:</b> @${esc(report.reportedUserUsername||snap.username||'Unknown')} ${esc(report.reportedUserRank||snap.rank||'')}</div>${report.conversationUserId?`<div class="report-message"><b>Private conversation:</b> @${esc(report.conversationUsername||findUserName(report.conversationUserId)||"Conversation participant")}<p class="muted">Open the evidence viewer to inspect the reported conversation.</p></div>`:""}<div class="report-message"><b>Reported content:</b><br>${snap.text?`<div>${esc(snap.text)}</div>`:''}${snap.attachment?.type?.startsWith('image/')?`<img class="reported-image" src="${esc(snap.attachment.url)}" alt="Reported photo">`:snap.attachment?`<a href="${esc(snap.attachment.url)}" target="_blank" rel="noopener">Open reported attachment</a>`:''}</div><div class="muted">Time: ${fmt(report.time)}</div><div class="muted">Reason: ${esc(report.reason||'No reason supplied')}</div></div><div class="toolbar"><button class="mini" data-assign-report="${esc(report.id)}">👤 Assign staff</button>${report.conversationUserId?`<button class="mini primary" onclick="viewPrivateMessageReport('${esc(report.id)}')">🔒 View private messages</button>`:''}${report.reportedUserId?`<button class="mini" onclick="moderate('${esc(report.reportedUserId)}')">⚙ Moderate user</button>`:''}${report.messageId?`<button class="mini danger" onclick="deleteReportedMessage('${esc(report.messageId)}')">🗑 Delete message</button>`:''}${report.status!=='RESOLVED'?`<button class="mini" onclick="resolveReport('${esc(report.id)}')">Resolve</button>`:''}</div></div>`;
         }).join('')||'<p class="muted">No reports.</p>'}
       </div>
     `;
+    document.querySelectorAll("[data-assign-report]").forEach(button=>button.onclick=()=>assignReport(button.dataset.assignReport));
     await renderStaffApplications();
     const ipSearch=$('ipInspectionSearch'), ipSuggestions=$('ipInspectionSuggestions');
     let ipSuggestTimer;
@@ -3268,14 +3269,25 @@ async function viewPrivateMessageReport(id){
   }catch(e){toast(e.message||"Could not load private-message evidence.");}
 }
 async function resolveReport(id) {
+  const resolutionNote=prompt("Add a resolution note (optional):","Reviewed by staff.");
+  if(resolutionNote===null)return;
   try {
-    await api(`/api/staff/reports/${encodeURIComponent(id)}/resolve`,{method:"POST",body:JSON.stringify({status:"RESOLVED"})});
-    toast("Report resolved.");
+    await api(`/api/staff/reports/${encodeURIComponent(id)}/resolve`,{method:"POST",body:JSON.stringify({status:"RESOLVED",resolutionNote})});
+    toast("Report resolved and note saved.");
     if(state.view==="staff") await loadStaff();
     const box=$("reportDropdown");
     if(box&&!box.classList.contains("hidden")) await toggleReportDropdown(true);
     await loadNotifications();
   } catch (error) { toast(error.message); }
+}
+async function assignReport(id){
+  const username=prompt("Enter the username of the site staff member to assign this report to (you can include @):");
+  if(!username)return;
+  try{
+    await api(`/api/staff/reports/${encodeURIComponent(id)}/assign`,{method:"POST",body:JSON.stringify({username:username.trim().replace(/^@/,"")})});
+    toast("Report assigned.");
+    if(state.view==="staff")await loadStaff();
+  }catch(error){toast(error.message||"Could not assign report.");}
 }
 
 async function showUserActionHistory(userId){
