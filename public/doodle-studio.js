@@ -40,7 +40,7 @@
   function download(){canvas.toBlob(blob=>{if(!blob){status("Could not export the drawing.");return}const url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download=(($("doodleStudioTitle").value||"maleficent-doodle").trim().replace(/[^a-z0-9-_]+/gi,"-").slice(0,60)||"maleficent-doodle")+".png";a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);status("Download started.")},"image/png")}
   async function saveDoodle(){
     const btn=$("doodleStudioSave");btn.disabled=true;status("Saving your doodle…");
-    try{const blob=await exportPng();if(blob.size>1200000)throw Error("This drawing is too large to save. Use fewer details or a simpler background.");const image=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result));reader.onerror=()=>reject(Error("Could not read drawing."));reader.readAsDataURL(blob)});
+    try{const blob=await exportPng();if(blob.size>1600000)throw Error("This drawing is too large to save. Download it as PNG or simplify it and try again.");const image=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result));reader.onerror=()=>reject(Error("Could not read drawing."));reader.readAsDataURL(blob)});
       const data=await request("/api/doodles",{method:"POST",body:JSON.stringify({title:$("doodleStudioTitle").value.trim()||"Untitled doodle",image})});status("Saved to your private gallery.");await loadGallery();return data.doodle;
     }catch(e){status(e.message||"Could not save this doodle.");return null}finally{btn.disabled=false}
   }
@@ -62,7 +62,7 @@
     let access;try{access=JSON.parse(localStorage.getItem("mc_room_join")||"null")}catch{}
     if(!access?.roomId||!access?.joinToken){status("Join a chat room first, then return to Games to share your doodle.");return}
     const btn=$("doodleStudioShare");btn.disabled=true;status("Sending doodle to chat…");
-    try{const blob=await exportPng(),form=new FormData();form.append("text","🖌️ A doodle from Doodle Studio");form.append("file",blob,"maleficent-doodle.png");const headers={"x-room-join-token":access.joinToken};const t=token();if(t)headers["x-auth-token"]=t;
+    try{const blob=await exportPng(),file=new File([blob],"maleficent-doodle.png",{type:"image/png"}),form=new FormData();form.append("text","");form.append("file",file);const headers={"x-room-join-token":access.joinToken};const t=token();if(t)headers["x-auth-token"]=t;
       const res=await fetch("/api/rooms/"+encodeURIComponent(access.roomId)+"/messages",{method:"POST",body:form,headers,credentials:"same-origin"});const data=await res.json().catch(()=>({}));if(!res.ok)throw Error(data.error||"Could not send doodle to chat.");status("Doodle sent to your selected room.");
     }catch(e){status(e.message||"Could not send doodle.")}finally{btn.disabled=false}
   }
