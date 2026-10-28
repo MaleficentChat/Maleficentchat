@@ -2668,7 +2668,7 @@ async function roomModerationModal(user){
   const room=state.rooms.find(r=>String(r.id)===String(state.currentRoom));
   if(!room){toast('Join a room first.');return;}
   modal(`<h2>🛡️ Room moderation</h2><p class="muted">Action applies to @${esc(user.username)} in <b>${esc(room.name)}</b> only.</p>
-    <label>Action<select id="roomModAction"><option value="MUTE">Mute in room</option><option value="BLOCK">Block from room</option><option value="UNBLOCK">Unblock from room</option></select></label>
+    <label>Action<select id="roomModAction"><option value="MUTE">Mute in room</option><option value="BLOCK">Block from room</option><option value="KICK">Remove from room for 1 minute</option><option value="UNBLOCK">Unblock from room</option></select></label>
     <label>Mute duration (minutes)<input id="roomModMinutes" type="number" min="1" max="60" value="5"></label>
     <label>Reason<textarea id="roomModReason" maxlength="240" placeholder="Explain the room rule violation"></textarea></label>
     <button class="primary" id="submitRoomMod">Apply action</button>`);
