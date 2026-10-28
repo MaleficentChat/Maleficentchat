@@ -3377,6 +3377,32 @@ async function refreshSiteMessages(){
     if(state.view==='owner')loadOwner();
   }catch(e){toast('Could not clear site messages: '+e.message)}
 }
+async function loadOwnerPasswordSecurity(){
+  const host=$('ownerPasswordSecurityRows');if(!host)return;
+  try{
+    const data=await api('/api/owner/password-security');
+    const users=data.users||[];
+    const render=(query='')=>{
+      const q=query.trim().toLowerCase();
+      const shown=users.filter(u=>[u.username,u.displayName,u.rank].join(' ').toLowerCase().includes(q));
+      host.innerHTML=shown.map(u=>{
+        const safe=u.credentialStorage==='BCRYPT_HASH';
+        const reset=u.passwordResetAvailable?'<button class="mini primary" type="button" data-owner-password-reset="'+esc(u.id)+'" data-owner-password-name="'+esc(u.username)+'">Secure reset</button>':'<span class="muted">Protected account</span>';
+        return '<div class="user-card owner-password-security-row"><div style="flex:1;min-width:0"><b>@'+esc(u.username)+'</b><br><small>'+esc(u.rank||'MEMBER')+' · '+(safe?'🔒 Hashed credential stored':'⚠️ Storage needs review')+'</small></div>'+reset+'</div>';
+      }).join('')||'<p class="muted">No matching accounts.</p>';
+      if($('ownerPasswordSecurityCount'))$('ownerPasswordSecurityCount').textContent=q?shown.length+' of '+users.length+' accounts':users.length+' accounts';
+    };
+    render();
+    if($('ownerPasswordSecuritySearch'))$('ownerPasswordSecuritySearch').oninput=()=>render($('ownerPasswordSecuritySearch').value);
+    host.querySelectorAll('[data-owner-password-reset]').forEach(btn=>btn.onclick=()=>{
+      const userId=btn.dataset.ownerPasswordReset,username=btn.dataset.ownerPasswordName;
+      modal('<h2>🔐 Secure password reset</h2><p>Set a new password for <b>@'+esc(username)+'</b>. The current password cannot be viewed. The user will need the new password to sign in.</p><label>New password<input id="ownerSecurityNewPassword" type="password" minlength="12" autocomplete="new-password" placeholder="Use a long, unique password"></label><p class="muted">Use at least 12 characters; a longer passphrase is recommended.</p><div class="toolbar"><button class="primary" id="ownerSecuritySavePassword">Reset password</button><button class="mini" id="ownerSecurityCancelPassword">Cancel</button></div>');
+      $('ownerSecurityCancelPassword').onclick=closeModal;
+      $('ownerSecuritySavePassword').onclick=async()=>{const password=$('ownerSecurityNewPassword').value;if(password.length<12){toast('Use at least 12 characters for this security reset.');return;}if(!confirm('Reset the password for @'+username+'? The current password will not be recoverable.'))return;try{await api('/api/owner/user/'+encodeURIComponent(userId)+'/password',{method:'PATCH',body:JSON.stringify({password})});closeModal();toast('Password reset successfully.');await loadOwnerPasswordSecurity();}catch(e){toast(e.message||'Could not reset password.')}};
+    });
+  }catch(e){if(host)host.innerHTML='<p class="muted">Could not load password security: '+esc(e.message)+'</p>';}
+}
+
 async function loadOwner() {
   try {
     const data =
@@ -3496,6 +3522,13 @@ async function loadOwner() {
         </details>
       </div>
 
+      <div class="card owner-password-security-card">
+        <h3>🔐 Password Security</h3>
+        <p class="muted">Developer-only security overview. Passwords are never displayed. Storage status shows whether a bcrypt hash is present; it cannot reveal the original password or prove its strength.</p>
+        <div class="owner-user-search"><input id="ownerPasswordSecuritySearch" type="search" placeholder="Search accounts by username or rank…" autocomplete="off"><span id="ownerPasswordSecurityCount" class="muted">Loading accounts…</span></div>
+        <div id="ownerPasswordSecurityRows" class="stack"><p class="muted">Loading password security status…</p></div>
+      </div>
+
       <div class="card owner-user-controls-card">
         <h3>👥 User controls</h3>
         <details class="filter-words-details owner-user-controls-dropdown">
@@ -3609,6 +3642,7 @@ async function loadOwner() {
       catch(error){$("ownerAuditSaveStatus").textContent="Save failed: "+(error.message||"Unknown error");toast(error.message||"Could not save audit settings.");}
       finally{btn.disabled=false;}
     });
+    loadOwnerPasswordSecurity();
     if($('ownerUserSearch')) $('ownerUserSearch').oninput=()=>{const q=$('ownerUserSearch').value.trim().toLowerCase();const rows=[...document.querySelectorAll('.owner-user-control-row')];let showing=0;rows.forEach(row=>{const match=(row.dataset.userSearch||'').includes(q);row.style.display=match?'':'none';if(match)showing++});if($('ownerUserSearchCount'))$('ownerUserSearchCount').textContent=q?(`${showing} of ${rows.length} users`):(`${rows.length} users`)};
     if($('addBulkFilter')) $('addBulkFilter').onclick=async()=>{try{await api('/api/filter-words/bulk',{method:'POST',body:JSON.stringify({text:$('bulkFilterWords').value})});$('bulkFilterWords').value='';await loadOwner();}catch(e){toast(e.message)}};
     if($('filterSearch')) $('filterSearch').oninput=()=>{const q=$('filterSearch').value.toLowerCase();const rows=[...document.querySelectorAll('.filter-table-row')];let showing=0;rows.forEach(r=>{const show=r.dataset.word.toLowerCase().includes(q);r.style.display=show?'':'none';if(show)showing++});$('filterCounts').textContent=`Total: ${rows.length} | Showing: ${showing}`};
