@@ -3315,7 +3315,7 @@ async function loadOwner() {
           </button>
           <button class="mini danger" type="button" onclick="refreshSiteMessages()">🧹 Refresh Site Messages</button>
 
-          <button class="mini" onclick="ownerFeatureGrants()">🧩 Feature granting</button><button class="mini" onclick="openCommandManagement()">⌘ Command Management</button>
+          <button class="mini" onclick="ownerFeatureGrants()">🧩 Feature granting</button>
           
 
         </div>
@@ -3737,26 +3737,6 @@ function openCommandGuide(){
   ];
   const html='<div class="command-guide"><h2>Aurora Command Guide</h2><p class="muted">Enter commands in the room message box. Replace example usernames with real usernames. Some commands require a minimum rank set by the site owner.</p>'+groups.map((group,i)=>'<details class="command-guide-group" '+(i===0?'open':'')+'><summary>'+esc(group.title)+'</summary><div class="command-guide-list">'+group.items.map(item=>'<div class="command-guide-item"><code>'+esc(item[0])+'</code><span>'+esc(item[1])+'</span></div>').join('')+'</div></details>').join('')+'<div class="toolbar"><button class="primary" onclick="closeModal()">Got it</button></div></div>';
   modal(html);
-}
-
-async function openCommandManagement(){
-  const commandLabels={clear:{label:"/clear",description:"Clear all messages from the current room."}};
-  const ranks=["MEMBER","VIP","PREMIUM","MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER","DEVELOPER"];
-  try{
-    const data=await api("/api/owner/command-settings");
-    const settings=data.settings||{},commands=data.commands||[];
-    modal(`<div class="command-management">
-      <h2>⌘ Command Management</h2>
-      <p class="muted">Choose the minimum rank allowed to use each command. Higher ranks inherit access. Changes are saved to site settings.</p>
-      <div class="command-management-list">${commands.map(command=>{
-        const key=esc(command.key),current=String(settings[command.key]||command.defaultRank||"ADMIN").toUpperCase();
-        return `<article class="command-management-row"><div class="command-management-info"><b>${esc(commandLabels[command.key]?.label||command.label||command.key)}</b><p class="muted">${esc(commandLabels[command.key]?.description||command.description||"Configure command access.")}</p></div><label>Minimum rank<select data-command-rank="${key}">${ranks.map(rank=>`<option value="${rank}" ${rank===current?"selected":""}>${rank.replace(/_/g," ")}</option>`).join("")}</select></label></article>`;
-      }).join("")||'<p class="muted">No supported commands are registered yet.</p>'}</div>
-      <div class="toolbar"><button class="primary" id="saveCommandSettings">Save Command Settings</button><button class="mini" id="reloadCommandSettings">Reload</button></div>
-    </div>`);
-    $("saveCommandSettings").onclick=async()=>{try{const next={};document.querySelectorAll("[data-command-rank]").forEach(select=>next[select.dataset.commandRank]=select.value);await api("/api/owner/command-settings",{method:"PATCH",body:JSON.stringify({settings:next})});toast("Command access settings saved.");closeModal();}catch(error){toast(error.message||"Could not save command settings.");}};
-    $("reloadCommandSettings").onclick=()=>openCommandManagement();
-  }catch(error){toast(error.message||"Could not load command settings.");}
 }
 
 async function openBotsManagement(){
