@@ -1080,6 +1080,7 @@ function messageHTML(message) {
         <div class="msg-top">
           <span class="message-rank-icon" title="${esc(message.rank||"MEMBER")}" aria-label="${esc(message.rank||"MEMBER")}">${rankIcon[String(message.rank||"MEMBER").toUpperCase()]||"⚡"}</span>
           <button class="message-author tag-author" type="button" title="Tag @${esc(message.username)}" onclick="tagUserFromMessage('${esc(message.username)}')" style="color:${esc(message.usernameColor||state.user?.settings?.usernameColor||'var(--username-color)')}">${esc(message.displayName)}</button>
+          <span class="room-rank-badge" title="${esc(({USER:'Room User',ROOM_MODERATOR:'Room Moderator',ROOM_ADMIN:'Room Admin',ROOM_OWNER:'Room Owner'})[message.roomRank]||'Room User')}">${esc(message.roomRankBadge||'✨')}</span>
           <span class="msg-time">${fmt(message.time)}${message.edited ? " · edited" : ""}</span>
         </div>
 
