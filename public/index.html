@@ -151,7 +151,7 @@
         <div id="messages" class="messages"></div>
         <div id="replyBar" class="replybar hidden"></div>
         <div id="typing" class="typing"></div>
-        <form id="composer" class="composer">
+        <form id="composer" class="composer" onsubmit="return false;">
           <button type="button" id="chatToolsToggle" class="chat-tools-toggle" aria-label="More chat tools">☷</button>
           <div id="chatToolsDrawer" class="chat-tools-drawer"><button type="button" id="attach" title="Attach image or audio">📎 Attach</button><button type="button" id="chatGifBtn" title="Search and send a GIF">🎞 GIF</button><button type="button" id="doodleBtn" title="Draw and send a doodle">🖌️ Doodle</button><button type="button" class="icon-btn" id="youtubeComposerBtn" title="Search and share a YouTube video">▶️ YouTube</button><button type="button" class="icon-btn" id="youtubeMusicComposerBtn" title="Share YouTube Music in chat">🎵 Music</button><button type="button" class="icon-btn" id="voiceBtn" title="Record and send a voice message">🎙️ Voice</button></div>
           <input id="message" maxlength="4000" placeholder="Write a message… Use @username to mention">
@@ -198,7 +198,7 @@
 
 <div id="modal" class="modal hidden"><div class="modal-card"><button class="modal-close" onclick="closeModal()">×</button><div id="modalBody"></div></div></div>
 <div id="toast"></div><div id="actionLock" class="action-lock hidden"></div>
-<script src="/app.js?v=chat-composer-submit-fix-v1"></script>
+<script src="/app.js?v=chat-submit-guard-20261028-v2"></script>
 <script src="/gravity-run.js?v=gravity-run-main-1"></script>
 <script src="/doodle-studio.js?v=studio-v2"></script>
 </body>
