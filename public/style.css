@@ -3245,3 +3245,65 @@ button,input,select,textarea { max-width:100%; }
     width:22px!important;height:22px!important;min-width:22px!important;flex-basis:22px!important;
   }
 }
+
+
+/* FINAL sizing correction: compact People drawer, restore readable icons and full-size profiles. */
+@media(max-width:700px) {
+  #viewRooms.chatting .online-panel,
+  #viewRooms.chatting .online-panel.mobile-open {
+    width:min(250px,calc(100vw - 36px))!important;
+    min-width:0!important;max-width:250px!important;
+    padding:8px!important;max-height:58dvh!important;
+  }
+  #viewRooms.chatting .online-panel .online-tabs button,
+  #viewRooms.chatting .online-panel .panel-head button {
+    min-height:34px!important;padding:5px 8px!important;font-size:15px!important;
+  }
+  #viewRooms.chatting .online-user-grid .online-user {
+    min-height:34px!important;height:34px!important;padding:4px 7px!important;
+  }
+  #viewRooms.chatting .online-user-grid .online-user .avatar,
+  #viewRooms.chatting .online-user-grid .online-user img.avatar {
+    width:30px!important;height:30px!important;min-width:30px!important;flex:0 0 30px!important;
+  }
+  #viewRooms.chatting .online-user-grid .online-user-copy b,
+  #viewRooms.chatting .online-user-grid .user-copy b {font-size:11px!important;line-height:1.1!important}
+  #viewRooms.chatting .online-user-grid .online-user-copy small,
+  #viewRooms.chatting .online-user-grid .user-copy small {font-size:9px!important;line-height:1.1!important}
+}
+
+/* Restore the user-profile modal's intended prominence; do not shrink the Developer profile. */
+#modal .modal-card:has(#modalBody .profile-modal) {
+  width:min(520px,calc(100vw - 28px))!important;
+  max-width:520px!important;
+  max-height:min(82dvh,760px)!important;
+  padding:0!important;margin:0 auto 52px!important;
+}
+#modal .modal-card:has(#modalBody .profile-modal) .profile-banner {
+  min-height:190px!important;padding:18px 14px 16px!important;
+}
+#modal .modal-card:has(#modalBody .profile-modal) .equipped-profile-frame .big-avatar,
+#modal .modal-card:has(#modalBody .profile-modal) .profile-banner .big-avatar {
+  width:96px!important;height:96px!important;
+}
+#modal .modal-card:has(#modalBody .profile-modal) .profile-stat {padding:5px 9px!important;font-size:12px!important}
+#modal .modal-card:has(#modalBody .profile-modal) .profile-name {font-size:23px!important;margin-top:7px!important}
+#modal .modal-card:has(#modalBody .profile-modal) .profile-handle {font-size:14px!important}
+#modal .modal-card:has(#modalBody .profile-modal) .profile-tab {padding:12px 13px!important;font-size:13px!important}
+#modal .modal-card:has(#modalBody .profile-modal) .profile-info {padding:14px!important}
+#modal .modal-card:has(#modalBody .profile-modal) .profile-info-row {padding:10px 0!important;gap:7px!important;font-size:14px!important}
+@media(max-width:700px) {
+  #modal:has(.profile-modal) {align-items:flex-end!important;justify-content:center!important;padding:8px!important}
+  #modal .modal-card:has(#modalBody .profile-modal) {
+    width:min(430px,calc(100vw - 20px))!important;max-width:430px!important;
+    max-height:76dvh!important;margin:0 auto calc(48px + env(safe-area-inset-bottom,0px))!important;
+  }
+  #modal .modal-card:has(#modalBody .profile-modal) .profile-banner {min-height:160px!important}
+  #modal .modal-card:has(#modalBody .profile-modal) .equipped-profile-frame .big-avatar,
+  #modal .modal-card:has(#modalBody .profile-modal) .profile-banner .big-avatar {width:88px!important;height:88px!important}
+}
+/* Keep the floating quick-user profile card readable and unchanged in overall scale. */
+.quick-user-avatar {width:92px!important;height:92px!important}
+@media(max-width:768px) {
+  .quick-user-avatar {width:84px!important;height:84px!important}
+}
