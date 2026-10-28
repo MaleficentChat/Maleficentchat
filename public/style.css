@@ -3321,3 +3321,18 @@ button,input,select,textarea { max-width:100%; }
   .sidebar .nav {font-size:19px!important;min-height:38px!important;height:38px!important}
   .sidebar .nav > span {font-size:14px!important}
 }
+
+
+/* Staff Dashboard: System Notifications dropdown */
+.system-notifications-dropdown {margin:12px 0}
+.system-notifications-dropdown > summary {cursor:pointer;font-weight:700}
+.system-notifications-content {padding:14px 4px 4px}
+.system-notification-form {display:grid;gap:12px;max-width:760px}
+.system-notification-form label {display:grid;gap:6px;font-weight:600}
+.system-notification-form input,.system-notification-form select,.system-notification-form textarea {
+  width:100%;min-width:0;box-sizing:border-box;border:1px solid var(--border,#393047);
+  border-radius:10px;background:var(--panel,#14111f);color:inherit;padding:11px 12px;font:inherit;
+}
+.system-notification-form textarea {resize:vertical;min-height:100px}
+.system-notification-form .toolbar {display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.system-notification-form button:disabled {opacity:.6;cursor:wait}
