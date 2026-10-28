@@ -734,7 +734,7 @@ function visibleRoomOnlineCount(roomId){
   for(const socketId of members){
     const socket=io.sockets.sockets.get(socketId);
     const user=findUser(socket?.data?.userId);
-    if(user&&user.online&&!user.invisible)count++;
+    if(user&&user.online&&!user.invisible&&!user.hideMode&&!user.deadMode)count++;
   }
   return count;
 }
@@ -4584,7 +4584,7 @@ app.put('/api/profile',auth,(req,res)=>{
   if(oldDisplay!==u.displayName) u.displayNameHistory.push({value:u.displayName,time:Date.now()});
   save();
   if(oldUsername!==u.username) systemNotice(`@${oldUsername} has changed name to @${u.username}.`);
-  io.emit('profile:update',safeUser(u)); res.json({user:safeUser(u)});
+  if(!u.hideMode&&!u.deadMode)io.emit('profile:update',safeUser(u)); res.json({user:safeUser(u)});
 });
 
 app.get('/api/users/:id/profile',auth,(req,res)=>{
