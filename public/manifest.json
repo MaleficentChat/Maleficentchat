@@ -1,9 +1,17 @@
 {
-  "name":"MaleficentChat",
-  "short_name":"MaleficentChat",
-  "start_url":"/",
-  "display":"standalone",
-  "background_color":"#071016",
-  "theme_color":"#00bfae",
-  "icons":[]
+  "name": "Maleficent Chat — Online Community",
+  "short_name": "Maleficent Chat",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#050d1b",
+  "theme_color": "#07172a",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "description": "Community chat rooms, friends, private messages and mini-games."
 }
