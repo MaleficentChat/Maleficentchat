@@ -580,6 +580,9 @@ async function renderView() {
     case "shop":
       return loadRankShop();
 
+    case "rules":
+      return loadCommunityRules();
+
     case "leaderboard":
       return loadLeaderboard();
 
@@ -1003,7 +1006,7 @@ async function renderOnline(tab=onlinePanelTab,searchQuery=""){
 
     const count=online.length;
     $("onlinePanelTitle").innerHTML=`${esc(title)} <span class="online-badge">${count}</span>`;
-    $("onlineUsers").innerHTML=`${tab==="search"?'<input id="onlineUsernameSearch" type="search" placeholder="Search username…" autocomplete="off">':''}<div class="online-status-control"><label for="myCustomStatus">My status</label><select id="myCustomStatus"><option>Available</option><option>Busy</option><option>Away</option><option>Do Not Disturb</option></select></div>${tab==="search"?'<div class="online-status-control"><label for="onlineSortMode">Sort users</label><select id="onlineSortMode"><option value="online-rank">Online status</option><option value="global-rank">Global rank</option><option value="room-rank">Room rank</option><option value="recent">Recently active</option></select></div>':''}<div class="room-staff-tools"><button type="button" class="mini" onclick="editCurrentRoomRules()">📜 Room rules</button><button type="button" class="mini" onclick="viewCurrentRoomModerationLog()">🧾 Moderation log</button></div><div class="online-user-grid">${list.map(user=>`
+    $("onlineUsers").innerHTML=`${tab==="search"?'<input id="onlineUsernameSearch" type="search" placeholder="Search username…" autocomplete="off">':''}<div class="online-status-control"><label for="myCustomStatus">My status</label><select id="myCustomStatus"><option>Available</option><option>Busy</option><option>Away</option><option>Do Not Disturb</option></select></div>${tab==="search"?'<div class="online-status-control"><label for="onlineSortMode">Sort users</label><select id="onlineSortMode"><option value="online-rank">Online status</option><option value="global-rank">Global rank</option><option value="room-rank">Room rank</option><option value="recent">Recently active</option></select></div>':''}<div class="online-user-grid">${list.map(user=>`
       <div class="online-user ${user.online?'is-online':'is-offline'}" onclick="openQuickUserCard('${esc(user.id)}')">
         ${avatar(user)}
         <div class="online-user-copy">
@@ -1288,8 +1291,6 @@ function showStefanOptions(){
     `<button class="stefan-option" onclick="showPinnedMessages();closeStefanCard()">📌 Pinned messages</button>`,
     `<button class="stefan-option" onclick="showInvite();closeStefanCard()">🔗 Invite link</button>`,
     `<button class="stefan-option" onclick="openCommandGuide();closeStefanCard()">⌘ Command Guide</button>`,
-    `<button class="stefan-option" onclick="openScheduleFromStefan();closeStefanCard()">⏰ Schedule message</button>`,
-    `<button class="stefan-option" onclick="cycleExpiryFromStefan();closeStefanCard()">⏳ Expiring message</button>`,
     canEdit ? `<button class="stefan-option" onclick="editRoom();closeStefanCard()">✏️ Edit room</button>` : "",
     canDelete ? `<button class="stefan-option danger" onclick="deleteRoom();closeStefanCard()">🗑️ Delete room</button>` : ""
   ].filter(Boolean).join("");
@@ -1499,108 +1500,6 @@ $("message").oninput = () => {
   }
 };
 
-
-if($("expireBtn")) $("expireBtn").onclick=()=>{
-  const options=[0,10,60,3600,86400],i=options.indexOf(state.messageExpiry),next=options[(i+1)%options.length];
-  state.messageExpiry=next;
-  $("expireBtn").textContent=`⏳ ${next===0?'0s':next<60?next+'s':next<3600?(next/60)+'m':next===3600?'1h':'1d'}`;
-  toast(next?`This message will expire after ${$("expireBtn").textContent.replace('⏳ ','')}.`:"Expiring messages disabled.");
-};
-if($("scheduleBtn")) $("scheduleBtn").onclick=()=>{
-  const rooms=(state.rooms||[]).map(r=>`<option value="${esc(r.id)}">${esc(r.name)}</option>`).join('');
-  modal(`<h2>⏰ Schedule message</h2><select id="quickSchRoom">${rooms}</select><textarea id="quickSchText" placeholder="Message"></textarea><input id="quickSchWhen" type="datetime-local"><button class="primary" id="quickSchSave">Schedule</button>`);
-  $("quickSchSave").onclick=async()=>{try{const when=new Date($("quickSchWhen").value).getTime();if(!Number.isFinite(when)||when<=Date.now())throw Error('Choose a future date and time.');const r=await api('/api/scheduled',{method:'POST',body:JSON.stringify({roomId:$("quickSchRoom").value,text:$("quickSchText").value,sendAt:when})});closeModal();toast(`Message scheduled for ${fmt(r.scheduled.sendAt)}.`)}catch(e){toast(e.message)}}};
-function setupMentionAutocomplete(){
-  const input=$('message'), box=document.createElement('div');
-  box.id='mentionSuggestions'; box.className='mention-suggestions';
-  input.parentElement.appendChild(box);
-  input.addEventListener('input', async ()=>{
-    const m=input.value.slice(0,input.selectionStart).match(/(?:^|\s)@([A-Za-z0-9_]*)$/);
-    if(!m){box.classList.remove('show');return;}
-    try{
-      const data=await api('/api/users?q='+encodeURIComponent(m[1]));
-      const liveUsers=(data.users||[]).filter(u=>u.online && u.id!==state.user.id);
-      const bots=[{id:'bot-aurora',username:'Aurora',displayName:'Aurora',rank:'BOT',online:true,avatar:''},{id:'bot-mal',username:'Mal',displayName:'Mal',rank:'BOT',online:true,avatar:''}];
-      state.mentionUsers=[...bots,...liveUsers].slice(0,10);
-      if(!state.mentionUsers.length){box.classList.remove('show');return;}
-      box.innerHTML=state.mentionUsers.map(u=>`<button type="button" data-mention="${esc(u.username)}">${u.rank==='BOT'?`<span class="bot-mention-icon">${u.username==='Aurora'?'🪄':u.username==='Mal'?'🕰️':'🐉'}</span>`:avatar(u)}<span><b>${esc(u.displayName)}</b><small>@${esc(u.username)} · ${u.rank==='BOT'?'AI bot':'Online'}</small></span></button>`).join('');
-      box.classList.add('show');
-      box.querySelectorAll('[data-mention]').forEach(b=>b.onclick=()=>{
-        const before=input.value.slice(0,input.selectionStart), after=input.value.slice(input.selectionStart);
-        const next=before.replace(/@([A-Za-z0-9_]*)$/,'@'+b.dataset.mention+' ')+after;
-        input.value=next; input.focus(); box.classList.remove('show'); input.dispatchEvent(new Event('input'));
-      });
-    }catch{box.classList.remove('show');}
-  });
-  document.addEventListener('click',e=>{if(!box.contains(e.target)&&e.target!==input)box.classList.remove('show');});
-}
-setupMentionAutocomplete();
-let voiceRecorder=null, voiceChunks=[], voiceStream=null, voiceRecordingRoom=null;
-async function toggleVoiceRecording(){
-  const btn=$("voiceBtn");
-  if(!btn)return;
-  if(voiceRecorder && voiceRecorder.state!=="inactive"){
-    voiceRecorder.stop();
-    return;
-  }
-  if(!state.user){toast("Please log in first.");return;}
-  if(!state.currentRoom){toast("Join a room before recording a voice message.");return;}
-  if(!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder){
-    toast("Voice recording needs microphone support in a secure browser. Open Maleficent Chat in Chrome and allow microphone access.");
-    return;
-  }
-  try{
-    voiceStream=await navigator.mediaDevices.getUserMedia({audio:true});
-    voiceChunks=[];
-    voiceRecordingRoom=String(state.currentRoom);
-    const candidates=["audio/webm;codecs=opus","audio/webm","audio/ogg;codecs=opus","audio/mp4"];
-    const mime=candidates.find(type=>MediaRecorder.isTypeSupported?.(type));
-    voiceRecorder=mime?new MediaRecorder(voiceStream,{mimeType:mime}):new MediaRecorder(voiceStream);
-    const recorder=voiceRecorder;
-    recorder.ondataavailable=e=>{if(e.data?.size)voiceChunks.push(e.data);};
-    recorder.onerror=()=>toast("Recording failed. Please try again and check microphone permission.");
-    recorder.onstop=async()=>{
-      voiceStream?.getTracks().forEach(track=>track.stop());
-      voiceStream=null;
-      btn.textContent="🎙️ Voice";
-      btn.classList.remove("recording");
-      const blob=new Blob(voiceChunks,{type:recorder.mimeType||"application/octet-stream"});
-      voiceChunks=[];
-      const roomId=voiceRecordingRoom;
-      voiceRecordingRoom=null;
-      if(!blob.size){toast("No audio was recorded. Please try again.");return;}
-      if(!roomId){toast("Could not identify the room for this voice message.");return;}
-      if(String(state.currentRoom)!==roomId){
-        toast("Return to the room where you started recording, then record again.");
-        return;
-      }
-      try{
-        const form=new FormData();
-        form.append("text","");
-        const type=recorder.mimeType||blob.type||"audio/webm";
-        const extension=type.includes("ogg")?"ogg":type.includes("mp4")?"mp4":"webm";
-        form.append("file",blob,"voice-message."+extension);
-        const data=await api("/api/rooms/"+encodeURIComponent(roomId)+"/messages",{method:"POST",body:form});
-        if(data.message && String(data.message.roomId)===String(state.currentRoom))appendMessage(data.message);
-        toast("Voice message sent.");
-      }catch(e){
-        toast(e.message||"Could not send voice message.");
-      }
-    };
-    recorder.start();
-    btn.textContent="⏹ Stop";
-    btn.classList.add("recording");
-    toast("Recording… press Stop to send.");
-  }catch(e){
-    voiceStream?.getTracks().forEach(track=>track.stop());
-    voiceStream=null;
-    voiceRecorder=null;
-    btn.textContent="🎙️ Voice";
-    btn.classList.remove("recording");
-    toast(e.name==="NotAllowedError"?"Microphone access was blocked. Allow microphone access for this site and try again.":(e.message||"Could not start voice recording."));
-  }
-}
-$("voiceBtn")?.addEventListener("click",toggleVoiceRecording);
 
 
 function replyMsg(id) {
@@ -2008,7 +1907,7 @@ function renderUserProfileModal(user,data={}){
     else box.innerHTML=`<div class="about-card"><div class="profile-info-row"><b>📝 About</b><span>${esc(user.bio||'No About Me')}</span></div><div class="profile-info-row"><b>📜 Username history</b><span>${(user.usernameHistory||[]).length} changes</span></div><div class="profile-info-row"><b>🔗 Profile ID</b><span>${esc(user.id)}</span></div>${can('MOD')?`<div class="toolbar"><button class="mini" id="profileHistoryBtn">📜 Staff action history</button><button class="mini" id="profileIpInsightsBtn">🔎 View insights</button></div><div id="profileHistoryBox"></div>`:''}<div class="profile-actions">${!isSelf?'<button class="mini danger" id="profileReportBtn">⚑ Report user</button>':''}</div></div>`;
     if(tab==='more' && can('MOD')) $('profileHistoryBtn')?.addEventListener('click',()=>showUserActionHistory(user.id));
     if(tab==='more' && can('MOD') && !isSelf) $('profileIpInsightsBtn')?.addEventListener('click',()=>showIpInsights(user));
-    if(tab==='info'&&!isSelf&&canFeature('profile_note'))api(`/api/staff/user/${encodeURIComponent(user.id)}/note`).then(n=>{if(n.hasNote&&$('profileNoteDot'))$('profileNoteDot').style.display='inline';}).catch(()=>{});
+    if(tab==='info'&&!isSelf&&canFeature('profile_note'))api(`/api/staff/user/${encodeURIComponent(user.id)}/note`).then(n=>{if($('profileNoteDot'))$('profileNoteDot').style.display=n.hasNote?'inline-block':'none';}).catch(()=>{});
     wireProfileTabActions();
   };
   function wireProfileTabActions(){
@@ -2184,7 +2083,7 @@ function dmMessageHTML(message, messages, user) {
         }
 
         ${
-          message.text
+          message.text && !message.youtube?.videoId
             ? `<div class="msg-text">${esc(message.text)}</div>`
             : ""
         }
@@ -2643,7 +2542,7 @@ async function loadLeaderboard() {
 
 /* ---------------- PROFILE ---------------- */
 
-async function staffProfileNoteModal(user){try{const noteData=await api(`/api/staff/user/${encodeURIComponent(user.id)}/note`);const note=noteData.note||'';modal(`<h2>📝 Staff profile note</h2><p class="muted">Visible only to eligible staff. Do not include passwords or sensitive personal information.</p><textarea id="staffProfileNote" rows="7" maxlength="4000" placeholder="Add staff-only context…">${esc(note)}</textarea><button class="primary" id="saveStaffProfileNote">Save note</button>`);$('saveStaffProfileNote').onclick=async()=>{try{await api(`/api/staff/user/${encodeURIComponent(user.id)}/note`,{method:'PATCH',body:JSON.stringify({note:$('staffProfileNote').value})});closeModal();toast('Staff note saved.');}catch(e){toast(e.message)}};}catch(e){toast(e.message)}}
+async function staffProfileNoteModal(user){try{const d=await api('/api/staff/user/'+encodeURIComponent(user.id)+'/note');const note=d.note||'';modal('<div class="staff-note-modal"><h2>📝 Staff Profile Note</h2><p class="muted">Confidential staff-only context for @'+esc(user.username)+'. Do not record passwords or unnecessary sensitive personal information.</p>'+(note?'<article class="staff-note-entry"><div class="staff-note-entry-head"><b>Latest note</b><span class="muted">'+esc(d.updatedAt?new Date(d.updatedAt).toLocaleString():'Date unavailable')+'</span></div><div class="staff-note-author">Added by <b>@'+esc(d.updatedBy||'Unknown staff member')+'</b></div><p class="staff-note-message">'+esc(note)+'</p></article>':'<div class="staff-note-empty">No staff note has been added for this account.</div>')+'<label>Add a new note<textarea id="staffProfileNote" rows="5" maxlength="4000" placeholder="Write clear, factual staff context…"></textarea></label><div class="toolbar"><button class="primary" id="saveStaffProfileNote">Add note</button><button class="mini" type="button" onclick="closeModal()">Close</button></div></div>');$('saveStaffProfileNote').onclick=async()=>{const value=$('staffProfileNote').value.trim();if(!value){toast('Write a note before saving.');return;}try{await api('/api/staff/user/'+encodeURIComponent(user.id)+'/note',{method:'PATCH',body:JSON.stringify({note:value})});closeModal();toast('Staff note added.');}catch(e){toast(e.message)}};}catch(e){toast(e.message)}}
 
 function staffAccountModal(user){
   if((!can('MOD')&&!canFeature('manage_staff_accounts'))||user.username==='Maleficent'||String(user.rank).toUpperCase()==='OWNER'){toast('This account is protected or account controls are not granted.');return;}
@@ -3403,6 +3302,17 @@ async function loadOwnerPasswordSecurity(){
   }catch(e){if(host)host.innerHTML='<p class="muted">Could not load password security: '+esc(e.message)+'</p>';}
 }
 
+
+async function loadCommunityRules(){
+ const host=$('communityRules');if(!host)return;
+ const owner=String(state.user?.rank||'').toUpperCase()==='DEVELOPER'||(String(state.user?.rank||'').toUpperCase()==='OWNER'&&state.user?.username==='Maleficent');
+ try{const data=await api('/api/community-rules');let rules=(data.rules||[]).map(r=>({id:String(r.id),text:String(r.text||'')}));
+ const render=()=>{const editor=owner?'<div class="card community-rules-editor"><div class="toolbar"><b>📜 Manage Community Rules</b><button class="mini primary" id="addCommunityRule">＋ Add Rule</button></div><p class="muted">Only Owner and Developer can publish changes. Rule numbers are assigned automatically.</p><div id="communityRuleEditorRows">'+(rules.map((r,i)=>'<article class="community-rule-card"><h3>MC RULE '+(i+1)+'</h3><textarea rows="3" maxlength="2000" data-community-rule="'+esc(r.id)+'" placeholder="Write the rule…">'+esc(r.text)+'</textarea><div class="toolbar"><button type="button" class="primary" data-publish-rule="'+esc(r.id)+'">Publish Rule</button><button type="button" class="mini danger" data-remove-rule="'+esc(r.id)+'">Remove Rule</button></div></article>').join('')||'<p class="muted">No rules published yet. Add the first rule to get started.</p>')+'</div></div>':'';host.innerHTML=editor+(rules.map((r,i)=>'<article class="community-rule-card"><h3>MC RULE '+(i+1)+'</h3><p class="community-rule-text">'+esc(r.text)+'</p></article>').join('')||'<div class="card"><p class="muted">No community rules have been published yet.</p></div>');
+ if(owner){$('addCommunityRule')?.addEventListener('click',()=>{rules.push({id:'draft-'+Date.now()+'-'+Math.random().toString(36).slice(2),text:''});render();});host.querySelectorAll('[data-publish-rule]').forEach(btn=>btn.onclick=async()=>{const id=btn.dataset.publishRule,area=host.querySelector('[data-community-rule="'+CSS.escape(id)+'"]'),text=area?.value.trim()||'';if(!text){toast('Write the rule before publishing.');return;}const next=rules.map(r=>r.id===id?{...r,text}:r);try{const out=await api('/api/owner/community-rules',{method:'PUT',body:JSON.stringify({rules:next})});rules=(out.rules||[]).map(r=>({id:String(r.id),text:String(r.text||'')}));toast('Rule published.');render();}catch(e){toast(e.message||'Could not publish rule.');}});host.querySelectorAll('[data-remove-rule]').forEach(btn=>btn.onclick=async()=>{const id=btn.dataset.removeRule;if(!confirm('Remove this rule from the published Rules section?'))return;try{const out=await api('/api/owner/community-rules',{method:'PUT',body:JSON.stringify({rules:rules.filter(r=>r.id!==id)})});rules=(out.rules||[]).map(r=>({id:String(r.id),text:String(r.text||'')}));toast('Rule removed.');render();}catch(e){toast(e.message||'Could not remove rule.');}});}
+ };render();
+ }catch(e){host.innerHTML='<div class="card"><p class="muted">Could not load community rules: '+esc(e.message)+'</p></div>';}
+}
+
 async function loadOwner() {
   try {
     const data =
@@ -3929,7 +3839,7 @@ async function ownerFeatureGrants(){
       view_emails:'View account emails',manage_ranks:'Manage ranks',manage_settings:'Manage site settings',manage_clubs:'Manage clubs',manage_bots:'Manage bots',
       manage_mal_ai:'Manage Mal AI',manage_aurora:'Manage Aurora bot',manage_feature_lab:'Manage Feature Lab',report_message:'Report messages',
       moderate_user:'Moderate users',clear_room:'Clear room messages',edit_message:'Edit own messages',pin_message:'Pin messages',save_message:'Save messages',
-      react_message:'React to messages',schedule_message:'Schedule messages',expire_message:'Use expiring messages',use_youtube:'Share YouTube content',
+      react_message:'React to messages',schedule_message:'Schedule messages',expire_message:'Use expiring messages',use_youtube:'Share YouTube videos and YouTube Music',
       room_announcement:'Post room announcements',view_pinned:'View pinned messages',manage_filters:'Manage filtered words',delete_news:'Delete news',
       manage_staff_accounts:'Manage staff account details',staff_rank_assignment:'Assign staff ranks',manage_gold:'Manage user gold',profile_like:'Like profiles',
       enter_private_club:'Enter private clubs',wall_post:'Friends Wall posting',manage_news:'Manage news'
@@ -3945,7 +3855,7 @@ async function ownerFeatureGrants(){
       view_ips:'Access IP inspection details.',view_emails:'View registered email addresses.',manage_ranks:'Change account ranks.',manage_settings:'Change site-wide settings.',
       manage_clubs:'Manage clubs.',manage_bots:'Manage community bots.',manage_mal_ai:'Edit Mal AI commands.',manage_aurora:'Manage Aurora bot.',manage_feature_lab:'Manage Feature Lab.',
       report_message:'Submit reports about messages.',moderate_user:'Access moderation actions.',clear_room:'Clear room messages.',edit_message:'Edit messages you sent.',pin_message:'Pin chat messages.',
-      save_message:'Save messages.',react_message:'React to messages.',schedule_message:'Schedule messages.',expire_message:'Send expiring messages.',use_youtube:'Share YouTube content.',
+      save_message:'Save messages.',react_message:'React to messages.',schedule_message:'Schedule messages.',expire_message:'Send expiring messages.',use_youtube:'Share YouTube videos and YouTube Music.',
       room_announcement:'Post room announcements.',view_pinned:'View pinned messages.',manage_filters:'Manage filtered-word settings.',delete_news:'Delete published news.',
       manage_staff_accounts:'Edit staff account details.',staff_rank_assignment:'Assign eligible staff ranks.',manage_gold:'Adjust user gold.',profile_like:'Like user profiles.',enter_private_club:'Enter private clubs.'
     };
@@ -3960,7 +3870,7 @@ async function ownerFeatureGrants(){
     };
     const ranks=d.ranks||['MEMBER','VIP','PREMIUM','MOD','ADMIN','SUPER_ADMIN','COMMISSOR','COOWNER','OWNER'];
     const rankLabels={MEMBER:'Member',VIP:'VIP',PREMIUM:'Premium',MOD:'Moderator',ADMIN:'Admin',SUPER_ADMIN:'Super Admin',COMMISSOR:'Commissor',COOWNER:'Co-owner',OWNER:'Owner'};
-    const keys=Object.keys(d.features||{}), categories={};
+    const keys=Object.keys(d.features||{}).filter(key=>!['schedule_message','expire_message'].includes(key)), categories={};
     keys.forEach(key=>{const category=categoryFor[key]||'Other site features';if(!categories[category])categories[category]=[];categories[category].push(key);});
     function renderRow(key){
       const allowed=d.grants?.[key]||[], selected=ranks.find(rank=>allowed.includes(rank));
@@ -4117,8 +4027,8 @@ $("notifications").onclick=async()=>{
 async function showPinnedMessages(){
   try{ const data=await api(`/api/rooms/${encodeURIComponent(state.currentRoom)}/pinned`); const pinned=data.messages||[]; modal(`<h2>📌 Pinned messages</h2><p class="muted">Pinned messages in ${esc(state.rooms.find(r=>r.id===state.currentRoom)?.name||'this room')}.</p><div class="pinned-list">${pinned.map(m=>`<button class="pinned-result" onclick="closeModal();jumpToMessage('${esc(m.id)}')"><b>${esc(m.displayName||m.username)}</b><small>${fmt(m.time)}</small><span>${esc(m.text||'📎 Attachment')}</span></button>`).join('')||'<p class="muted">No pinned messages in this room.</p>'}</div>`); }catch(e){toast(e.message)}
 }
-async function openYoutubePanel(){
-  modal(`<div class="youtube-panel"><h2>▶️ YouTube</h2><p class="muted">Search for a video or paste a YouTube link.</p><div class="toolbar"><input id="ytQuery" placeholder="Search or paste YouTube URL…"><button class="primary" id="ytSearch">Search</button></div><div id="ytResults" class="youtube-results"><p class="muted">Search for a video to share it in this room.</p></div></div>`);
+async function openYoutubePanel(mode='youtube'){
+  modal(`<div class="youtube-panel"><h2>${mode==="music"?"🎵 YouTube Music":"▶️ YouTube"}</h2><p class="muted">Search for a ${mode==="music"?"song or music video":"video"} or paste a YouTube link.</p><div class="toolbar"><input id="ytQuery" placeholder="Search or paste YouTube URL…"><button class="primary" id="ytSearch">Search</button></div><div id="ytResults" class="youtube-results"><p class="muted">Search for a video to share it in this room.</p></div></div>`);
   $('ytSearch').onclick=async()=>{
     const q=$('ytQuery').value.trim();
     if(!q)return;
@@ -4128,27 +4038,28 @@ async function openYoutubePanel(){
     if(match){
       const videoId=match[1];
       const title="YouTube video";
-      $('ytResults').innerHTML=`<button class="youtube-result" onclick="sendYoutube('${videoId}','${title}')"><img src="https://i.ytimg.com/vi/${videoId}/mqdefault.jpg" alt=""><span><b>YouTube video</b><small>Share this video in chat</small></span></button>`;
+      $('ytResults').innerHTML=`<button class="youtube-result" onclick="sendYoutube('${videoId}','${title}',${mode==='music'})"><img src="https://i.ytimg.com/vi/${videoId}/mqdefault.jpg" alt=""><span><b>YouTube video</b><small>Share this video in chat</small></span></button>`;
       return;
     }
     const button=$('ytSearch');button.disabled=true;button.textContent='Searching…';
     try{
       const r=await api('/api/youtube/search?q='+encodeURIComponent(q));
       const results=(r.results||[]).filter(v=>/^[A-Za-z0-9_-]{11}$/.test(String(v.id||'')));
-      $('ytResults').innerHTML=results.map(v=>`<button class="youtube-result" onclick="sendYoutube('${esc(v.id)}','${esc(v.title)}')"><img src="${esc(v.thumbnail||('https://i.ytimg.com/vi/'+v.id+'/mqdefault.jpg'))}" alt=""><span><b>${esc(v.title)}</b><small>${esc(v.channel||'YouTube')}</small></span></button>`).join('')||`<p class="muted">${esc(r.notice||'No results. Try pasting a YouTube video link instead.')}</p>`;
+      $('ytResults').innerHTML=results.map(v=>`<button class="youtube-result" onclick="sendYoutube('${esc(v.id)}','${esc(v.title)}',${mode==='music'})"><img src="${esc(v.thumbnail||('https://i.ytimg.com/vi/'+v.id+'/mqdefault.jpg'))}" alt=""><span><b>${esc(v.title)}</b><small>${esc(v.channel||'YouTube')}</small></span></button>`).join('')||`<p class="muted">${esc(r.notice||'No results. Try pasting a YouTube video link instead.')}</p>`;
     }catch(e){toast(e.message||'YouTube search failed. Paste a YouTube video link instead.');}
     finally{button.disabled=false;button.textContent='Search';}
   };
 }
-async function sendYoutube(videoId,title){
+async function sendYoutube(videoId,title,music=false){
   try{
     if(!state.currentRoom)throw new Error('Join Main Room before sharing a video.');
-    const result=await api(`/api/rooms/${encodeURIComponent(state.currentRoom)}/youtube`,{method:'POST',body:JSON.stringify({videoId,title})});
+    const result=await api(`/api/rooms/${encodeURIComponent(state.currentRoom)}/youtube`,{method:'POST',body:JSON.stringify({videoId,title,music})});
     if(result.message && !document.querySelector(`[data-mid="${CSS.escape(String(result.message.id))}"]`))appendMessage(result.message);
     closeModal();toast('YouTube video shared in chat.');
   }catch(e){toast(e.message||'Could not share this video.')}
 }
-$("youtubeComposerBtn")?.addEventListener("click",()=>openYoutubePanel());
+$("youtubeComposerBtn")?.addEventListener("click",()=>openYoutubePanel("youtube"));
+$("youtubeMusicComposerBtn")?.addEventListener("click",()=>openYoutubePanel("music"));
 
 /* ---------------- ROOM MENU ---------------- */
 
