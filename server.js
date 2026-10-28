@@ -1343,6 +1343,30 @@ app.get("/api/rooms/:id/staff",auth,(req,res)=>{
   const staff=Object.entries(store).filter(([,role])=>role!=="USER").map(([userId,role])=>({user:safeUser(db.users.find(u=>String(u.id)===String(userId))||{}),role,badge:role==="ROOM_OWNER"?"🎩":role==="ROOM_ADMIN"?"💫":"🪄"})).filter(x=>x.user?.id);
   res.json({roomId:String(room.id),myRole:roomRole(room.id,current(req).id),staff});
 });
+app.get("/api/rooms/:id/rules",auth,(req,res)=>{
+  const room=db.rooms.find(x=>String(x.id)===String(req.params.id));if(!room)return res.status(404).json({error:"Room not found"});
+  const rules=String(db.settings?.room_rules?.[String(room.id)]||room.rules||"");
+  res.json({roomId:String(room.id),roomName:room.name,rules});
+});
+app.put("/api/rooms/:id/rules",auth,(req,res)=>{
+  const actor=current(req),room=db.rooms.find(x=>String(x.id)===String(req.params.id));if(!room)return res.status(404).json({error:"Room not found"});
+  if(!roomOwnerOrGlobal(actor,room))return res.status(403).json({error:"Only this room's owner or authorized global staff can edit its rules."});
+  const rules=cleanText(req.body?.rules||"").trim().slice(0,4000);
+  db.settings ||= {};db.settings.room_rules ||= {};db.settings.room_rules[String(room.id)]=rules;
+  save();log(actor,"ROOM_RULES_UPDATE",room.name,{roomId:String(room.id)});
+  res.json({ok:true,rules});
+});
+app.get("/api/rooms/:id/moderation-log",auth,(req,res)=>{
+  const actor=current(req),room=db.rooms.find(x=>String(x.id)===String(req.params.id));if(!room)return res.status(404).json({error:"Room not found"});
+  if(!roomOwnerOrGlobal(actor,room)&&roomRoleLevel(roomRole(room.id,actor.id))<1&&!hasRank(actor,"MOD"))return res.status(403).json({error:"Room staff access required."});
+  const logs=(db.settings?.room_moderation_logs?.[String(room.id)]||[]).slice(-100).reverse();
+  res.json({roomId:String(room.id),roomName:room.name,logs});
+});
+function recordRoomModeration(roomId,entry){
+  const settings=roomStaffStore();settings.room_moderation_logs ||= {};const key=String(roomId);
+  settings.room_moderation_logs[key] ||= [];settings.room_moderation_logs[key].push({...entry,time:Date.now()});
+  if(settings.room_moderation_logs[key].length>500)settings.room_moderation_logs[key].splice(0,settings.room_moderation_logs[key].length-500);
+}
 app.put("/api/rooms/:id/staff/:userId",auth,(req,res)=>{
   const actor=current(req),room=db.rooms.find(x=>String(x.id)===String(req.params.id)),target=db.users.find(x=>String(x.id)===String(req.params.userId));
   if(!room||!target)return res.status(404).json({error:"Room or user not found"});
@@ -1353,7 +1377,7 @@ app.put("/api/rooms/:id/staff/:userId",auth,(req,res)=>{
   if(String(target.rank||"").toUpperCase()==="DEVELOPER"&&String(actor.rank||"").toUpperCase()!=="DEVELOPER")return res.status(403).json({error:"Only the Developer can change this account's room rank."});
   const settings=roomStaffStore(),key=String(room.id);settings.room_staff[key] ||= {};
   if(role==="USER")delete settings.room_staff[key][String(target.id)];else settings.room_staff[key][String(target.id)]=role;
-  save();log(actor,"ROOM_RANK_CHANGE",target.username,{roomId:String(room.id),role});
+  save();log(actor,"ROOM_RANK_CHANGE",target.username,{roomId:String(room.id),role});recordRoomModeration(room.id,{actorId:String(actor.id),actorUsername:actor.username,targetId:String(target.id),targetUsername:target.username,action:"RANK_CHANGE",role});
   res.json({ok:true,roomId:String(room.id),userId:String(target.id),role,badge:role==="ROOM_ADMIN"?"👑":role==="ROOM_MODERATOR"?"🛡️":"⚡"});
 });
 app.post("/api/rooms/:id/staff-action",auth,async(req,res)=>{
@@ -1371,7 +1395,7 @@ app.post("/api/rooms/:id/staff-action",auth,async(req,res)=>{
   else if(action==="BLOCK"){settings.room_blocks[key] ||= {};settings.room_blocks[key][targetId]={reason,by:String(actor.id),time:Date.now()};} else if(action==="KICK"){settings.room_kicks[key] ||= {};settings.room_kicks[key][targetId]={reason,by:String(actor.id),until:Date.now()+60000};}
   else if(action==="UNBLOCK"){delete settings.room_blocks[key]?.[targetId];}
   else return res.status(400).json({error:"Unsupported room action."});
-  save();log(actor,"ROOM_STAFF_ACTION",target.username,{roomId:key,action,reason});
+  save();log(actor,"ROOM_STAFF_ACTION",target.username,{roomId:key,action,reason});recordRoomModeration(room.id,{actorId:String(actor.id),actorUsername:actor.username,targetId:String(target.id),targetUsername:target.username,action,reason,minutes:action==="MUTE"?Math.max(1,Math.min(60,Number(req.body.minutes)||5)):undefined});
   if(action==="KICK"||action==="BLOCK"){for(const sock of io.sockets.sockets.values()){if(String(sock.data?.userId||sock.userId||sock.user?.id||"")===targetId&&String(sock.data?.roomId||"")===key){sock.leave("room:"+room.id);sock.emit("room:kicked",{roomId:key,reason,blocked:action==="BLOCK",until:action==="KICK"?settings.room_kicks[key][targetId].until:null});}}}
   res.json({ok:true,action,reason});
 });
