@@ -2710,16 +2710,11 @@ app.get("/api/staff/ip-inspection/diagnostics",auth,ownerOnly,(req,res)=>{
   res.json({sources,privateOrUnavailable:Object.fromEntries(Object.entries(sources).map(([key,value])=>[key,isPrivateIp(value)])),trustProxy:app.get("trust proxy")});
 });
 app.get("/api/staff/ip-inspection/users",auth,ownerOnly,async(req,res)=>{
-  let stage="validate-search";
-  try{
-    const term=String(req.query.q||"").trim().slice(0,80);
-    stage="query-users";
-    const result=await pool.query("SELECT id,username,email,created_at FROM users WHERE ($1='' OR username ILIKE '%'||$1||'%' OR COALESCE(email,'') ILIKE '%'||$1||'%') ORDER BY LOWER(username) LIMIT 30",[term]);
-    return res.json({users:result.rows});
-  }catch(err){
-    console.error("[IP_INSPECTION] user search failed at "+stage+":",err?.stack||err?.message||err);
-    if(!res.headersSent) return res.status(500).json({error:"IP Inspection account search failed. Check server logs for [IP_INSPECTION]."});
-  }
+  const term=String(req.query.q||"").trim().replace(/^@/,"").slice(0,80);
+  try{const result=await pool.query("SELECT id,username,email,created_at FROM users WHERE ($1='' OR username ILIKE '%'||$1||'%' OR COALESCE(email,'') ILIKE '%'||$1||'%') ORDER BY LOWER(username) LIMIT 30",[term]);if(result.rows.length||!Array.isArray(db.users))return res.json({users:result.rows});}
+  catch(error){console.error("[IP_INSPECTION] SQL account search unavailable; using persisted users:",error?.message||error);}
+  const q=term.toLowerCase(),users=(db.users||[]).filter(u=>!q||String(u.username||"").toLowerCase().includes(q)||String(u.email||"").toLowerCase().includes(q)).sort((a,b)=>String(a.username||"").localeCompare(String(b.username||""))).slice(0,30).map(u=>({id:u.id,username:u.username,email:u.email||"",created_at:u.createdAt||u.created_at||null}));
+  return res.json({users});
 });
 const ipGeoCache = new Map();
 async function lookupIpNetworkDetails(ip){
@@ -4916,41 +4911,24 @@ app.post('/api/admin/private-search',auth,ownerOnly,async(req,res)=>{
   const username1=String(req.body.user1||'').trim().replace(/^@/,'').slice(0,80),username2=String(req.body.user2||'').trim().replace(/^@/,'').slice(0,80);
   if(!username1)return res.status(400).json({error:'Enter at least one username'});
   try{
-    const first=await pool.query('SELECT id,username FROM users WHERE LOWER(username)=LOWER($1) LIMIT 1',[username1]);
-    if(!first.rowCount)return res.status(404).json({error:'User not found: '+username1});
-    const users=[first.rows[0]];let sql,params;
-    if(username2){
-      const second=await pool.query('SELECT id,username FROM users WHERE LOWER(username)=LOWER($1) LIMIT 1',[username2]);
-      if(!second.rowCount)return res.status(404).json({error:'User not found: '+username2});
-      users.push(second.rows[0]);
-      sql='SELECT m.id,m.sender_id,m.receiver_id,m.message,m.data,m.created_at,s.username AS sender_username,r.username AS receiver_username FROM private_messages m LEFT JOIN users s ON s.id=m.sender_id LEFT JOIN users r ON r.id=m.receiver_id WHERE (m.sender_id=$1 AND m.receiver_id=$2) OR (m.sender_id=$2 AND m.receiver_id=$1) ORDER BY m.created_at DESC LIMIT 200';params=[first.rows[0].id,second.rows[0].id];
-    }else{
-      sql='SELECT m.id,m.sender_id,m.receiver_id,m.message,m.data,m.created_at,s.username AS sender_username,r.username AS receiver_username FROM private_messages m LEFT JOIN users s ON s.id=m.sender_id LEFT JOIN users r ON r.id=m.receiver_id WHERE m.sender_id=$1 OR m.receiver_id=$1 ORDER BY m.created_at DESC LIMIT 200';params=[first.rows[0].id];
-    }
-    let q={rows:[]};
-    try { q=await pool.query(sql,params); }
-    catch(sqlError) { console.error('Private-message SQL inspection failed; checking persisted message store:',sqlError?.message||sqlError); }
-    // Older deployments may contain messages only in the persisted application store.
-    // Also use this path if the SQL table/schema is unavailable, instead of returning
-    // a blank inspection panel or a generic 500 error.
-    const legacyMessages=Array.isArray(db.privateMessages)?db.privateMessages:[];
+    const resolveInspectionUser=async username=>{try{const q=await pool.query('SELECT id,username FROM users WHERE LOWER(username)=LOWER($1) LIMIT 1',[username]);if(q.rowCount)return q.rows[0];}catch(error){console.error('Private-message inspection account SQL lookup failed:',error?.message||error);}const legacy=(db.users||[]).find(u=>String(u.username||'').toLowerCase()===username.toLowerCase());return legacy?{id:legacy.id,username:legacy.username}:null;};
+    const first=await resolveInspectionUser(username1);if(!first)return res.status(404).json({error:'User not found: '+username1});
+    const users=[first];let sql='',params=[];
+    if(username2){const second=await resolveInspectionUser(username2);if(!second)return res.status(404).json({error:'User not found: '+username2});users.push(second);sql='SELECT m.id,m.sender_id,m.receiver_id,m.message,m.data,m.created_at,s.username AS sender_username,r.username AS receiver_username FROM private_messages m LEFT JOIN users s ON s.id=m.sender_id LEFT JOIN users r ON r.id=m.receiver_id WHERE (m.sender_id=$1 AND m.receiver_id=$2) OR (m.sender_id=$2 AND m.receiver_id=$1) ORDER BY m.created_at DESC LIMIT 200';params=[first.id,second.id];}
+    else{sql='SELECT m.id,m.sender_id,m.receiver_id,m.message,m.data,m.created_at,s.username AS sender_username,r.username AS receiver_username FROM private_messages m LEFT JOIN users s ON s.id=m.sender_id LEFT JOIN users r ON r.id=m.receiver_id WHERE m.sender_id=$1 OR m.receiver_id=$1 ORDER BY m.created_at DESC LIMIT 200';params=[first.id];}
+    let q={rows:[]};try{q=await pool.query(sql,params);}catch(error){console.error('Private-message SQL inspection failed; using persisted message store:',error?.message||error);}
+    const norm=value=>String(value??'').replace(/^@/,'').trim().toLowerCase(),legacyMessages=Array.isArray(db.privateMessages)?db.privateMessages:[];
+    const firstId=String(first.id),firstName=norm(first.username),secondId=username2?String(users[1].id):'',secondName=username2?norm(users[1].username):'';
     const legacyRows=legacyMessages.filter(m=>{
-      const from=String(m.from??m.senderId??m.sender_id??m.senderUsername??m.fromUsername??'').replace(/^@/,'').toLowerCase();
-      const to=String(m.to??m.receiverId??m.receiver_id??m.receiverUsername??m.toUsername??'').replace(/^@/,'').toLowerCase();
-      const firstId=String(users[0].id),firstName=String(users[0].username).toLowerCase();
-      const secondId=username2?String(users[1].id):'',secondName=username2?String(users[1].username).toLowerCase():'';
-      const matchesFirst=from===firstId||to===firstId||from===firstName||to===firstName;
-      const matchesPair=(from===firstId&&to===secondId)||(from===secondId&&to===firstId)||(from===firstName&&to===secondName)||(from===secondName&&to===firstName);
+      const from=m.from??m.senderId??m.sender_id??m.fromUsername??m.senderUsername??m.sender_username,to=m.to??m.receiverId??m.receiver_id??m.toUsername??m.receiverUsername??m.receiver_username,fromName=norm(from),toName=norm(to);
+      const fromUser=(db.users||[]).find(u=>String(u.id)===String(from)||norm(u.username)===fromName),toUser=(db.users||[]).find(u=>String(u.id)===String(to)||norm(u.username)===toName),fromId=String(fromUser?.id??from),toId=String(toUser?.id??to);
+      const matchesFirst=fromId===firstId||toId===firstId||fromName===firstName||toName===firstName;
+      const matchesPair=(fromId===firstId&&toId===secondId)||(fromId===secondId&&toId===firstId)||(fromName===firstName&&toName===secondName)||(fromName===secondName&&toName===firstName);
       return username2?matchesPair:matchesFirst;
-    }).map(m=>{
-      const from=m.from??m.senderId??m.sender_id,to=m.to??m.receiverId??m.receiver_id;
-      const sender=db.users.find(user=>String(user.id)===String(from)||String(user.username).toLowerCase()===String(from??m.fromUsername??m.senderUsername??'').replace(/^@/,'').toLowerCase());
-      const receiver=db.users.find(user=>String(user.id)===String(to)||String(user.username).toLowerCase()===String(to??m.toUsername??m.receiverUsername??'').replace(/^@/,'').toLowerCase());
-      return {...m,sender_id:sender?.id??from,receiver_id:receiver?.id??to,message:m.text??m.message??m.data?.text??m.data?.message??m.data?.content??'',created_at:m.created_at??m.time,sender_username:sender?.username||m.fromUsername||m.senderUsername,receiver_username:receiver?.username||m.toUsername||m.receiverUsername};
-    });
-    const sqlIds=new Set(q.rows.map(row=>String(row.id)));
-    const sourceRows=[...q.rows,...legacyRows.filter(row=>!sqlIds.has(String(row.id)))].sort((x,y)=>new Date(y.created_at||y.time||0).getTime()-new Date(x.created_at||x.time||0).getTime()).slice(0,200);
-    const messages=sourceRows.map(row=>{const data=row.data&&typeof row.data==='object'?row.data:{};return {...data,id:row.id,from:row.sender_id??data.from,to:row.receiver_id??data.to,sender_id:row.sender_id,receiver_id:row.receiver_id,sender_username:row.sender_username||data.fromUsername||data.senderUsername||'Unknown',receiver_username:row.receiver_username||data.toUsername||data.receiverUsername||'Unknown',message:row.message??data.text??data.message??data.content??'',text:data.text??row.message??data.message??data.content??'',attachment:row.attachment??data.attachment??null,created_at:row.created_at,time:data.time??(row.created_at?new Date(row.created_at).getTime():Date.now())};});
+    }).map(m=>{const from=m.from??m.senderId??m.sender_id??m.fromUsername??m.senderUsername??m.sender_username,to=m.to??m.receiverId??m.receiver_id??m.toUsername??m.receiverUsername??m.receiver_username,sender=(db.users||[]).find(u=>String(u.id)===String(from)||norm(u.username)===norm(from)),receiver=(db.users||[]).find(u=>String(u.id)===String(to)||norm(u.username)===norm(to));return {...m,sender_id:sender?.id??from,receiver_id:receiver?.id??to,message:m.text??m.message??m.data?.text??m.data?.message??m.data?.content??'',created_at:m.created_at??m.time,sender_username:sender?.username||m.fromUsername||m.senderUsername||m.sender_username,receiver_username:receiver?.username||m.toUsername||m.receiverUsername||m.receiver_username};});
+    const sqlIds=new Set(q.rows.filter(row=>row.id!==undefined&&row.id!==null).map(row=>String(row.id)));
+    const sourceRows=[...q.rows,...legacyRows.filter(row=>row.id===undefined||row.id===null||!sqlIds.has(String(row.id)))].sort((x,y)=>new Date(y.created_at||y.time||0).getTime()-new Date(x.created_at||x.time||0).getTime()).slice(0,200);
+    const messages=sourceRows.map(row=>{const data=row.data&&typeof row.data==='object'?row.data:{},attachment=row.attachment??data.attachment??data.attachments??null;return {...data,id:row.id,from:row.sender_id??data.from,to:row.receiver_id??data.to,sender_id:row.sender_id,receiver_id:row.receiver_id,sender_username:row.sender_username||data.fromUsername||data.senderUsername||data.sender_username||'Unknown',receiver_username:row.receiver_username||data.toUsername||data.receiverUsername||data.receiver_username||'Unknown',message:row.message??data.text??data.message??data.content??'',text:data.text??row.message??data.message??data.content??'',attachment,created_at:row.created_at??data.created_at,time:data.time??(row.created_at?new Date(row.created_at).getTime():Date.now())};});
     res.json({messages,users});
   }catch(error){console.error('Owner private-message inspection failed:',error);res.status(500).json({error:'Could not inspect private messages. Please retry.'});}
 });
