@@ -130,6 +130,14 @@ async function initDB() {
       likes INT DEFAULT 0,
       created_at TIMESTAMP DEFAULT NOW()
     );
+    CREATE TABLE IF NOT EXISTS doodles(
+      id BIGSERIAL PRIMARY KEY,
+      user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      title VARCHAR(80) NOT NULL DEFAULT 'Untitled doodle',
+      image_data TEXT NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+    CREATE INDEX IF NOT EXISTS doodles_user_created_idx ON doodles(user_id,created_at DESC);
     CREATE TABLE IF NOT EXISTS history(
       id SERIAL PRIMARY KEY,
       user_id INT,
