@@ -1347,7 +1347,7 @@ app.post("/api/rooms/:id/staff-action",auth,async(req,res)=>{
   else if(action==="UNBLOCK"){delete settings.room_blocks[key]?.[targetId];}
   else return res.status(400).json({error:"Unsupported room action."});
   save();log(actor,"ROOM_STAFF_ACTION",target.username,{roomId:key,action,reason});
-  if(action==="KICK"){for(const sock of io.sockets.sockets.values()){if(String(sock.data?.userId||sock.userId||sock.user?.id||"")===targetId){sock.leave("room:"+room.id);sock.emit("room:kicked",{roomId:key,reason,until:settings.room_kicks[key][targetId].until});}}}
+  if(action==="KICK"||action==="BLOCK"){for(const sock of io.sockets.sockets.values()){if(String(sock.data?.userId||sock.userId||sock.user?.id||"")===targetId&&String(sock.data?.roomId||"")===key){sock.leave("room:"+room.id);sock.emit("room:kicked",{roomId:key,reason,blocked:action==="BLOCK",until:action==="KICK"?settings.room_kicks[key][targetId].until:null});}}}
   res.json({ok:true,action,reason});
 });
 app.patch("/api/rooms/:id",auth,async(req,res)=>{
