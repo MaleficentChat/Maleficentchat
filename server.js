@@ -181,7 +181,8 @@ const FEATURE_CONTROLS=[
 
 const GRANT_RANKS=["MEMBER","VIP","PREMIUM","MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"];
 const FEATURE_GRANT_DEFAULTS={
-  send_messages:GRANT_RANKS,\n  doodle_studio:GRANT_RANKS,
+  send_messages:GRANT_RANKS,
+  doodle_studio:GRANT_RANKS,
   private_messages:GRANT_RANKS,
   gif_sending:GRANT_RANKS,
   profile_note:["MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],
