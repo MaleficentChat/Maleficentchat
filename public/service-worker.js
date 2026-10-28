@@ -1,4 +1,4 @@
-const CACHE="maleficent-chat-v9-instagram-ui";
+const CACHE="maleficent-chat-v10-compact-layout";
 const ASSETS=["/","/style.css","/app.js","/manifest.json","/favicon.svg","/robots.txt","/sitemap.xml","/doodle-studio.js"];
 
 self.addEventListener("install",event=>{
