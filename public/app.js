@@ -2640,6 +2640,7 @@ async function openProfileActionDrawer(user,data={}){
     <button class="quick-user-row" id="drawerStaffModification"><span>🛠️</span><b>Staff modification</b><i>›</i></button>
     <button class="quick-user-row" id="drawerWallet"><span>🪙</span><b>Share wallet</b><i>›</i></button>
     <button class="quick-user-row" id="drawerGiveRank"><span>🏅</span><b>Give rank</b><i>›</i></button>
+    <button class="quick-user-row" id="drawerRoomRank"><span>✨</span><b>Room rank</b><i>›</i></button>
     <button class="quick-user-row" id="drawerModerateUser"><span>🛡️</span><b>Moderate user</b><i>›</i></button>
     <button class="quick-user-row" id="drawerStaffAccount"><span>⚙️</span><b>Staff account</b><i>›</i></button>
     <button class="quick-user-row" id="drawerUserHistory"><span>📜</span><b>User history</b><i>›</i></button>
@@ -2653,11 +2654,21 @@ async function openProfileActionDrawer(user,data={}){
   $('drawerStaffModification')?.addEventListener('click',()=>staffAccountModificationModal(user));
   $('drawerWallet')?.addEventListener('click',()=>shareGoldModal(user));
   $('drawerGiveRank')?.addEventListener('click',()=>rankFromProfile(user));
+  $('drawerRoomRank')?.addEventListener('click',()=>roomRankModal(user));
   $('drawerModerateUser')?.addEventListener('click',()=>moderate(id));
   $('drawerStaffAccount')?.addEventListener('click',()=>staffAccountModal(user));
   $('drawerUserHistory')?.addEventListener('click',()=>showUserActionHistory(id));
   $('drawerNickname')?.addEventListener('click',async()=>{const current=(await api('/api/private-nicknames').catch(()=>({nicknames:{}}))).nicknames||{};const value=prompt('Private nickname for @'+(user.username||'user')+' (only you can see it):',current[id]||'');if(value===null)return;try{await api('/api/private-nickname',{method:'POST',body:JSON.stringify({targetId:id,nickname:value.trim()})});closeModal();toast(value.trim()?'Private nickname saved.':'Private nickname cleared.');}catch(e){toast(e.message)}});
   $('drawerReport')?.addEventListener('click',async()=>{const reason=prompt('Why are you reporting this user?','Rule-breaking behavior');if(reason===null)return;try{await api('/api/report',{method:'POST',body:JSON.stringify({reportedUserId:id,reason})});closeModal();toast('Report submitted.');}catch(e){toast(e.message)}});
+}
+async function roomRankModal(user){
+  const room=state.rooms.find(r=>String(r.id)===String(state.currentRoom));
+  if(!room){toast('Join a room first.');return;}
+  const roleOptions=[['USER','✨ User'],['ROOM_MODERATOR','🪄 Room Moderator'],['ROOM_ADMIN','💫 Room Admin'],['ROOM_OWNER','🎩 Room Owner']];
+  let current='USER';
+  try{const d=await api(`/api/rooms/${encodeURIComponent(room.id)}/staff`);current=d.staff?.find(x=>String(x.user.id)===String(user.id))?.role||'USER';}catch(e){toast(e.message);return;}
+  modal(`<h2>✨ Room rank</h2><p class="muted">Set @${esc(user.username)}'s rank in <b>${esc(room.name)}</b> only. Their global rank is unchanged.</p><label>Room rank<select id="roomRankChoice">${roleOptions.map(([v,label])=>`<option value="${v}" ${current===v?'selected':''}>${label}</option>`).join('')}</select></label><button class="primary" id="saveRoomRank">Save room rank</button>`);
+  $('saveRoomRank').onclick=async()=>{try{const role=$('roomRankChoice').value;await api(`/api/rooms/${encodeURIComponent(room.id)}/staff/${encodeURIComponent(user.id)}`,{method:'PUT',body:JSON.stringify({role})});closeModal();toast('Room rank updated.');await loadRooms();}catch(e){toast(e.message)}};
 }
 async function showBlockedUsers(){
   try{const r=await api('/api/users/blocked'); modal(`<h2>🚫 Blocked users</h2><div class="stack">${(r.users||[]).map(u=>`<div class="card blocked-user-row">${avatar(u)}<div><b>${esc(u.displayName)}</b><small>@${esc(u.username)}</small></div><button class="mini" onclick="unblockFromList('${esc(u.id)}')">Unblock</button></div>`).join('')||'<p class="muted">You have not blocked anyone.</p>'}</div>`);}catch(e){toast(e.message)}}
@@ -4243,7 +4254,10 @@ $("newRoom").onclick = () => {
 /* ---------------- V3 SETTINGS / FEATURE CENTER ---------------- */
 
 function applyTheme(theme){
-  document.documentElement.dataset.theme=theme||'obsidian';
+  const allowedThemes=['obsidian','midnight','forest','rose','lavender','sunset','ocean'];
+  theme=allowedThemes.includes(String(theme||'').toLowerCase())?String(theme).toLowerCase():'obsidian';
+  document.documentElement.dataset.theme=theme;
+  document.body.dataset.theme=theme;
   const st=state.user?.settings||{}; document.documentElement.style.setProperty('--username-color',st.usernameColor||'#9b5cff');
   document.documentElement.style.setProperty('--profile-color',state.user?.profileColor||'#9b5cff');
   document.documentElement.style.setProperty('--profile-accent',state.user?.profileAccentColor||st.profileAccentColor||'#ff4fd8'); document.documentElement.style.setProperty('--bubble-color',st.bubbleColor||'#33244f'); document.documentElement.style.setProperty('--chat-font',st.chatFont||'Inter'); document.documentElement.style.setProperty('--chat-size',st.fontSize==='large'?'1.08em':st.fontSize==='small'?'.94em':'1em'); document.documentElement.classList.toggle('compact-chat',!!st.compactMode); document.documentElement.dataset.effects=st.messageEffects||'none';
@@ -4274,7 +4288,7 @@ async function loadSettings(){
     <section class="gold-economy-section settings-gold-boutique"><div class="gold-economy-heading"><div><h3>🪙 Gold Boutique</h3><p class="muted">Personalize your profile with frames, themes and collectible badges.</p></div><div class="gold-balance-pill">Balance <b id="economyGoldBalance">—</b> 🪙</div></div><div id="goldEconomyRoot"><p class="muted">Loading cosmetics…</p></div></section>`;
   await loadGoldEconomy();
   $('v3Theme').value=s.theme||'obsidian'; $('v3Font').value=s.fontSize||'medium'; $('v3ChatFont').value=s.chatFont||'Inter'; $('v3Effects').value=s.messageEffects||'none'; $('v3Compact').checked=!!s.compactMode; $('v3Motion').checked=!!s.reducedMotion; $('v3Contrast').checked=!!s.highContrast; applyTheme(s.theme||'obsidian');
-  document.querySelectorAll('[data-theme-choice]').forEach(b=>b.onclick=()=>{ $('v3Theme').value=b.dataset.themeChoice; applyTheme(b.dataset.themeChoice); document.querySelectorAll('[data-theme-choice]').forEach(x=>x.classList.toggle('active',x===b)); });
+  document.querySelectorAll('[data-theme-choice]').forEach(b=>b.onclick=async()=>{ const theme=b.dataset.themeChoice; $('v3Theme').value=theme; applyTheme(theme); document.querySelectorAll('[data-theme-choice]').forEach(x=>x.classList.toggle('active',x===b)); try{const r=await api('/api/settings',{method:'PUT',body:JSON.stringify({theme})});state.user.settings={...(state.user.settings||{}),...(r.settings||{}),theme};state.user.theme=theme;toast(theme[0].toUpperCase()+theme.slice(1)+' theme applied and saved.');}catch(e){toast('Theme preview applied, but saving failed: '+e.message);} });
   $('saveProfileColors').onclick=async()=>{try{const r=await api('/api/profile',{method:'PUT',body:JSON.stringify({profileColor:$('profileColor').value,profileAccentColor:$('profileAccentColor').value})});state.user=r.user;toast('Profile colors saved.');await loadProfile(state.user);}catch(e){toast(e.message)}};
   $('savePrivacy').onclick=async()=>{try{await api('/api/profile',{method:'PUT',body:JSON.stringify({privacy:{lastSeen:$('setLastSeen').checked,online:$('setOnline').checked}})});toast('Privacy saved.');}catch(e){toast(e.message)}};
   $('saveAppearance').onclick=async()=>{try{const payload={theme:$('v3Theme').value,fontSize:$('v3Font').value,compactMode:$('v3Compact').checked,reducedMotion:$('v3Motion').checked,highContrast:$('v3Contrast').checked,usernameColor:$('v3UsernameColor').value,chatFont:$('v3ChatFont').value,messageEffects:$('v3Effects').value,bubbleColor:$('v3BubbleColor').value};const r=await api('/api/settings',{method:'PUT',body:JSON.stringify(payload)});state.user.settings={...(state.user.settings||{}),...(r.settings||payload),theme:payload.theme};applyTheme(state.user.settings.theme);applyUserAppearance();renderMessages();toast('Appearance saved and applied.');}catch(e){toast(e.message)}};
