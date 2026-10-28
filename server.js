@@ -1178,7 +1178,7 @@ app.get(
     const viewerCanSeeInvisible=(target)=>!!viewer&&staff(viewer.rank)&&
       (rankOrder[viewer.rank]??-1)>(rankOrder[target?.rank]??-1);
     let arr=db.users
-      .filter(u=>(!u.deadMode||String(u.id)===String(viewer?.id))&&(!u.invisible||viewerCanSeeInvisible(u)||String(u.id)===String(viewer?.id))&&(
+      .filter(u=>(!u.hideMode||String(u.id)===String(viewer?.id))&&(!u.deadMode||String(u.id)===String(viewer?.id))&&(!u.invisible||viewerCanSeeInvisible(u)||String(u.id)===String(viewer?.id))&&(
           !q||
           u.username
             .toLowerCase()
@@ -1228,7 +1228,7 @@ app.post("/api/me/dead-mode",auth,(req,res)=>{
   const enable=!!req.body?.enabled;
   if(enable && !u.deadMode)u.deadModePreviousInvisible=!!u.invisible;
   u.deadMode=enable;
-  if(u.deadMode){u.hideMode=true;u.invisible=true;}
+  if(u.deadMode){u.hideMode=false;u.invisible=false;}
   else if(Object.prototype.hasOwnProperty.call(u,"deadModePreviousInvisible")){u.invisible=!!u.deadModePreviousInvisible;delete u.deadModePreviousInvisible;}
   save();log(u,"DEAD_MODE",u.username,{enabled:u.deadMode});io.emit("presence");
   res.json({ok:true,hideMode:!!u.hideMode,deadMode:!!u.deadMode,invisible:!!u.invisible});
@@ -1583,7 +1583,9 @@ function malReply(user,rawText){
 }
 
 app.post("/api/rooms/:id/messages",auth,featureAllowed("send_messages"),upload.single("file"),async(req,res)=>{
-  const u=current(req); const r=db.rooms.find(x=>String(x.id)===String(req.params.id));
+  const u=current(req);
+  if(u.hideMode)return res.status(403).json({error:"Ghost Mode is active. Turn it off before sending visible room messages."});
+  const r=db.rooms.find(x=>String(x.id)===String(req.params.id));
   if(!r)return res.status(404).json({error:"Room not found"});
   if(!verifyRoomJoinToken(req.headers['x-room-join-token'],u.id,r))return res.status(403).json({error:"Join this room before sending messages."});
   const roomSettings=roomStaffStore(),roomKey=String(r.id),uid=String(u.id);
@@ -4576,7 +4578,7 @@ app.put('/api/profile',auth,(req,res)=>{
 
 app.get('/api/users/:id/profile',auth,(req,res)=>{
   const u=current(req), v=findUser(req.params.id);
-  if(!v || (v.deadMode && String(v.id)!==String(u.id))) return res.status(404).json({error:"User not found"});
+  if(!v || ((v.deadMode||v.hideMode) && String(v.id)!==String(u.id))) return res.status(404).json({error:"User not found"});
   const liked=Array.isArray(db.profileLikes)&&db.profileLikes.some(x=>x.target===v.id&&x.by===u.id);
   const friendship=db.friends.find(f=>((f.a===u.id&&f.b===v.id)||(f.a===v.id&&f.b===u.id)));
   res.json({user:safeUser(v),email:(hasRank(u,'MOD')&&v.id!==u.id&&rankOrder[v.rank]<rankOrder[u.rank])?(v.email||''):'',likedByMe:liked,friendship:friendship?friendship.status:null,profileLikes:v.profileLikes||0});
