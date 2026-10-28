@@ -3443,14 +3443,9 @@ async function loadOwner() {
 
                 </div>
 
-                <button
-                  class="mini"
-                  onclick="ownerEdit(
-                    '${esc(user.id)}'
-                  )"
-                >
-                  Manage
-                </button>
+                ${user.username === "Maleficent" || String(user.rank).toUpperCase() === "DEVELOPER"
+                  ? '<button class="mini" type="button" disabled title="Permanent Developer account is protected">Protected</button>'
+                  : '<button class="mini" type="button" onclick="ownerEdit(\''+esc(user.id)+'\')">Manage</button>'}
 
               </div>
             `)
