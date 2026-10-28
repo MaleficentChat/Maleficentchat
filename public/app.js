@@ -1307,8 +1307,6 @@ function closeStefanCard(id){
   if(id){ document.getElementById(id)?.remove(); return; }
   document.querySelectorAll(".stefan-card").forEach(x=>x.remove());
 }
-function openScheduleFromStefan(){ $("scheduleBtn")?.click(); }
-function cycleExpiryFromStefan(){ $("expireBtn")?.click(); }
 
 function appendMessage(message) {
   if (
@@ -3839,7 +3837,7 @@ async function ownerFeatureGrants(){
       view_emails:'View account emails',manage_ranks:'Manage ranks',manage_settings:'Manage site settings',manage_clubs:'Manage clubs',manage_bots:'Manage bots',
       manage_mal_ai:'Manage Mal AI',manage_aurora:'Manage Aurora bot',manage_feature_lab:'Manage Feature Lab',report_message:'Report messages',
       moderate_user:'Moderate users',clear_room:'Clear room messages',edit_message:'Edit own messages',pin_message:'Pin messages',save_message:'Save messages',
-      react_message:'React to messages',schedule_message:'Schedule messages',expire_message:'Use expiring messages',use_youtube:'Share YouTube videos and YouTube Music',
+      react_message:'React to messages',use_youtube:'Share YouTube videos and YouTube Music',
       room_announcement:'Post room announcements',view_pinned:'View pinned messages',manage_filters:'Manage filtered words',delete_news:'Delete news',
       manage_staff_accounts:'Manage staff account details',staff_rank_assignment:'Assign staff ranks',manage_gold:'Manage user gold',profile_like:'Like profiles',
       enter_private_club:'Enter private clubs',wall_post:'Friends Wall posting',manage_news:'Manage news'
@@ -3855,12 +3853,12 @@ async function ownerFeatureGrants(){
       view_ips:'Access IP inspection details.',view_emails:'View registered email addresses.',manage_ranks:'Change account ranks.',manage_settings:'Change site-wide settings.',
       manage_clubs:'Manage clubs.',manage_bots:'Manage community bots.',manage_mal_ai:'Edit Mal AI commands.',manage_aurora:'Manage Aurora bot.',manage_feature_lab:'Manage Feature Lab.',
       report_message:'Submit reports about messages.',moderate_user:'Access moderation actions.',clear_room:'Clear room messages.',edit_message:'Edit messages you sent.',pin_message:'Pin chat messages.',
-      save_message:'Save messages.',react_message:'React to messages.',schedule_message:'Schedule messages.',expire_message:'Send expiring messages.',use_youtube:'Share YouTube videos and YouTube Music.',
+      save_message:'Save messages.',react_message:'React to messages.',use_youtube:'Share YouTube videos and YouTube Music.',
       room_announcement:'Post room announcements.',view_pinned:'View pinned messages.',manage_filters:'Manage filtered-word settings.',delete_news:'Delete published news.',
       manage_staff_accounts:'Edit staff account details.',staff_rank_assignment:'Assign eligible staff ranks.',manage_gold:'Adjust user gold.',profile_like:'Like user profiles.',enter_private_club:'Enter private clubs.'
     };
     const categoryFor={
-      send_messages:'Chat & media',emojis_stickers:'Chat & media',chat_file_upload:'Chat & media',gif_sending:'Chat & media',private_messages:'Chat & media',edit_message:'Chat & media',pin_message:'Chat & media',save_message:'Chat & media',react_message:'Chat & media',schedule_message:'Chat & media',expire_message:'Chat & media',use_youtube:'Chat & media',
+      send_messages:'Chat & media',emojis_stickers:'Chat & media',chat_file_upload:'Chat & media',gif_sending:'Chat & media',private_messages:'Chat & media',edit_message:'Chat & media',pin_message:'Chat & media',save_message:'Chat & media',react_message:'Chat & media',use_youtube:'Chat & media',
       create_rooms:'Rooms',edit_rooms:'Rooms',delete_rooms:'Rooms',join_rooms:'Rooms',delete_own_room:'Rooms',clear_room:'Rooms',room_announcement:'Rooms',view_pinned:'Rooms',
       friend_wall_posting:'Social & community',wall_post:'Social & community',wall_commenting:'Social & community',wall_liking:'Social & community',wall_upload:'Social & community',profile_like:'Social & community',manage_clubs:'Social & community',enter_private_club:'Social & community',share_gold:'Gold & rewards',
       news_posting:'News & content',manage_news:'News & content',delete_news:'News & content',
