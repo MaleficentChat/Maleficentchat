@@ -1704,7 +1704,7 @@ app.post("/api/rooms/:id/messages",auth,featureAllowed("send_messages"),upload.s
   }
   const roomRank=roomRole(r.id,u.id);
   const anonymousMode=!!(u.hideMode||u.deadMode);
-   const m={id:id(),roomId:String(r.id),userId:anonymousMode?null:u.id,username:anonymousMode?"Aurora":u.username,displayName:anonymousMode?"Aurora":u.displayName,rank:anonymousMode?"BOT":u.rank,system:anonymousMode,isBot:anonymousMode,bot:anonymousMode?"Aurora":undefined,anonymous:anonymousMode,roomRank:anonymousMode?"USER":roomRank,roomRankBadge:({USER:"✨",ROOM_MODERATOR:"🪄",ROOM_ADMIN:"💫",ROOM_OWNER:"🎩"})[roomRank]||"✨",
+   const m={id:id(),roomId:String(r.id),userId:anonymousMode?null:u.id,username:anonymousMode?"Aurora":u.username,displayName:anonymousMode?"Aurora":u.displayName,rank:anonymousMode?"BOT":u.rank,system:anonymousMode,isBot:anonymousMode,bot:anonymousMode?"Aurora":undefined,anonymous:anonymousMode,roomRank:anonymousMode?"USER":roomRank,roomRankBadge:({USER:"✨",ROOM_MODERATOR:"🪄",ROOM_ADMIN:"💫",ROOM_OWNER:"🎩"})[anonymousMode?"USER":roomRank]||"✨",
     usernameColor:u.settings?.usernameColor||"",chatFont:u.settings?.chatFont||"",text,
     attachment:req.file?{url:"/uploads/"+req.file.filename,type:req.file.mimetype,name:req.file.originalname}:null,
     replyTo:req.body.replyTo||null,forwardedFrom:req.body.forwardedFrom||null,reactions:{},edited:false,deleted:false,pinned:false,time:Date.now(),delivered:true};
@@ -4262,7 +4262,7 @@ io.on(
       io.emit("presence");
       // Aurora room-presence announcement: every successful room switch is announced
       // to the destination room when Aurora is enabled.
-      if(db.aurora?.enabled !== false){
+      if(db.aurora?.enabled !== false && !u.deadMode){
         io.to("room:"+roomId).emit("system-message", {
           id:id(),
           roomId,
@@ -4559,7 +4559,7 @@ app.put('/api/profile',auth,(req,res)=>{
 
 app.get('/api/users/:id/profile',auth,(req,res)=>{
   const u=current(req), v=findUser(req.params.id);
-  if(!v) return res.status(404).json({error:"User not found"});
+  if(!v || (v.deadMode && String(v.id)!==String(u.id))) return res.status(404).json({error:"User not found"});
   const liked=Array.isArray(db.profileLikes)&&db.profileLikes.some(x=>x.target===v.id&&x.by===u.id);
   const friendship=db.friends.find(f=>((f.a===u.id&&f.b===v.id)||(f.a===v.id&&f.b===u.id)));
   res.json({user:safeUser(v),email:(hasRank(u,'MOD')&&v.id!==u.id&&rankOrder[v.rank]<rankOrder[u.rank])?(v.email||''):'',likedByMe:liked,friendship:friendship?friendship.status:null,profileLikes:v.profileLikes||0});
