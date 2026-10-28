@@ -957,11 +957,16 @@ function isStaffUser(user){
   return ["MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER","DEVELOPER"].includes(user.rank);
 }
 
+let onlineFavorites=new Set();
+async function toggleFavoriteUser(userId){try{const result=await api("/api/favorites/"+encodeURIComponent(userId),{method:"POST"});if(result.favorite)onlineFavorites.add(String(userId));else onlineFavorites.delete(String(userId));toast(result.favorite?"Added to favorites.":"Removed from favorites.");await renderOnline(onlinePanelTab);}catch(e){toast(e.message||"Could not update favorite.");}}
+
 async function renderOnline(tab=onlinePanelTab,searchQuery=""){
   onlinePanelTab=tab;
   try{
     const data=await api("/api/users");
     onlinePanelCache=data.users||[];
+    const favoriteData=await api("/api/favorites").catch(()=>({ids:[]}));
+    onlineFavorites=new Set((favoriteData.ids||[]).map(String));
     // Room roles are only badges in the user list; global ranks remain the
     // authority for message headers and the rest of the site.
     let roomRoleByUser={};
@@ -984,7 +989,10 @@ async function renderOnline(tab=onlinePanelTab,searchQuery=""){
 
     if(tab==="all"){ list=onlinePanelCache; title="All users"; }
     else if(tab==="offline"){ list=offline; title="Offline users"; }
-    else if(tab==="staff"){ list=onlinePanelCache.filter(isStaffUser); title="Staff"; }
+    else if(tab==="staff"){ list=onlinePanelCache.filter(isStaffUser); title="Site staff"; }
+    else if(tab==="roomstaff"){list=onlinePanelCache.filter(u=>!!roomRoleByUser[String(u.id)]);title="Room staff";}
+    else if(tab==="favorites"){list=onlinePanelCache.filter(u=>onlineFavorites.has(String(u.id)));title="Favorites";}
+    else if(tab==="recent"){list=[...onlinePanelCache].filter(u=>u.lastActive).sort((a,b)=>Number(b.lastActive)-Number(a.lastActive)).slice(0,30);title="Recently active";}
     else if(tab==="friends"){ list=onlinePanelCache.filter(u=>friendIds.has(u.id)); title="Friends"; }
     else if(tab==="search"){
       const needle=searchQuery.trim().toLowerCase();
@@ -1001,9 +1009,10 @@ async function renderOnline(tab=onlinePanelTab,searchQuery=""){
         ${avatar(user)}
         <div class="online-user-copy">
           <b>${esc(user.displayName)}</b>
-          <small>@${esc(user.username)} ${invisibleDot(user)}${user.invisible?"":" · "+(user.online?"Online":"Offline")}</small>
+          <small>@${esc(user.username)} ${invisibleDot(user)}${user.invisible?"":" · "+(user.customStatus||(user.online?"Available":"Away"))}</small>
           <span class="room-user-rank" title="${esc(roomRoleLabel[roomRoleByUser[String(user.id)]]||user.rank||'Member')}">${roomRoleByUser[String(user.id)] ? (roomRoleIcon[roomRoleByUser[String(user.id)]]||'✨') : (rankIcon[String(user.rank||'MEMBER').toUpperCase()]||'⚡')} ${esc(roomRoleLabel[roomRoleByUser[String(user.id)]]||String(user.rank||'MEMBER').replaceAll('_',' '))}</span>
         </div>
+        <button type="button" class="online-favorite ${onlineFavorites.has(String(user.id))?"is-favorite":""}" data-uid="${esc(user.id)}" title="Toggle favorite" onclick="event.stopPropagation();toggleFavoriteUser(this.dataset.uid)">${onlineFavorites.has(String(user.id))?"★":"☆"}</button>
         ${invisibleToggleMarkup(user,true)}
         <span class="status ${!user.invisible&&user.online?'on':''}"></span>
       </div>
