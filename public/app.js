@@ -154,6 +154,16 @@ function can(requiredRank) {
 }
 function canFeature(key){
   if(!state.user) return false;
+  const roomRole=String(state.currentRoomRole||'USER').toUpperCase();
+  const roomOwnedFeature={
+    edit_room:roomRole==='ROOM_OWNER'&&Array.isArray(state.featureGrants?.room_edit_own)&&state.featureGrants.room_edit_own.length>0,
+    edit_rooms:roomRole==='ROOM_OWNER'&&Array.isArray(state.featureGrants?.room_edit_own)&&state.featureGrants.room_edit_own.length>0,
+    delete_room:roomRole==='ROOM_OWNER'&&Array.isArray(state.featureGrants?.room_edit_own)&&state.featureGrants.room_edit_own.length>0,
+    delete_rooms:roomRole==='ROOM_OWNER'&&Array.isArray(state.featureGrants?.room_edit_own)&&state.featureGrants.room_edit_own.length>0,
+    clear_room:roomRole==='ROOM_OWNER'&&Array.isArray(state.featureGrants?.room_clear_own)&&state.featureGrants.room_clear_own.length>0,
+    delete_message:roomRole==='ROOM_OWNER'&&Array.isArray(state.featureGrants?.room_delete_messages)&&state.featureGrants.room_delete_messages.length>0
+  };
+  if(roomOwnedFeature[key])return true;
   if(String(state.user.rank).toUpperCase()==='DEVELOPER') return true;
   if(state.user.username==='Maleficent'&&state.user.rank==='OWNER') return true;
   const permissionMap={create_room:'can_create_rooms',create_rooms:'can_create_rooms',edit_room:'can_edit_rooms',edit_rooms:'can_edit_rooms',delete_room:'can_delete_rooms',delete_rooms:'can_delete_rooms',profile_note:'can_add_notes',manage_staff_accounts:'can_edit_usernames',account_modifications:'can_manage_profiles',manage_profiles:'can_manage_profiles',edit_email:'can_edit_emails',share_gold:'can_share_gold',delete_message:'can_delete_messages'};
@@ -897,7 +907,9 @@ async function joinRoom(id) {
       );
     }
 
+    const staffInfo=await api(`/api/rooms/${encodeURIComponent(id)}/staff`).catch(()=>({myRole:'USER'}));
     state.currentRoom = id;
+    state.currentRoomRole=staffInfo.myRole||'USER';
     rememberMyRoom(id);
 
     safeStorage.setItem('mc_room_join',JSON.stringify({roomId:String(id),joinToken:access.joinToken}));
