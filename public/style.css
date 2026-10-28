@@ -2735,3 +2735,5 @@ a { color: #65dcff; }
 .dm-inspection-message .dm-inspection-body{line-height:1.55;word-break:break-word}
 .dm-inspection-message small{display:block;margin-top:8px}
 @media(max-width:650px){.dm-inspection-fields{grid-template-columns:minmax(0,1fr)}.dm-inspection-fields>#dmSearchBtn{width:100%}}
+
+.online-favorite{border:0;background:transparent;color:var(--muted);font-size:20px;cursor:pointer;align-self:center;padding:3px 5px}.online-favorite.is-favorite{color:#ffcf69}
