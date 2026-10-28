@@ -2378,6 +2378,40 @@ app.get('/api/account/export',auth,(req,res)=>{
   res.json({exportedAt:Date.now(),account:{username:u.username,displayName:u.displayName,createdAt:u.createdAt,rank:u.rank,level:u.level,xp:u.xp,gold:u.gold,bio:u.bio,interests:u.interests,achievements:u.achievements},loginHistory:u.loginHistory||[]});
 });
 
+app.post('/api/staff/system-notifications',auth,featureAllowed('view_staff_dashboard'),async(req,res)=>{
+  const actor=current(req);
+  if(!hasRank(actor,'MOD'))return res.status(403).json({error:'Staff only'});
+  const title=String(req.body?.title||'').trim().slice(0,100);
+  const message=String(req.body?.message||'').trim().slice(0,2000);
+  const targetRank=String(req.body?.targetRank||'ALL').trim().toUpperCase();
+  const allowedTargets=['ALL','MEMBER','VIP','PREMIUM','MOD','ADMIN','SUPER_ADMIN','COMMISSOR','COOWNER','OWNER','DEVELOPER'];
+  if(!title||!message)return res.status(400).json({error:'Enter both a notification title and message.'});
+  if(!allowedTargets.includes(targetRank))return res.status(400).json({error:'Choose a valid recipient rank.'});
+  try{
+    const q=targetRank==='ALL'
+      ? await pool.query('SELECT id FROM users ORDER BY id')
+      : await pool.query('SELECT id FROM users WHERE UPPER(rank)=$1 ORDER BY id',[targetRank]);
+    if(!q.rows.length)return res.status(400).json({error:'No users were found for that audience.'});
+    const ids=q.rows.map(row=>Number(row.id)).filter(Number.isFinite);
+    const client=await pool.connect();
+    let inserted=[];
+    try{
+      await client.query('BEGIN');
+      for(const userId of ids){
+        const result=await client.query(
+          "INSERT INTO notifications(user_id,type,title,message,is_read) VALUES($1,'system-announcement',$2,$3,false) RETURNING user_id",
+          [userId,title,message]
+        );
+        if(result.rows[0])inserted.push(Number(result.rows[0].user_id));
+      }
+      await client.query('COMMIT');
+    }catch(err){try{await client.query('ROLLBACK')}catch{}throw err;}finally{client.release();}
+    for(const userId of inserted)io.to('user:'+userId).emit('notification');
+    try{await pool.query("INSERT INTO admin_audit_logs(actor_id,action,target_type,target_id,details) VALUES($1,$2,$3,$4,$5)",[Number(actor.id),'system_notification_sent','notification_audience',targetRank,JSON.stringify({title,recipientCount:inserted.length})]);}catch{}
+    res.json({ok:true,sent:inserted.length,targetRank,title});
+  }catch(err){console.error('System notification send failed:',err);res.status(500).json({error:'Could not send the system notification. Please try again.'});}
+});
+
 app.get('/api/notifications',auth,async(req,res)=>{const {rows}=await pool.query(`SELECT id,type,title,message,is_read,created_at FROM notifications WHERE user_id=$1 ORDER BY created_at DESC LIMIT 20`,[Number(current(req).id)]);res.json({notifications:rows.map(n=>({id:String(n.id),type:n.type,title:n.title||n.type,text:n.message,message:n.message,time:n.created_at,read:n.is_read}))});});
 app.get('/api/notifications/unread',auth,async(req,res)=>{const {rows}=await pool.query(`SELECT id,type,title,message,is_read,created_at FROM notifications WHERE user_id=$1 AND is_read=false ORDER BY created_at DESC LIMIT 100`,[Number(current(req).id)]);res.json({notifications:rows.map(n=>({id:String(n.id),type:n.type,title:n.title||n.type,text:n.message,message:n.message,time:n.created_at,read:n.is_read}))});});
 app.patch('/api/notifications/:id/read',auth,async(req,res)=>{const r=await pool.query(`UPDATE notifications SET is_read=true WHERE id=$1 AND user_id=$2 RETURNING id`,[req.params.id,Number(current(req).id)]);if(!r.rowCount)return res.status(404).json({error:'Notification not found'});res.json({ok:true});});
