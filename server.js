@@ -3097,7 +3097,7 @@ app.get('/api/doodles/:id/image',auth,async(req,res)=>{
 app.post('/api/doodles',auth,featureAllowed('doodle_studio'),async(req,res)=>{
   const u=current(req),title=cleanText(req.body?.title||'Untitled doodle').trim().slice(0,80)||'Untitled doodle';
   const image=String(req.body?.image||'');
-  if(!/^data:image\\/png;base64,[A-Za-z0-9+/=]+$/.test(image))return res.status(400).json({error:'Upload a valid PNG doodle.'});
+  if(!/^data:image\/png;base64,[A-Za-z0-9+/=]+$/.test(image))return res.status(400).json({error:'Upload a valid PNG doodle.'});
   if(image.length>1750000)return res.status(413).json({error:'This doodle is too large. Please simplify it and save again.'});
   const {rows}=await pool.query('INSERT INTO doodles(user_id,title,image_data) VALUES($1,$2,$3) RETURNING id,title,created_at',[Number(u.id),title,image]);
   res.status(201).json({doodle:{...rows[0],id:String(rows[0].id),createdAt:rows[0].created_at}});
