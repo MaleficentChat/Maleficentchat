@@ -1,5 +1,5 @@
-const CACHE="maleficent-chat-v6";
-const ASSETS=["/","/style.css","/app.js","/manifest.json"];
+const CACHE="maleficent-chat-v7-seo";
+const ASSETS=["/","/style.css","/app.js","/manifest.json","/favicon.svg","/robots.txt","/sitemap.xml"];
 
 self.addEventListener("install",event=>{
   event.waitUntil(
@@ -13,7 +13,7 @@ self.addEventListener("fetch",event=>{
   if(event.request.method!=="GET")return;
   const url=new URL(event.request.url);
   const refreshable=event.request.mode==="navigate" ||
-    ["/","/index.html","/app.js","/style.css","/manifest.json"].includes(url.pathname);
+    ["/","/index.html","/app.js","/style.css","/manifest.json","/favicon.svg","/robots.txt","/sitemap.xml"].includes(url.pathname);
 
   if(refreshable){
     // Network-first for application code and the page shell prevents a
