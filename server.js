@@ -667,6 +667,17 @@ app.use((req,res,next)=>{
 // Render/other reverse proxies must be trusted so secure session
 // cookies work correctly over HTTPS.
 app.set("trust proxy", true);
+app.disable("x-powered-by");
+
+// Keep the indexed site on one hostname so www and non-www copies cannot
+// compete in search results. Render terminates HTTPS before requests reach us.
+app.use((req,res,next)=>{
+  const host=String(req.headers.host||"").toLowerCase().split(":")[0];
+  if(host==="www.maleficentchat.onrender.com"){
+    return res.redirect(301,"https://maleficentchat.onrender.com"+req.originalUrl);
+  }
+  next();
+});
 
 const PgSession = require("connect-pg-simple")(session);
 app.use(session({
