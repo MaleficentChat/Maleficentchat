@@ -1697,7 +1697,7 @@ app.post("/api/rooms/:id/messages",auth,featureAllowed("send_messages"),upload.s
   const matchedFilter=filteredWord(text);
   const affected=(db.settings.filter_affected_ranks||[]).map(x=>String(x).toUpperCase());
   let autoMuted=false;
-  if(matchedFilter && !u.deadMode && String(u.rank).toUpperCase()!=="DEVELOPER" && affected.includes(String(u.rank).toUpperCase())){
+  if(matchedFilter && String(u.rank).toUpperCase()!=="DEVELOPER" && affected.includes(String(u.rank).toUpperCase())){
     const minutes=Math.max(1,Number(db.settings.filterMuteDurationMinutes||5));
     const stars="*".repeat(Math.max(3,String(matchedFilter).length));
     const re=new RegExp(String(matchedFilter).replace(/[.*+?^${}()|[\]\\]/g,"\\$&"),"gi");
