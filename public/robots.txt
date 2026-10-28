@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /socket.io/
+
+Sitemap: https://maleficentchat.onrender.com/sitemap.xml
