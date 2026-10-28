@@ -1324,12 +1324,12 @@ app.put("/api/rooms/:id/staff/:userId",auth,(req,res)=>{
   if(!roomOwnerOrGlobal(actor,room))return res.status(403).json({error:"Only this room's owner or authorized global staff can assign room ranks."});
   if(!Array.isArray(db.settings?.feature_grants?.room_rank_assign)||!db.settings.feature_grants.room_rank_assign.length)return res.status(403).json({error:"Room-rank assignment is disabled in Feature Granting."});
   const role=String(req.body.role||"USER").toUpperCase();
-  if(!["USER","ROOM_MODERATOR","ROOM_ADMIN","ROOM_OWNER"].includes(role))return res.status(400).json({error:"Invalid room rank."});
+  if(!["USER","ROOM_MODERATOR","ROOM_ADMIN"].includes(role))return res.status(400).json({error:"Invalid room rank. Choose User, Room Moderator, or Room Admin."});
   if(String(target.rank||"").toUpperCase()==="DEVELOPER"&&String(actor.rank||"").toUpperCase()!=="DEVELOPER")return res.status(403).json({error:"Only the Developer can change this account's room rank."});
   const settings=roomStaffStore(),key=String(room.id);settings.room_staff[key] ||= {};
   if(role==="USER")delete settings.room_staff[key][String(target.id)];else settings.room_staff[key][String(target.id)]=role;
   save();log(actor,"ROOM_RANK_CHANGE",target.username,{roomId:String(room.id),role});
-  res.json({ok:true,roomId:String(room.id),userId:String(target.id),role,badge:role==="ROOM_OWNER"?"🎩":role==="ROOM_ADMIN"?"💫":role==="ROOM_MODERATOR"?"🪄":"✨"});
+  res.json({ok:true,roomId:String(room.id),userId:String(target.id),role,badge:role==="ROOM_ADMIN"?"👑":role==="ROOM_MODERATOR"?"🛡️":"⚡"});
 });
 app.post("/api/rooms/:id/staff-action",auth,async(req,res)=>{
   const actor=current(req),room=db.rooms.find(x=>String(x.id)===String(req.params.id)),target=db.users.find(x=>String(x.id)===String(req.body.userId));
