@@ -957,17 +957,13 @@ function isStaffUser(user){
   return ["MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER","DEVELOPER"].includes(user.rank);
 }
 
-let onlineFavorites=new Set();
 let onlineSortMode="online-rank";
-async function toggleFavoriteUser(userId){try{const result=await api("/api/favorites/"+encodeURIComponent(userId),{method:"POST"});if(result.favorite)onlineFavorites.add(String(userId));else onlineFavorites.delete(String(userId));toast(result.favorite?"Added to favorites.":"Removed from favorites.");await renderOnline(onlinePanelTab);}catch(e){toast(e.message||"Could not update favorite.");}}
 
 async function renderOnline(tab=onlinePanelTab,searchQuery=""){
   onlinePanelTab=tab;
   try{
     const data=await api("/api/users");
     onlinePanelCache=data.users||[];
-    const favoriteData=await api("/api/favorites").catch(()=>({ids:[]}));
-    onlineFavorites=new Set((favoriteData.ids||[]).map(String));
     // Room roles are only badges in the user list; global ranks remain the
     // authority for message headers and the rest of the site.
     let roomRoleByUser={};
@@ -992,7 +988,6 @@ async function renderOnline(tab=onlinePanelTab,searchQuery=""){
     else if(tab==="offline"){ list=offline; title="Offline users"; }
     else if(tab==="staff"){ list=onlinePanelCache.filter(isStaffUser); title="Site staff"; }
     else if(tab==="roomstaff"){list=onlinePanelCache.filter(u=>!!roomRoleByUser[String(u.id)]);title="Room staff";}
-    else if(tab==="favorites"){list=onlinePanelCache.filter(u=>onlineFavorites.has(String(u.id)));title="Favorites";}
     else if(tab==="recent"){list=[...onlinePanelCache].filter(u=>u.lastActive).sort((a,b)=>Number(b.lastActive)-Number(a.lastActive)).slice(0,30);title="Recently active";}
     else if(tab==="friends"){ list=onlinePanelCache.filter(u=>friendIds.has(u.id)); title="Friends"; }
     else if(tab==="search"){
@@ -1008,7 +1003,7 @@ async function renderOnline(tab=onlinePanelTab,searchQuery=""){
 
     const count=online.length;
     $("onlinePanelTitle").innerHTML=`${esc(title)} <span class="online-badge">${count}</span>`;
-    $("onlineUsers").innerHTML=`${tab==="search"?'<input id="onlineUsernameSearch" type="search" placeholder="Search username…" autocomplete="off">':''}<div class="online-status-control"><label for="myCustomStatus">My status</label><select id="myCustomStatus"><option>Available</option><option>Busy</option><option>Away</option><option>Do Not Disturb</option></select></div><div class="online-status-control"><label for="onlineSortMode">Sort users</label><select id="onlineSortMode"><option value="online-rank">Online status</option><option value="global-rank">Global rank</option><option value="room-rank">Room rank</option><option value="recent">Recently active</option></select></div><div class="room-staff-tools"><button type="button" class="mini" onclick="editCurrentRoomRules()">📜 Room rules</button><button type="button" class="mini" onclick="viewCurrentRoomModerationLog()">🧾 Moderation log</button></div><div class="online-user-grid">${list.map(user=>`
+    $("onlineUsers").innerHTML=`${tab==="search"?'<input id="onlineUsernameSearch" type="search" placeholder="Search username…" autocomplete="off">':''}<div class="online-status-control"><label for="myCustomStatus">My status</label><select id="myCustomStatus"><option>Available</option><option>Busy</option><option>Away</option><option>Do Not Disturb</option></select></div>${tab==="search"?'<div class="online-status-control"><label for="onlineSortMode">Sort users</label><select id="onlineSortMode"><option value="online-rank">Online status</option><option value="global-rank">Global rank</option><option value="room-rank">Room rank</option><option value="recent">Recently active</option></select></div>':''}<div class="room-staff-tools"><button type="button" class="mini" onclick="editCurrentRoomRules()">📜 Room rules</button><button type="button" class="mini" onclick="viewCurrentRoomModerationLog()">🧾 Moderation log</button></div><div class="online-user-grid">${list.map(user=>`
       <div class="online-user ${user.online?'is-online':'is-offline'}" onclick="openQuickUserCard('${esc(user.id)}')">
         ${avatar(user)}
         <div class="online-user-copy">
@@ -1016,7 +1011,6 @@ async function renderOnline(tab=onlinePanelTab,searchQuery=""){
           <small>@${esc(user.username)} ${invisibleDot(user)}${user.invisible?"":" · "+(user.customStatus||(user.online?"Available":"Away"))}</small>
           <span class="room-user-rank" title="${esc(roomRoleLabel[roomRoleByUser[String(user.id)]]||user.rank||'Member')}">${roomRoleByUser[String(user.id)] ? (roomRoleIcon[roomRoleByUser[String(user.id)]]||'✨') : (rankIcon[String(user.rank||'MEMBER').toUpperCase()]||'⚡')} ${esc(roomRoleLabel[roomRoleByUser[String(user.id)]]||String(user.rank||'MEMBER').replaceAll('_',' '))}</span>
         </div>
-        <button type="button" class="online-favorite ${onlineFavorites.has(String(user.id))?"is-favorite":""}" data-uid="${esc(user.id)}" title="Toggle favorite" onclick="event.stopPropagation();toggleFavoriteUser(this.dataset.uid)">${onlineFavorites.has(String(user.id))?"★":"☆"}</button>
         ${invisibleToggleMarkup(user,true)}
         <span class="status ${!user.invisible&&user.online?'on':''}"></span>
       </div>
@@ -1031,7 +1025,7 @@ async function renderOnline(tab=onlinePanelTab,searchQuery=""){
 }
 
 function openOnlinePanelMenu(){
-  modal(`<h2>People panel</h2><p class="muted">Switch between online users, offline users, everyone, staff, friends and search.</p><div class="toolbar"><button class="mini" onclick="renderOnline('online');closeModal()">Online</button><button class="mini" onclick="renderOnline('offline');closeModal()">Offline</button><button class="mini" onclick="renderOnline('all');closeModal()">All users</button><button class="mini" onclick="renderOnline('staff');closeModal()">Staff</button><button class="mini" onclick="renderOnline('friends');closeModal()">Friends</button></div>`);
+  modal(`<h2>People panel</h2><p class="muted">Switch between online users, offline users, everyone, staff, recently active users, friends and search.</p><div class="toolbar"><button class="mini" onclick="renderOnline('online');closeModal()">Online</button><button class="mini" onclick="renderOnline('offline');closeModal()">Offline</button><button class="mini" onclick="renderOnline('all');closeModal()">All users</button><button class="mini" onclick="renderOnline('staff');closeModal()">Staff</button><button class="mini" onclick="renderOnline('recent');closeModal()">Recently active</button><button class="mini" onclick="renderOnline('friends');closeModal()">Friends</button></div>`);
 }
 
 
