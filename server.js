@@ -1201,21 +1201,7 @@ app.post("/api/me/status",auth,(req,res)=>{
   u.customStatus=status;u.statusUpdatedAt=Date.now();save();io.emit("presence");
   log(u,"CUSTOM_STATUS",u.username,{status});res.json({ok:true,status});
 });
-app.get("/api/favorites",auth,(req,res)=>{
-  db.settings ||= {};db.settings.favorite_users ||= {};
-  const ids=db.settings.favorite_users[String(current(req).id)]||[];
-  res.json({ids:ids.map(String)});
-});
-app.post("/api/favorites/:userId",auth,(req,res)=>{
-  const actor=current(req),target=findUser(req.params.userId);
-  if(!target)return res.status(404).json({error:"User not found."});
-  if(String(actor.id)===String(target.id))return res.status(400).json({error:"You cannot favorite yourself."});
-  db.settings ||= {};db.settings.favorite_users ||= {};
-  const key=String(actor.id),ids=(db.settings.favorite_users[key]||[]).map(String),targetId=String(target.id);
-  const favorite=!ids.includes(targetId);
-  db.settings.favorite_users[key]=favorite?[...ids,targetId]:ids.filter(x=>x!==targetId);
-  save();res.json({ok:true,favorite,ids:db.settings.favorite_users[key]});
-});
+
 app.post("/api/me/invisible",auth,featureAllowed("invisible_mode"),(req,res)=>{
   const u=current(req);
   u.invisible=!!req.body?.enabled;
