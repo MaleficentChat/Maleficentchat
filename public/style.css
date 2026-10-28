@@ -2721,3 +2721,17 @@ a { color: #65dcff; }
 .profile-settings-card.theme_crimson{--accent:#d94b63;--accent-2:#ff7188}
 
 .room-rank-badge{display:inline-flex;align-items:center;justify-content:center;min-width:18px;margin-left:3px;font-size:12px;line-height:1;vertical-align:middle;filter:drop-shadow(0 0 4px var(--accent-soft));}
+
+
+/* Private-message inspection account picker and readable results */
+.dm-inspection-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;align-items:start;margin:14px 0 18px}
+.dm-inspection-picker{position:relative;min-width:0;display:flex;flex-direction:column;gap:6px}
+.dm-inspection-picker label{font-size:12px;color:var(--muted)}
+.dm-inspection-picker input{width:100%;min-width:0;box-sizing:border-box}
+.dm-inspection-fields>#dmSearchBtn{align-self:end;min-height:42px}
+.dm-inspection-picker .ip-inspection-suggestions{position:absolute;z-index:30;top:100%;left:0;right:0;margin-top:4px;max-height:220px}
+.dm-inspection-message{margin:8px 0;overflow-wrap:anywhere}
+.dm-inspection-message>div{margin:8px 0;white-space:normal;overflow-wrap:anywhere}
+.dm-inspection-message .dm-inspection-body{line-height:1.55;word-break:break-word}
+.dm-inspection-message small{display:block;margin-top:8px}
+@media(max-width:650px){.dm-inspection-fields{grid-template-columns:minmax(0,1fr)}.dm-inspection-fields>#dmSearchBtn{width:100%}}
