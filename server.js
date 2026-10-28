@@ -3837,39 +3837,6 @@ app.patch('/api/owner/user/:id/progress',ownerOnly,async(req,res)=>{
  const xp=Number(req.body.xp),level=Number(req.body.level);if(!Number.isFinite(xp)||!Number.isFinite(level)||xp<0||level<1||xp>2147483647||level>1000000)return res.status(400).json({error:'Enter valid XP and level values.'});v.xp=Math.floor(xp);v.level=Math.floor(level);await pool.query('UPDATE users SET xp=$1 WHERE id=$2',[v.xp,Number(v.id)]);save();res.json({ok:true,user:safeUser(v)});
 });
 
-app.get('/api/owner/password-security',auth,developerOnly,async(req,res)=>{
-  try{
-    const users=db.users.map(u=>{
-      const stored=String(u.passwordHash||u.password||'');
-      const bcryptHash=/^\$2[aby]\$\d{2}\$/.test(stored);
-      return {id:String(u.id),username:u.username,displayName:u.displayName||u.username,rank:u.rank,credentialStorage:bcryptHash?'BCRYPT_HASH':'UNHASHED_OR_UNKNOWN',passwordResetAvailable:String(u.rank).toUpperCase()!=='DEVELOPER'&&u.username!=='Maleficent'};
-    });
-    res.json({users,policy:{minimumLength:8,existingPasswordStrengthCanBeDetermined:false}});
-  }catch(e){console.error('Password security overview failed:',e);res.status(500).json({error:'Could not load password security overview.'});}
-});
-
-app.patch(
-  "/api/owner/user/:id/password",
-  auth,
-  developerOnly,
-  async(req,res)=>{
-    const v=findUser(req.params.id);
-    if(!v) return res.status(404).json({error:"User not found"});
-    if(String(v.rank).toUpperCase()==="DEVELOPER" || v.username==="Maleficent"){
-      return res.status(403).json({error:"The permanent Developer account is protected."});
-    }
-    const password=String(req.body.password||"");
-    if(password.length<8) return res.status(400).json({error:"New password must be at least 8 characters."});
-    const hash=await bcrypt.hash(password,10);
-    v.password=hash;
-    v.passwordHash=hash;
-    await pool.query("UPDATE users SET password=$1 WHERE id=$2",[hash,Number(v.id)]);
-    save();
-    log(current(req),"DEVELOPER_PASSWORD_RESET",v.username);
-    res.json({ok:true});
-  }
-);
-
 app.delete(
   "/api/owner/user/:id",
   ownerOnly,
