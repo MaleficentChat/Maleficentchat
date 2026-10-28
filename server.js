@@ -3373,6 +3373,25 @@ app.put('/api/bots/:id',ownerOnly,async(req,res)=>{const q=await pool.query(`UPD
 app.delete('/api/bots/:id',ownerOnly,async(req,res)=>{const q=await pool.query(`DELETE FROM bots WHERE id=$1 RETURNING id`,[req.params.id]);if(!q.rowCount)return res.status(404).json({error:'Bot not found'});res.json({ok:true});});
 app.post('/api/bots/:id/toggle',ownerOnly,async(req,res)=>{const q=await pool.query(`UPDATE bots SET is_active=NOT is_active WHERE id=$1 RETURNING *`,[req.params.id]);if(!q.rowCount)return res.status(404).json({error:'Bot not found'});res.json({bot:q.rows[0]});});
 
+app.get('/api/community-rules',auth,(req,res)=>{
+  const rules=Array.isArray(db.settings?.community_rules)?db.settings.community_rules:[];
+  res.json({rules:rules.map((r,i)=>({id:String(r.id||i+1),number:i+1,text:String(r.text||''),updatedAt:r.updatedAt||null,updatedBy:r.updatedBy||''})).filter(r=>r.text.trim())});
+});
+app.put('/api/owner/community-rules',auth,developerOnly,async(req,res)=>{
+  const input=Array.isArray(req.body?.rules)?req.body.rules:[];
+  if(input.length>100)return res.status(400).json({error:'You can publish up to 100 rules.'});
+  const rules=[];
+  for(let i=0;i<input.length;i++){
+    const text=String(input[i]?.text||'').trim().slice(0,2000);
+    if(!text)continue;
+    rules.push({id:String(input[i]?.id||id()),text,updatedAt:Date.now(),updatedBy:current(req).username});
+  }
+  db.settings ||= {};db.settings.community_rules=rules;
+  await flushSave();
+  log(current(req),'COMMUNITY_RULES_UPDATE','Community Rules',{count:rules.length});
+  res.json({ok:true,rules:rules.map((r,i)=>({...r,number:i+1}))});
+});
+
 app.get(
   "/api/owner/overview",
   ownerOnly,
@@ -4633,7 +4652,19 @@ app.post('/api/users/:id/gold/share',auth,(req,res)=>{
 const DEFAULT_GIFS=[
   {url:'https://media.giphy.com/media/ICOgUNjpvO0PC/giphy.gif',preview:'https://media.giphy.com/media/ICOgUNjpvO0PC/200.gif',title:'Happy'},
   {url:'https://media.giphy.com/media/3o6ZtaO9Bsexta/giphy.gif',preview:'https://media.giphy.com/media/3o6ZtaO9Bsexta/200.gif',title:'Celebration'},
-  {url:'https://media.giphy.com/media/l0MYt5jPR6QX5pnqM/giphy.gif',preview:'https://media.giphy.com/media/l0MYt5jPR6QX5pnqM/200.gif',title:'Love'}
+  {url:'https://media.giphy.com/media/l0MYt5jPR6QX5pnqM/giphy.gif',preview:'https://media.giphy.com/media/l0MYt5jPR6QX5pnqM/200.gif',title:'Love'},
+  {url:'https://media.giphy.com/media/MDJ9IbxxvDUQM/giphy.gif',preview:'https://media.giphy.com/media/MDJ9IbxxvDUQM/200.gif',title:'Laugh'},
+  {url:'https://media.giphy.com/media/111ebonMs90YLu/giphy.gif',preview:'https://media.giphy.com/media/111ebonMs90YLu/200.gif',title:'Dance'},
+  {url:'https://media.giphy.com/media/ASd0Ukj0y3qMM/giphy.gif',preview:'https://media.giphy.com/media/ASd0Ukj0y3qMM/200.gif',title:'Excited'},
+  {url:'https://media.giphy.com/media/26BRv0ThflsHCqDrG/giphy.gif',preview:'https://media.giphy.com/media/26BRv0ThflsHCqDrG/200.gif',title:'Wow'},
+  {url:'https://media.giphy.com/media/l4pTfx2qLszoacZRS/giphy.gif',preview:'https://media.giphy.com/media/l4pTfx2qLszoacZRS/200.gif',title:'Sad'},
+  {url:'https://media.giphy.com/media/OPU6wzx8JrHna/giphy.gif',preview:'https://media.giphy.com/media/OPU6wzx8JrHna/200.gif',title:'Cry'},
+  {url:'https://media.giphy.com/media/3o7TKSjRrfIPjeiVyM/giphy.gif',preview:'https://media.giphy.com/media/3o7TKSjRrfIPjeiVyM/200.gif',title:'Clap'},
+  {url:'https://media.giphy.com/media/26u4cqiYI30juCOGY/giphy.gif',preview:'https://media.giphy.com/media/26u4cqiYI30juCOGY/200.gif',title:'Heart'},
+  {url:'https://media.giphy.com/media/3o6Zt481isNVuQI1l6/giphy.gif',preview:'https://media.giphy.com/media/3o6Zt481isNVuQI1l6/200.gif',title:'Thumbs Up'},
+  {url:'https://media.giphy.com/media/26gssIytJvy1b1THO/giphy.gif',preview:'https://media.giphy.com/media/26gssIytJvy1b1THO/200.gif',title:'Thinking'},
+  {url:'https://media.giphy.com/media/3oEjI6SIIHBdRxXI40/giphy.gif',preview:'https://media.giphy.com/media/3oEjI6SIIHBdRxXI40/200.gif',title:'Loading'},
+  {url:'https://media.giphy.com/media/3o7TKTDn976rzVgky4/giphy.gif',preview:'https://media.giphy.com/media/3o7TKTDn976rzVgky4/200.gif',title:'No'}
 ];
 app.get('/api/gifs/search',auth,async(req,res)=>{
   const q=String(req.query.q||'').trim().slice(0,80);
@@ -4660,9 +4691,9 @@ app.post('/api/rooms/:id/youtube',auth,featureAllowed('use_youtube'),async(req,r
   const u=current(req),room=db.rooms.find(x=>String(x.id)===String(req.params.id));
   if(!room)return res.status(404).json({error:"Room not found."});
   if(!verifyRoomJoinToken(req.headers['x-room-join-token'],u.id,room))return res.status(403).json({error:"Join this room before sharing a video."});
-  const videoId=String(req.body.videoId||"").trim(),title=cleanText(req.body.title||"YouTube video").slice(0,200);
+  const videoId=String(req.body.videoId||"").trim(),title=cleanText(req.body.title||(req.body.music?"YouTube Music":"YouTube video")).slice(0,200),music=req.body.music===true;
   if(!/^[A-Za-z0-9_-]{11}$/.test(videoId))return res.status(400).json({error:"Invalid YouTube video ID."});
-  const m={id:id(),roomId:String(room.id),userId:u.id,username:u.username,displayName:u.displayName,rank:u.rank,text:"🎬 "+title+" https://www.youtube.com/watch?v="+videoId,youtube:{videoId,title},reactions:{},edited:false,deleted:false,pinned:false,time:Date.now(),delivered:true};
+  const m={id:id(),roomId:String(room.id),userId:u.id,username:u.username,displayName:u.displayName,rank:u.rank,text:"",youtube:{videoId,title,platform:music?"music":"youtube"},reactions:{},edited:false,deleted:false,pinned:false,time:Date.now(),delivered:true};
   try{
     await pool.query('INSERT INTO room_messages(id,room_id,user_id,data,created_at) VALUES($1,$2,$3,$4::jsonb,NOW())',[m.id,Number(room.id),Number(u.id),JSON.stringify(m)]);
     db.messages.push(m);u.stats ||= {messages:0,rooms:0,friends:0};u.stats.messages=(u.stats.messages||0)+1;
