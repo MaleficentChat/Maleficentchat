@@ -2975,6 +2975,8 @@ async function loadStaff() {
             <label>Recipient rank<select id="systemNotificationRank" required>
               <option value="ALL">All users</option><option value="MEMBER">Member</option><option value="VIP">VIP</option><option value="PREMIUM">Premium</option><option value="MOD">Moderator</option><option value="ADMIN">Admin</option><option value="SUPER_ADMIN">Super Admin</option><option value="COMMISSOR">Commissor</option><option value="COOWNER">Co-owner</option><option value="OWNER">Owner</option><option value="DEVELOPER">Developer</option>
             </select></label>
+            <label>Recipient range<select id="systemNotificationRange" required><option value="EXACT">Selected rank only</option><option value="AND_ABOVE">Selected rank and above</option><option value="AND_BELOW">Selected rank and below</option></select></label>
+            <p class="muted">“Above” includes the selected rank and every higher rank. “Below” includes the selected rank and every lower rank.</p>
             <label>Announcement / details<textarea id="systemNotificationMessage" maxlength="2000" rows="4" required placeholder="Write the announcement or details to send…"></textarea></label>
             <div class="toolbar"><button class="primary" id="sendSystemNotification" type="submit">📣 Send notification</button><span id="systemNotificationStatus" class="muted" aria-live="polite"></span></div>
           </form>
