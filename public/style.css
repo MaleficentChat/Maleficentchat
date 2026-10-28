@@ -2736,6 +2736,5 @@ a { color: #65dcff; }
 .dm-inspection-message small{display:block;margin-top:8px}
 @media(max-width:650px){.dm-inspection-fields{grid-template-columns:minmax(0,1fr)}.dm-inspection-fields>#dmSearchBtn{width:100%}}
 
-.online-favorite{border:0;background:transparent;color:var(--muted);font-size:20px;cursor:pointer;align-self:center;padding:3px 5px}.online-favorite.is-favorite{color:#ffcf69}
 
 .online-status-control{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 8px;padding:9px 10px;border:1px solid var(--border);border-radius:10px;background:var(--panel);font-size:12px;color:var(--muted)}.online-status-control select{max-width:58%;background:var(--panel-2);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:7px}
