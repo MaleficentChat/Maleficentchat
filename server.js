@@ -1347,6 +1347,7 @@ app.post("/api/rooms/:id/staff-action",auth,async(req,res)=>{
   else if(action==="UNBLOCK"){delete settings.room_blocks[key]?.[targetId];}
   else return res.status(400).json({error:"Unsupported room action."});
   save();log(actor,"ROOM_STAFF_ACTION",target.username,{roomId:key,action,reason});
+  if(action==="KICK"){for(const sock of io.sockets.sockets.values()){if(String(sock.userId||sock.user?.id||"")===targetId){sock.leave("room:"+room.id);sock.emit("room:kicked",{roomId:key,reason,until:settings.room_kicks[key][targetId].until});}}}
   res.json({ok:true,action,reason});
 });
 app.patch("/api/rooms/:id",auth,async(req,res)=>{
@@ -1386,6 +1387,12 @@ app.post(
         error:"Room not found"
       });
     }
+    const roomState=roomStaffStore(),roomKey=String(r.id),uid=String(u.id);
+    const blocked=roomState.room_blocks[roomKey]?.[uid];
+    if(blocked)return res.status(403).json({error:"You are blocked from this room. Reason: "+String(blocked.reason||"Room rules").slice(0,240)});
+    const kicked=roomState.room_kicks[roomKey]?.[uid];
+    if(kicked&&Number(kicked.until)>Date.now())return res.status(403).json({error:"You were removed from this room temporarily. Reason: "+String(kicked.reason||"Room rules").slice(0,240)});
+    if(kicked&&Number(kicked.until)<=Date.now())delete roomState.room_kicks[roomKey][uid];
     const isPermanentMainRoom=!!r.isDefault||/^main room$/i.test(String(r.name||"").trim());
     if(!isPermanentMainRoom&&!hasFeature(u,"join_rooms")){
       return res.status(403).json({error:"Your account does not have permission to join rooms."});
