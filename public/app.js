@@ -1337,6 +1337,30 @@ function appendMessage(message) {
   }
 }
 
+async function togglePresenceMode(mode){
+  if(!["OWNER","DEVELOPER"].includes(String(state.user?.rank||"").toUpperCase())){toast("Only Owner and Developer can use presence modes.");return;}
+  const active = mode==="ghost" ? !!state.user?.hideMode : mode==="dead" ? !!state.user?.deadMode : !!state.user?.invisible;
+  const enable = !active;
+  try{
+    // First clear other modes so each button always produces one predictable state.
+    if(mode!=="ghost") await api("/api/me/hide-mode",{method:"POST",body:JSON.stringify({enabled:false})});
+    if(mode!=="dead") await api("/api/me/dead-mode",{method:"POST",body:JSON.stringify({enabled:false})});
+    if(mode!=="invisible") await api("/api/me/invisible",{method:"POST",body:JSON.stringify({enabled:false})});
+    let result;
+    if(mode==="ghost") result=await api("/api/me/hide-mode",{method:"POST",body:JSON.stringify({enabled:enable})});
+    else if(mode==="dead") result=await api("/api/me/dead-mode",{method:"POST",body:JSON.stringify({enabled:enable})});
+    else result=await api("/api/me/invisible",{method:"POST",body:JSON.stringify({enabled:enable})});
+    state.user.hideMode=!!result.hideMode;
+    state.user.deadMode=!!result.deadMode;
+    state.user.invisible=!!result.invisible;
+    closeModal();
+    toast((enable?"Enabled ":"Disabled ")+({ghost:"👻 Ghost Mode",dead:"💀 Dead Mode",invisible:"😈 Invisible Mode"}[mode])+".");
+    updateNav();
+    await loadUsers().catch(()=>{});
+    await renderOnline(onlinePanelTab).catch(()=>{});
+  }catch(error){toast(error.message||"Could not update presence mode.");}
+}
+
 function openPresenceModes(){
   if(!["OWNER","DEVELOPER"].includes(String(state.user?.rank||"").toUpperCase())){toast("Only Owner and Developer can use presence modes.");return;}
   modal(`<div class="mode-control-panel" style="display:flex;flex-direction:column;gap:10px;width:100%;max-width:420px;min-width:0;box-sizing:border-box;padding:14px">
@@ -1424,6 +1448,12 @@ if(composer && !composer.dataset.submitBound){
     if(!state.currentRoom){toast("Join a room before sending a message.");return;}
     const input=$("message"),fileInput=$("file"),sendButton=composer.querySelector(".send");
     const textValue=(input?.value||"").trim(),file=fileInput?.files?.[0];
+    // /mode is a local command: open the presence-mode controls instead of posting it as chat text.
+    if(/^\/mode(?:\s|$)/i.test(textValue)){
+      if(input)input.value="";
+      openPresenceModes();
+      return;
+    }
     if(!textValue&&!file){input?.focus();return;}
     const form=new FormData();
     form.append("text",textValue);
@@ -4008,6 +4038,9 @@ $("roomMenu").onclick = () => {
       <button class="mini" onclick="showPinnedMessages()">📌 Pinned messages</button>
       <button class="mini" onclick="openYoutubePanel()">▶️ YouTube</button>
       <button class="mini" onclick="showInvite()">Invite link</button>
+      ${["OWNER","DEVELOPER"].includes(String(state.user?.rank||"").toUpperCase())?`
+        <div style="flex-basis:100%;border-top:1px solid var(--border-color,#393244);padding-top:8px;margin-top:4px"><b style="display:block;margin-bottom:7px">🕶️ Presence modes</b><div class="toolbar" style="display:flex;flex-wrap:wrap;gap:6px"><button type="button" class="mini" onclick="togglePresenceMode('ghost')">👻 Ghost Mode</button><button type="button" class="mini" onclick="togglePresenceMode('dead')">💀 Dead Mode</button><button type="button" class="mini" onclick="togglePresenceMode('invisible')">😈 Invisible Mode</button></div><button type="button" class="mini" style="margin-top:7px" onclick="openPresenceModes()">⚙️ Open mode settings</button></div>
+      `:""}
 
     </div>
   `);
