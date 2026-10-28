@@ -2768,3 +2768,9 @@ a { color: #65dcff; }
 .seo-info-grid p{font-size:.82rem;margin:0;line-height:1.6}
 .seo-note{margin-top:14px!important;padding-top:12px;border-top:1px solid rgba(255,255,255,.08);font-size:.8rem!important}
 @media(max-width:700px){.seo-intro{width:min(430px,94vw);padding:18px;margin-top:16px}.seo-info-grid{grid-template-columns:1fr}.seo-info-grid article{padding:12px}.auth-screen{align-content:start!important;padding-top:18px!important;padding-bottom:24px!important}}
+
+/* The public intro is a separate landing section, not part of the narrow login card. */
+#auth.auth-screen:not(.hidden){display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:0;padding:clamp(20px,5vh,52px) 20px 28px}
+#auth .auth-card{flex:0 0 auto}
+#auth .seo-intro{flex:0 0 auto}
+@media(max-width:700px){#auth.auth-screen:not(.hidden){display:flex!important;align-content:initial!important;padding:18px 12px 24px!important}#auth .seo-intro{margin-top:16px}}
