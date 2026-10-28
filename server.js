@@ -1225,8 +1225,11 @@ app.post("/api/me/hide-mode",auth,(req,res)=>{
 app.post("/api/me/dead-mode",auth,(req,res)=>{
   const u=current(req),rank=String(u?.rank||"").toUpperCase();
   if(!["OWNER","DEVELOPER"].includes(rank))return res.status(403).json({error:"Dead mode is available only to Owner and Developer."});
-  u.deadMode=!!req.body?.enabled;
+  const enable=!!req.body?.enabled;
+  if(enable && !u.deadMode)u.deadModePreviousInvisible=!!u.invisible;
+  u.deadMode=enable;
   if(u.deadMode){u.hideMode=true;u.invisible=true;}
+  else if(Object.prototype.hasOwnProperty.call(u,"deadModePreviousInvisible")){u.invisible=!!u.deadModePreviousInvisible;delete u.deadModePreviousInvisible;}
   save();log(u,"DEAD_MODE",u.username,{enabled:u.deadMode});io.emit("presence");
   res.json({ok:true,hideMode:!!u.hideMode,deadMode:!!u.deadMode,invisible:!!u.invisible});
 });
