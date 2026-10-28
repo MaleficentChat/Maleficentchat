@@ -3007,11 +3007,13 @@ async function loadStaff() {
       const title=$('systemNotificationTitle')?.value.trim()||'';
       const message=$('systemNotificationMessage')?.value.trim()||'';
       const targetRank=$('systemNotificationRank')?.value||'ALL';
+      const targetRange=$('systemNotificationRange')?.value||'EXACT';
       if(!title||!message){if(status)status.textContent='Enter a title and message.';return;}
-      if(!confirm('Send this notification to '+(targetRank==='ALL'?'all users':targetRank.replace(/_/g,' ')+' accounts')+'?'))return;
+      const rangeLabel=targetRank==='ALL'?'all users':(targetRank.replace(/_/g,' ')+(targetRange==='AND_ABOVE'?' and higher ranks':targetRange==='AND_BELOW'?' and lower ranks':''));
+      if(!confirm('Send this notification to '+rangeLabel+'?'))return;
       button.disabled=true;if(status)status.textContent='Sending…';
       try{
-        const result=await api('/api/staff/system-notifications',{method:'POST',body:JSON.stringify({title,message,targetRank})});
+        const result=await api('/api/staff/system-notifications',{method:'POST',body:JSON.stringify({title,message,targetRank,targetRange})});
         if(status)status.textContent='Sent to '+result.sent+' account'+(result.sent===1?'':'s')+'.';
         $('systemNotificationTitle').value='';$('systemNotificationMessage').value='';
         toast('System notification sent to '+result.sent+' account'+(result.sent===1?'':'s')+'.');
