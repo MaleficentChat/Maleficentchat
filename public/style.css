@@ -3108,37 +3108,37 @@ button,input,select,textarea { max-width:100%; }
 .system-message > small { font-size:10px!important; opacity:.55; }
 
 /* REAL target: the user profile modal opened by tapping a user's message/avatar. */
-#modal .modal-card:has(.profile-modal) {
+#modal .modal-card:has(#modalBody .profile-modal) {
   width:min(360px,calc(100vw - 28px))!important;
   max-width:360px!important;
   max-height:min(68dvh,560px)!important;
   padding:0!important; margin:0 auto 70px!important;
   overflow-y:auto!important; border-radius:16px!important;
 }
-#modal .modal-card:has(.profile-modal) .profile-modal {
+#modal .modal-card:has(#modalBody .profile-modal) .profile-modal {
   width:100%!important; max-width:100%!important;
   max-height:none!important; border-radius:16px!important;
 }
-#modal .modal-card:has(.profile-modal) .profile-banner {
+#modal .modal-card:has(#modalBody .profile-modal) .profile-banner {
   min-height:0!important; padding:12px 10px 14px!important;
 }
-#modal .modal-card:has(.profile-modal) .profile-stats { gap:5px!important; }
-#modal .modal-card:has(.profile-modal) .profile-stat { padding:4px 7px!important; font-size:11px!important; }
-#modal .modal-card:has(.profile-modal) .equipped-profile-frame .big-avatar,
-#modal .modal-card:has(.profile-modal) .profile-banner .big-avatar {
+#modal .modal-card:has(#modalBody .profile-modal) .profile-stats { gap:5px!important; }
+#modal .modal-card:has(#modalBody .profile-modal) .profile-stat { padding:4px 7px!important; font-size:11px!important; }
+#modal .modal-card:has(#modalBody .profile-modal) .equipped-profile-frame .big-avatar,
+#modal .modal-card:has(#modalBody .profile-modal) .profile-banner .big-avatar {
   width:58px!important;height:58px!important;
 }
-#modal .modal-card:has(.profile-modal) .profile-rank { margin-top:7px!important;font-size:11px!important; }
-#modal .modal-card:has(.profile-modal) .profile-name { font-size:18px!important; margin-top:4px!important; }
-#modal .modal-card:has(.profile-modal) .profile-handle { font-size:12px!important; margin-top:2px!important; }
-#modal .modal-card:has(.profile-modal) .profile-tab { padding:9px 10px!important;font-size:11px!important; }
-#modal .modal-card:has(.profile-modal) .profile-info { padding:10px!important; }
-#modal .modal-card:has(.profile-modal) .profile-info-row { padding:7px 0!important; gap:5px!important;font-size:12px!important; }
-#modal .modal-card:has(.profile-modal) .about-card { padding:10px!important; }
-#modal .modal-card:has(.profile-modal) .about-card h3 { font-size:15px!important;margin:0 0 6px!important; }
-#modal .modal-card:has(.profile-modal) .about-card p { font-size:12px!important;line-height:1.4!important; }
-#modal .modal-card:has(.profile-modal) .profile-actions .mini,
-#modal .modal-card:has(.profile-modal) .profile-actions .primary { min-height:30px!important;padding:6px 8px!important;font-size:11px!important; }
+#modal .modal-card:has(#modalBody .profile-modal) .profile-rank { margin-top:7px!important;font-size:11px!important; }
+#modal .modal-card:has(#modalBody .profile-modal) .profile-name { font-size:18px!important; margin-top:4px!important; }
+#modal .modal-card:has(#modalBody .profile-modal) .profile-handle { font-size:12px!important; margin-top:2px!important; }
+#modal .modal-card:has(#modalBody .profile-modal) .profile-tab { padding:9px 10px!important;font-size:11px!important; }
+#modal .modal-card:has(#modalBody .profile-modal) .profile-info { padding:10px!important; }
+#modal .modal-card:has(#modalBody .profile-modal) .profile-info-row { padding:7px 0!important; gap:5px!important;font-size:12px!important; }
+#modal .modal-card:has(#modalBody .profile-modal) .about-card { padding:10px!important; }
+#modal .modal-card:has(#modalBody .profile-modal) .about-card h3 { font-size:15px!important;margin:0 0 6px!important; }
+#modal .modal-card:has(#modalBody .profile-modal) .about-card p { font-size:12px!important;line-height:1.4!important; }
+#modal .modal-card:has(#modalBody .profile-modal) .profile-actions .mini,
+#modal .modal-card:has(#modalBody .profile-modal) .profile-actions .primary { min-height:30px!important;padding:6px 8px!important;font-size:11px!important; }
 
 /* REAL target: the three-dot menu attached to an individual chat message. */
 .message-actions-menu {
@@ -3191,7 +3191,7 @@ button,input,select,textarea { max-width:100%; }
 .room-icon, .room .icon, .room-list-card .icon { font-size:13px!important; }
 @media(max-width:700px) {
   #modal:has(.profile-modal) { align-items:flex-end!important; justify-content:center!important; padding:8px!important; }
-  #modal .modal-card:has(.profile-modal) {
+  #modal .modal-card:has(#modalBody .profile-modal) {
     width:min(340px,calc(100vw - 24px))!important; max-width:340px!important;
     max-height:64dvh!important; margin:0 auto calc(64px + env(safe-area-inset-bottom,0px))!important;
   }
