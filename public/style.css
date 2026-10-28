@@ -2980,3 +2980,61 @@ button,input,select,textarea { max-width:100%; }
   .settings-grid,.grid2 { grid-template-columns:1fr; }
   .notification-dropdown { max-width:calc(100vw - 20px); }
 }
+
+
+/* MOBILE LAYOUT HOTFIX — preserve hidden states and prevent horizontal overflow */
+#app.hidden, .view.hidden, .chat-wrap.hidden, .online-panel.hidden,
+.notification-dropdown.hidden, .hidden {
+  display: none !important;
+}
+#app:not(.hidden) { display:block; }
+.top-header { left:var(--rail-w, 224px); right:0; width:auto; box-sizing:border-box; z-index:150; }
+.top-header-actions { min-width:0; flex:0 1 auto; }
+.top-header-actions .top-icon { flex:0 0 36px; }
+.top-brand { min-width:0; flex:1 1 auto; }
+.top-brand-copy { min-width:0; }
+.top-brand-copy b { white-space:nowrap; }
+.main { box-sizing:border-box; min-width:0; }
+.view, .view > *, .chat-wrap, .chat-card, .messages, .message, .message-bubble,
+.profile-modal, .profile-banner, .profile-info, .room-card, .panel, .card {
+  min-width:0;
+  box-sizing:border-box;
+}
+.message-bubble, .message-content, .message-text, .youtube-embed, .video-embed {
+  max-width:100%;
+  overflow-wrap:anywhere;
+  word-break:break-word;
+}
+.youtube-embed iframe, .video-embed iframe, .message video, .message img {
+  max-width:100%;
+}
+@media (max-width:900px) {
+  .top-header { left:0 !important; right:0 !important; width:100% !important; padding:0 10px !important; gap:8px !important; }
+  .top-brand { gap:8px; }
+  .top-brand-copy b { font-size:clamp(17px,4.5vw,25px); }
+  .top-header-actions { gap:2px !important; }
+  .top-header-actions .top-icon { width:30px; min-width:30px; flex-basis:30px; padding:3px; font-size:16px; }
+  .top-profile { width:32px; min-width:32px; flex-basis:32px; }
+  .main { margin-left:0 !important; width:100% !important; padding-top:0 !important; height:auto !important; min-height:calc(100vh - var(--header-h,54px)); overflow-x:hidden; }
+  .view:not(.hidden) { width:100%; max-width:100%; overflow-x:hidden; }
+  .topbar { height:auto !important; min-height:0 !important; padding:12px !important; flex-wrap:wrap; }
+  .chat-wrap { width:100%; max-width:100%; }
+  .chat-card { width:100%; max-width:100%; border-radius:14px !important; }
+  .online-panel { max-width:100%; }
+}
+@media (max-width:560px) {
+  .top-header { --header-h:50px; min-height:50px !important; height:50px !important; }
+  .top-menu { flex:0 0 30px; width:30px; padding:0; }
+  .brand-avatar { width:38px; height:38px; min-width:38px; }
+  .top-brand-copy b { font-size:17px; }
+  .top-brand-copy span { display:none !important; }
+  .top-header-actions .top-icon:nth-of-type(4) { display:none; }
+  .main { padding:0 8px 12px !important; }
+  .profile-banner { padding:18px 12px !important; }
+  .profile-stats { flex-wrap:wrap; gap:6px; }
+  .profile-tabs { max-width:100%; }
+  .profile-tab { padding:12px 10px !important; }
+  .profile-info { padding:12px !important; }
+  .profile-info-row { grid-template-columns:minmax(0,1fr) minmax(0,1.2fr) !important; gap:8px !important; }
+  .chat-card, .messages { overflow-x:hidden; }
+}
