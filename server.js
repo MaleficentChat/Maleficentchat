@@ -1315,7 +1315,7 @@ function roomOwnerOrGlobal(u,room){return roomRole(room.id,u.id)==="ROOM_OWNER"|
 app.get("/api/rooms/:id/staff",auth,(req,res)=>{
   const room=db.rooms.find(x=>String(x.id)===String(req.params.id));if(!room)return res.status(404).json({error:"Room not found"});
   const store=roomStaffStore().room_staff[String(room.id)]||{};
-  const staff=Object.entries(store).filter(([,role])=>role!=="USER").map(([userId,role])=>({user:safeUser(db.users.find(u=>String(u.id)===String(userId))||{}),role,badge:role==="ROOM_OWNER"?"🎩":role==="ROOM_ADMIN"?"💫":"🪄"})).filter(x=>x.user.id);
+  const staff=Object.entries(store).filter(([,role])=>role!=="USER").map(([userId,role])=>({user:safeUser(db.users.find(u=>String(u.id)===String(userId))||{}),role,badge:role==="ROOM_OWNER"?"🎩":role==="ROOM_ADMIN"?"💫":"🪄"})).filter(x=>x.user?.id);
   res.json({roomId:String(room.id),myRole:roomRole(room.id,current(req).id),staff});
 });
 app.put("/api/rooms/:id/staff/:userId",auth,(req,res)=>{
