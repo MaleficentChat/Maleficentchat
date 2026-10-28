@@ -181,7 +181,7 @@ const FEATURE_CONTROLS=[
 
 const GRANT_RANKS=["MEMBER","VIP","PREMIUM","MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"];
 const FEATURE_GRANT_DEFAULTS={
-  send_messages:GRANT_RANKS,
+  send_messages:GRANT_RANKS,\n  doodle_studio:GRANT_RANKS,
   private_messages:GRANT_RANKS,
   gif_sending:GRANT_RANKS,
   profile_note:["MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],
@@ -3080,6 +3080,33 @@ app.delete('/api/filter-words/:id',ownerOnly,async(req,res)=>{
   await pool.query(`DELETE FROM filter_words WHERE id=$1`,[req.params.id]);
   const {rows}=await pool.query(`SELECT word FROM filter_words ORDER BY id`);
   db.bannedWords=rows.map(x=>x.word); save(); res.json({ok:true,words:db.bannedWords});
+});
+
+// Doodle Studio — each member can save and manage their own drawings.
+app.get('/api/doodles',auth,async(req,res)=>{
+  const u=current(req);
+  const {rows}=await pool.query('SELECT id,title,created_at FROM doodles WHERE user_id=$1 ORDER BY created_at DESC LIMIT 40',[Number(u.id)]);
+  res.json({doodles:rows.map(row=>({...row,id:String(row.id),createdAt:row.created_at}))});
+});
+app.get('/api/doodles/:id/image',auth,async(req,res)=>{
+  const u=current(req);
+  const {rows}=await pool.query('SELECT image_data,title FROM doodles WHERE id=$1 AND user_id=$2',[req.params.id,Number(u.id)]);
+  if(!rows.length)return res.status(404).json({error:'Doodle not found.'});
+  res.json({image:rows[0].image_data,title:rows[0].title});
+});
+app.post('/api/doodles',auth,featureAllowed('doodle_studio'),async(req,res)=>{
+  const u=current(req),title=cleanText(req.body?.title||'Untitled doodle').trim().slice(0,80)||'Untitled doodle';
+  const image=String(req.body?.image||'');
+  if(!/^data:image\\/png;base64,[A-Za-z0-9+/=]+$/.test(image))return res.status(400).json({error:'Upload a valid PNG doodle.'});
+  if(image.length>1750000)return res.status(413).json({error:'This doodle is too large. Please simplify it and save again.'});
+  const {rows}=await pool.query('INSERT INTO doodles(user_id,title,image_data) VALUES($1,$2,$3) RETURNING id,title,created_at',[Number(u.id),title,image]);
+  res.status(201).json({doodle:{...rows[0],id:String(rows[0].id),createdAt:rows[0].created_at}});
+});
+app.delete('/api/doodles/:id',auth,async(req,res)=>{
+  const u=current(req);
+  const result=await pool.query('DELETE FROM doodles WHERE id=$1 AND user_id=$2 RETURNING id',[req.params.id,Number(u.id)]);
+  if(!result.rowCount)return res.status(404).json({error:'Doodle not found or it does not belong to you.'});
+  res.json({ok:true});
 });
 
 // Friend Wall
