@@ -3108,6 +3108,20 @@ async function loadStaff() {
     $('staff').innerHTML=`
       ${(state.user?.username==='Maleficent'||String(state.user?.rank).toUpperCase()==='DEVELOPER') ? '<section class="card ip-inspection-card"><div><h3>🔎 IP Inspection</h3><p class="muted">Owner/Developer only · Registered email, recorded IP history and approximate network details.</p></div><form id="ipInspectionForm" class="ip-inspection-form"><input id="ipInspectionSearch" placeholder="Type @ or a username to find an account" maxlength="100" autocomplete="off"><button class="primary" type="submit">Inspect</button></form><div id="ipInspectionSuggestions" class="ip-inspection-suggestions" hidden></div><p class="muted ip-inspection-note">IP and network information is sensitive. Location is approximate. Lookups use IP Info with ipapi.co as a fallback.</p><div id="ipInspectionResults"><p class="muted">Search for an account to inspect its recorded IP history.</p></div></section>' : ''}
       <details class="filter-words-details staff-applications-dropdown" id="staffApplicationsDropdown"><summary>📝 Staff Applications <span class="staff-app-count" id="staffApplicationCount">Loading…</span></summary><div class="staff-applications-content" id="staffApplicationsList"><p class="muted">Loading applications…</p></div></details>
+      <details class="filter-words-details system-notifications-dropdown" id="systemNotificationsDropdown">
+        <summary>🔔 System Notifications</summary>
+        <div class="system-notifications-content">
+          <p class="muted">Send an announcement or important update as a notification to everyone or to accounts of a selected rank.</p>
+          <form id="systemNotificationForm" class="system-notification-form">
+            <label>Notification title<input id="systemNotificationTitle" maxlength="100" required placeholder="e.g. Scheduled maintenance"></label>
+            <label>Recipient rank<select id="systemNotificationRank" required>
+              <option value="ALL">All users</option><option value="MEMBER">Member</option><option value="VIP">VIP</option><option value="PREMIUM">Premium</option><option value="MOD">Moderator</option><option value="ADMIN">Admin</option><option value="SUPER_ADMIN">Super Admin</option><option value="COMMISSOR">Commissor</option><option value="COOWNER">Co-owner</option><option value="OWNER">Owner</option><option value="DEVELOPER">Developer</option>
+            </select></label>
+            <label>Announcement / details<textarea id="systemNotificationMessage" maxlength="2000" rows="4" required placeholder="Write the announcement or details to send…"></textarea></label>
+            <div class="toolbar"><button class="primary" id="sendSystemNotification" type="submit">📣 Send notification</button><span id="systemNotificationStatus" class="muted" aria-live="polite"></span></div>
+          </form>
+        </div>
+      </details>
       <div class="grid2">
         <div class="card"><h3>Statistics</h3><p>Users: ${data.stats.users}<br>Online: ${data.stats.online}<br>Messages: ${data.stats.messages}<br>Open reports: ${data.stats.reportsOpen}</p></div>
         <div class="card"><h3>Filtered words</h3><button class="mini" onclick="addFilterWord()">＋ Add word</button><details class="filter-words-details"><summary>Filter words (${(filterWords.words||[]).length})</summary><div class="filter-word-list">${(filterWords.words||[]).map(w=>`<div class="filter-word-row"><code>${esc(w)}</code><button class="mini danger" onclick="deleteFilterWord(decodeURIComponent('${encodeURIComponent(w)}'))">×</button></div>`).join('')||'<span class="muted">No filter words configured.</span>'}</div></details><p class="muted">Link filter: ${bootstrapData.settings?.linkFilter?'ON':'OFF'}</p></div>
@@ -3129,6 +3143,23 @@ async function loadStaff() {
     `;
     document.querySelectorAll("[data-assign-report]").forEach(button=>button.onclick=()=>assignReport(button.dataset.assignReport));
     await renderStaffApplications();
+    $('systemNotificationForm')?.addEventListener('submit',async e=>{
+      e.preventDefault();
+      const button=$('sendSystemNotification'),status=$('systemNotificationStatus');
+      const title=$('systemNotificationTitle')?.value.trim()||'';
+      const message=$('systemNotificationMessage')?.value.trim()||'';
+      const targetRank=$('systemNotificationRank')?.value||'ALL';
+      if(!title||!message){if(status)status.textContent='Enter a title and message.';return;}
+      if(!confirm('Send this notification to '+(targetRank==='ALL'?'all users':targetRank.replace(/_/g,' ')+' accounts')+'?'))return;
+      button.disabled=true;if(status)status.textContent='Sending…';
+      try{
+        const result=await api('/api/staff/system-notifications',{method:'POST',body:JSON.stringify({title,message,targetRank})});
+        if(status)status.textContent='Sent to '+result.sent+' account'+(result.sent===1?'':'s')+'.';
+        $('systemNotificationTitle').value='';$('systemNotificationMessage').value='';
+        toast('System notification sent to '+result.sent+' account'+(result.sent===1?'':'s')+'.');
+      }catch(err){if(status)status.textContent=err.message||'Could not send notification.';toast(err.message||'Could not send notification.');}
+      finally{button.disabled=false;}
+    });
     const ipSearch=$('ipInspectionSearch'), ipSuggestions=$('ipInspectionSuggestions');
     let ipSuggestTimer;
     ipSearch?.addEventListener('input',()=>{
