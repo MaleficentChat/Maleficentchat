@@ -2719,3 +2719,5 @@ a { color: #65dcff; }
 .equipped-profile-badge{display:inline-flex;align-items:center;gap:4px;margin-left:5px;padding:3px 8px;border-radius:999px;background:rgba(8,15,20,.68);border:1px solid var(--border-strong);font-size:11px;vertical-align:middle}
 .profile-settings-card.theme_twilight{--accent:#9c83ff;--accent-2:#c2a9ff}
 .profile-settings-card.theme_crimson{--accent:#d94b63;--accent-2:#ff7188}
+
+.room-rank-badge{display:inline-flex;align-items:center;justify-content:center;min-width:18px;margin-left:3px;font-size:12px;line-height:1;vertical-align:middle;filter:drop-shadow(0 0 4px var(--accent-soft));}
