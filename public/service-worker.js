@@ -1,4 +1,4 @@
-const CACHE="maleficent-chat-v14-targeted-controls";
+const CACHE="maleficent-chat-v15-user-list-density";
 const ASSETS=["/","/style.css","/app.js","/manifest.json","/favicon.svg","/robots.txt","/sitemap.xml","/doodle-studio.js"];
 
 self.addEventListener("install",event=>{
