@@ -3090,3 +3090,52 @@ button,input,select,textarea { max-width:100%; }
   #viewFriends #friends, #viewSearch #searchForm, #viewSearch #searchResults,
   #viewNews #news, #viewWall .wall-feed, #viewProfile #profile { padding-left:8px!important;padding-right:8px!important; }
 }
+
+
+/* Compact all overlays and panels: keep the conversation visible behind them */
+.notification-dropdown,
+.profile-quick-dropdown,
+#modal .modal-card,
+#viewRooms.chatting .online-panel,
+#viewRooms.chatting .online-panel.mobile-open {
+  box-sizing:border-box!important;
+  width:min(320px,calc(100vw - 28px))!important;
+  max-width:calc(100vw - 28px)!important;
+  max-height:min(56vh,480px)!important;
+  overflow-y:auto!important;
+  padding:10px!important;
+}
+#modal .modal-card { width:min(440px,calc(100vw - 28px))!important; }
+.notification-dropdown .notification-item,
+.notification-dropdown .notification-card { padding:8px!important; margin:5px 0!important; }
+@media(max-width:700px) {
+  #viewRooms.chatting .online-panel,
+  #viewRooms.chatting .online-panel.mobile-open {
+    top:calc(var(--header-h,54px) + 8px)!important;
+    right:8px!important; left:auto!important; bottom:auto!important;
+    width:min(310px,calc(100vw - 28px))!important;
+    max-height:54vh!important;
+  }
+  .notification-dropdown, .profile-quick-dropdown,
+  #topMessagesDropdown, #topFriendsDropdown, #notificationDropdown,
+  #reportDropdown, #topProfileDropdown {
+    top:calc(var(--header-h,54px) + 8px)!important;
+    right:8px!important; left:auto!important;
+    width:min(310px,calc(100vw - 28px))!important;
+    max-height:52vh!important;
+  }
+  #modal .modal-card { width:min(380px,calc(100vw - 24px))!important; max-height:76vh!important; overflow:auto!important; }
+}
+/* Aurora/system join notices are plain inline status text, never giant pills */
+.system-message {
+  width:fit-content!important; max-width:96%!important;
+  margin:5px auto!important; padding:3px 8px!important;
+  display:flex!important; gap:6px!important; align-items:baseline!important;
+  justify-content:center!important;
+  border:0!important; border-radius:0!important; background:transparent!important;
+  box-shadow:none!important; line-height:1.35!important;
+  font-size:12px!important; text-align:center!important;
+}
+.system-message > span { opacity:.65; }
+.system-message > b { font-weight:500!important; }
+.system-message > small { font-size:10px!important; opacity:.55; }
