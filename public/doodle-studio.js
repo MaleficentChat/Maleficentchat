@@ -31,7 +31,7 @@
   function bindTools(){
     document.querySelectorAll("[data-doodle-mode]").forEach(btn=>btn.onclick=()=>{mode=btn.dataset.doodleMode;document.querySelectorAll("[data-doodle-mode]").forEach(b=>b.classList.toggle("active",b===btn));if(mode==="stamp"){const stamp=prompt("Choose a stamp: ✦ ✨ ♡ ☾ ★ 🌸 🦇 🖤","✦");if(stamp)textLabel=stamp.slice(0,8)}});
     $("doodleStudioColor").oninput=e=>color=e.target.value;$("doodleStudioSize").oninput=e=>size=Number(e.target.value);
-    $("doodleStudioBackground").onchange=e=>{background=e.target.value;ctx.save();ctx.globalCompositeOperation="destination-over";ctx.fillStyle=background;ctx.fillRect(0,0,canvas.width,canvas.height);ctx.restore();snapshot()};
+    $("doodleStudioBackground").onchange=e=>{const next=e.target.value,old=background,from=old.match(/[a-f0-9]{2}/gi).map(v=>parseInt(v,16)),to=next.match(/[a-f0-9]{2}/gi).map(v=>parseInt(v,16)),image=ctx.getImageData(0,0,canvas.width,canvas.height),px=image.data;for(let i=0;i<px.length;i+=4){if(px[i]===from[0]&&px[i+1]===from[1]&&px[i+2]===from[2]){px[i]=to[0];px[i+1]=to[1];px[i+2]=to[2]}}ctx.putImageData(image,0,0);background=next;snapshot()};
     $("doodleStudioUndo").onclick=()=>{if(history.length<2)return;history.pop();ctx.putImageData(history[history.length-1],0,0);status("Last drawing step undone.")};
     $("doodleStudioClear").onclick=()=>{if(!confirm("Clear the canvas and start again?"))return;ctx.fillStyle=background;ctx.fillRect(0,0,canvas.width,canvas.height);snapshot();status("Canvas cleared.")};
     $("doodleStudioDownload").onclick=download;$("doodleStudioSave").onclick=saveDoodle;$("doodleStudioShare").onclick=shareToChat;
