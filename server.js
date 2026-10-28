@@ -1321,8 +1321,8 @@ app.get("/api/rooms/:id/staff",auth,(req,res)=>{
 app.put("/api/rooms/:id/staff/:userId",auth,(req,res)=>{
   const actor=current(req),room=db.rooms.find(x=>String(x.id)===String(req.params.id)),target=db.users.find(x=>String(x.id)===String(req.params.userId));
   if(!room||!target)return res.status(404).json({error:"Room or user not found"});
-  if(!featureGrantAllowed(actor,"room_rank_assign"))return res.status(403).json({error:"Room-rank assignment is disabled for your rank in Feature Granting."});
   if(!roomOwnerOrGlobal(actor,room))return res.status(403).json({error:"Only this room's owner or authorized global staff can assign room ranks."});
+  if(!Array.isArray(db.settings?.feature_grants?.room_rank_assign)||!db.settings.feature_grants.room_rank_assign.length)return res.status(403).json({error:"Room-rank assignment is disabled in Feature Granting."});
   const role=String(req.body.role||"USER").toUpperCase();
   if(!["USER","ROOM_MODERATOR","ROOM_ADMIN","ROOM_OWNER"].includes(role))return res.status(400).json({error:"Invalid room rank."});
   if(String(target.rank||"").toUpperCase()==="DEVELOPER"&&String(actor.rank||"").toUpperCase()!=="DEVELOPER")return res.status(403).json({error:"Only the Developer can change this account's room rank."});
@@ -1339,9 +1339,9 @@ app.post("/api/rooms/:id/staff-action",auth,async(req,res)=>{
   if(target.id===actor.id)return res.status(400).json({error:"You cannot moderate yourself."});
   if(roomRoleLevel(roomRole(room.id,target.id))>=level&&!global)return res.status(403).json({error:"You cannot moderate someone with an equal or higher room rank."});
   const settings=roomStaffStore(),key=String(room.id),targetId=String(target.id);
-  if(action==="MUTE"&&(level<1&&!global||!featureGrantAllowed(actor,"room_moderate")))return res.status(403).json({error:"Room moderator permission required."});
-  if(["BLOCK","KICK"].includes(action)&&(level<2&&!global||!featureGrantAllowed(actor,"room_moderate")))return res.status(403).json({error:"Room admin permission required."});
-  if(action==="UNBLOCK"&&(level<2&&!global||!featureGrantAllowed(actor,"room_moderate")))return res.status(403).json({error:"Room admin permission required."});
+  const roomModerationEnabled=Array.isArray(db.settings?.feature_grants?.room_moderate)&&db.settings.feature_grants.room_moderate.length>0;
+  if(action==="MUTE"&&(!roomModerationEnabled||(level<1&&!global)))return res.status(403).json({error:"Room moderator permission required or room moderation is disabled in Feature Granting."});
+  if(["BLOCK","KICK","UNBLOCK"].includes(action)&&(!roomModerationEnabled||(level<2&&!global)))return res.status(403).json({error:"Room admin permission required or room moderation is disabled in Feature Granting."});
   if(action==="MUTE"){settings.room_mutes[key] ||= {};settings.room_mutes[key][targetId]={until:Date.now()+Math.max(1,Math.min(60,Number(req.body.minutes)||5))*60000,reason,by:String(actor.id)};}
   else if(action==="BLOCK"||action==="KICK"){settings.room_blocks[key] ||= {};settings.room_blocks[key][targetId]={reason,by:String(actor.id),time:Date.now()};}
   else if(action==="UNBLOCK"){delete settings.room_blocks[key]?.[targetId];}
@@ -1629,7 +1629,8 @@ app.patch(
 
     const room=db.rooms.find(r=>String(r.id)===String(m.roomId));
     const roomRoleValue=room?roomRole(room.id,u.id):"USER";
-    const roomStaffCanDelete=!!room&&roomRoleLevel(roomRoleValue)>=1&&featureGrantAllowed(u,"room_delete_messages");
+    const roomDeleteEnabled=Array.isArray(db.settings?.feature_grants?.room_delete_messages)&&db.settings.feature_grants.room_delete_messages.length>0;
+    const roomStaffCanDelete=!!room&&roomRoleLevel(roomRoleValue)>=1&&roomDeleteEnabled;
     if(m.userId!==u.id&&!hasRank(u,"MOD")&&!roomStaffCanDelete){
       return res.status(403).json({error:"No permission"});
     }
