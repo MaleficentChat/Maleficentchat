@@ -1339,14 +1339,24 @@ function appendMessage(message) {
 
 function openPresenceModes(){
   if(!["OWNER","DEVELOPER"].includes(String(state.user?.rank||"").toUpperCase())){toast("Only Owner and Developer can use presence modes.");return;}
-  modal(`<div class="mode-control-panel" style="width:min(100%,390px);max-width:390px;padding:14px 16px;box-sizing:border-box">
-    <h2 style="font-size:18px;margin:0 0 5px">🕶️ Presence Modes</h2>
-    <p class="muted" style="font-size:12px;line-height:1.4;margin:0 0 10px">Choose one mode. Each option works differently:</p>
-    <label class="mode-control-row"><input type="checkbox" id="modePopupHide" ${state.user?.hideMode&&!state.user?.deadMode?'checked':''}> <span><b>👻 Ghost Mode</b><small>Your chat messages appear as Aurora system messages instead of normal message bubbles. Your account remains visible.</small></span></label>
-    <label class="mode-control-row"><input type="checkbox" id="modePopupDead" ${state.user?.deadMode?'checked':''}> <span><b>💀 Dead Mode</b><small>Hides your presence and suppresses Aurora join notices. Your chat activity stays hidden.</small></span></label>
-    <label class="mode-control-row"><input type="checkbox" id="modePopupInvisible" ${state.user?.invisible&&!state.user?.deadMode?'checked':''}> <span><b>😈 Invisible Mode</b><small>Removes you from normal online-user lists. Staff can still identify you as invisible.</small></span></label>
-    <p class="muted" id="modePopupStatus" aria-live="polite" style="font-size:12px;min-height:14px;margin:6px 0"></p>
-    <div class="toolbar" style="gap:6px"><button type="button" class="primary" id="applyModePopup">Apply</button><button type="button" class="mini" onclick="closeModal()">Cancel</button></div></div>`);
+  modal(`<div class="mode-control-panel" style="display:flex;flex-direction:column;gap:10px;width:100%;max-width:420px;min-width:0;box-sizing:border-box;padding:14px">
+    <h2 style="margin:0;font-size:18px;line-height:1.25">🕶️ Presence Modes</h2>
+    <p class="muted" style="margin:0;font-size:13px;line-height:1.5;white-space:normal;overflow-wrap:anywhere">Select one mode. Read the description before applying it.</p>
+    <label class="mode-control-row" style="display:grid;grid-template-columns:20px minmax(0,1fr);align-items:start;gap:10px;width:100%;min-width:0;box-sizing:border-box;padding:10px;border:1px solid var(--border-color,#393244);border-radius:10px;white-space:normal">
+      <input type="checkbox" id="modePopupHide" style="margin:3px 0 0" ${state.user?.hideMode&&!state.user?.deadMode?'checked':''}>
+      <span style="display:block;min-width:0;white-space:normal;overflow-wrap:anywhere"><b style="display:block;margin-bottom:4px">👻 Ghost Mode</b><small style="display:block;white-space:normal;overflow-wrap:anywhere;line-height:1.45">Completely hides your account from other users’ public lists and profile search. You can still use the site, but your visible actions and messages may reveal you.</small></span>
+    </label>
+    <label class="mode-control-row" style="display:grid;grid-template-columns:20px minmax(0,1fr);align-items:start;gap:10px;width:100%;min-width:0;box-sizing:border-box;padding:10px;border:1px solid var(--border-color,#393244);border-radius:10px;white-space:normal">
+      <input type="checkbox" id="modePopupDead" style="margin:3px 0 0" ${state.user?.deadMode?'checked':''}>
+      <span style="display:block;min-width:0;white-space:normal;overflow-wrap:anywhere"><b style="display:block;margin-bottom:4px">💀 Dead Mode</b><small style="display:block;white-space:normal;overflow-wrap:anywhere;line-height:1.45">Your account stays visible and works normally, but Aurora will not announce when you join a room.</small></span>
+    </label>
+    <label class="mode-control-row" style="display:grid;grid-template-columns:20px minmax(0,1fr);align-items:start;gap:10px;width:100%;min-width:0;box-sizing:border-box;padding:10px;border:1px solid var(--border-color,#393244);border-radius:10px;white-space:normal">
+      <input type="checkbox" id="modePopupInvisible" style="margin:3px 0 0" ${state.user?.invisible&&!state.user?.deadMode?'checked':''}>
+      <span style="display:block;min-width:0;white-space:normal;overflow-wrap:anywhere"><b style="display:block;margin-bottom:4px">😈 Invisible Mode</b><small style="display:block;white-space:normal;overflow-wrap:anywhere;line-height:1.45">Hides your online presence from regular users. Staff with sufficient permissions can still identify you as invisible.</small></span>
+    </label>
+    <p class="muted" id="modePopupStatus" aria-live="polite" style="font-size:12px;line-height:1.4;min-height:14px;margin:0;overflow-wrap:anywhere"></p>
+    <div class="toolbar" style="display:flex;flex-wrap:wrap;gap:8px"><button type="button" class="primary" id="applyModePopup">Apply mode</button><button type="button" class="mini" onclick="closeModal()">Cancel</button></div>
+  </div>`);
   const hide=$("modePopupHide"),dead=$("modePopupDead"),invisible=$("modePopupInvisible"),apply=$("applyModePopup");
   const boxes=[hide,dead,invisible].filter(Boolean);
   boxes.forEach(box=>box.addEventListener("change",()=>{if(box.checked)boxes.filter(other=>other!==box).forEach(other=>other.checked=false);}));
@@ -1354,113 +1364,28 @@ function openPresenceModes(){
     const status=$("modePopupStatus");apply.disabled=true;if(status)status.textContent="Saving…";
     try{
       let result;
-      if(dead.checked) {
+      if(dead.checked){
+        await api("/api/me/hide-mode",{method:"POST",body:JSON.stringify({enabled:false})});
+        await api("/api/me/invisible",{method:"POST",body:JSON.stringify({enabled:false})});
         result=await api("/api/me/dead-mode",{method:"POST",body:JSON.stringify({enabled:true})});
-      } else {
+      }else{
         await api("/api/me/dead-mode",{method:"POST",body:JSON.stringify({enabled:false})});
-        const ghostResult=await api("/api/me/hide-mode",{method:"POST",body:JSON.stringify({enabled:hide.checked})});
-        const invisibleResult=await api("/api/me/invisible",{method:"POST",body:JSON.stringify({enabled:invisible.checked})});
-        result={...ghostResult,...invisibleResult,hideMode:!!hide.checked,deadMode:false,invisible:!!invisible.checked};
+        if(hide.checked){
+          await api("/api/me/invisible",{method:"POST",body:JSON.stringify({enabled:false})});
+          result=await api("/api/me/hide-mode",{method:"POST",body:JSON.stringify({enabled:true})});
+        }else if(invisible.checked){
+          await api("/api/me/hide-mode",{method:"POST",body:JSON.stringify({enabled:false})});
+          result=await api("/api/me/invisible",{method:"POST",body:JSON.stringify({enabled:true})});
+        }else{
+          await api("/api/me/hide-mode",{method:"POST",body:JSON.stringify({enabled:false})});
+          result=await api("/api/me/invisible",{method:"POST",body:JSON.stringify({enabled:false})});
+        }
       }
       state.user.hideMode=!!result.hideMode;state.user.deadMode=!!result.deadMode;state.user.invisible=!!result.invisible||!!result.deadMode;
-      closeModal();toast("Presence modes updated.");updateNav();
+      closeModal();toast("Presence mode updated.");updateNav();await loadUsers().catch(()=>{});await renderOnline(onlinePanelTab).catch(()=>{});
     }catch(error){if(status)status.textContent=error.message||"Could not update modes.";toast(error.message||"Could not update modes.");apply.disabled=false;}
   });
 }
-
-$("composer").onsubmit = async e => {
-  e.preventDefault();
-
-  if (!state.currentRoom) {
-    toast("Join a room first.");
-    return;
-  }
-
-  const text =
-    $("message").value.trim();
-
-  if(/^\/mode$/i.test(text)){
-    if($("file").files[0]){toast("Send /Mode without an attachment.");return;}
-    $("message").value="";$("message").dispatchEvent(new Event("input"));
-    openPresenceModes();
-    return;
-  }
-  if(/^\/guide(?:\s|$)/i.test(text)){
-    $("message").value="";$("message").dispatchEvent(new Event("input"));
-    openCommandGuide();
-    return;
-  }
-  if(text.toLowerCase()==='/clear'){
-    if($("file").files[0]){toast("Send /clear without an attachment.");return;}
-    try{
-      const result=await api("/api/rooms/"+encodeURIComponent(state.currentRoom)+"/clear",{method:"POST"});
-      $("message").value="";$("message").dispatchEvent(new Event("input"));
-      state.messages=(state.messages||[]).filter(m=>String(m.roomId)!==String(state.currentRoom));
-      $("messages").innerHTML="";
-      toast("Room cleared. "+Number(result.removed||0)+" message(s) removed.");
-    }catch(error){toast(error.message||"Could not clear this room.");}
-    return;
-  }
-  if(/^@stefan\s+options$/i.test(text)){
-    $("message").value="";
-    $("message").dispatchEvent(new Event("input"));
-    showStefanOptions();
-    return;
-  }
-
-  const file =
-    $("file").files[0];
-
-  if (!text && !file) return;
-
-  const form = new FormData();
-
-  form.append("text", text);
-
-  if (file) {
-    form.append("file", file);
-  }
-
-  if (state.replyTo) {
-    form.append(
-      "replyTo",
-      state.replyTo
-    );
-  }
-  if(state.messageExpiry>0) form.append("expiresIn",String(state.messageExpiry));
-
-  try {
-    // api() already parses JSON and throws for non-2xx responses.
-    // Treat its return value as the response payload (not a Fetch Response).
-    const data = await api(`/api/rooms/${encodeURIComponent(state.currentRoom)}/messages`, {
-      method: "POST",
-      body: form
-    });
-
-    // Render the server-confirmed message immediately; appendMessage prevents socket duplicates.
-    if (data.message && String(data.message.roomId) === String(state.currentRoom)) {
-      appendMessage(data.message);
-    }
-
-    $("message").value = "";
-    $("file").value = "";
-
-    state.replyTo = null;
-    state.messageExpiry = 0;
-    if($("expireBtn")) $("expireBtn").textContent="⏳ 0s";
-
-    $("replyBar").classList.add(
-      "hidden"
-    );
-  } catch (error) {
-    toast(error.message);
-  }
-};
-$("attach").onclick = () =>
-  $("file").click();
-if ($("chatGifBtn")) $("chatGifBtn").onclick = () => openGifPicker();
-
-/* Doodle pad: draw locally and send the result as a normal room image. */
 function openDoodleComposer(){
   if(!state.currentRoom){toast('Join the Main Room before sending a doodle.');return;}
   modal(`<div class="doodle-modal"><div class="doodle-head"><h2>🖌️ Doodle</h2><button type="button" class="mini" id="doodleClose">×</button></div>
