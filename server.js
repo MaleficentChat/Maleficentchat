@@ -2651,14 +2651,22 @@ app.post(
     save();
     const actionText={MUTE:'muted',KICK:'kicked',BAN:'banned',UNMUTE:'unmuted',REVOKE_MUTE:'unmuted',REVOKE_BAN:'unbanned',REVOKE_KICK:'unkicked',WARN:'warned'}[action]||action.toLowerCase(); const mainRoom=db.rooms.find(x=>/^main room 1$/i.test(String(x.name||'')))||db.rooms.find(x=>x.id==='main'||String(x.name).toLowerCase()==='main room')||db.rooms[0]; systemNotice(`@${target.username} has been ${actionText}.`,mainRoom?.id||null);
 
-    notify(
-      target.id,
-      action==="WARN"?"warning":"moderation",
-      action==="WARN"?"Warning ⚠️":"Moderation action",
-      action==="WARN" ? (cleanText(req.body.reason)||"Please review the community rules.") : action+": "+(req.body.reason||"")
-    );
-    if(action==="WARN") io.to("user:"+target.id).emit("warning-popup",{reason:cleanText(req.body.reason)||"Please review the community rules."});
-    if(action==="KICK") io.to("user:"+target.id).emit("kick-lock",{until:target.kickedUntil,reason:target.kickReason});
+    const moderationReason=cleanText(req.body.reason)||"Community rules";
+    if(action==="WARN"){
+      notify(target.id,"warning","Warning ⚠️",moderationReason);
+      io.to("user:"+target.id).emit("warning-popup",{reason:moderationReason});
+    }else if(action==="MUTE"){
+      const minutes=Math.max(1,Number(req.body.minutes)||10);
+      const muteMessage="You have been muted for "+minutes+" minutes";
+      notify(target.id,"moderation","You have been muted",muteMessage);
+      io.to("user:"+target.id).emit("mute-notice",{minutes,until:target.mutedUntil,reason:target.muteReason,message:muteMessage});
+    }else if(action==="KICK"){
+      notify(target.id,"moderation","You have been kicked",target.kickReason);
+      io.to("user:"+target.id).emit("kick-lock",{until:target.kickedUntil,reason:target.kickReason});
+    }else if(action==="BAN"){
+      notify(target.id,"moderation","You have been banned",target.banReason);
+      io.to("user:"+target.id).emit("ban-lock",{reason:target.banReason});
+    }
 
     io.emit("presence");
 
