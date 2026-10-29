@@ -363,6 +363,7 @@ async function start() {
       renderRooms();
     }
     renderOnline(onlinePanelTab);
+    if (state.view === "users") { try { await loadUsers(); } catch {} }
   });
 
   state.socket.on("message", message => {
