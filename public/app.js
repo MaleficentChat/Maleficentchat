@@ -407,57 +407,29 @@ async function start() {
 
   await loadRooms();
 
-  // Retry the server's authoritative room list before showing an empty room
-  // screen. Main Room is seeded on the server before it accepts logins.
-  let mainRoom = state.rooms.find(room => room.isDefault) ||
-    state.rooms.find(room => String(room.name || "").trim().toLowerCase() === "main room");
-  if (!mainRoom) {
-    try {
-      const latest = await api("/api/rooms");
-      state.rooms = sanitizeRoomList(latest.rooms);
-      state.roomListMode = "all";
-      mainRoom = state.rooms.find(room => room.isDefault) ||
-        state.rooms.find(room => String(room.name || "").trim().toLowerCase() === "main room");
-      renderRooms();
-    } catch (e) {
-      toast("Rooms could not load: " + e.message);
-    }
-  }
-
+  // Always enter Main Room after login. Retry the authoritative room list/join
+  // while the session and seeded rooms settle; do not switch to an old room.
+  const findMainRoom=()=>state.rooms.find(room=>room.isDefault) ||
+    state.rooms.find(room=>String(room.name||"").trim().toLowerCase()==="main room");
+  let mainRoom=findMainRoom();
+  let joined=false;
   await renderView();
-  // Remember the previous room before Main Room's safe startup join updates the last-room key.
-  const lastRoomKey='mc_last_room_'+(state.user?.id||'guest');
-  const previousRoomId=safeStorage.getItem(lastRoomKey);
-  // New accounts enter Main Room; returning users can resume a previously visited public room.
-  if (mainRoom) {
-    let joined = await joinRoom(String(mainRoom.id));
-    // If the room list was stale during login, fetch the authoritative list and
-    // retry once rather than leaving the user stranded on an empty room screen.
-    if (joined === false) {
-      try {
-        await new Promise(resolve => setTimeout(resolve, 350));
-        const latest = await api("/api/rooms");
-        state.rooms = sanitizeRoomList(latest.rooms);
-        state.roomListMode = "all";
+  for(let attempt=0;attempt<4&&!joined;attempt++){
+    if(!mainRoom||attempt>0){
+      try{
+        const latest=await api("/api/rooms");
+        state.rooms=sanitizeRoomList(latest.rooms);
+        state.roomListMode="all";
         renderRooms();
-        mainRoom = state.rooms.find(room => room.isDefault) ||
-          state.rooms.find(room => String(room.name || "").trim().toLowerCase() === "main room");
-        if (mainRoom) joined = await joinRoom(String(mainRoom.id));
-      } catch (e) {
-        toast("Could not reload rooms: " + e.message);
+        mainRoom=findMainRoom();
+      }catch(e){
+        if(attempt===3)toast("Could not load Main Room: "+e.message);
       }
     }
-    if (joined === false) toast("Main Room could not open automatically. Please check the latest error.");
-    if(joined!==false && previousRoomId && String(previousRoomId)!==String(mainRoom.id)){
-      const previousRoom=state.rooms.find(room=>String(room.id)===String(previousRoomId));
-      // Never prompt for a password during login; locked/private rooms stay on Main Room.
-      if(previousRoom && previousRoom.public!==false && !previousRoom.passwordHash){
-        await joinRoom(String(previousRoom.id));
-      }
-    }
-  } else {
-    toast("Main Room is missing from the server room list. Please retry in a moment.");
+    if(mainRoom)joined=await joinRoom(String(mainRoom.id));
+    if(!joined&&attempt<3)await new Promise(resolve=>setTimeout(resolve,500*(attempt+1)));
   }
+  if(!joined)toast("Main Room could not open automatically. Please open Rooms and try again.");
   await loadNotifications();
 }
 
