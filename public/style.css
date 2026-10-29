@@ -3489,3 +3489,19 @@ button,input,select,textarea { max-width:100%; }
 .msg{position:relative}
 .message-actions-menu .message-menu-item{width:100%;text-align:left}
 .reaction-add{display:none!important}
+
+/* Room Theme picker and shared room palettes */
+.room-theme-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:14px 0;max-height:62vh;overflow:auto;padding:2px}
+.room-theme-card{min-width:0;border:1px solid var(--border-color,#393244);border-radius:13px;padding:8px;background:var(--panel-2,#14111f)}
+.room-theme-card.selected{border-color:#a879ff;box-shadow:0 0 0 1px #a879ff}
+.room-theme-preview{height:100px;border-radius:9px;background:var(--preview-bg);padding:10px;display:flex;flex-direction:column;gap:8px;color:#f5efff;overflow:hidden}
+.room-theme-preview span{font-size:11px;font-weight:800;color:var(--preview-accent)}
+.room-theme-preview i,.room-theme-preview b{display:block;height:14px;width:75%;border-radius:8px;background:var(--preview-bubble);border:1px solid var(--preview-accent)}
+.room-theme-preview i:nth-of-type(2){align-self:flex-end;width:60%}
+.room-theme-preview b{width:45%;height:20px;background:var(--preview-accent);opacity:.75}
+.room-theme-card-footer{display:flex;align-items:center;justify-content:space-between;gap:6px;padding-top:8px}
+.room-theme-card-footer strong{font-size:12px}
+#viewRooms[data-room-theme] .messages{background-color:var(--room-theme-bg)}
+#viewRooms[data-room-theme] .msg.mine .msg-text{background:var(--room-theme-bubble);border-color:var(--room-theme-accent)}
+#viewRooms[data-room-theme] .msg.top .message-rank-floating{color:var(--room-theme-accent)}
+@media(max-width:520px){.room-theme-grid{gap:8px}.room-theme-preview{height:82px}.room-theme-card{padding:6px}}
