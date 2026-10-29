@@ -3526,7 +3526,7 @@ app.patch("/api/owner/settings",ownerOnly,async(req,res)=>{
   if(req.body.auditLogVisibility!==undefined){
     const incoming=req.body.auditLogVisibility;
     const keys=["deleted_messages","edited_messages","rank_changes","account_changes","login_activity","invisible_mode","feature_permissions","moderation_actions","reports","room_changes","gold_transactions","site_settings","private_messages","file_uploads","profile_changes","staff_actions"];
-    const allowedRanks=["MEMBER","VIP","PREMIUM","MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER","DEVELOPER"];
+    const allowedRanks=["MEMBER","VIP","PREMIUM","ROYAL","MOD","ADMIN","SUPER_ADMIN","COMMISSOR","INSTRUCTOR","COOWNER","OWNER","DEVELOPER"];
     if(!incoming||typeof incoming!=="object"||Array.isArray(incoming))return res.status(400).json({error:"Invalid audit log visibility settings."});
     const next={...(db.settings.audit_log_visibility||{})};
     for(const key of keys){
