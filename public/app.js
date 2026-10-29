@@ -295,6 +295,7 @@ async function start() {
   }
 
   state.socket = io();
+  state.socket.on("room:theme",data=>{if(!data?.roomId||!data?.theme)return;const room=state.rooms.find(r=>String(r.id)===String(data.roomId));if(room)room.roomTheme=data.theme;if(String(state.currentRoom)===String(data.roomId))applyRoomTheme(data.theme);});
   state.socket.on("gold:update",data=>{ if(state.user&&data?.gold!==undefined){state.user.gold=data.gold; updateNav();}});
 
   state.socket.on("connect", () => {
