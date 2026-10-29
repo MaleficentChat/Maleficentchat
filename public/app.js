@@ -1889,6 +1889,13 @@ $("resetUserFilters")?.addEventListener("click",()=>{
   loadUsers();
 });
 function invisibleDot(user){return user?.invisible?'<i class="invisible-staff-dot" title="Invisible mode active"></i>':'';}
+function moderationStatusTags(user){
+  const tags=[];
+  if(user?.banned===true)tags.push('<span class="user-moderation-tag is-banned" title="This user is banned" aria-label="Banned">🚫</span>');
+  if(Number(user?.mutedUntil)>Date.now())tags.push('<span class="user-moderation-tag is-muted" title="This user is muted" aria-label="Muted">✋🏼</span>');
+  if(Number(user?.kickedUntil)>Date.now())tags.push('<span class="user-moderation-tag is-kicked" title="This user is kicked until the action expires" aria-label="Kicked">🦶🏼</span>');
+  return tags.length?`<span class="user-moderation-tags" aria-label="Moderation status">${tags.join("")}</span>`:"";
+}
 function invisibleToggleMarkup(user,compact=false){
   if(String(user?.id)!==String(state.user?.id)||!canFeature("invisible_mode"))return "";
   const enabled=!!user.invisible;
@@ -1917,7 +1924,7 @@ function userCard(user) {
       <span class="instagram-avatar-ring">${avatar(user)}</span>
       <span class="horizontal-user-details">
         <b class="instagram-user-name">${esc(displayName)}</b>
-        <small class="instagram-user-handle">@${esc(user.username)} ${invisibleDot(user)}</small>
+        <small class="instagram-user-handle">@${esc(user.username)} ${invisibleDot(user)} ${moderationStatusTags(user)}</small>
         <span class="instagram-user-rank">${({ROOM_MODERATOR:"🛡️ Room Moderator",ROOM_ADMIN:"👑 Room Admin",ROOM_OWNER:"🎩 Room Owner"})[state.roomRankByUser?.[String(user.id)]] ? esc(({ROOM_MODERATOR:"🛡️ Room Moderator",ROOM_ADMIN:"👑 Room Admin",ROOM_OWNER:"🎩 Room Owner"})[state.roomRankByUser[String(user.id)]]) : rank(user.rank)}</span>
         <span class="instagram-user-meta"><span class="instagram-presence-dot ${onlineNow ? "is-online" : ""}"></span>${onlineNow ? "Online" : "Member"} <span>·</span> Lv ${Number(user.level || 1)}</span>
       </span>
