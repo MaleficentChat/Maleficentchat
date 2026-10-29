@@ -1,12 +1,17 @@
-const CACHE="maleficent-chat-v17-web-push";
+const CACHE="maleficent-chat-v18-web-push-install-fix";
 const ASSETS=["/","/style.css","/app.js","/manifest.json","/favicon.svg","/robots.txt","/sitemap.xml","/doodle-studio.js"];
 
 self.addEventListener("install",event=>{
-  event.waitUntil(
-    caches.open(CACHE)
-      .then(cache=>cache.addAll(ASSETS))
-      .then(()=>self.skipWaiting())
-  );
+  event.waitUntil((async()=>{
+    const cache=await caches.open(CACHE);
+    await Promise.all(ASSETS.map(async asset=>{
+      try{
+        const response=await fetch(asset,{cache:"no-cache"});
+        if(response.ok)await cache.put(asset,response);
+      }catch(error){console.warn("Optional offline asset skipped:",asset,error);}
+    }));
+    await self.skipWaiting();
+  })());
 });
 
 self.addEventListener("fetch",event=>{
