@@ -328,7 +328,7 @@ async function start() {
     if(payload?.enabled&&!isOwnerExempt())showConstructionPanel(payload.until);
     else hideConstructionPanel();
     const btn=$("underConstructionToggle");
-    if(btn&&isOwnerExempt()){btn.dataset.active=payload?.enabled?"true":"false";btn.textContent=payload?.enabled?"🚧 Turn Off Under Construction":"🚧 Under Construction Panel";if($("constructionDuration"))$("constructionDuration").disabled=!!payload?.enabled;}
+    if(btn&&isOwnerExempt()){btn.dataset.active=payload?.enabled?"true":"false";btn.textContent=payload?.enabled?"🚧 Turn Off Under Construction":"🚧 Enable Under Construction";if($("constructionDuration"))$("constructionDuration").disabled=!!payload?.enabled;}
   });
   state.socket.on("room:theme",data=>{if(!data?.roomId||!data?.theme)return;const room=state.rooms.find(r=>String(r.id)===String(data.roomId));if(room)room.roomTheme=data.theme;if(String(state.currentRoom)===String(data.roomId))applyRoomTheme(data.theme);});
   state.socket.on("gold:update",data=>{ if(state.user&&data?.gold!==undefined){state.user.gold=data.gold; updateNav();}});
@@ -4528,6 +4528,11 @@ async function loadSettings(){
 }
 
 
+
+// Check maintenance mode before login as well as after authentication, so visitors see the construction panel.
+checkUnderConstruction();
+if(constructionPoll)clearInterval(constructionPoll);
+constructionPoll=setInterval(checkUnderConstruction,15000);
 
 if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("/service-worker.js").catch(()=>{}));}
 
