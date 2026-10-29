@@ -101,7 +101,7 @@ async function api(url, opt = {}) {
   // Attach the room access token to every room-scoped API call that needs it,
   // including YouTube sharing. Previously the token was only sent for messages
   // and pinned messages, so the YouTube endpoint always rejected the request.
-  const roomMatch=String(url).match(/\/api\/rooms\/(\d+)(?:\/|$)/);
+  const roomMatch=String(url).match(/\/api\/rooms\/([^/?#]+)(?:\/|$)/);
   if(roomMatch){try{const roomAccess=JSON.parse(safeStorage.getItem('mc_room_join')||'null');if(roomAccess?.roomId===roomMatch[1]&&roomAccess.joinToken)headers['x-room-join-token']=roomAccess.joinToken;}catch{}}
   const res = await fetch(url, {
     ...opt,
@@ -118,6 +118,20 @@ async function api(url, opt = {}) {
   return body;
 }
 
+async function registerSiteNotificationWorker(){
+  if(!("serviceWorker" in navigator))return null;
+  try{siteNotificationRegistration=await navigator.serviceWorker.register("/service-worker.js");return await navigator.serviceWorker.ready;}catch(e){console.warn("Notification worker unavailable",e);return null;}
+}
+let siteNotificationRegistration=null;
+async function showSiteNotification(title,body,targetView){
+  if(!("Notification" in window)||Notification.permission!=="granted")return;
+  const options={body,tag:"mc-"+String(title).slice(0,32),data:{url:"/"+(targetView==="messages"?"#messages":"#rooms")}};
+  try{const registration=siteNotificationRegistration||await registerSiteNotificationWorker();if(registration?.showNotification)await registration.showNotification(title,options);else new Notification(title,options);}catch(e){console.warn("Could not show notification",e);}
+}
+async function enableSiteNotifications(){
+  if(!("Notification" in window)){toast("This browser does not support notifications.");return;}
+  try{const permission=await Notification.requestPermission();if(permission!=="granted"){toast("Notifications were not enabled. Check your browser site settings.");return;}await registerSiteNotificationWorker();toast("Site notifications enabled on this device.");const btn=$("enableSiteNotifications");if(btn)btn.textContent="🔔 Notifications enabled";}catch(e){toast("Could not enable notifications: "+(e.message||"check browser settings"));}
+}
 function toast(text) {
   const el = $("toast");
   // Some dashboard views do not include the global toast element.
@@ -364,11 +378,13 @@ async function start() {
     }
     renderOnline(onlinePanelTab);
     if (state.view === "users") { try { await loadUsers(); } catch {} }
+    if (state.view === "rooms" || state.view === "users") { try { await loadUsers(); } catch {} }
   });
 
   state.socket.on("message", message => {
     if (String(message.roomId) === String(state.currentRoom)) {
       appendMessage(message);
+      if (document.hidden && String(message.userId||"")!==String(state.user?.id)) showSiteNotification(message.displayName||message.username||"New message", String(message.text||"New room message").slice(0,180), "rooms");
     }
   });
 
@@ -440,6 +456,7 @@ async function start() {
   });
 
   state.socket.on("dm", message => {
+    if(document.hidden && String(message?.fromId||message?.senderId||message?.userId||"")!==String(state.user?.id)) showSiteNotification("New private message", String(message?.text||message?.message||"You received a private message").slice(0,180), "messages");
     if (
       state.dmUserId &&
       message &&
@@ -1086,7 +1103,7 @@ async function renderOnline(tab=onlinePanelTab,searchQuery=""){
         ${avatar(user)}
         <div class="online-user-copy">
           <b>${esc(user.displayName)}</b>
-          <small>@${esc(user.username)} ${invisibleDot(user)}${user.invisible?"":" · "+(user.customStatus||(user.online?"Available":"Away"))}</small>
+          <small>@${esc(user.username)} ${invisibleDot(user)} ${moderationStatusTags(user)}${user.invisible?"":" · "+(user.customStatus||(user.online?"Available":"Away"))}</small>
           <span class="room-user-rank" title="${esc(roomRoleLabel[roomRoleByUser[String(user.id)]]||user.rank||'Member')}">${roomRoleByUser[String(user.id)] ? (roomRoleIcon[roomRoleByUser[String(user.id)]]||'✨') : (rankIcon[String(user.rank||'MEMBER').toUpperCase()]||'⚡')} ${esc(roomRoleLabel[roomRoleByUser[String(user.id)]]||String(user.rank||'MEMBER').replaceAll('_',' '))}</span>
         </div>
         <span class="status ${!user.invisible&&user.online?'on':''}"></span>
