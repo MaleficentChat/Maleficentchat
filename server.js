@@ -539,11 +539,53 @@ function auth(req,res,next){
     });
   }
 
+  const construction=db.settings?.under_construction||{};
+  if(String(u.rank||"").toUpperCase()!=="DEVELOPER" &&
+     !(String(u.rank||"").toUpperCase()==="OWNER"&&u.username===DEFAULT_OWNER) &&
+     construction.enabled===true){
+    const until=Number(construction.until)||0;
+    if(until>Date.now()){
+      return res.status(503).json({error:"The site is under construction.",underConstruction:true,until});
+    }
+    db.settings.under_construction={enabled:false,until:0};
+    save();
+  }
+
   u.online=true;
   u.lastSeen=Date.now();
 
   next();
 }
+
+app.get("/api/under-construction/status",(req,res)=>{
+  const setting=db.settings?.under_construction||{};
+  const until=Number(setting.until)||0;
+  const enabled=setting.enabled===true&&until>Date.now();
+  if(setting.enabled===true&&!enabled){db.settings.under_construction={enabled:false,until:0};save();}
+  const u=current(req),rankName=String(u?.rank||"").toUpperCase();
+  const exempt=rankName==="DEVELOPER"||(rankName==="OWNER"&&u?.username===DEFAULT_OWNER);
+  res.json({enabled:enabled&&!exempt,until:enabled?until:0,exempt});
+});
+app.post("/api/owner/under-construction",auth,ownerOnly,(req,res)=>{
+  const enabled=req.body?.enabled===true;
+  if(enabled){
+    const durationMinutes=Number(req.body?.durationMinutes);
+    if(!Number.isFinite(durationMinutes)||durationMinutes<1||durationMinutes>10080)return res.status(400).json({error:"Choose a duration between 1 minute and 7 days."});
+    const until=Date.now()+Math.floor(durationMinutes)*60000;
+    db.settings.under_construction={enabled:true,until,updatedBy:current(req)?.username||"Owner",updatedAt:Date.now()};
+    save();
+    const payload={enabled:true,until};
+    io.emit("under-construction:status",payload);
+    log(current(req),"UNDER_CONSTRUCTION_ENABLED","site",{durationMinutes,until});
+    return res.json(payload);
+  }
+  db.settings.under_construction={enabled:false,until:0,updatedBy:current(req)?.username||"Owner",updatedAt:Date.now()};
+  save();
+  const payload={enabled:false,until:0};
+  io.emit("under-construction:status",payload);
+  log(current(req),"UNDER_CONSTRUCTION_DISABLED","site",{});
+  res.json(payload);
+});
 
 function staff(r){
   return [
