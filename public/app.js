@@ -588,7 +588,12 @@ async function start() {
     state.rooms.find(room=>String(room.name||"").trim().toLowerCase()==="main room");
   let mainRoom=findMainRoom();
   let joined=false;
-  await renderView();
+  // Every authenticated visit should land directly in Main Room, not the room directory.
+  // Avoid renderView() here because it re-fetches the room list and briefly returns to the directory.
+  state.view = "rooms";
+  document.querySelectorAll(".view").forEach(view => view.classList.add("hidden"));
+  $("viewRooms")?.classList.remove("hidden");
+  document.querySelectorAll(".nav[data-view]").forEach(button => button.classList.toggle("active", button.dataset.view === "rooms"));
   for(let attempt=0;attempt<4&&!joined;attempt++){
     if(!mainRoom||attempt>0){
       try{
