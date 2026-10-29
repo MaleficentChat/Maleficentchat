@@ -132,6 +132,9 @@ async function enableSiteNotifications(){
   if(!("Notification" in window)){toast("This browser does not support notifications.");return;}
   try{const permission=await Notification.requestPermission();if(permission!=="granted"){toast("Notifications were not enabled. Check your browser site settings.");return;}await registerSiteNotificationWorker();toast("Site notifications enabled on this device.");const btn=$("enableSiteNotifications");if(btn)btn.textContent="🔔 Notifications enabled";}catch(e){toast("Could not enable notifications: "+(e.message||"check browser settings"));}
 }
+$("enableSiteNotifications")?.addEventListener("click",enableSiteNotifications);
+if("Notification" in window && Notification.permission==="granted") registerSiteNotificationWorker();
+
 function toast(text) {
   const el = $("toast");
   // Some dashboard views do not include the global toast element.
