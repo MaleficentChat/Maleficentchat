@@ -1,4 +1,4 @@
-const CACHE="maleficent-chat-v16-notifications-room-token";
+const CACHE="maleficent-chat-v17-web-push";
 const ASSETS=["/","/style.css","/app.js","/manifest.json","/favicon.svg","/robots.txt","/sitemap.xml","/doodle-studio.js"];
 
 self.addEventListener("install",event=>{
@@ -50,6 +50,24 @@ self.addEventListener("activate",event=>{
       .then(keys=>Promise.all(keys.filter(key=>key.startsWith("maleficent-chat-")&&key!==CACHE).map(key=>caches.delete(key))))
       .then(()=>self.clients.claim())
   );
+});
+
+self.addEventListener("push",event=>{
+  event.waitUntil((async()=>{
+    let payload={title:"Maleficent Chat",body:"You have a new notification",url:"/"};
+    try{if(event.data)payload={...payload,...event.data.json()};}catch{try{payload.body=event.data?.text()||payload.body;}catch{}}
+    const windows=await self.clients.matchAll({type:"window",includeUncontrolled:true});
+    if(windows.some(client=>client.visibilityState==="visible"))return;
+    await self.registration.showNotification(String(payload.title||"Maleficent Chat").slice(0,100),{
+      body:String(payload.body||"You have a new notification").slice(0,200),
+      icon:"/favicon.svg",
+      badge:"/favicon.svg",
+      tag:String(payload.tag||"maleficent-chat-notification").slice(0,100),
+      renotify:false,
+      data:{url:payload.url||"/",kind:payload.kind||"notification",roomId:payload.roomId||null},
+      timestamp:Date.now()
+    });
+  })());
 });
 
 self.addEventListener("notificationclick",event=>{
