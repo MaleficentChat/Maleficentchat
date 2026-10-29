@@ -191,7 +191,7 @@ const FEATURE_CONTROLS=[
   {key:"room_clear_own",name:"Clear messages in owned rooms",category:"Room Staff",defaultRank:"OWNER"}
 ];
 
-const GRANT_RANKS=["MEMBER","VIP","PREMIUM","MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"];
+const GRANT_RANKS=["MEMBER","VIP","PREMIUM","ROYAL","MOD","ADMIN","SUPER_ADMIN","COMMISSOR","INSTRUCTOR","COOWNER","OWNER"];
 const FEATURE_GRANT_DEFAULTS={
   send_messages:GRANT_RANKS,
   doodle_studio:GRANT_RANKS,
