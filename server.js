@@ -569,11 +569,24 @@ function cleanText(s){
   return String(s??"").slice(0,4000);
 }
 
+function reportOnlyFilteredWord(text){
+  const low=cleanText(text).toLowerCase();
+  for(const raw of db.bannedWords||[]){
+    const entry=String(raw||"").trim();
+    if(/^r\s*:\s*/i.test(entry)){
+      const word=entry.replace(/^r\s*:\s*/i,"").trim();
+      if(word&&low.includes(word.toLowerCase())) return word;
+    }
+  }
+  return null;
+}
 function filteredWord(text){
   const t=cleanText(text);
   const low=t.toLowerCase();
-  for(const w of db.bannedWords||[]){
-    if(w&&low.includes(String(w).toLowerCase())) return String(w);
+  for(const raw of db.bannedWords||[]){
+    const entry=String(raw||"").trim();
+    if(!entry||/^r\s*:\s*/i.test(entry)) continue;
+    if(low.includes(entry.toLowerCase())) return entry;
   }
   if(db.settings.linkFilter && /https?:\/\/|www\./i.test(t)) return "link";
   return null;
@@ -1745,6 +1758,24 @@ app.post("/api/rooms/:id/messages",auth,featureAllowed("send_messages"),upload.s
   }
   if((r.locked||db.settings?.locked_rooms?.[String(r.id)]) && !hasRank(u,"MOD") && String(u.rank).toUpperCase()!=="DEVELOPER")return res.status(403).json({error:"This room is locked. Only staff can send messages."});
 
+  // Report-only filter words use the "r:" prefix. Keep the message unchanged and do not notify the sender.
+  const reportOnlyMatch=reportOnlyFilteredWord(text);
+  if(reportOnlyMatch && String(u.rank).toUpperCase()!=="DEVELOPER"){
+    const autoReport={
+      id:id(),time:Date.now(),reporter:null,reporterUsername:"System filter",
+      reportedUserId:u.id,reportedUserUsername:u.username,reportedUserDisplayName:u.displayName||u.username,
+      messageId:id(),roomId:String(r.id),
+      messageSnapshot:{text:text,username:u.username,displayName:u.displayName||u.username,rank:u.rank,roomId:String(r.id),time:Date.now()},
+      category:"Filtered-word alert",reason:"Matched report-only filter rule",
+      status:"OPEN",kind:"message",automatic:true,matchedWord:reportOnlyMatch
+    };
+    try{
+      await pool.query("INSERT INTO reports(id,reporter_id,reported_id,conversation_user_id,reason,data,created_at) VALUES($1,NULL,$2,NULL,$3,$4::jsonb,NOW())",[autoReport.id,Number(u.id),autoReport.reason,JSON.stringify(autoReport)]);
+      db.reports ||= [];db.reports.push(autoReport);
+      notifyStaff("report","New filtered-word report","A chat message matched a report-only filter rule.");
+      save();
+    }catch(e){console.error("Report-only filter persistence failed:",e?.message||e);}
+  }
   const matchedFilter=filteredWord(text);
   const affected=(db.settings.filter_affected_ranks||[]).map(x=>String(x).toUpperCase());
   let autoMuted=false;
