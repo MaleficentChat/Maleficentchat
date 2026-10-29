@@ -252,6 +252,7 @@ $("authForm").onsubmit = async e => {
     await start();
   } catch (error) {
     $("authMsg").textContent = error.message;
+    if(/you have been banned/i.test(String(error.message||""))){showBanLock(String(error.message).replace(/^.*you have been banned\s*/i,"").replace(/^[:.\-]\s*/,"")||"Community rules");}
   }
 };
 
