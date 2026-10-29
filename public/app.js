@@ -3543,7 +3543,7 @@ async function loadOwner() {
       ["profile_changes","Profile and avatar changes","PROFILE, AVATAR, BIO"],
       ["staff_actions","Staff dashboard actions","STAFF_"]
     ];
-    const auditRanks = ["MEMBER","VIP","PREMIUM","MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER","DEVELOPER"];
+    const auditRanks = ["MEMBER","VIP","PREMIUM","ROYAL","MOD","ADMIN","SUPER_ADMIN","COMMISSOR","INSTRUCTOR","COOWNER","OWNER","DEVELOPER"];
     const defaultAuditVisibility = Object.fromEntries(auditTypes.map(([key])=>[key,{enabled:true,minimumRank:"ADMIN"}]));
     const auditVisibility = {...defaultAuditVisibility,...(data.settings?.audit_log_visibility||{})};
     const renderOwnerAuditVisibility = (query="") => {
