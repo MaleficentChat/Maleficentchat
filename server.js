@@ -566,21 +566,21 @@ app.get("/api/under-construction/status",(req,res)=>{
   const exempt=rankName==="DEVELOPER"||(rankName==="OWNER"&&u?.username===DEFAULT_OWNER);
   res.json({enabled:enabled&&!exempt,configuredEnabled:enabled,until:enabled?until:0,exempt});
 });
-app.post("/api/owner/under-construction",auth,ownerOnly,(req,res)=>{
+app.post("/api/owner/under-construction",auth,ownerOnly,async(req,res)=>{
   const enabled=req.body?.enabled===true;
   if(enabled){
     const durationMinutes=Number(req.body?.durationMinutes);
     if(!Number.isFinite(durationMinutes)||durationMinutes<1||durationMinutes>10080)return res.status(400).json({error:"Choose a duration between 1 minute and 7 days."});
     const until=Date.now()+Math.floor(durationMinutes)*60000;
     db.settings.under_construction={enabled:true,until,updatedBy:current(req)?.username||"Owner",updatedAt:Date.now()};
-    save();
+    await flushSave();
     const payload={enabled:true,until};
     io.emit("under-construction:status",payload);
     log(current(req),"UNDER_CONSTRUCTION_ENABLED","site",{durationMinutes,until});
     return res.json(payload);
   }
   db.settings.under_construction={enabled:false,until:0,updatedBy:current(req)?.username||"Owner",updatedAt:Date.now()};
-  save();
+  await flushSave();
   const payload={enabled:false,until:0};
   io.emit("under-construction:status",payload);
   log(current(req),"UNDER_CONSTRUCTION_DISABLED","site",{});
