@@ -1319,7 +1319,7 @@ app.get("/api/rooms",auth,async(req,res)=>{
   await pool.query(`UPDATE rooms SET is_default=false WHERE name <> 'Main Room'`);
   const {rows}=await pool.query(`SELECT r.*,u.username AS creator FROM rooms r LEFT JOIN users u ON r.created_by=u.id ORDER BY r.is_default DESC,r.created_at ASC,r.id ASC`);
   if(!rows.length) return res.status(503).json({error:'Rooms are not initialized yet. Please retry in a moment.',rooms:[]});
-  const rooms=rows.map(r=>({id:String(r.id),name:r.name,icon:r.icon||"💬",description:r.description||"",category:r.category||"Community",public:r.is_public!==false,passwordHash:r.password_hash||null,rankRequired:String(r.rank_required||"MEMBER").toUpperCase(),limit:Number(r.room_limit||100),slowMode:Number(r.slow_mode||0),announcement:r.announcement||"",ownerId:r.created_by?String(r.created_by):null,banner:r.banner||"",inviteToken:r.invite_token||"",creator:r.creator||null,isDefault:!!r.is_default,minAge:Number(r.min_age??0),maxAge:Number(r.max_age??120),friendsOnly:!!(db.settings?.room_access?.[String(r.id)]?.friendsOnly),locked:!!r.password_hash,onlineCount:visibleRoomOnlineCount(r.id)}));
+  const rooms=rows.map(r=>({id:String(r.id),name:r.name,icon:r.icon||"💬",description:r.description||"",category:r.category||"Community",public:r.is_public!==false,passwordHash:r.password_hash||null,rankRequired:String(r.rank_required||"MEMBER").toUpperCase(),limit:Number(r.room_limit||100),slowMode:Number(r.slow_mode||0),announcement:r.announcement||"",ownerId:r.created_by?String(r.created_by):null,banner:r.banner||"",inviteToken:r.invite_token||"",creator:r.creator||null,isDefault:!!r.is_default,minAge:Number(r.min_age??0),maxAge:Number(r.max_age??120),friendsOnly:!!(db.settings?.room_access?.[String(r.id)]?.friendsOnly),roomTheme:String(db.settings?.room_themes?.[String(r.id)]||"obsidian"),locked:!!r.password_hash,onlineCount:visibleRoomOnlineCount(r.id)}));
   db.rooms=rooms;
   res.json({rooms:rooms.map(r=>({...r,passwordHash:undefined}))});
 });
@@ -1487,6 +1487,16 @@ app.put("/api/rooms/:id",auth,async(req,res)=>{
   log(u,"ROOM_EDIT",r.name);res.json({room:{...r,passwordHash:undefined}});
 });
 
+app.put("/api/rooms/:id/theme",auth,(req,res)=>{
+ const actor=current(req),room=db.rooms.find(x=>String(x.id)===String(req.params.id));
+ if(!room)return res.status(404).json({error:"Room not found"});
+ if(!roomOwnerOrGlobal(actor,room)&&!roomRoleCan(room.id,actor.id,"edit_room"))return res.status(403).json({error:"Only the room owner or authorized room staff can change the room theme."});
+ const allowed=["obsidian","midnight","lavender","rose","forest","sunset","ocean","cyberpunk","aurora","sakura","ember","ice"];
+ const theme=String(req.body.theme||"").toLowerCase();if(!allowed.includes(theme))return res.status(400).json({error:"Choose a valid room theme."});
+ db.settings ||= {};db.settings.room_themes ||= {};db.settings.room_themes[String(room.id)]=theme;save();
+ io.to("room:"+room.id).emit("room:theme",{roomId:String(room.id),theme});log(actor,"ROOM_THEME_UPDATE",room.name,{roomId:String(room.id),theme});
+ res.json({ok:true,roomId:String(room.id),theme});
+});
 app.delete("/api/rooms/:id",auth,async(req,res)=>{
   const u=current(req); const r=db.rooms.find(x=>String(x.id)===String(req.params.id));
   if(!r)return res.status(404).json({error:"Room not found"});
