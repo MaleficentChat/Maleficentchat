@@ -459,17 +459,14 @@ async function start() {
   state.socket.on('rooms_updated', async()=>{try{await loadRooms();renderRooms();}catch{}});
   state.socket.on('connect',()=>{loadRooms().catch(()=>{});});
 
-  state.socket.on("presence", async () => {
-    // Presence can fire for every connect/disconnect. Refresh only the view the
-    // user is actually looking at; fetching full user/friend/staff lists on
-    // every presence event made the client and database do unnecessary work.
-    if (state.view === "rooms") {
-      try { await loadRooms(); } catch {}
-      renderRooms();
-    }
+  state.socket.on("presence", () => {
+    // Presence changes frequently. Do not refetch the room directory on every
+    // join/leave; room creation/settings changes use rooms_updated instead.
+    // Re-render cached room data and fetch users only when their view is open.
+    if (state.view === "rooms") renderRooms();
     const onlinePanel=$("onlinePanel");
     if(onlinePanel && !onlinePanel.classList.contains("hidden")) renderOnline(onlinePanelTab);
-    if (state.view === "users") { try { await loadUsers(); } catch {} }
+    if (state.view === "users") loadUsers().catch(()=>{});
   });
 
   state.socket.on("message", message => {
@@ -4182,10 +4179,13 @@ async function toggleNotificationDropdown(){
 
 /* ---------------- NOTIFICATIONS ---------------- */
 
+let notificationRefreshPromise=null;
 async function loadNotifications() {
   // This runs on a timer and socket reconnects. Do not hit authenticated APIs
-  // while the login screen is active, otherwise a logged-out tab spams 401s.
+  // while the login screen is active, or start duplicate sets of requests.
   if (!state.user) return;
+  if(notificationRefreshPromise)return notificationRefreshPromise;
+  notificationRefreshPromise=(async()=>{
   try {
     const [data,unreadData,dm,staffCounts,friendsData]=await Promise.all([
       api("/api/notifications"),
@@ -4217,7 +4217,11 @@ async function loadNotifications() {
     if($("topNotifDot")) $("topNotifDot").classList.toggle("green",counts.all>0);
   } catch(error) {
     console.warn("Notification refresh failed",error);
+  } finally {
+    notificationRefreshPromise=null;
   }
+  })();
+  return notificationRefreshPromise;
 }
 // Notification counters are a background convenience, not a live chat
 // transport. Polling five APIs every 5 seconds was creating needless load.
