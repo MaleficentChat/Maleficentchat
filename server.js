@@ -2812,6 +2812,8 @@ async function lookupIpNetworkDetails(ip){
         timezone:d.timezone||d.time_zone||"",
         coordinates:d.loc||([d.latitude,d.longitude].every(v=>v!==undefined&&v!==null)?d.latitude+","+d.longitude:""),
         networkType:d.connection_type||d.type||"",
+        vpnDetected:!!(d.vpn||d.is_vpn||d.proxy||d.is_proxy||d.tor||d.is_tor||d.hosting),
+        vpnSignals:[d.vpn||d.is_vpn?"VPN":null,d.proxy||d.is_proxy?"Proxy":null,d.tor||d.is_tor?"Tor":null,d.hosting?"Hosting / datacenter":null].filter(Boolean),
         lookupStatus:"Success",
         lookupSource:"IP Info"
       };
@@ -2841,6 +2843,8 @@ async function lookupIpNetworkDetails(ip){
           timezone:d.timezone||"",
           coordinates:d.latitude!=null&&d.longitude!=null?d.latitude+","+d.longitude:"",
           networkType:d.version||"",
+          vpnDetected:false,
+          vpnSignals:[],
           lookupStatus:"Success",
           lookupSource:"ipapi.co"
         };
@@ -2927,13 +2931,37 @@ app.get("/api/staff/ip-inspection",auth,ownerOnly,async(req,res)=>{
     }
     const lookups=await Promise.all(uniqueIps.slice(0,60).map(async ip=>[ip,await lookupIpNetworkDetails(ip)]));
     const geo=Object.fromEntries(lookups);
+    const records=q.rows.map(row=>{
+      const ip=normalizeIp(row.ip_address);
+      const privateIp=isPrivateOrLocal(ip);
+      let network=privateIp?{lookupStatus:ip?"Private/local IP — no public geolocation":"No IP recorded"}:(geo[ip]||{lookupStatus:"Not looked up"});
+      // Providers differ in VPN flags; when no explicit flag is returned, use
+      // conservative network-name signals and label these as possible matches.
+      if(!network.vpnDetected){
+        const signalText=[network.networkProvider,network.organization,network.asn,network.hostname,network.networkType].join(" ").toLowerCase();
+        const vpnTerms=/\\b(vpn|proxy|tor exit|nordvpn|expressvpn|surfshark|proton vpn|mullvad|private internet access|cyberghost|torguard|windscribe|datacamp|hosting|vps|dedicated server|cloud server|datacenter|data center)\\b/i;
+        if(vpnTerms.test(signalText)){network={...network,vpnDetected:true,vpnSignals:["Possible VPN / proxy / hosting network"],vpnDetectionMethod:"network-name heuristic"};}
+      }
+      return {...row,network};
+    });
+    const vpnAccountsMap=new Map();
+    for(const row of records){
+      if(!row.network?.vpnDetected||!row.username)continue;
+      const key=String(row.user_id||row.username);
+      const existing=vpnAccountsMap.get(key);
+      if(!existing||new Date(row.recorded_at||0)>new Date(existing.recorded_at||0))vpnAccountsMap.set(key,row);
+    }
+    const vpnAccounts=[...vpnAccountsMap.values()].map(row=>({
+      username:row.username,rank:db.users.find(u=>String(u.id)===String(row.user_id))?.rank||"MEMBER",
+      event_type:row.event_type,recorded_at:row.recorded_at,
+      country:row.network.country||"",networkProvider:row.network.networkProvider||"",
+      signals:row.network.vpnSignals||[],method:row.network.vpnDetectionMethod||"provider flag",
+      ip_address:row.ip_address
+    }));
     return res.json({
+      vpnAccounts,
       sameIpAccounts:sameIpAccounts.map(row=>({...row,network:geo[row.ip_address]||{lookupStatus:"Not looked up"}})),
-      records:q.rows.map(row=>{
-        const ip=normalizeIp(row.ip_address);
-        const privateIp=isPrivateOrLocal(ip);
-        return {...row,network:privateIp?{lookupStatus:ip?"Private/local IP — no public geolocation":"No IP recorded"}:(geo[ip]||{lookupStatus:"Not looked up"})};
-      }),
+      records,
       limit,
       geolocationNote:"Approximate IP location and network data are retrieved server-side from IP Info, with ipapi.co as a fallback. Results may be missing or inaccurate, especially for VPNs, mobile networks, or private addresses."
     });
