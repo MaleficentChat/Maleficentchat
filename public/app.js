@@ -1255,7 +1255,9 @@ document.addEventListener("click",e=>{
   if(wasHidden)menu.classList.remove("hidden");
 });
 document.addEventListener("click",e=>{
-  if(!e.target.closest(".msg-actions")) closeMessageMenus();
+  // A tap on a message must not be treated as an outside click immediately
+  // after the message-action menu has been opened by the delegated handler.
+  if(!e.target.closest(".msg-actions,.msg[data-mid]")) closeMessageMenus();
 });
 
 function showStefanOptions(){
