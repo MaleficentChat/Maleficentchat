@@ -82,7 +82,8 @@ async function initDB() {
       data JSONB,
       created_at TIMESTAMP DEFAULT NOW()
     );
-    CREATE INDEX IF NOT EXISTS private_messages_pair_idx ON private_messages(sender_id,receiver_id,created_at);
+    CREATE INDEX IF NOT EXISTS private_messages_pair_idx ON private_messages(sender_id,receiver_id,created_at DESC);
+    CREATE INDEX IF NOT EXISTS private_messages_reverse_pair_idx ON private_messages(receiver_id,sender_id,created_at DESC);
 
     CREATE TABLE IF NOT EXISTS reports(
       id TEXT PRIMARY KEY,
