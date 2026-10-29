@@ -3096,13 +3096,7 @@ async function loadStaff() {
         <div class="card"><h3>Filtered words</h3><button class="mini" onclick="addFilterWord()">＋ Add word</button><details class="filter-words-details"><summary>Filter words (${(filterWords.words||[]).length})</summary><div class="filter-word-list">${(filterWords.words||[]).map(w=>`<div class="filter-word-row"><code>${esc(w)}</code><button class="mini danger" onclick="deleteFilterWord(decodeURIComponent('${encodeURIComponent(w)}'))">×</button></div>`).join('')||'<span class="muted">No filter words configured.</span>'}</div></details><p class="muted">Link filter: ${bootstrapData.settings?.linkFilter?'ON':'OFF'}</p></div>
       </div>
 
-      ${canUseAdminPanel ? `<section class="card system-center-panel">
-      <div class="toolbar"><div><h3>🖥️ System Center & Admin Panel</h3><p class="muted">Health, AutoGuard rules, audit evidence, and account actions.</p></div><button class="mini" id="refreshSystemCenter">↻ Refresh</button></div>
-      <div class="grid2"><div class="about-card"><b>Server</b><p>${systemCenter?.health?.server==='ok'?'🟢 Online':'⚪ Unknown'}</p><small>Uptime ${Math.floor((systemCenter?.health?.uptimeSeconds||0)/3600)}h</small></div><div class="about-card"><b>Database</b><p>${systemCenter?.health?.database?.ok?'🟢 Connected':'🔴 Unavailable'}</p><small>${systemCenter?.health?.database?.latencyMs??'—'} ms</small></div><div class="about-card"><b>Accounts</b><p>${systemCenter?.stats?.online||0} online / ${systemCenter?.stats?.users||0} total</p></div><div class="about-card"><b>Moderation</b><p>${systemCenter?.stats?.activeModerations||0} active actions</p><small>${(systemCenter?.rules||[]).length} AutoGuard rules enabled</small></div></div>
-      <details class="filter-words-details" open><summary>🛡️ Enabled AutoGuard rules</summary>${(systemCenter?.rules||[]).map(r=>`<div class="user-card"><div><b>${esc(r.key.replace(/_/g,' '))}</b><div class="muted">${esc(r.action)} · ${Number(r.durationMinutes)||0} min · ${esc(r.reason||'')}</div></div></div>`).join('')||'<p class="muted">No rules enabled. Configure rules in Owner Space → System Moderation.</p>'}</details>
-      <details class="filter-words-details system-admin-tools"><summary>👤 Account Administration — open to manage accounts</summary><div class="system-admin-tools-content"><p class="muted">Search users and apply moderation actions. Rank protections still apply.</p><form id="staffAdminSearchForm" class="ip-inspection-form"><input id="staffAdminSearch" placeholder="Username, display name, or ID" maxlength="80"><button class="primary" type="submit">Search</button></form><div id="staffAdminUsers"><p class="muted">Search to load accounts.</p></div></div></details>
-      <details class="filter-words-details system-admin-tools"><summary>📜 Audit & Evidence — all events (${(systemCenter?.audit||[]).length})</summary><div class="system-admin-tools-content"><form id="systemAuditSearchForm" class="ip-inspection-form"><input id="systemAuditSearch" placeholder="Optional filter across all audit records" maxlength="100"><button class="primary" type="submit">Filter</button><button class="mini" type="button" id="showAllAuditRows">Show all</button></form><div id="systemAuditRows">${(systemCenter?.audit||[]).map(renderAuditRow).join('')||'<p class="muted">No audit events recorded.</p>'}</div></div></details></section>` : ''}
-      <div class="card active-actions-card"><div class="toolbar"><div><h3>🛡️ Active moderation actions</h3><p class="muted">Only users currently muted, kicked or banned. Warnings are not listed.</p></div><select id="staffActionFilter"><option value="">All actions</option><option value="BANNED">Banned</option><option value="MUTED">Muted</option><option value="KICKED">Kicked</option></select></div><div id="activeActionUsers"></div></div>
+      
       <div class="card"><h3>Reports</h3>
         ${(data.reports||[]).filter(report=>report.status==='OPEN').map(report=>{
           const snap=report.messageSnapshot||{};
@@ -3411,51 +3405,6 @@ async function loadOwner() {
 <label>Daily XP limit<input id="ownerDailyXp" type="number" min="1" value="${Number(data.settings?.daily_xp_limit??data.settings?.dailyXpLimit??500)}"></label><label>Daily reward gold<input id="ownerDailyRewardGold" type="number" min="0" value="${Number(data.settings?.daily_reward_gold??25)}"></label><label>Daily reward XP<input id="ownerDailyRewardXp" type="number" min="0" value="${Number(data.settings?.daily_reward_xp??15)}"></label>
 <label>Filter mute duration (minutes)<input id="ownerFilterDuration" type="number" min="1" value="${Number(data.settings?.filter_mute_duration??data.settings?.filterMuteDurationMinutes??5)}"></label>
 </div><b>Filter word affected ranks</b><div class="rank-check-grid">${['MEMBER','VIP','PREMIUM','MOD','ADMIN','SUPER_ADMIN','COMMISSOR','COOWNER','OWNER'].map(r=>`<label><input type="checkbox" data-filter-rank value="${r}" ${(data.settings?.filter_affected_ranks||['MEMBER','VIP','PREMIUM','MOD','ADMIN','SUPER_ADMIN','COMMISSOR','COOWNER','OWNER']).includes(r)?'checked':''}> ${r}</label>`).join('')}</div><button class="primary" onclick="saveOwnerSiteState()">Save Site Settings</button>
-          </div>
-        </details>
-      </div>
-
-      <div class="card owner-system-moderation-card">
-        <h3>🛡️ System Moderation</h3>
-        <details class="filter-words-details owner-system-moderation-dropdown">
-          <summary>System Moderation — open to configure automated protection</summary>
-          <div class="owner-system-moderation-content">
-        <p class="muted">Configure automated responses for suspicious account activity and chat abuse. Each rule has its own action, duration, reason template and enable switch.</p>
-        <div class="system-moderation-rules">
-          <div class="system-moderation-rule">
-            <div class="system-moderation-rule-head"><div><b>👥 Multi-account detection</b><p class="muted">Repeated accounts associated with the same device or network. Shared networks alone are not proof.</p></div><label class="system-moderation-toggle"><input type="checkbox" id="sm_multi_account_enabled" ${data.settings?.system_moderation?.["multi_account"]?.enabled===true?'checked':''}><span>Enabled</span></label></div>
-            <div class="owner-settings-grid">
-              <label>Automated action<select id="sm_multi_account_action">${["WARN","MUTE","KICK","BAN"].map(v=>`<option value="${v}" ${String(data.settings?.system_moderation?.["multi_account"]?.action||('WARN')).toUpperCase()===v?'selected':''}>${v==="WARN"?"Automated warning":v==="MUTE"?"Mute":v==="KICK"?"Kick":"Ban"}</option>`).join("")}</select></label>
-              <label>Duration (minutes; mute/kick)<input id="sm_multi_account_duration" type="number" min="1" max="10080" value="${Number(data.settings?.system_moderation?.["multi_account"]?.durationMinutes||10)}"></label>
-              <label>Reason template<input id="sm_multi_account_reason" maxlength="240" value="${esc(data.settings?.system_moderation?.["multi_account"]?.reason||"Possible multi-account activity")}" placeholder="Reason shown in moderation history"></label>
-            </div>
-          </div>
-          <div class="system-moderation-rule">
-            <div class="system-moderation-rule-head"><div><b>🚫 Ban-evasion detection</b><p class="muted">Signals that a previously banned account may be returning. Review uncertain matches.</p></div><label class="system-moderation-toggle"><input type="checkbox" id="sm_ban_evasion_enabled" ${data.settings?.system_moderation?.["ban_evasion"]?.enabled===true?'checked':''}><span>Enabled</span></label></div>
-            <div class="owner-settings-grid">
-              <label>Automated action<select id="sm_ban_evasion_action">${["WARN","MUTE","KICK","BAN"].map(v=>`<option value="${v}" ${String(data.settings?.system_moderation?.["ban_evasion"]?.action||('WARN')).toUpperCase()===v?'selected':''}>${v==="WARN"?"Automated warning":v==="MUTE"?"Mute":v==="KICK"?"Kick":"Ban"}</option>`).join("")}</select></label>
-              <label>Duration (minutes; mute/kick)<input id="sm_ban_evasion_duration" type="number" min="1" max="10080" value="${Number(data.settings?.system_moderation?.["ban_evasion"]?.durationMinutes||10)}"></label>
-              <label>Reason template<input id="sm_ban_evasion_reason" maxlength="240" value="${esc(data.settings?.system_moderation?.["ban_evasion"]?.reason||"Possible ban evasion")}" placeholder="Reason shown in moderation history"></label>
-            </div>
-          </div>
-          <div class="system-moderation-rule">
-            <div class="system-moderation-rule-head"><div><b>💬 Spam and flood protection</b><p class="muted">Repeated messages, duplicate text and rapid posting.</p></div><label class="system-moderation-toggle"><input type="checkbox" id="sm_spam_flood_enabled" ${data.settings?.system_moderation?.["spam_flood"]?.enabled===true?'checked':''}><span>Enabled</span></label></div>
-            <div class="owner-settings-grid">
-              <label>Automated action<select id="sm_spam_flood_action">${["WARN","MUTE","KICK","BAN"].map(v=>`<option value="${v}" ${String(data.settings?.system_moderation?.["spam_flood"]?.action||('MUTE')).toUpperCase()===v?'selected':''}>${v==="WARN"?"Automated warning":v==="MUTE"?"Mute":v==="KICK"?"Kick":"Ban"}</option>`).join("")}</select></label>
-              <label>Duration (minutes; mute/kick)<input id="sm_spam_flood_duration" type="number" min="1" max="10080" value="${Number(data.settings?.system_moderation?.["spam_flood"]?.durationMinutes||5)}"></label>
-              <label>Reason template<input id="sm_spam_flood_reason" maxlength="240" value="${esc(data.settings?.system_moderation?.["spam_flood"]?.reason||"Spam or message flooding")}" placeholder="Reason shown in moderation history"></label>
-            </div>
-          </div>
-          <div class="system-moderation-rule">
-            <div class="system-moderation-rule-head"><div><b>🌐 VPN and proxy detection</b><p class="muted">Network risk signals; VPN use alone can be legitimate and should not automatically imply abuse.</p></div><label class="system-moderation-toggle"><input type="checkbox" id="sm_vpn_proxy_enabled" ${data.settings?.system_moderation?.["vpn_proxy"]?.enabled===true?'checked':''}><span>Enabled</span></label></div>
-            <div class="owner-settings-grid">
-              <label>Automated action<select id="sm_vpn_proxy_action">${["WARN","MUTE","KICK","BAN"].map(v=>`<option value="${v}" ${String(data.settings?.system_moderation?.["vpn_proxy"]?.action||('WARN')).toUpperCase()===v?'selected':''}>${v==="WARN"?"Automated warning":v==="MUTE"?"Mute":v==="KICK"?"Kick":"Ban"}</option>`).join("")}</select></label>
-              <label>Duration (minutes; mute/kick)<input id="sm_vpn_proxy_duration" type="number" min="1" max="10080" value="${Number(data.settings?.system_moderation?.["vpn_proxy"]?.durationMinutes||10)}"></label>
-              <label>Reason template<input id="sm_vpn_proxy_reason" maxlength="240" value="${esc(data.settings?.system_moderation?.["vpn_proxy"]?.reason||"VPN/proxy risk signal")}" placeholder="Reason shown in moderation history"></label>
-            </div>
-          </div>
-        </div>
-        <div class="toolbar"><button class="primary" id="saveSystemModeration">Save System Moderation</button><span class="muted">Settings are saved separately for each rule.</span></div>
           </div>
         </details>
       </div>
