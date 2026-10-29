@@ -2939,7 +2939,7 @@ app.get("/api/staff/ip-inspection",auth,ownerOnly,async(req,res)=>{
       // conservative network-name signals and label these as possible matches.
       if(!network.vpnDetected){
         const signalText=[network.networkProvider,network.organization,network.asn,network.hostname,network.networkType].join(" ").toLowerCase();
-        const vpnTerms=/\\b(vpn|proxy|tor exit|nordvpn|expressvpn|surfshark|proton vpn|mullvad|private internet access|cyberghost|torguard|windscribe|datacamp|hosting|vps|dedicated server|cloud server|datacenter|data center)\\b/i;
+        const vpnTerms=/\b(vpn|proxy|tor exit|nordvpn|expressvpn|surfshark|proton vpn|mullvad|private internet access|cyberghost|torguard|windscribe|datacamp|hosting|vps|dedicated server|cloud server|datacenter|data center)\b/i;
         if(vpnTerms.test(signalText)){network={...network,vpnDetected:true,vpnSignals:["Possible VPN / proxy / hosting network"],vpnDetectionMethod:"network-name heuristic"};}
       }
       return {...row,network};
