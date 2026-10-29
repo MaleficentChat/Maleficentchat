@@ -4745,3 +4745,8 @@ constructionPoll=setInterval(checkUnderConstruction,15000);
 if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("/service-worker.js").catch(()=>{}));}
 
 function toggleReactionPicker(id){document.getElementById("reactionPicker-"+id)?.classList.toggle("hidden");}
+
+// Restore an existing authenticated session on ordinary refreshes and new visits.
+// The saved token is sent by api() as X-Auth-Token; if it is valid, bootstrap()
+// restores the user and starts the app without asking them to log in again.
+bootstrap();
