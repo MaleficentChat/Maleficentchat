@@ -3397,7 +3397,7 @@ async function checkUnderConstruction(){
     if(status.enabled&&!status.exempt)showConstructionPanel(status.until);
     else hideConstructionPanel();
     const btn=$("underConstructionToggle");
-    if(btn&&isOwnerExempt()){btn.dataset.active=status.enabled?"true":"false";btn.textContent=status.enabled?"🚧 Turn Off Under Construction":"🚧 Under Construction Panel";if($("constructionDuration"))$("constructionDuration").disabled=!!status.enabled;}
+    if(btn&&isOwnerExempt()){const configured=status.configuredEnabled??status.enabled;btn.dataset.active=configured?"true":"false";btn.textContent=configured?"🚧 Turn Off Under Construction":"🚧 Enable Under Construction";if($("constructionDuration"))$("constructionDuration").disabled=!!configured;}
   }catch{}
 }
 async function toggleUnderConstruction(){
