@@ -460,11 +460,15 @@ async function start() {
   state.socket.on('connect',()=>{loadRooms().catch(()=>{});});
 
   state.socket.on("presence", async () => {
+    // Presence can fire for every connect/disconnect. Refresh only the view the
+    // user is actually looking at; fetching full user/friend/staff lists on
+    // every presence event made the client and database do unnecessary work.
     if (state.view === "rooms") {
       try { await loadRooms(); } catch {}
       renderRooms();
     }
-    renderOnline(onlinePanelTab);
+    const onlinePanel=$("onlinePanel");
+    if(onlinePanel && !onlinePanel.classList.contains("hidden")) renderOnline(onlinePanelTab);
     if (state.view === "users") { try { await loadUsers(); } catch {} }
   });
 
@@ -4215,8 +4219,11 @@ async function loadNotifications() {
     console.warn("Notification refresh failed",error);
   }
 }
-setInterval(()=>{if(state.user)loadNotifications();},5000);
-setTimeout(()=>{if(state.user)loadNotifications();},500);
+// Notification counters are a background convenience, not a live chat
+// transport. Polling five APIs every 5 seconds was creating needless load.
+// Opening notification views and socket reconnects refresh immediately.
+setInterval(()=>{if(state.user)loadNotifications();},30000);
+setTimeout(()=>{if(state.user)loadNotifications();},1200);
 
 $("notifications").onclick=async()=>{
   try{
