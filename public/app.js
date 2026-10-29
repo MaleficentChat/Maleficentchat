@@ -3764,7 +3764,7 @@ async function saveOwnerSiteState(){
 
 async function ownerFeatureGrants(){
   try{
-    const [d,roomRoleData]=await Promise.all([api('/api/owner/feature-grants'),api('/api/owner/room-role-permissions')]);
+    const d=await api('/api/owner/feature-grants');
     const labels={
       send_messages:'Send messages',private_messages:'Private messages',create_rooms:'Create rooms',edit_rooms:'Edit rooms',delete_rooms:'Delete rooms',join_rooms:'Join rooms',delete_own_room:'Delete own room',
       friend_wall_posting:'Post on Friends Wall',wall_commenting:'Comment on Friends Wall',wall_liking:'Like Friends Wall posts',wall_upload:'Upload to Friends Wall',news_posting:'Publish news',
@@ -3816,7 +3816,7 @@ async function ownerFeatureGrants(){
       return '<div class="feature-grant-row" data-feature-row="'+esc(key)+'" data-feature-search="'+esc((name+' '+key+' '+description).toLowerCase())+'"><div><b>'+esc(name)+'</b><small>'+esc(description)+'</small></div><select data-grant="'+esc(key)+'" aria-label="Minimum rank for '+esc(name)+'"><option value="off" '+(selected?'':'selected')+'>Disabled</option>'+ranks.map(rank=>'<option value="'+rank+'" '+(rank===selected?'selected':'')+'>'+(rankLabels[rank]||rank)+'</option>').join('')+'</select></div>';
     }
     const grouped=Object.entries(categories).map(([name,items])=>'<details class="grant-category" '+(name==='Chat & media'?'open':'')+'><summary>'+esc(name)+' <span class="muted">('+items.length+')</span></summary>'+items.map(renderRow).join('')+'</details>').join('');
-    modal('<div class="feature-grant-modal feature-grant-simple"><h2>🧩 Feature Access</h2><p class="muted">Choose the lowest rank allowed to use each feature. That rank and higher ranks will be allowed. Choose Disabled to block the feature for regular ranks. Developer and the protected owner account keep built-in access.</p><label class="feature-grant-search-label">🔎 Find a feature<input id="featureGrantSearch" type="search" placeholder="Search messages, rooms, gold, reports…"></label><div class="feature-grant-summary">'+keys.length+' feature controls · Changes are saved together</div><div id="featureGrantCategories">'+(grouped||'<p class="muted">No feature controls are available.</p>')+'</div><details class="grant-category room-role-grants" open><summary>🏠 Room Rank Permissions — Room Moderator &amp; Room Admin</summary><p class="muted">Configure each room role independently. These permissions are enforced by the server; unchecked actions are denied.</p><div class="room-role-permission-grid">'+roomRoleData.roles.map(role=>'<section class="room-role-permission-card"><h3>'+esc(role==='ROOM_MODERATOR'?'🛡️ Room Moderator':'👑 Room Admin')+'</h3>'+roomRoleData.keys.map(key=>'<label class="room-role-permission-option"><input type="checkbox" data-room-role="'+esc(role)+'" data-room-permission="'+esc(key)+'" '+(roomRoleData.permissions?.[role]?.[key]?'checked':'')+'><span>'+esc(({mute:'Mute users',kick:'Kick users from this room',block:'Block users from this room',delete_messages:'Delete messages in this room',clear_room:'Clear this room',edit_rules:'Edit room rules',manage_staff:'Manage room staff',assign_ranks:'Assign room ranks'})[key]||key)+'</span></label>').join('')+'</section>').join('')+'</div><div class="toolbar"><button class="mini primary" id="saveRoomRolePermissions">Save room-rank permissions</button></div></details><div class="toolbar feature-grant-footer"><button class="primary" id="saveAllFeatureGrants">Save all changes</button><button class="mini" id="closeFeatureGrants">Close</button></div><p class="muted feature-grant-note">These are rank-based permissions. Individual account exceptions are managed separately in User Permissions.</p></div>');
+    modal('<div class="feature-grant-modal feature-grant-simple"><h2>🧩 Feature Access</h2><p class="muted">Choose the lowest rank allowed to use each feature. That rank and higher ranks will be allowed. Choose Disabled to block the feature for regular ranks. Developer and the protected owner account keep built-in access.</p><label class="feature-grant-search-label">🔎 Find a feature<input id="featureGrantSearch" type="search" placeholder="Search messages, rooms, gold, reports…"></label><div class="feature-grant-summary">'+keys.length+' feature controls · Changes are saved together</div><div id="featureGrantCategories">'+(grouped||'<p class="muted">No feature controls are available.</p>')+'</div><div class="toolbar feature-grant-footer"><button class="primary" id="saveAllFeatureGrants">Save all changes</button><button class="mini" id="closeFeatureGrants">Close</button></div><p class="muted feature-grant-note">These are rank-based permissions. Individual account exceptions are managed separately in User Permissions.</p></div>');
     const search=$('featureGrantSearch');
     search?.addEventListener('input',()=>{
       const query=search.value.trim().toLowerCase();
@@ -3824,16 +3824,6 @@ async function ownerFeatureGrants(){
       document.querySelectorAll('#featureGrantCategories .grant-category').forEach(el=>{const visible=el.querySelectorAll('[data-feature-row]:not([hidden])').length;el.hidden=visible===0;if(query&&visible)el.open=true;});
     });
     $('closeFeatureGrants')?.addEventListener('click',()=>$('modal')?.classList.add('hidden'));
-    $('saveRoomRolePermissions')?.addEventListener('click',async event=>{
-      const button=event.currentTarget;button.disabled=true;button.textContent='Saving…';
-      try{
-        const permissions={ROOM_MODERATOR:{},ROOM_ADMIN:{}};
-        document.querySelectorAll('[data-room-role][data-room-permission]').forEach(input=>{permissions[input.dataset.roomRole][input.dataset.roomPermission]=input.checked;});
-        await api('/api/owner/room-role-permissions',{method:'PUT',body:JSON.stringify({permissions})});
-        toast('Room-rank permissions saved and enforced.');button.textContent='Saved';
-      }catch(error){toast(error.message||'Could not save room-rank permissions.');button.textContent='Save room-rank permissions';}
-      finally{button.disabled=false;}
-    });
     $('saveAllFeatureGrants')?.addEventListener('click',async event=>{
       const button=event.currentTarget;button.disabled=true;button.textContent='Saving…';
       try{
@@ -4107,6 +4097,12 @@ function editRoom() {
     <input id="rBanner" value="${esc(room.banner || "")}" placeholder="Room banner image URL (optional)">
     <div class="settings-row"><label for="rPublic">Room visibility</label><select id="rPublic"><option value="true" ${room.public !== false ? "selected" : ""}>Public</option><option value="false" ${room.public === false ? "selected" : ""}>Private</option></select></div>
     <div class="grid2"><label>Minimum age<input id="rMinAge" type="number" min="0" max="120" value="${Number(room.minAge || 0)}"></label><label>Maximum age<input id="rMaxAge" type="number" min="0" max="120" value="${Number(room.maxAge ?? 120)}"></label></div>
+    <label>Minimum rank required to join
+      <select id="rRankRequired">${["MEMBER","VIP","PREMIUM","MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER","DEVELOPER"].map(r=>'<option value="'+r+'" '+(String(room.rankRequired||"MEMBER").toUpperCase()===r?'selected':'')+'>'+({MEMBER:"Member",VIP:"VIP",PREMIUM:"Premium",MOD:"Moderator",ADMIN:"Admin",SUPER_ADMIN:"Super Admin",COMMISSOR:"Commissor",COOWNER:"Co-owner",OWNER:"Owner",DEVELOPER:"Developer"}[r])+'</option>').join("")}</select>
+    </label>
+    <label>Who can join this room
+      <select id="rFriendsOnly"><option value="false" ${room.friendsOnly?'':'selected'}>Everyone who meets the rank requirement</option><option value="true" ${room.friendsOnly?'selected':''}>Friends only (accepted friends)</option></select>
+    </label>
     <input id="rp" type="password" placeholder="Set/change password (blank removes)">
     <p class="muted">Room owner: @${esc(room.creator || "Unknown")}. Main Room stays protected.</p>
     <button class="primary" onclick="saveRoom()">Save room identity</button>
@@ -4130,6 +4126,8 @@ async function saveRoom() {
           public: $("rPublic").value === "true",
           minAge: Math.max(0, Math.min(120, Number($("rMinAge").value || 0))),
           maxAge: Math.max(0, Math.min(120, Number($("rMaxAge").value || 120))),
+          rankRequired: $("rRankRequired").value,
+          friendsOnly: $("rFriendsOnly").value === "true",
           password: $("rp").value
         })
       }
@@ -4258,6 +4256,13 @@ $("newRoom").onclick = () => {
 
       </select>
 
+      <label>Room access
+        <select id="rFriendsOnlyCreate">
+          <option value="false">Everyone who meets the minimum rank</option>
+          <option value="true">Friends only (accepted friends)</option>
+        </select>
+      </label>
+
       <input
         id="rl"
         type="number"
@@ -4299,6 +4304,7 @@ $("newRoom").onclick = () => {
               $("rp").value,
             rankRequired:
               $("rr").value,
+            friendsOnly: $("rFriendsOnlyCreate").value === "true",
             limit:
               $("rl").value,
             slowMode:
