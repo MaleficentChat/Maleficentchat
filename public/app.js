@@ -1279,7 +1279,7 @@ function messageHTML(message) {
               : ""
             }
             ${
-              (message.userId === state.user.id || can("delete_message"))
+              (String(message.userId) === String(state.user?.id) || canFeature("delete_message"))
               ? `<button class="message-menu-item danger" role="menuitem" onclick="deleteMsg('${esc(message.id)}');closeMessageMenus()"><span class="menu-icon">×</span><span><b>Delete</b><small>Remove this message</small></span></button>`
               : ""
             }
