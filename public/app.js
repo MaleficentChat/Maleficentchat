@@ -391,6 +391,31 @@ function showBanLock(reason="Community rules"){
 }
 function clearActionLock(){if(actionLockTimer)clearTimeout(actionLockTimer);actionLockTimer=null;const box=$("actionLock");if(box){box.classList.add("hidden");box.innerHTML="";box.dataset.lockType="";}}
 
+async function authenticateSocketAndJoinRoom(socket=state.socket, syncHistory=true) {
+  if(!socket || !socket.connected || !state.user) return false;
+  return new Promise(resolve=>{
+    socket.emit("auth",{token:safeStorage.getItem("mc_token")||""},async ack=>{
+      if(!ack?.ok || socket!==state.socket || !socket.connected){resolve(false);return;}
+      let access=null;
+      try{access=JSON.parse(safeStorage.getItem("mc_room_join")||"null");}catch{}
+      if(!state.currentRoom || access?.roomId!==String(state.currentRoom) || !access?.joinToken){resolve(true);return;}
+      socket.emit("join-room",access);
+      if(!syncHistory){resolve(true);return;}
+      const roomId=String(state.currentRoom);
+      try{
+        const data=await api("/api/rooms/"+encodeURIComponent(roomId)+"/messages");
+        if(socket!==state.socket || !socket.connected || String(state.currentRoom)!==roomId){resolve(false);return;}
+        state.messages=Array.isArray(data.messages)?data.messages:[];
+        const list=$("messages");
+        if(list){list.innerHTML=state.messages.map(messageHTML).join("");list.scrollTop=list.scrollHeight;}
+      }catch(error){
+        console.warn("Room message resync failed:",error?.message||error);
+      }
+      resolve(true);
+    });
+  });
+}
+
 /* ---------------- START ---------------- */
 
 /* ---------------- START ---------------- */
@@ -426,27 +451,9 @@ async function start() {
 
   state.socket.on("connect", () => {
     loadNotifications();
-    if (!state.user) return;
-    // Authenticate first, then join the room. Socket.IO can connect before the
-    // login/start flow has finished; emitting join-room too early was silently
-    // ignored by the server and made other users' messages appear to vanish.
-    state.socket.emit("auth", {token:safeStorage.getItem("mc_token")||""}, async ack => {
-      if (!ack?.ok || !state.socket?.connected) return;
-      try {
-        const access=JSON.parse(safeStorage.getItem('mc_room_join')||'null');
-        if (!state.currentRoom || access?.roomId!==String(state.currentRoom) || !access?.joinToken) return;
-        state.socket.emit("join-room",access);
-        // Re-sync history after every successful socket reconnect so messages
-        // sent while disconnected are not lost from the visible conversation.
-        const data=await api("/api/rooms/"+encodeURIComponent(state.currentRoom)+"/messages");
-        if(String(state.currentRoom)!==String(access.roomId))return;
-        state.messages=Array.isArray(data.messages)?data.messages:[];
-        const list=$("messages");
-        if(list){list.innerHTML=state.messages.map(messageHTML).join("");list.scrollTop=list.scrollHeight;}
-      } catch(error) {
-        console.warn("Room message resync failed:",error?.message||error);
-      }
-    });
+    // A connect event can fire before or after the login flow joins Main Room.
+    // Always authenticate and join using the latest room-access token.
+    authenticateSocketAndJoinRoom(state.socket,true).catch(error=>console.warn("Socket recovery failed:",error?.message||error));
   });
   state.socket.on("room-error",d=>toast(d?.error||"Could not join room."));
   state.socket.on("dm-typing",d=>{
@@ -547,11 +554,27 @@ async function start() {
   state.socket.on("dm", message => {
     const from=String(message?.from??message?.senderId??message?.fromId??"");
     const to=String(message?.to??message?.receiverId??message?.toId??"");
-    if(document.hidden && from!==String(state.user?.id)) showSiteNotification("New private message", String(message?.text||message?.message||"You received a private message").slice(0,180), "messages");
-    // Compare normalized IDs: PostgreSQL numeric IDs and UI string IDs must match.
-    if(state.dmUserId && message && (from===String(state.dmUserId)||to===String(state.dmUserId))){
-      openDM(String(state.dmUserId));
-    } else {
+    const myId=String(state.user?.id??"");
+    if(document.hidden && from!==myId) showSiteNotification("New private message", String(message?.text||message?.message||"You received a private message").slice(0,180), "messages");
+    const peer=state.dmPeerUser;
+    const activePeerId=String(state.dmUserId??"");
+    if(message && peer && activePeerId && (from===activePeerId||to===activePeerId) && (from===myId||to===myId)){
+      // Append the new message in place. Reopening the conversation on every
+      // socket event refetched the full user directory and conversation history.
+      state.dmMessages=Array.isArray(state.dmMessages)?state.dmMessages:[];
+      if(!state.dmMessages.some(item=>String(item.id)===String(message.id))){
+        state.dmMessages.push(message);
+        const list=$("dmMessages");
+        if(list){
+          const empty=list.querySelector(".muted");
+          if(empty)empty.remove();
+          list.insertAdjacentHTML("beforeend",dmMessageHTML(message,state.dmMessages,peer));
+          list.scrollTop=list.scrollHeight;
+        }
+      }
+      if(from!==myId) api("/api/dm/"+encodeURIComponent(from)+"/read",{method:"POST"}).catch(()=>{});
+      loadDMList().catch(()=>{});
+    }else{
       loadDMList().catch(()=>{});
       toast("New private message");
     }
@@ -1097,7 +1120,9 @@ async function joinRoom(id) {
     rememberMyRoom(id);
 
     safeStorage.setItem('mc_room_join',JSON.stringify({roomId:String(id),joinToken:access.joinToken}));
-    if (state.socket) state.socket.emit("join-room", {roomId:String(id),joinToken:access.joinToken});
+    // Joining over HTTP can finish before socket authentication; authenticate
+    // again here so the room join cannot be silently ignored during login.
+    if(state.socket?.connected) authenticateSocketAndJoinRoom(state.socket,false).catch(error=>console.warn("Room socket join failed:",error?.message||error));
 
     $("chatWrap").classList.remove("hidden");
     $("viewRooms").classList.add("chatting");
@@ -2269,12 +2294,12 @@ function dmMessageHTML(message, messages, user) {
 
   return `
     <div
-      class="msg dm-msg ${message.from === state.user.id ? "mine" : "theirs"}"
+      class="msg dm-msg ${String(message.from) === String(state.user.id) ? "mine" : "theirs"}"
       data-dmid="${esc(message.id)}"
     >
       <div class="msg-body">
         <div class="msg-top">
-          <b class="message-author" style="color:${esc(user.settings?.usernameColor||'var(--username-color)')}">${message.from === state.user.id ? "You" : esc(user.displayName)}</b>
+          <b class="message-author" style="color:${esc(user.settings?.usernameColor||'var(--username-color)')}">${String(message.from) === String(state.user.id) ? "You" : esc(user.displayName)}</b>
           <span class="msg-time">
             ${fmt(message.time)}
             ${message.read ? " · read" : " · delivered"}
@@ -2344,7 +2369,8 @@ async function openDM(id) {
       return;
     }
 
-    state.dmUserId = id;
+    state.dmUserId = String(id);
+    state.dmPeerUser = user;
 
     const data = await api(`/api/dm/${id}`);
     const messages = data.messages || [];
@@ -2495,7 +2521,7 @@ function replyDMMsg(messageId, userId) {
   state.dmReplyTo = message.id;
   state.dmReplyUser = userId;
   state.dmReplyAuthor =
-    message.from === state.user.id
+    String(message.from) === String(state.user.id)
       ? "You"
       : ((state.dmMessages.find(m => m.from === message.from)?.displayName) || "User");
   state.dmReplyText =
