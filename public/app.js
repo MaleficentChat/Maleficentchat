@@ -2495,10 +2495,21 @@ async function openDM(id) {
         fd.append("text", text);
         if (state.dmReplyTo) fd.append("replyTo", state.dmReplyTo);
         if (file) fd.append("file", file);
-        await api(`/api/dm/${encodeURIComponent(id)}`, {method:"POST",body:fd});
+        const sent = await api(`/api/dm/${encodeURIComponent(id)}`, {method:"POST",body:fd});
+        // Render the acknowledged message immediately instead of reloading users,
+        // conversation history and nicknames after every send.
+        if(sent.message){
+          state.dmMessages=Array.isArray(state.dmMessages)?state.dmMessages:[];
+          if(!state.dmMessages.some(item=>String(item.id)===String(sent.message.id))){
+            state.dmMessages.push(sent.message);
+            const list=$("dmMessages");
+            if(list){list.querySelector(".muted")?.remove();list.insertAdjacentHTML("beforeend",dmMessageHTML(sent.message,state.dmMessages,state.dmPeerUser||user));list.scrollTop=list.scrollHeight;}
+          }
+        }
         input.value=""; safeStorage.removeItem(draftKey); if(state.socket?.connected)state.socket.emit("dm-typing",{userId:id,user:state.user?.displayName||state.user?.username,typing:false}); if($("dmFile")) $("dmFile").value=""; if($("dmFileName")) $("dmFileName").textContent="";
         state.dmReplyTo=null; state.dmReplyUser=null; state.dmReplyAuthor=null; state.dmReplyText=null;
-        await openDM(id);
+        const count=$("dmSearchCount");if(count)count.textContent=(state.dmMessages||[]).length+" messages";
+        loadDMList().catch(()=>{});
       } catch(error){ toast(error.message); }
     };
     $("reportDmBtn")?.addEventListener("click",async()=>{const reason=prompt("Reason for reporting this private conversation:","Inappropriate private message");if(reason===null)return;try{await api("/api/report",{method:"POST",body:JSON.stringify({reportedUserId:id,conversationWithId:state.user.id,reason})});toast("Report submitted.");}catch(e){toast(e.message)}});
