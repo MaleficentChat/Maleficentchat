@@ -119,13 +119,16 @@ async function api(url, opt = {}) {
 }
 
 function toast(text) {
-  $("toast").textContent = text;
-  $("toast").style.display = "block";
-
+  const el = $("toast");
+  // Some dashboard views do not include the global toast element.
+  // Never let a missing notification node break the action that triggered it.
+  if (!el) { console.warn("[Maleficent Chat]", String(text)); return; }
+  el.textContent = String(text ?? "");
+  el.style.display = "block";
   clearTimeout(toast.timer);
-
   toast.timer = setTimeout(() => {
-    $("toast").style.display = "none";
+    const current = $("toast");
+    if (current) current.style.display = "none";
   }, 2800);
 }
 
@@ -3405,14 +3408,26 @@ async function checkUnderConstruction(){
 async function toggleUnderConstruction(){
   if(!isOwnerExempt()){toast("Owner/Developer access required.");return;}
   const btn=$("underConstructionToggle");
-  const active=btn?.dataset.active==="true";
+  if(btn) btn.disabled=true;
   try{
-    const payload=active?{enabled:false}:{enabled:true,durationMinutes:Number($("constructionDuration")?.value||60)};
+    // Read the persisted server state first; never infer it from a stale button dataset/socket event.
+    const status=await api("/api/under-construction/status");
+    const active=Boolean(status.configuredEnabled ?? status.enabled);
+    const payload=active
+      ? {enabled:false}
+      : {enabled:true,durationMinutes:Number($("constructionDuration")?.value||60)};
     const result=await api("/api/owner/under-construction",{method:"POST",body:JSON.stringify(payload)});
-    if(btn){btn.dataset.active=result.enabled?"true":"false";btn.textContent=result.enabled?"🚧 Turn Off Under Construction":"🚧 Enable Under Construction";}
-    if($("constructionDuration"))$("constructionDuration").disabled=!!result.enabled;
-    toast(result.enabled?"Under Construction Panel enabled. Owner and Developer remain exempt.":"Under Construction Panel disabled.");
-  }catch(e){toast(e.message||"Could not change construction mode.");}
+    const enabled=Boolean(result.enabled);
+    if(btn){btn.dataset.active=enabled?"true":"false";btn.textContent=enabled?"🚧 Turn Off Under Construction":"🚧 Enable Under Construction";}
+    const duration=$("constructionDuration");
+    if(duration) duration.disabled=enabled;
+    toast(enabled?"Under Construction Panel enabled. Owner and Developer remain exempt.":"Under Construction Panel disabled.");
+  }catch(e){
+    toast(e.message||"Could not change construction mode.");
+    await checkUnderConstruction();
+  }finally{
+    if(btn) btn.disabled=false;
+  }
 }
 
 async function refreshSiteMessages(){
