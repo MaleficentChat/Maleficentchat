@@ -1094,9 +1094,9 @@ function messageHTML(message) {
       <div class="msg-body">
 
         <div class="msg-top">
-          <span class="message-rank-icon" title="${esc(message.rank||"MEMBER")}" aria-label="${esc(message.rank||"MEMBER")}">${rankIcon[String(message.rank||"MEMBER").toUpperCase()]||"⚡"}</span>
+          <span class="msg-time-side">${fmt(message.time)}${message.edited ? " · edited" : ""}</span>
           <button class="message-author tag-author" type="button" title="Tag @${esc(message.username)}" onclick="tagUserFromMessage('${esc(message.username)}')" style="color:${esc(message.usernameColor||state.user?.settings?.usernameColor||'var(--username-color)')}">${esc(message.displayName)}</button>
-          <span class="msg-time">${fmt(message.time)}${message.edited ? " · edited" : ""}</span>
+          <span class="message-rank-floating" title="${esc(message.rank||"MEMBER")}">${rankIcon[String(message.rank||"MEMBER").toUpperCase()]||"⚡"} ${esc(String(message.rank||"MEMBER").replaceAll("_"," "))}</span>
         </div>
 
        ${
@@ -1166,7 +1166,6 @@ function messageHTML(message) {
             : ""
         }
         <div class="msg-actions">
-          <button class="message-more-btn" type="button" title="Message options" onclick="toggleMessageMenu('${esc(message.id)}')">⋯</button>
           <div class="message-actions-menu hidden" id="message-menu-${esc(message.id)}" role="menu" aria-label="Message actions">
             <button class="message-menu-item" role="menuitem" onclick="replyMsg('${esc(message.id)}');closeMessageMenus()"><span class="menu-icon">↩</span><span><b>Quote</b><small>Reply to this message</small></span></button>
             <button class="message-menu-item" role="menuitem" onclick="hideMsg('${esc(message.id)}');closeMessageMenus()"><span class="menu-icon">◉</span><span><b>Hide</b><small>Hide from my screen</small></span></button>
@@ -1194,7 +1193,6 @@ function messageHTML(message) {
 
         <div class="reaction">
           ${reactions}
-          <button class="reaction-add" type="button" title="Add reaction" onclick="toggleReactionPicker('${esc(message.id)}')">＋</button>
           <div class="reaction-picker hidden" id="reactionPicker-${esc(message.id)}">${['❤️','😂','😭','😮','🔥','👏','👍','👎','🥰','🎉'].map(e=>`<button type="button" onclick="reactMsg('${esc(message.id)}','${e}').finally(()=>toggleReactionPicker('${esc(message.id)}'))">${e}</button>`).join('')}</div>
         </div>
 
@@ -1247,6 +1245,15 @@ function toggleMessageMenu(id){
   closeMessageMenus();
   if(wasHidden) menu.classList.remove("hidden");
 }
+document.addEventListener("click",e=>{
+  const msg=e.target instanceof Element?e.target.closest(".msg[data-mid]"):null;
+  if(!msg||e.target.closest("button,a,input,textarea,audio,video,iframe,.message-actions-menu,.reaction-picker,.quoted"))return;
+  const menu=msg.querySelector(".message-actions-menu");
+  if(!menu)return;
+  const wasHidden=menu.classList.contains("hidden");
+  closeMessageMenus();
+  if(wasHidden)menu.classList.remove("hidden");
+});
 document.addEventListener("click",e=>{
   if(!e.target.closest(".msg-actions")) closeMessageMenus();
 });
