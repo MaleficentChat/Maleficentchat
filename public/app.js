@@ -118,11 +118,22 @@ async function api(url, opt = {}) {
   return body;
 }
 
-async function registerSiteNotificationWorker(){
-  if(!("serviceWorker" in navigator))return null;
-  try{siteNotificationRegistration=await navigator.serviceWorker.register("/service-worker.js");return await navigator.serviceWorker.ready;}catch(e){console.warn("Notification worker unavailable",e);return null;}
-}
+let notificationWorkerError="";
 let siteNotificationRegistration=null;
+async function registerSiteNotificationWorker(){
+  if(!("serviceWorker" in navigator)){notificationWorkerError="This browser does not support service workers.";return null;}
+  try{
+    const registration=await navigator.serviceWorker.register("/service-worker.js",{scope:"/",updateViaCache:"none"});
+    await registration.update().catch(()=>{});
+    siteNotificationRegistration=await navigator.serviceWorker.ready;
+    notificationWorkerError="";
+    return siteNotificationRegistration;
+  }catch(e){
+    notificationWorkerError=String(e?.message||e||"Unknown service-worker error");
+    console.warn("Notification worker unavailable",e);
+    return null;
+  }
+}
 async function showSiteNotification(title,body,targetView){
   if(!("Notification" in window)||Notification.permission!=="granted")return;
   const options={body,icon:"/favicon.svg",badge:"/favicon.svg",tag:"mc-"+String(title).slice(0,32),data:{url:"/"+(targetView==="messages"?"#messages":"#rooms")}};
@@ -142,7 +153,7 @@ async function enableSiteNotifications(){
     const keyData=await api("/api/push/public-key");
     if(!keyData.enabled||!keyData.publicKey){toast("Background push is not configured on the server yet. Add the VAPID keys to Render environment variables.");return;}
     const registration=await registerSiteNotificationWorker();
-    if(!registration)throw new Error("Could not register the notification service worker.");
+    if(!registration)throw new Error("Could not register the notification service worker"+(notificationWorkerError?": "+notificationWorkerError:"."));
     let subscription=await registration.pushManager.getSubscription();
     if(!subscription)subscription=await registration.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:decodePushKey(keyData.publicKey)});
     await api("/api/push/subscribe",{method:"POST",body:JSON.stringify(subscription.toJSON())});
