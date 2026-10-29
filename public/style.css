@@ -3563,3 +3563,11 @@ button,input,select,textarea { max-width:100%; }
 #viewRooms.chatting .msg .chat-gif{display:block;max-width:min(300px,65vw);overflow:hidden;border-radius:12px}
 #viewRooms.chatting .msg .chat-gif img{display:block;width:auto;max-width:100%;max-height:300px;object-fit:contain}
 @media(max-width:520px){#viewRooms.chatting .msg-actions{min-width:24px!important;flex-basis:24px!important;margin:0 2px!important}#viewRooms.chatting .message-more-button{width:24px!important;min-width:24px!important;height:29px!important;font-size:20px!important}}
+
+/* Advanced user search filters */
+.user-search-filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:9px;margin:0 0 16px;padding:12px}
+.user-search-filters input,.user-search-filters select{width:100%;min-width:0;box-sizing:border-box}
+.user-search-filters #userSearch{grid-column:span 2}
+.user-search-filters #userCountryFilter{grid-column:span 2}
+.user-search-filters #resetUserFilters{align-self:stretch}
+@media(max-width:600px){.user-search-filters{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;padding:9px}.user-search-filters #userSearch,.user-search-filters #userCountryFilter{grid-column:1/-1}}
