@@ -5000,25 +5000,30 @@ app.post('/api/scheduled',auth,featureAllowed("schedule_message"),async(req,res)
   res.status(201).json({ok:true,scheduled:{id:scheduled.id,roomId,sendAt,status:scheduled.status}});
 });
 
-// Deliver due scheduled messages and persist their status so they are not sent twice.
+// Deliver scheduled messages only when any are due. The old timer flushed the
+// entire application state to PostgreSQL every 10 seconds even when the queue
+// was empty, causing continuous database writes and avoidable lag.
 setInterval(async()=>{
   const now=Date.now();
-  for(const scheduled of (db.scheduledMessages||[]).filter(x=>x.status==="pending"&&Number(x.sendAt)<=now)){
+  const due=(db.scheduledMessages||[]).filter(x=>x.status==="pending"&&Number(x.sendAt)<=now);
+  if(!due.length)return;
+  let changed=false;
+  for(const scheduled of due){
     try{
       const room=db.rooms.find(r=>String(r.id)===String(scheduled.roomId));
       const sender=db.users.find(u=>String(u.id)===String(scheduled.userId));
-      if(!room||!sender){scheduled.status="failed";scheduled.error="Room or sender no longer exists.";continue;}
+      if(!room||!sender){scheduled.status="failed";scheduled.error="Room or sender no longer exists.";changed=true;continue;}
       const m={id:id(),roomId:String(room.id),userId:sender.id,username:sender.username,displayName:sender.displayName,rank:sender.rank,text:String(scheduled.messageText||""),reactions:{},edited:false,deleted:false,pinned:false,time:now,delivered:true,scheduled:true};
       await pool.query("INSERT INTO room_messages(id,room_id,user_id,data,created_at) VALUES($1,$2,$3,$4::jsonb,NOW())",[m.id,Number(room.id),Number(sender.id),JSON.stringify(m)]);
       db.messages.push(m);
       io.to("room:"+room.id).emit("message",m);
-      scheduled.status="sent";scheduled.sentAt=now;
+      scheduled.status="sent";scheduled.sentAt=now;changed=true;
     }catch(err){
       console.error("Scheduled message delivery failed:",err);
-      scheduled.status="failed";scheduled.error="Delivery failed.";
+      scheduled.status="failed";scheduled.error="Delivery failed.";changed=true;
     }
   }
-  await flushSave();
+  if(changed)await flushSave();
 },10000);
 
 app.get('/api/me/email',auth,(req,res)=>{
