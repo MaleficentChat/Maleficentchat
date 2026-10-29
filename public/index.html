@@ -145,7 +145,7 @@
             <button class="icon-btn room-switch" id="backRooms" title="Switch room">☷</button>
             <div><b id="roomName">Main Room</b><small id="roomDesc"></small></div>
           </div>
-          <div class="chat-head-actions"><span id="onlineCount"></span><button class="icon-btn mobile-people-toggle" id="openOnlinePanel" type="button" title="Show people">♟</button><button class="icon-btn" id="roomMenu" title="Room menu">⋯</button></div>
+          <div class="chat-head-actions"><span id="onlineCount"></span><button class="icon-btn mobile-people-toggle" id="openOnlinePanel" type="button" title="Show people">♟</button><button class="icon-btn" id="siteHardRefresh" type="button" title="Site refresh" aria-label="Site refresh">⟳</button><button class="icon-btn" id="roomMenu" title="Room menu">⋯</button></div>
         </div>
         <nav id="roomQuickNav" class="room-quick-nav" aria-label="Switch chat room"></nav>
         <div id="announcement" class="announcement hidden"></div>
@@ -187,7 +187,7 @@
   <div id="viewSaved" class="view hidden"><div class="topbar"><h2>🔖 Saved / Bookmarked Messages</h2></div><div id="saved" class="stack"></div></div>
   <div id="viewSearch" class="view hidden"><div class="topbar"><div><h2>🔎 Advanced Message Search</h2><p class="muted">Search text, room or author.</p></div></div><form id="searchForm" class="searchbar"><input id="sq" placeholder="Keyword"><input id="sa" placeholder="Author username"><select id="sr"><option value="">All rooms</option></select><button class="primary">Search</button></form><div id="searchResults" class="stack"></div></div>
   <div id="viewProfile" class="view hidden"><div id="profile"></div></div>
-  <div id="viewSettings" class="view hidden"><div class="topbar"><div><h2>⚙️ Account Settings</h2><p class="muted">Security, status, appearance and notification controls.</p></div><div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end"><button class="mini" id="enableSiteNotifications" type="button">🔔 Enable site notifications</button><button class="mini" id="testSiteNotifications" type="button">🧪 Send test</button><button class="mini" id="siteHardRefresh" type="button">🔄 Site refresh</button></div></div><div id="settings" class="settings-grid"></div></div>
+  <div id="viewSettings" class="view hidden"><div class="topbar"><div><h2>⚙️ Account Settings</h2><p class="muted">Security, status, appearance and notification controls.</p></div><div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end"><button class="mini" id="enableSiteNotifications" type="button">🔔 Enable site notifications</button><button class="mini" id="testSiteNotifications" type="button">🧪 Send test</button></div></div><div id="settings" class="settings-grid"></div></div>
   <div id="viewStaffApplications" class="view hidden"><div class="topbar"><div><h2>📝 Staff Application</h2><p class="muted">Apply to join the Maleficent Chat moderation team.</p></div></div><div id="staffApplicationFormRoot"></div></div>
   <div id="viewStaff" class="view hidden"><div class="topbar"><h2>🛡️ Moderation Dashboard</h2></div><div id="staff"></div></div>
   <div id="viewWall" class="view hidden"><div class="topbar"><div><h2>🧱 Friend Wall</h2><p class="muted">Community posts, likes and comments.</p></div><button class="primary" id="newWallPost">＋ Post</button></div><div id="wallFeed" class="wall-feed"></div></div>
