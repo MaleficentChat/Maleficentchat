@@ -696,6 +696,9 @@ async function openGifPicker(){
   $('gifSearch').oninput=search; await search();
 }
 
+document.getElementById("chatGifBtn")?.addEventListener("click",()=>{if(!state.currentRoom){toast("Join a room before sending a GIF.");return;}openGifPicker();});
+
+
 /* ---------------- ROOMS ---------------- */
 
 /* Defensive room-list cleanup: never display the retired age-split defaults, even if an older server response is cached. */
@@ -884,6 +887,7 @@ async function joinRoom(id) {
 
     const staffInfo=await api(`/api/rooms/${encodeURIComponent(id)}/staff`).catch(()=>({myRole:'USER'}));
     state.currentRoom = id;
+    const activeRoomTheme=state.rooms.find(r=>String(r.id)===String(id));applyRoomTheme(activeRoomTheme?.roomTheme||"obsidian");
     state.currentRoomRole=staffInfo.myRole||'USER';
     rememberMyRoom(id);
 
@@ -4002,6 +4006,7 @@ $("roomMenu").onclick = () => {
       <button class="mini" onclick="showPinnedMessages()">📌 Pinned messages</button>
       <button class="mini" onclick="openYoutubePanel()">▶️ YouTube</button>
       <button class="mini" onclick="showInvite()">Invite link</button>
+      <button class="mini" onclick="openRoomThemePicker()">🎨 Room Theme</button>
       ${["OWNER","DEVELOPER"].includes(String(state.user?.rank||"").toUpperCase())?`
         <div style="flex-basis:100%;border-top:1px solid var(--border-color,#393244);padding-top:8px;margin-top:4px"><b style="display:block;margin-bottom:7px">🕶️ Presence modes</b><div class="toolbar" style="display:flex;flex-wrap:wrap;gap:6px"><button type="button" class="mini" onclick="togglePresenceMode('ghost')">👻 Ghost Mode</button><button type="button" class="mini" onclick="togglePresenceMode('dead')">💀 Dead Mode</button><button type="button" class="mini" onclick="togglePresenceMode('invisible')">😈 Invisible Mode</button></div><button type="button" class="mini" style="margin-top:7px" onclick="openPresenceModes()">⚙️ Open mode settings</button></div>
       `:""}
@@ -4009,6 +4014,36 @@ $("roomMenu").onclick = () => {
     </div>
   `);
 };
+
+
+const ROOM_THEMES = [
+{id:"obsidian",name:"Obsidian",emoji:"🌑",bg:"#0b0b14",bubble:"#302342",accent:"#b58cff"},
+{id:"midnight",name:"Midnight",emoji:"🌌",bg:"#080d20",bubble:"#17264a",accent:"#7197ff"},
+{id:"lavender",name:"Lavender",emoji:"💜",bg:"#171027",bubble:"#4b3268",accent:"#d1a5ff"},
+{id:"rose",name:"Rose",emoji:"🌹",bg:"#210f1b",bubble:"#593044",accent:"#ff8fbe"},
+{id:"forest",name:"Forest",emoji:"🌲",bg:"#091a16",bubble:"#1b4035",accent:"#69d5a7"},
+{id:"sunset",name:"Sunset",emoji:"🌇",bg:"#24120e",bubble:"#653522",accent:"#ffab70"},
+{id:"ocean",name:"Ocean",emoji:"🌊",bg:"#071a24",bubble:"#16465a",accent:"#65d9ef"},
+{id:"cyberpunk",name:"Cyberpunk",emoji:"⚡",bg:"#10091f",bubble:"#39205a",accent:"#ff4fd8"},
+{id:"aurora",name:"Aurora",emoji:"✨",bg:"#071b20",bubble:"#16434a",accent:"#76f0d0"},
+{id:"sakura",name:"Sakura",emoji:"🌸",bg:"#21111f",bubble:"#60304f",accent:"#ffa8db"},
+{id:"ember",name:"Ember",emoji:"🔥",bg:"#1d100d",bubble:"#51271f",accent:"#ff765e"},
+{id:"ice",name:"Ice Palace",emoji:"🧊",bg:"#0b1724",bubble:"#263d52",accent:"#b3e7ff"}
+];
+function applyRoomTheme(themeId){
+ const t=ROOM_THEMES.find(x=>x.id===themeId)||ROOM_THEMES[0],root=$("viewRooms");if(!root)return;
+ root.dataset.roomTheme=t.id;root.style.setProperty("--room-theme-bg",t.bg);root.style.setProperty("--room-theme-bubble",t.bubble);root.style.setProperty("--room-theme-accent",t.accent);
+}
+async function openRoomThemePicker(){
+ const room=state.rooms.find(r=>String(r.id)===String(state.currentRoom));if(!room){toast("Join a room first.");return;}
+ const selected=room.roomTheme||"obsidian";
+ modal(`<div class="room-theme-picker"><h2>🎨 Room Theme</h2><p class="muted">Choose a shared look for this room. Everyone in the room will see the selected theme.</p><div class="room-theme-grid">${ROOM_THEMES.map(t=>`<article class="room-theme-card ${t.id===selected?"selected":""}"><div class="room-theme-preview" style="--preview-bg:${t.bg};--preview-bubble:${t.bubble};--preview-accent:${t.accent}"><span>${t.emoji} ${esc(t.name)}</span><i></i><i></i><b></b></div><div class="room-theme-card-footer"><strong>${esc(t.name)}</strong><button type="button" class="mini" data-apply-room-theme="${t.id}">${t.id===selected?"Selected":"Select"}</button></div></article>`).join("")}</div></div>`);
+ document.querySelectorAll("[data-apply-room-theme]").forEach(button=>button.addEventListener("click",async()=>{
+  const themeId=button.dataset.applyRoomTheme;button.disabled=true;
+  try{await api(`/api/rooms/${encodeURIComponent(state.currentRoom)}/theme`,{method:"PUT",body:JSON.stringify({theme:themeId})});const current=state.rooms.find(r=>String(r.id)===String(state.currentRoom));if(current)current.roomTheme=themeId;applyRoomTheme(themeId);closeModal();toast("Room theme applied.");}
+  catch(e){toast(e.message||"Could not apply room theme.");button.disabled=false;}
+ }));
+}
 
 async function clearRoom() {
   if (!confirm("Clear this room?")) {
