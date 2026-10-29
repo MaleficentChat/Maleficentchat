@@ -4244,7 +4244,12 @@ $("newRoom").onclick = () => {
             "VIP",
             "PREMIUM",
             "MOD",
-            "ADMIN"
+            "ADMIN",
+            "SUPER_ADMIN",
+            "COMMISSOR",
+            "COOWNER",
+            "OWNER",
+            "DEVELOPER"
           ]
             .map(r =>
               `<option value="${r}">
