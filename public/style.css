@@ -3549,3 +3549,17 @@ button,input,select,textarea { max-width:100%; }
 #viewRooms.chatting[data-room-theme] .chat-compose button,
 #viewRooms.chatting[data-room-theme] .message-form button { border-color:var(--room-theme-accent)!important; }
 .chat-gif img{display:block;max-width:min(300px,70vw);max-height:300px;object-fit:contain;border-radius:12px}
+
+/* Always-visible three-dot actions control, aligned opposite each message bubble */
+#viewRooms.chatting .msg{position:relative;overflow:visible}
+#viewRooms.chatting .msg-actions{position:relative!important;display:flex!important;align-items:center!important;align-self:stretch!important;min-width:27px!important;flex:0 0 27px!important;margin:0 3px!important;opacity:1!important;overflow:visible!important}
+#viewRooms.chatting .message-more-button{display:grid!important;place-items:center!important;width:27px!important;height:32px!important;min-width:27px!important;padding:0!important;border:1px solid var(--border)!important;border-radius:9px!important;background:var(--panel-2)!important;color:var(--text-muted,#a7a2b6)!important;font-size:22px!important;line-height:1!important;cursor:pointer!important;opacity:.85}
+#viewRooms.chatting .message-more-button:hover,#viewRooms.chatting .message-more-button:focus-visible{opacity:1;border-color:var(--accent,#a879ff)!important;color:var(--text)!important}
+#viewRooms.chatting .msg.mine .msg-actions{order:4!important}
+#viewRooms.chatting .msg.theirs .msg-actions{order:2!important}
+#viewRooms.chatting .message-actions-menu{position:absolute!important;right:0!important;top:calc(100% + 4px)!important;bottom:auto!important;z-index:120!important}
+#viewRooms.chatting .msg.mine .message-actions-menu{right:0!important;left:auto!important}
+#viewRooms.chatting .msg.theirs .message-actions-menu{left:0!important;right:auto!important}
+#viewRooms.chatting .msg .chat-gif{display:block;max-width:min(300px,65vw);overflow:hidden;border-radius:12px}
+#viewRooms.chatting .msg .chat-gif img{display:block;width:auto;max-width:100%;max-height:300px;object-fit:contain}
+@media(max-width:520px){#viewRooms.chatting .msg-actions{min-width:24px!important;flex-basis:24px!important;margin:0 2px!important}#viewRooms.chatting .message-more-button{width:24px!important;min-width:24px!important;height:29px!important;font-size:20px!important}}
