@@ -564,7 +564,7 @@ app.get("/api/under-construction/status",(req,res)=>{
   if(setting.enabled===true&&!enabled){db.settings.under_construction={enabled:false,until:0};save();}
   const u=current(req),rankName=String(u?.rank||"").toUpperCase();
   const exempt=rankName==="DEVELOPER"||(rankName==="OWNER"&&u?.username===DEFAULT_OWNER);
-  res.json({enabled:enabled&&!exempt,until:enabled?until:0,exempt});
+  res.json({enabled:enabled&&!exempt,configuredEnabled:enabled,until:enabled?until:0,exempt});
 });
 app.post("/api/owner/under-construction",auth,ownerOnly,(req,res)=>{
   const enabled=req.body?.enabled===true;
