@@ -548,6 +548,12 @@ async function renderView() {
       return loadNews();
     case "wall":
       return loadWall();
+
+    case "suggestions":
+      return loadSuggestions();
+
+    case "suggestions":
+      return loadSuggestions();
     case "games":
       return window.GravityRun && window.GravityRun.render();
     case "shop":
@@ -622,6 +628,51 @@ function openHeaderChatOptions(){
   modal('<div class="header-chat-options"><h2>💬 Chat options</h2><p class="muted">Quick chat customization without leaving the room.</p><label>Message text size<select id="quickChatSize"><option value="small">Small</option><option value="medium">Medium</option><option value="large">Large</option></select></label><label>Chat font<select id="quickChatFont"><option>Inter</option><option>Georgia</option><option>Monospace</option><option>Arial</option><option>Trebuchet MS</option></select></label><label>Bubble color<input type="color" id="quickBubbleColor"></label><label>Display-name color<input type="color" id="quickUsernameColor"></label><label class="quick-chat-check"><input type="checkbox" id="quickCompact"> Compact chat spacing</label><button class="primary" id="quickChatSave">Save chat options</button></div>');
   $("quickChatSize").value=s.fontSize||"medium";$("quickChatFont").value=s.chatFont||"Inter";$("quickBubbleColor").value=s.bubbleColor||"#33244f";$("quickUsernameColor").value=s.usernameColor||"#9b5cff";$("quickCompact").checked=!!s.compactMode;
   $("quickChatSave").onclick=async()=>{const p={fontSize:$("quickChatSize").value,chatFont:$("quickChatFont").value,bubbleColor:$("quickBubbleColor").value,usernameColor:$("quickUsernameColor").value,compactMode:$("quickCompact").checked};try{const d=await api("/api/settings",{method:"PUT",body:JSON.stringify(p)});state.user.settings={...(state.user.settings||{}),...(d.settings||p)};applyTheme(state.user.settings.theme||"obsidian");renderMessages();closeModal();toast("Chat options saved.");}catch(e){toast(e.message)}};
+}
+
+async function loadSuggestions(){
+  const list=$('suggestionsList'),form=$('suggestionForm');
+  if(!list||!form)return;
+  const developer=String(state.user?.username||'').toLowerCase()==='maleficent'||String(state.user?.rank||'').toUpperCase()==='DEVELOPER';
+  try{
+    const data=await api('/api/suggestions');
+    const items=data.suggestions||[];
+    list.innerHTML=items.length?items.map(s=>{
+      const status=String(s.status||'Pending');
+      const statusClass=status==='Rejected'?'suggestion-status-rejected':status==='Feature added'?'suggestion-status-added':status==='Approved'?'suggestion-status-approved':'suggestion-status-pending';
+      return '<article class="card suggestion-card"><div class="news-card-top"><div><h3>'+esc(s.category||'Suggestion')+'</h3><div class="muted">'+(developer?'@'+esc(s.username||'Unknown')+' · ':'')+esc(fmt(s.created_at||s.createdAt))+'</div></div><span class="pill '+statusClass+'">'+esc(status)+'</span></div><p class="suggestion-description">'+esc(s.description||'')+'</p>'+(s.review_note?'<p class="muted">Developer note: '+esc(s.review_note)+'</p>':'')+(developer?'<div class="toolbar suggestion-actions"><button type="button" data-suggestion-status="Rejected" data-suggestion-id="'+esc(s.id)+'">Rejected</button><button type="button" data-suggestion-status="Feature added" data-suggestion-id="'+esc(s.id)+'">Feature added</button><button type="button" data-suggestion-status="Approved" data-suggestion-id="'+esc(s.id)+'">Approved</button></div>':'')+'</article>';
+    }).join(''):'<div class="card"><p class="muted">'+(developer?'No suggestions have been submitted yet.':'You have not submitted any suggestions yet.')+'</p></div>';
+    form.classList.toggle('hidden',developer);
+    form.onsubmit=async e=>{
+      e.preventDefault();
+      const category=$('suggestionCategory')?.value||'',description=($('suggestionDescription')?.value||'').trim();
+      if(!description){toast('Please describe your suggestion.');return;}
+      const button=form.querySelector('button[type="submit"]');if(button)button.disabled=true;
+      try{await api('/api/suggestions',{method:'POST',body:JSON.stringify({category,description})});$('suggestionDescription').value='';toast('Suggestion submitted to the Developer.');await loadSuggestions();}
+      catch(err){toast(err.message||'Could not submit suggestion.');}
+      finally{if(button)button.disabled=false;}
+    };
+    list.querySelectorAll('[data-suggestion-status]').forEach(button=>button.onclick=async()=>{
+      button.disabled=true;
+      try{await api('/api/suggestions/'+encodeURIComponent(button.dataset.suggestionId),{method:'PATCH',body:JSON.stringify({status:button.dataset.suggestionStatus})});toast('Suggestion status updated and user notified.');await loadSuggestions();}
+      catch(err){toast(err.message||'Could not update suggestion.');}
+      finally{button.disabled=false;}
+    });
+  }catch(e){list.innerHTML='<div class="card"><p class="error">'+esc(e.message||'Could not load suggestions.')+'</p></div>';}
+}
+
+async function loadSuggestions(){
+  const list=$('suggestionsList'),form=$('suggestionForm');
+  if(!list||!form)return;
+  const developer=String(state.user?.username||'').toLowerCase()==='maleficent'||String(state.user?.rank||'').toUpperCase()==='DEVELOPER';
+  try{
+    const data=await api('/api/suggestions');
+    const items=data.suggestions||[];
+    list.innerHTML=items.length?items.map(x=>'<article class="card"><div class="news-card-top"><div><h3>'+esc(x.category)+'</h3><div class="muted">'+(developer?'@'+esc(x.username||'Unknown')+' · ':'')+esc(fmt(x.created_at))+'</div></div><span class="pill">'+esc(x.status||'Pending')+'</span></div><p>'+esc(x.description||'')+'</p>'+(developer?'<div class="toolbar"><button data-suggestion-status="Rejected" data-suggestion-id="'+esc(x.id)+'">Rejected</button><button data-suggestion-status="Feature added" data-suggestion-id="'+esc(x.id)+'">Feature added</button><button data-suggestion-status="Approved" data-suggestion-id="'+esc(x.id)+'">Approved</button></div>':'')+'</article>').join(''):'<div class="card"><p class="muted">No suggestions yet.</p></div>';
+    form.classList.toggle('hidden',developer);
+    form.onsubmit=async e=>{e.preventDefault();const description=$('suggestionDescription').value.trim(),category=$('suggestionCategory').value;if(!description){toast('Please describe your suggestion.');return;}try{await api('/api/suggestions',{method:'POST',body:JSON.stringify({category,description})});$('suggestionDescription').value='';toast('Suggestion submitted to the Developer.');await loadSuggestions();}catch(err){toast(err.message||'Could not submit suggestion.');}};
+    list.querySelectorAll('[data-suggestion-status]').forEach(b=>b.onclick=async()=>{try{await api('/api/suggestions/'+encodeURIComponent(b.dataset.suggestionId),{method:'PATCH',body:JSON.stringify({status:b.dataset.suggestionStatus})});toast('Status updated; the user has been notified.');await loadSuggestions();}catch(err){toast(err.message||'Could not update status.');}});
+  }catch(e){list.innerHTML='<div class="card"><p class="error">'+esc(e.message||'Could not load suggestions.')+'</p></div>';}
 }
 
 async function loadWall(){

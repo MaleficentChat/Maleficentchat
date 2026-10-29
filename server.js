@@ -4936,6 +4936,47 @@ app.get('/api/me/account',auth,async(req,res)=>{
 // Master repair APIs: privacy-aware admin controls and persistent records.
 app.post('/api/private-nickname',auth,async(req,res)=>{try{const u=current(req),target=String(req.body.targetId||''),nickname=cleanText(req.body.nickname||'').trim().slice(0,50);if(!target||target===String(u.id))return res.status(400).json({error:'Choose another user.'});const exists=await pool.query('SELECT id FROM users WHERE id=$1',[target]);if(!exists.rowCount)return res.status(404).json({error:'User not found'});if(!nickname){await pool.query('DELETE FROM private_nicknames WHERE owner_id=$1 AND target_user_id=$2',[u.id,target]);return res.json({ok:true,nickname:''});}await pool.query(`INSERT INTO private_nicknames(owner_id,target_user_id,nickname) VALUES($1,$2,$3) ON CONFLICT(owner_id,target_user_id) DO UPDATE SET nickname=EXCLUDED.nickname`,[u.id,target,nickname]);res.json({ok:true,nickname});}catch(e){console.error(e);res.status(500).json({error:'Could not save nickname'});}});
 app.get('/api/private-nicknames',auth,async(req,res)=>{const u=current(req);const q=await pool.query('SELECT target_user_id,nickname FROM private_nicknames WHERE owner_id=$1',[u.id]);res.json({nicknames:Object.fromEntries(q.rows.map(x=>[String(x.target_user_id),x.nickname]))});});
+// Suggestions: PostgreSQL-backed, private to the submitter and Developer.
+async function ensureSuggestionsTable(){
+  await pool.query(`CREATE TABLE IF NOT EXISTS feature_suggestions (
+    id BIGSERIAL PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    username TEXT NOT NULL,
+    category TEXT NOT NULL CHECK (category IN ('Feature not working','Improvement suggestion','Additional feature')),
+    description TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'Pending' CHECK (status IN ('Pending','Rejected','Feature added','Approved')),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  )`);
+}
+function isSuggestionsDeveloper(u){return String(u?.username||'').toLowerCase()==='maleficent'||String(u?.rank||'').toUpperCase()==='DEVELOPER';}
+app.get('/api/suggestions',auth,async(req,res)=>{
+  try{
+    await ensureSuggestionsTable();const u=current(req);
+    const q=isSuggestionsDeveloper(u)
+      ? await pool.query('SELECT id,user_id,username,category,description,status,created_at,updated_at FROM feature_suggestions ORDER BY created_at DESC LIMIT 500')
+      : await pool.query('SELECT id,user_id,username,category,description,status,created_at,updated_at FROM feature_suggestions WHERE user_id=$1 ORDER BY created_at DESC LIMIT 200',[String(u.id)]);
+    res.json({suggestions:q.rows});
+  }catch(e){console.error('[SUGGESTIONS] list:',e?.message||e);res.status(500).json({error:'Could not load suggestions.'});}
+});
+app.post('/api/suggestions',auth,async(req,res)=>{
+  const u=current(req),category=String(req.body.category||'').trim(),description=String(req.body.description||'').trim().slice(0,4000);
+  if(!['Feature not working','Improvement suggestion','Additional feature'].includes(category))return res.status(400).json({error:'Choose a valid suggestion category.'});
+  if(!description)return res.status(400).json({error:'Describe your suggestion before submitting.'});
+  try{await ensureSuggestionsTable();const q=await pool.query('INSERT INTO feature_suggestions(user_id,username,category,description) VALUES($1,$2,$3,$4) RETURNING id,user_id,username,category,description,status,created_at',[String(u.id),String(u.username||'Unknown'),category,description]);res.status(201).json({ok:true,suggestion:q.rows[0]});}
+  catch(e){console.error('[SUGGESTIONS] submit:',e?.message||e);res.status(500).json({error:'Could not save your suggestion.'});}
+});
+app.patch('/api/suggestions/:id',auth,async(req,res)=>{
+  const actor=current(req);if(!isSuggestionsDeveloper(actor))return res.status(403).json({error:'Only the Developer account can review suggestions.'});
+  const status=String(req.body.status||'').trim();if(!['Rejected','Feature added','Approved'].includes(status))return res.status(400).json({error:'Invalid suggestion status.'});
+  try{
+    await ensureSuggestionsTable();const q=await pool.query('UPDATE feature_suggestions SET status=$1,updated_at=NOW() WHERE id=$2 RETURNING id,user_id,username,category,description,status,created_at,updated_at',[status,req.params.id]);
+    if(!q.rowCount)return res.status(404).json({error:'Suggestion not found.'});
+    const item=q.rows[0];await notify(item.user_id,'suggestion_status','Suggestion update: '+status,'Your suggestion "'+item.category+'" has been marked '+status+'.');
+    res.json({ok:true,suggestion:item});
+  }catch(e){console.error('[SUGGESTIONS] update:',e?.message||e);res.status(500).json({error:'Could not update suggestion status.'});}
+});
+
 app.post('/api/admin/private-search',auth,ownerOnly,async(req,res)=>{
   const username1=String(req.body.user1||'').trim().replace(/^@/,'').slice(0,80),username2=String(req.body.user2||'').trim().replace(/^@/,'').slice(0,80);
   if(!username1)return res.status(400).json({error:'Enter at least one username'});
