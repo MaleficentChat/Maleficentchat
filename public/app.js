@@ -44,10 +44,12 @@ const rankIcon = {
   MEMBER: "⚡",
   VIP: "💎",
   PREMIUM: "🏅",
+  ROYAL: "⚜️",
   MOD: "🛡️",
   ADMIN: "⭐",
   SUPER_ADMIN: "🌟",
   COMMISSOR: "👻",
+  INSTRUCTOR: "⚔️",
   COOWNER: "🦉",
   OWNER: "👑",
   DEVELOPER: "🛠️"
@@ -57,13 +59,15 @@ const rankOrder = {
   MEMBER: 0,
   VIP: 1,
   PREMIUM: 2,
-  MOD: 3,
-  ADMIN: 4,
-  SUPER_ADMIN: 5,
-  COMMISSOR: 6,
-  COOWNER: 7,
-  OWNER: 8,
-  DEVELOPER: 9
+  ROYAL: 3,
+  MOD: 4,
+  ADMIN: 5,
+  SUPER_ADMIN: 6,
+  COMMISSOR: 7,
+  INSTRUCTOR: 8,
+  COOWNER: 9,
+  OWNER: 10,
+  DEVELOPER: 11
 };
 
 const ranks = Object.keys(rankOrder);
