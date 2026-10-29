@@ -3366,8 +3366,10 @@ async function clearUserActionHistory(userId){
 
 let constructionTimer=null,constructionPoll=null;
 function isOwnerExempt(){
+  // The server is authoritative for permission checks. Do not hard-code the owner username here:
+  // OWNER_USERNAME may be configured differently in Render, which otherwise disables the UI toggle.
   const r=String(state.user?.rank||"").toUpperCase();
-  return r==="DEVELOPER"||(r==="OWNER"&&state.user?.username==="Maleficent");
+  return r==="DEVELOPER"||r==="OWNER";
 }
 function hideConstructionPanel(){
   if(constructionTimer)clearTimeout(constructionTimer);
@@ -3407,7 +3409,7 @@ async function toggleUnderConstruction(){
   try{
     const payload=active?{enabled:false}:{enabled:true,durationMinutes:Number($("constructionDuration")?.value||60)};
     const result=await api("/api/owner/under-construction",{method:"POST",body:JSON.stringify(payload)});
-    if(btn){btn.dataset.active=result.enabled?"true":"false";btn.textContent=result.enabled?"🚧 Turn Off Under Construction":"🚧 Under Construction Panel";}
+    if(btn){btn.dataset.active=result.enabled?"true":"false";btn.textContent=result.enabled?"🚧 Turn Off Under Construction":"🚧 Enable Under Construction";}
     if($("constructionDuration"))$("constructionDuration").disabled=!!result.enabled;
     toast(result.enabled?"Under Construction Panel enabled. Owner and Developer remain exempt.":"Under Construction Panel disabled.");
   }catch(e){toast(e.message||"Could not change construction mode.");}
