@@ -81,17 +81,60 @@ function applySystemRule(target, rule, reason, source){
 
 let saveTimer=null;
 let saveInFlight=Promise.resolve();
-function save(){
-  clearTimeout(saveTimer);
+let saveRunning=false;
+let saveDirty=false;
+
+// Full legacy-state persistence touches every user and filter word. Coalesce
+// bursts of presence/activity updates so they cannot build an unbounded queue
+// of whole-database rewrites behind the actual chat-message INSERTs.
+function scheduleSave(delay=150){
+  if(saveTimer) clearTimeout(saveTimer);
   saveTimer=setTimeout(()=>{
-    saveInFlight=saveInFlight
-      .then(()=>persistState(db))
-      .catch(err=>console.error("PostgreSQL persistence error:",err));
-  },50);
+    saveTimer=null;
+    void runScheduledSave();
+  },delay);
 }
-function flushSave(){
-  clearTimeout(saveTimer);
-  return (saveTimer=null, saveInFlight=saveInFlight.then(()=>persistState(db)).catch(err=>console.error("PostgreSQL persistence error:",err)));
+function save(){
+  saveDirty=true;
+  if(saveRunning) return;
+  scheduleSave();
+}
+async function runScheduledSave(){
+  if(saveRunning||!saveDirty) return saveInFlight;
+  saveRunning=true;
+  saveDirty=false;
+  const task=saveInFlight.then(()=>persistState(db)).catch(err=>console.error("PostgreSQL persistence error:",err));
+  saveInFlight=task;
+  try{
+    await task;
+  }finally{
+    saveRunning=false;
+    // At most one follow-up snapshot is queued, even if many updates arrive
+    // while the current snapshot is running.
+    if(saveDirty) scheduleSave(500);
+  }
+  return saveInFlight;
+}
+async function flushSave(){
+  if(saveTimer){clearTimeout(saveTimer);saveTimer=null;}
+  saveDirty=true;
+  while(saveDirty||saveRunning){
+    if(saveRunning){
+      await saveInFlight;
+      continue;
+    }
+    saveRunning=true;
+    saveDirty=false;
+    const task=saveInFlight.then(()=>persistState(db)).catch(err=>console.error("PostgreSQL persistence error:",err));
+    saveInFlight=task;
+    try{
+      await task;
+    }finally{
+      saveRunning=false;
+    }
+  }
+  if(saveTimer){clearTimeout(saveTimer);saveTimer=null;}
+  return saveInFlight;
 }
 
 function id(){
