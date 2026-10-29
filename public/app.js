@@ -3228,17 +3228,40 @@ async function renderStaffApplications(){
   }catch(e){const list=$('staffApplicationsList');if(list)list.innerHTML='<p class="muted">'+esc(e.message||'Could not load applications.')+'</p>';}
 }
 
+async function hardRefreshSiteCache(){
+  if(!confirm("Hard refresh Maleficent Chat on this device?\n\nThis clears cached website files and reloads the site. It does NOT delete room messages, private messages, accounts, profiles, ranks, gold, settings, or saved records. Your notification subscription will be kept."))return;
+  const button=$("hardRefreshSiteButton");
+  if(button){button.disabled=true;button.textContent="⟳ Clearing cache…";}
+  try{
+    if("caches" in window){
+      const keys=await caches.keys();
+      await Promise.all(keys.map(key=>caches.delete(key)));
+    }
+    toast("Site cache cleared. Reloading Maleficent Chat…");
+    const url=new URL(window.location.href);
+    url.searchParams.set("site_refresh",String(Date.now()));
+    window.location.replace(url.toString());
+  }catch(error){
+    console.error("Site cache refresh failed:",error);
+    toast("Could not clear the site cache: "+(error?.message||"unknown error"));
+    if(button){button.disabled=false;button.textContent="⟳ Site Refresh";}
+  }
+}
+
 async function loadStaff() {
   try {
     const data=await api('/api/staff/dashboard');
     const bootstrapData=await api('/api/bootstrap');
     const filterWords=await api('/api/staff/filter-word');
     const systemCenter=await api('/api/staff/system-center').catch(()=>null);
-    const canUseAdminPanel=['ADMIN','SUPER_ADMIN','COMMISSOR','COOWNER','OWNER','DEVELOPER'].includes(String(state.user?.rank||'').toUpperCase());
+    const canUseAdminPanel=['ADMIN','SUPER_ADMIN','COMMISSOR','INSTRUCTOR','COOWNER','OWNER','DEVELOPER'].includes(String(state.user?.rank||'').toUpperCase());
+    const staffRankOrder=['MEMBER','VIP','PREMIUM','ROYAL','MOD','ADMIN','SUPER_ADMIN','COMMISSOR','INSTRUCTOR','COOWNER','OWNER','DEVELOPER'];
+    const canHardRefreshSite=staffRankOrder.indexOf(String(state.user?.rank||'').toUpperCase())>=staffRankOrder.indexOf('INSTRUCTOR');
 
 
 
     $('staff').innerHTML=`
+      ${canHardRefreshSite ? '<section class="card site-hard-refresh-card"><div><h3>⟳ Site Refresh</h3><p class="muted">Clear cached website files on this device and reload Maleficent Chat. All account data and messages remain stored safely.</p></div><button class="primary" type="button" id="hardRefreshSiteButton">⟳ Hard Refresh Site</button></section>' : ''}
       ${(state.user?.username==='Maleficent'||String(state.user?.rank).toUpperCase()==='DEVELOPER') ? '<section class="card ip-inspection-card"><div><h3>🔎 IP Inspection</h3><p class="muted">Owner/Developer only · Registered email, recorded IP history and approximate network details.</p></div><form id="ipInspectionForm" class="ip-inspection-form"><input id="ipInspectionSearch" placeholder="Type @ or a username to find an account" maxlength="100" autocomplete="off"><button class="primary" type="submit">Inspect</button></form><div id="ipInspectionSuggestions" class="ip-inspection-suggestions" hidden></div><p class="muted ip-inspection-note">IP and network information is sensitive. Location is approximate. Lookups use IP Info with ipapi.co as a fallback.</p><div id="ipInspectionResults"><p class="muted">Search for an account to inspect its recorded IP history.</p></div></section>' : ''}
       <details class="filter-words-details staff-applications-dropdown" id="staffApplicationsDropdown"><summary>📝 Staff Applications <span class="staff-app-count" id="staffApplicationCount">Loading…</span></summary><div class="staff-applications-content" id="staffApplicationsList"><p class="muted">Loading applications…</p></div></details>
       <details class="filter-words-details system-notifications-dropdown" id="systemNotificationsDropdown">
@@ -3270,6 +3293,7 @@ async function loadStaff() {
         }).join('')||'<p class="muted">No reports.</p>'}
       </div>
     `;
+    $("hardRefreshSiteButton")?.addEventListener("click",hardRefreshSiteCache);
     document.querySelectorAll("[data-assign-report]").forEach(button=>button.onclick=()=>assignReport(button.dataset.assignReport));
     await renderStaffApplications();
     $('systemNotificationForm')?.addEventListener('submit',async e=>{
