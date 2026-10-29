@@ -1,4 +1,4 @@
-const CACHE="maleficent-chat-v18-web-push-install-fix";
+const CACHE="maleficent-chat-v19-show-push-while-open";
 const ASSETS=["/","/style.css","/app.js","/manifest.json","/favicon.svg","/robots.txt","/sitemap.xml","/doodle-studio.js"];
 
 self.addEventListener("install",event=>{
@@ -61,8 +61,9 @@ self.addEventListener("push",event=>{
   event.waitUntil((async()=>{
     let payload={title:"Maleficent Chat",body:"You have a new notification",url:"/"};
     try{if(event.data)payload={...payload,...event.data.json()};}catch{try{payload.body=event.data?.text()||payload.body;}catch{}}
-    const windows=await self.clients.matchAll({type:"window",includeUncontrolled:true});
-    if(windows.some(client=>client.visibilityState==="visible"))return;
+    // Always display server push notifications, including when the site is open.
+    // The in-page socket and push channels are independent; suppressing push here
+    // made the explicit test appear successful while showing nothing in the tray.
     await self.registration.showNotification(String(payload.title||"Maleficent Chat").slice(0,100),{
       body:String(payload.body||"You have a new notification").slice(0,200),
       icon:"/favicon.svg",
