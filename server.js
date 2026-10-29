@@ -4685,7 +4685,7 @@ app.post('/api/rooms/:id/gif',auth,featureAllowed('send_messages'),async(req,res
   if(u.banned===true || (u.kickedUntil&&u.kickedUntil>Date.now()) || (u.mutedUntil&&u.mutedUntil>Date.now()))return res.status(403).json({error:'Your account cannot send messages right now.'});
   if(!featureGrantAllowed(u,'gif_sending'))return res.status(403).json({error:'Your rank cannot send GIFs.'});
   const url=String(req.body.url||''); let parsed;try{parsed=new URL(url)}catch{return res.status(400).json({error:'Invalid GIF URL.'})}
-  if(!['https:'].includes(parsed.protocol) || !/(giphy\.com|tenor\.com|media\.giphy\.com)/i.test(parsed.hostname))return res.status(400).json({error:'GIF must come from GIPHY or Tenor.'});
+  if(parsed.protocol!=='https:' || !parsed.hostname || !parsed.hostname.includes('.'))return res.status(400).json({error:'Choose a valid HTTPS GIF URL.'});
   const cost=Math.max(0,Math.min(100000,Number(db.settings.gif_cost??10)));
   if(Number(u.gold||0)<cost)return res.status(400).json({error:`You need ${cost} gold to send a GIF.`});
   u.gold=Number(u.gold||0)-cost;
