@@ -3224,7 +3224,10 @@ async function loadStaff() {
     const renderActiveActions=()=>{
       const filter=$("staffActionFilter")?.value||"";
       const rows=(data.activeActions||[]).filter(x=>!filter||(filter==="BANNED"&&x.banned)||(filter==="MUTED"&&x.mutedUntil)||(filter==="KICKED"&&x.kickedUntil));
-      $("activeActionUsers").innerHTML=rows.map(x=>`<div class="user-card"><div style="flex:1"><b>${esc(x.displayName)}</b> @${esc(x.username)}<div class="muted">${rank(x.rank)} · ${x.banned?"Banned":x.kickedUntil?"Kicked until "+fmt(x.kickedUntil):"Muted until "+fmt(x.mutedUntil)}</div><div class="muted">${esc(x.reason||"")}</div></div><button class="mini" onclick="openUser('${esc(x.id)}')">Open</button></div>`).join("")||'<p class="muted">No users currently have this action.</p>';
+      const activeActionTarget=$("activeActionUsers");
+      // This optional widget is absent from the current dashboard layout; skip it safely.
+      if(!activeActionTarget)return;
+      activeActionTarget.innerHTML=rows.map(x=>`<div class="user-card"><div style="flex:1"><b>${esc(x.displayName)}</b> @${esc(x.username)}<div class="muted">${rank(x.rank)} · ${x.banned?"Banned":x.kickedUntil?"Kicked until "+fmt(x.kickedUntil):"Muted until "+fmt(x.mutedUntil)}</div><div class="muted">${esc(x.reason||"")}</div></div><button class="mini" onclick="openUser('${esc(x.id)}')">Open</button></div>`).join("")||'<p class="muted">No users currently have this action.</p>';
     };
     $("staffActionFilter")?.addEventListener("change",renderActiveActions);
     renderActiveActions();
@@ -3603,6 +3606,8 @@ async function loadOwner() {
 
     
     
+    // Owner controls are injected dynamically; sync the toggle with persisted server state after rendering.
+    await checkUnderConstruction();
     for(const key of ['multi_account','ban_evasion','spam_flood','vpn_proxy']){const actionSelect=$('sm_'+key+'_action'),durationInput=$('sm_'+key+'_duration'),label=durationInput?.closest('label');const sync=()=>{const needed=['MUTE','KICK'].includes(actionSelect?.value);if(durationInput)durationInput.disabled=!needed;if(label)label.firstChild.nodeValue=needed?'Duration (minutes)':'No duration required';};actionSelect?.addEventListener('change',sync);sync();}
     if($('saveSystemModeration')) $('saveSystemModeration').onclick=async()=>{
       const rules={};
