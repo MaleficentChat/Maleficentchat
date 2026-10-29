@@ -175,6 +175,34 @@ async function testSiteNotifications(){
     if(button){button.disabled=false;button.textContent="🧪 Send test";}
   }
 }
+async function hardRefreshSite(){
+  const button=$("siteHardRefresh");
+  if(button){button.disabled=true;button.textContent="⏳ Refreshing…";}
+  try{
+    // Clear only Cache Storage. Preserve login cookies, localStorage, IndexedDB,
+    // server-side account/messages, and the push subscription.
+    if("caches" in window){
+      const keys=await caches.keys();
+      await Promise.all(keys.map(key=>caches.delete(key)));
+    }
+    if("serviceWorker" in navigator){
+      const registration=await navigator.serviceWorker.getRegistration("/");
+      if(registration)await registration.update().catch(()=>{});
+    }
+    toast("Site cache cleared. Reloading the latest Maleficent Chat…");
+    const url=new URL(window.location.href);
+    url.searchParams.set("mc_refresh",String(Date.now()));
+    window.location.replace(url.toString());
+  }catch(error){
+    console.error("Site refresh failed:",error);
+    toast("Could not clear the site cache: "+String(error?.message||error));
+    if(button){button.disabled=false;button.textContent="🔄 Site refresh";}
+  }
+}
+$("siteHardRefresh")?.addEventListener("click",()=>{
+  if(!window.confirm("Refresh Maleficent Chat and clear its cached files? Your account, messages, login session, and saved data will be kept."))return;
+  hardRefreshSite();
+});
 $("testSiteNotifications")?.addEventListener("click",testSiteNotifications);
 if("Notification" in window && Notification.permission==="granted") registerSiteNotificationWorker();
 
