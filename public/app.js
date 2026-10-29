@@ -305,6 +305,9 @@ function clearActionLock(){if(actionLockTimer)clearTimeout(actionLockTimer);acti
 /* ---------------- START ---------------- */
 
 async function start() {
+  checkUnderConstruction();
+  if(constructionPoll)clearInterval(constructionPoll);
+  constructionPoll=setInterval(checkUnderConstruction,15000);
   $("auth").classList.add("hidden");
   $("app").classList.remove("hidden");
 
@@ -321,6 +324,12 @@ async function start() {
   }
 
   state.socket = io();
+  state.socket.on("under-construction:status",payload=>{
+    if(payload?.enabled&&!isOwnerExempt())showConstructionPanel(payload.until);
+    else hideConstructionPanel();
+    const btn=$("underConstructionToggle");
+    if(btn&&isOwnerExempt()){btn.dataset.active=payload?.enabled?"true":"false";btn.textContent=payload?.enabled?"🚧 Turn Off Under Construction":"🚧 Under Construction Panel";if($("constructionDuration"))$("constructionDuration").disabled=!!payload?.enabled;}
+  });
   state.socket.on("room:theme",data=>{if(!data?.roomId||!data?.theme)return;const room=state.rooms.find(r=>String(r.id)===String(data.roomId));if(room)room.roomTheme=data.theme;if(String(state.currentRoom)===String(data.roomId))applyRoomTheme(data.theme);});
   state.socket.on("gold:update",data=>{ if(state.user&&data?.gold!==undefined){state.user.gold=data.gold; updateNav();}});
 
@@ -3355,6 +3364,55 @@ async function clearUserActionHistory(userId){
 }
 /* ---------------- OWNER ---------------- */
 
+let constructionTimer=null,constructionPoll=null;
+function isOwnerExempt(){
+  const r=String(state.user?.rank||"").toUpperCase();
+  return r==="DEVELOPER"||(r==="OWNER"&&state.user?.username==="Maleficent");
+}
+function hideConstructionPanel(){
+  if(constructionTimer)clearTimeout(constructionTimer);
+  constructionTimer=null;
+  document.getElementById("underConstructionOverlay")?.remove();
+}
+function showConstructionPanel(until){
+  if(isOwnerExempt()){hideConstructionPanel();return;}
+  const end=Number(until)||0;
+  if(end<=Date.now()){hideConstructionPanel();return;}
+  let panel=document.getElementById("underConstructionOverlay");
+  if(!panel){panel=document.createElement("div");panel.id="underConstructionOverlay";panel.className="under-construction-overlay";document.body.appendChild(panel);}
+  const tick=()=>{
+    const remaining=end-Date.now();
+    if(remaining<=0){hideConstructionPanel();checkUnderConstruction();return;}
+    const total=Math.floor(remaining/1000),days=Math.floor(total/86400),hours=Math.floor(total%86400/3600),minutes=Math.floor(total%3600/60),seconds=total%60;
+    const pad=n=>String(n).padStart(2,"0");
+    panel.innerHTML='<div class="under-construction-card"><div class="under-construction-icon">🚧</div><h1>THE SIRE IS UNDER CONSTRUCTION</h1><p>We’ll be back when the work is complete.</p><div class="under-construction-timer">'+(days?days+':':'')+pad(hours)+':'+pad(minutes)+':'+pad(seconds)+'</div><small>'+(days?'Days : ':'')+'Hours : Minutes : Seconds remaining</small></div>';
+    panel.classList.remove("hidden");
+    constructionTimer=setTimeout(tick,1000);
+  };
+  tick();
+}
+async function checkUnderConstruction(){
+  try{
+    const status=await api("/api/under-construction/status");
+    if(status.enabled&&!status.exempt)showConstructionPanel(status.until);
+    else hideConstructionPanel();
+    const btn=$("underConstructionToggle");
+    if(btn&&isOwnerExempt())btn.textContent=status.enabled?"🚧 Under Construction Panel (ON)":"🚧 Under Construction Panel";
+  }catch{}
+}
+async function toggleUnderConstruction(){
+  if(!isOwnerExempt()){toast("Owner/Developer access required.");return;}
+  const btn=$("underConstructionToggle");
+  const active=btn?.dataset.active==="true";
+  try{
+    const payload=active?{enabled:false}:{enabled:true,durationMinutes:Number($("constructionDuration")?.value||60)};
+    const result=await api("/api/owner/under-construction",{method:"POST",body:JSON.stringify(payload)});
+    if(btn){btn.dataset.active=result.enabled?"true":"false";btn.textContent=result.enabled?"🚧 Turn Off Under Construction":"🚧 Under Construction Panel";}
+    if($("constructionDuration"))$("constructionDuration").disabled=!!result.enabled;
+    toast(result.enabled?"Under Construction Panel enabled. Owner and Developer remain exempt.":"Under Construction Panel disabled.");
+  }catch(e){toast(e.message||"Could not change construction mode.");}
+}
+
 async function refreshSiteMessages(){
   if(!confirm('This permanently deletes ALL room chat messages and ALL private messages for every user. Accounts, rooms, ranks, gold, settings, reports, and moderation history will remain. Continue?'))return;
   try{
@@ -3420,6 +3478,19 @@ async function loadOwner() {
             Inspect private messages
           </button>
           <button class="mini danger" type="button" onclick="refreshSiteMessages()">🧹 Refresh Site Messages</button>
+          <label class="construction-duration-label">Construction duration
+            <select id="constructionDuration">
+              <option value="15">15 minutes</option>
+              <option value="30">30 minutes</option>
+              <option value="60" selected>1 hour</option>
+              <option value="120">2 hours</option>
+              <option value="360">6 hours</option>
+              <option value="720">12 hours</option>
+              <option value="1440">24 hours</option>
+              <option value="10080">7 days</option>
+            </select>
+          </label>
+          <button class="mini danger" type="button" id="underConstructionToggle" onclick="toggleUnderConstruction()">🚧 Under Construction Panel</button>
 
           <button class="mini" onclick="ownerFeatureGrants()">🧩 Feature granting</button>
           
