@@ -1822,7 +1822,7 @@ app.post("/api/rooms/:id/messages",auth,featureAllowed("send_messages"),upload.s
     try{
       await pool.query("INSERT INTO reports(id,reporter_id,reported_id,conversation_user_id,reason,data,created_at) VALUES($1,NULL,$2,NULL,$3,$4::jsonb,NOW())",[autoReport.id,Number(u.id),autoReport.reason,JSON.stringify(autoReport)]);
       db.reports ||= [];db.reports.push(autoReport);
-      notifyStaff("report","New filtered-word report","A chat message matched a report-only filter rule.");
+      // Automated filtered-word alerts are stored as staff Reports; do not create a separate notification entry.
       save();
     }catch(e){console.error("Report-only filter persistence failed:",e?.message||e);}
   }
