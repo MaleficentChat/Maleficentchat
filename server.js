@@ -1931,7 +1931,17 @@ app.post("/api/rooms/:id/messages",auth,featureAllowed("send_messages"),upload.s
       checkAchievements(u);
       awardXp(u,Number(db.settings.xpPerMessage||5));
       u.gold=(u.gold||0)+Number(db.settings.goldPerMessage||0);
-      save();
+
+      // Persist only this sender's message-progress fields. save() writes every user
+      // and rebuilds filter words, which is far too expensive to run per chat message.
+      const progress={
+        stats:u.stats,achievements:u.achievements,level:u.level,
+        xpToday:u.xpToday,xpDailyDay:u.xpDailyDay
+      };
+      await pool.query(
+        `UPDATE users SET gold=$2,xp=$3,profile_data=COALESCE(profile_data,'{}'::jsonb) || $4::jsonb WHERE id=$1`,
+        [Number(u.id),Number(u.gold||0),Number(u.xp||0),JSON.stringify(progress)]
+      );
 
       // Push is best-effort and never part of the message-send response path.
       sendWebPushToPublicRoom(r,m,u.id).catch(err=>console.warn("Room push notification failed:",err?.message||err));
@@ -1956,7 +1966,11 @@ app.post("/api/rooms/:id/messages",auth,featureAllowed("send_messages"),upload.s
           io.to("room:"+r.id).emit("message",bot);
         }
       }
-      addActivity("message",`${u.username} sent a message in ${r.name||"a room"}`,u.id,{roomId:r.id});
+      // Keep message activity in memory without triggering a full-site save per message.
+      db.activityTimeline ||= {};
+      const activityEntries=db.activityTimeline[String(u.id)] ||= [];
+      activityEntries.push({id:id(),type:"message",message:`${u.username} sent a message in ${r.name||"a room"}`,details:{roomId:r.id},time:Date.now()});
+      if(activityEntries.length>100)activityEntries.splice(0,activityEntries.length-100);
     }catch(error){
       console.error("Post-send chat side effect failed:",error?.message||error);
     }
@@ -2559,7 +2573,11 @@ app.post("/api/dm/:id",auth,featureAllowed("private_messages"),upload.single("fi
   if(!m.text&&!m.attachment)return res.status(400).json({error:"Empty message"});
   await pool.query(`INSERT INTO private_messages(id,sender_id,receiver_id,message,data,created_at) VALUES($1,$2,$3,$4,$5::jsonb,NOW())`,
     [m.id,Number(u.id),Number(v.id),m.text,JSON.stringify(m)]);
-  db.privateMessages.push(m); save(); notify(v.id,"private-message","New private message",`@${u.username} sent you a private message.`); io.to("user:"+v.id).emit("dm",m);
+  // private_messages is already the durable source; avoid save(), which rewrites
+  // every user row and filter-word entry for each private message.
+  db.privateMessages.push(m);
+  notify(v.id,"private-message","New private message",`@${u.username} sent you a private message.`);
+  io.to("user:"+v.id).emit("dm",m);
   res.json({message:m});
 });
 
