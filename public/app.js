@@ -3397,7 +3397,7 @@ async function checkUnderConstruction(){
     if(status.enabled&&!status.exempt)showConstructionPanel(status.until);
     else hideConstructionPanel();
     const btn=$("underConstructionToggle");
-    if(btn&&isOwnerExempt())btn.textContent=status.enabled?"🚧 Under Construction Panel (ON)":"🚧 Under Construction Panel";
+    if(btn&&isOwnerExempt()){btn.dataset.active=status.enabled?"true":"false";btn.textContent=status.enabled?"🚧 Turn Off Under Construction":"🚧 Under Construction Panel";if($("constructionDuration"))$("constructionDuration").disabled=!!status.enabled;}
   }catch{}
 }
 async function toggleUnderConstruction(){
