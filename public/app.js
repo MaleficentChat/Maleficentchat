@@ -438,8 +438,9 @@ async function start() {
         : "";
   });
 
-  state.socket.on("notification", () => {
+  state.socket.on("notification", data => {
     loadNotifications();
+    if(document.hidden)showSiteNotification(data?.title||"Maleficent Chat",String(data?.message||data?.body||"You have a new notification").slice(0,180),"notifications");
   });
   state.socket.on("room:announcement",()=>{if(state.currentRoom)loadRoomAnnouncements(state.currentRoom)});
   state.socket.on("room:announcement-delete",()=>{if(state.currentRoom)loadRoomAnnouncements(state.currentRoom)});
@@ -1912,10 +1913,11 @@ $("resetUserFilters")?.addEventListener("click",()=>{
 function invisibleDot(user){return user?.invisible?'<i class="invisible-staff-dot" title="Invisible mode active"></i>':'';}
 function moderationStatusTags(user){
   const tags=[];
-  if(user?.banned===true)tags.push('<span class="user-moderation-tag is-banned" title="This user is banned" aria-label="Banned">🚫</span>');
-  if(Number(user?.mutedUntil)>Date.now())tags.push('<span class="user-moderation-tag is-muted" title="This user is muted" aria-label="Muted">✋🏼</span>');
-  if(Number(user?.kickedUntil)>Date.now())tags.push('<span class="user-moderation-tag is-kicked" title="This user is kicked until the action expires" aria-label="Kicked">🦶🏼</span>');
-  return tags.length?`<span class="user-moderation-tags" aria-label="Moderation status">${tags.join("")}</span>`:"";
+  const activeUntil=value=>{if(value==null||value==='')return false;const n=Number(value);const time=Number.isFinite(n)&&n>0?n:Date.parse(value);return Number.isFinite(time)&&time>Date.now();};
+  if(user?.banned===true||user?.banned==='true')tags.push('<span class="user-moderation-tag is-banned" title="This user is banned" aria-label="Banned">🚫</span>');
+  if(activeUntil(user?.mutedUntil))tags.push('<span class="user-moderation-tag is-muted" title="This user is muted" aria-label="Muted">✋🏼</span>');
+  if(activeUntil(user?.kickedUntil))tags.push('<span class="user-moderation-tag is-kicked" title="This user is kicked until the action expires" aria-label="Kicked">🦶🏼</span>');
+  return tags.length?'<span class="user-moderation-tags" aria-label="Moderation status">'+tags.join('')+'</span>':'';
 }
 function invisibleToggleMarkup(user,compact=false){
   if(String(user?.id)!==String(state.user?.id)||!canFeature("invisible_mode"))return "";
