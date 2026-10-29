@@ -130,6 +130,14 @@ function hasRank(u,r){
   return !!u&&rankOrder[u.rank]>=rankOrder[r];
 }
 
+// Staff may inspect or manage staff-only records only for accounts strictly below their rank.
+function canAccessStaffTarget(actor,target){
+  if(!actor||!target||String(actor.id)===String(target.id))return false;
+  const actorRank=String(actor.rank||"").toUpperCase(), targetRank=String(target.rank||"").toUpperCase();
+  if(targetRank==="DEVELOPER"||target.username===DEFAULT_OWNER)return false;
+  return (rankOrder[targetRank]??999)<(rankOrder[actorRank]??-1);
+}
+
 function featurePermissionKey(key){
   const aliases={create_room:"can_create_rooms",create_rooms:"can_create_rooms",edit_room:"can_edit_rooms",edit_rooms:"can_edit_rooms",delete_room:"can_delete_rooms",delete_rooms:"can_delete_rooms",profile_note:"can_add_notes",edit_email:"can_edit_emails",share_gold:"can_share_gold",moderate_users:"can_mute",delete_message:"can_delete_messages",manage_staff_accounts:"can_edit_usernames",reports_management:"can_manage_reports",publish_news:"can_manage_news",manage_ranks:"can_manage_ranks",manage_clubs:"can_manage_clubs",manage_settings:"can_manage_settings",clear_history_button:"can_clear_history",account_modifications:"can_manage_profiles",manage_profiles:"can_manage_profiles"};
   return aliases[key]|| (String(key).startsWith("can_")?key:null);
@@ -2681,6 +2689,7 @@ app.get("/api/users/:id/action-history",auth,(req,res)=>{
   if(!hasRank(u,"MOD")) return res.status(403).json({error:"Staff only"});
   const target=findUser(req.params.id);
   if(!target) return res.status(404).json({error:"User not found"});
+  if(!canAccessStaffTarget(u,target))return res.status(403).json({error:"You can only view staff history for users ranked below you."});
   const history=db.moderationHistory.filter(x=>x.target===target.id).map(x=>({
     ...x, actorUsername:x.actor==="SYSTEM"?"SYSTEM":(findUser(x.actor)?.username||x.actor)
   })).sort((a,b)=>b.time-a.time);
@@ -2692,6 +2701,7 @@ app.delete("/api/users/:id/action-history/:actionId",auth,(req,res)=>{
   if(!hasRank(actor,"MOD")) return res.status(403).json({error:"Staff only"});
   const target=findUser(req.params.id);
   if(!target) return res.status(404).json({error:"User not found"});
+  if(!canAccessStaffTarget(actor,target))return res.status(403).json({error:"You can only manage staff history for users ranked below you."});
   const before=db.moderationHistory.length;
   db.moderationHistory=db.moderationHistory.filter(x=>!(String(x.target)===String(target.id)&&String(x.id)===String(req.params.actionId)));
   if(db.moderationHistory.length===before) return res.status(404).json({error:"History action not found"});
@@ -2705,6 +2715,7 @@ app.post("/api/users/:id/action-history/clear",auth,(req,res)=>{
   if(!hasRank(actor,"MOD")) return res.status(403).json({error:"Staff only"});
   const target=findUser(req.params.id);
   if(!target) return res.status(404).json({error:"User not found"});
+  if(!canAccessStaffTarget(actor,target))return res.status(403).json({error:"You can only manage staff history for users ranked below you."});
   const before=db.moderationHistory.length;
   db.moderationHistory=db.moderationHistory.filter(x=>String(x.target)!==String(target.id));
   const removed=before-db.moderationHistory.length;
