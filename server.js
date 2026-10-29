@@ -1921,7 +1921,10 @@ app.post("/api/rooms/:id/messages",auth,featureAllowed("send_messages"),upload.s
   u.stats ||= {messages:0,rooms:0,friends:0}; u.stats.messages=(u.stats.messages||0)+1;
   checkAchievements(u); awardXp(u,Number(db.settings.xpPerMessage||5)); u.gold=(u.gold||0)+Number(db.settings.goldPerMessage||0); save();
   io.to("room:"+r.id).emit("message",m);
-  await sendWebPushToPublicRoom(r,m,u.id);
+  // Push notifications are best-effort and must not hold the chat POST open.
+  // The durable message insert and Socket.IO broadcast above are the delivery path;
+  // a slow push provider should never make a successfully sent message appear stuck.
+  sendWebPushToPublicRoom(r,m,u.id).catch(err=>console.warn("Room push notification failed:",err?.message||err));
 
   if(!anonymousMode && /^@Mal\s+/i.test(text)){const reply=malReply(u,text);if(reply){const bot={id:id(),system:false,isBot:true,userId:"bot-mal",username:"Mal",displayName:"Mal",rank:"BOT",text:reply,roomId:String(r.id),time:Date.now(),reactions:{},pinned:false,deleted:false};await pool.query(`INSERT INTO room_messages(id,room_id,data,created_at) VALUES($1,$2,$3::jsonb,NOW())`,[bot.id,Number(r.id),JSON.stringify(bot)]);db.messages.push(bot);io.to("room:"+r.id).emit("message",bot);}}
   const botMention=anonymousMode?null:text.match(/^@([A-Za-z0-9_]+)\s+([\s\S]*)/);
