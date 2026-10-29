@@ -946,7 +946,7 @@ app.post(
       await pool.query(`UPDATE users SET rank='user',vip_expires_at=NULL WHERE id=$1`,[Number(u.id)]);
     }
     if(u.banned===true){
-      return res.status(403).json({error:"You have been banned"});
+      return res.status(403).json({error:"You have been banned",reason:u.banReason||"Community rules"});
     }
 
     u.online=true;
