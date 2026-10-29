@@ -125,12 +125,31 @@ async function registerSiteNotificationWorker(){
 let siteNotificationRegistration=null;
 async function showSiteNotification(title,body,targetView){
   if(!("Notification" in window)||Notification.permission!=="granted")return;
-  const options={body,tag:"mc-"+String(title).slice(0,32),data:{url:"/"+(targetView==="messages"?"#messages":"#rooms")}};
+  const options={body,icon:"/favicon.svg",badge:"/favicon.svg",tag:"mc-"+String(title).slice(0,32),data:{url:"/"+(targetView==="messages"?"#messages":"#rooms")}};
   try{const registration=siteNotificationRegistration||await registerSiteNotificationWorker();if(registration?.showNotification)await registration.showNotification(title,options);else new Notification(title,options);}catch(e){console.warn("Could not show notification",e);}
 }
+function decodePushKey(value){
+  const normalized=String(value||"").replace(/-/g,"+").replace(/_/g,"/");
+  const padded=normalized+"=".repeat((4-normalized.length%4)%4);
+  const raw=atob(padded);
+  return Uint8Array.from(raw,char=>char.charCodeAt(0));
+}
 async function enableSiteNotifications(){
-  if(!("Notification" in window)){toast("This browser does not support notifications.");return;}
-  try{const permission=await Notification.requestPermission();if(permission!=="granted"){toast("Notifications were not enabled. Check your browser site settings.");return;}await registerSiteNotificationWorker();toast("Site notifications enabled on this device.");const btn=$("enableSiteNotifications");if(btn)btn.textContent="🔔 Notifications enabled";}catch(e){toast("Could not enable notifications: "+(e.message||"check browser settings"));}
+  if(!("Notification" in window)||!("serviceWorker" in navigator)||!("PushManager" in window)){toast("This browser does not support background push notifications.");return;}
+  try{
+    const permission=await Notification.requestPermission();
+    if(permission!=="granted"){toast("Notifications were not enabled. Allow notifications for this site in browser settings.");return;}
+    const keyData=await api("/api/push/public-key");
+    if(!keyData.enabled||!keyData.publicKey){toast("Background push is not configured on the server yet. Add the VAPID keys to Render environment variables.");return;}
+    const registration=await registerSiteNotificationWorker();
+    if(!registration)throw new Error("Could not register the notification service worker.");
+    let subscription=await registration.pushManager.getSubscription();
+    if(!subscription)subscription=await registration.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:decodePushKey(keyData.publicKey)});
+    await api("/api/push/subscribe",{method:"POST",body:JSON.stringify(subscription.toJSON())});
+    siteNotificationRegistration=registration;
+    const btn=$("enableSiteNotifications");if(btn)btn.textContent="🔔 Background notifications enabled";
+    toast("Background notifications enabled on this device, including when the site is closed.");
+  }catch(e){toast("Could not enable background notifications: "+(e.message||"check browser and site settings"));}
 }
 $("enableSiteNotifications")?.addEventListener("click",enableSiteNotifications);
 if("Notification" in window && Notification.permission==="granted") registerSiteNotificationWorker();
