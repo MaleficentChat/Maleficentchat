@@ -1469,7 +1469,7 @@ app.post("/api/rooms/:id/staff-action",auth,async(req,res)=>{
   if(action==="KICK"||action==="BLOCK"){for(const sock of io.sockets.sockets.values()){if(String(sock.data?.userId||sock.userId||sock.user?.id||"")===targetId&&String(sock.data?.roomId||"")===key){sock.leave("room:"+room.id);sock.emit("room:kicked",{roomId:key,reason,blocked:action==="BLOCK",until:action==="KICK"?settings.room_kicks[key][targetId].until:null});}}}
   res.json({ok:true,action,reason});
 });
-app.patch("/api/rooms/:id",auth,async(req,res)=>{
+app.put("/api/rooms/:id",auth,async(req,res)=>{
   const u=current(req),r=db.rooms.find(x=>String(x.id)===String(req.params.id)); if(!r)return res.status(404).json({error:"Room not found"});
   if(r.isDefault || /^main room$/i.test(String(r.name||"").trim()))return res.status(403).json({error:"The permanent Main Room cannot be modified."});
   if(!featureGrantAllowed(u,"edit_rooms")&&!(roomOwnerOrGlobal(u,r)&&Array.isArray(db.settings?.feature_grants?.room_edit_own)&&db.settings.feature_grants.room_edit_own.length))return res.status(403).json({error:"Room editing is disabled in Feature Granting or you do not own this room."});
