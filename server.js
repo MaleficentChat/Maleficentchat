@@ -3031,7 +3031,8 @@ app.post('/api/staff/applications/:id/grant',auth,featureAllowed('view_staff_das
       // Update the in-memory account only after the database transaction commits.
       target.rank=requested;
       save();await log(actor,'STAFF_APPLICATION_GRANT',target.username,{applicationId:req.params.id,rank:requested});
-      systemNotice(`@${actor.username} granted ${requested} to @${target.username} after staff application review.`);
+      // Rank changes are private account notifications, never public room announcements.
+      await notify(target.id,'rank_change','Rank updated',`System has changed your rank to ${requested.replaceAll('_',' ')}.`);
       res.json({ok:true,rank:requested});
     }catch(e){try{await client.query('ROLLBACK')}catch{}throw e;}finally{client.release();}
   }catch(e){console.error('Staff application rank grant failed:',e);res.status(500).json({error:'Could not grant this rank. Check rank-assignment permissions and try again.'});}
