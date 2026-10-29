@@ -589,34 +589,61 @@ function auth(req,res,next){
   next();
 }
 
-app.get("/api/under-construction/status",(req,res)=>{
-  const setting=db.settings?.under_construction||{};
-  const until=Number(setting.until)||0;
-  const enabled=setting.enabled===true&&until>Date.now();
-  if(setting.enabled===true&&!enabled){db.settings.under_construction={enabled:false,until:0};save();}
-  const u=current(req),rankName=String(u?.rank||"").toUpperCase();
-  const exempt=rankName==="DEVELOPER"||(rankName==="OWNER"&&u?.username===DEFAULT_OWNER);
-  res.json({enabled:enabled&&!exempt,configuredEnabled:enabled,until:enabled?until:0,exempt});
+async function persistUnderConstructionSetting(setting){
+  // Persist independently of the legacy whole-state snapshot so Render restarts
+  // and concurrent requests cannot silently lose the maintenance switch.
+  await pool.query(
+    "INSERT INTO settings(key,value) VALUES('under_construction',$1::jsonb) ON CONFLICT(key) DO UPDATE SET value=EXCLUDED.value",
+    [JSON.stringify(setting)]
+  );
+  db.settings ||= {};
+  db.settings.under_construction=setting;
+  await flushSave();
+}
+app.get("/api/under-construction/status",async(req,res)=>{
+  try{
+    const stored=await pool.query("SELECT value FROM settings WHERE key='under_construction' LIMIT 1");
+    if(stored.rows[0]?.value&&typeof stored.rows[0].value==="object"){
+      db.settings ||= {};
+      db.settings.under_construction=stored.rows[0].value;
+    }
+    const setting=db.settings?.under_construction||{};
+    const until=Number(setting.until)||0;
+    const enabled=setting.enabled===true&&until>Date.now();
+    if(setting.enabled===true&&!enabled){
+      const expired={...setting,enabled:false,until:0};
+      await persistUnderConstructionSetting(expired);
+    }
+    const u=current(req),rankName=String(u?.rank||"").toUpperCase();
+    const exempt=rankName==="DEVELOPER"||(rankName==="OWNER"&&u?.username===DEFAULT_OWNER);
+    const canManage=!!u&&(rankName==="DEVELOPER"||(rankName==="OWNER"&&u.username===DEFAULT_OWNER));
+    res.json({enabled:enabled&&!exempt,configuredEnabled:enabled,until:enabled?until:0,exempt,canManage});
+  }catch(error){
+    console.error("Under-construction status read failed:",error);
+    res.status(500).json({error:"Could not read under-construction status from the database."});
+  }
 });
 app.post("/api/owner/under-construction",auth,ownerOnly,async(req,res)=>{
-  const enabled=req.body?.enabled===true;
-  if(enabled){
-    const durationMinutes=Number(req.body?.durationMinutes);
-    if(!Number.isFinite(durationMinutes)||durationMinutes<1||durationMinutes>10080)return res.status(400).json({error:"Choose a duration between 1 minute and 7 days."});
-    const until=Date.now()+Math.floor(durationMinutes)*60000;
-    db.settings.under_construction={enabled:true,until,updatedBy:current(req)?.username||"Owner",updatedAt:Date.now()};
-    await flushSave();
-    const payload={enabled:true,until};
+  try{
+    const enabled=req.body?.enabled===true;
+    let setting;
+    if(enabled){
+      const durationMinutes=Number(req.body?.durationMinutes);
+      if(!Number.isFinite(durationMinutes)||durationMinutes<1||durationMinutes>10080)return res.status(400).json({error:"Choose a duration between 1 minute and 7 days."});
+      const now=Date.now();
+      setting={enabled:true,until:now+Math.floor(durationMinutes)*60000,updatedBy:current(req)?.username||"Owner",updatedAt:now};
+    }else{
+      setting={enabled:false,until:0,updatedBy:current(req)?.username||"Owner",updatedAt:Date.now()};
+    }
+    await persistUnderConstructionSetting(setting);
+    const payload={enabled:setting.enabled,until:setting.until};
     io.emit("under-construction:status",payload);
-    log(current(req),"UNDER_CONSTRUCTION_ENABLED","site",{durationMinutes,until});
+    log(current(req),enabled?"UNDER_CONSTRUCTION_ENABLED":"UNDER_CONSTRUCTION_DISABLED","site",enabled?{durationMinutes:Number(req.body.durationMinutes),until:setting.until}:{});
     return res.json(payload);
+  }catch(error){
+    console.error("Under-construction update failed:",error);
+    return res.status(500).json({error:"Could not save under-construction setting. Check the Render logs and database connection."});
   }
-  db.settings.under_construction={enabled:false,until:0,updatedBy:current(req)?.username||"Owner",updatedAt:Date.now()};
-  await flushSave();
-  const payload={enabled:false,until:0};
-  io.emit("under-construction:status",payload);
-  log(current(req),"UNDER_CONSTRUCTION_DISABLED","site",{});
-  res.json(payload);
 });
 
 function staff(r){
