@@ -1,4 +1,4 @@
-const CACHE="maleficent-chat-v15-user-list-density";
+const CACHE="maleficent-chat-v16-notifications-room-token";
 const ASSETS=["/","/style.css","/app.js","/manifest.json","/favicon.svg","/robots.txt","/sitemap.xml","/doodle-studio.js"];
 
 self.addEventListener("install",event=>{
@@ -50,4 +50,20 @@ self.addEventListener("activate",event=>{
       .then(keys=>Promise.all(keys.filter(key=>key.startsWith("maleficent-chat-")&&key!==CACHE).map(key=>caches.delete(key))))
       .then(()=>self.clients.claim())
   );
+});
+
+self.addEventListener("notificationclick",event=>{
+  event.notification.close();
+  const target=event.notification.data?.url||"/";
+  event.waitUntil((async()=>{
+    const windows=await self.clients.matchAll({type:"window",includeUncontrolled:true});
+    for(const client of windows){
+      if("focus" in client){
+        await client.focus();
+        if("navigate" in client) await client.navigate(target);
+        return;
+      }
+    }
+    if(self.clients.openWindow) await self.clients.openWindow(target);
+  })());
 });
