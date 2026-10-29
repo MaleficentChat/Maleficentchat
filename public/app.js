@@ -473,6 +473,8 @@ function updateNav() {
     .forEach(el =>
       el.classList.toggle("hidden", !can("MOD")&&!canFeature("view_staff_dashboard"))
     );
+  const reportButton=$("topFlag");
+  if(reportButton) reportButton.classList.toggle("hidden", !can("MOD")&&!canFeature("view_staff_dashboard"));
 
   document
     .querySelectorAll(".owner-only")
@@ -989,7 +991,7 @@ let onlinePanelTab="online";
 let onlinePanelCache=[];
 
 function isStaffUser(user){
-  return ["MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER","DEVELOPER"].includes(user.rank);
+  return ["MOD","ADMIN","SUPER_ADMIN","COMMISSOR","INSTRUCTOR","COOWNER","OWNER","DEVELOPER"].includes(user.rank);
 }
 
 let onlineSortMode="online-rank";
