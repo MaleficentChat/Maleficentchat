@@ -3505,3 +3505,47 @@ button,input,select,textarea { max-width:100%; }
 #viewRooms[data-room-theme] .msg.mine .msg-text{background:var(--room-theme-bubble);border-color:var(--room-theme-accent)}
 #viewRooms[data-room-theme] .msg-top .message-rank-floating{color:var(--room-theme-accent)}
 @media(max-width:520px){.room-theme-grid{gap:8px}.room-theme-preview{height:82px}.room-theme-card{padding:6px}}
+
+/* Full room theme: background, room chrome, message bubbles and composer */
+#viewRooms.chatting[data-room-theme] .chat-wrap,
+#viewRooms.chatting[data-room-theme] .chat-card,
+#viewRooms.chatting[data-room-theme] .chat-head,
+#viewRooms.chatting[data-room-theme] .announcement,
+#viewRooms.chatting[data-room-theme] .messages,
+#viewRooms.chatting[data-room-theme] .replybar,
+#viewRooms.chatting[data-room-theme] .typing,
+#viewRooms.chatting[data-room-theme] .composer,
+#viewRooms.chatting[data-room-theme] .chat-compose,
+#viewRooms.chatting[data-room-theme] .message-form {
+  background-color:var(--room-theme-bg)!important;
+}
+#viewRooms.chatting[data-room-theme] .chat-card {
+  background-image:linear-gradient(180deg,color-mix(in srgb,var(--room-theme-bg) 92%,var(--room-theme-accent) 8%),var(--room-theme-bg))!important;
+}
+#viewRooms.chatting[data-room-theme] .chat-head,
+#viewRooms.chatting[data-room-theme] .announcement,
+#viewRooms.chatting[data-room-theme] .replybar,
+#viewRooms.chatting[data-room-theme] .typing {
+  border-color:color-mix(in srgb,var(--room-theme-accent) 35%,transparent)!important;
+}
+#viewRooms.chatting[data-room-theme] .msg .msg-text,
+#viewRooms.chatting[data-room-theme] .msg.mine .msg-text,
+#viewRooms.chatting[data-room-theme] .msg .quoted,
+#viewRooms.chatting[data-room-theme] .msg .chat-gif,
+#viewRooms.chatting[data-room-theme] .msg .message-image {
+  background-color:var(--room-theme-bubble)!important;
+  border-color:var(--room-theme-accent)!important;
+}
+#viewRooms.chatting[data-room-theme] .msg .msg-text { border:1px solid color-mix(in srgb,var(--room-theme-accent) 38%,transparent);border-radius:12px;padding:8px 11px; }
+#viewRooms.chatting[data-room-theme] .msg-top .rank,
+#viewRooms.chatting[data-room-theme] .msg-top .message-rank-floating,
+#viewRooms.chatting[data-room-theme] .msg-top .msg-time,
+#viewRooms.chatting[data-room-theme] .room-title-row { color:var(--room-theme-accent)!important; }
+#viewRooms.chatting[data-room-theme] .composer input,
+#viewRooms.chatting[data-room-theme] .composer textarea,
+#viewRooms.chatting[data-room-theme] .chat-compose input,
+#viewRooms.chatting[data-room-theme] .message-form input { background:var(--room-theme-bubble)!important;border-color:var(--room-theme-accent)!important; }
+#viewRooms.chatting[data-room-theme] .composer button,
+#viewRooms.chatting[data-room-theme] .chat-compose button,
+#viewRooms.chatting[data-room-theme] .message-form button { border-color:var(--room-theme-accent)!important; }
+.chat-gif img{display:block;max-width:min(300px,70vw);max-height:300px;object-fit:contain;border-radius:12px}
