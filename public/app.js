@@ -266,17 +266,31 @@ $("logout").onclick = async () => {
   }
 };
 
-function showKickLock(until){
+let actionLockTimer=null;
+function showKickLock(until,reason="Community rules"){
   const box=$("actionLock"); if(!box)return;
+  if(actionLockTimer)clearTimeout(actionLockTimer);
+  box.dataset.lockType="kick";
+  const safeReason=esc(reason||"Community rules");
   const refresh=()=>{
     const remaining=Number(until||0)-Date.now();
-    if(remaining<=0){box.classList.add("hidden");return;}
-    box.innerHTML=`<div class="action-lock-card"><div class="warning-title">⛔ Kicked</div><p>You have been kicked. You will be able to come back after <b>${new Date(until).toLocaleTimeString()}</b>.</p><small>Remaining: ${Math.ceil(remaining/60000)} minute(s)</small></div>`;
+    if(remaining<=0){clearActionLock();return;}
+    const total=Math.floor(remaining/1000);
+    const days=Math.floor(total/86400),hours=Math.floor((total%86400)/3600),minutes=Math.floor((total%3600)/60),seconds=total%60;
+    const pad=n=>String(n).padStart(2,"0");
+    box.innerHTML=`<div class="action-lock-card action-lock-full"><div class="action-lock-icon">⛔</div><h1>You have been kicked</h1><h2>Reason</h2><p class="action-lock-reason">${safeReason}</p><div class="action-lock-countdown-label">You can return in</div><div class="action-lock-countdown">${days}:${pad(hours)}:${pad(minutes)}:${pad(seconds)}</div><small>Days : Hours : Minutes : Seconds</small></div>`;
     box.classList.remove("hidden");
-    setTimeout(refresh,Math.min(30000,remaining));
-  }; refresh();
+    actionLockTimer=setTimeout(refresh,1000);
+  };refresh();
 }
-function clearActionLock(){ $("actionLock")?.classList.add("hidden"); }
+function showBanLock(reason="Community rules"){
+  const box=$("actionLock");if(!box)return;
+  if(actionLockTimer)clearTimeout(actionLockTimer);
+  box.dataset.lockType="ban";
+  box.innerHTML=`<div class="action-lock-card action-lock-full"><div class="action-lock-icon">🚫</div><h1>You have been banned</h1><h2>Reason</h2><p class="action-lock-reason">${esc(reason||"Community rules")}</p></div>`;
+  box.classList.remove("hidden");
+}
+function clearActionLock(){if(actionLockTimer)clearTimeout(actionLockTimer);actionLockTimer=null;const box=$("actionLock");if(box){box.classList.add("hidden");box.innerHTML="";box.dataset.lockType="";}}
 
 /* ---------------- START ---------------- */
 
@@ -289,7 +303,7 @@ async function start() {
   updateNav();
   applyTheme(state.user?.settings?.theme||'obsidian');
   applyUserAppearance();
-  if(state.user?.kickedUntil&&state.user.kickedUntil>Date.now()) showKickLock(state.user.kickedUntil); else clearActionLock();
+  if(state.user?.banned) showBanLock(state.user.banReason||"Community rules"); else if(state.user?.kickedUntil&&state.user.kickedUntil>Date.now()) showKickLock(state.user.kickedUntil,state.user.kickReason||"Community rules"); else clearActionLock();
   applyUserAppearance();
 
   if (state.socket) {
@@ -389,7 +403,13 @@ async function start() {
   });
   state.socket.on("room:announcement",()=>{if(state.currentRoom)loadRoomAnnouncements(state.currentRoom)});
   state.socket.on("room:announcement-delete",()=>{if(state.currentRoom)loadRoomAnnouncements(state.currentRoom)});
-  state.socket.on("kick-lock", data => showKickLock(data?.until));
+  state.socket.on("kick-lock", data => showKickLock(data?.until,data?.reason));
+  state.socket.on("ban-lock", data => showBanLock(data?.reason));
+  state.socket.on("mute-notice", data => {
+    const message=String(data?.message||("You have been muted for "+Math.max(1,Number(data?.minutes)||1)+" minutes"));
+    modal(`<div class="warning-popup"><div class="warning-title">🔇 Muted</div><div class="warning-reason">${esc(message)}</div>${data?.reason?'<p class="muted">Reason: '+esc(data.reason)+'</p>':''}<button class="primary" onclick="closeModal()">OK</button></div>`);
+    loadNotifications();
+  });
   state.socket.on("warning-popup", data => {
     modal(`<div class="warning-popup"><div class="warning-title">Warning ⚠️</div><div class="warning-reason">${esc(data?.reason||"Please review the community rules.")}</div><button class="primary" onclick="closeModal()">I understand</button></div>`);
     loadNotifications();
