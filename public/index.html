@@ -187,7 +187,7 @@
   <div id="viewSaved" class="view hidden"><div class="topbar"><h2>🔖 Saved / Bookmarked Messages</h2></div><div id="saved" class="stack"></div></div>
   <div id="viewSearch" class="view hidden"><div class="topbar"><div><h2>🔎 Advanced Message Search</h2><p class="muted">Search text, room or author.</p></div></div><form id="searchForm" class="searchbar"><input id="sq" placeholder="Keyword"><input id="sa" placeholder="Author username"><select id="sr"><option value="">All rooms</option></select><button class="primary">Search</button></form><div id="searchResults" class="stack"></div></div>
   <div id="viewProfile" class="view hidden"><div id="profile"></div></div>
-  <div id="viewSettings" class="view hidden"><div class="topbar"><div><h2>⚙️ Account Settings</h2><p class="muted">Security, status, appearance and notification controls.</p></div><button class="mini" id="enableSiteNotifications" type="button">🔔 Enable site notifications</button></div><div id="settings" class="settings-grid"></div></div>
+  <div id="viewSettings" class="view hidden"><div class="topbar"><div><h2>⚙️ Account Settings</h2><p class="muted">Security, status, appearance and notification controls.</p></div><div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end"><button class="mini" id="enableSiteNotifications" type="button">🔔 Enable site notifications</button><button class="mini" id="testSiteNotifications" type="button">🧪 Send test</button></div></div><div id="settings" class="settings-grid"></div></div>
   <div id="viewStaffApplications" class="view hidden"><div class="topbar"><div><h2>📝 Staff Application</h2><p class="muted">Apply to join the Maleficent Chat moderation team.</p></div></div><div id="staffApplicationFormRoot"></div></div>
   <div id="viewStaff" class="view hidden"><div class="topbar"><h2>🛡️ Moderation Dashboard</h2></div><div id="staff"></div></div>
   <div id="viewWall" class="view hidden"><div class="topbar"><div><h2>🧱 Friend Wall</h2><p class="muted">Community posts, likes and comments.</p></div><button class="primary" id="newWallPost">＋ Post</button></div><div id="wallFeed" class="wall-feed"></div></div>
@@ -201,7 +201,7 @@
 
 <div id="modal" class="modal hidden"><div class="modal-card"><button class="modal-close" onclick="closeModal()">×</button><div id="modalBody"></div></div></div>
 <div id="toast"></div><div id="actionLock" class="action-lock hidden"></div>
-<script src="/app.js?v=web-push-20261029-v3"></script>
+<script src="/app.js?v=web-push-diagnostics-20261029-v4"></script>
 <script src="/gravity-run.js?v=gravity-run-main-1"></script>
 <script src="/doodle-studio.js?v=studio-v2"></script>
 </body>
