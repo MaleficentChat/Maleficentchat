@@ -3474,3 +3474,18 @@ button,input,select,textarea { max-width:100%; }
  #viewRooms.chatting .online-panel .room-user-rank{display:block!important;font-size:10px!important;line-height:1.1!important;white-space:normal!important;overflow-wrap:anywhere!important}
  #viewRooms.chatting .online-panel .online-user-grid .online-user .status{width:6px!important;height:6px!important;min-width:6px!important;flex:0 0 6px!important}
 }
+
+
+/* 3.6.10 message actions and metadata alignment */
+.msg-top{display:flex;align-items:center;gap:7px;flex-wrap:wrap;position:relative;padding-right:4px}
+.msg-time-side{font-size:10px;color:#91a0b2;order:0}
+.msg.mine .msg-top{flex-direction:row-reverse;justify-content:flex-start}
+.msg.theirs .msg-top{flex-direction:row;justify-content:flex-start}
+.message-rank-floating{margin-left:auto;float:right;font-size:10px;font-weight:800;letter-spacing:.25px;color:#c9b4e9;white-space:nowrap}
+.msg.mine .message-rank-floating{margin-left:auto}
+.msg.theirs .message-rank-floating{margin-left:auto}
+.msg-actions{position:static;min-height:0;margin:0;opacity:1;display:block}
+.message-actions-menu{position:absolute;right:8px;bottom:8px;top:auto;z-index:45;display:flex;flex-direction:column;align-items:stretch;gap:4px;min-width:165px;max-width:min(260px,85vw);padding:7px;background:var(--panel-2);border:1px solid var(--border-strong);border-radius:11px;box-shadow:var(--shadow)}
+.msg{position:relative}
+.message-actions-menu .message-menu-item{width:100%;text-align:left}
+.reaction-add{display:none!important}
