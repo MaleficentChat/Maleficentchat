@@ -1533,10 +1533,11 @@ app.post(
  
     const userRank=String(u.rank||"MEMBER").toUpperCase();
     const requiredRank=String(r.rankRequired||"MEMBER").toUpperCase();
-    if((rankOrder[userRank]??0)<(rankOrder[requiredRank]??0)){
+    // Main Room is the guaranteed post-login entry point for every account.
+    if(!isPermanentMainRoom && (rankOrder[userRank]??0)<(rankOrder[requiredRank]??0)){
       return res.status(403).json({error:`This room requires ${requiredRank.replaceAll("_"," ")} rank or higher.`});
     }
-    if(roomFriendsOnly(r)&&!areAcceptedFriends(u,db.users.find(x=>String(x.id)===String(r.ownerId||r.created_by)))){
+    if(!isPermanentMainRoom && roomFriendsOnly(r)&&!areAcceptedFriends(u,db.users.find(x=>String(x.id)===String(r.ownerId||r.created_by)))){
       return res.status(403).json({error:"This room is for the room owner's accepted friends only."});
     }
 
