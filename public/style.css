@@ -3593,3 +3593,8 @@ button,input,select,textarea { max-width:100%; }
 .user-moderation-tag.is-muted{background:rgba(255,190,70,.12)}
 .user-moderation-tag.is-kicked{background:rgba(170,115,255,.12)}
 #viewUsers .instagram-user-handle{display:block;overflow:visible;text-overflow:clip;white-space:normal;overflow-wrap:anywhere}
+
+/* Keep moderation markers visible on compact user cards instead of clipping them with usernames. */
+#viewUsers .horizontal-user-details .instagram-user-handle,.online-user-copy small{display:block;overflow:visible;text-overflow:clip;white-space:normal;overflow-wrap:anywhere;}
+.user-moderation-tags{display:inline-flex;align-items:center;gap:3px;vertical-align:middle;margin-inline:3px;white-space:nowrap;}
+.user-moderation-tag{display:inline-flex;align-items:center;justify-content:center;font-size:13px;line-height:1;min-width:17px;min-height:17px;vertical-align:middle;}
