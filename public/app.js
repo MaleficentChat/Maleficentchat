@@ -3925,7 +3925,7 @@ async function ownerFeatureGrants(){
       manage_xp_level:'Owner tools',manage_ranks:'Owner tools',manage_settings:'Owner tools',manage_gold:'Owner tools',manage_bots:'Owner tools',manage_mal_ai:'Owner tools',manage_aurora:'Owner tools',manage_feature_lab:'Owner tools',clear_history_button:'Owner tools'
     };
     const ranks=d.ranks||['MEMBER','VIP','PREMIUM','MOD','ADMIN','SUPER_ADMIN','COMMISSOR','COOWNER','OWNER'];
-    const rankLabels={MEMBER:'Member',VIP:'VIP',PREMIUM:'Premium',MOD:'Moderator',ADMIN:'Admin',SUPER_ADMIN:'Super Admin',COMMISSOR:'Commissor',COOWNER:'Co-owner',OWNER:'Owner'};
+    const rankLabels={MEMBER:'Member',VIP:'VIP',PREMIUM:'Premium',ROYAL:'Royal',MOD:'Moderator',ADMIN:'Admin',SUPER_ADMIN:'Super Admin',COMMISSOR:'Commissor',INSTRUCTOR:'Instructor',COOWNER:'Co-owner',OWNER:'Owner'};
     const keys=Object.keys(d.features||{}).filter(key=>!['schedule_message','expire_message'].includes(key)), categories={};
     keys.forEach(key=>{const category=categoryFor[key]||'Other site features';if(!categories[category])categories[category]=[];categories[category].push(key);});
     function renderRow(key){
