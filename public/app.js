@@ -742,7 +742,7 @@ async function loadWall(){
 }
 if($('newWallPost'))$('newWallPost').onclick=async()=>{
   modal(`<h2>New Wall Post</h2><textarea id="wallPostText" maxlength="5000" placeholder="Write something for your friends…"></textarea><input id="wallPostFile" type="file" accept="image/*,video/*"><div id="wallPreview" class="media-preview"></div><button class="primary" id="wallPostSend">Upload & Publish</button>`);
-  $('wallPostFile')?.addEventListener('change',()=>{const f=$('wallPostFile').files?.[0],box=$('wallPreview');if(!f){box.innerHTML='';return}const u=URL.createObjectURL(f);box.innerHTML=f.type.startsWith('video/')?`<video controls src="${u}"></video>`:`<img src="${u}">`;};
+  $('wallPostFile')?.addEventListener('change',()=>{const f=$('wallPostFile').files?.[0],box=$('wallPreview');if(!f){box.innerHTML='';return}const u=URL.createObjectURL(f);box.innerHTML=f.type.startsWith('video/')?`<video controls src="${u}"></video>`:`<img src="${u}">`;});
   $('wallPostSend').onclick=async()=>{try{const fd=new FormData();fd.append('content',$('wallPostText').value);const f=$('wallPostFile').files?.[0];if(f)fd.append('file',f);const token=safeStorage.getItem("mc_token"); const headers=token?{"x-auth-token":token}:{}; const r=await fetch('/api/wall/post',{method:'POST',body:fd,headers,credentials:'same-origin'});const d=await r.json().catch(()=>({}));if(!r.ok)throw Error(d.error||'Could not publish wall post.');closeModal();loadWall()}catch(e){toast(e.message)}};
 };
 
