@@ -2662,9 +2662,9 @@ app.get('/api/push/status',auth,async(req,res)=>{
 app.post('/api/push/test',auth,async(req,res)=>{
   const user=current(req);
   const report=await sendWebPushToUser(user.id,{title:'Maleficent Chat test',body:'Background notifications are reaching this device.',url:'/',tag:'mc-push-test-'+Date.now(),kind:'push-test'});
-  if(!report.configured)return res.status(503).json({ok:false,...report,message:'VAPID configuration is missing or invalid.'});
-  if(report.subscriptions===0)return res.status(409).json({ok:false,...report,message:'This account has no saved push subscriptions. Enable background notifications on this device first.'});
-  if(report.delivered===0)return res.status(502).json({ok:false,...report,message:'The push provider rejected delivery. Check the error details and recreate this device subscription if the VAPID keys changed.'});
+  if(!report.configured)return res.status(503).json({ok:false,...report,message:'VAPID configuration is missing or invalid.',error:'VAPID configuration is missing or invalid.'});
+  if(report.subscriptions===0)return res.status(409).json({ok:false,...report,message:'This account has no saved push subscriptions. Enable background notifications on this device first.',error:'This account has no saved push subscriptions. Enable background notifications on this device first.'});
+  if(report.delivered===0)return res.status(502).json({ok:false,...report,message:'The push provider rejected delivery. Check the error details and recreate this device subscription if the VAPID keys changed.',error:report.errors.join(' | ')||'The push provider rejected delivery.'});
   res.json({ok:true,...report,message:'Push provider accepted the test notification. Check this device notification tray.'});
 });
 app.post('/api/push/subscribe',auth,async(req,res)=>{
