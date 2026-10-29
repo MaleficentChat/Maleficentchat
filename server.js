@@ -4422,7 +4422,7 @@ io.on(
     socket.on("join-room", joinRequest=>{
       const roomId=typeof joinRequest==="string"?joinRequest:joinRequest?.roomId;
       const u=findUser(socket.data.userId);
-      const r=db.rooms.find(x=>x.id===roomId);
+      const r=db.rooms.find(x=>String(x.id)===String(roomId));
       if(!u||!r) return;
       if(!verifyRoomJoinToken(joinRequest?.joinToken,u.id,r)){socket.emit("room-error",{error:"Join this room through the room access flow first."});return;}
       if(rankOrder[u.rank]<rankOrder[r.rankRequired]){socket.emit("room-error",{error:"Your rank cannot enter this room."});return;}
