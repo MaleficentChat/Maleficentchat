@@ -1810,40 +1810,65 @@ async function reportMsg(id) {
 
 /* ---------------- USERS ---------------- */
 
+function getUserAge(user){
+  const raw=user?.birthDate||user?.dateOfBirth||user?.birth_date;
+  if(!raw)return null;
+  const date=new Date(raw);
+  if(Number.isNaN(date.getTime()))return null;
+  const now=new Date();
+  let age=now.getFullYear()-date.getFullYear();
+  if(now.getMonth()<date.getMonth()||(now.getMonth()===date.getMonth()&&now.getDate()<date.getDate()))age--;
+  return age>=0&&age<=120?age:null;
+}
 async function loadUsers() {
   try {
-    const query =
-      $("userSearch").value.trim();
-
-    const data =
-      await api(
-        `/api/users?q=${encodeURIComponent(query)}`
-      );
-
-    // Use room-specific ranks in user lists only. Unassigned users fall back
-    // to the site's normal rank icon; message headers always use global rank.
+    const query=$("userSearch")?.value.trim()||"";
+    const data=await api(`/api/users?q=${encodeURIComponent(query)}`);
     state.roomRankByUser={};
     if(state.currentRoom){
-      try{
-        const roomStaff=await api(`/api/rooms/${encodeURIComponent(state.currentRoom)}/staff`);
-        for(const item of (roomStaff.staff||[])){
-          if(item.user?.id) state.roomRankByUser[String(item.user.id)]=item.role;
-        }
-      }catch{}
+      try{const roomStaff=await api(`/api/rooms/${encodeURIComponent(state.currentRoom)}/staff`);for(const item of (roomStaff.staff||[])){if(item.user?.id)state.roomRankByUser[String(item.user.id)]=item.role;}}catch{}
     }
     const selectedRank=$("userRankFilter")?.value||"";
-    const filtered=(data.users||[]).filter(user=>!selectedRank||user.rank===selectedRank);
-    const invisible=filtered.filter(user=>user.invisible).sort((a,b)=>(rankOrder[b.rank]||0)-(rankOrder[a.rank]||0)||a.username.localeCompare(b.username));
-    const online=filtered.filter(user=>user.online&&!user.invisible).sort((a,b)=>(rankOrder[b.rank]||0)-(rankOrder[a.rank]||0)||a.username.localeCompare(b.username));
-    const offline=filtered.filter(user=>!user.online&&!user.invisible).sort((a,b)=>(rankOrder[b.rank]||0)-(rankOrder[a.rank]||0)||a.username.localeCompare(b.username));
-    $("users").innerHTML = `${online.length?`<section class="user-presence-section"><h3>🟢 Online users <small>${online.length}</small></h3><div class="user-grid">${online.map(userCard).join("")}</div></section>`:""}${offline.length?`<section class="user-presence-section"><h3>⚪ Offline users <small>${offline.length}</small></h3><div class="user-grid">${offline.map(userCard).join("")}</div></section>`:""}${invisible.length?`<section class="user-presence-section"><h3>🟢 Invisible mode <small>${invisible.length}</small></h3><div class="user-grid">${invisible.map(userCard).join("")}</div></section>`:""}` || `<p class="muted">No users found.</p>`;
-  } catch (error) {
-    toast(error.message);
-  }
+    const selectedGender=$("userGenderFilter")?.value||"";
+    const countryQuery=($("userCountryFilter")?.value||"").trim().toLowerCase();
+    const minRaw=$("userAgeMin")?.value, maxRaw=$("userAgeMax")?.value;
+    const minAge=minRaw===""||minRaw==null?null:Number(minRaw),maxAge=maxRaw===""||maxRaw==null?null:Number(maxRaw);
+    let filtered=(data.users||[]).filter(user=>{
+      if(selectedRank&&String(user.rank||"").toUpperCase()!==selectedRank)return false;
+      if(selectedGender&&String(user.gender||"").toLowerCase()!==selectedGender.toLowerCase())return false;
+      if(countryQuery&&!String(user.location||"").toLowerCase().includes(countryQuery))return false;
+      const age=getUserAge(user);
+      if(minAge!==null&&(age===null||age<minAge))return false;
+      if(maxAge!==null&&(age===null||age>maxAge))return false;
+      return true;
+    });
+    const sortBy=$("userSortBy")?.value||"default";
+    const rankValue=u=>rankOrder[String(u.rank||"").toUpperCase()]??-1;
+    filtered.sort((a,b)=>{
+      if(sortBy==="rank")return rankValue(b)-rankValue(a)||a.username.localeCompare(b.username);
+      if(sortBy==="age-asc")return (getUserAge(a)??999)-(getUserAge(b)??999)||a.username.localeCompare(b.username);
+      if(sortBy==="age-desc")return (getUserAge(b)??-1)-(getUserAge(a)??-1)||a.username.localeCompare(b.username);
+      if(sortBy==="name")return a.username.localeCompare(b.username);
+      if(sortBy==="country")return String(a.location||"").localeCompare(String(b.location||""))||a.username.localeCompare(b.username);
+      if(sortBy==="newest")return (new Date(b.createdAt||0).getTime()||0)-(new Date(a.createdAt||0).getTime()||0);
+      if(sortBy==="active")return (Number(b.lastActive||b.lastSeen||0)||new Date(b.lastActive||b.lastSeen||0).getTime()||0)-(Number(a.lastActive||a.lastSeen||0)||new Date(a.lastActive||a.lastSeen||0).getTime()||0);
+      return (Number(b.online)-Number(a.online))||rankValue(b)-rankValue(a)||a.username.localeCompare(b.username);
+    });
+    const invisible=filtered.filter(user=>user.invisible);
+    const online=filtered.filter(user=>user.online&&!user.invisible);
+    const offline=filtered.filter(user=>!user.online&&!user.invisible);
+    $("users").innerHTML=`${online.length?`<section class="user-presence-section"><h3>🟢 Online users <small>${online.length}</small></h3><div class="user-grid">${online.map(userCard).join("")}</div></section>`:""}${offline.length?`<section class="user-presence-section"><h3>⚪ Offline users <small>${offline.length}</small></h3><div class="user-grid">${offline.map(userCard).join("")}</div></section>`:""}${invisible.length?`<section class="user-presence-section"><h3>🟢 Invisible mode <small>${invisible.length}</small></h3><div class="user-grid">${invisible.map(userCard).join("")}</div></section>`:""}`||`<div class="room-empty"><div>🔎</div><b>No users match these filters</b><span>Try changing the rank, age, gender or location.</span></div>`;
+  } catch(error){toast(error.message);}
 }
-
-$("userSearch").oninput = () => loadUsers();
-$("userRankFilter")?.addEventListener("change",()=>loadUsers());
+$("userSearch").oninput=()=>loadUsers();
+["userRankFilter","userGenderFilter","userAgeMin","userAgeMax","userCountryFilter","userSortBy"].forEach(id=>$ (id)?.addEventListener("input",()=>loadUsers()));
+["userRankFilter","userGenderFilter","userSortBy"].forEach(id=>$ (id)?.addEventListener("change",()=>loadUsers()));
+$("resetUserFilters")?.addEventListener("click",()=>{
+  ["userSearch","userCountryFilter","userAgeMin","userAgeMax"].forEach(id=>{if($(id))$(id).value="";});
+  ["userRankFilter","userGenderFilter"].forEach(id=>{if($(id))$(id).value="";});
+  if($("userSortBy"))$("userSortBy").value="default";
+  loadUsers();
+});
 function invisibleDot(user){return user?.invisible?'<i class="invisible-staff-dot" title="Invisible mode active"></i>':'';}
 function invisibleToggleMarkup(user,compact=false){
   if(String(user?.id)!==String(state.user?.id)||!canFeature("invisible_mode"))return "";
