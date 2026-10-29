@@ -426,13 +426,27 @@ async function start() {
 
   state.socket.on("connect", () => {
     loadNotifications();
-    if (state.user) {
-      state.socket.emit("auth", {token:safeStorage.getItem("mc_token")||""});
-    }
-
-    if (state.currentRoom) {
-      try{const access=JSON.parse(safeStorage.getItem('mc_room_join')||'null');if(access?.roomId===String(state.currentRoom))state.socket.emit("join-room",access);}catch{}
-    }
+    if (!state.user) return;
+    // Authenticate first, then join the room. Socket.IO can connect before the
+    // login/start flow has finished; emitting join-room too early was silently
+    // ignored by the server and made other users' messages appear to vanish.
+    state.socket.emit("auth", {token:safeStorage.getItem("mc_token")||""}, async ack => {
+      if (!ack?.ok || !state.socket?.connected) return;
+      try {
+        const access=JSON.parse(safeStorage.getItem('mc_room_join')||'null');
+        if (!state.currentRoom || access?.roomId!==String(state.currentRoom) || !access?.joinToken) return;
+        state.socket.emit("join-room",access);
+        // Re-sync history after every successful socket reconnect so messages
+        // sent while disconnected are not lost from the visible conversation.
+        const data=await api("/api/rooms/"+encodeURIComponent(state.currentRoom)+"/messages");
+        if(String(state.currentRoom)!==String(access.roomId))return;
+        state.messages=Array.isArray(data.messages)?data.messages:[];
+        const list=$("messages");
+        if(list){list.innerHTML=state.messages.map(messageHTML).join("");list.scrollTop=list.scrollHeight;}
+      } catch(error) {
+        console.warn("Room message resync failed:",error?.message||error);
+      }
+    });
   });
   state.socket.on("room-error",d=>toast(d?.error||"Could not join room."));
   state.socket.on("dm-typing",d=>{
@@ -452,7 +466,6 @@ async function start() {
     }
     renderOnline(onlinePanelTab);
     if (state.view === "users") { try { await loadUsers(); } catch {} }
-    if (state.view === "rooms" || state.view === "users") { try { await loadUsers(); } catch {} }
   });
 
   state.socket.on("message", message => {
@@ -531,14 +544,14 @@ async function start() {
   });
 
   state.socket.on("dm", message => {
-    if(document.hidden && String(message?.fromId||message?.senderId||message?.userId||"")!==String(state.user?.id)) showSiteNotification("New private message", String(message?.text||message?.message||"You received a private message").slice(0,180), "messages");
-    if (
-      state.dmUserId &&
-      message &&
-      (message.from === state.dmUserId || message.to === state.dmUserId)
-    ) {
-      openDM(state.dmUserId);
+    const from=String(message?.from??message?.senderId??message?.fromId??"");
+    const to=String(message?.to??message?.receiverId??message?.toId??"");
+    if(document.hidden && from!==String(state.user?.id)) showSiteNotification("New private message", String(message?.text||message?.message||"You received a private message").slice(0,180), "messages");
+    // Compare normalized IDs: PostgreSQL numeric IDs and UI string IDs must match.
+    if(state.dmUserId && message && (from===String(state.dmUserId)||to===String(state.dmUserId))){
+      openDM(String(state.dmUserId));
     } else {
+      loadDMList().catch(()=>{});
       toast("New private message");
     }
   });
