@@ -1319,7 +1319,7 @@ app.get("/api/rooms",auth,async(req,res)=>{
   await pool.query(`UPDATE rooms SET is_default=false WHERE name <> 'Main Room'`);
   const {rows}=await pool.query(`SELECT r.*,u.username AS creator FROM rooms r LEFT JOIN users u ON r.created_by=u.id ORDER BY r.is_default DESC,r.created_at ASC,r.id ASC`);
   if(!rows.length) return res.status(503).json({error:'Rooms are not initialized yet. Please retry in a moment.',rooms:[]});
-  const rooms=rows.map(r=>({id:String(r.id),name:r.name,icon:r.icon||"💬",description:r.description||"",category:r.category||"Community",public:r.is_public!==false,passwordHash:r.password_hash||null,rankRequired:String(r.rank_required||"MEMBER").toUpperCase(),limit:Number(r.room_limit||100),slowMode:Number(r.slow_mode||0),announcement:r.announcement||"",ownerId:r.created_by?String(r.created_by):null,banner:r.banner||"",inviteToken:r.invite_token||"",creator:r.creator||null,isDefault:!!r.is_default,minAge:Number(r.min_age??0),maxAge:Number(r.max_age??120),locked:!!r.password_hash,onlineCount:visibleRoomOnlineCount(r.id)}));
+  const rooms=rows.map(r=>({id:String(r.id),name:r.name,icon:r.icon||"💬",description:r.description||"",category:r.category||"Community",public:r.is_public!==false,passwordHash:r.password_hash||null,rankRequired:String(r.rank_required||"MEMBER").toUpperCase(),limit:Number(r.room_limit||100),slowMode:Number(r.slow_mode||0),announcement:r.announcement||"",ownerId:r.created_by?String(r.created_by):null,banner:r.banner||"",inviteToken:r.invite_token||"",creator:r.creator||null,isDefault:!!r.is_default,minAge:Number(r.min_age??0),maxAge:Number(r.max_age??120),friendsOnly:!!(db.settings?.room_access?.[String(r.id)]?.friendsOnly),locked:!!r.password_hash,onlineCount:visibleRoomOnlineCount(r.id)}));
   db.rooms=rooms;
   res.json({rooms:rooms.map(r=>({...r,passwordHash:undefined}))});
 });
@@ -1337,6 +1337,15 @@ function roomAgeAllowed(_user,_room){
   // Maleficent Chat rooms are not age-gated; all users may enter any room.
   return true;
 }
+function roomFriendsOnly(room){
+  return !!(db.settings?.room_access?.[String(room.id)]?.friendsOnly ?? room.friendsOnly);
+}
+function areAcceptedFriends(userA,userB){
+  const a=String(userA?.id??""),b=String(userB?.id??"");
+  if(!a||!b||a===b)return a===b;
+  return (db.friends||[]).some(f=>String(f.status||"").toUpperCase()==="ACCEPTED"&&
+    ((String(f.a)===a&&String(f.b)===b)||(String(f.a)===b&&String(f.b)===a)));
+}
 
 async function createRoomHandler(req,res){
   const u=current(req); if(!u)return res.status(401).json({error:"Login required"});
@@ -1345,7 +1354,8 @@ async function createRoomHandler(req,res){
   const password=req.body.password?await bcrypt.hash(String(req.body.password),10):null;
   try{
     const q=await pool.query(`INSERT INTO rooms(name,created_by,icon,description,category,is_public,password_hash,rank_required,room_limit,slow_mode,banner,invite_token,is_default,min_age,max_age) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,false,$13,$14) RETURNING *, (SELECT username FROM users WHERE id=created_by) AS creator`,[name,Number(u.id),req.body.icon||"💬",cleanText(req.body.description).slice(0,300),cleanText(req.body.category).slice(0,40)||"Community",req.body.public!==false,password,String(req.body.rankRequired||"MEMBER").toUpperCase(),Number(req.body.limit)||100,Number(req.body.slowMode)||0,req.body.banner||"",crypto.randomBytes(12).toString("hex"),Math.max(0,Math.min(120,Number(req.body.minAge)||0)),Math.max(0,Math.min(120,Number(req.body.maxAge??120)||120))]);
-    const r=q.rows[0]; const room={id:String(r.id),name:r.name,icon:r.icon||"💬",description:r.description||"",category:r.category||"Community",public:r.is_public!==false,passwordHash:r.password_hash||null,rankRequired:String(r.rank_required||"MEMBER").toUpperCase(),limit:Number(r.room_limit||100),slowMode:Number(r.slow_mode||0),announcement:r.announcement||"",ownerId:String(r.created_by),banner:r.banner||"",inviteToken:r.invite_token||"",creator:r.creator||u.username,isDefault:false,minAge:Number(r.min_age??0),maxAge:Number(r.max_age??120)};
+    const r=q.rows[0]; const room={id:String(r.id),name:r.name,icon:r.icon||"💬",description:r.description||"",category:r.category||"Community",public:r.is_public!==false,passwordHash:r.password_hash||null,rankRequired:String(r.rank_required||"MEMBER").toUpperCase(),limit:Number(r.room_limit||100),slowMode:Number(r.slow_mode||0),announcement:r.announcement||"",ownerId:String(r.created_by),banner:r.banner||"",inviteToken:r.invite_token||"",creator:r.creator||u.username,isDefault:false,minAge:Number(r.min_age??0),maxAge:Number(r.max_age??120),friendsOnly:req.body.friendsOnly===true};
+    db.settings ||= {};db.settings.room_access ||= {};db.settings.room_access[String(room.id)]={friendsOnly:room.friendsOnly};
     db.rooms.push(room); db.settings ||= {}; db.settings.room_staff ||= {}; db.settings.room_staff[String(room.id)] ||= {}; db.settings.room_staff[String(room.id)][String(u.id)]="ROOM_OWNER"; save(); log(u,"ROOM_CREATE",room.name); io.emit('rooms_updated'); res.status(201).json({room:{...room,passwordHash:undefined}});
   }catch(e){if(e.code==='23505')return res.status(409).json({error:'A room with that name already exists.'});console.error(e);res.status(500).json({error:'Could not create room.'});}
 }
@@ -1464,10 +1474,16 @@ app.patch("/api/rooms/:id",auth,async(req,res)=>{
   if(r.isDefault || /^main room$/i.test(String(r.name||"").trim()))return res.status(403).json({error:"The permanent Main Room cannot be modified."});
   if(!featureGrantAllowed(u,"edit_rooms")&&!(roomOwnerOrGlobal(u,r)&&Array.isArray(db.settings?.feature_grants?.room_edit_own)&&db.settings.feature_grants.room_edit_own.length))return res.status(403).json({error:"Room editing is disabled in Feature Granting or you do not own this room."});
   const fields={}; for(const k of ["name","icon","description","category","rankRequired","limit","slowMode","banner","public","minAge","maxAge"]) if(req.body[k]!==undefined) fields[k]=req.body[k];
+  if(req.body.friendsOnly!==undefined){
+    db.settings ||= {};db.settings.room_access ||= {};
+    db.settings.room_access[String(r.id)]={...(db.settings.room_access[String(r.id)]||{}),friendsOnly:req.body.friendsOnly===true};
+    r.friendsOnly=req.body.friendsOnly===true;save();
+  }
   if(req.body.password!==undefined) fields.passwordHash=req.body.password?await bcrypt.hash(String(req.body.password),10):null;
   const sets=[],vals=[]; const map={name:"name",icon:"icon",description:"description",category:"category",rankRequired:"rank_required",limit:"room_limit",slowMode:"slow_mode",banner:"banner",public:"is_public",passwordHash:"password_hash",minAge:"min_age",maxAge:"max_age"};
   for(const [k,v] of Object.entries(fields)){sets.push(`${map[k]}=$${vals.length+1}`);vals.push(k==="rankRequired"?String(v).toUpperCase():v);}
-  if(sets.length){vals.push(Number(r.id));const q=await pool.query(`UPDATE rooms SET ${sets.join(",")} WHERE id=$${vals.length} RETURNING *`,vals);const x=q.rows[0];Object.assign(r,{name:x.name,icon:x.icon,description:x.description,category:x.category,rankRequired:x.rank_required,limit:x.room_limit,slowMode:x.slow_mode,banner:x.banner,public:x.is_public,passwordHash:x.password_hash,minAge:Number(x.min_age??0),maxAge:Number(x.max_age??99)});}
+  if(sets.length){vals.push(Number(r.id));const q=await pool.query(`UPDATE rooms SET ${sets.join(",")} WHERE id=${vals.length} RETURNING *`,vals);const x=q.rows[0];Object.assign(r,{name:x.name,icon:x.icon,description:x.description,category:x.category,rankRequired:x.rank_required,limit:x.room_limit,slowMode:x.slow_mode,banner:x.banner,public:x.is_public,passwordHash:x.password_hash,minAge:Number(x.min_age??0),maxAge:Number(x.max_age??99)});}
+  save();
   log(u,"ROOM_EDIT",r.name);res.json({room:{...r,passwordHash:undefined}});
 });
 
@@ -1515,14 +1531,13 @@ app.post(
     }
 
  
-    if(
-      rankOrder[u.rank]<
-      rankOrder[r.rankRequired]
-    ){
-      return res.status(403).json({
-        error:
-          "Your rank cannot enter this room."
-      });
+    const userRank=String(u.rank||"MEMBER").toUpperCase();
+    const requiredRank=String(r.rankRequired||"MEMBER").toUpperCase();
+    if((rankOrder[userRank]??0)<(rankOrder[requiredRank]??0)){
+      return res.status(403).json({error:`This room requires ${requiredRank.replaceAll("_"," ")} rank or higher.`});
+    }
+    if(roomFriendsOnly(r)&&!areAcceptedFriends(u,db.users.find(x=>String(x.id)===String(r.ownerId||r.created_by)))){
+      return res.status(403).json({error:"This room is for the room owner's accepted friends only."});
     }
 
     if(
