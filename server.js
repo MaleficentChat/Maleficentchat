@@ -413,19 +413,29 @@ async function notify(userId,type,title,text){
 
 
 async function sendWebPushToUser(userId,payload){
-  if(!webPushConfigured())return;
+  const report={configured:webPushConfigured(),subscriptions:0,delivered:0,failed:0,errors:[]};
+  if(!report.configured){report.errors.push("Server VAPID keys are missing or VAPID_SUBJECT is invalid.");return report;}
   try{
     const result=await pool.query("SELECT id,endpoint,p256dh,auth FROM push_subscriptions WHERE user_id=$1",[Number(userId)]);
+    report.subscriptions=result.rows.length;
     await Promise.all(result.rows.map(async row=>{
       try{
         await webPush.sendNotification({endpoint:row.endpoint,keys:{p256dh:row.p256dh,auth:row.auth}},JSON.stringify(payload),{TTL:3600});
+        report.delivered++;
         await pool.query("UPDATE push_subscriptions SET last_used_at=NOW() WHERE id=$1",[row.id]);
       }catch(error){
+        report.failed++;
+        const reason="HTTP "+String(error?.statusCode||"unknown")+": "+String(error?.body||error?.message||"Push provider rejected the notification").slice(0,220);
+        report.errors.push(reason);
+        console.error("Web Push delivery failed:",reason);
         if(error?.statusCode===404||error?.statusCode===410)await pool.query("DELETE FROM push_subscriptions WHERE id=$1",[row.id]).catch(()=>{});
-        else console.error("Web Push delivery failed:",error?.statusCode||"",error?.message||error);
       }
     }));
-  }catch(error){if(!/push_subscriptions/.test(String(error?.message||"")))console.error("Web Push lookup failed:",error?.message||error);}
+  }catch(error){
+    report.errors.push(String(error?.message||error).slice(0,220));
+    console.error("Web Push lookup failed:",error?.message||error);
+  }
+  return report;
 }
 async function sendWebPushToPublicRoom(room,message,senderId){
   if(!webPushConfigured()||!room||room.is_public===false)return;
@@ -2641,6 +2651,21 @@ app.post('/api/staff/system-notifications',auth,featureAllowed('view_staff_dashb
 app.get('/api/push/public-key',(req,res)=>{
   if(!webPushConfigured())return res.json({enabled:false,publicKey:'',error:'Web Push is not configured on the server yet.'});
   res.json({enabled:true,publicKey:VAPID_PUBLIC_KEY});
+});
+app.get('/api/push/status',auth,async(req,res)=>{
+  try{
+    const user=current(req);
+    const result=await pool.query('SELECT id,created_at,last_used_at FROM push_subscriptions WHERE user_id=$1 ORDER BY created_at DESC',[Number(user.id)]);
+    res.json({configured:webPushConfigured(),permissionHint:'Check browser notification permission on this device.',subscriptionCount:result.rowCount,subscriptions:result.rows.map(row=>({id:row.id,createdAt:row.created_at,lastUsedAt:row.last_used_at}))});
+  }catch(error){console.error('Push status failed:',error);res.status(500).json({error:'Could not read push subscription status.'});}
+});
+app.post('/api/push/test',auth,async(req,res)=>{
+  const user=current(req);
+  const report=await sendWebPushToUser(user.id,{title:'Maleficent Chat test',body:'Background notifications are reaching this device.',url:'/',tag:'mc-push-test-'+Date.now(),kind:'push-test'});
+  if(!report.configured)return res.status(503).json({ok:false,...report,message:'VAPID configuration is missing or invalid.'});
+  if(report.subscriptions===0)return res.status(409).json({ok:false,...report,message:'This account has no saved push subscriptions. Enable background notifications on this device first.'});
+  if(report.delivered===0)return res.status(502).json({ok:false,...report,message:'The push provider rejected delivery. Check the error details and recreate this device subscription if the VAPID keys changed.'});
+  res.json({ok:true,...report,message:'Push provider accepted the test notification. Check this device notification tray.'});
 });
 app.post('/api/push/subscribe',auth,async(req,res)=>{
   if(!webPushConfigured())return res.status(503).json({error:'Web Push is not configured on the server yet.'});
