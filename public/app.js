@@ -551,6 +551,9 @@ async function renderView() {
 
     case "suggestions":
       return loadSuggestions();
+
+    case "suggestions":
+      return loadSuggestions();
     case "games":
       return window.GravityRun && window.GravityRun.render();
     case "shop":
@@ -655,6 +658,20 @@ async function loadSuggestions(){
       catch(err){toast(err.message||'Could not update suggestion.');}
       finally{button.disabled=false;}
     });
+  }catch(e){list.innerHTML='<div class="card"><p class="error">'+esc(e.message||'Could not load suggestions.')+'</p></div>';}
+}
+
+async function loadSuggestions(){
+  const list=$('suggestionsList'),form=$('suggestionForm');
+  if(!list||!form)return;
+  const developer=String(state.user?.username||'').toLowerCase()==='maleficent'||String(state.user?.rank||'').toUpperCase()==='DEVELOPER';
+  try{
+    const data=await api('/api/suggestions');
+    const items=data.suggestions||[];
+    list.innerHTML=items.length?items.map(x=>'<article class="card"><div class="news-card-top"><div><h3>'+esc(x.category)+'</h3><div class="muted">'+(developer?'@'+esc(x.username||'Unknown')+' · ':'')+esc(fmt(x.created_at))+'</div></div><span class="pill">'+esc(x.status||'Pending')+'</span></div><p>'+esc(x.description||'')+'</p>'+(developer?'<div class="toolbar"><button data-suggestion-status="Rejected" data-suggestion-id="'+esc(x.id)+'">Rejected</button><button data-suggestion-status="Feature added" data-suggestion-id="'+esc(x.id)+'">Feature added</button><button data-suggestion-status="Approved" data-suggestion-id="'+esc(x.id)+'">Approved</button></div>':'')+'</article>').join(''):'<div class="card"><p class="muted">No suggestions yet.</p></div>';
+    form.classList.toggle('hidden',developer);
+    form.onsubmit=async e=>{e.preventDefault();const description=$('suggestionDescription').value.trim(),category=$('suggestionCategory').value;if(!description){toast('Please describe your suggestion.');return;}try{await api('/api/suggestions',{method:'POST',body:JSON.stringify({category,description})});$('suggestionDescription').value='';toast('Suggestion submitted to the Developer.');await loadSuggestions();}catch(err){toast(err.message||'Could not submit suggestion.');}};
+    list.querySelectorAll('[data-suggestion-status]').forEach(b=>b.onclick=async()=>{try{await api('/api/suggestions/'+encodeURIComponent(b.dataset.suggestionId),{method:'PATCH',body:JSON.stringify({status:b.dataset.suggestionStatus})});toast('Status updated; the user has been notified.');await loadSuggestions();}catch(err){toast(err.message||'Could not update status.');}});
   }catch(e){list.innerHTML='<div class="card"><p class="error">'+esc(e.message||'Could not load suggestions.')+'</p></div>';}
 }
 
