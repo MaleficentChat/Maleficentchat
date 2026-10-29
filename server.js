@@ -4502,25 +4502,21 @@ io.on(
 
     socket.on(
       "auth",
-      credentials=>{
+      (credentials, acknowledge)=>{
+        const ack=typeof acknowledge==="function"?acknowledge:()=>{};
         const claims=verifyToken(typeof credentials==="string"?credentials:credentials?.token);
-        if(!claims)return socket.disconnect(true);
+        if(!claims){ack({ok:false,error:"Authentication failed"});return socket.disconnect(true);}
         const userId=String(claims.sub);
-        const u=findUser(
-          userId
-        );
-
-        if(!u)return;
+        const u=findUser(userId);
+        if(!u){ack({ok:false,error:"User not found"});return;}
 
         socket.data.userId=u.id;
         socket.join("user:"+u.id);
-
         u.online=true;
         u.lastSeen=Date.now();
-
         save();
-
         io.emit("presence");
+        ack({ok:true,userId:String(u.id)});
       }
     );
 
