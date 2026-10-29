@@ -152,6 +152,19 @@ async function enableSiteNotifications(){
   }catch(e){toast("Could not enable background notifications: "+(e.message||"check browser and site settings"));}
 }
 $("enableSiteNotifications")?.addEventListener("click",enableSiteNotifications);
+async function testSiteNotifications(){
+  const button=$("testSiteNotifications");
+  if(button){button.disabled=true;button.textContent="Testing…";}
+  try{
+    const result=await api("/api/push/test",{method:"POST",body:JSON.stringify({})});
+    toast(result.message||"Push provider accepted the test notification. Check your notification tray.");
+  }catch(error){
+    toast("Notification test failed: "+(error.message||"unknown error"));
+  }finally{
+    if(button){button.disabled=false;button.textContent="🧪 Send test";}
+  }
+}
+$("testSiteNotifications")?.addEventListener("click",testSiteNotifications);
 if("Notification" in window && Notification.permission==="granted") registerSiteNotificationWorker();
 
 function toast(text) {
