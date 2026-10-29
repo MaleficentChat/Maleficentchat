@@ -3,6 +3,12 @@ const http=require("http");
 const path=require("path");
 const fs=require("fs");
 const crypto=require("crypto");
+const webPush=require("web-push");
+const VAPID_PUBLIC_KEY=String(process.env.VAPID_PUBLIC_KEY||"").trim();
+const VAPID_PRIVATE_KEY=String(process.env.VAPID_PRIVATE_KEY||"").trim();
+const VAPID_SUBJECT=String(process.env.VAPID_SUBJECT||"mailto:admin@maleficentchat.onrender.com").trim();
+const webPushConfigured=()=>Boolean(VAPID_PUBLIC_KEY&&VAPID_PRIVATE_KEY&&VAPID_SUBJECT.startsWith("mailto:"));
+if(webPushConfigured())webPush.setVapidDetails(VAPID_SUBJECT,VAPID_PUBLIC_KEY,VAPID_PRIVATE_KEY);
 const bcrypt=require("bcryptjs");
 const session=require("express-session");
 const multer=require("multer");
@@ -401,9 +407,35 @@ async function notify(userId,type,title,text){
       [Number(userId),String(type),String(title||type),String(text)]
     );
     io.to("user:"+userId).emit("notification");
+    await sendWebPushToUser(userId,{title:String(title||type||"Maleficent Chat"),body:String(text||"You have a new notification").slice(0,180),url:"/",tag:"mc-alert-"+String(type||"notification"),kind:"site-notification"});
   }catch(err){console.error("Notification insert failed:",err);}
 }
 
+
+async function sendWebPushToUser(userId,payload){
+  if(!webPushConfigured())return;
+  try{
+    const result=await pool.query("SELECT id,endpoint,p256dh,auth FROM push_subscriptions WHERE user_id=$1",[Number(userId)]);
+    await Promise.all(result.rows.map(async row=>{
+      try{
+        await webPush.sendNotification({endpoint:row.endpoint,keys:{p256dh:row.p256dh,auth:row.auth}},JSON.stringify(payload),{TTL:3600});
+        await pool.query("UPDATE push_subscriptions SET last_used_at=NOW() WHERE id=$1",[row.id]);
+      }catch(error){
+        if(error?.statusCode===404||error?.statusCode===410)await pool.query("DELETE FROM push_subscriptions WHERE id=$1",[row.id]).catch(()=>{});
+        else console.error("Web Push delivery failed:",error?.statusCode||"",error?.message||error);
+      }
+    }));
+  }catch(error){if(!/push_subscriptions/.test(String(error?.message||"")))console.error("Web Push lookup failed:",error?.message||error);}
+}
+async function sendWebPushToPublicRoom(room,message,senderId){
+  if(!webPushConfigured()||!room||room.is_public===false)return;
+  try{
+    const result=await pool.query("SELECT DISTINCT user_id FROM push_subscriptions WHERE user_id<>$1",[Number(senderId)]);
+    const title="💬 "+String(room.name||"Maleficent Chat").slice(0,70);
+    const body="@"+String(message.username||message.displayName||"Someone")+": "+String(message.text||"Sent a message").slice(0,145);
+    await Promise.all(result.rows.filter(row=>{const user=db.users.find(u=>String(u.id)===String(row.user_id));return user?.settings?.notificationPrefs?.messages!==false;}).map(row=>sendWebPushToUser(row.user_id,{title,body,url:"/",tag:"mc-room-"+String(room.id),kind:"room-message",roomId:String(room.id)})));
+  }catch(error){console.error("Room Web Push fanout failed:",error?.message||error);}
+}
 
 function awardAchievement(u,key,title,description){
   if(!u) return false;
@@ -1852,6 +1884,7 @@ app.post("/api/rooms/:id/messages",auth,featureAllowed("send_messages"),upload.s
   u.stats ||= {messages:0,rooms:0,friends:0}; u.stats.messages=(u.stats.messages||0)+1;
   checkAchievements(u); awardXp(u,Number(db.settings.xpPerMessage||5)); u.gold=(u.gold||0)+Number(db.settings.goldPerMessage||0); save();
   io.to("room:"+r.id).emit("message",m);
+  await sendWebPushToPublicRoom(r,m,u.id);
 
   if(!anonymousMode && /^@Mal\s+/i.test(text)){const reply=malReply(u,text);if(reply){const bot={id:id(),system:false,isBot:true,userId:"bot-mal",username:"Mal",displayName:"Mal",rank:"BOT",text:reply,roomId:String(r.id),time:Date.now(),reactions:{},pinned:false,deleted:false};await pool.query(`INSERT INTO room_messages(id,room_id,data,created_at) VALUES($1,$2,$3::jsonb,NOW())`,[bot.id,Number(r.id),JSON.stringify(bot)]);db.messages.push(bot);io.to("room:"+r.id).emit("message",bot);}}
   const botMention=anonymousMode?null:text.match(/^@([A-Za-z0-9_]+)\s+([\s\S]*)/);
@@ -2569,12 +2602,32 @@ app.post('/api/staff/system-notifications',auth,featureAllowed('view_staff_dashb
       }
       await client.query('COMMIT');
     }catch(err){try{await client.query('ROLLBACK')}catch{}throw err;}finally{client.release();}
-    for(const userId of inserted)io.to('user:'+userId).emit('notification');
+    for(const userId of inserted){
+      io.to('user:'+userId).emit('notification');
+      await sendWebPushToUser(userId,{title:String(title||'Maleficent Chat announcement'),body:String(message||'You have a new announcement').slice(0,180),url:'/',tag:'mc-system-announcement',kind:'system-announcement'});
+    }
     try{await pool.query("INSERT INTO admin_audit_logs(actor_id,action,target_type,target_id,details) VALUES($1,$2,$3,$4,$5)",[Number(actor.id),'system_notification_sent','notification_audience',targetRank,JSON.stringify({title,recipientCount:inserted.length,targetRank,targetRange})]);}catch{}
     res.json({ok:true,sent:inserted.length,targetRank,targetRange,title});
   }catch(err){console.error('System notification send failed:',err);res.status(500).json({error:'Could not send the system notification. Please try again.'});}
 });
 
+app.get('/api/push/public-key',(req,res)=>{
+  if(!webPushConfigured())return res.json({enabled:false,publicKey:'',error:'Web Push is not configured on the server yet.'});
+  res.json({enabled:true,publicKey:VAPID_PUBLIC_KEY});
+});
+app.post('/api/push/subscribe',auth,async(req,res)=>{
+  if(!webPushConfigured())return res.status(503).json({error:'Web Push is not configured on the server yet.'});
+  const subscription=req.body||{},endpoint=String(subscription.endpoint||'').trim(),p256dh=String(subscription.keys?.p256dh||'').trim(),authKey=String(subscription.keys?.auth||'').trim();
+  if(!/^https:\/\//i.test(endpoint)||endpoint.length>4000||!p256dh||!authKey)return res.status(400).json({error:'A valid browser push subscription is required.'});
+  await pool.query('INSERT INTO push_subscriptions(user_id,endpoint,p256dh,auth) VALUES($1,$2,$3,$4) ON CONFLICT(endpoint) DO UPDATE SET user_id=EXCLUDED.user_id,p256dh=EXCLUDED.p256dh,auth=EXCLUDED.auth,last_used_at=NOW()',[Number(current(req).id),endpoint,p256dh,authKey]);
+  res.json({ok:true});
+});
+app.delete('/api/push/subscribe',auth,async(req,res)=>{
+  const endpoint=String(req.body?.endpoint||'').trim();
+  if(!endpoint)return res.status(400).json({error:'Subscription endpoint is required.'});
+  await pool.query('DELETE FROM push_subscriptions WHERE user_id=$1 AND endpoint=$2',[Number(current(req).id),endpoint]);
+  res.json({ok:true});
+});
 app.get('/api/notifications',auth,async(req,res)=>{const {rows}=await pool.query(`SELECT id,type,title,message,is_read,created_at FROM notifications WHERE user_id=$1 ORDER BY created_at DESC LIMIT 20`,[Number(current(req).id)]);res.json({notifications:rows.map(n=>({id:String(n.id),type:n.type,title:n.title||n.type,text:n.message,message:n.message,time:n.created_at,read:n.is_read}))});});
 app.get('/api/notifications/unread',auth,async(req,res)=>{const {rows}=await pool.query(`SELECT id,type,title,message,is_read,created_at FROM notifications WHERE user_id=$1 AND is_read=false ORDER BY created_at DESC LIMIT 100`,[Number(current(req).id)]);res.json({notifications:rows.map(n=>({id:String(n.id),type:n.type,title:n.title||n.type,text:n.message,message:n.message,time:n.created_at,read:n.is_read}))});});
 app.patch('/api/notifications/:id/read',auth,async(req,res)=>{const r=await pool.query(`UPDATE notifications SET is_read=true WHERE id=$1 AND user_id=$2 RETURNING id`,[req.params.id,Number(current(req).id)]);if(!r.rowCount)return res.status(404).json({error:'Notification not found'});res.json({ok:true});});
@@ -5005,6 +5058,8 @@ app.get('/api/me/account',auth,async(req,res)=>{
 (async function bootstrap(){
   try {
     await initDB();
+    await pool.query('CREATE TABLE IF NOT EXISTS push_subscriptions(id BIGSERIAL PRIMARY KEY,user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,endpoint TEXT NOT NULL UNIQUE,p256dh TEXT NOT NULL,auth TEXT NOT NULL,created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),last_used_at TIMESTAMPTZ)');
+    await pool.query('CREATE INDEX IF NOT EXISTS push_subscriptions_user_idx ON push_subscriptions(user_id)');
 
     // Remove Chill Zone permanently on startup so it cannot reappear after a deploy.
     const unwantedRoom = await pool.query(`SELECT id FROM rooms WHERE LOWER(TRIM(name))='chill zone'`);
