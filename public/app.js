@@ -3586,33 +3586,24 @@ function showConstructionPanel(){
     panel.id="underConstructionOverlay";
     panel.className="under-construction-overlay";
     document.body.appendChild(panel);
-    panel.innerHTML='<div class="under-construction-card"><div class="under-construction-icon">🚧</div><h1>THE SITE IS UNDER CONSTRUCTION</h1><p>We’ll be back when the work is complete.</p><form id="constructionOwnerLogin" class="construction-owner-login"><h2>Owner / Developer access</h2><label for="constructionLoginUsername">Username</label><input id="constructionLoginUsername" name="username" autocomplete="username" required maxlength="40" placeholder="Developer username"><label for="constructionLoginPassword">Password</label><input id="constructionLoginPassword" name="password" type="password" autocomplete="current-password" required><button type="submit" id="constructionLoginSubmit">Log in to disable maintenance</button><p id="constructionLoginMessage" role="status" aria-live="polite"></p></form></div>';
-    const form=panel.querySelector("#constructionOwnerLogin");
+    panel.innerHTML='<div class="under-construction-card"><div class="under-construction-icon">🚧</div><h1>THE SITE IS UNDER CONSTRUCTION</h1><p>We’ll be back when the work is complete.</p><form id="constructionShutdownForm" class="construction-owner-login"><h2>Reopen Maleficent Chat</h2><label for="constructionShutdownCode">Shutdown code</label><input id="constructionShutdownCode" name="code" type="password" autocomplete="current-password" required minlength="4" maxlength="128" placeholder="Enter your shutdown code"><button type="submit" id="constructionShutdownSubmit">Turn OFF maintenance</button><p id="constructionLoginMessage" role="status" aria-live="polite">Enter the code saved when maintenance was enabled.</p></form></div>';
+    const form=panel.querySelector("#constructionShutdownForm");
     form?.addEventListener("submit",async event=>{
       event.preventDefault();
-      const button=panel.querySelector("#constructionLoginSubmit");
+      const button=panel.querySelector("#constructionShutdownSubmit");
       const message=panel.querySelector("#constructionLoginMessage");
-      const username=String(panel.querySelector("#constructionLoginUsername")?.value||"").trim();
-      const password=String(panel.querySelector("#constructionLoginPassword")?.value||"");
+      const code=String(panel.querySelector("#constructionShutdownCode")?.value||"");
       if(button)button.disabled=true;
-      if(message)message.textContent="Checking account…";
+      if(message)message.textContent="Verifying shutdown code…";
       try{
-        const result=await api("/api/login",{method:"POST",body:JSON.stringify({username,password})});
-        const rank=String(result.user?.rank||"").toUpperCase();
-        if(rank!=="DEVELOPER"&&rank!=="OWNER"){
-          if(message)message.textContent="This login is not an Owner or Developer account. Maintenance is still enabled.";
-          return;
+        const result=await api("/api/under-construction/disable",{method:"POST",body:JSON.stringify({code})});
+        if(result.enabled===false){
+          if(message)message.textContent="Maintenance disabled. Reopening the site…";
+          hideConstructionPanel();
+          window.location.reload();
         }
-        if(result.token)safeStorage.setItem("mc_token",result.token);
-        state.user=result.user;
-        const boot=await api("/api/bootstrap");
-        state.featurePermissions=boot.featurePermissions||{};
-        state.featureGrants=boot.settings?.feature_grants||{};
-        state.userPermissions=boot.userPermissions||{};
-        hideConstructionPanel();
-        await start();
       }catch(error){
-        if(message)message.textContent=error?.message||"Login failed. Maintenance is still enabled.";
+        if(message)message.textContent=error?.message||"Could not disable maintenance.";
       }finally{
         if(button)button.disabled=false;
       }
