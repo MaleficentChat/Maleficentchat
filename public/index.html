@@ -30,7 +30,7 @@
   "description": "Join Maleficent Chat for online chat rooms, friends, private messages, community posts and mini-games."
 }
 </script>
-<link rel="stylesheet" href="/style.css?v=staff-maintenance-control-20261030-v1">
+<link rel="stylesheet" href="/style.css?v=login-recovery-20261030-v3">
  <link rel="manifest" href="/manifest.json">
 <script src="/socket.io/socket.io.js"></script>
 <style>
@@ -201,7 +201,24 @@
 
 <div id="modal" class="modal hidden"><div class="modal-card"><button class="modal-close" onclick="closeModal()">×</button><div id="modalBody"></div></div></div>
 <div id="toast"></div><div id="actionLock" class="action-lock hidden"></div>
-<script src="/app.js?v=staff-maintenance-control-20261030-v2"></script>
+<script>
+// Keep the Login/Register tabs responsive even if the main application bundle is stale in cache.
+(function(){
+  const login=document.getElementById("tabLogin"), register=document.getElementById("tabRegister");
+  if(!login||!register)return;
+  function showLoginMode(isLogin){
+    login.classList.toggle("active",isLogin); register.classList.toggle("active",!isLogin);
+    document.querySelectorAll("#auth .register-only").forEach(function(el){el.classList.toggle("hidden",isLogin);});
+    ["displayName","registerEmail","dateOfBirth","gender","confirmPassword"].forEach(function(id){const el=document.getElementById(id);if(el)el.required=!isLogin;});
+    const pass=document.getElementById("password"); if(pass)pass.autocomplete=isLogin?"current-password":"new-password";
+    const submit=document.getElementById("authSubmit"); if(submit)submit.textContent=isLogin?"Login":"Register";
+    const msg=document.getElementById("authMsg"); if(msg)msg.textContent="";
+  }
+  login.addEventListener("click",function(){showLoginMode(true);},true);
+  register.addEventListener("click",function(){showLoginMode(false);},true);
+})();
+</script>
+<script src="/app.js?v=login-recovery-20261030-v3"></script>
 <script src="/gravity-run.js?v=gravity-run-main-1"></script>
 <script src="/doodle-studio.js?v=studio-v2"></script>
 </body>
