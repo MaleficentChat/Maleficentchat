@@ -1596,15 +1596,15 @@ function openPresenceModes(){
     <p class="muted" style="margin:0;font-size:13px;line-height:1.5;white-space:normal;overflow-wrap:anywhere">Select one mode. Read the description before applying it.</p>
     <label class="mode-control-row" style="display:grid;grid-template-columns:20px minmax(0,1fr);align-items:start;gap:10px;width:100%;min-width:0;box-sizing:border-box;padding:10px;border:1px solid var(--border-color,#393244);border-radius:10px;white-space:normal">
       <input type="checkbox" id="modePopupHide" style="margin:3px 0 0" ${state.user?.hideMode&&!state.user?.deadMode?'checked':''}>
-      <span style="display:block;min-width:0;white-space:normal;overflow-wrap:anywhere"><b style="display:block;margin-bottom:4px">👻 Ghost Mode</b><small style="display:block;white-space:normal;overflow-wrap:anywhere;line-height:1.45">Hides your account from public user lists, search, profile access, and presence. You can still chat normally; every room message you send appears as Aurora.</small></span>
+      <span style="display:block;min-width:0;white-space:normal;overflow-wrap:anywhere"><b style="display:block;margin-bottom:4px">👻 Ghost Mode</b><small style="display:block;white-space:normal;overflow-wrap:anywhere;line-height:1.45">Your account is hidden from all user lists, search, profiles, and presence—including from staff. You can still chat; your messages appear as Aurora and no join announcement is sent.</small></span>
     </label>
     <label class="mode-control-row" style="display:grid;grid-template-columns:20px minmax(0,1fr);align-items:start;gap:10px;width:100%;min-width:0;box-sizing:border-box;padding:10px;border:1px solid var(--border-color,#393244);border-radius:10px;white-space:normal">
       <input type="checkbox" id="modePopupDead" style="margin:3px 0 0" ${state.user?.deadMode?'checked':''}>
-      <span style="display:block;min-width:0;white-space:normal;overflow-wrap:anywhere"><b style="display:block;margin-bottom:4px">💀 Dead Mode</b><small style="display:block;white-space:normal;overflow-wrap:anywhere;line-height:1.45">Your account stays visible and works normally, but Aurora will not announce when you join a room.</small></span>
+      <span style="display:block;min-width:0;white-space:normal;overflow-wrap:anywhere"><b style="display:block;margin-bottom:4px">💀 Dead Mode</b><small style="display:block;white-space:normal;overflow-wrap:anywhere;line-height:1.45">Your account stays visible in online/offline lists and profiles. Aurora announces when you join, but all messages you send appear as Aurora.</small></span>
     </label>
     <label class="mode-control-row" style="display:grid;grid-template-columns:20px minmax(0,1fr);align-items:start;gap:10px;width:100%;min-width:0;box-sizing:border-box;padding:10px;border:1px solid var(--border-color,#393244);border-radius:10px;white-space:normal">
       <input type="checkbox" id="modePopupInvisible" style="margin:3px 0 0" ${state.user?.invisible&&!state.user?.deadMode?'checked':''}>
-      <span style="display:block;min-width:0;white-space:normal;overflow-wrap:anywhere"><b style="display:block;margin-bottom:4px">😈 Invisible Mode</b><small style="display:block;white-space:normal;overflow-wrap:anywhere;line-height:1.45">Hides your online presence from regular users. Staff with sufficient permissions can still identify you as invisible.</small></span>
+      <span style="display:block;min-width:0;white-space:normal;overflow-wrap:anywhere"><b style="display:block;margin-bottom:4px">😈 Invisible Mode</b><small style="display:block;white-space:normal;overflow-wrap:anywhere;line-height:1.45">Hidden from online and offline user lists for everyone except higher-ranked staff. Your room joins are not announced; eligible staff see a green indicator.</small></span>
     </label>
     <p class="muted" id="modePopupStatus" aria-live="polite" style="font-size:12px;line-height:1.4;min-height:14px;margin:0;overflow-wrap:anywhere"></p>
     <div class="toolbar" style="display:flex;flex-wrap:wrap;gap:8px"><button type="button" class="primary" id="applyModePopup">Apply mode</button><button type="button" class="mini" onclick="closeModal()">Cancel</button></div>
@@ -1633,7 +1633,7 @@ function openPresenceModes(){
           result=await api("/api/me/invisible",{method:"POST",body:JSON.stringify({enabled:false})});
         }
       }
-      state.user.hideMode=!!result.hideMode;state.user.deadMode=!!result.deadMode;state.user.invisible=!!result.invisible||!!result.deadMode;
+      state.user.hideMode=!!result.hideMode;state.user.deadMode=!!result.deadMode;state.user.invisible=!!result.invisible;
       closeModal();toast("Presence mode updated.");updateNav();await loadUsers().catch(()=>{});await renderOnline(onlinePanelTab).catch(()=>{});
     }catch(error){if(status)status.textContent=error.message||"Could not update modes.";toast(error.message||"Could not update modes.");apply.disabled=false;}
   });
