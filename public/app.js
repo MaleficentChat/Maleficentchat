@@ -182,6 +182,7 @@ async function testSiteNotifications(){
   }
 }
 async function hardRefreshSite(){
+  const savedAuthToken=safeStorage.getItem("mc_token");
   const button=$("siteHardRefresh");
   if(button){button.disabled=true;button.textContent="⏳ Refreshing…";}
   try{
@@ -191,6 +192,7 @@ async function hardRefreshSite(){
       const keys=await caches.keys();
       await Promise.all(keys.map(key=>caches.delete(key)));
     }
+    if(savedAuthToken)safeStorage.setItem("mc_token",savedAuthToken);
     if("serviceWorker" in navigator){
       const registration=await navigator.serviceWorker.getRegistration("/");
       if(registration)await registration.update().catch(()=>{});
@@ -3350,6 +3352,7 @@ async function renderStaffApplications(){
 }
 
 async function hardRefreshSiteCache(){
+  const savedAuthToken=safeStorage.getItem("mc_token");
   if(!confirm("Hard refresh Maleficent Chat on this device?\n\nThis clears cached website files and reloads the site. It does NOT delete room messages, private messages, accounts, profiles, ranks, gold, settings, or saved records. Your notification subscription will be kept."))return;
   const button=$("hardRefreshSiteButton");
   if(button){button.disabled=true;button.textContent="⟳ Clearing cache…";}
@@ -3358,7 +3361,8 @@ async function hardRefreshSiteCache(){
       const keys=await caches.keys();
       await Promise.all(keys.map(key=>caches.delete(key)));
     }
-    toast("Site cache cleared. Reloading Maleficent Chat…");
+    if(savedAuthToken)safeStorage.setItem("mc_token",savedAuthToken);
+    toast("Site cache cleared. Keeping your login and reloading Maleficent Chat…");
     const url=new URL(window.location.href);
     url.searchParams.set("site_refresh",String(Date.now()));
     window.location.replace(url.toString());
