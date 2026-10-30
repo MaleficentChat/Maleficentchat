@@ -115,7 +115,10 @@ async function api(url, opt = {}) {
   const body = await res.json().catch(() => ({}));
 
   if (!res.ok) {
-    throw Error(body.error || "Request failed");
+    const err = Error(body.error || "Request failed");
+    err.kickedUntil = body.kickedUntil || null;
+    err.reason = body.reason || null;
+    throw err;
   }
 
   return body;
@@ -366,7 +369,8 @@ $("authForm").onsubmit = async e => {
     await start();
   } catch (error) {
     $("authMsg").textContent = error.message;
-    if(/you have been banned/i.test(String(error.message||""))){showBanLock(String(error.message).replace(/^.*you have been banned\s*/i,"").replace(/^[:.\-]\s*/,"")||"Community rules");}
+    if(/you have been banned/i.test(String(error.message||""))){showBanLock(error.reason||String(error.message).replace(/^.*you have been banned\s*/i,"").replace(/^[:.\-]\s*/,"")||"Community rules");}
+    else if(/you have been kicked/i.test(String(error.message||"")) && error.kickedUntil){showKickLock(error.kickedUntil,error.reason||"Community rules");}
   }
 };
 
@@ -393,7 +397,7 @@ function showKickLock(until,reason="Community rules"){
     const total=Math.floor(remaining/1000);
     const days=Math.floor(total/86400),hours=Math.floor((total%86400)/3600),minutes=Math.floor((total%3600)/60),seconds=total%60;
     const pad=n=>String(n).padStart(2,"0");
-    box.innerHTML=`<div class="action-lock-card action-lock-full"><div class="action-lock-icon">⛔</div><h1>You have been kicked</h1><h2>Reason</h2><p class="action-lock-reason">${safeReason}</p><div class="action-lock-countdown-label">You can return in</div><div class="action-lock-countdown">${days}:${pad(hours)}:${pad(minutes)}:${pad(seconds)}</div><small>Days : Hours : Minutes : Seconds</small></div>`;
+    box.innerHTML=`<div class="action-lock-card action-lock-full"><div class="action-lock-icon">🦶🏼</div><h1>You have been kicked</h1><h2>Reason</h2><p class="action-lock-reason">${safeReason}</p><div class="action-lock-countdown-label">You can return in</div><div class="action-lock-countdown">${days}:${pad(hours)}:${pad(minutes)}:${pad(seconds)}</div><small>Days : Hours : Minutes : Seconds</small></div>`;
     box.classList.remove("hidden");
     actionLockTimer=setTimeout(refresh,1000);
   };refresh();
