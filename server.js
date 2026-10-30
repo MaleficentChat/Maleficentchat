@@ -796,6 +796,17 @@ function cleanText(s){
   return String(s??"").slice(0,4000);
 }
 
+function restrictedNameMatch(value){
+  const candidate=String(value??"").trim().toLowerCase();
+  if(!candidate)return null;
+  for(const raw of db.bannedWords||[]){
+    const entry=String(raw||"").trim();
+    if(!/^u\s*:\s*/i.test(entry))continue;
+    const word=entry.replace(/^u\s*:\s*/i,"").trim().toLowerCase();
+    if(word&&candidate.includes(word))return word;
+  }
+  return null;
+}
 function reportOnlyFilteredWord(text){
   const low=cleanText(text).toLowerCase();
   for(const raw of db.bannedWords||[]){
@@ -812,7 +823,7 @@ function filteredWord(text){
   const low=t.toLowerCase();
   for(const raw of db.bannedWords||[]){
     const entry=String(raw||"").trim();
-    if(!entry||/^r\s*:\s*/i.test(entry)) continue;
+    if(!entry||/^r\s*:\s*/i.test(entry)||/^u\s*:\s*/i.test(entry)) continue;
     if(low.includes(entry.toLowerCase())) return entry;
   }
   if(db.settings.linkFilter && /https?:\/\/|www\./i.test(t)) return "link";
@@ -1032,6 +1043,10 @@ app.post(
       deviceFingerprint
     }=req.body;
 
+    if(restrictedNameMatch(username)||restrictedNameMatch(displayName)){
+      return res.status(400).json({error:"This username doesn't fall under site rules. Try different one"});
+    }
+
     if(
       !/^[A-Za-z0-9_]{3,24}$/.test(
         username||""
@@ -1247,6 +1262,11 @@ app.patch(
   auth,
   (req,res)=>{
     const u=current(req);
+
+    if((req.body.username&&req.body.username!==u.username&&restrictedNameMatch(req.body.username))||
+       (req.body.displayName!==undefined&&restrictedNameMatch(req.body.displayName))){
+      return res.status(400).json({error:"This username doesn't fall under site rules. Try different one"});
+    }
 
     const allowed=[
       "displayName",
