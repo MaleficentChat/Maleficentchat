@@ -3062,6 +3062,18 @@ async function showBlockedUsers(){
   try{const r=await api('/api/users/blocked'); modal(`<h2>🚫 Blocked users</h2><div class="stack">${(r.users||[]).map(u=>`<div class="card blocked-user-row">${avatar(u)}<div><b>${esc(u.displayName)}</b><small>@${esc(u.username)}</small></div><button class="mini" onclick="unblockFromList('${esc(u.id)}')">Unblock</button></div>`).join('')||'<p class="muted">You have not blocked anyone.</p>'}</div>`);}catch(e){toast(e.message)}}
 async function unblockFromList(id){try{await api(`/api/users/${id}/block`,{method:'DELETE'});showBlockedUsers();toast('User unblocked.')}catch(e){toast(e.message)}}
 
+function countryFlagFor(country){
+  const key=String(country||'').trim().toLowerCase();
+  const flags={'india':'🇮🇳','united states':'🇺🇸','united states of america':'🇺🇸','usa':'🇺🇸','uk':'🇬🇧','united kingdom':'🇬🇧','canada':'🇨🇦','australia':'🇦🇺','new zealand':'🇳🇿','pakistan':'🇵🇰','bangladesh':'🇧🇩','nepal':'🇳🇵','sri lanka':'🇱🇰','uae':'🇦🇪','united arab emirates':'🇦🇪','saudi arabia':'🇸🇦','singapore':'🇸🇬','malaysia':'🇲🇾','indonesia':'🇮🇩','philippines':'🇵🇭','japan':'🇯🇵','south korea':'🇰🇷','china':'🇨🇳','russia':'🇷🇺','ukraine':'🇺🇦','germany':'🇩🇪','france':'🇫🇷','italy':'🇮🇹','spain':'🇪🇸','portugal':'🇵🇹','brazil':'🇧🇷','mexico':'🇲🇽','south africa':'🇿🇦','nigeria':'🇳🇬','egypt':'🇪🇬','turkey':'🇹🇷','ireland':'🇮🇪','netherlands':'🇳🇱','switzerland':'🇨🇭','sweden':'🇸🇪','norway':'🇳🇴','denmark':'🇩🇰','poland':'🇵🇱','argentina':'🇦🇷','thailand':'🇹🇭','vietnam':'🇻🇳'};
+  return flags[key]||'🌐';
+}
+function safeProfileUrl(value){const raw=String(value||'').trim();if(!raw)return '#';return /^https?:\/\//i.test(raw)?raw:'https://'+raw;}
+function profileSocialLinks(socials){
+  if(!socials||typeof socials!=='object')return '';
+  const entries=[['instagram','📸 Instagram'],['discord','🎮 Discord'],['tiktok','♪ TikTok'],['youtube','▶ YouTube']];
+  return entries.filter(([k])=>String(socials[k]||'').trim()).map(([k,label])=>{const value=String(socials[k]).trim();let url=value;if(!/^https?:\/\//i.test(url)){const handle=value.replace(/^@/,'');url=k==='instagram'?'https://instagram.com/'+handle:k==='tiktok'?'https://www.tiktok.com/@'+handle:k==='youtube'?'https://www.youtube.com/'+handle:'#';}return `<span><a href="${esc(safeProfileUrl(url))}" target="_blank" rel="noopener noreferrer">${label}</a></span>`;}).join('');
+}
+
 async function loadProfile(user){
   if(!user) return;
   const cosmetics=Array.isArray(user.equippedCosmetics)?user.equippedCosmetics:[];
@@ -3074,7 +3086,7 @@ async function loadProfile(user){
       <div class="profile-settings-top"><span>⭐ ${user.level||1}</span><span>❤️ ${user.profileLikes||0}</span><button class="mini" onclick="uploadAvatar()">📷</button><button class="mini" onclick="editProfileInfo()" title="Edit profile">✏️</button><button class="mini" id="myProfileMenuBtn" title="More">☰</button></div>
       ${avatar(user,'big-avatar')}
       <div class="profile-rank">${rank(user.rank)}${user.verified?' · ✓ Verified':''}</div>
-      <div class="profile-name" style="color:${esc(user.profileColor||user.settings?.usernameColor||'')}" >${esc(user.displayName)}</div><div class="profile-handle">@${esc(user.username)}${user.pronouns?` · ${esc(user.pronouns)}`:''}</div><div class="profile-extra">${user.mood?`<span>☻ ${esc(user.mood)}</span>`:''}${user.relationship?`<span>♥ ${esc(user.relationship)}</span>`:''}${user.location?`<span>📍 ${esc(user.location)}</span>`:''}${user.website?`<span>🔗 ${esc(user.website)}</span>`:''}</div>
+      <div class="profile-name" style="color:${esc(user.profileColor||user.settings?.usernameColor||'')}" >${esc(user.displayName)}</div><div class="profile-handle">@${esc(user.username)}${user.privacy?.pronouns!==false&&user.pronouns?` · ${esc(user.pronouns)}`:''}</div><div class="profile-extra">${user.privacy?.country!==false&&user.country?`<span class="profile-country">${esc(countryFlagFor(user.country))} ${esc(user.country)}</span>`:''}${user.privacy?.mood!==false&&user.mood?`<span>☻ ${esc(user.mood)}</span>`:''}${user.privacy?.relationship!==false&&user.relationship?`<span>♥ ${esc(user.relationship)}</span>`:''}${user.privacy?.location!==false&&user.location?`<span>📍 ${esc(user.location)}</span>`:''}${user.privacy?.website!==false&&user.website?`<span>🔗 <a href="${esc(safeProfileUrl(user.website))}" target="_blank" rel="noopener noreferrer">Website</a></span>`:''}${user.privacy?.socials!==false?profileSocialLinks(user.socials):''}</div>
       <button class="mini" onclick="uploadBanner()">🎵 Add music / banner</button>
     </div>
     <button class="mini" id="selfAchievementsBtn">🏆 Achievements</button>
@@ -3094,7 +3106,7 @@ async function loadProfile(user){
       <button class="settings-row" onclick="editEmail()"><span>✉</span><b>Edit email</b><small>Email is optional</small><strong>›</strong></button><button class="settings-row" onclick="showBlockedUsers()"><span>🚫</span><b>Blocked users</b><small>View and unblock people you blocked</small><strong>›</strong></button>
       <button class="settings-row" onclick="changePasswordModal()"><span>🔑</span><b>Change password</b><small>Update your login password</small><strong>›</strong></button><button class="settings-row" data-daily-reward onclick="claimDailyReward()"><span>🎁</span><b>Daily Gold and XP Reward</b><small>Claim once per day</small><strong>›</strong></button>
     </div>`;}else{content.innerHTML=`<div class="settings-list">
-      <button class="settings-row" onclick="privacyModal()"><span>🔒</span><b>Privacy</b><small>Control status and last-seen visibility</small><strong>›</strong></button>
+      <button class="settings-row" onclick="privacyModal()"><span>🔒</span><b>Privacy Control</b><small>Choose which profile details other members can see</small><strong>›</strong></button>
       <button class="settings-row" onclick="uploadAvatar()"><span>🖼️</span><b>Edit photos</b><small>Profile photo and banner</small><strong>›</strong></button>
       <button class="settings-row" onclick="usernameHistory()"><span>📜</span><b>Username history</b><small>${(user.usernameHistory||[]).length} recorded changes</small><strong>›</strong></button>
       <button class="settings-row danger-row" onclick="deleteAccount()"><span>⊘</span><b>Delete account</b><small>This action is permanent</small><strong>›</strong></button>
@@ -3104,7 +3116,7 @@ async function loadProfile(user){
 }
 
 async function saveMyProfile(fields,message){try{const r=await api('/api/profile',{method:'PUT',body:JSON.stringify(fields)});state.user=r.user;closeModal();updateNav();await loadProfile(state.user);toast(message||'Saved.');}catch(e){toast(e.message)}}
-function editProfileInfo(){modal(`<h2>Edit info</h2><input id="piName" value="${esc(state.user.displayName)}" placeholder="Display name"><input id="piPronouns" value="${esc(state.user.pronouns||'')}" placeholder="Pronouns"><input id="piLocation" value="${esc(state.user.location||'')}" placeholder="Location"><input id="piWebsite" value="${esc(state.user.website||'')}" placeholder="Website"><input id="piInterests" value="${esc((state.user.interests||[]).join(', '))}" placeholder="Interests, separated by commas"><button class="primary" id="savePI">Save</button>`);$('savePI').onclick=()=>saveMyProfile({displayName:$('piName').value.trim(),pronouns:$('piPronouns').value.trim(),location:$('piLocation').value.trim(),website:$('piWebsite').value.trim(),interests:$('piInterests').value.split(',').map(x=>x.trim()).filter(Boolean)},'Info saved.');}
+function editProfileInfo(){const u=state.user||{},socials=u.socials||{};modal(`<h2>Edit info</h2><input id="piName" value="${esc(u.displayName||'')}" placeholder="Display name"><input id="piPronouns" value="${esc(u.pronouns||'')}" placeholder="Pronouns"><input id="piCountry" maxlength="80" value="${esc(u.country||'')}" placeholder="Country (e.g. India)"><input id="piLocation" value="${esc(u.location||'')}" placeholder="City / location"><input id="piWebsite" value="${esc(u.website||'')}" placeholder="Website URL"><h3>Social links</h3><input id="piInstagram" value="${esc(socials.instagram||'')}" placeholder="Instagram username or link"><input id="piDiscord" value="${esc(socials.discord||'')}" placeholder="Discord username or link"><input id="piTikTok" value="${esc(socials.tiktok||'')}" placeholder="TikTok username or link"><input id="piYouTube" value="${esc(socials.youtube||'')}" placeholder="YouTube channel link"><input id="piInterests" value="${esc((u.interests||[]).join(', '))}" placeholder="Interests, separated by commas"><button class="primary" id="savePI">Save</button>`);$('savePI').onclick=()=>saveMyProfile({displayName:$('piName').value.trim(),pronouns:$('piPronouns').value.trim(),country:$('piCountry').value.trim(),location:$('piLocation').value.trim(),website:$('piWebsite').value.trim(),socials:{instagram:$('piInstagram').value.trim(),discord:$('piDiscord').value.trim(),tiktok:$('piTikTok').value.trim(),youtube:$('piYouTube').value.trim()},interests:$('piInterests').value.split(',').map(x=>x.trim()).filter(Boolean)},'Info saved.');}
 function editRelationship(){modal(`<h2>Edit relationship</h2><select id="rel"><option value="">Not set</option><option>Single</option><option>In a relationship</option><option>Complicated</option><option>Prefer not to say</option></select><button class="primary" id="saveRel">Save</button>`);$('rel').value=state.user.relationship||'';$('saveRel').onclick=()=>saveMyProfile({relationship:$('rel').value},'Relationship saved.');}
 function editUsername(){modal(`<h2>Edit username</h2><input id="newUsername" maxlength="24" value="${esc(state.user.username)}"><p class="muted">3–24 letters, numbers and underscores.</p><button class="primary" id="saveUsername">Save</button>`);$('saveUsername').onclick=()=>saveMyProfile({username:$('newUsername').value.trim()},'Username saved.');}
 function editAboutMe(){modal(`<h2>Edit about me</h2><textarea id="aboutMeEdit" rows="7" maxlength="500">${esc(state.user.bio||'')}</textarea><button class="primary" id="saveAboutMe">Save</button>`);$('saveAboutMe').onclick=()=>saveMyProfile({bio:$('aboutMeEdit').value},'About Me saved.');}
@@ -3219,21 +3231,11 @@ async function sendUpload(url, id) {
 }
 
 function privacyModal() {
-  modal(`
-    <h2>Privacy</h2>
-
-    <p class="muted">
-      Privacy settings control
-      online-status and last-seen visibility.
-    </p>
-
-    <button
-      class="primary"
-      onclick="closeModal()"
-    >
-      Done
-    </button>
-  `);
+  const u=state.user||{},p={lastSeen:true,online:true,country:true,location:true,website:true,socials:true,bio:true,pronouns:true,relationship:true,mood:true,interests:true,...(u.privacy||{})};
+  const options=[['country','🌍 Country and flag','Show my country and its flag on my profile'],['location','📍 City / location','Show the location field'],['website','🔗 Website','Show my website link'],['socials','💬 Social links','Show Instagram, Discord, TikTok and YouTube'],['bio','📝 About Me','Show my bio'],['pronouns','🪪 Pronouns','Show my pronouns'],['relationship','♥ Relationship','Show relationship status'],['mood','☻ Mood','Show my mood'],['interests','✨ Interests','Show my interests'],['online','🟢 Online status','Let others see when I am online'],['lastSeen','◉ Last seen','Show my last-seen time']];
+  modal(`<div class="privacy-control-modal"><h2>🔒 Privacy Control</h2><p class="muted">Choose exactly which details appear to other members. Changes are saved to your account.</p><div class="privacy-control-list">${options.map(([key,title,desc])=>`<label class="privacy-control-row"><span><b>${title}</b><small>${desc}</small></span><input type="checkbox" data-privacy-key="${key}" ${p[key]!==false?'checked':''}></label>`).join('')}</div><div class="toolbar"><button class="mini" id="privacyCancel">Cancel</button><button class="primary" id="privacySave">Save privacy</button></div></div>`);
+  $('privacyCancel').onclick=closeModal;
+  $('privacySave').onclick=async()=>{const privacy={};document.querySelectorAll('[data-privacy-key]').forEach(el=>privacy[el.dataset.privacyKey]=el.checked);try{const r=await api('/api/profile',{method:'PUT',body:JSON.stringify({privacy})});state.user=r.user;closeModal();await loadProfile(state.user);toast('Privacy settings saved.');}catch(e){toast(e.message)}};
 }
 
 function usernameHistory() {
