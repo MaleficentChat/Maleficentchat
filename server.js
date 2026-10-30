@@ -649,12 +649,7 @@ function auth(req,res,next){
   if(String(u.rank||"").toUpperCase()!=="DEVELOPER" &&
      !(String(u.rank||"").toUpperCase()==="OWNER"&&u.username===DEFAULT_OWNER) &&
      construction.enabled===true){
-    const until=Number(construction.until)||0;
-    if(until>Date.now()){
-      return res.status(503).json({error:"The site is under construction.",underConstruction:true,until});
-    }
-    db.settings.under_construction={enabled:false,until:0};
-    save();
+    return res.status(503).json({error:"The site is under construction.",underConstruction:true});
   }
 
   u.online=true;
@@ -682,16 +677,12 @@ app.get("/api/under-construction/status",async(req,res)=>{
       db.settings.under_construction=stored.rows[0].value;
     }
     const setting=db.settings?.under_construction||{};
-    const until=Number(setting.until)||0;
-    const enabled=setting.enabled===true&&until>Date.now();
-    if(setting.enabled===true&&!enabled){
-      const expired={...setting,enabled:false,until:0};
-      await persistUnderConstructionSetting(expired);
-    }
+    // Maintenance stays enabled until the owner/developer explicitly switches it off.
+    const enabled=setting.enabled===true;
     const u=current(req),rankName=String(u?.rank||"").toUpperCase();
     const exempt=rankName==="DEVELOPER"||(rankName==="OWNER"&&u?.username===DEFAULT_OWNER);
     const canManage=!!u&&(rankName==="DEVELOPER"||(rankName==="OWNER"&&u.username===DEFAULT_OWNER));
-    res.json({enabled:enabled&&!exempt,configuredEnabled:enabled,until:enabled?until:0,exempt,canManage});
+    res.json({enabled:enabled&&!exempt,configuredEnabled:enabled,until:0,exempt,canManage});
   }catch(error){
     console.error("Under-construction status read failed:",error);
     res.status(500).json({error:"Could not read under-construction status from the database."});
@@ -700,19 +691,12 @@ app.get("/api/under-construction/status",async(req,res)=>{
 app.post("/api/owner/under-construction",auth,ownerOnly,async(req,res)=>{
   try{
     const enabled=req.body?.enabled===true;
-    let setting;
-    if(enabled){
-      const durationMinutes=Number(req.body?.durationMinutes);
-      if(!Number.isFinite(durationMinutes)||durationMinutes<1||durationMinutes>10080)return res.status(400).json({error:"Choose a duration between 1 minute and 7 days."});
-      const now=Date.now();
-      setting={enabled:true,until:now+Math.floor(durationMinutes)*60000,updatedBy:current(req)?.username||"Owner",updatedAt:now};
-    }else{
-      setting={enabled:false,until:0,updatedBy:current(req)?.username||"Owner",updatedAt:Date.now()};
-    }
+    const now=Date.now();
+    const setting={enabled,until:0,updatedBy:current(req)?.username||"Owner",updatedAt:now};
     await persistUnderConstructionSetting(setting);
-    const payload={enabled:setting.enabled,until:setting.until};
+    const payload={enabled:setting.enabled,until:0};
     io.emit("under-construction:status",payload);
-    log(current(req),enabled?"UNDER_CONSTRUCTION_ENABLED":"UNDER_CONSTRUCTION_DISABLED","site",enabled?{durationMinutes:Number(req.body.durationMinutes),until:setting.until}:{});
+    log(current(req),enabled?"UNDER_CONSTRUCTION_ENABLED":"UNDER_CONSTRUCTION_DISABLED","site",{persistent:true});
     return res.json(payload);
   }catch(error){
     console.error("Under-construction update failed:",error);
