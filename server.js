@@ -1765,6 +1765,7 @@ app.post("/api/rooms/:id/staff-action",auth,async(req,res)=>{
 });
 app.put("/api/rooms/:id",auth,async(req,res)=>{
   const u=current(req),r=db.rooms.find(x=>String(x.id)===String(req.params.id)); if(!r)return res.status(404).json({error:"Room not found"});
+  const previousRankRequired=String(r.rankRequired||"MEMBER").toUpperCase();
   if(r.isDefault || /^main room$/i.test(String(r.name||"").trim()))return res.status(403).json({error:"The permanent Main Room cannot be modified."});
   if(!featureGrantAllowed(u,"edit_rooms")&&!(roomOwnerOrGlobal(u,r)&&Array.isArray(db.settings?.feature_grants?.room_edit_own)&&db.settings.feature_grants.room_edit_own.length))return res.status(403).json({error:"Room editing is disabled in Feature Granting or you do not own this room."});
   const fields={}; for(const k of ["name","icon","description","category","rankRequired","limit","slowMode","banner","public","minAge","maxAge"]) if(req.body[k]!==undefined) fields[k]=req.body[k];
@@ -1783,6 +1784,21 @@ app.put("/api/rooms/:id",auth,async(req,res)=>{
   for(const [k,v] of Object.entries(fields)){sets.push(`${map[k]}=$${vals.length+1}`);vals.push(k==="rankRequired"?String(v).toUpperCase():v);}
   if(sets.length){vals.push(Number(r.id));const q=await pool.query(`UPDATE rooms SET ${sets.join(",")} WHERE id=${vals.length} RETURNING *`,vals);const x=q.rows[0];Object.assign(r,{name:x.name,icon:x.icon,description:x.description,category:x.category,rankRequired:x.rank_required,limit:x.room_limit,slowMode:x.slow_mode,banner:x.banner,public:x.is_public,passwordHash:x.password_hash,minAge:Number(x.min_age??0),maxAge:Number(x.max_age??99)});}
   save();
+  const nextRankRequired=String(r.rankRequired||"MEMBER").toUpperCase();
+  if(nextRankRequired!==previousRankRequired){
+    // Apply newly tightened room access immediately, including to members already connected.
+    for(const sock of io.sockets.sockets.values()){
+      const socketRoomId=String(sock.data?.roomId||"");
+      if(socketRoomId!==String(r.id))continue;
+      const connectedUser=findUser(sock.data?.userId);
+      if(!roomRankCanEnter(connectedUser,r)){
+        sock.leave("room:"+r.id);
+        sock.data.roomId=null;
+        sock.emit("room-error",{error:`This room now requires ${nextRankRequired.replaceAll("_"," ")} rank or higher.`});
+      }
+    }
+    io.emit("presence");
+  }
   log(u,"ROOM_EDIT",r.name);res.json({room:{...r,passwordHash:undefined}});
 });
 
