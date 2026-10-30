@@ -154,10 +154,11 @@
         <div id="typing" class="typing"></div>
         <form id="composer" class="composer" onsubmit="return false;">
           <button type="button" id="chatToolsToggle" class="chat-tools-toggle" aria-label="More chat tools">☷</button>
-          <div id="chatToolsDrawer" class="chat-tools-drawer"><button type="button" id="attach" title="Attach image or audio">📎 Attach</button><button type="button" id="chatGifBtn" title="Search and send a GIF">🎞 GIF</button><button type="button" id="doodleBtn" title="Draw and send a doodle">🖌️ Doodle</button><button type="button" class="icon-btn" id="youtubeComposerBtn" title="Search and share a YouTube video">▶️ YouTube</button><button type="button" class="icon-btn" id="youtubeMusicComposerBtn" title="Share YouTube Music in chat">🎵 Music</button><button type="button" class="icon-btn" id="voiceBtn" title="Record and send a voice message">🎙️ Voice</button></div>
+          <div id="chatToolsDrawer" class="chat-tools-drawer"><button type="button" id="attach" title="Attach image, audio or file">📎 Attach</button><button type="button" id="chatGifBtn" title="Search and send a GIF">🎞 GIF</button><button type="button" id="doodleBtn" title="Draw and send a doodle">🖌️ Doodle</button><button type="button" class="icon-btn" id="youtubeComposerBtn" title="Search and share a YouTube video">▶️ YouTube</button><button type="button" class="icon-btn" id="youtubeMusicComposerBtn" title="Choose and send an MP3 or audio file">🎵 MP3 / Audio</button><button type="button" class="icon-btn" id="voiceBtn" title="Record and send a voice message">🎙️ Voice</button></div>
           <input id="message" maxlength="4000" placeholder="Write a message… Use @username to mention">
-          <button class="send">Send</button>
-          <input id="file" type="file" accept="image/*,audio/*" hidden>
+          <span id="fileName" class="composer-file-name" aria-live="polite"></span>
+          <button class="send" type="submit">Send</button>
+          <input id="file" type="file" accept="image/*,audio/*,.mp3,.m4a,.wav,.ogg,.aac,.flac,.opus" hidden>
         </form>
       </section>
       <aside class="online-panel" id="onlinePanel">
