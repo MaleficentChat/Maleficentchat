@@ -3847,12 +3847,17 @@ async function loadOwner() {
         </div>
       </details>
 
-      <div class="card">
-        <h3>🚫 Filter Words — Bulk Add</h3>
-        <label>Bulk Add - One word per line (ENTER)<textarea id="bulkFilterWords" placeholder="Father\nMother\nHello\nInshalla"></textarea></label>
-        <div class="toolbar"><button class="primary" id="addBulkFilter">Add Bulk</button><input type="search" id="filterSearch" placeholder="Search word..."></div>
+      <div class="card owner-filter-management">
+        <h3>🧩 Filter Management</h3>
+        <p class="muted">Add one entry per line. Normal words filter chat messages; <code>r: word</code> creates an automatic staff report; <code>u: word</code> blocks usernames and display names containing that text.</p>
+        <label>Bulk add filter entries<textarea id="bulkFilterWords" placeholder="ordinaryword&#10;r: reportword&#10;u: restrictedname"></textarea></label>
+        <div class="toolbar"><button class="primary" id="addBulkFilter">Add Entries</button><input type="search" id="filterSearch" placeholder="Search all filter entries…"></div>
         <div id="filterCounts">Total: ${filterData.total||0} | Showing: ${filterData.total||0}</div>
-        <details class="filter-words-details"><summary>Filter words (${filterData.total||0})</summary><div id="ownerFilterTable">${(filterData.words||[]).map(w=>`<div class="filter-table-row" data-word="${esc(w.word||w)}"><code>${esc(w.word||w)}</code><small>${w.created_at?fmt(w.created_at):''}</small><button class="mini danger" data-filter-delete="${w.id||''}">×</button></div>`).join('')||'<p class="muted">No filter words.</p>'}</div></details>
+        ${[
+          {title:'🚫 Filter Words',test:w=>!/^r\\s*:/i.test(String(w.word||w))&&!/^u\\s*:/i.test(String(w.word||w))},
+          {title:'🔒 Restricted Usernames & Display Names',test:w=>/^u\\s*:/i.test(String(w.word||w))},
+          {title:'🚨 Auto System Report Words',test:w=>/^r\\s*:/i.test(String(w.word||w))}
+        ].map(group=>{const words=(filterData.words||[]).filter(group.test);return `<details class="filter-words-details filter-category-details" open><summary>${group.title} (${words.length})</summary><div class="filter-category-list">${words.map(w=>`<div class="filter-table-row" data-word="${esc(w.word||w)}"><code>${esc(w.word||w)}</code><small>${w.created_at?fmt(w.created_at):''}</small><button class="mini danger" data-filter-delete="${w.id||''}" aria-label="Delete filter entry">×</button></div>`).join('')||'<p class="muted">No entries in this category.</p>'}</div></details>`}).join('')}
       </div>
 
       <div class="card"><h3>💎 Premium Requests</h3>${(premiumRequests.requests||[]).map(r=>`<div class="hub-row"><span>@${esc(r.username||'Unknown')} · ${esc(r.created_at||'')}</span><button class="mini" data-grant-premium="${r.id}">Grant Premium</button><button class="mini danger" data-cancel-premium="${r.user_id||r.id}">Cancel Premium</button></div>`).join('')||'<p class="muted">No requests.</p>'}</div><div class="card owner-settings-card">
