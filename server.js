@@ -3803,6 +3803,18 @@ app.post('/api/wall/:id/comments',auth,async(req,res)=>{
   const {rows}=await pool.query(`INSERT INTO wall_comments(post_id,user_id,content) VALUES($1,$2,$3) RETURNING *`,[req.params.id,Number(u.id),text]);
   res.json({comment:{...rows[0],username:u.username,avatar:u.avatar||"",rank:u.rank}});
 });
+app.delete('/api/wall/:id',auth,async(req,res)=>{
+  const u=current(req),postId=req.params.id;
+  const {rows}=await pool.query('SELECT id,user_id,content,media_url FROM wall_posts WHERE id=$1',[postId]);
+  if(!rows.length)return res.status(404).json({error:'Wall post not found.'});
+  const post=rows[0],isAuthor=Number(post.user_id)===Number(u.id),canModerate=hasFeature(u,'delete_news');
+  if(!isAuthor&&!canModerate)return res.status(403).json({error:'You can delete only your own wall posts.'});
+  await pool.query('DELETE FROM wall_comments WHERE post_id=$1',[postId]);
+  await pool.query('DELETE FROM wall_post_reactions WHERE post_id=$1',[postId]);
+  await pool.query('DELETE FROM wall_posts WHERE id=$1',[postId]);
+  log(u,'WALL_POST_DELETE',post.id,{authorId:post.user_id,content:String(post.content||'').slice(0,500),mediaUrl:post.media_url});
+  res.json({ok:true});
+});
 app.post('/api/wall/:id/report',auth,async(req,res)=>{
   await pool.query(`INSERT INTO history(user_id,action,details) VALUES($1,'wall_report',$2::jsonb)`,[Number(current(req).id),JSON.stringify({postId:req.params.id,reason:cleanText(req.body.reason||"Reported wall post")})]);
   res.json({ok:true});
