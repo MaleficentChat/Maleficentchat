@@ -434,8 +434,12 @@ async function loadState(defaultState) {
 function cryptoToken(){ return require("crypto").randomBytes(12).toString("hex"); }
 
 async function persistState(state) {
-  const copy = JSON.parse(JSON.stringify(state));
-  delete copy.users; delete copy.gifts; delete copy.bannedWords; delete copy.rooms; delete copy.messages; delete copy.privateMessages; delete copy.reports; delete copy.userFeatureGrants;
+  // Do not JSON-clone the whole live state here: it includes every room message
+  // and private message, which are stored in dedicated PostgreSQL tables. The old
+  // clone serialized all chat history just to delete it a few lines later, adding
+  // avoidable CPU and memory pressure to routine presence/settings saves.
+  const excluded = new Set(["users","gifts","bannedWords","rooms","messages","privateMessages","reports","userFeatureGrants"]);
+  const copy = Object.fromEntries(Object.entries(state).filter(([key]) => !excluded.has(key)));
 
   await pool.query(`INSERT INTO settings(key,value) VALUES('feature_grants',$1::jsonb) ON CONFLICT(key) DO UPDATE SET value=EXCLUDED.value`,
     [JSON.stringify(state.settings?.feature_grants || {})]);
