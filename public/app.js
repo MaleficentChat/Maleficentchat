@@ -3852,27 +3852,30 @@ async function loadOwner() {
         </div>
       </details>
 
-      <div class="card owner-filter-management">
-        <h3>🧩 Filter Management</h3>
+      <details class="filter-words-details owner-settings-dropdown owner-filter-management">
+        <summary>🧩 Filter Management <span class="muted">— click to open</span></summary>
+        <div class="owner-filter-management-content">
+        <div class="card owner-filter-intro">
+          <h3>🧩 Filter Management</h3>
+          <p class="muted">Choose what you want to manage below. Add one word or phrase, then press its matching button. Changes save immediately.</p>
+        </div>
         <p class="muted">Add one entry per line. Normal words filter chat messages; <code>r: word</code> creates an automatic staff report; <code>u: word</code> blocks usernames and display names containing that text.</p>
         <label>Bulk add filter entries<textarea id="bulkFilterWords" placeholder="ordinaryword&#10;r: reportword&#10;u: restrictedname"></textarea></label>
         <div class="toolbar"><button class="primary" id="addBulkFilter">Add Entries</button><input type="search" id="filterSearch" placeholder="Search all filter entries…"></div>
         <div class="owner-filter-quick-add">
-          <label>🚫 Filter word or phrase<input id="quickFilterWord" maxlength="120" placeholder="Word/phrase to mask in chat"></label>
-          <button class="mini" type="button" id="quickAddFilterWord">＋ Add filter word</button>
-          <label>🔒 Restricted username / display-name text<input id="quickRestrictedName" maxlength="120" placeholder="Text that usernames/display names may not contain"></label>
-          <button class="mini" type="button" id="quickAddRestrictedName">＋ Restrict name</button>
-          <label>🚨 Auto system-report word<input id="quickReportWord" maxlength="120" placeholder="Text that should create a staff report"></label>
-          <button class="mini" type="button" id="quickAddReportWord">＋ Add report trigger</button>
+          <div class="filter-quick-row"><label>🚫 <b>Filter a chat word</b><span class="muted">Matching text is masked in chat.</span><input id="quickFilterWord" maxlength="120" placeholder="Type a word or phrase"></label><button class="mini" type="button" id="quickAddFilterWord">＋ Add filter</button></div>
+          <div class="filter-quick-row"><label>🔒 <b>Block a name containing text</b><span class="muted">Applies to usernames and display names.</span><input id="quickRestrictedName" maxlength="120" placeholder="Type text to restrict"></label><button class="mini" type="button" id="quickAddRestrictedName">＋ Block name text</button></div>
+          <div class="filter-quick-row"><label>🚨 <b>Report a message containing text</b><span class="muted">Creates a report for staff; does not block the message.</span><input id="quickReportWord" maxlength="120" placeholder="Type a report-trigger word"></label><button class="mini" type="button" id="quickAddReportWord">＋ Add report trigger</button></div>
         </div>
-        <p class="muted">Quick-add saves immediately. Report triggers create an item in the ⚑ Report Management panel when a matching room message is sent. Restricted-name rules apply to registration and profile name changes.</p>
+        <p class="muted">Each button saves its rule immediately. Open a category below to see or remove saved rules.</p>
         <div id="filterCounts">Total: ${filterData.total||0} | Showing: ${filterData.total||0}</div>
         ${[
           {title:'🚫 Filter Words',test:w=>!/^r\s*:/i.test(String(w.word||w))&&!/^u\s*:/i.test(String(w.word||w))},
           {title:'🔒 Restricted Usernames & Display Names',test:w=>/^u\s*:/i.test(String(w.word||w))},
           {title:'🚨 Auto System Report Words',test:w=>/^r\s*:/i.test(String(w.word||w))}
-        ].map(group=>{const words=(filterData.words||[]).filter(group.test);return `<details class="filter-words-details filter-category-details" open><summary>${group.title} (${words.length})</summary><div class="filter-category-list">${words.map(w=>`<div class="filter-table-row" data-word="${esc(w.word||w)}"><code>${esc(w.word||w)}</code><small>${w.created_at?fmt(w.created_at):''}</small><button class="mini danger" data-filter-delete="${w.id||''}" aria-label="Delete filter entry">×</button></div>`).join('')||'<p class="muted">No entries in this category.</p>'}</div></details>`}).join('')}
-      </div>
+        ].map(group=>{const words=(filterData.words||[]).filter(group.test);return `<details class="filter-words-details filter-category-details"><summary>${group.title} (${words.length})</summary><div class="filter-category-list">${words.map(w=>`<div class="filter-table-row" data-word="${esc(w.word||w)}"><code>${esc(w.word||w)}</code><small>${w.created_at?fmt(w.created_at):''}</small><button class="mini danger" data-filter-delete="${w.id||''}" aria-label="Delete filter entry">×</button></div>`).join('')||'<p class="muted">No entries in this category.</p>'}</div></details>`}).join('')}
+        </div>
+      </details>
 
       <div class="card"><h3>💎 Premium Requests</h3>${(premiumRequests.requests||[]).map(r=>`<div class="hub-row"><span>@${esc(r.username||'Unknown')} · ${esc(r.created_at||'')}</span><button class="mini" data-grant-premium="${r.id}">Grant Premium</button><button class="mini danger" data-cancel-premium="${r.user_id||r.id}">Cancel Premium</button></div>`).join('')||'<p class="muted">No requests.</p>'}</div><div class="card owner-settings-card">
         <h3>⚙️ Site Settings</h3>
