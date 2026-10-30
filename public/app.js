@@ -811,6 +811,35 @@ $("mobileMenu").onclick = () => {
 const chatToolsToggle=$("chatToolsToggle");
 if(chatToolsToggle) chatToolsToggle.onclick=()=>$("chatToolsDrawer")?.classList.toggle("open");
 
+// Main-room attachment controls: explicitly wire both buttons to the hidden picker.
+const roomFileInput=$("file");
+const roomAttachButton=$("attach");
+const roomMusicButton=$("youtubeMusicComposerBtn");
+const roomFileLabel=$("fileName");
+if(roomAttachButton && roomFileInput && !roomAttachButton.dataset.bound){
+  roomAttachButton.dataset.bound="true";
+  roomAttachButton.addEventListener("click",()=>{
+    roomFileInput.accept="image/*,audio/*,.mp3,.m4a,.wav,.ogg,.aac,.flac,.opus";
+    roomFileInput.click();
+  });
+}
+if(roomMusicButton && roomFileInput && !roomMusicButton.dataset.bound){
+  roomMusicButton.dataset.bound="true";
+  roomMusicButton.title="Choose an MP3 or audio file to send in chat";
+  roomMusicButton.setAttribute("aria-label","Choose MP3 or audio file");
+  roomMusicButton.addEventListener("click",()=>{
+    roomFileInput.accept="audio/*,.mp3,.m4a,.wav,.ogg,.aac,.flac,.opus";
+    roomFileInput.click();
+  });
+}
+if(roomFileInput && !roomFileInput.dataset.labelBound){
+  roomFileInput.dataset.labelBound="true";
+  roomFileInput.addEventListener("change",()=>{
+    if(roomFileLabel)roomFileLabel.textContent=roomFileInput.files?.[0]?.name||"";
+    if(roomFileInput.files?.[0] && $("chatToolsDrawer"))$("chatToolsDrawer").classList.remove("open");
+  });
+}
+
 if ($("backRooms")) {
   $("backRooms").onclick = () => {
     $("viewRooms").classList.remove("chatting");
@@ -4612,7 +4641,6 @@ async function sendYoutube(videoId,title,music=false){
   }catch(e){toast(e.message||'Could not share this video.')}
 }
 $("youtubeComposerBtn")?.addEventListener("click",()=>openYoutubePanel("youtube"));
-$("youtubeMusicComposerBtn")?.addEventListener("click",()=>openYoutubePanel("music"));
 
 /* ---------------- ROOM MENU ---------------- */
 
