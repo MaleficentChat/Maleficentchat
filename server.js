@@ -448,13 +448,12 @@ function safeUser(u){
     profileAccentColor:u.profileAccentColor||u.settings?.profileAccentColor||'',
     location:u.location||'',
     country:u.country||'',
-    socials:u.socials&&typeof u.socials==='object'?u.socials:{},
     website:u.website||'',
     badgesStats:u.badgesStats||{},
     friendsCount:db.friends.filter(f=>f.status==="ACCEPTED"&&(f.a===u.id||f.b===u.id)).length,
     interests:u.interests||[],
     usernameHistory:u.usernameHistory||[],
-    privacy:{lastSeen:true,online:true,country:true,location:true,website:true,socials:true,bio:true,pronouns:true,relationship:true,mood:true,interests:true,...(u.privacy||{})}
+    privacy:{lastSeen:true,online:true,country:true,location:true,website:true,bio:true,pronouns:true,relationship:true,mood:true,interests:true,...(u.privacy||{})}
   };
 }
 
@@ -5313,9 +5312,9 @@ app.put('/api/profile',auth,(req,res)=>{
   }
   if(req.body.privacy && typeof req.body.privacy==='object'){
     u.privacy={...(u.privacy||{lastSeen:true,online:true})};
-    for(const key of ['lastSeen','online','country','location','website','socials','bio','pronouns','relationship','mood','interests']) if(req.body.privacy[key]!==undefined)u.privacy[key]=!!req.body.privacy[key];
+    for(const key of ['lastSeen','online','country','location','website','bio','pronouns','relationship','mood','interests']) if(req.body.privacy[key]!==undefined)u.privacy[key]=!!req.body.privacy[key];
   }
-  const next={displayName:req.body.displayName,bio:req.body.bio,pronouns:req.body.pronouns,relationship:req.body.relationship,mood:req.body.mood,country:req.body.country,location:req.body.location,website:req.body.website,socials:req.body.socials,interests:req.body.interests,profileColor:req.body.profileColor,profileAccentColor:req.body.profileAccentColor,theme:req.body.theme,badge:req.body.badge,banner:req.body.banner};
+  const next={displayName:req.body.displayName,bio:req.body.bio,pronouns:req.body.pronouns,relationship:req.body.relationship,mood:req.body.mood,country:req.body.country,location:req.body.location,website:req.body.website,interests:req.body.interests,profileColor:req.body.profileColor,profileAccentColor:req.body.profileAccentColor,theme:req.body.theme,badge:req.body.badge,banner:req.body.banner};
   for(const [k,v] of Object.entries(next)) if(v!==undefined){
     if(k==='displayName') u[k]=String(v).trim().slice(0,40);
     else if(k==='interests') u[k]=Array.isArray(v)?v.map(x=>String(x).slice(0,40)).slice(0,20):String(v).split(',').map(x=>x.trim()).filter(Boolean).slice(0,20);
