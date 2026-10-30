@@ -118,6 +118,18 @@ async function api(url, opt = {}) {
     const err = Error(body.error || "Request failed");
     err.kickedUntil = body.kickedUntil || null;
     err.reason = body.reason || null;
+    err.moderationLock = body.moderationLock || null;
+    if(body.moderationLock==="BAN" || /you have been banned/i.test(String(body.error||""))){
+      safeStorage.removeItem("mc_token");
+      safeStorage.removeItem("mc_room_join");
+      $("auth")?.classList.add("hidden");$("app")?.classList.add("hidden");
+      showBanLock(body.reason||"Community rules");
+    }else if(body.moderationLock==="KICK" || (/you have been kicked/i.test(String(body.error||"")) && err.kickedUntil)){
+      safeStorage.removeItem("mc_token");
+      safeStorage.removeItem("mc_room_join");
+      $("auth")?.classList.add("hidden");$("app")?.classList.add("hidden");
+      showKickLock(err.kickedUntil,body.reason||"Community rules");
+    }
     throw err;
   }
 
@@ -561,8 +573,18 @@ async function start() {
   });
   state.socket.on("room:announcement",()=>{if(state.currentRoom)loadRoomAnnouncements(state.currentRoom)});
   state.socket.on("room:announcement-delete",()=>{if(state.currentRoom)loadRoomAnnouncements(state.currentRoom)});
-  state.socket.on("kick-lock", data => showKickLock(data?.until,data?.reason));
-  state.socket.on("ban-lock", data => showBanLock(data?.reason));
+  state.socket.on("kick-lock", data => {
+    safeStorage.removeItem("mc_token");safeStorage.removeItem("mc_room_join");
+    $("auth")?.classList.add("hidden");$("app")?.classList.add("hidden");
+    showKickLock(data?.kickedUntil||data?.until,data?.reason);
+    try{state.socket?.disconnect();}catch{}
+  });
+  state.socket.on("ban-lock", data => {
+    safeStorage.removeItem("mc_token");safeStorage.removeItem("mc_room_join");
+    $("auth")?.classList.add("hidden");$("app")?.classList.add("hidden");
+    showBanLock(data?.reason);
+    try{state.socket?.disconnect();}catch{}
+  });
   state.socket.on("mute-notice", data => {
     const message=String(data?.message||("You have been muted for "+Math.max(1,Number(data?.minutes)||1)+" minutes"));
     modal(`<div class="warning-popup"><div class="warning-title">🔇 Muted</div><div class="warning-reason">${esc(message)}</div>${data?.reason?'<p class="muted">Reason: '+esc(data.reason)+'</p>':''}<button class="primary" onclick="closeModal()">OK</button></div>`);
