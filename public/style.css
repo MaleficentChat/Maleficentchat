@@ -3869,3 +3869,13 @@ body.party-mode-active .msg.dm-msg .chat-gif{
 
 /* Privacy controls and profile country/social links */
 .privacy-control-modal{max-width:560px}.privacy-control-list{display:grid;gap:8px;max-height:58vh;overflow:auto;margin:14px 0}.privacy-control-row{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:11px 12px;border:1px solid rgba(155,92,255,.22);border-radius:11px;background:rgba(16,10,28,.7);cursor:pointer}.privacy-control-row span{display:grid;gap:4px}.privacy-control-row small{color:var(--muted,#aaa);font-size:12px}.privacy-control-row input{width:19px;height:19px;accent-color:#9b5cff;flex:0 0 auto}.profile-extra a{color:#d8b8ff;text-decoration:none}.profile-extra a:hover{text-decoration:underline}.profile-country{font-weight:700}
+
+
+/* Compact collapsible sections in Staff Dashboard */
+.staff-compact-dropdown{margin:10px 0;border:1px solid var(--border,rgba(155,92,255,.32));border-radius:12px;background:rgba(13,10,22,.72);overflow:hidden}
+.staff-compact-dropdown>summary{cursor:pointer;list-style:none;padding:12px 14px;font-weight:700;display:flex;align-items:center;justify-content:space-between;gap:10px;color:var(--text,#f3edf9)}
+.staff-compact-dropdown>summary::-webkit-details-marker{display:none}
+.staff-compact-dropdown>summary::after{content:'＋';color:var(--muted,#b8a8ca);font-size:16px;flex-shrink:0}
+.staff-compact-dropdown[open]>summary::after{content:'−'}
+.staff-compact-dropdown>section{margin:0;border:0;border-top:1px solid var(--border,rgba(155,92,255,.24));border-radius:0;box-shadow:none}
+.staff-compact-dropdown>section> .under-construction-admin-heading,.staff-compact-dropdown>section>div:first-child{margin-top:0}
