@@ -2304,7 +2304,7 @@ function renderUserProfileModal(user,data={}){
       <div class="profile-info-row"><b>📅 Member since</b><span>${esc(memberSince)}</span></div>
       <div class="profile-info-row"><b>🏠 Status</b><span>${user.online?'Online':'Offline'}</span></div>
       <div class="profile-info-row"><b>◉ Last seen</b><span>${esc(lastSeen)}</span></div>
-      <div class="profile-actions"><button class="mini" id="profileAchievementsBtn">🏆 Achievements</button>${!isSelf&&canFeature('profile_note')?`<button class="mini" id="profileNoteBtn">📝 Add Note <span id="profileNoteDot" style="display:none">●</span></button>`:''}<div class="profile-action-hint">Tap ☰ above for profile actions.</div></div>`;
+      <div class="profile-actions"><button class="mini" id="profileAchievementsBtn">🏆 Achievements</button>${!isSelf&&canFeature('profile_note')?`<button class="mini" id="profileNoteBtn">📝 Add Note <span id="profileNoteDot" style="display:none">●</span></button>${canFeature('profile_note')?'<button class="mini" id="profileFeatureBlockBtn">🚫 Feature Block</button>':''}`:''}<div class="profile-action-hint">Tap ☰ above for profile actions.</div></div>`;
     else if(tab==='about') box.innerHTML=`<div class="about-card"><h3>About Me</h3><p>${esc(user.bio||'This user has not written an About Me yet.')}</p>${user.country?`<div class="profile-info-row"><b>🌍 Country</b><span>${esc(countryFlagFor(user.country))} ${esc(user.country)}</span></div>`:''}${user.pronouns?`<div class="profile-info-row"><b>Pronouns</b><span>${esc(user.pronouns)}</span></div>`:''}${user.interests?.length?`<div class="tag-list">${user.interests.map(x=>`<span class="tag">${esc(x)}</span>`).join('')}</div>`:''}${profileSocialLinks(user.socials)?`<div class="profile-info-row"><b>🔗 Socials</b><span class="profile-social-links">${profileSocialLinks(user.socials)}</span></div>`:''}${isSelf?`<button class="primary" id="editAboutBtn">✏️ Edit About Me</button>`:''}</div>`;
     else if(tab==='friends') box.innerHTML=`<div class="about-card"><h3>Friends</h3><p class="muted">Friends and social connections for @${esc(user.username)}.</p><div class="profile-info-row"><b>👥 Friends</b><span>${user.friendsCount||0}</span></div><button class="mini" id="viewFriendsBtn">Open Friends</button></div>`;
     else box.innerHTML=`<div class="about-card"><div class="profile-info-row"><b>📝 About</b><span>${esc(user.bio||'No About Me')}</span></div><div class="profile-info-row"><b>📜 Username history</b><span>${(user.usernameHistory||[]).length} changes</span></div><div class="profile-info-row"><b>🔗 Profile ID</b><span>${esc(user.id)}</span></div>${can('MOD')&&canAccessStaffTarget(user)?`<div class="toolbar"><button class="mini" id="profileHistoryBtn">📜 Staff action history</button><button class="mini" id="profileIpInsightsBtn">🔎 View insights</button></div><div id="profileHistoryBox"></div>`:''}<div class="profile-actions">${!isSelf?'<button class="mini danger" id="profileReportBtn">⚑ Report user</button>':''}</div></div>`;
@@ -2316,6 +2316,7 @@ function renderUserProfileModal(user,data={}){
   function wireProfileTabActions(){
     $('profileAchievementsBtn')?.addEventListener('click',()=>showAchievements(user));
     $('profileNoteBtn')?.addEventListener('click',()=>staffProfileNoteModal(user));
+    $('profileFeatureBlockBtn')?.addEventListener('click',()=>staffFeatureBlockModal(user));
     $('selfAchievementsBtn')?.addEventListener('click',()=>showAchievements(user));
     $('profileLikeBtn')?.addEventListener('click',async()=>{try{const r=await api(`/api/users/${user.id}/like`,{method:'POST'});data.likedByMe=r.liked;user.profileLikes=r.likes;$('profileLikeBtn').innerHTML=`${r.liked?'❤️ Unlike':'❤️ Like'} <span id="likeCount">${r.likes}</span>`;document.querySelector('.profile-stats .profile-stat:last-child').textContent=`❤️ ${r.likes}`;}catch(e){toast(e.message)}});
     $('profileMessageBtn')?.addEventListener('click',()=>{closeModal();openDM(user.id);});
@@ -2958,6 +2959,32 @@ async function loadLeaderboard() {
 /* ---------------- PROFILE ---------------- */
 
 async function staffProfileNoteModal(user){try{const d=await api('/api/staff/user/'+encodeURIComponent(user.id)+'/note');const note=d.note||'';modal('<div class="staff-note-modal"><h2>📝 Staff Profile Note</h2><p class="muted">Confidential staff-only context for @'+esc(user.username)+'. Do not record passwords or unnecessary sensitive personal information.</p>'+(note?'<article class="staff-note-entry"><div class="staff-note-entry-head"><b>Latest note</b><span class="muted">'+esc(d.updatedAt?new Date(d.updatedAt).toLocaleString():'Date unavailable')+'</span></div><div class="staff-note-author">Added by <b>@'+esc(d.updatedBy||'Unknown staff member')+'</b></div><p class="staff-note-message">'+esc(note)+'</p></article>':'<div class="staff-note-empty">No staff note has been added for this account.</div>')+'<label>Add a new note<textarea id="staffProfileNote" rows="5" maxlength="4000" placeholder="Write clear, factual staff context…"></textarea></label><div class="toolbar"><button class="primary" id="saveStaffProfileNote">Add note</button><button class="mini" type="button" onclick="closeModal()">Close</button></div></div>');$('saveStaffProfileNote').onclick=async()=>{const value=$('staffProfileNote').value.trim();if(!value){toast('Write a note before saving.');return;}try{await api('/api/staff/user/'+encodeURIComponent(user.id)+'/note',{method:'PATCH',body:JSON.stringify({note:value})});closeModal();toast('Staff note added.');}catch(e){toast(e.message)}};}catch(e){toast(e.message)}}
+
+async function staffFeatureBlockModal(user){
+  try{
+    const data=await api('/api/staff/user/'+encodeURIComponent(user.id)+'/feature-blocks');
+    const features=data.features||[],blocked=data.blocked||{};
+    const categories=[...new Set(features.map(f=>f.category||'Other'))];
+    const featureRows=categories.map(category=>{
+      const rows=features.filter(f=>(f.category||'Other')===category);
+      return '<section class="feature-block-category"><h3>'+esc(category)+'</h3>'+rows.map(f=>'<label class="feature-block-row"><span><b>'+esc(f.name)+'</b><small>'+(blocked[f.key]?'Blocked for this user':'Available to this user')+'</small></span><input class="feature-block-toggle" type="checkbox" data-feature="'+esc(f.key)+'" '+(blocked[f.key]?'checked':'')+'><i></i></label>').join('')+'</section>';
+    }).join('');
+    modal('<div class="staff-feature-block-modal"><h2>🚫 Feature Block</h2><p class="muted">Choose which site features @'+esc(user.username)+' can use. Turning a feature off blocks its supported server actions for this account; other users are not affected.</p><div class="feature-block-list">'+featureRows+'</div><div class="toolbar"><button class="primary" id="saveFeatureBlocks">Save changes</button><button class="mini" type="button" onclick="closeModal()">Cancel</button></div></div>');
+    $('saveFeatureBlocks').onclick=async()=>{
+      const next={};
+      document.querySelectorAll('.feature-block-toggle').forEach(el=>{if(el.checked)next[el.dataset.feature]=true;});
+      const btn=$('saveFeatureBlocks');if(btn){btn.disabled=true;btn.textContent='Saving…';}
+      try{
+        await api('/api/staff/user/'+encodeURIComponent(user.id)+'/feature-blocks',{method:'PUT',body:JSON.stringify({blocked:next})});
+        closeModal();toast('Feature blocks saved for @'+user.username+'.');
+      }catch(e){if(btn){btn.disabled=false;btn.textContent='Save changes';}toast(e.message);}
+    };
+    document.querySelectorAll('.feature-block-toggle').forEach(el=>el.addEventListener('change',()=>{
+      const label=el.closest('.feature-block-row')?.querySelector('small');
+      if(label)label.textContent=el.checked?'Blocked for this user':'Available to this user';
+    }));
+  }catch(e){toast(e.message);}
+}
 
 function staffAccountModal(user){
   if((!can('MOD')&&!canFeature('manage_staff_accounts'))||!canAccessStaffTarget(user)){toast('You can only access staff controls for accounts ranked below you.');return;}
