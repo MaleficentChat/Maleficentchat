@@ -3857,6 +3857,15 @@ async function loadOwner() {
         <p class="muted">Add one entry per line. Normal words filter chat messages; <code>r: word</code> creates an automatic staff report; <code>u: word</code> blocks usernames and display names containing that text.</p>
         <label>Bulk add filter entries<textarea id="bulkFilterWords" placeholder="ordinaryword&#10;r: reportword&#10;u: restrictedname"></textarea></label>
         <div class="toolbar"><button class="primary" id="addBulkFilter">Add Entries</button><input type="search" id="filterSearch" placeholder="Search all filter entries…"></div>
+        <div class="owner-filter-quick-add">
+          <label>🚫 Filter word or phrase<input id="quickFilterWord" maxlength="120" placeholder="Word/phrase to mask in chat"></label>
+          <button class="mini" type="button" id="quickAddFilterWord">＋ Add filter word</button>
+          <label>🔒 Restricted username / display-name text<input id="quickRestrictedName" maxlength="120" placeholder="Text that usernames/display names may not contain"></label>
+          <button class="mini" type="button" id="quickAddRestrictedName">＋ Restrict name</button>
+          <label>🚨 Auto system-report word<input id="quickReportWord" maxlength="120" placeholder="Text that should create a staff report"></label>
+          <button class="mini" type="button" id="quickAddReportWord">＋ Add report trigger</button>
+        </div>
+        <p class="muted">Quick-add saves immediately. Report triggers create an item in the ⚑ Report Management panel when a matching room message is sent. Restricted-name rules apply to registration and profile name changes.</p>
         <div id="filterCounts">Total: ${filterData.total||0} | Showing: ${filterData.total||0}</div>
         ${[
           {title:'🚫 Filter Words',test:w=>!/^r\s*:/i.test(String(w.word||w))&&!/^u\s*:/i.test(String(w.word||w))},
@@ -3991,7 +4000,11 @@ async function loadOwner() {
       finally{btn.disabled=false;}
     });
     if($('ownerUserSearch')) $('ownerUserSearch').oninput=()=>{const q=$('ownerUserSearch').value.trim().toLowerCase();const rows=[...document.querySelectorAll('.owner-user-control-row')];let showing=0;rows.forEach(row=>{const match=(row.dataset.userSearch||'').includes(q);row.style.display=match?'':'none';if(match)showing++});if($('ownerUserSearchCount'))$('ownerUserSearchCount').textContent=q?(`${showing} of ${rows.length} users`):(`${rows.length} users`)};
-    if($('addBulkFilter')) $('addBulkFilter').onclick=async()=>{try{await api('/api/filter-words/bulk',{method:'POST',body:JSON.stringify({text:$('bulkFilterWords').value})});$('bulkFilterWords').value='';await loadOwner();}catch(e){toast(e.message)}};
+    if($('addBulkFilter')) $('addBulkFilter').onclick=async()=>{try{await api('/api/filter-words/bulk',{method:'POST',body:JSON.stringify({text:$('bulkFilterWords').value})});$('bulkFilterWords').value='';toast('Filter entries saved.');await loadOwner();}catch(e){toast(e.message)}};
+    const addQuickFilterEntry=async(inputId,prefix,label)=>{const input=$(inputId),value=String(input?.value||'').trim();if(!value){toast('Enter a word or phrase first.');input?.focus();return;}const entry=prefix+value;const button=input?.parentElement?.nextElementSibling;try{if(button){button.disabled=true;button.textContent='Saving…';}await api('/api/filter-words/bulk',{method:'POST',body:JSON.stringify({text:entry})});toast(label+' saved.');await loadOwner();}catch(e){toast(e.message||'Could not save filter entry.');}finally{if(button){button.disabled=false;button.textContent=label;}}};
+    $('quickAddFilterWord')?.addEventListener('click',()=>addQuickFilterEntry('quickFilterWord','','Filter word'));
+    $('quickAddRestrictedName')?.addEventListener('click',()=>addQuickFilterEntry('quickRestrictedName','u: ','Restricted-name rule'));
+    $('quickAddReportWord')?.addEventListener('click',()=>addQuickFilterEntry('quickReportWord','r: ','Auto-report trigger'));
     if($('filterSearch')) $('filterSearch').oninput=()=>{const q=$('filterSearch').value.toLowerCase();const rows=[...document.querySelectorAll('.filter-table-row')];let showing=0;rows.forEach(r=>{const show=r.dataset.word.toLowerCase().includes(q);r.style.display=show?'':'none';if(show)showing++});$('filterCounts').textContent=`Total: ${rows.length} | Showing: ${showing}`};
     document.querySelectorAll('[data-filter-delete]').forEach(b=>b.onclick=async()=>{try{await api('/api/filter-words/'+b.dataset.filterDelete,{method:'DELETE'});loadOwner()}catch(e){toast(e.message)}});
     document.querySelectorAll('[data-grant-premium]').forEach(b=>b.onclick=async()=>{try{await api('/api/owner/premium-requests/'+b.dataset.grantPremium+'/grant',{method:'POST'});toast('Premium granted.');loadOwner()}catch(e){toast(e.message)}}); document.querySelectorAll('[data-cancel-premium]').forEach(b=>b.onclick=async()=>{try{const r=await api('/api/premium/cancel',{method:'POST',body:JSON.stringify({userId:b.dataset.cancelPremium})});b.closest('.hub-row')?.remove();toast('Premium cancelled.');}catch(e){toast(e.message)}});
