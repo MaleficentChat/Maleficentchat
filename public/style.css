@@ -3776,3 +3776,24 @@ body.party-mode-active .msg.dm-msg .chat-gif{
 .report-manager-actions{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px}
 .report-manager-actions .mini{max-width:100%;white-space:normal}
 @media(min-width:520px){.report-manager-tools{grid-template-columns:minmax(0,1fr) 150px}}
+
+
+/* Clear, compact Owner Space filter-management dropdown */
+.owner-filter-management{margin:12px 0;overflow:hidden}
+.owner-filter-management>summary{cursor:pointer;display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:13px 15px;font-weight:700;list-style:none}
+.owner-filter-management>summary::-webkit-details-marker{display:none}
+.owner-filter-management>summary::after{content:"＋";margin-left:auto;font-size:1.1rem}
+.owner-filter-management[open]>summary::after{content:"−"}
+.owner-filter-management-content{padding:0 12px 12px;display:grid;gap:10px}
+.owner-filter-intro{margin:0;padding:12px}
+.owner-filter-intro h3{margin:0 0 5px}
+.owner-filter-intro p{margin:0}
+.owner-filter-quick-add{display:grid;gap:10px}
+.filter-quick-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:end;padding:11px;border:1px solid var(--border-color,rgba(180,130,255,.22));border-radius:12px;background:rgba(120,80,180,.06)}
+.filter-quick-row label{display:grid;gap:5px;margin:0}
+.filter-quick-row label b{font-size:.92rem}
+.filter-quick-row label .muted{font-size:.8rem}
+.filter-quick-row input{width:100%;min-width:0}
+.owner-filter-management .filter-category-details{margin:0}
+.owner-filter-management .filter-category-details>summary{cursor:pointer;padding:10px 12px}
+@media(max-width:560px){.filter-quick-row{grid-template-columns:minmax(0,1fr)}.filter-quick-row button{width:100%}.owner-filter-management-content{padding:0 8px 10px}}
