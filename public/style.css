@@ -3765,3 +3765,14 @@ body.party-mode-active .msg.dm-msg .chat-gif{
 .owner-filter-management .filter-category-list{display:grid;gap:7px;margin-top:10px}
 .owner-filter-management .filter-category-list .filter-table-row{display:flex;align-items:center;gap:10px;min-width:0}
 .owner-filter-management .filter-category-list .filter-table-row code{overflow-wrap:anywhere;flex:1}
+
+/* Flag-icon report manager replaces the full Staff Dashboard report section. */
+.report-manager-tools{display:grid;grid-template-columns:minmax(0,1fr);gap:8px;padding:10px;border-bottom:1px solid var(--border)}
+.report-manager-tools input,.report-manager-tools select{width:100%;min-width:0;background:var(--panel-2);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:9px}
+.report-manager-tools small{color:var(--muted)}
+.report-manager-list{max-height:min(70vh,720px);overflow:auto;padding:0 10px 10px}
+.report-manager-item{display:block;padding:12px 2px;border-bottom:1px solid var(--border)}
+.report-manager-item .report-dropdown-copy{min-width:0;overflow-wrap:anywhere}
+.report-manager-actions{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px}
+.report-manager-actions .mini{max-width:100%;white-space:normal}
+@media(min-width:520px){.report-manager-tools{grid-template-columns:minmax(0,1fr) 150px}}
