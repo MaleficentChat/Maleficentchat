@@ -3441,6 +3441,7 @@ async function loadStaff() {
       </div>
 
       
+`;
     $("hardRefreshSiteButton")?.addEventListener("click",hardRefreshSiteCache);
     if(['INSTRUCTOR','COOWNER','OWNER','DEVELOPER'].includes(String(state.user?.rank||'').toUpperCase())){
       $('refreshClearedRoomEvidence')?.addEventListener('click',()=>loadClearedRoomEvidence());
