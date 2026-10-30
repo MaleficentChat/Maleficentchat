@@ -4637,62 +4637,34 @@ async function clearRoom() {
 }
 
 function editRoom() {
-  const room =
-    state.rooms.find(
-      r => r.id === state.currentRoom
-    );
-
-  if (!room) return;
-
+  const room=state.rooms.find(r=>String(r.id)===String(state.currentRoom));
+  if(!room)return;
+  if(room.isDefault || /^main room$/i.test(String(room.name||"").trim())){toast("Main Room is protected.");return;}
+  const ranks=["MEMBER","VIP","PREMIUM","MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"];
+  const rankLabels={MEMBER:"Member",VIP:"VIP",PREMIUM:"Premium",MOD:"Moderator",ADMIN:"Admin",SUPER_ADMIN:"Super Admin",COMMISSOR:"Commissor",COOWNER:"Co-owner",OWNER:"Owner"};
   modal(`
-    <h2>Edit room</h2>
-
-    <input
-      id="rn"
-      value="${esc(room.name)}"
-      placeholder="Room name"
-    >
-
-    <input
-      id="ri"
-      value="${esc(room.icon || "💬")}"
-      placeholder="Icon"
-    >
-
-    <textarea
-      id="rd"
-      placeholder="Description"
-    >${esc(room.description || "")}</textarea>
-
-    <input
-      id="rc"
-      value="${esc(room.category || "Community")}"
-      placeholder="Category"
-    >
-
-    <input
-      id="rs"
-      type="number"
-      min="0"
-      value="${room.slowMode || 0}"
-      placeholder="Slow mode"
-    >
-
-    <input id="rTopic" value="${esc(room.category || "Community")}" placeholder="Room topic / category">
-    <input id="rLimit" type="number" min="2" max="500" value="${Number(room.limit || 100)}" placeholder="Member limit (2–500)">
-    <input id="rBanner" value="${esc(room.banner || "")}" placeholder="Room banner image URL (optional)">
-    <div class="settings-row"><label for="rPublic">Room visibility</label><select id="rPublic"><option value="true" ${room.public !== false ? "selected" : ""}>Public</option><option value="false" ${room.public === false ? "selected" : ""}>Private</option></select></div>
-    <div class="grid2"><label>Minimum age<input id="rMinAge" type="number" min="0" max="120" value="${Number(room.minAge || 0)}"></label><label>Maximum age<input id="rMaxAge" type="number" min="0" max="120" value="${Number(room.maxAge ?? 120)}"></label></div>
-    <label>Minimum rank required to join
-      <select id="rRankRequired">${["MEMBER","VIP","PREMIUM","MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER","DEVELOPER"].map(r=>'<option value="'+r+'" '+(String(room.rankRequired||"MEMBER").toUpperCase()===r?'selected':'')+'>'+({MEMBER:"Member",VIP:"VIP",PREMIUM:"Premium",MOD:"Moderator",ADMIN:"Admin",SUPER_ADMIN:"Super Admin",COMMISSOR:"Commissor",COOWNER:"Co-owner",OWNER:"Owner",DEVELOPER:"Developer"}[r])+'</option>').join("")}</select>
-    </label>
-    <label>Who can join this room
-      <select id="rFriendsOnly"><option value="false" ${room.friendsOnly?'':'selected'}>Everyone who meets the rank requirement</option><option value="true" ${room.friendsOnly?'selected':''}>Friends only (accepted friends)</option></select>
-    </label>
-    <input id="rp" type="password" placeholder="Set/change password (blank removes)">
-    <p class="muted">Room owner: @${esc(room.creator || "Unknown")}. Main Room stays protected.</p>
-    <button class="primary" onclick="saveRoom()">Save room identity</button>
-  `);
+    <div class="room-editor room-editor-edit">
+      <header class="room-editor-hero"><span class="room-editor-hero-icon">✏️</span><div><p class="room-editor-eyebrow">ROOM CONTROL</p><h2>Edit room</h2><p>Update this room’s look, access and limits.</p></div></header>
+      <section class="room-editor-section"><h3>✨ Identity</h3><div class="room-editor-grid room-editor-identity">
+        <label>Room name<input id="rn" maxlength="50" required value="${esc(room.name||"")}" placeholder="e.g. Midnight Lounge"></label>
+        <label>Room icon<input id="ri" maxlength="8" value="${esc(room.icon||"💬")}" placeholder="💬"></label>
+        <label class="room-editor-wide">Description<textarea id="rd" maxlength="300" rows="3" placeholder="What is this room for?">${esc(room.description||"")}</textarea></label>
+        <label>Topic / category<input id="rc" maxlength="40" value="${esc(room.category||"Community")}" placeholder="Community"></label>
+        <label>Banner image URL <span class="room-editor-optional">optional</span><input id="rBanner" type="url" value="${esc(room.banner||"")}" placeholder="https://…"></label>
+      </div></section>
+      <section class="room-editor-section"><h3>🔐 Access & privacy</h3>
+        <label>Who can discover this room<select id="rPublic"><option value="true" ${room.public!==false?"selected":""}>Public — listed for everyone</option><option value="false" ${room.public===false?"selected":""}>Private — not publicly listed</option></select></label>
+        <label>Minimum rank to join<select id="rRankRequired">${ranks.map(r=>'<option value="'+r+'" '+(String(room.rankRequired||"MEMBER").toUpperCase()===r?'selected':'')+'>'+rankLabels[r]+'</option>').join("")}</select></label>
+        <label>Member access<select id="rFriendsOnly"><option value="false" ${room.friendsOnly?'':'selected'}>Anyone who meets the rank requirement</option><option value="true" ${room.friendsOnly?'selected':''}>Accepted friends only</option></select></label>
+        <label>Change room password <span class="room-editor-optional">leave blank to remove it</span><input id="rp" type="password" autocomplete="new-password" placeholder="Enter a new password"></label>
+      </section>
+      <section class="room-editor-section"><h3>⚙️ Room limits</h3><div class="room-editor-grid">
+        <label>Member limit<input id="rLimit" type="number" min="2" max="500" value="${Math.max(2,Math.min(500,Number(room.limit||100)))}"></label>
+        <label>Slow mode (seconds)<input id="rs" type="number" min="0" max="3600" value="${Math.max(0,Number(room.slowMode||0))}"></label>
+      </div><p class="room-editor-help">Slow mode sets the minimum delay between messages from the same user. Use 0 to turn it off.</p></section>
+      <footer class="room-editor-footer"><span class="room-editor-owner">Owner: @${esc(room.creator||"Unknown")}</span><button type="button" class="mini" onclick="closeModal()">Cancel</button><button type="button" class="primary" id="saveRoomChanges">Save changes</button></footer>
+    </div>`);
+  $("saveRoomChanges").onclick=saveRoom;
 }
 
 async function saveRoom() {
@@ -4700,18 +4672,16 @@ async function saveRoom() {
     await api(
       `/api/rooms/${state.currentRoom}`,
       {
-        method: "PATCH",
+        method: "PUT",
         body: JSON.stringify({
           name: $("rn").value,
           icon: $("ri").value,
           description: $("rd").value,
-          category: $("rTopic").value.trim() || $("rc").value,
+          category: $("rc").value.trim() || "Community",
           slowMode: Number($("rs").value || 0),
           limit: Math.max(2, Math.min(500, Number($("rLimit").value || 100))),
           banner: $("rBanner").value.trim(),
           public: $("rPublic").value === "true",
-          minAge: Math.max(0, Math.min(120, Number($("rMinAge").value || 0))),
-          maxAge: Math.max(0, Math.min(120, Number($("rMaxAge").value || 120))),
           rankRequired: $("rRankRequired").value,
           friendsOnly: $("rFriendsOnly").value === "true",
           password: $("rp").value
@@ -4788,132 +4758,45 @@ function showInvite() {
 /* ---------------- CREATE ROOM ---------------- */
 
 $("newRoom").onclick = () => {
+  const ranks=["MEMBER","VIP","PREMIUM","MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"];
+  const rankLabels={MEMBER:"Member",VIP:"VIP",PREMIUM:"Premium",MOD:"Moderator",ADMIN:"Admin",SUPER_ADMIN:"Super Admin",COMMISSOR:"Commissor",COOWNER:"Co-owner",OWNER:"Owner"};
   modal(`
-    <h2>Create room</h2>
-
-    <form id="roomForm">
-
-      <input
-        id="rn"
-        placeholder="Room name"
-        required
-      >
-
-      <input
-        id="ri"
-        placeholder="Icon"
-        value="💬"
-      >
-
-      <input
-        id="rd"
-        placeholder="Description"
-      >
-
-      <input
-        id="rc"
-        placeholder="Category"
-        value="Community"
-      >
-
-      <input
-        id="rp"
-        placeholder="Password (optional)"
-        type="password"
-      >
-
-      <select id="rr">
-
-        ${
-          [
-            "MEMBER",
-            "VIP",
-            "PREMIUM",
-            "MOD",
-            "ADMIN",
-            "SUPER_ADMIN",
-            "COMMISSOR",
-            "COOWNER",
-            "OWNER",
-            "DEVELOPER"
-          ]
-            .map(r =>
-              `<option value="${r}">
-                ${r}
-              </option>`
-            )
-            .join("")
-        }
-
-      </select>
-
-      <label>Room access
-        <select id="rFriendsOnlyCreate">
-          <option value="false">Everyone who meets the minimum rank</option>
-          <option value="true">Friends only (accepted friends)</option>
-        </select>
-      </label>
-
-      <input
-        id="rl"
-        type="number"
-        min="1"
-        value="100"
-        placeholder="Member limit"
-      >
-
-      <input
-        id="rs"
-        type="number"
-        min="0"
-        value="0"
-        placeholder="Slow mode seconds"
-      >
-
-      <button class="primary">
-        Create room
-      </button>
-
-    </form>
-  `);
-
-  $("roomForm").onsubmit =
-    async e => {
-      e.preventDefault();
-
-      try {
-        await api("/api/rooms", {
-          method: "POST",
-          body: JSON.stringify({
-            name: $("rn").value,
-            icon: $("ri").value,
-            description:
-              $("rd").value,
-            category:
-              $("rc").value,
-            password:
-              $("rp").value,
-            rankRequired:
-              $("rr").value,
-            friendsOnly: $("rFriendsOnlyCreate").value === "true",
-            limit:
-              $("rl").value,
-            slowMode:
-              $("rs").value
-          })
-        });
-
-        await loadRooms();
-
-        closeModal();
-
-        renderRooms();
-
-        toast("Room created.");
-      } catch (error) {
-        toast(error.message);
-      }
-    };
+    <div class="room-editor room-editor-create">
+      <header class="room-editor-hero"><span class="room-editor-hero-icon">🌙</span><div><p class="room-editor-eyebrow">MAKE YOUR SPACE</p><h2>Create a room</h2><p>Set up a new corner of Maleficent Chat.</p></div></header>
+      <form id="roomForm">
+        <section class="room-editor-section"><h3>✨ The basics</h3><div class="room-editor-grid room-editor-identity">
+          <label>Room name<input id="rn" maxlength="50" required placeholder="e.g. Midnight Lounge"></label>
+          <label>Room icon<input id="ri" maxlength="8" value="💬" placeholder="💬"></label>
+          <label class="room-editor-wide">Description<textarea id="rd" maxlength="300" rows="3" placeholder="What will people chat about?"></textarea></label>
+          <label>Topic / category<input id="rc" maxlength="40" value="Community" placeholder="Community"></label>
+        </div></section>
+        <section class="room-editor-section"><h3>🔐 Who can join?</h3>
+          <label>Minimum rank<select id="rr">${ranks.map(r=>'<option value="'+r+'" '+(r==="MEMBER"?"selected":"")+'>'+rankLabels[r]+'</option>').join("")}</select></label>
+          <label>Member access<select id="rFriendsOnlyCreate"><option value="false">Anyone who meets the rank requirement</option><option value="true">Accepted friends only</option></select></label>
+          <label>Room password <span class="room-editor-optional">optional</span><input id="rp" type="password" autocomplete="new-password" placeholder="Leave blank for no password"></label>
+        </section>
+        <section class="room-editor-section"><h3>⚙️ Room capacity</h3><div class="room-editor-grid">
+          <label>Member limit<input id="rl" type="number" min="2" max="500" value="100" required></label>
+          <label>Slow mode (seconds)<input id="rs" type="number" min="0" max="3600" value="0" required></label>
+        </div><p class="room-editor-help">Slow mode sets the minimum delay between messages from the same user. Use 0 to turn it off.</p></section>
+        <footer class="room-editor-footer"><button type="button" class="mini" onclick="closeModal()">Cancel</button><button class="primary" type="submit">＋ Create room</button></footer>
+      </form>
+    </div>`);
+  $("roomForm").onsubmit=async e=>{
+    e.preventDefault();
+    const submit=e.currentTarget.querySelector('[type="submit"]');
+    if(submit){submit.disabled=true;submit.textContent="Creating…";}
+    try{
+      await api("/api/rooms",{method:"POST",body:JSON.stringify({
+        name:$("rn").value.trim(),icon:$("ri").value.trim()||"💬",description:$("rd").value.trim(),
+        category:$("rc").value.trim()||"Community",password:$("rp").value,
+        rankRequired:$("rr").value,friendsOnly:$("rFriendsOnlyCreate").value==="true",
+        limit:Math.max(2,Math.min(500,Number($("rl").value)||100)),
+        slowMode:Math.max(0,Math.min(3600,Number($("rs").value)||0))
+      })});
+      await loadRooms();closeModal();renderRooms();toast("Room created.");
+    }catch(error){toast(error.message);if(submit){submit.disabled=false;submit.textContent="＋ Create room";}}
+  };
 };
 
 
