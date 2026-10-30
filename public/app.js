@@ -3862,12 +3862,7 @@ async function loadOwner() {
         <p class="muted">Add one entry per line. Normal words filter chat messages; <code>r: word</code> creates an automatic staff report; <code>u: word</code> blocks usernames and display names containing that text.</p>
         <label>Bulk add filter entries<textarea id="bulkFilterWords" placeholder="ordinaryword&#10;r: reportword&#10;u: restrictedname"></textarea></label>
         <div class="toolbar"><button class="primary" id="addBulkFilter">Add Entries</button><input type="search" id="filterSearch" placeholder="Search all filter entries…"></div>
-        <div class="owner-filter-quick-add">
-          <div class="filter-quick-row"><label>🚫 <b>Filter a chat word</b><span class="muted">Matching text is masked in chat.</span><input id="quickFilterWord" maxlength="120" placeholder="Type a word or phrase"></label><button class="mini" type="button" id="quickAddFilterWord">＋ Add filter</button></div>
-          <div class="filter-quick-row"><label>🔒 <b>Block a name containing text</b><span class="muted">Applies to usernames and display names.</span><input id="quickRestrictedName" maxlength="120" placeholder="Type text to restrict"></label><button class="mini" type="button" id="quickAddRestrictedName">＋ Block name text</button></div>
-          <div class="filter-quick-row"><label>🚨 <b>Report a message containing text</b><span class="muted">Creates a report for staff; does not block the message.</span><input id="quickReportWord" maxlength="120" placeholder="Type a report-trigger word"></label><button class="mini" type="button" id="quickAddReportWord">＋ Add report trigger</button></div>
-        </div>
-        <p class="muted">Each button saves its rule immediately. Open a category below to see or remove saved rules.</p>
+        <p class="muted">Use the bulk box above to add entries: ordinary words filter chat, <code>r: word</code> creates a staff report, and <code>u: word</code> restricts usernames/display names. Open a category below to review or remove saved rules.</p>
         <div id="filterCounts">Total: ${filterData.total||0} | Showing: ${filterData.total||0}</div>
         ${[
           {title:'🚫 Filter Words',test:w=>!/^r\s*:/i.test(String(w.word||w))&&!/^u\s*:/i.test(String(w.word||w))},
