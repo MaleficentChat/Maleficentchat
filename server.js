@@ -3137,6 +3137,7 @@ async function lookupIpNetworkDetails(ip){
         country:d.country||d.country_name||"",
         region:d.region||d.region_name||"",
         city:d.city||"",
+        postalCode:d.postal||d.postal_code||d.zip||"",
         networkProvider:d.isp||d.org||d.organization||d.asn_name||"",
         organization:d.org||d.organization||"",
         asn:d.asn||d.as_number||"",
@@ -3168,6 +3169,7 @@ async function lookupIpNetworkDetails(ip){
           country:d.country_name||"",
           region:d.region||"",
           city:d.city||"",
+          postalCode:d.postal||d.postal_code||d.zip||"",
           networkProvider:d.org||d.asn||"",
           organization:d.org||"",
           asn:d.asn||"",
@@ -3279,7 +3281,7 @@ app.get("/api/staff/ip-inspection",auth,async(req,res)=>{
         const vpnTerms=/\b(vpn|proxy|tor exit|nordvpn|expressvpn|surfshark|proton vpn|mullvad|private internet access|cyberghost|torguard|windscribe|datacamp|hosting|vps|dedicated server|cloud server|datacenter|data center)\b/i;
         if(vpnTerms.test(signalText)){network={...network,vpnDetected:true,vpnSignals:["Possible VPN / proxy / hosting network"],vpnDetectionMethod:"network-name heuristic"};}
       }
-      return {...row,network};
+      return {...row,network,...(fullAccess?{login_status:(db.users.find(u=>String(u.id)===String(row.user_id))?.online?"Online":"Offline")}: {})};
     });
     const vpnAccountsMap=new Map();
     for(const row of records){
@@ -3295,7 +3297,7 @@ app.get("/api/staff/ip-inspection",auth,async(req,res)=>{
       signals:row.network.vpnSignals||[],method:row.network.vpnDetectionMethod||"provider flag",
       ip_address:row.ip_address
     }));
-    const personalizedRecords=viewerRank==="INSTRUCTOR"?records.map(row=>({username:row.username,email:row.email||"",network:{country:row.network?.country||"",region:row.network?.region||"",city:row.network?.city||""}})):viewerRank==="COOWNER"?records.map(({user_agent,id,user_id,...row})=>row):records;
+    const personalizedRecords=viewerRank==="INSTRUCTOR"?records.map(row=>({username:row.username,email:row.email||"",network:{country:row.network?.country||"",region:row.network?.region||"",city:row.network?.city||""}})):viewerRank==="COOWNER"?records.map(({user_agent,id,user_id,...row})=>({...row,network:Object.fromEntries(Object.entries(row.network||{}).filter(([key])=>key!=="postalCode"))})):records;
     const personalizedMatches=viewerRank==="INSTRUCTOR"?[]:sameIpAccounts.map(row=>{const {user_agent,...safe}=row;const network=geo[row.ip_address]||{};return fullAccess?{...safe,network}:{id:safe.id,username:safe.username,email:safe.email,created_at:safe.created_at,ip_address:safe.ip_address,event_type:safe.event_type,recorded_at:safe.recorded_at,network:{country:network.country||"",region:network.region||"",city:network.city||"",networkProvider:network.networkProvider||"",asn:network.asn||"",lookupStatus:network.lookupStatus||"Unavailable"}};});
     return res.json({
       accessProfile:viewerRank,
