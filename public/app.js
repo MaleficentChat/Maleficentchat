@@ -4354,6 +4354,7 @@ async function toggleReportDropdown(refresh=false){
         const st=String(r.status||"OPEN").toUpperCase();
         return `<article class="report-dropdown-item report-manager-item">
           <div class="report-dropdown-copy"><b>${esc(category)} · @${esc(who)}</b><span>${esc(snap.text||r.messagePreview||r.reason||"No report text supplied")}</span>
+          ${snap.attachment?.type?.startsWith("image/")&&snap.attachment?.url?`<a href="${esc(snap.attachment.url)}" target="_blank" rel="noopener"><img class="reported-image" src="${esc(snap.attachment.url)}" alt="Reported image"></a>`:snap.attachment?.url?`<a href="${esc(snap.attachment.url)}" target="_blank" rel="noopener">Open reported attachment</a>`:""}
           <small>Reported by @${esc(r.reporterUsername||"Unknown")} · ${fmt(r.time)} · ${esc(st)}</small>
           <small>Reason: ${esc(r.reason||"No reason supplied")}${r.assignedToUsername?' · Assigned to @'+esc(r.assignedToUsername):''}</small>
           ${r.conversationUserId?'<small class="report-evidence-hint">🔒 Private-message evidence available</small>':""}</div>
