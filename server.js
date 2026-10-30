@@ -4189,6 +4189,59 @@ app.patch("/api/owner/command-settings",ownerOnly,async(req,res)=>{
   db.settings.command_ranks=next;save();res.json({ok:true,settings:next});
 });
 
+
+const GUIDE_RANKS = ["MEMBER","VIP","PREMIUM","ROYAL","MOD","ADMIN","SUPER_ADMIN","COMMISSOR","INSTRUCTOR","COOWNER","OWNER","DEVELOPER"];
+function normalizeGuideContent(value){
+  const all=value&&typeof value==="object"&&!Array.isArray(value)?value:{};
+  const out={};
+  for(const rank of GUIDE_RANKS){
+    const entries=Array.isArray(all[rank])?all[rank]:[];
+    out[rank]=entries.slice(0,100).map((item,i)=>({
+      id:String(item?.id||("guide-"+Date.now()+"-"+i)),
+      title:cleanText(item?.title||"").trim().slice(0,100),
+      content:String(item?.content||"").trim().slice(0,12000)
+    })).filter(item=>item.title&&item.content);
+  }
+  return out;
+}
+function guideContentStore(){
+  db.settings ||= {};
+  db.settings.guide_content=normalizeGuideContent(db.settings.guide_content);
+  return db.settings.guide_content;
+}
+app.get("/api/guide",auth,(req,res)=>{
+  const u=current(req);if(!u)return res.status(401).json({error:"Please log in."});
+  const rank=String(u.rank||"MEMBER").toUpperCase();
+  res.json({rank,guides:guideContentStore()[rank]||[]});
+});
+app.get("/api/owner/guide/:rank",auth,ownerOnly,(req,res)=>{
+  const rank=String(req.params.rank||"").toUpperCase();
+  if(!GUIDE_RANKS.includes(rank))return res.status(400).json({error:"Choose a valid rank."});
+  res.json({rank,guides:guideContentStore()[rank]||[]});
+});
+app.post("/api/owner/guide",auth,ownerOnly,async(req,res)=>{
+  const rank=String(req.body.rank||"").toUpperCase(),title=cleanText(req.body.title||"").trim().slice(0,100),content=String(req.body.content||"").trim().slice(0,12000);
+  if(!GUIDE_RANKS.includes(rank))return res.status(400).json({error:"Choose a valid rank."});
+  if(!title||!content)return res.status(400).json({error:"Guide title and content are required."});
+  const store=guideContentStore();if(store[rank].length>=100)return res.status(400).json({error:"This rank already has the maximum of 100 guide entries."});
+  store[rank].push({id:"guide-"+Date.now()+"-"+crypto.randomBytes(4).toString("hex"),title,content});
+  save();res.status(201).json({ok:true,rank,guides:store[rank]});
+});
+app.put("/api/owner/guide/:rank/:id",auth,ownerOnly,(req,res)=>{
+  const rank=String(req.params.rank||"").toUpperCase(),id=String(req.params.id||""),title=cleanText(req.body.title||"").trim().slice(0,100),content=String(req.body.content||"").trim().slice(0,12000);
+  if(!GUIDE_RANKS.includes(rank))return res.status(400).json({error:"Choose a valid rank."});
+  if(!title||!content)return res.status(400).json({error:"Guide title and content are required."});
+  const store=guideContentStore(),item=store[rank].find(g=>g.id===id);if(!item)return res.status(404).json({error:"Guide entry not found."});
+  item.title=title;item.content=content;save();res.json({ok:true,rank,guides:store[rank]});
+});
+app.delete("/api/owner/guide/:rank/:id",auth,ownerOnly,(req,res)=>{
+  const rank=String(req.params.rank||"").toUpperCase(),id=String(req.params.id||"");
+  if(!GUIDE_RANKS.includes(rank))return res.status(400).json({error:"Choose a valid rank."});
+  const store=guideContentStore(),before=store[rank].length;store[rank]=store[rank].filter(g=>g.id!==id);
+  if(store[rank].length===before)return res.status(404).json({error:"Guide entry not found."});
+  save();res.json({ok:true,rank,guides:store[rank]});
+});
+
 app.patch("/api/owner/settings",ownerOnly,async(req,res)=>{
   if(req.body.systemModeration!==undefined){
     const incoming=req.body.systemModeration;
