@@ -688,7 +688,7 @@ app.get("/api/under-construction/status",async(req,res)=>{
     res.status(500).json({error:"Could not read under-construction status from the database."});
   }
 });
-app.post("/api/owner/under-construction",auth,ownerOnly,async(req,res)=>{
+app.post("/api/staff/under-construction",auth,ownerOnly,async(req,res)=>{
   try{
     const enabled=req.body?.enabled===true;
     const now=Date.now();
