@@ -1208,15 +1208,20 @@ app.post(
 
     io.emit("presence");
 
+    const loginResponse={
+      user:safeUser(u),
+      token:makeToken(u.id)
+    };
+
+    // The client supports signed-token authentication as well as cookie sessions.
+    // Do not lock a valid user out solely because the PostgreSQL session store
+    // is temporarily unavailable; the signed token is independently verifiable.
     req.session.save(err=>{
       if(err){
-        console.error("Session save error:",err);
-        return res.status(500).json({error:"Could not create login session."});
+        console.error("Login session persistence failed; returning signed-token fallback:",err);
+        return res.json(loginResponse);
       }
-
-      res.json({
-        user:safeUser(u), token:makeToken(u.id)
-      });
+      return res.json(loginResponse);
     });
   }
 );
