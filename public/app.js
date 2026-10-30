@@ -449,7 +449,7 @@ async function start() {
     if(payload?.enabled&&!isOwnerExempt())showConstructionPanel(payload.until);
     else hideConstructionPanel();
     const toggle=$("underConstructionToggle");
-    if(toggle&&isOwnerExempt()){toggle.checked=!!payload?.enabled;toggle.setAttribute("aria-checked",toggle.checked?"true":"false");if($("constructionDuration"))$("constructionDuration").disabled=toggle.checked;}
+    if(toggle&&isOwnerExempt()){toggle.checked=!!payload?.enabled;toggle.setAttribute("aria-checked",toggle.checked?"true":"false");}
   });
   state.socket.on("room:theme",data=>{if(!data?.roomId||!data?.theme)return;const room=state.rooms.find(r=>String(r.id)===String(data.roomId));if(room)room.roomTheme=data.theme;if(String(state.currentRoom)===String(data.roomId))applyRoomTheme(data.theme);});
   state.socket.on("gold:update",data=>{ if(state.user&&data?.gold!==undefined){state.user.gold=data.gold; updateNav();}});
@@ -3575,22 +3575,13 @@ function hideConstructionPanel(){
   constructionTimer=null;
   document.getElementById("underConstructionOverlay")?.remove();
 }
-function showConstructionPanel(until){
+function showConstructionPanel(){
   if(isOwnerExempt()){hideConstructionPanel();return;}
-  const end=Number(until)||0;
-  if(end<=Date.now()){hideConstructionPanel();return;}
   let panel=document.getElementById("underConstructionOverlay");
   if(!panel){panel=document.createElement("div");panel.id="underConstructionOverlay";panel.className="under-construction-overlay";document.body.appendChild(panel);}
-  const tick=()=>{
-    const remaining=end-Date.now();
-    if(remaining<=0){hideConstructionPanel();checkUnderConstruction();return;}
-    const total=Math.floor(remaining/1000),days=Math.floor(total/86400),hours=Math.floor(total%86400/3600),minutes=Math.floor(total%3600/60),seconds=total%60;
-    const pad=n=>String(n).padStart(2,"0");
-    panel.innerHTML='<div class="under-construction-card"><div class="under-construction-icon">🚧</div><h1>THE SIRE IS UNDER CONSTRUCTION</h1><p>We’ll be back when the work is complete.</p><div class="under-construction-timer">'+(days?days+':':'')+pad(hours)+':'+pad(minutes)+':'+pad(seconds)+'</div><small>'+(days?'Days : ':'')+'Hours : Minutes : Seconds remaining</small></div>';
-    panel.classList.remove("hidden");
-    constructionTimer=setTimeout(tick,1000);
-  };
-  tick();
+  if(constructionTimer){clearTimeout(constructionTimer);constructionTimer=null;}
+  panel.innerHTML='<div class="under-construction-card"><div class="under-construction-icon">🚧</div><h1>THE SITE IS UNDER CONSTRUCTION</h1><p>We’ll be back when the work is complete.</p></div>';
+  panel.classList.remove("hidden");
 }
 async function checkUnderConstruction(){
   try{
@@ -3598,24 +3589,18 @@ async function checkUnderConstruction(){
     if(status.enabled&&!status.exempt)showConstructionPanel(status.until);
     else hideConstructionPanel();
     const toggle=$("underConstructionToggle");
-    if(toggle&&isOwnerExempt()){const configured=Boolean(status.configuredEnabled??status.enabled);toggle.checked=configured;toggle.setAttribute("aria-checked",configured?"true":"false");if($("constructionDuration"))$("constructionDuration").disabled=configured;}
+    if(toggle&&isOwnerExempt()){const configured=Boolean(status.configuredEnabled??status.enabled);toggle.checked=configured;toggle.setAttribute("aria-checked",configured?"true":"false");}
   }catch{}
 }
 async function toggleUnderConstruction(requestedEnabled){
   if(!isOwnerExempt()){toast("Owner/Developer access required.");await checkUnderConstruction();return;}
   const toggle=$("underConstructionToggle");
-  const duration=$("constructionDuration");
   const enabled=Boolean(requestedEnabled);
   if(toggle)toggle.disabled=true;
-  if(duration)duration.disabled=enabled;
   try{
-    const payload=enabled
-      ? {enabled:true,durationMinutes:Number(duration?.value||60)}
-      : {enabled:false};
-    const result=await api("/api/owner/under-construction",{method:"POST",body:JSON.stringify(payload)});
+    const result=await api("/api/owner/under-construction",{method:"POST",body:JSON.stringify({enabled})});
     const active=Boolean(result.enabled);
     if(toggle){toggle.checked=active;toggle.setAttribute("aria-checked",active?"true":"false");}
-    if(duration)duration.disabled=active;
     toast(active?"Under Construction is ON. Owner and Developer remain exempt.":"Under Construction is OFF.");
     await checkUnderConstruction();
   }catch(e){
@@ -3679,18 +3664,6 @@ async function loadOwner() {
             Inspect private messages
           </button>
           
-          <label class="construction-duration-label">Construction duration
-            <select id="constructionDuration">
-              <option value="15">15 minutes</option>
-              <option value="30">30 minutes</option>
-              <option value="60" selected>1 hour</option>
-              <option value="120">2 hours</option>
-              <option value="360">6 hours</option>
-              <option value="720">12 hours</option>
-              <option value="1440">24 hours</option>
-              <option value="10080">7 days</option>
-            </select>
-          </label>
           <label class="construction-switch-row" for="underConstructionToggle"><span><b>🚧 Under Construction</b><small>Turn maintenance mode on or off</small></span><span class="construction-switch"><input type="checkbox" id="underConstructionToggle" role="switch" aria-label="Under Construction mode" aria-checked="false" onchange="toggleUnderConstruction(this.checked)"><span class="construction-switch-track" aria-hidden="true"></span></span></label>
 
           <button class="mini" onclick="ownerFeatureGrants()">🧩 Feature granting</button>
