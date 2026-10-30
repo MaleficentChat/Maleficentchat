@@ -580,12 +580,33 @@ const SESSION_SECRET = getSessionSecret();
 const TOKEN_SECRET = SESSION_SECRET;
 function makeToken(userId){const b64=o=>Buffer.from(JSON.stringify(o)).toString("base64url");const h=b64({alg:"HS256",typ:"JWT"}),p=b64({sub:String(userId),exp:Math.floor(Date.now()/1000)+7*86400});const sig=crypto.createHmac("sha256",TOKEN_SECRET).update(h+"."+p).digest("base64url");return h+"."+p+"."+sig;}
 function verifyToken(token){try{const [h,p,sig]=String(token||"").split(".");if(!h||!p||!sig)return null;const e=crypto.createHmac("sha256",TOKEN_SECRET).update(h+"."+p).digest("base64url");if(sig!==e)return null;const x=JSON.parse(Buffer.from(p,"base64url").toString("utf8"));return x.exp>=Math.floor(Date.now()/1000)?x:null;}catch{return null;}}
+function roomRankCanEnter(user,room){
+  if(!user||!room)return false;
+  if(room.isDefault||/^main room$/i.test(String(room.name||"").trim()))return true;
+  const userRank=String(user.rank||"MEMBER").toUpperCase();
+  const requiredRank=String(room.rankRequired||"MEMBER").toUpperCase();
+  const userLevel=rankOrder[userRank],requiredLevel=rankOrder[requiredRank];
+  // Unknown or stale rank values must never accidentally grant access.
+  return Number.isInteger(userLevel)&&Number.isInteger(requiredLevel)&&userLevel>=requiredLevel;
+}
 function makeRoomJoinToken(userId,room){
   const payload=Buffer.from(JSON.stringify({sub:String(userId),room:String(room.id),access:crypto.createHash("sha256").update(String(room.passwordHash||"public")).digest("hex"),exp:Math.floor(Date.now()/1000)+7*86400})).toString("base64url");
   const signature=crypto.createHmac("sha256",TOKEN_SECRET).update(payload).digest("base64url");return payload+"."+signature;
 }
 function verifyRoomJoinToken(token,userId,room){
-  try{const [payload,signature]=String(token||"").split(".");if(!payload||!signature)return false;const expected=crypto.createHmac("sha256",TOKEN_SECRET).update(payload).digest("base64url");if(signature.length!==expected.length||!crypto.timingSafeEqual(Buffer.from(signature),Buffer.from(expected)))return false;const data=JSON.parse(Buffer.from(payload,"base64url").toString("utf8"));return data.sub===String(userId)&&data.room===String(room.id)&&data.exp>=Math.floor(Date.now()/1000)&&data.access===crypto.createHash("sha256").update(String(room.passwordHash||"public")).digest("hex");}catch{return false;}
+  try{
+    const [payload,signature]=String(token||"").split(".");
+    if(!payload||!signature)return false;
+    const expected=crypto.createHmac("sha256",TOKEN_SECRET).update(payload).digest("base64url");
+    if(signature.length!==expected.length||!crypto.timingSafeEqual(Buffer.from(signature),Buffer.from(expected)))return false;
+    const data=JSON.parse(Buffer.from(payload,"base64url").toString("utf8"));
+    if(data.sub!==String(userId)||data.room!==String(room.id)||data.exp<Math.floor(Date.now()/1000)||data.access!==crypto.createHash("sha256").update(String(room.passwordHash||"public")).digest("hex"))return false;
+    const user=db.users.find(x=>String(x.id)===String(userId));
+    if(!user||!roomRankCanEnter(user,room))return false;
+    const isMain=!!room.isDefault||/^main room$/i.test(String(room.name||"").trim());
+    if(!isMain&&roomFriendsOnly(room)&&!areAcceptedFriends(user,db.users.find(x=>String(x.id)===String(room.ownerId||room.created_by))))return false;
+    return true;
+  }catch{return false;}
 }
 function current(req){
   // Prefer the live session when it resolves to an existing account. A stale
@@ -1747,6 +1768,11 @@ app.put("/api/rooms/:id",auth,async(req,res)=>{
   if(r.isDefault || /^main room$/i.test(String(r.name||"").trim()))return res.status(403).json({error:"The permanent Main Room cannot be modified."});
   if(!featureGrantAllowed(u,"edit_rooms")&&!(roomOwnerOrGlobal(u,r)&&Array.isArray(db.settings?.feature_grants?.room_edit_own)&&db.settings.feature_grants.room_edit_own.length))return res.status(403).json({error:"Room editing is disabled in Feature Granting or you do not own this room."});
   const fields={}; for(const k of ["name","icon","description","category","rankRequired","limit","slowMode","banner","public","minAge","maxAge"]) if(req.body[k]!==undefined) fields[k]=req.body[k];
+  if(fields.rankRequired!==undefined){
+    fields.rankRequired=String(fields.rankRequired||"").toUpperCase();
+    const allowedRoomRanks=["MEMBER","VIP","PREMIUM","MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"];
+    if(!allowedRoomRanks.includes(fields.rankRequired))return res.status(400).json({error:"Choose a valid current rank for this room."});
+  }
   if(req.body.friendsOnly!==undefined){
     db.settings ||= {};db.settings.room_access ||= {};
     db.settings.room_access[String(r.id)]={...(db.settings.room_access[String(r.id)]||{}),friendsOnly:req.body.friendsOnly===true};
@@ -1817,7 +1843,7 @@ app.post(
     const userRank=String(u.rank||"MEMBER").toUpperCase();
     const requiredRank=String(r.rankRequired||"MEMBER").toUpperCase();
     // Main Room is the guaranteed post-login entry point for every account.
-    if(!isPermanentMainRoom && (rankOrder[userRank]??0)<(rankOrder[requiredRank]??0)){
+    if(!isPermanentMainRoom && !roomRankCanEnter(u,r)){
       return res.status(403).json({error:`This room requires ${requiredRank.replaceAll("_"," ")} rank or higher.`});
     }
     if(!isPermanentMainRoom && roomFriendsOnly(r)&&!areAcceptedFriends(u,db.users.find(x=>String(x.id)===String(r.ownerId||r.created_by)))){
@@ -4869,7 +4895,7 @@ io.on(
       const r=db.rooms.find(x=>String(x.id)===String(roomId));
       if(!u||!r) return;
       if(!verifyRoomJoinToken(joinRequest?.joinToken,u.id,r)){socket.emit("room-error",{error:"Join this room through the room access flow first."});return;}
-      if(rankOrder[u.rank]<rankOrder[r.rankRequired]){socket.emit("room-error",{error:"Your rank cannot enter this room."});return;}
+      if(!roomRankCanEnter(u,r)){socket.emit("room-error",{error:"Your rank cannot enter this room."});return;}
       if(u.banned===true) return;
       if(u.kickedUntil&&u.kickedUntil>Date.now()) return;
       for(const room of socket.rooms){
