@@ -3109,11 +3109,14 @@ app.get("/api/staff/ip-inspection/diagnostics",auth,ownerOnly,(req,res)=>{
   };
   res.json({sources,privateOrUnavailable:Object.fromEntries(Object.entries(sources).map(([key,value])=>[key,isPrivateIp(value)])),trustProxy:app.get("trust proxy")});
 });
-app.get("/api/staff/ip-inspection/users",auth,ownerOnly,async(req,res)=>{
+app.get("/api/staff/ip-inspection/users",auth,async(req,res)=>{
+  const actor=current(req),viewerRank=String(actor?.rank||"").toUpperCase();
+  if(!["INSTRUCTOR","COOWNER","OWNER","DEVELOPER"].includes(viewerRank))return res.status(403).json({error:"Your rank does not have IP Inspection access."});
+  const canInspectTarget=target=>viewerRank==="OWNER"||viewerRank==="DEVELOPER"||(String(target?.id)!==String(actor?.id)&&(rankOrder[String(target?.rank||"MEMBER").toUpperCase()]??999)<(rankOrder[viewerRank]??-1));
   const term=String(req.query.q||"").trim().replace(/^@/,"").slice(0,80);
-  try{const result=await pool.query("SELECT id,username,email,created_at FROM users WHERE ($1='' OR username ILIKE '%'||$1||'%' OR COALESCE(email,'') ILIKE '%'||$1||'%') ORDER BY LOWER(username) LIMIT 30",[term]);if(result.rows.length||!Array.isArray(db.users))return res.json({users:result.rows});}
+  try{const result=await pool.query("SELECT id,username,email,created_at FROM users WHERE ($1='' OR username ILIKE '%'||$1||'%' OR COALESCE(email,'') ILIKE '%'||$1||'%') ORDER BY LOWER(username) LIMIT 30",[term]);if(result.rows.length||!Array.isArray(db.users))return res.json({users:result.rows.filter(u=>canInspectTarget({...u,rank:db.users.find(x=>String(x.id)===String(u.id))?.rank})).slice(0,30)});}
   catch(error){console.error("[IP_INSPECTION] SQL account search unavailable; using persisted users:",error?.message||error);}
-  const q=term.toLowerCase(),users=(db.users||[]).filter(u=>!q||String(u.username||"").toLowerCase().includes(q)||String(u.email||"").toLowerCase().includes(q)).sort((a,b)=>String(a.username||"").localeCompare(String(b.username||""))).slice(0,30).map(u=>({id:u.id,username:u.username,email:u.email||"",created_at:u.createdAt||u.created_at||null}));
+  const q=term.toLowerCase(),users=(db.users||[]).filter(u=>!q||String(u.username||"").toLowerCase().includes(q)||String(u.email||"").toLowerCase().includes(q)).sort((a,b)=>String(a.username||"").localeCompare(String(b.username||""))) .filter(canInspectTarget).slice(0,30).map(u=>({id:u.id,username:u.username,email:u.email||"",created_at:u.createdAt||u.created_at||null}));
   return res.json({users});
 });
 const ipGeoCache = new Map();
@@ -3219,7 +3222,11 @@ app.get('/api/staff/user/:id/ip-insights',auth,async(req,res)=>{
   }
 });
 
-app.get("/api/staff/ip-inspection",auth,ownerOnly,async(req,res)=>{
+app.get("/api/staff/ip-inspection",auth,async(req,res)=>{
+  const actor=current(req),viewerRank=String(actor?.rank||"").toUpperCase();
+  if(!["INSTRUCTOR","COOWNER","OWNER","DEVELOPER"].includes(viewerRank))return res.status(403).json({error:"Your rank does not have IP Inspection access."});
+  const fullAccess=viewerRank==="OWNER"||viewerRank==="DEVELOPER";
+  const canInspectTarget=target=>fullAccess||(String(target?.id)!==String(actor?.id)&&(rankOrder[String(target?.rank||"MEMBER").toUpperCase()]??999)<(rankOrder[viewerRank]??-1));
   let stage="prepare-query";
   try{
     const search=String(req.query.q||"").trim().slice(0,100).replace(/^@/,"");
@@ -3234,6 +3241,7 @@ app.get("/api/staff/ip-inspection",auth,ownerOnly,async(req,res)=>{
     const limitPlaceholder="$"+params.length;
     stage="query-ip-history";
     const q=await pool.query(`SELECT h.id,h.user_id,u.username,u.email,h.ip_address::text AS ip_address,h.event_type,h.user_agent,h.recorded_at,u.created_at AS registered_at FROM users u LEFT JOIN user_ip_history h ON h.user_id=u.id ${where} ORDER BY h.recorded_at DESC NULLS LAST,u.username LIMIT ${limitPlaceholder}`,params);
+    const permittedRows=q.rows.filter(row=>canInspectTarget({id:row.user_id,rank:db.users.find(u=>String(u.id)===String(row.user_id))?.rank}));
     stage="lookup-network-details";
     const normalizeIp=ip=>String(ip||"").trim().replace(/^::ffff:/i,"").replace(/^\[|\]$/g,"").replace(/\/\d{1,3}$/,"");
     const isPrivateOrLocal=ip=>{
@@ -3246,9 +3254,9 @@ app.get("/api/staff/ip-inspection",auth,ownerOnly,async(req,res)=>{
         value.startsWith("2001:db8:")||value.startsWith("192.0.2.")||
         value.startsWith("198.51.100.")||value.startsWith("203.0.113.");
     };
-    const uniqueIps=[...new Set(q.rows.map(x=>normalizeIp(x.ip_address)))].filter(ip=>!isPrivateOrLocal(ip));
-    const sourceUserIds=[...new Set(q.rows.filter(row=>row.ip_address&&!isPrivateOrLocal(normalizeIp(row.ip_address))).map(row=>Number(row.user_id)).filter(Number.isFinite))];
-    const matchedIps=[...new Set(q.rows.map(row=>normalizeIp(row.ip_address)).filter(ip=>ip&&!isPrivateOrLocal(ip)))];
+    const uniqueIps=[...new Set(permittedRows.map(x=>normalizeIp(x.ip_address)))].filter(ip=>!isPrivateOrLocal(ip));
+    const sourceUserIds=[...new Set(permittedRows.filter(row=>row.ip_address&&!isPrivateOrLocal(normalizeIp(row.ip_address))).map(row=>Number(row.user_id)).filter(Number.isFinite))];
+    const matchedIps=[...new Set(permittedRows.map(row=>normalizeIp(row.ip_address)).filter(ip=>ip&&!isPrivateOrLocal(ip)))];
     let sameIpAccounts=[];
     if(matchedIps.length&&sourceUserIds.length){
       const matches=await pool.query(`SELECT DISTINCT u.id,u.username,u.email,u.created_at,host(h.ip_address) AS ip_address,h.event_type,h.recorded_at,h.user_agent
@@ -3256,11 +3264,11 @@ app.get("/api/staff/ip-inspection",auth,ownerOnly,async(req,res)=>{
         WHERE host(h.ip_address)=ANY($1::text[]) AND NOT (u.id=ANY($2::int[]))
         ORDER BY u.username,h.recorded_at DESC`,[matchedIps,sourceUserIds]);
       const seen=new Set();
-      sameIpAccounts=matches.rows.filter(row=>{const key=String(row.id)+'|'+row.ip_address;if(seen.has(key))return false;seen.add(key);return true;});
+      sameIpAccounts=matches.rows.filter(row=>canInspectTarget({id:row.id,rank:db.users.find(u=>String(u.id)===String(row.id))?.rank})).filter(row=>{const key=String(row.id)+'|'+row.ip_address;if(seen.has(key))return false;seen.add(key);return true;});
     }
     const lookups=await Promise.all(uniqueIps.slice(0,60).map(async ip=>[ip,await lookupIpNetworkDetails(ip)]));
     const geo=Object.fromEntries(lookups);
-    const records=q.rows.map(row=>{
+    const records=permittedRows.map(row=>{
       const ip=normalizeIp(row.ip_address);
       const privateIp=isPrivateOrLocal(ip);
       let network=privateIp?{lookupStatus:ip?"Private/local IP — no public geolocation":"No IP recorded"}:(geo[ip]||{lookupStatus:"Not looked up"});
@@ -3287,10 +3295,14 @@ app.get("/api/staff/ip-inspection",auth,ownerOnly,async(req,res)=>{
       signals:row.network.vpnSignals||[],method:row.network.vpnDetectionMethod||"provider flag",
       ip_address:row.ip_address
     }));
+    const personalizedRecords=viewerRank==="INSTRUCTOR"?records.map(row=>({username:row.username,email:row.email||"",network:{country:row.network?.country||"",region:row.network?.region||"",city:row.network?.city||"",lookupStatus:row.network?.lookupStatus||"Unavailable"}})):viewerRank==="COOWNER"?records.map(({user_agent,id,user_id,...row})=>row):records;
+    const personalizedMatches=viewerRank==="INSTRUCTOR"?[]:sameIpAccounts.map(row=>{const {user_agent,...safe}=row;const network=geo[row.ip_address]||{};return fullAccess?{...safe,network}:{id:safe.id,username:safe.username,email:safe.email,created_at:safe.created_at,ip_address:safe.ip_address,event_type:safe.event_type,recorded_at:safe.recorded_at,network:{country:network.country||"",region:network.region||"",city:network.city||"",networkProvider:network.networkProvider||"",asn:network.asn||"",lookupStatus:network.lookupStatus||"Unavailable"}};});
     return res.json({
-      vpnAccounts,
-      sameIpAccounts:sameIpAccounts.map(row=>({...row,network:geo[row.ip_address]||{lookupStatus:"Not looked up"}})),
-      records,
+      accessProfile:viewerRank,
+      accessFields:viewerRank==="INSTRUCTOR"?["email","location"]:viewerRank==="COOWNER"?["email","ip_address","location","networkProvider","networkTechnical","eventTime"]:["all"],
+      vpnAccounts:fullAccess?vpnAccounts:[],
+      sameIpAccounts:personalizedMatches,
+      records:personalizedRecords,
       limit,
       geolocationNote:"Approximate IP location and network data are retrieved server-side from IP Info, with ipapi.co as a fallback. Results may be missing or inaccurate, especially for VPNs, mobile networks, or private addresses."
     });
