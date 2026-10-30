@@ -3643,7 +3643,7 @@ button,input,select,textarea { max-width:100%; }
 .construction-code-box>small{font-size:11px;line-height:1.45}
 
 
-/* 🎉 Party Mode — visible effects are fully reversible; music stays hidden */
+/* 🎉 Party Mode — intense neon text glow and cycling rainbow usernames */
 .party-mode-active .username,
 .party-mode-active .user-name,
 .party-mode-active .instagram-user-name,
@@ -3654,7 +3654,21 @@ button,input,select,textarea { max-width:100%; }
 .party-mode-active .chat-message .author,
 .party-mode-active .msg .msg-author,
 .party-mode-active [data-username]{
-  animation:party-rainbow-glow 2.8s linear infinite !important;
+  animation:party-rainbow-glow 1.8s linear infinite!important;
+  font-weight:800!important;
+  -webkit-text-stroke:.2px currentColor;
+  filter:brightness(1.25);
+}
+.party-mode-active .msg .msg-text,
+.party-mode-active .msg .msg-body,
+.party-mode-active .msg .msg-body *,
+.party-mode-active .msg p,
+.party-mode-active .msg .message-text,
+.party-mode-active .message-bubble,
+.party-mode-active .chat-message .message-content,
+.party-mode-active #messages .msg,
+.party-mode-active #messages .msg-text{
+  animation:party-text-neon 2.4s ease-in-out infinite alternate!important;
 }
 .party-mode-active .msg,
 .party-mode-active .msg-body,
@@ -3665,11 +3679,11 @@ button,input,select,textarea { max-width:100%; }
 .party-mode-active #messages,
 .party-mode-active .chat-card,
 .party-mode-active .chat-wrap{
-  box-shadow:0 0 9px rgba(255,79,216,.18),0 0 18px rgba(92,255,176,.12);
+  box-shadow:0 0 12px rgba(255,79,216,.4),0 0 24px rgba(155,92,255,.28),0 0 34px rgba(92,255,176,.16)!important;
 }
 .party-mode-active .msg,
 .party-mode-active .msg-body{
-  animation:party-chat-glow 3.6s linear infinite;
+  animation:party-chat-glow 2.2s linear infinite!important;
 }
 .party-mode-active .chat-gif img,
 .party-mode-active .message-image,
@@ -3680,7 +3694,7 @@ button,input,select,textarea { max-width:100%; }
 .party-mode-active .sticker,
 .party-mode-active .attachment-preview img{
   transform-origin:center;
-  animation:party-spin 4s linear infinite !important;
+  animation:party-spin 4s linear infinite!important;
 }
 .party-mode-player{
   position:fixed!important;left:-2px!important;bottom:0!important;
@@ -3689,17 +3703,24 @@ button,input,select,textarea { max-width:100%; }
   border:0!important;box-shadow:none!important;z-index:-1!important;
 }
 @keyframes party-rainbow-glow{
-  0%{color:#ff4d6d;text-shadow:0 0 6px #ff4d6d,0 0 12px #ff4d6d}
-  20%{color:#ffb84d;text-shadow:0 0 6px #ffb84d,0 0 12px #ffb84d}
-  40%{color:#f7ff6b;text-shadow:0 0 6px #f7ff6b,0 0 12px #f7ff6b}
-  60%{color:#5cffb0;text-shadow:0 0 6px #5cffb0,0 0 12px #5cffb0}
-  80%{color:#6bbcff;text-shadow:0 0 6px #6bbcff,0 0 12px #6bbcff}
-  100%{color:#e879ff;text-shadow:0 0 6px #e879ff,0 0 12px #e879ff}
+  0%{color:#ff3158;text-shadow:0 0 3px #ff3158,0 0 8px #ff3158,0 0 16px #ff3158,0 0 28px #ff3158,0 0 42px #ff3158}
+  16%{color:#ff9d00;text-shadow:0 0 3px #ff9d00,0 0 8px #ff9d00,0 0 16px #ff9d00,0 0 28px #ff9d00,0 0 42px #ff9d00}
+  32%{color:#faff00;text-shadow:0 0 3px #faff00,0 0 8px #faff00,0 0 16px #faff00,0 0 28px #faff00,0 0 42px #faff00}
+  48%{color:#00ff9d;text-shadow:0 0 3px #00ff9d,0 0 8px #00ff9d,0 0 16px #00ff9d,0 0 28px #00ff9d,0 0 42px #00ff9d}
+  64%{color:#00c8ff;text-shadow:0 0 3px #00c8ff,0 0 8px #00c8ff,0 0 16px #00c8ff,0 0 28px #00c8ff,0 0 42px #00c8ff}
+  80%{color:#9b5cff;text-shadow:0 0 3px #9b5cff,0 0 8px #9b5cff,0 0 16px #9b5cff,0 0 28px #9b5cff,0 0 42px #9b5cff}
+  100%{color:#ff3de8;text-shadow:0 0 3px #ff3de8,0 0 8px #ff3de8,0 0 16px #ff3de8,0 0 28px #ff3de8,0 0 42px #ff3de8}
+}
+@keyframes party-text-neon{
+  0%{text-shadow:0 0 3px rgba(255,49,88,.95),0 0 9px rgba(255,49,88,.8),0 0 18px rgba(255,49,88,.55);filter:drop-shadow(0 0 3px rgba(255,49,88,.45))}
+  33%{text-shadow:0 0 3px rgba(0,200,255,.95),0 0 9px rgba(0,200,255,.8),0 0 18px rgba(0,200,255,.55);filter:drop-shadow(0 0 4px rgba(0,200,255,.5))}
+  66%{text-shadow:0 0 3px rgba(0,255,157,.95),0 0 9px rgba(0,255,157,.8),0 0 18px rgba(0,255,157,.55);filter:drop-shadow(0 0 4px rgba(0,255,157,.5))}
+  100%{text-shadow:0 0 3px rgba(255,61,232,.95),0 0 9px rgba(255,61,232,.8),0 0 18px rgba(255,61,232,.55);filter:drop-shadow(0 0 4px rgba(255,61,232,.5))}
 }
 @keyframes party-chat-glow{
-  0%,100%{filter:drop-shadow(0 0 2px rgba(255,77,109,.28))}
-  33%{filter:drop-shadow(0 0 3px rgba(92,255,176,.3))}
-  66%{filter:drop-shadow(0 0 3px rgba(107,188,255,.3))}
+  0%,100%{filter:drop-shadow(0 0 5px rgba(255,49,88,.55))}
+  33%{filter:drop-shadow(0 0 7px rgba(0,255,157,.55))}
+  66%{filter:drop-shadow(0 0 7px rgba(0,200,255,.55))}
 }
 @keyframes party-spin{to{transform:rotate(360deg)}}
 @media(prefers-reduced-motion:reduce){
@@ -3712,5 +3733,6 @@ button,input,select,textarea { max-width:100%; }
   .party-mode-active .chat-gif img,.party-mode-active .message-image,
   .party-mode-active img[src*=".gif" i],.party-mode-active .gif-message img,
   .party-mode-active .message img.emoji,.party-mode-active .msg img.emoji,
-  .party-mode-active .sticker,.party-mode-active .attachment-preview img{animation:none!important}
+  .party-mode-active .sticker,.party-mode-active .attachment-preview img,
+  .party-mode-active .msg .msg-text,.party-mode-active .msg .message-text{animation:none!important}
 }
