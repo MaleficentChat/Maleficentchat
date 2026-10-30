@@ -103,8 +103,11 @@ async function api(url, opt = {}) {
   // and pinned messages, so the YouTube endpoint always rejected the request.
   const roomMatch=String(url).match(/\/api\/rooms\/([^/?#]+)(?:\/|$)/);
   if(roomMatch){try{const roomAccess=JSON.parse(safeStorage.getItem('mc_room_join')||'null');if(roomAccess?.roomId===roomMatch[1]&&roomAccess.joinToken)headers['x-room-join-token']=roomAccess.joinToken;}catch{}}
+  // API responses must never be read from or written to the browser HTTP cache.
+  // In particular, chat history must be fetched fresh after reloads.
   const res = await fetch(url, {
     ...opt,
+    cache: "no-store",
     headers,
     credentials: "same-origin"
   });
