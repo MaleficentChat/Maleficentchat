@@ -3175,10 +3175,32 @@ app.get("/api/owner/message-persistence-status",auth,ownerOnly,async(req,res)=>{
   });
 });
 
-app.post("/api/owner/refresh-site-messages",auth,ownerOnly,(req,res)=>{
-  // The old action deleted every room and private message. Disable it to protect
-  // user history; "Site refresh" must only refresh cached site files.
-  return res.status(410).json({error:"Message clearing is disabled to protect chat history. Use Site refresh to reload the website without deleting messages."});
+app.post("/api/owner/refresh-site-messages",auth,ownerOnly,async(req,res)=>{
+  // Explicit Owner Space data reset, separate from browser-cache refresh.
+  // Preserve accounts/settings/reports/audit logs; delete chat records and archived copies.
+  const client=await pool.connect();
+  let roomMessagesRemoved=0,privateMessagesRemoved=0,archivedMessagesRemoved=0;
+  try{
+    await client.query("BEGIN");
+    const roomDelete=await client.query("DELETE FROM room_messages");
+    const privateDelete=await client.query("DELETE FROM private_messages");
+    const evidenceDelete=await client.query("DELETE FROM room_clear_evidence");
+    roomMessagesRemoved=Number(roomDelete.rowCount||0);
+    privateMessagesRemoved=Number(privateDelete.rowCount||0);
+    archivedMessagesRemoved=Number(evidenceDelete.rowCount||0);
+    await client.query("COMMIT");
+  }catch(error){
+    try{await client.query("ROLLBACK")}catch{}
+    console.error("Owner message refresh failed:",error);
+    return res.status(500).json({error:"Messages were not cleared because the database reset failed. No partial deletion was committed."});
+  }finally{client.release();}
+  db.messages=[];
+  db.privateMessages=[];
+  save();
+  await log(current(req),"SITE_MESSAGES_CLEAR","All room and private chat messages cleared",{roomMessagesRemoved,privateMessagesRemoved,archivedMessagesRemoved});
+  io.emit("site:messages-cleared");
+  res.set("Cache-Control","no-store");
+  res.json({ok:true,roomMessagesRemoved,privateMessagesRemoved,archivedMessagesRemoved});
 });
 
 app.get(
