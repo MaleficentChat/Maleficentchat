@@ -3430,13 +3430,6 @@ async function loadStaff() {
       </div>
 
       
-      <div class="card"><h3>Reports</h3>
-        ${(data.reports||[]).filter(report=>report.status==='OPEN').map(report=>{
-          const snap=report.messageSnapshot||{};
-          return `<div class="report-card"><div class="report-main"><div><b>${esc(report.category||(report.conversationUserId?"Private message report":report.messageId?"Message report":"Profile report"))}</b> · ${esc(report.status)}</div><div><b>Reported by:</b> @${esc(report.reporterUsername||findUserName(report.reporter)||'Unknown')}</div><div class="report-target"><b>Report made on:</b> @${esc(report.reportedUserUsername||snap.username||'Unknown')} ${esc(report.reportedUserRank||snap.rank||'')}</div>${report.conversationUserId?`<div class="report-message"><b>Private conversation:</b> @${esc(report.conversationUsername||findUserName(report.conversationUserId)||"Conversation participant")}<p class="muted">Open the evidence viewer to inspect the reported conversation.</p></div>`:""}<div class="report-message"><b>Reported content:</b><br>${snap.text?`<div>${esc(snap.text)}</div>`:''}${snap.attachment?.type?.startsWith('image/')?`<img class="reported-image" src="${esc(snap.attachment.url)}" alt="Reported photo">`:snap.attachment?`<a href="${esc(snap.attachment.url)}" target="_blank" rel="noopener">Open reported attachment</a>`:''}</div><div class="muted">Time: ${fmt(report.time)}</div><div class="muted">Reason: ${esc(report.reason||'No reason supplied')}</div></div><div class="toolbar"><button class="mini" data-assign-report="${esc(report.id)}">👤 Assign staff</button>${report.conversationUserId?`<button class="mini primary" onclick="viewPrivateMessageReport('${esc(report.id)}')">🔒 View private messages</button>`:''}${report.reportedUserId?`<button class="mini" onclick="moderate('${esc(report.reportedUserId)}')">⚙ Moderate user</button>`:''}${report.messageId?`<button class="mini danger" onclick="deleteReportedMessage('${esc(report.messageId)}')">🗑 Delete message</button>`:''}${report.status!=='RESOLVED'?`<button class="mini" onclick="resolveReport('${esc(report.id)}')">Resolve</button>`:''}</div></div>`;
-        }).join('')||'<p class="muted">No reports.</p>'}
-      </div>
-    `;
     $("hardRefreshSiteButton")?.addEventListener("click",hardRefreshSiteCache);
     if(['INSTRUCTOR','COOWNER','OWNER','DEVELOPER'].includes(String(state.user?.rank||'').toUpperCase())){
       $('refreshClearedRoomEvidence')?.addEventListener('click',()=>loadClearedRoomEvidence());
@@ -4343,19 +4336,54 @@ async function toggleReportDropdown(refresh=false){
   if(!refresh&&!box.classList.contains("hidden")){box.classList.add("hidden");return;}
   try{
     const d=await api("/api/staff/dashboard");
-    const reports=(d.reports||[]).filter(r=>String(r.status||"OPEN").toUpperCase()==="OPEN").slice(0,8);
-    box.innerHTML=`<div class="notification-dropdown-head"><div><b>⚑ Reports</b><small class="notification-unread-summary">${reports.length} open</small></div><button class="mini" id="openFullReports">All reports</button></div>${reports.map(r=>{
-      const snap=r.messageSnapshot||{};
-      const who=r.reportedUserUsername||snap.username||"Unknown";
-      const category=r.category||(r.conversationUserId?"Private message":r.messageId?"Message":"Profile");
-      return `<div class="report-dropdown-item"><div class="report-dropdown-copy"><b>${esc(category)} · @${esc(who)}</b><span>${esc(snap.text||r.messagePreview||r.reason||"No report text supplied")}</span>${r.conversationUserId?`<small class="report-evidence-hint">🔒 Private-message evidence available</small>`:""}<small>${fmt(r.time)}</small></div><div class="toolbar">${r.conversationUserId?`<button class="mini" data-report-evidence="${esc(r.id)}">View messages</button>`:""}${r.reportedUserId?`<button class="mini" data-report-moderate="${esc(r.reportedUserId)}">Moderate</button>`:""}<button class="mini primary" data-report-resolve="${esc(r.id)}">Resolve</button></div></div>`;
-    }).join("")||'<p class="muted notification-empty">No open reports. ✨</p>'}`;
+    const allReports=d.reports||[];
+    const openCount=allReports.filter(r=>String(r.status||"OPEN").toUpperCase()==="OPEN").length;
+    const renderReports=(query="",status="OPEN")=>{
+      const q=String(query||"").trim().toLowerCase();
+      const filtered=allReports.filter(r=>{
+        const st=String(r.status||"OPEN").toUpperCase();
+        if(status!=="ALL"&&st!==status)return false;
+        const snap=r.messageSnapshot||{};
+        const hay=[r.category,r.reporterUsername,r.reportedUserUsername,r.reason,r.messagePreview,snap.text,r.assignedToUsername].join(" ").toLowerCase();
+        return !q||hay.includes(q);
+      }).slice(0,100);
+      const rows=filtered.map(r=>{
+        const snap=r.messageSnapshot||{};
+        const who=r.reportedUserUsername||snap.username||"Unknown";
+        const category=r.category||(r.conversationUserId?"Private message":r.messageId?"Message":"Profile");
+        const st=String(r.status||"OPEN").toUpperCase();
+        return `<article class="report-dropdown-item report-manager-item">
+          <div class="report-dropdown-copy"><b>${esc(category)} · @${esc(who)}</b><span>${esc(snap.text||r.messagePreview||r.reason||"No report text supplied")}</span>
+          <small>Reported by @${esc(r.reporterUsername||"Unknown")} · ${fmt(r.time)} · ${esc(st)}</small>
+          <small>Reason: ${esc(r.reason||"No reason supplied")}${r.assignedToUsername?' · Assigned to @'+esc(r.assignedToUsername):''}</small>
+          ${r.conversationUserId?'<small class="report-evidence-hint">🔒 Private-message evidence available</small>':""}</div>
+          <div class="toolbar report-manager-actions">
+          ${r.conversationUserId?`<button class="mini" data-report-evidence="${esc(r.id)}">View messages</button>`:""}
+          ${r.reportedUserId?`<button class="mini" data-report-moderate="${esc(r.reportedUserId)}">Moderate</button>`:""}
+          <button class="mini" data-report-assign="${esc(r.id)}">Assign staff</button>
+          ${r.messageId?`<button class="mini danger" data-report-delete-message="${esc(r.messageId)}">Delete reported message</button>`:""}
+          ${st!=="RESOLVED"?`<button class="mini primary" data-report-resolve="${esc(r.id)}">Resolve</button>`:""}
+          </div></article>`;
+      }).join("");
+      const list=box.querySelector("#reportManagerList");
+      if(list)list.innerHTML=rows||'<p class="muted notification-empty">No reports match these filters.</p>';
+      const count=box.querySelector("#reportManagerCount");
+      if(count)count.textContent=`Showing ${filtered.length} of ${allReports.length} reports`;
+      box.querySelectorAll("[data-report-moderate]").forEach(b=>b.onclick=()=>{box.classList.add("hidden");moderate(b.dataset.reportModerate);});
+      box.querySelectorAll("[data-report-evidence]").forEach(b=>b.onclick=()=>{box.classList.add("hidden");viewPrivateMessageReport(b.dataset.reportEvidence);});
+      box.querySelectorAll("[data-report-resolve]").forEach(b=>b.onclick=async()=>{await resolveReport(b.dataset.reportResolve);await toggleReportDropdown(true);});
+      box.querySelectorAll("[data-report-assign]").forEach(b=>b.onclick=async()=>{await assignReport(b.dataset.reportAssign);await toggleReportDropdown(true);});
+      box.querySelectorAll("[data-report-delete-message]").forEach(b=>b.onclick=async()=>{box.classList.add("hidden");await deleteReportedMessage(b.dataset.reportDeleteMessage);await toggleReportDropdown(true);});
+    };
+    box.innerHTML=`<div class="notification-dropdown-head"><div><b>⚑ Report Management</b><small class="notification-unread-summary">${openCount} open · ${allReports.length} total</small></div><button class="mini" id="refreshReportManager">↻ Refresh</button></div>
+      <div class="report-manager-tools"><input type="search" id="reportManagerSearch" placeholder="Search reports, users, reasons…" aria-label="Search reports"><select id="reportManagerStatus" aria-label="Filter report status"><option value="OPEN">Open reports</option><option value="ALL">All reports</option><option value="RESOLVED">Resolved</option><option value="DISMISSED">Dismissed</option></select><small id="reportManagerCount"></small></div>
+      <div id="reportManagerList" class="report-manager-list"></div>`;
     box.classList.remove("hidden");
-    $("openFullReports")?.addEventListener("click",async()=>{box.classList.add("hidden");state.view="staff";document.querySelectorAll(".nav[data-view]").forEach(x=>x.classList.toggle("active",x.dataset.view==="staff"));await renderView();});
-    box.querySelectorAll("[data-report-moderate]").forEach(b=>b.onclick=()=>{box.classList.add("hidden");moderate(b.dataset.reportModerate);});
-    box.querySelectorAll("[data-report-evidence]").forEach(b=>b.onclick=()=>{box.classList.add("hidden");viewPrivateMessageReport(b.dataset.reportEvidence);});
-    box.querySelectorAll("[data-report-resolve]").forEach(b=>b.onclick=async()=>{await resolveReport(b.dataset.reportResolve);});
-  }catch(e){box.innerHTML=`<div class="notification-dropdown-head"><b>⚑ Reports</b></div><p class="muted">${esc(e.message||"Reports are available to authorized staff only.")}</p>`;box.classList.remove("hidden");}
+    box.querySelector("#reportManagerSearch")?.addEventListener("input",e=>renderReports(e.target.value,box.querySelector("#reportManagerStatus")?.value||"OPEN"));
+    box.querySelector("#reportManagerStatus")?.addEventListener("change",e=>renderReports(box.querySelector("#reportManagerSearch")?.value||"",e.target.value));
+    box.querySelector("#refreshReportManager")?.addEventListener("click",()=>toggleReportDropdown(true));
+    renderReports();
+  }catch(e){box.innerHTML=`<div class="notification-dropdown-head"><b>⚑ Report Management</b></div><p class="muted">${esc(e.message||"Reports are available to authorized staff only.")}</p>`;box.classList.remove("hidden");}
 }
 
 async function toggleNotificationDropdown(){
