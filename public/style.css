@@ -3643,7 +3643,7 @@ button,input,select,textarea { max-width:100%; }
 .construction-code-box>small{font-size:11px;line-height:1.45}
 
 
-/* 🎉 Party Mode — intense neon text glow and cycling rainbow usernames */
+/* 🎉 Party Mode — neon text + reliable spinning media */
 .party-mode-active .username,
 .party-mode-active .user-name,
 .party-mode-active .instagram-user-name,
@@ -3685,22 +3685,40 @@ button,input,select,textarea { max-width:100%; }
 .party-mode-active .msg-body{
   animation:party-chat-glow 2.2s linear infinite!important;
 }
-.party-mode-active .chat-gif img,
-.party-mode-active .message-image,
-.party-mode-active img[src*=".gif" i],
-.party-mode-active .gif-message img,
-.party-mode-active .message img.emoji,
-.party-mode-active .msg img.emoji,
-.party-mode-active .sticker,
-.party-mode-active .attachment-preview img{
-  transform-origin:center;
-  animation:party-spin 4s linear infinite!important;
+/* Use a highly-specific selector and the full animation shorthand so other image rules cannot cancel rotation. */
+body.party-mode-active #messages .msg .chat-gif img,
+body.party-mode-active #messages .msg img.message-image,
+body.party-mode-active #messages .msg .message-image img,
+body.party-mode-active #messages .msg img[src*=".gif" i],
+body.party-mode-active #messages .msg .gif-message img,
+body.party-mode-active #messages .msg img.emoji,
+body.party-mode-active #messages .msg .sticker,
+body.party-mode-active #messages .msg .attachment-preview img,
+body.party-mode-active .msg.dm-msg .chat-gif img,
+body.party-mode-active .msg.dm-msg .message-image,
+body.party-mode-active .msg.dm-msg .message-image img,
+body.party-mode-active .msg.dm-msg img[src*=".gif" i],
+body.party-mode-active .msg.dm-msg img.emoji{
+  display:inline-block!important;
+  transform-origin:50% 50%!important;
+  animation:party-spin 3.2s linear infinite!important;
+  will-change:transform;
+}
+/* Catch image media if the chat's wrapper uses a background or a nonstandard class. */
+body.party-mode-active #messages .msg .chat-gif,
+body.party-mode-active #messages .msg .message-image,
+body.party-mode-active .msg.dm-msg .chat-gif{
+  transform-origin:50% 50%!important;
 }
 .party-mode-player{
   position:fixed!important;left:-2px!important;bottom:0!important;
   width:1px!important;height:1px!important;min-width:1px!important;min-height:1px!important;
   opacity:0!important;pointer-events:none!important;overflow:hidden!important;
   border:0!important;box-shadow:none!important;z-index:-1!important;
+}
+@keyframes party-spin{
+  0%{transform:rotate(0deg)}
+  100%{transform:rotate(360deg)}
 }
 @keyframes party-rainbow-glow{
   0%{color:#ff3158;text-shadow:0 0 3px #ff3158,0 0 8px #ff3158,0 0 16px #ff3158,0 0 28px #ff3158,0 0 42px #ff3158}
@@ -3722,17 +3740,4 @@ button,input,select,textarea { max-width:100%; }
   33%{filter:drop-shadow(0 0 7px rgba(0,255,157,.55))}
   66%{filter:drop-shadow(0 0 7px rgba(0,200,255,.55))}
 }
-@keyframes party-spin{to{transform:rotate(360deg)}}
-@media(prefers-reduced-motion:reduce){
-  .party-mode-active .username,.party-mode-active .user-name,
-  .party-mode-active .instagram-user-name,.party-mode-active .horizontal-user-details b,
-  .party-mode-active .message-author,.party-mode-active .msg-top .message-author,
-  .party-mode-active .msg-author,.party-mode-active .chat-message .author,
-  .party-mode-active .msg .msg-author,.party-mode-active [data-username],
-  .party-mode-active .msg,.party-mode-active .msg-body,
-  .party-mode-active .chat-gif img,.party-mode-active .message-image,
-  .party-mode-active img[src*=".gif" i],.party-mode-active .gif-message img,
-  .party-mode-active .message img.emoji,.party-mode-active .msg img.emoji,
-  .party-mode-active .sticker,.party-mode-active .attachment-preview img,
-  .party-mode-active .msg .msg-text,.party-mode-active .msg .message-text{animation:none!important}
-}
+/* Party Mode is an explicit opt-in, so reduced-motion OS settings must not silently cancel its requested spin. */
