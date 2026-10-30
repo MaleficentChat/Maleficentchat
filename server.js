@@ -3270,7 +3270,7 @@ app.get("/api/staff/ip-inspection",auth,async(req,res)=>{
     const limitPlaceholder="$"+params.length;
     stage="query-ip-history";
     const q=await pool.query(`SELECT h.id,h.user_id,u.username,u.email,h.ip_address::text AS ip_address,h.event_type,h.user_agent,h.recorded_at,u.created_at AS registered_at FROM users u LEFT JOIN user_ip_history h ON h.user_id=u.id ${where} ORDER BY h.recorded_at DESC NULLS LAST,u.username LIMIT ${limitPlaceholder}`,params);
-    const permittedRows=q.rows.filter(row=>canInspectTarget({id:row.user_id,rank:db.users.find(u=>String(u.id)===String(row.user_id))?.rank}));
+    const permittedRows=q.rows.filter(row=>!db.users.find(u=>String(u.id)===String(row.user_id))?.hideMode&&canInspectTarget({id:row.user_id,rank:db.users.find(u=>String(u.id)===String(row.user_id))?.rank}));
     stage="lookup-network-details";
     const normalizeIp=ip=>String(ip||"").trim().replace(/^::ffff:/i,"").replace(/^\[|\]$/g,"").replace(/\/\d{1,3}$/,"");
     const isPrivateOrLocal=ip=>{
@@ -3293,7 +3293,7 @@ app.get("/api/staff/ip-inspection",auth,async(req,res)=>{
         WHERE host(h.ip_address)=ANY($1::text[]) AND NOT (u.id=ANY($2::int[]))
         ORDER BY u.username,h.recorded_at DESC`,[matchedIps,sourceUserIds]);
       const seen=new Set();
-      sameIpAccounts=matches.rows.filter(row=>canInspectTarget({id:row.id,rank:db.users.find(u=>String(u.id)===String(row.id))?.rank})).filter(row=>{const key=String(row.id)+'|'+row.ip_address;if(seen.has(key))return false;seen.add(key);return true;});
+      sameIpAccounts=matches.rows.filter(row=>!db.users.find(u=>String(u.id)===String(row.id))?.hideMode&&canInspectTarget({id:row.id,rank:db.users.find(u=>String(u.id)===String(row.id))?.rank})).filter(row=>{const key=String(row.id)+'|'+row.ip_address;if(seen.has(key))return false;seen.add(key);return true;});
     }
     const lookups=await Promise.all(uniqueIps.slice(0,60).map(async ip=>[ip,await lookupIpNetworkDetails(ip)]));
     const geo=Object.fromEntries(lookups);
@@ -3347,7 +3347,7 @@ app.get("/api/staff/admin/users",auth,async(req,res)=>{
   const actor=current(req);
   if(!hasRank(actor,"ADMIN")) return res.status(403).json({error:"Admin rank or higher required."});
   const term=String(req.query.q||"").trim().replace(/^@/,"").toLowerCase().slice(0,80);
-  const users=(db.users||[]).filter(u=>!term||[u.username,u.displayName,u.rank,String(u.id)].some(v=>String(v||"").toLowerCase().includes(term))).slice(0,50).map(u=>({id:String(u.id),username:u.username,displayName:u.displayName||u.username,rank:u.rank,online:!!u.online&&!u.invisible,banned:!!u.banned,mutedUntil:u.mutedUntil||null,kickedUntil:u.kickedUntil||null}));
+  const users=(db.users||[]).filter(u=>!u.hideMode&&(!term||[u.username,u.displayName,u.rank,String(u.id)].some(v=>String(v||"").toLowerCase().includes(term)))).slice(0,50).map(u=>({id:String(u.id),username:u.username,displayName:u.displayName||u.username,rank:u.rank,online:!!u.online&&!u.invisible,banned:!!u.banned,mutedUntil:u.mutedUntil||null,kickedUntil:u.kickedUntil||null}));
   res.json({users});
 });
 app.get("/api/staff/system-center",auth,async(req,res)=>{
@@ -4545,6 +4545,7 @@ app.get(
     res.json({
       users:
         [...db.users]
+          .filter(user=>!user.hideMode)
           .sort(
             (a,b)=>
               (b.xp-a.xp)||
