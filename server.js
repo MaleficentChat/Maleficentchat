@@ -1944,7 +1944,14 @@ app.post("/api/rooms/:id/messages",auth,featureAllowed("send_messages"),upload.s
   if(u.kickedUntil&&u.kickedUntil>Date.now())return res.status(403).json({error:"You have been kicked",reason:u.kickReason||"Community rules",kickedUntil:u.kickedUntil});
   if(u.mutedUntil&&u.mutedUntil>Date.now())return res.status(403).json({error:"You are muted until "+new Date(u.mutedUntil).toLocaleString()});
   if(req.file && String(u.rank).toUpperCase()!=="DEVELOPER" && !featureGrantAllowed(u,"chat_file_upload")) return res.status(403).json({error:"Your rank cannot upload files in chat."});
-  if(String(u.rank).toUpperCase()!=="DEVELOPER" && req.file&&!/^image\/|^audio\//.test(req.file.mimetype))return res.status(400).json({error:"Only image/audio uploads are allowed."});
+  if(String(u.rank).toUpperCase()!=="DEVELOPER" && req.file){
+    const mime=String(req.file.mimetype||"").toLowerCase();
+    const ext=path.extname(String(req.file.originalname||"")).toLowerCase();
+    const allowedAudioExt=[".mp3",".m4a",".wav",".ogg",".aac",".flac",".opus",".weba"];
+    const allowedImageExt=[".png",".jpg",".jpeg",".gif",".webp",".avif"];
+    const allowedType=mime.startsWith("image/")||mime.startsWith("audio/")||allowedAudioExt.includes(ext)||allowedImageExt.includes(ext);
+    if(!allowedType)return res.status(400).json({error:"Only image and audio files are allowed in chat."});
+  }
   let text=cleanText(req.body.text);
   if(!text&&!req.file)return res.status(400).json({error:"Message is empty."});
   // Network-level burst guard: protect the message endpoint without treating shared IPs as proof of ban evasion.
