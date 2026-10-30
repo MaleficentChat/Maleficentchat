@@ -1704,10 +1704,10 @@ function setPartyMode(enabled){
   if(toggle)toggle.textContent=active?"🎉 Turn Party Mode Off":"🎉 Turn Party Mode On";
 }
 /* ---------------- MALefICENT ARCADE ---------------- */
-let arcadeGameTimer=null;
+let arcadeGameTimer=null,arcadeInterval=null;
 function renderArcade(){
   const root=$("gamesRoot");if(!root)return;
-  if(arcadeGameTimer){clearTimeout(arcadeGameTimer);arcadeGameTimer=null;}
+  if(arcadeGameTimer){clearTimeout(arcadeGameTimer);arcadeGameTimer=null;}if(arcadeInterval){clearInterval(arcadeInterval);arcadeInterval=null;}
   root.innerHTML=`
     <section class="arcade-home">
       <div class="arcade-welcome"><div><span class="arcade-kicker">MALEFICENT ARCADE</span><h2>Choose your next obsession.</h2><p>Quick games, friendly rivalries, and tiny victories. No drawing tools or old Gravity Run mode.</p></div><div class="arcade-orb">✦</div></div>
@@ -1723,14 +1723,14 @@ function renderArcade(){
 }
 function launchArcadeGame(game){
   const root=$("gamesRoot");if(!root)return;
-  if(arcadeGameTimer){clearTimeout(arcadeGameTimer);arcadeGameTimer=null;}
+  if(arcadeGameTimer){clearTimeout(arcadeGameTimer);arcadeGameTimer=null;}if(arcadeInterval){clearInterval(arcadeInterval);arcadeInterval=null;}
   const back='<button class="mini arcade-back" data-arcade-back>← All games</button>';
   if(game==="memory"){
     const symbols=["🌙","🦇","🕷️","🖤","🔮","🥀","🗝️","✨"];
     const cards=[...symbols,...symbols].sort(()=>Math.random()-.5).map((symbol,i)=>({symbol,id:i,open:false,matched:false}));
     let moves=0,found=0,locked=false;
     const draw=()=>{root.innerHTML='<section class="arcade-play-view">'+back+'<header class="arcade-game-heading"><span>🧠</span><div><h2>Memory Match</h2><p>Find every matching pair.</p></div><b>'+found+'/8 pairs</b></header><div class="arcade-game-stats"><span>Moves <b>'+moves+'</b></span><span>Pairs <b>'+found+'/8</b></span></div><div class="memory-board">'+cards.map(c=>'<button class="memory-card '+(c.matched?'matched':c.open?'revealed':'')+'" data-memory="'+c.id+'" '+(c.matched||c.open?'disabled':'')+' aria-label="'+(c.matched||c.open?c.symbol:'Hidden card')+'">'+(c.matched||c.open?c.symbol:'✦')+'</button>').join('')+'</div><p class="arcade-status">'+(found===8?'✨ Perfect match! You cleared the board in '+moves+' moves.':'Tap two cards to reveal their symbols.')+'</p><button class="primary" data-memory-restart>↻ Restart</button></section>';bindBack();root.querySelectorAll('[data-memory]').forEach(b=>b.onclick=()=>{if(locked)return;const c=cards.find(x=>x.id===Number(b.dataset.memory));if(!c||c.matched||c.open)return;c.open=true;const open=cards.filter(x=>x.open&&!x.matched);drawKeepMemory();if(open.length===2){moves++;locked=true;if(open[0].symbol===open[1].symbol){open.forEach(x=>{x.matched=true;x.open=false});found++;locked=false;draw()}else arcadeGameTimer=setTimeout(()=>{open.forEach(x=>x.open=false);locked=false;draw()},700)}});root.querySelector('[data-memory-restart]').onclick=()=>launchArcadeGame('memory');};
-    const drawKeepMemory=()=>{const b=root.querySelector('[data-memory="'+cards.find(c=>c.open&&!c.matched)?.id+'"]');if(b){const c=cards.find(x=>x.id===Number(b.dataset.memory));b.classList.add('revealed');b.textContent=c.symbol;b.disabled=true;}};
+    const drawKeepMemory=()=>{cards.filter(c=>c.open&&!c.matched).forEach(c=>{const b=root.querySelector('[data-memory="'+c.id+'"]');if(b){b.classList.add('revealed');b.textContent=c.symbol;b.disabled=true;}})};
     draw();return;
   }
   if(game==="tic"){
@@ -1745,14 +1745,13 @@ function launchArcadeGame(game){
     draw();return;
   }
   if(game==="number"){
-    let score=0,left=30,current=null,ended=false,timer=null;
+    let score=0,left=30,current=null,ended=false;
     const question=()=>{const a=1+Math.floor(Math.random()*20),b=1+Math.floor(Math.random()*20),op=Math.random()<.5?"+":"−";return {text:a+" "+op+" "+b,value:op==="+"?a+b:a-b,options:[]}};
     const draw=()=>{if(ended){root.innerHTML='<section class="arcade-play-view">'+back+'<header class="arcade-game-heading"><span>🔢</span><div><h2>Number Sprint</h2><p>Round complete.</p></div></header><div class="number-finish"><b>'+score+'</b><span>correct answers</span></div><button class="primary" data-number-restart>Run it back</button></section>';bindBack();root.querySelector('[data-number-restart]').onclick=()=>launchArcadeGame('number');return}
       if(!current)current=question();const opts=[current.value,current.value+1,current.value-2,current.value+3].sort(()=>Math.random()-.5);
       root.innerHTML='<section class="arcade-play-view">'+back+'<header class="arcade-game-heading"><span>🔢</span><div><h2>Number Sprint</h2><p>Answer as many as you can in 30 seconds.</p></div></header><div class="number-stats"><span>Score <b>'+score+'</b></span><span>Time <b>'+left+'s</b></span></div><div class="number-question">'+current.text+' = ?</div><div class="number-options">'+opts.map(n=>'<button data-number="'+n+'">'+n+'</button>').join('')+'</div><p class="arcade-status" id="numberStatus">Choose the correct answer.</p></section>';bindBack();root.querySelectorAll('[data-number]').forEach(b=>b.onclick=()=>{if(Number(b.dataset.number)===current.value){score++;current=null;}else{const status=$("numberStatus");if(status)status.textContent="Not quite — keep going!";return}draw()});
     };
-    draw();timer=setInterval(()=>{left--;if(left<=0){clearInterval(timer);ended=true;draw()}else{const time=root.querySelector('.number-stats b:last-child');if(time)time.textContent=left+'s'}},1000);
-    const oldBack=root.querySelector('[data-arcade-back]');if(oldBack)oldBack.onclick=()=>{clearInterval(timer);renderArcade()};
+    draw();arcadeInterval=setInterval(()=>{left--;if(left<=0){clearInterval(arcadeInterval);arcadeInterval=null;ended=true;draw()}else{const time=root.querySelector('.number-stats b:last-child');if(time)time.textContent=left+'s'}},1000);
     return;
   }
 }
