@@ -448,8 +448,10 @@ async function start() {
   state.socket.on("under-construction:status",payload=>{
     if(payload?.enabled&&!isOwnerExempt())showConstructionPanel(payload.until);
     else hideConstructionPanel();
-    const toggle=$("underConstructionToggle");
+    const toggle=$("staffUnderConstructionToggle");
     if(toggle&&isOwnerExempt()){toggle.checked=!!payload?.enabled;toggle.setAttribute("aria-checked",toggle.checked?"true":"false");}
+    const statusLabel=$("staffConstructionStatus");
+    if(statusLabel){statusLabel.textContent=payload?.enabled?"ON · Maintenance enabled":"OFF · Site open";statusLabel.classList.toggle("is-on",!!payload?.enabled);}
   });
   state.socket.on("room:theme",data=>{if(!data?.roomId||!data?.theme)return;const room=state.rooms.find(r=>String(r.id)===String(data.roomId));if(room)room.roomTheme=data.theme;if(String(state.currentRoom)===String(data.roomId))applyRoomTheme(data.theme);});
   state.socket.on("gold:update",data=>{ if(state.user&&data?.gold!==undefined){state.user.gold=data.gold; updateNav();}});
@@ -3330,6 +3332,7 @@ async function loadStaff() {
 
     $('staff').innerHTML=`
       ${canHardRefreshSite ? '<section class="card site-hard-refresh-card"><div><h3>⟳ Site Refresh</h3><p class="muted">Clear cached website files on this device and reload Maleficent Chat. All account data and messages remain stored safely.</p></div><button class="primary" type="button" id="hardRefreshSiteButton">⟳ Hard Refresh Site</button></section>' : ''}
+      ${(String(state.user?.rank||'').toUpperCase()==='DEVELOPER'||String(state.user?.rank||'').toUpperCase()==='OWNER') ? '<section class="card under-construction-admin-card"><div class="under-construction-admin-heading"><div><h3>🚧 Under Construction</h3><p class="muted">Switch maintenance mode ON to block regular users while you work, or OFF to reopen the site. No timer is used. Owner and Developer accounts remain exempt.</p></div><span class="construction-status-pill" id="staffConstructionStatus" aria-live="polite">Checking status…</span></div><div class="construction-switch-row"><span><b>Maintenance mode</b><small>OFF = site open · ON = maintenance screen</small></span><span class="construction-switch"><input type="checkbox" id="staffUnderConstructionToggle" role="switch" aria-label="Under Construction mode" aria-checked="false" onchange="toggleUnderConstruction(this.checked)"><span class="construction-switch-track" aria-hidden="true"></span></span></div><p class="muted construction-last-result" id="staffConstructionResult" aria-live="polite">The saved server setting will be checked before displaying the current state.</p></section>' : ''}
       ${(state.user?.username==='Maleficent'||String(state.user?.rank).toUpperCase()==='DEVELOPER') ? '<section class="card ip-inspection-card"><div><h3>🔎 IP Inspection</h3><p class="muted">Owner/Developer only · Registered email, recorded IP history and approximate network details.</p></div><form id="ipInspectionForm" class="ip-inspection-form"><input id="ipInspectionSearch" placeholder="Type @ or a username to find an account" maxlength="100" autocomplete="off"><button class="primary" type="submit">Inspect</button></form><div id="ipInspectionSuggestions" class="ip-inspection-suggestions" hidden></div><p class="muted ip-inspection-note">IP and network information is sensitive. Location is approximate. Lookups use IP Info with ipapi.co as a fallback.</p><div id="ipInspectionResults"><p class="muted">Search for an account to inspect its recorded IP history.</p></div></section>' : ''}
       <details class="filter-words-details staff-applications-dropdown" id="staffApplicationsDropdown"><summary>📝 Staff Applications <span class="staff-app-count" id="staffApplicationCount">Loading…</span></summary><div class="staff-applications-content" id="staffApplicationsList"><p class="muted">Loading applications…</p></div></details>
       <details class="filter-words-details system-notifications-dropdown" id="systemNotificationsDropdown">
@@ -3590,25 +3593,35 @@ async function checkUnderConstruction(){
     if(constructionWriteInFlight)return;
     if(status.enabled&&!status.exempt)showConstructionPanel(status.until);
     else hideConstructionPanel();
-    const toggle=$("underConstructionToggle");
+    const toggle=$("staffUnderConstructionToggle");
     if(toggle&&isOwnerExempt()){const configured=Boolean(status.configuredEnabled??status.enabled);toggle.checked=configured;toggle.setAttribute("aria-checked",configured?"true":"false");}
+    const label=$("staffConstructionStatus");
+    if(label){label.textContent=(status.configuredEnabled??status.enabled)?"ON · Maintenance enabled":"OFF · Site open";label.classList.toggle("is-on",Boolean(status.configuredEnabled??status.enabled));}
+    const result=$("staffConstructionResult");
+    if(result&&!constructionWriteInFlight)result.textContent="Last checked: "+new Date().toLocaleTimeString();
   }catch(error){console.warn("Under Construction status check failed:",error?.message||error);}
 }
 async function toggleUnderConstruction(requestedEnabled){
   if(constructionWriteInFlight)return;
   // Do not make a client-side rank decision here: the browser's cached user object
   // can be stale after a rank change. Let the server's ownerOnly middleware decide.
-  const toggle=$("underConstructionToggle");
+  const toggle=$("staffUnderConstructionToggle");
   const enabled=Boolean(requestedEnabled);
   constructionWriteInFlight=true;
   if(toggle)toggle.disabled=true;
   try{
-    const result=await api("/api/owner/under-construction",{method:"POST",body:JSON.stringify({enabled})});
+    const result=await api("/api/staff/under-construction",{method:"POST",body:JSON.stringify({enabled})});
     const active=Boolean(result.enabled);
     if(toggle){toggle.checked=active;toggle.setAttribute("aria-checked",active?"true":"false");}
-    toast(active?"Under Construction is ON. Owner and Developer remain exempt.":"Under Construction is OFF.");
+    const resultLabel=$("staffConstructionResult");
+    if(resultLabel)resultLabel.textContent=active?"Saved successfully. Regular users will see the maintenance screen.":"Saved successfully. The site is open to regular users.";
+    const statusLabel=$("staffConstructionStatus");
+    if(statusLabel){statusLabel.textContent=active?"ON · Maintenance enabled":"OFF · Site open";statusLabel.classList.toggle("is-on",active);}
+    toast(active?"Under Construction enabled.":"Under Construction disabled.");
     await checkUnderConstruction();
   }catch(e){
+    const resultLabel=$("staffConstructionResult");
+    if(resultLabel)resultLabel.textContent="Save failed: "+(e.message||"Unknown server error");
     toast(e.message||"Could not change Under Construction mode.");
     await checkUnderConstruction();
   }finally{
@@ -3672,7 +3685,7 @@ async function loadOwner() {
             Inspect private messages
           </button>
           
-          <div class="construction-switch-row"><span><b>🚧 Under Construction</b><small>Turn maintenance mode on or off</small></span><span class="construction-switch"><input type="checkbox" id="underConstructionToggle" role="switch" aria-label="Under Construction mode" aria-checked="false" onchange="toggleUnderConstruction(this.checked)"><span class="construction-switch-track" aria-hidden="true"></span></span></div>
+
 
           <button class="mini" onclick="ownerFeatureGrants()">🧩 Feature granting</button>
           
