@@ -772,7 +772,7 @@ async function renderView() {
     case "suggestions":
       return loadSuggestions();
     case "games":
-      return window.GravityRun && window.GravityRun.render();
+      return renderArcade();
     case "shop":
       return loadRankShop();
 
@@ -1703,6 +1703,60 @@ function setPartyMode(enabled){
   const toggle=document.getElementById("togglePartyMode");
   if(toggle)toggle.textContent=active?"🎉 Turn Party Mode Off":"🎉 Turn Party Mode On";
 }
+/* ---------------- MALefICENT ARCADE ---------------- */
+let arcadeGameTimer=null;
+function renderArcade(){
+  const root=$("gamesRoot");if(!root)return;
+  if(arcadeGameTimer){clearTimeout(arcadeGameTimer);arcadeGameTimer=null;}
+  root.innerHTML=`
+    <section class="arcade-home">
+      <div class="arcade-welcome"><div><span class="arcade-kicker">MALEFICENT ARCADE</span><h2>Choose your next obsession.</h2><p>Quick games, friendly rivalries, and tiny victories. No drawing tools or old Gravity Run mode.</p></div><div class="arcade-orb">✦</div></div>
+      <div class="arcade-game-grid">
+        <button class="arcade-game-card" data-arcade-game="memory"><span class="arcade-card-icon arcade-violet">🧠</span><span class="arcade-card-copy"><b>Memory Match</b><small>Flip cards, find pairs, beat your best.</small><em>Solo · Focus</em></span><span class="arcade-play">Play ↗</span></button>
+        <button class="arcade-game-card" data-arcade-game="tic"><span class="arcade-card-icon arcade-pink">⭕</span><span class="arcade-card-copy"><b>Tic-Tac-Toe</b><small>A classic head-to-head challenge.</small><em>2 players · Same device</em></span><span class="arcade-play">Play ↗</span></button>
+        <button class="arcade-game-card" data-arcade-game="reaction"><span class="arcade-card-icon arcade-mint">⚡</span><span class="arcade-card-copy"><b>Reaction Rush</b><small>Wait for the signal, then tap fast.</small><em>Solo · Reflex</em></span><span class="arcade-play">Play ↗</span></button>
+        <button class="arcade-game-card" data-arcade-game="number"><span class="arcade-card-icon arcade-gold">🔢</span><span class="arcade-card-copy"><b>Number Sprint</b><small>Solve quick puzzles before time runs out.</small><em>Solo · 30 seconds</em></span><span class="arcade-play">Play ↗</span></button>
+      </div>
+      <div class="arcade-footnote">✧ Your game progress stays in this session. Multiplayer matchmaking and cross-device scores aren’t enabled in this arcade yet.</div>
+    </section>`;
+  root.querySelectorAll("[data-arcade-game]").forEach(btn=>btn.onclick=()=>launchArcadeGame(btn.dataset.arcadeGame));
+}
+function launchArcadeGame(game){
+  const root=$("gamesRoot");if(!root)return;
+  if(arcadeGameTimer){clearTimeout(arcadeGameTimer);arcadeGameTimer=null;}
+  const back='<button class="mini arcade-back" data-arcade-back>← All games</button>';
+  if(game==="memory"){
+    const symbols=["🌙","🦇","🕷️","🖤","🔮","🥀","🗝️","✨"];
+    const cards=[...symbols,...symbols].sort(()=>Math.random()-.5).map((symbol,i)=>({symbol,id:i,open:false,matched:false}));
+    let moves=0,found=0,locked=false;
+    const draw=()=>{root.innerHTML='<section class="arcade-play-view">'+back+'<header class="arcade-game-heading"><span>🧠</span><div><h2>Memory Match</h2><p>Find every matching pair.</p></div><b>'+found+'/8 pairs</b></header><div class="arcade-game-stats"><span>Moves <b>'+moves+'</b></span><span>Pairs <b>'+found+'/8</b></span></div><div class="memory-board">'+cards.map(c=>'<button class="memory-card '+(c.matched?'matched':c.open?'revealed':'')+'" data-memory="'+c.id+'" '+(c.matched||c.open?'disabled':'')+' aria-label="'+(c.matched||c.open?c.symbol:'Hidden card')+'">'+(c.matched||c.open?c.symbol:'✦')+'</button>').join('')+'</div><p class="arcade-status">'+(found===8?'✨ Perfect match! You cleared the board in '+moves+' moves.':'Tap two cards to reveal their symbols.')+'</p><button class="primary" data-memory-restart>↻ Restart</button></section>';bindBack();root.querySelectorAll('[data-memory]').forEach(b=>b.onclick=()=>{if(locked)return;const c=cards.find(x=>x.id===Number(b.dataset.memory));if(!c||c.matched||c.open)return;c.open=true;const open=cards.filter(x=>x.open&&!x.matched);drawKeepMemory();if(open.length===2){moves++;locked=true;if(open[0].symbol===open[1].symbol){open.forEach(x=>{x.matched=true;x.open=false});found++;locked=false;draw()}else arcadeGameTimer=setTimeout(()=>{open.forEach(x=>x.open=false);locked=false;draw()},700)}});root.querySelector('[data-memory-restart]').onclick=()=>launchArcadeGame('memory');};
+    const drawKeepMemory=()=>{const b=root.querySelector('[data-memory="'+cards.find(c=>c.open&&!c.matched)?.id+'"]');if(b){const c=cards.find(x=>x.id===Number(b.dataset.memory));b.classList.add('revealed');b.textContent=c.symbol;b.disabled=true;}};
+    draw();return;
+  }
+  if(game==="tic"){
+    let board=Array(9).fill(""),turn="X",done=false;
+    const wins=[[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+    const draw=()=>{const winner=wins.find(line=>line.every(i=>board[i]&&board[i]===board[line[0]]));done=!!winner||board.every(Boolean);root.innerHTML='<section class="arcade-play-view">'+back+'<header class="arcade-game-heading"><span>⭕</span><div><h2>Tic-Tac-Toe</h2><p>Pass the device and take turns.</p></div></header><div class="tic-status">'+(winner?'🎉 Player '+board[winner[0]]+' wins!':done?'It’s a draw!':'Player '+turn+'’s turn')+'</div><div class="tic-board">'+board.map((v,i)=>'<button class="tic-cell '+(v==='X'?'tic-x':v==='O'?'tic-o':'')+'" data-tic="'+i+'" '+(v||done?'disabled':'')+'>'+v+'</button>').join('')+'</div><button class="primary" data-tic-reset>Play again</button></section>';bindBack();root.querySelectorAll('[data-tic]').forEach(b=>b.onclick=()=>{const i=Number(b.dataset.tic);if(done||board[i])return;board[i]=turn;turn=turn==="X"?"O":"X";draw()});root.querySelector('[data-tic-reset]').onclick=()=>launchArcadeGame('tic')};
+    draw();return;
+  }
+  if(game==="reaction"){
+    let phase="ready",started=0,delay=0;
+    const draw=(message)=>{root.innerHTML='<section class="arcade-play-view">'+back+'<header class="arcade-game-heading"><span>⚡</span><div><h2>Reaction Rush</h2><p>Tap only when the panel turns green.</p></div></header><button class="reaction-pad '+phase+'" id="reactionPad">'+(phase==="ready"?"Start test":phase==="wait"?"Wait for green…":phase==="go"?"TAP NOW!":phase==="early"?"Too early! Try again":message||"Your time")+'</button><p class="arcade-status" id="reactionResult">'+(phase==="result"?message:"Keep your eyes on the signal.")+'</p></section>';bindBack();const pad=$("reactionPad");if(pad)pad.onclick=()=>{if(phase==="ready"||phase==="early"||phase==="result"){phase="wait";draw();delay=900+Math.random()*2600;arcadeGameTimer=setTimeout(()=>{phase="go";started=Date.now();draw()},delay)}else if(phase==="wait"){if(arcadeGameTimer)clearTimeout(arcadeGameTimer);phase="early";draw()}else if(phase==="go"){const ms=Date.now()-started;phase="result";draw(ms+" ms — "+(ms<250?"Lightning fast!":ms<400?"Nice reflexes!":"Try to beat that time."))}}};
+    draw();return;
+  }
+  if(game==="number"){
+    let score=0,left=30,current=null,ended=false,timer=null;
+    const question=()=>{const a=1+Math.floor(Math.random()*20),b=1+Math.floor(Math.random()*20),op=Math.random()<.5?"+":"−";return {text:a+" "+op+" "+b,value:op==="+"?a+b:a-b,options:[]}};
+    const draw=()=>{if(ended){root.innerHTML='<section class="arcade-play-view">'+back+'<header class="arcade-game-heading"><span>🔢</span><div><h2>Number Sprint</h2><p>Round complete.</p></div></header><div class="number-finish"><b>'+score+'</b><span>correct answers</span></div><button class="primary" data-number-restart>Run it back</button></section>';bindBack();root.querySelector('[data-number-restart]').onclick=()=>launchArcadeGame('number');return}
+      if(!current)current=question();const opts=[current.value,current.value+1,current.value-2,current.value+3].sort(()=>Math.random()-.5);
+      root.innerHTML='<section class="arcade-play-view">'+back+'<header class="arcade-game-heading"><span>🔢</span><div><h2>Number Sprint</h2><p>Answer as many as you can in 30 seconds.</p></div></header><div class="number-stats"><span>Score <b>'+score+'</b></span><span>Time <b>'+left+'s</b></span></div><div class="number-question">'+current.text+' = ?</div><div class="number-options">'+opts.map(n=>'<button data-number="'+n+'">'+n+'</button>').join('')+'</div><p class="arcade-status" id="numberStatus">Choose the correct answer.</p></section>';bindBack();root.querySelectorAll('[data-number]').forEach(b=>b.onclick=()=>{if(Number(b.dataset.number)===current.value){score++;current=null;}else{const status=$("numberStatus");if(status)status.textContent="Not quite — keep going!";return}draw()});
+    };
+    draw();timer=setInterval(()=>{left--;if(left<=0){clearInterval(timer);ended=true;draw()}else{const time=root.querySelector('.number-stats b:last-child');if(time)time.textContent=left+'s'}},1000);
+    const oldBack=root.querySelector('[data-arcade-back]');if(oldBack)oldBack.onclick=()=>{clearInterval(timer);renderArcade()};
+    return;
+  }
+}
+function bindBack(){const b=$("gamesRoot")?.querySelector("[data-arcade-back]");if(b)b.onclick=renderArcade;}
 function openDoodleComposer(){
   if(!state.currentRoom){toast('Join the Main Room before sending a doodle.');return;}
   modal(`<div class="doodle-modal"><div class="doodle-head"><h2>🖌️ Doodle</h2><button type="button" class="mini" id="doodleClose">×</button></div>
