@@ -1,4 +1,4 @@
-const CACHE="maleficent-chat-v19-show-push-while-open";
+const CACHE="maleficent-chat-v20-no-api-cache";
 const ASSETS=["/","/style.css","/app.js","/manifest.json","/favicon.svg","/robots.txt","/sitemap.xml","/doodle-studio.js"];
 
 self.addEventListener("install",event=>{
@@ -17,6 +17,9 @@ self.addEventListener("install",event=>{
 self.addEventListener("fetch",event=>{
   if(event.request.method!=="GET")return;
   const url=new URL(event.request.url);
+  // Never cache API responses: cached empty/stale history made room and private
+  // messages appear to disappear after a reload even when PostgreSQL had them.
+  if(url.origin===self.location.origin && url.pathname.startsWith("/api/")) return;
   const refreshable=event.request.mode==="navigate" ||
     ["/","/index.html","/app.js","/style.css","/manifest.json","/favicon.svg","/robots.txt","/sitemap.xml","/doodle-studio.js"].includes(url.pathname);
 
