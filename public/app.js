@@ -394,7 +394,8 @@ function showKickLock(until,reason="Community rules"){
   box.dataset.lockType="kick";
   const safeReason=esc(reason||"Community rules");
   const refresh=()=>{
-    const remaining=Number(until||0)-Date.now();
+    const expiry=typeof until==="number"?until:(Number(until)||Date.parse(until));
+    const remaining=expiry-Date.now();
     if(remaining<=0){clearActionLock();return;}
     const total=Math.floor(remaining/1000);
     const days=Math.floor(total/86400),hours=Math.floor((total%86400)/3600),minutes=Math.floor((total%3600)/60),seconds=total%60;
