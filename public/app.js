@@ -3592,11 +3592,12 @@ async function checkUnderConstruction(){
     else hideConstructionPanel();
     const toggle=$("underConstructionToggle");
     if(toggle&&isOwnerExempt()){const configured=Boolean(status.configuredEnabled??status.enabled);toggle.checked=configured;toggle.setAttribute("aria-checked",configured?"true":"false");}
-  }catch{}
+  }catch(error){console.warn("Under Construction status check failed:",error?.message||error);}
 }
 async function toggleUnderConstruction(requestedEnabled){
   if(constructionWriteInFlight)return;
-  if(!isOwnerExempt()){toast("Owner/Developer access required.");await checkUnderConstruction();return;}
+  // Do not make a client-side rank decision here: the browser's cached user object
+  // can be stale after a rank change. Let the server's ownerOnly middleware decide.
   const toggle=$("underConstructionToggle");
   const enabled=Boolean(requestedEnabled);
   constructionWriteInFlight=true;
