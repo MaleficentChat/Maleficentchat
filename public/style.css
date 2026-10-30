@@ -3946,3 +3946,10 @@ body.party-mode-active .msg.dm-msg .chat-gif{
 #viewNews .news-card{
   flex-shrink:0;
 }
+
+
+/* Chat attachment selection and dedicated MP3/audio picker */
+.composer-file-name{display:block;max-width:min(34vw,220px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#c9a7ff;font-size:11px;align-self:center}
+.composer-file-name:empty{display:none}
+#chatToolsDrawer #attach,#chatToolsDrawer #youtubeMusicComposerBtn{white-space:nowrap}
+@media(max-width:600px){.composer-file-name{max-width:40vw;font-size:10px}}
