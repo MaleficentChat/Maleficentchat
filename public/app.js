@@ -4712,7 +4712,9 @@ function editRoom() {
   if(!room)return;
   if(room.isDefault || /^main room$/i.test(String(room.name||"").trim())){toast("Main Room is protected.");return;}
   const ranks=["MEMBER","VIP","PREMIUM","MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"];
-  const rankLabels={MEMBER:"Member",VIP:"VIP",PREMIUM:"Premium",MOD:"Moderator",ADMIN:"Admin",SUPER_ADMIN:"Super Admin",COMMISSOR:"Commissor",COOWNER:"Co-owner",OWNER:"Owner"};
+  const rankLabels={MEMBER:"Member",VIP:"VIP",PREMIUM:"Premium",MOD:"Moderator",ADMIN:"Admin",SUPER_ADMIN:"Super Admin",COMMISSOR:"Commissor",COOWNER:"Co-owner",OWNER:"Owner",ROYAL:"Legacy rank — Royal",INSTRUCTOR:"Legacy rank — Instructor"};
+  const savedRequiredRank=String(room.rankRequired||"MEMBER").toUpperCase();
+  const rankChoices=ranks.includes(savedRequiredRank)?ranks:[savedRequiredRank,...ranks];
   modal(`
     <div class="room-editor room-editor-edit">
       <header class="room-editor-hero"><span class="room-editor-hero-icon">✏️</span><div><p class="room-editor-eyebrow">ROOM CONTROL</p><h2>Edit room</h2><p>Update this room’s look, access and limits.</p></div></header>
@@ -4725,7 +4727,7 @@ function editRoom() {
       </div></section>
       <section class="room-editor-section"><h3>🔐 Access & privacy</h3>
         <label>Who can discover this room<select id="rPublic"><option value="true" ${room.public!==false?"selected":""}>Public — listed for everyone</option><option value="false" ${room.public===false?"selected":""}>Private — not publicly listed</option></select></label>
-        <label>Minimum rank to join<select id="rRankRequired">${ranks.map(r=>'<option value="'+r+'" '+(String(room.rankRequired||"MEMBER").toUpperCase()===r?'selected':'')+'>'+rankLabels[r]+'</option>').join("")}</select></label>
+        <label>Minimum rank to join<select id="rRankRequired">${rankChoices.map(r=>'<option value="'+r+'" '+(savedRequiredRank===r?'selected':'')+'>'+(rankLabels[r]||r.replaceAll("_"," "))+'</option>').join("")}</select></label>
         <label>Member access<select id="rFriendsOnly"><option value="false" ${room.friendsOnly?'':'selected'}>Anyone who meets the rank requirement</option><option value="true" ${room.friendsOnly?'selected':''}>Accepted friends only</option></select></label>
         <label>Change room password <span class="room-editor-optional">leave blank to remove it</span><input id="rp" type="password" autocomplete="new-password" placeholder="Enter a new password"></label>
       </section>
