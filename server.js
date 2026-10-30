@@ -2916,10 +2916,38 @@ app.post(
       target.kickReason=cleanText(req.body.reason)||"KICK";
       target.online=false;
     }
+    let autoBannedAccounts=[];
     if(action==="BAN"){
       target.banned=true;
       target.banReason=cleanText(req.body.reason)||"BAN";
       target.online=false;
+      // Auto-ban linked accounts only when public IP and browser user-agent recur together.
+      // Shared IP alone is not enough to ban household or public-network users.
+      try{
+        const history=await pool.query("SELECT host(ip_address) AS ip, user_agent FROM user_ip_history WHERE user_id=$1 AND ip_address IS NOT NULL AND COALESCE(user_agent, chr(0))<>chr(0) ORDER BY recorded_at DESC LIMIT 100",[Number(target.id)]);
+        const signals=[...new Set(history.rows.map(row=>String(row.ip||"")+"\\n"+String(row.user_agent||"")))];
+        const publicSignals=signals.filter(signal=>{
+          const ip=signal.split("\\n")[0];
+          return ip&&!(/^(127\\.|10\\.|192\\.168\\.|169\\.254\\.|172\\.(1[6-9]|2[0-9]|3[01])\\.|::1$|fc|fd|fe80:)/i.test(ip));
+        });
+        const ips=[...new Set(publicSignals.map(signal=>signal.split("\\n")[0]))];
+        const agents=[...new Set(publicSignals.map(signal=>signal.slice(signal.indexOf("\\n")+1)).filter(Boolean))];
+        if(ips.length&&agents.length){
+          const linked=await pool.query("SELECT u.id FROM users u JOIN user_ip_history h ON h.user_id=u.id WHERE u.id<>$1 AND host(h.ip_address)=ANY($2::text[]) AND h.user_agent=ANY($3::text[]) GROUP BY u.id HAVING COUNT(DISTINCT concat_ws(chr(1),host(h.ip_address),h.user_agent))>=2",[Number(target.id),ips,agents]);
+          for(const row of linked.rows){
+            const linkedUser=findUser(String(row.id));
+            if(!linkedUser||linkedUser.banned||!canAccessStaffTarget(actor,linkedUser))continue;
+            linkedUser.banned=true;
+            linkedUser.banReason="Automatic linked-account ban following moderation of @"+target.username+": "+target.banReason;
+            linkedUser.online=false;
+            autoBannedAccounts.push({id:String(linkedUser.id),username:linkedUser.username});
+            db.moderationHistory.push({id:id(),time:Date.now(),actor:"SYSTEM",target:linkedUser.id,action:"BAN",reason:linkedUser.banReason,expiresAt:null});
+            systemAudit({target:linkedUser.id,actor:"SYSTEM",action:"BAN",reason:linkedUser.banReason,source:"linked-account-auto-ban",durationMinutes:0});
+            notify(linkedUser.id,"moderation","Account automatically banned",linkedUser.banReason);
+            io.to("user:"+linkedUser.id).emit("ban-lock",{reason:linkedUser.banReason});
+          }
+        }
+      }catch(error){console.error("[LINKED_ACCOUNT_BAN] Automatic linked-account check failed:",error?.message||error);}
     }
 
     if(action==="UNMUTE"||action==="REVOKE_MUTE"){
@@ -2982,7 +3010,8 @@ app.post(
     io.emit("presence");
 
     res.json({
-      user:safeUser(target)
+      user:safeUser(target),
+      autoBannedAccounts
     });
   }
 );
