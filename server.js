@@ -691,12 +691,35 @@ app.get("/api/under-construction/status",async(req,res)=>{
 app.post("/api/staff/under-construction",express.json(),auth,ownerOnly,async(req,res)=>{
   try{
     const enabled=req.body?.enabled===true;
+    const suppliedCode=String(req.body?.code||"");
+    const existing=db.settings?.under_construction||{};
     const now=Date.now();
-    const setting={enabled,until:0,updatedBy:current(req)?.username||"Owner",updatedAt:now};
+    let setting;
+    if(enabled){
+      if(suppliedCode.length<4||suppliedCode.length>128){
+        return res.status(400).json({error:"Create a shutdown code of 4–128 characters before enabling maintenance mode."});
+      }
+      const codeSalt=crypto.randomBytes(16).toString("hex");
+      const codeHash=crypto.scryptSync(suppliedCode,codeSalt,64).toString("hex");
+      setting={enabled:true,until:0,codeSalt,codeHash,updatedBy:current(req)?.username||"Owner",updatedAt:now};
+    }else{
+      if(!existing.codeSalt||!existing.codeHash){
+        return res.status(400).json({error:"No shutdown code is saved for this maintenance session. Turn maintenance OFF is blocked for safety; enable it again with a code first."});
+      }
+      if(suppliedCode.length<1||suppliedCode.length>128){
+        return res.status(400).json({error:"Enter the shutdown code you created when enabling maintenance mode."});
+      }
+      const expected=Buffer.from(String(existing.codeHash),"hex");
+      const actual=crypto.scryptSync(suppliedCode,String(existing.codeSalt),64);
+      if(expected.length!==actual.length||!crypto.timingSafeEqual(expected,actual)){
+        return res.status(403).json({error:"Incorrect shutdown code. The site is still under construction."});
+      }
+      setting={enabled:false,until:0,updatedBy:current(req)?.username||"Owner",updatedAt:now};
+    }
     await persistUnderConstructionSetting(setting);
     const payload={enabled:setting.enabled,until:0};
     io.emit("under-construction:status",payload);
-    log(current(req),enabled?"UNDER_CONSTRUCTION_ENABLED":"UNDER_CONSTRUCTION_DISABLED","site",{persistent:true});
+    log(current(req),enabled?"UNDER_CONSTRUCTION_ENABLED":"UNDER_CONSTRUCTION_DISABLED","site",{persistent:true,codeProtected:true});
     return res.json(payload);
   }catch(error){
     console.error("Under-construction update failed:",error);
