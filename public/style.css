@@ -3758,3 +3758,10 @@ body.party-mode-active .msg.dm-msg .chat-gif{
 .cleared-evidence-message .toolbar small{color:var(--muted,#aaa);text-align:right}
 .cleared-evidence-message-text{white-space:pre-wrap;overflow-wrap:anywhere;margin-top:8px}
 .cleared-evidence-message a{display:inline-block;margin-top:8px;color:var(--accent,#c99bff);text-decoration:underline}
+
+/* Filter manager categories: visually separate moderation rule types. */
+.owner-filter-management .filter-category-details{margin-top:12px;padding:10px 12px;border:1px solid var(--border);border-radius:10px;background:rgba(255,255,255,.018)}
+.owner-filter-management .filter-category-details summary{cursor:pointer;font-weight:700;padding:3px 0}
+.owner-filter-management .filter-category-list{display:grid;gap:7px;margin-top:10px}
+.owner-filter-management .filter-category-list .filter-table-row{display:flex;align-items:center;gap:10px;min-width:0}
+.owner-filter-management .filter-category-list .filter-table-row code{overflow-wrap:anywhere;flex:1}
