@@ -3953,3 +3953,15 @@ body.party-mode-active .msg.dm-msg .chat-gif{
 .composer-file-name:empty{display:none}
 #chatToolsDrawer #attach,#chatToolsDrawer #youtubeMusicComposerBtn{white-space:nowrap}
 @media(max-width:600px){.composer-file-name{max-width:40vw;font-size:10px}}
+
+
+/* Per-user Feature Block panel */
+.staff-feature-block-modal{max-width:720px;margin:auto}
+.feature-block-list{max-height:min(58vh,560px);overflow:auto;padding:4px 2px}
+.feature-block-category{margin:10px 0 16px}
+.feature-block-category h3{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--accent,#c084fc);margin:8px 4px}
+.feature-block-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 12px;margin:5px 0;border:1px solid var(--border,rgba(255,255,255,.1));border-radius:12px;background:rgba(255,255,255,.025);cursor:pointer}
+.feature-block-row span{display:flex;flex-direction:column;gap:3px;min-width:0}
+.feature-block-row b{font-size:13px}
+.feature-block-row small{font-size:11px;color:var(--muted,#9ca3af)}
+.feature-block-toggle{width:18px;height:18px;accent-color:#c084fc;flex:0 0 auto}
