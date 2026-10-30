@@ -113,6 +113,7 @@
     <button class="nav" data-view="shop">🛍️ <span>Premium / VIP</span></button>
     <button class="nav" data-view="rules">📜 <span>Rules</span></button>
     <button class="nav" data-view="leaderboard">🏆 <span>Leaderboards</span></button>
+    <button class="nav" data-view="guide">📘 <span>Guide</span></button>
   </details>
   <details class="nav-group"><summary>⌕ <span>My space</span><i>⌄</i></summary>
     <button class="nav" data-view="saved">🔖 <span>Saved Messages</span></button>
@@ -196,7 +197,8 @@
   <div id="viewSuggestions" class="view hidden"><div class="topbar"><div><h2>💡 Suggestions</h2><p class="muted">Report a feature that is not working, suggest an improvement, or request an additional feature.</p></div></div><section class="card suggestions-submit-card"><form id="suggestionForm" class="stack"><label for="suggestionCategory">Reason for suggestion</label><select id="suggestionCategory" required><option value="Feature not working">Feature not working</option><option value="Improvement suggestion">Improvement suggestion</option><option value="Additional feature">Additional feature</option></select><label for="suggestionDescription">Describe your suggestion</label><textarea id="suggestionDescription" rows="5" maxlength="4000" required placeholder="Describe the issue or feature in detail…"></textarea><div class="toolbar"><span class="muted">Only the Developer can view submitted suggestions.</span><button class="primary" type="submit">Submit suggestion</button></div></form></section><div id="suggestionsList" class="stack"></div></div>
   <div id="viewShop" class="view hidden"><div class="topbar"><div><h2>🛍️ Premium / VIP</h2><p class="muted">Premium requests and gold-funded temporary VIP.</p></div></div><div id="rankShop" class="shop-grid"></div></div>
   <div id="viewRules" class="view hidden"><div class="topbar"><div><h2>📜 Rules</h2><p class="muted">Community rules for Maleficent Chat.</p></div></div><div id="communityRules" class="community-rules-list"><p class="muted">Loading rules…</p></div></div>
-  <div id="viewOwner" class="view hidden"><div class="topbar"><h2>👑 Owner Space</h2><span class="pill">Permanent Developer</span></div><div id="owner"></div></div>
+  <div id="viewGuide" class="view hidden"><div class="topbar"><div><h2>📘 Rank Guide</h2><p class="muted">Instructions and information for your current rank.</p></div></div><div id="guideContent" class="stack"></div></div>
+  <div id="viewOwner" class="view hidden"><div class="topbar"><h2>👑 Owner Space</h2><span class="pill">Permanent Developer</span></div><div id="owner"></div><div id="ownerGuideManagement"></div></div>
 </main>
 </div>
 
@@ -219,6 +221,6 @@
   register.addEventListener("click",function(){showLoginMode(false);},true);
 })();
 </script>
-<script src="/app.js?v=remove-socials-final-20261030"></script>
+<script src="/app.js?v=rank-guide-management-20261030"></script>
 </body>
 </html>
