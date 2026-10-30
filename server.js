@@ -577,9 +577,18 @@ function verifyRoomJoinToken(token,userId,room){
   try{const [payload,signature]=String(token||"").split(".");if(!payload||!signature)return false;const expected=crypto.createHmac("sha256",TOKEN_SECRET).update(payload).digest("base64url");if(signature.length!==expected.length||!crypto.timingSafeEqual(Buffer.from(signature),Buffer.from(expected)))return false;const data=JSON.parse(Buffer.from(payload,"base64url").toString("utf8"));return data.sub===String(userId)&&data.room===String(room.id)&&data.exp>=Math.floor(Date.now()/1000)&&data.access===crypto.createHash("sha256").update(String(room.passwordHash||"public")).digest("hex");}catch{return false;}
 }
 function current(req){
-  let uid=req.session?.userId;
-  if(!uid){ const raw=req.headers["x-auth-token"] || (String(req.headers.authorization||"").startsWith("Bearer ")?String(req.headers.authorization).slice(7):""); const p=verifyToken(raw); if(p) uid=String(p.sub); }
-  return uid?db.users.find(u=>String(u.id)===String(uid)):null;
+  // Prefer the live session when it resolves to an existing account. A stale
+  // session cookie must not shadow a still-valid signed client token after a
+  // session restore or account-state reload.
+  const sessionUid=req.session?.userId;
+  const sessionUser=sessionUid?db.users.find(u=>String(u.id)===String(sessionUid)):null;
+  if(sessionUser) return sessionUser;
+
+  const raw=req.headers["x-auth-token"] ||
+    (String(req.headers.authorization||"").startsWith("Bearer ")?String(req.headers.authorization).slice(7):"");
+  const tokenPayload=verifyToken(raw);
+  if(!tokenPayload) return null;
+  return db.users.find(u=>String(u.id)===String(tokenPayload.sub))||null;
 }
 
 function clientIp(req){
