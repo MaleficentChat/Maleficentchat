@@ -248,7 +248,9 @@ function avatar(u, cls = "avatar") {
 
 function can(requiredRank) {
   if (!state.user) return false;
-  return (rankOrder[state.user.rank] ?? -1) >= (rankOrder[requiredRank] ?? 999);
+  const userRank=String(state.user.rank||"").toUpperCase();
+  const neededRank=String(requiredRank||"").toUpperCase();
+  return (rankOrder[userRank] ?? -1) >= (rankOrder[neededRank] ?? 999);
 }
 
 function canAccessStaffTarget(user){
@@ -652,7 +654,7 @@ function updateNav() {
       el.classList.toggle("hidden", !can("MOD")&&!canFeature("view_staff_dashboard"))
     );
   const reportButton=$("topFlag");
-  if(reportButton) reportButton.classList.toggle("hidden", !can("MOD")&&!canFeature("view_staff_dashboard"));
+  if(reportButton) reportButton.classList.toggle("hidden", !can("MOD"));
 
   document
     .querySelectorAll(".owner-only")
@@ -2877,22 +2879,29 @@ async function openProfileActionDrawer(user,data={}){
   const isSelf=String(user.id)===String(state.user.id);
   if(isSelf){modal(`<div class="profile-drawer"><h2>Account actions</h2><button class="quick-user-row" id="drawerEdit">✏️ Edit profile</button><button class="quick-user-row" id="drawerBlocked">🚫 Blocked users</button></div>`);$('drawerEdit')?.addEventListener('click',()=>{closeModal();state.view='profile';renderView()});$('drawerBlocked')?.addEventListener('click',showBlockedUsers);return;}
   const prefs=dmPrefs(),id=String(user.id),muted=!!prefs.muted?.[id],archived=!!prefs.archived?.[id],blocked=(state.user.blocked||[]).map(String).includes(id);
+  const isOwner=String(state.user?.rank||"").toUpperCase()==="DEVELOPER" || (state.user?.username==="Maleficent" && String(state.user?.rank||"").toUpperCase()==="OWNER");
+  const canStaffModification=canFeature("account_modifications");
+  const canShareWallet=canFeature("share_gold");
+  const canGiveRank=isOwner||canFeature("staff_rank_assignment");
+  const canRoomStaff=can("MOD")||["ROOM_OWNER","ROOM_ADMIN"].includes(String(state.currentRoomRole||"USER").toUpperCase());
+  const canModerate=can("MOD")||canFeature("moderate_users");
+  const canStaffAccount=(can("MOD")||canFeature("manage_staff_accounts"))&&canAccessStaffTarget(user);
+  const canHistory=can("MOD")&&canAccessStaffTarget(user);
   modal(`<div class="profile-drawer quick-action-menu"><h2>Actions · @${esc(user.username||'user')}</h2>
-    <button class="quick-user-row" id="drawerPM"><span>💬</span><b>Private message</b><i>›</i></button>
-    <button class="quick-user-row" id="drawerLikeProfile"><span>❤️</span><b>Like profile</b><i>›</i></button>
-    <button class="quick-user-row" id="drawerAddFriend"><span>👥</span><b>Add friend</b><i>›</i></button>
-    <button class="quick-user-row" id="drawerBlock"><span>🚫</span><b>Block</b><i>›</i></button>
-    <button class="quick-user-row" id="drawerStaffModification"><span>🛠️</span><b>Staff modification</b><i>›</i></button>
-    <button class="quick-user-row" id="drawerWallet"><span>🪙</span><b>Share wallet</b><i>›</i></button>
-    <button class="quick-user-row" id="drawerGiveRank"><span>🏅</span><b>Give rank</b><i>›</i></button>
-    <button class="quick-user-row" id="drawerRoomRank"><span>✨</span><b>Room rank</b><i>›</i></button>
-    <button class="quick-user-row" id="drawerRoomModerate"><span>🛡️</span><b>Room moderation</b><i>›</i></button>
-    <button class="quick-user-row" id="drawerModerateUser"><span>🛡️</span><b>Moderate user</b><i>›</i></button>
-    <button class="quick-user-row" id="drawerStaffAccount"><span>⚙️</span><b>Staff account</b><i>›</i></button>
-    <button class="quick-user-row" id="drawerUserHistory"><span>📜</span><b>User history</b><i>›</i></button>
-    <button class="quick-user-row" id="drawerNickname"><span>✏️</span><b>Nickname</b><i>›</i></button>
-    <button class="quick-user-row" id="drawerReport"><span>⚑</span><b>Report user</b><i>›</i></button>
-  </div>`);
+     <button class="quick-user-row" id="drawerPM"><span>💬</span><b>Private message</b><i>›</i></button>
+     <button class="quick-user-row" id="drawerLikeProfile"><span>❤️</span><b>Like profile</b><i>›</i></button>
+     <button class="quick-user-row" id="drawerAddFriend"><span>👥</span><b>Add friend</b><i>›</i></button>
+     <button class="quick-user-row" id="drawerBlock"><span>🚫</span><b>Block</b><i>›</i></button>
+     ${canStaffModification?'<button class="quick-user-row" id="drawerStaffModification"><span>🛠️</span><b>Staff modification</b><i>›</i></button>':''}
+     ${canShareWallet?'<button class="quick-user-row" id="drawerWallet"><span>🪙</span><b>Share wallet</b><i>›</i></button>':''}
+     ${canGiveRank?'<button class="quick-user-row" id="drawerGiveRank"><span>🏅</span><b>Give rank</b><i>›</i></button>':''}
+     ${canRoomStaff?'<button class="quick-user-row" id="drawerRoomRank"><span>✨</span><b>Room rank</b><i>›</i></button><button class="quick-user-row" id="drawerRoomModerate"><span>🛡️</span><b>Room moderation</b><i>›</i></button>':''}
+     ${canModerate?'<button class="quick-user-row" id="drawerModerateUser"><span>🛡️</span><b>Moderate user</b><i>›</i></button>':''}
+     ${canStaffAccount?'<button class="quick-user-row" id="drawerStaffAccount"><span>⚙️</span><b>Staff account</b><i>›</i></button>':''}
+     ${canHistory?'<button class="quick-user-row" id="drawerUserHistory"><span>📜</span><b>User history</b><i>›</i></button>':''}
+     <button class="quick-user-row" id="drawerNickname"><span>✏️</span><b>Nickname</b><i>›</i></button>
+     <button class="quick-user-row" id="drawerReport"><span>⚑</span><b>Report user</b><i>›</i></button>
+   </div>`);
   $('drawerPM')?.addEventListener('click',()=>{closeModal();openDM(id)});
   $('drawerLikeProfile')?.addEventListener('click',async()=>{try{const r=await api(`/api/users/${encodeURIComponent(id)}/like`,{method:'POST'});closeModal();toast(r.liked?'Profile liked.':'Like removed.');}catch(e){toast(e.message)}});
   $('drawerAddFriend')?.addEventListener('click',async()=>{try{await friend(id);closeModal();}catch(e){toast(e.message)}});
