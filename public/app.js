@@ -3599,7 +3599,11 @@ async function checkUnderConstruction(){
     if(label){label.textContent=(status.configuredEnabled??status.enabled)?"ON · Maintenance enabled":"OFF · Site open";label.classList.toggle("is-on",Boolean(status.configuredEnabled??status.enabled));}
     const result=$("staffConstructionResult");
     if(result&&!constructionWriteInFlight)result.textContent="Last checked: "+new Date().toLocaleTimeString();
-  }catch(error){console.warn("Under Construction status check failed:",error?.message||error);}
+  }catch(error){
+    console.warn("Under Construction status check failed:",error?.message||error);
+    const label=$("staffConstructionStatus");if(label)label.textContent="Status unavailable";
+    const result=$("staffConstructionResult");if(result)result.textContent="Could not read the saved status: "+(error?.message||"Unknown server error");
+  }
 }
 async function toggleUnderConstruction(requestedEnabled){
   if(constructionWriteInFlight)return;
