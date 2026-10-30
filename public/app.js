@@ -448,8 +448,8 @@ async function start() {
   state.socket.on("under-construction:status",payload=>{
     if(payload?.enabled&&!isOwnerExempt())showConstructionPanel(payload.until);
     else hideConstructionPanel();
-    const btn=$("underConstructionToggle");
-    if(btn&&isOwnerExempt()){btn.dataset.active=payload?.enabled?"true":"false";btn.textContent=payload?.enabled?"🚧 Turn Off Under Construction":"🚧 Enable Under Construction";if($("constructionDuration"))$("constructionDuration").disabled=!!payload?.enabled;}
+    const toggle=$("underConstructionToggle");
+    if(toggle&&isOwnerExempt()){toggle.checked=!!payload?.enabled;toggle.setAttribute("aria-checked",toggle.checked?"true":"false");if($("constructionDuration"))$("constructionDuration").disabled=toggle.checked;}
   });
   state.socket.on("room:theme",data=>{if(!data?.roomId||!data?.theme)return;const room=state.rooms.find(r=>String(r.id)===String(data.roomId));if(room)room.roomTheme=data.theme;if(String(state.currentRoom)===String(data.roomId))applyRoomTheme(data.theme);});
   state.socket.on("gold:update",data=>{ if(state.user&&data?.gold!==undefined){state.user.gold=data.gold; updateNav();}});
@@ -3597,35 +3597,34 @@ async function checkUnderConstruction(){
     const status=await api("/api/under-construction/status");
     if(status.enabled&&!status.exempt)showConstructionPanel(status.until);
     else hideConstructionPanel();
-    const btn=$("underConstructionToggle");
-    if(btn&&isOwnerExempt()){const configured=status.configuredEnabled??status.enabled;btn.dataset.active=configured?"true":"false";btn.textContent=configured?"🚧 Turn Off Under Construction":"🚧 Enable Under Construction";if($("constructionDuration"))$("constructionDuration").disabled=!!configured;}
+    const toggle=$("underConstructionToggle");
+    if(toggle&&isOwnerExempt()){const configured=Boolean(status.configuredEnabled??status.enabled);toggle.checked=configured;toggle.setAttribute("aria-checked",configured?"true":"false");if($("constructionDuration"))$("constructionDuration").disabled=configured;}
   }catch{}
 }
-async function toggleUnderConstruction(){
-  if(!isOwnerExempt()){toast("Owner/Developer access required.");return;}
-  const btn=$("underConstructionToggle");
-  if(btn) btn.disabled=true;
+async function toggleUnderConstruction(requestedEnabled){
+  if(!isOwnerExempt()){toast("Owner/Developer access required.");await checkUnderConstruction();return;}
+  const toggle=$("underConstructionToggle");
+  const duration=$("constructionDuration");
+  const enabled=Boolean(requestedEnabled);
+  if(toggle)toggle.disabled=true;
+  if(duration)duration.disabled=enabled;
   try{
-    // Read the persisted server state first; never infer it from a stale button dataset/socket event.
-    const status=await api("/api/under-construction/status");
-    const active=Boolean(status.configuredEnabled ?? status.enabled);
-    const payload=active
-      ? {enabled:false}
-      : {enabled:true,durationMinutes:Number($("constructionDuration")?.value||60)};
+    const payload=enabled
+      ? {enabled:true,durationMinutes:Number(duration?.value||60)}
+      : {enabled:false};
     const result=await api("/api/owner/under-construction",{method:"POST",body:JSON.stringify(payload)});
-    const enabled=Boolean(result.enabled);
-    if(btn){btn.dataset.active=enabled?"true":"false";btn.textContent=enabled?"🚧 Turn Off Under Construction":"🚧 Enable Under Construction";}
-    const duration=$("constructionDuration");
-    if(duration) duration.disabled=enabled;
-    toast(enabled?"Under Construction Panel enabled. Owner and Developer remain exempt.":"Under Construction Panel disabled.");
+    const active=Boolean(result.enabled);
+    if(toggle){toggle.checked=active;toggle.setAttribute("aria-checked",active?"true":"false");}
+    if(duration)duration.disabled=active;
+    toast(active?"Under Construction is ON. Owner and Developer remain exempt.":"Under Construction is OFF.");
+    await checkUnderConstruction();
   }catch(e){
-    toast(e.message||"Could not change construction mode.");
+    toast(e.message||"Could not change Under Construction mode.");
     await checkUnderConstruction();
   }finally{
-    if(btn) btn.disabled=false;
+    if(toggle)toggle.disabled=false;
   }
 }
-
 
 async function loadCommunityRules(){
  const host=$('communityRules');if(!host)return;
@@ -3692,7 +3691,7 @@ async function loadOwner() {
               <option value="10080">7 days</option>
             </select>
           </label>
-          <button class="mini danger" type="button" id="underConstructionToggle" onclick="toggleUnderConstruction()">🚧 Under Construction Panel</button>
+          <label class="construction-switch-row" for="underConstructionToggle"><span><b>🚧 Under Construction</b><small>Turn maintenance mode on or off</small></span><span class="construction-switch"><input type="checkbox" id="underConstructionToggle" role="switch" aria-label="Under Construction mode" aria-checked="false" onchange="toggleUnderConstruction(this.checked)"><span class="construction-switch-track" aria-hidden="true"></span></span></label>
 
           <button class="mini" onclick="ownerFeatureGrants()">🧩 Feature granting</button>
           
