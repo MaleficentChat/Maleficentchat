@@ -3898,20 +3898,15 @@ async function loadOwner() {
         </p>
 
         <div class="toolbar">
-
-          <button
-            class="primary"
-            onclick="inspectDMs()"
-          >
-            Inspect private messages
-          </button>
-          
-
-
+          <button class="primary" onclick="inspectDMs()">Inspect private messages</button>
           <button class="mini" onclick="ownerFeatureGrants()">🧩 Feature granting</button>
-          
-
         </div>
+        <section class="card owner-message-refresh-card" style="margin-top:14px;border-color:var(--danger,#b84a68)">
+          <h3>🧹 Refresh Site Messages</h3>
+          <p class="muted">Permanently remove all current room chat messages and private messages for every user. Accounts, passwords, ranks, gold, settings, rooms, reports, and moderation/audit history are kept.</p>
+          <button class="danger" type="button" id="ownerClearAllMessages">🧹 Clear all room & private messages</button>
+          <p class="muted" id="ownerClearAllMessagesStatus" aria-live="polite"></p>
+        </section>
 
       </div>
 
@@ -4013,6 +4008,26 @@ async function loadOwner() {
 
     
     
+    $("ownerClearAllMessages")?.addEventListener("click",async()=>{
+      const confirmation="PERMANENTLY DELETE EVERY ROOM CHAT MESSAGE AND EVERY PRIVATE MESSAGE FOR ALL USERS?\n\nThis cannot be undone. Accounts, passwords, ranks, gold, settings, rooms, reports, and moderation/audit history will remain. Type CLEAR in the next prompt to continue.";
+      if(!window.confirm(confirmation))return;
+      if(window.prompt("Type CLEAR to permanently remove all room and private messages:")!=="CLEAR")return;
+      const button=$("ownerClearAllMessages"),status=$("ownerClearAllMessagesStatus");
+      if(button){button.disabled=true;button.textContent="⏳ Clearing messages…";}
+      if(status)status.textContent="Deleting stored chat messages…";
+      try{
+        const result=await api("/api/owner/refresh-site-messages",{method:"POST"});
+        state.messages=[];state.privateMessages=[];
+        if($("messages"))$("messages").innerHTML="";
+        if($("dmMessages"))$("dmMessages").innerHTML="";
+        toast("Cleared "+Number(result.roomMessagesRemoved||0)+" room messages and "+Number(result.privateMessagesRemoved||0)+" private messages.");
+        if(status)status.textContent="All room and private messages were permanently cleared.";
+      }catch(error){
+        if(status)status.textContent=error.message||"Could not clear messages.";
+        toast(error.message||"Could not clear messages.");
+      }finally{if(button){button.disabled=false;button.textContent="🧹 Clear all room & private messages";}}
+    });
+
     // Owner controls are injected dynamically; sync the toggle with persisted server state after rendering.
     await checkUnderConstruction();
     for(const key of ['multi_account','ban_evasion','spam_flood','vpn_proxy']){const actionSelect=$('sm_'+key+'_action'),durationInput=$('sm_'+key+'_duration'),label=durationInput?.closest('label');const sync=()=>{const needed=['MUTE','KICK'].includes(actionSelect?.value);if(durationInput)durationInput.disabled=!needed;if(label)label.firstChild.nodeValue=needed?'Duration (minutes)':'No duration required';};actionSelect?.addEventListener('change',sync);sync();}
