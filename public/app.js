@@ -3642,15 +3642,15 @@ async function toggleUnderConstruction(requestedEnabled){
     const result=await api("/api/staff/under-construction",{method:"POST",body:JSON.stringify({enabled,code})});
     const active=Boolean(result.enabled);
     if(toggle){toggle.checked=active;toggle.setAttribute("aria-checked",active?"true":"false");}
-    if(codeInput)codeInput.value="";
+    if(codeInput&&!result.codeConfigured)codeInput.value="";
     const resultLabel=$("staffConstructionResult");
-    if(resultLabel)resultLabel.textContent=active?"Server saved ON. A shutdown code is now required to turn it OFF. Verifying the persisted setting…":"Server saved OFF after code verification. Verifying the persisted setting…";
+    if(resultLabel)resultLabel.textContent=result.codeConfigured?"Legacy maintenance session secured. The code is ready; switch OFF again to confirm it.":active?"Server saved ON. A shutdown code is now required to turn it OFF. Verifying the persisted setting…":"Server saved OFF after code verification. Verifying the persisted setting…";
     const statusLabel=$("staffConstructionStatus");
     if(statusLabel){
       statusLabel.textContent=active?"ON · Maintenance enabled":"OFF · Site open";
       statusLabel.classList.toggle("is-on",active);
     }
-    toast(active?"Under Construction enabled. Save your code securely; it is not displayed again.":"Shutdown code accepted. Under Construction disabled.");
+    toast(result.codeConfigured?"Shutdown code saved. Toggle OFF again to finish.":active?"Under Construction enabled. Save your code securely; it is not displayed again.":"Shutdown code accepted. Under Construction disabled.");
   }catch(e){
     if(toggle)toggle.checked=!enabled;
     if(toggle)toggle.setAttribute("aria-checked",enabled?"false":"true");
