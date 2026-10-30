@@ -3923,3 +3923,26 @@ body.party-mode-active .msg.dm-msg .chat-gif{
  #viewProfile .settings-row b{font-size:14px}
  #viewProfile .settings-row small{font-size:11px}
 }
+
+
+/* News page scroll repair: keep the feed scrollable inside the fixed-height app shell */
+#viewNews{
+  height:100%!important;
+  min-height:0!important;
+  max-height:100%!important;
+  overflow-x:hidden!important;
+  overflow-y:auto!important;
+  -webkit-overflow-scrolling:touch;
+  overscroll-behavior-y:contain;
+  touch-action:pan-y;
+  padding-bottom:calc(28px + env(safe-area-inset-bottom, 0px))!important;
+  box-sizing:border-box!important;
+}
+#viewNews #news{
+  min-height:min-content;
+  overflow:visible!important;
+  padding-bottom:calc(32px + env(safe-area-inset-bottom, 0px))!important;
+}
+#viewNews .news-card{
+  flex-shrink:0;
+}
