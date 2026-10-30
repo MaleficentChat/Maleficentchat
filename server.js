@@ -2978,6 +2978,29 @@ app.post("/api/users/:id/action-history/clear",auth,(req,res)=>{
   res.json({ok:true,removed});
 });
 
+app.get("/api/owner/message-persistence-status",auth,ownerOnly,async(req,res)=>{
+  // Read-only diagnostic: never changes or clears message history.
+  const [dbInfo,roomCount,dmCount,latestRoom,latestDm,mainRoom] = await Promise.all([
+    pool.query("SELECT current_database() AS database, current_schema() AS schema"),
+    pool.query("SELECT COUNT(*)::int AS count FROM room_messages"),
+    pool.query("SELECT COUNT(*)::int AS count FROM private_messages"),
+    pool.query("SELECT MAX(created_at) AS latest FROM room_messages"),
+    pool.query("SELECT MAX(created_at) AS latest FROM private_messages"),
+    pool.query("SELECT id,name FROM rooms WHERE LOWER(TRIM(name))='main room' ORDER BY id")
+  ]);
+  res.set("Cache-Control","no-store");
+  res.json({
+    ok:true,
+    diagnostic:"read-only",
+    deploymentCommit:process.env.RENDER_GIT_COMMIT||process.env.SOURCE_VERSION||null,
+    processUptimeSeconds:Math.floor(process.uptime()),
+    database:dbInfo.rows[0],
+    roomMessages:{count:roomCount.rows[0].count,latestAt:latestRoom.rows[0].latest},
+    privateMessages:{count:dmCount.rows[0].count,latestAt:latestDm.rows[0].latest},
+    mainRooms:mainRoom.rows
+  });
+});
+
 app.post("/api/owner/refresh-site-messages",auth,ownerOnly,(req,res)=>{
   // The old action deleted every room and private message. Disable it to protect
   // user history; "Site refresh" must only refresh cached site files.
