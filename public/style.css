@@ -3797,3 +3797,28 @@ body.party-mode-active .msg.dm-msg .chat-gif{
 .owner-filter-management .filter-category-details{margin:0}
 .owner-filter-management .filter-category-details>summary{cursor:pointer;padding:10px 12px}
 @media(max-width:560px){.filter-quick-row{grid-template-columns:minmax(0,1fr)}.filter-quick-row button{width:100%}.owner-filter-management-content{padding:0 8px 10px}}
+
+
+/* Room create/edit: compact gothic editor with clearly separated settings. */
+.room-editor{display:grid;gap:14px;width:min(100%,650px);max-height:min(82vh,820px);overflow:auto;padding:2px 4px 4px;color:var(--text,#f4efff)}
+.room-editor-hero{display:flex;align-items:center;gap:13px;padding:15px;border:1px solid rgba(155,92,255,.28);border-radius:16px;background:radial-gradient(ellipse at top left,rgba(155,92,255,.18),transparent 72%),rgba(19,13,31,.88)}
+.room-editor-hero-icon{display:grid;place-items:center;flex:0 0 48px;width:48px;height:48px;border-radius:14px;background:rgba(155,92,255,.15);font-size:1.55rem}
+.room-editor-eyebrow{margin:0 0 3px;color:#c99bff;font-size:.68rem;font-weight:800;letter-spacing:.14em}
+.room-editor-hero h2{margin:0;font-size:1.25rem}
+.room-editor-hero p:last-child{margin:4px 0 0;color:var(--muted,#b7accb);font-size:.86rem}
+.room-editor-section{display:grid;gap:11px;padding:14px;border:1px solid var(--border,rgba(155,92,255,.2));border-radius:14px;background:rgba(255,255,255,.025)}
+.room-editor-section h3{margin:0 0 2px;font-size:.95rem}
+.room-editor-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px}
+.room-editor label{display:grid;gap:6px;min-width:0;color:var(--text,#f4efff);font-size:.82rem;font-weight:650}
+.room-editor label input,.room-editor label select,.room-editor label textarea{box-sizing:border-box;width:100%;min-width:0;margin:0;padding:10px 11px;border:1px solid var(--border,rgba(155,92,255,.28));border-radius:10px;background:rgba(7,5,14,.82);color:var(--text,#f4efff);font:inherit;font-weight:450;outline:none}
+.room-editor label input:focus,.room-editor label select:focus,.room-editor label textarea:focus{border-color:#a66bff;box-shadow:0 0 0 2px rgba(155,92,255,.13)}
+.room-editor label textarea{resize:vertical;min-height:74px}
+.room-editor-wide{grid-column:1/-1}
+.room-editor-optional{color:var(--muted,#a99dbb);font-size:.74rem;font-weight:400}
+.room-editor-help{margin:0;color:var(--muted,#b7accb);font-size:.78rem;line-height:1.45}
+.room-editor-footer{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap;padding:2px 1px}
+.room-editor-owner{margin-right:auto;color:var(--muted,#b7accb);font-size:.78rem;overflow-wrap:anywhere}
+.room-editor-footer button{min-height:38px}
+.room-editor-footer .primary{background:linear-gradient(135deg,#8b5cf6,#c026d3);border:0}
+.room-editor button:disabled{opacity:.6;cursor:wait}
+@media(max-width:560px){.room-editor{max-height:78vh;gap:10px;padding:0}.room-editor-hero{padding:12px}.room-editor-hero-icon{width:40px;height:40px;flex-basis:40px}.room-editor-section{padding:11px;gap:10px}.room-editor-grid{grid-template-columns:minmax(0,1fr)}.room-editor-wide{grid-column:auto}.room-editor-footer{display:grid;grid-template-columns:1fr 1fr}.room-editor-owner{grid-column:1/-1;margin:0}.room-editor-footer .primary,.room-editor-footer .mini{width:100%}}
