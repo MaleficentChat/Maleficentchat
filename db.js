@@ -74,6 +74,21 @@ async function initDB() {
     );
     CREATE INDEX IF NOT EXISTS room_messages_room_created_idx ON room_messages(room_id, created_at);
 
+    -- Immutable-by-default evidence snapshots created before a room is cleared.
+    -- No cascading foreign keys: evidence remains available if a room/account is later removed.
+    CREATE TABLE IF NOT EXISTS room_clear_evidence(
+      id BIGSERIAL PRIMARY KEY,
+      room_id INT,
+      room_name TEXT NOT NULL,
+      cleared_by INT,
+      cleared_by_username TEXT NOT NULL DEFAULT 'Unknown',
+      cleared_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      message_count INT NOT NULL DEFAULT 0,
+      messages JSONB NOT NULL DEFAULT '[]'::jsonb
+    );
+    CREATE INDEX IF NOT EXISTS room_clear_evidence_room_time_idx ON room_clear_evidence(room_id, cleared_at DESC);
+    CREATE INDEX IF NOT EXISTS room_clear_evidence_time_idx ON room_clear_evidence(cleared_at DESC);
+
     CREATE TABLE IF NOT EXISTS private_messages(
       id TEXT PRIMARY KEY,
       sender_id INT REFERENCES users(id) ON DELETE SET NULL,
