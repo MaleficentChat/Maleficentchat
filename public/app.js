@@ -3354,6 +3354,42 @@ async function hardRefreshSiteCache(){
   }
 }
 
+async function loadClearedRoomEvidence(query=''){
+  const target=$('clearedRoomEvidenceList');if(!target)return;
+  target.innerHTML='<p class="muted">Loading cleared-room evidence…</p>';
+  try{
+    const data=await api('/api/staff/cleared-room-evidence?q='+encodeURIComponent(String(query||'').trim()));
+    const rows=data.evidence||[];
+    target.innerHTML=rows.map(row=>`<details class="cleared-room-evidence-entry" data-cleared-evidence="${esc(row.id)}"><summary><b>🗃️ ${esc(row.room_name||'Unknown room')}</b> · ${Number(row.message_count||0)} message(s)<small style="display:block">${esc(row.cleared_by_username||'Unknown staff')} · ${esc(row.cleared_at?new Date(row.cleared_at).toLocaleString():'Unknown date')}</small></summary><div class="toolbar" style="margin-top:10px"><button type="button" class="mini primary" data-inspect-cleared-evidence="${esc(row.id)}">🔎 Inspect messages</button><button type="button" class="mini danger" data-delete-cleared-evidence="${esc(row.id)}">🗑 Delete evidence</button></div></details>`).join('')||'<p class="muted">No cleared-room evidence found. Evidence is created for room clears performed after this feature deploys.</p>';
+    target.querySelectorAll('[data-inspect-cleared-evidence]').forEach(button=>button.addEventListener('click',()=>inspectClearedRoomEvidence(button.dataset.inspectClearedEvidence)));
+    target.querySelectorAll('[data-delete-cleared-evidence]').forEach(button=>button.addEventListener('click',()=>deleteClearedRoomEvidence(button.dataset.deleteClearedEvidence)));
+  }catch(error){target.innerHTML='<p class="muted">'+esc(error.message||'Could not load cleared-room evidence.')+'</p>';}
+}
+async function inspectClearedRoomEvidence(id){
+  try{
+    const data=await api('/api/staff/cleared-room-evidence/'+encodeURIComponent(id));
+    const evidence=data.evidence||{},messages=Array.isArray(evidence.messages)?evidence.messages:[];
+    const messageRows=messages.map(message=>{
+      const author=message.username||message.displayName||message.authorName||message.user?.username||message.senderUsername||'Unknown user';
+      const text=message.text||message.message||message.content||'';
+      const time=message._evidenceCreatedAt||message.time||message.createdAt||message.created_at;
+      const attachment=message.attachment||message.media||null;
+      const body=text?'<div class="cleared-evidence-message-text">'+esc(text)+'</div>':'';
+      const media=attachment?(typeof attachment==='string'?'<a href="'+esc(attachment)+'" target="_blank" rel="noopener">Open attachment</a>':(attachment.url?'<a href="'+esc(attachment.url)+'" target="_blank" rel="noopener">Open attachment</a>':'')):'';
+      return '<article class="cleared-evidence-message"><div class="toolbar" style="justify-content:space-between"><b>@'+esc(author)+'</b><small>'+esc(time?new Date(time).toLocaleString():'Time unavailable')+'</small></div>'+body+media+'</article>';
+    }).join('');
+    modal('<div class="cleared-evidence-viewer"><h2>🗃️ '+esc(evidence.room_name||'Cleared room')+' — message evidence</h2><p class="muted">Cleared by @'+esc(evidence.cleared_by_username||'Unknown')+' · '+esc(evidence.cleared_at?new Date(evidence.cleared_at).toLocaleString():'Unknown date')+' · '+messages.length+' message(s)</p><div class="cleared-evidence-message-list">'+(messageRows||'<p class="muted">This clear record has no messages stored.</p>')+'</div><div class="toolbar"><button type="button" class="mini" onclick="closeModal()">Close</button></div></div>');
+  }catch(error){toast(error.message||'Could not inspect this evidence record.');}
+}
+async function deleteClearedRoomEvidence(id){
+  if(!confirm('Permanently delete this cleared-room evidence record and its archived messages? This does not restore or delete any current room messages.'))return;
+  try{
+    await api('/api/staff/cleared-room-evidence/'+encodeURIComponent(id),{method:'DELETE'});
+    toast('Cleared-room evidence deleted.');
+    await loadClearedRoomEvidence($('clearedRoomEvidenceQuery')?.value||'');
+  }catch(error){toast(error.message||'Could not delete evidence.');}
+}
+
 async function loadStaff() {
   try {
     const data=await api('/api/staff/dashboard');
@@ -3367,6 +3403,7 @@ async function loadStaff() {
 
 
     $('staff').innerHTML=`
+      ${['INSTRUCTOR','COOWNER','OWNER','DEVELOPER'].includes(String(state.user?.rank||'').toUpperCase()) ? '<section class="card cleared-room-evidence-card"><div class="toolbar" style="justify-content:space-between;align-items:flex-start"><div><h3>🗃️ Cleared Room Messages Inspection</h3><p class="muted">Review archived messages from rooms that were cleared. New clears are archived automatically before messages are removed.</p></div><button class="mini" type="button" id="refreshClearedRoomEvidence">↻ Refresh</button></div><form id="clearedRoomEvidenceSearch" class="toolbar"><input id="clearedRoomEvidenceQuery" maxlength="100" placeholder="Filter by room name or staff username"><button class="mini primary" type="submit">Search</button></form><div id="clearedRoomEvidenceList"><p class="muted">Loading cleared-room evidence…</p></div></section>' : ''}
       ${canHardRefreshSite ? '<section class="card site-hard-refresh-card"><div><h3>⟳ Site Refresh</h3><p class="muted">Clear cached website files on this device and reload Maleficent Chat. All account data and messages remain stored safely.</p></div><button class="primary" type="button" id="hardRefreshSiteButton">⟳ Hard Refresh Site</button></section>' : ''}
       ${(String(state.user?.rank||'').toUpperCase()==='DEVELOPER'||String(state.user?.rank||'').toUpperCase()==='OWNER') ? '<section class="card under-construction-admin-card"><div class="under-construction-admin-heading"><div><h3>🚧 Under Construction</h3><p class="muted">Switch maintenance mode ON to block regular users. Create a shutdown code when enabling; the same code is required to switch it OFF. Owner and Developer accounts remain exempt.</p></div><span class="construction-status-pill" id="staffConstructionStatus" aria-live="polite">Checking status…</span></div><div class="construction-switch-row"><span><b>Maintenance mode</b><small>OFF = site open · ON = maintenance screen</small></span><span class="construction-switch"><input type="checkbox" id="staffUnderConstructionToggle" role="switch" aria-label="Under Construction mode" aria-checked="false" onchange="toggleUnderConstruction(this.checked)"><span class="construction-switch-track" aria-hidden="true"></span></span></div><div class="construction-code-box"><label for="staffConstructionCode" id="staffConstructionCodeLabel">Create shutdown code<input type="password" id="staffConstructionCode" minlength="4" maxlength="128" autocomplete="new-password" placeholder="Create a code to switch ON" aria-describedby="staffConstructionCodeHelp"></label><small id="staffConstructionCodeHelp" class="muted">Use 4–128 characters. When maintenance is ON, enter this same code before switching it OFF.</small></div><p class="muted construction-last-result" id="staffConstructionResult" aria-live="polite">The saved server setting will be checked before displaying the current state.</p></section>' : ''}
       ${["INSTRUCTOR","COOWNER","OWNER","DEVELOPER"].includes(String(state.user?.rank||"").toUpperCase()) ? '<section class="card ip-inspection-card"><div><h3>🔎 Personalized IP Inspection</h3><p class="muted">Your rank: <b>'+esc(String(state.user?.rank||"").toUpperCase())+'</b> · Fields are restricted automatically by your staff rank.</p><div class="ip-access-profile" role="status">'+(String(state.user?.rank||"").toUpperCase()==="INSTRUCTOR"?"⚔️ Instructor access · Email + approximate location only":String(state.user?.rank||"").toUpperCase()==="COOWNER"?"👻 Co-owner access · IP and network details, without browser/device details":"👑 Owner access · Full recorded IP and network details")+'</div></div><form id="ipInspectionForm" class="ip-inspection-form"><input id="ipInspectionSearch" placeholder="Search an account by @username" maxlength="100" autocomplete="off"><button class="primary" type="submit">🔎 Inspect</button></form><div id="ipInspectionSuggestions" class="ip-inspection-suggestions" hidden></div><p class="muted ip-inspection-note">Location is approximate. Access is enforced on the server, not just hidden in the interface.</p><div id="ipInspectionResults"><p class="muted">Search for an account to inspect the details available to your rank.</p></div></section>' : ''}
@@ -3401,6 +3438,11 @@ async function loadStaff() {
       </div>
     `;
     $("hardRefreshSiteButton")?.addEventListener("click",hardRefreshSiteCache);
+    if(['INSTRUCTOR','COOWNER','OWNER','DEVELOPER'].includes(String(state.user?.rank||'').toUpperCase())){
+      $('refreshClearedRoomEvidence')?.addEventListener('click',()=>loadClearedRoomEvidence());
+      $('clearedRoomEvidenceSearch')?.addEventListener('submit',e=>{e.preventDefault();loadClearedRoomEvidence($('clearedRoomEvidenceQuery')?.value||'');});
+      loadClearedRoomEvidence();
+    }
     document.querySelectorAll("[data-assign-report]").forEach(button=>button.onclick=()=>assignReport(button.dataset.assignReport));
     await renderStaffApplications();
     $('systemNotificationForm')?.addEventListener('submit',async e=>{
