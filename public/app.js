@@ -3614,18 +3614,7 @@ async function toggleUnderConstruction(){
   }
 }
 
-async function refreshSiteMessages(){
-  if(!confirm('This permanently deletes ALL room chat messages and ALL private messages for every user. Accounts, rooms, ranks, gold, settings, reports, and moderation history will remain. Continue?'))return;
-  try{
-    const result=await api('/api/owner/refresh-site-messages',{method:'POST',body:JSON.stringify({})});
-    state.messages=[];
-    if($('messages'))$('messages').innerHTML='';
-    if($('messages'))$('messages').scrollTop=0;
-    if(state.dmUserId){try{await openDM(state.dmUserId);}catch{}}
-    toast('Site messages cleared: '+Number(result.roomMessages||0)+' room messages and '+Number(result.privateMessages||0)+' private messages.');
-    if(state.view==='owner')loadOwner();
-  }catch(e){toast('Could not clear site messages: '+e.message)}
-}
+
 async function loadCommunityRules(){
  const host=$('communityRules');if(!host)return;
  const owner=String(state.user?.rank||'').toUpperCase()==='DEVELOPER'||(String(state.user?.rank||'').toUpperCase()==='OWNER'&&state.user?.username==='Maleficent');
@@ -3678,7 +3667,7 @@ async function loadOwner() {
           >
             Inspect private messages
           </button>
-          <button class="mini danger" type="button" onclick="refreshSiteMessages()">🧹 Refresh Site Messages</button>
+          
           <label class="construction-duration-label">Construction duration
             <select id="constructionDuration">
               <option value="15">15 minutes</option>
