@@ -3295,7 +3295,7 @@ app.get("/api/staff/ip-inspection",auth,async(req,res)=>{
       signals:row.network.vpnSignals||[],method:row.network.vpnDetectionMethod||"provider flag",
       ip_address:row.ip_address
     }));
-    const personalizedRecords=viewerRank==="INSTRUCTOR"?records.map(row=>({username:row.username,email:row.email||"",network:{country:row.network?.country||"",region:row.network?.region||"",city:row.network?.city||"",lookupStatus:row.network?.lookupStatus||"Unavailable"}})):viewerRank==="COOWNER"?records.map(({user_agent,id,user_id,...row})=>row):records;
+    const personalizedRecords=viewerRank==="INSTRUCTOR"?records.map(row=>({username:row.username,email:row.email||"",network:{country:row.network?.country||"",region:row.network?.region||"",city:row.network?.city||""}})):viewerRank==="COOWNER"?records.map(({user_agent,id,user_id,...row})=>row):records;
     const personalizedMatches=viewerRank==="INSTRUCTOR"?[]:sameIpAccounts.map(row=>{const {user_agent,...safe}=row;const network=geo[row.ip_address]||{};return fullAccess?{...safe,network}:{id:safe.id,username:safe.username,email:safe.email,created_at:safe.created_at,ip_address:safe.ip_address,event_type:safe.event_type,recorded_at:safe.recorded_at,network:{country:network.country||"",region:network.region||"",city:network.city||"",networkProvider:network.networkProvider||"",asn:network.asn||"",lookupStatus:network.lookupStatus||"Unavailable"}};});
     return res.json({
       accessProfile:viewerRank,
