@@ -3641,3 +3641,52 @@ button,input,select,textarea { max-width:100%; }
 .construction-code-box input:focus{border-color:#9b5cff;box-shadow:0 0 0 2px rgba(155,92,255,.16)}
 .construction-code-box input:disabled{opacity:.65}
 .construction-code-box>small{font-size:11px;line-height:1.45}
+
+
+/* 🎉 Party Mode — fully reversible, with reduced-motion support */
+.party-mode-active .username,
+.party-mode-active .user-name,
+.party-mode-active .instagram-user-name,
+.party-mode-active .horizontal-user-details b,
+.party-mode-active .message-author,
+.party-mode-active .msg-top .message-author,
+.party-mode-active .msg-author,
+.party-mode-active .chat-message .author,
+.party-mode-active .msg .msg-author,
+.party-mode-active [data-username]{
+  animation:party-rainbow-glow 2.8s linear infinite;
+}
+.party-mode-active img[src*=".gif" i],
+.party-mode-active .gif-message img,
+.party-mode-active .message img.emoji,
+.party-mode-active .msg img.emoji,
+.party-mode-active .sticker,
+.party-mode-active .attachment-preview img{
+  transform-origin:center;
+  animation:party-spin 4s linear infinite;
+}
+.party-mode-player{
+  position:fixed;right:12px;bottom:12px;width:min(260px,42vw);height:146px;
+  z-index:9998;border:1px solid rgba(255,255,255,.25);border-radius:12px;
+  box-shadow:0 8px 28px rgba(0,0,0,.45);background:#09070d;
+}
+@keyframes party-rainbow-glow{
+  0%{color:#ff4d6d;text-shadow:0 0 6px #ff4d6d,0 0 12px #ff4d6d}
+  20%{color:#ffb84d;text-shadow:0 0 6px #ffb84d,0 0 12px #ffb84d}
+  40%{color:#f7ff6b;text-shadow:0 0 6px #f7ff6b,0 0 12px #f7ff6b}
+  60%{color:#5cffb0;text-shadow:0 0 6px #5cffb0,0 0 12px #5cffb0}
+  80%{color:#6bbcff;text-shadow:0 0 6px #6bbcff,0 0 12px #6bbcff}
+  100%{color:#e879ff;text-shadow:0 0 6px #e879ff,0 0 12px #e879ff}
+}
+@keyframes party-spin{to{transform:rotate(360deg)}}
+@media(max-width:560px){.party-mode-player{width:190px;height:107px;right:8px;bottom:8px}}
+@media(prefers-reduced-motion:reduce){
+  .party-mode-active .username,.party-mode-active .user-name,
+  .party-mode-active .instagram-user-name,.party-mode-active .horizontal-user-details b,
+  .party-mode-active .message-author,.party-mode-active .msg-top .message-author,
+  .party-mode-active .msg-author,.party-mode-active .chat-message .author,
+  .party-mode-active .msg .msg-author,.party-mode-active [data-username],
+  .party-mode-active img[src*=".gif" i],.party-mode-active .gif-message img,
+  .party-mode-active .message img.emoji,.party-mode-active .msg img.emoji,
+  .party-mode-active .sticker,.party-mode-active .attachment-preview img{animation:none!important}
+}
