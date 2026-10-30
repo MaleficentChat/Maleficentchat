@@ -667,7 +667,7 @@ function updateNav() {
       el.classList.toggle("hidden", !can("MOD")&&!canFeature("view_staff_dashboard"))
     );
   const reportButton=$("topFlag");
-  if(reportButton) reportButton.classList.toggle("hidden", !can("MOD"));
+  if(reportButton) reportButton.classList.toggle("hidden", !can("MOD")&&!canFeature("view_staff_dashboard"));
 
   document
     .querySelectorAll(".owner-only")
