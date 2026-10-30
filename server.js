@@ -1489,15 +1489,19 @@ app.get("/api/rooms",auth,async(req,res)=>{
     await pool.query(`DELETE FROM room_messages WHERE room_id = ANY($1::int[])`, [unwantedIds]);
     await pool.query(`DELETE FROM rooms WHERE id = ANY($1::int[])`, [unwantedIds]);
   }
-  // Remove legacy defaults before inserting the canonical room. A lowercase
-  // "main room" can otherwise block the insert via UNIQUE(name), then be
-  // deleted, leaving no Main Room until someone creates another room.
+  // Normalize legacy Main Room duplicates without discarding their history.
+  await pool.query(`INSERT INTO rooms(name,created_by,icon,description,category,is_public,rank_required,invite_token,min_age,max_age,is_default)
+    VALUES ('Main Room',(SELECT id FROM users WHERE username='Maleficent'),'🏠','The main Maleficent Chat community room.','Community',true,'MEMBER','main-room',0,120,true)
+    ON CONFLICT(name) DO NOTHING`);
   const legacy = await pool.query(`SELECT id FROM rooms
     WHERE LOWER(TRIM(name)) IN ('main room 1','main room 2')
        OR (LOWER(TRIM(name))='main room' AND name <> 'Main Room')`);
   if (legacy.rowCount) {
     const legacyIds = legacy.rows.map(row => Number(row.id));
-    await pool.query(`DELETE FROM room_messages WHERE room_id = ANY($1::int[])`, [legacyIds]);
+    const mainRoom = await pool.query(`SELECT id FROM rooms WHERE name='Main Room' LIMIT 1`);
+    if (mainRoom.rowCount) {
+      await pool.query(`UPDATE room_messages SET room_id=$1 WHERE room_id = ANY($2::int[])`, [Number(mainRoom.rows[0].id), legacyIds]);
+    }
     await pool.query(`DELETE FROM rooms WHERE id = ANY($1::int[])`, [legacyIds]);
   }
   await pool.query(`INSERT INTO rooms(name,created_by,icon,description,category,is_public,rank_required,invite_token,min_age,max_age,is_default)
@@ -2974,25 +2978,10 @@ app.post("/api/users/:id/action-history/clear",auth,(req,res)=>{
   res.json({ok:true,removed});
 });
 
-app.post("/api/owner/refresh-site-messages",auth,ownerOnly,async(req,res)=>{
-  const client=await pool.connect();
-  try{
-    await client.query("BEGIN");
-    const roomResult=await client.query("DELETE FROM room_messages");
-    const privateResult=await client.query("DELETE FROM private_messages");
-    await client.query("COMMIT");
-    // These tables are the source of truth; clear in-memory caches only after
-    // the transaction succeeds and avoid scheduling a legacy-state write here.
-    db.messages=[];
-    db.privateMessages=[];
-    log(current(req),"SITE_MESSAGES_REFRESH","ALL",{roomMessages:Number(roomResult.rowCount||0),privateMessages:Number(privateResult.rowCount||0)});
-    io.emit("site:messages-cleared");
-    res.json({ok:true,roomMessages:Number(roomResult.rowCount||0),privateMessages:Number(privateResult.rowCount||0)});
-  }catch(error){
-    await client.query("ROLLBACK").catch(()=>{});
-    console.error("Site message refresh failed:",error);
-    res.status(500).json({error:"Could not clear site messages. No other site data was intentionally changed."});
-  }finally{client.release();}
+app.post("/api/owner/refresh-site-messages",auth,ownerOnly,(req,res)=>{
+  // The old action deleted every room and private message. Disable it to protect
+  // user history; "Site refresh" must only refresh cached site files.
+  return res.status(410).json({error:"Message clearing is disabled to protect chat history. Use Site refresh to reload the website without deleting messages."});
 });
 
 app.get(
@@ -5227,16 +5216,20 @@ app.get('/api/me/account',auth,async(req,res)=>{
 
     // Initialize the permanent Main Room during server startup, before the
     // first browser request. This prevents an empty room list after login.
+    await pool.query(`INSERT INTO rooms(name,created_by,icon,description,category,is_public,rank_required,invite_token,min_age,max_age,is_default)
+      VALUES ('Main Room',(SELECT id FROM users WHERE username='Maleficent'),'🏠','The main Maleficent Chat community room.','Community',true,'MEMBER','main-room',0,120,true)
+      ON CONFLICT(name) DO NOTHING`);
     const legacyDefaults = await pool.query(`SELECT id FROM rooms
       WHERE LOWER(TRIM(name)) IN ('main room 1','main room 2')
          OR (LOWER(TRIM(name))='main room' AND name <> 'Main Room')`);
     if (legacyDefaults.rowCount) {
       const legacyIds = legacyDefaults.rows.map(row => Number(row.id));
+      const mainRoom = await pool.query(`SELECT id FROM rooms WHERE name='Main Room' LIMIT 1`);
+      if (mainRoom.rowCount) {
+        await pool.query(`UPDATE room_messages SET room_id=$1 WHERE room_id = ANY($2::int[])`, [Number(mainRoom.rows[0].id), legacyIds]);
+      }
       await pool.query(`DELETE FROM rooms WHERE id = ANY($1::int[])`, [legacyIds]);
     }
-    await pool.query(`INSERT INTO rooms(name,created_by,icon,description,category,is_public,rank_required,invite_token,min_age,max_age,is_default)
-      VALUES ('Main Room',(SELECT id FROM users WHERE username='Maleficent'),'🏠','The main Maleficent Chat community room.','Community',true,'MEMBER','main-room',0,120,true)
-      ON CONFLICT(name) DO NOTHING`);
     await pool.query(`UPDATE rooms SET description='The main Maleficent Chat community room.',icon='🏠',category='Community',is_public=true,is_default=true,min_age=0,max_age=120 WHERE name='Main Room'`);
     await pool.query(`UPDATE rooms SET is_default=false WHERE name <> 'Main Room'`);
 
