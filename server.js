@@ -1424,7 +1424,7 @@ app.get(
     const viewerCanSeeInvisible=(target)=>!!viewer&&staff(viewer.rank)&&
       (rankOrder[viewer.rank]??-1)>(rankOrder[target?.rank]??-1);
     let arr=db.users
-      .filter(u=>(!u.hideMode||String(u.id)===String(viewer?.id))&&(!u.deadMode||String(u.id)===String(viewer?.id))&&(!u.invisible||viewerCanSeeInvisible(u)||String(u.id)===String(viewer?.id))&&(
+      .filter(u=>(!u.hideMode||String(u.id)===String(viewer?.id))&&(!u.invisible||viewerCanSeeInvisible(u)||String(u.id)===String(viewer?.id))&&(
           !q||
           u.username
             .toLowerCase()
