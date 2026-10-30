@@ -1812,7 +1812,7 @@ app.post(
       });
     }
 
-    if(!u.hideMode)systemNotice(`${u.displayName||u.username} has joined the room ${r.name}.`,r.id);
+    if(!u.hideMode&&!u.invisible)systemNotice(`${u.displayName||u.username} has joined the room ${r.name}.`,r.id);
     res.json({
       ok:true,
       joinToken:makeRoomJoinToken(u.id,r),
@@ -4757,7 +4757,7 @@ io.on(
       io.emit("presence");
       // Aurora room-presence announcement: every successful room switch is announced
       // to the destination room when Aurora is enabled.
-      if(db.aurora?.enabled !== false && !u.hideMode){
+      if(db.aurora?.enabled !== false && !u.hideMode && !u.invisible){
         io.to("room:"+roomId).emit("system-message", {
           id:id(),
           roomId,
