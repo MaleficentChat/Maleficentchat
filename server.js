@@ -4221,37 +4221,41 @@ app.patch('/api/owner/user/:id/progress',ownerOnly,async(req,res)=>{
 app.delete(
   "/api/owner/user/:id",
   ownerOnly,
-  (req,res)=>{
-    const v=findUser(
-      req.params.id
-    );
+  async (req,res)=>{
+    const v=findUser(req.params.id);
 
-    if(
-      !v||
-      v.username===DEFAULT_OWNER
-    ){
-      return res.status(400).json({
-        error:
-          "Cannot delete permanent owner"
-      });
+    if(!v || v.username===DEFAULT_OWNER || String(v.rank).toUpperCase()==="DEVELOPER"){
+      return res.status(400).json({error:"Cannot delete permanent owner"});
     }
 
-    db.users=
-      db.users.filter(
-        x=>x.id!==v.id
-      );
+    // Remove the PostgreSQL account as well as the app's JSON-backed user entry.
+    // Do the database operation first so a failed deletion never reports success
+    // or hides the account only in memory.
+    const client=await pool.connect();
+    try{
+      await client.query("BEGIN");
+      await client.query("DELETE FROM push_subscriptions WHERE user_id=$1",[Number(v.id)]);
+      const deleted=await client.query("DELETE FROM users WHERE id=$1 RETURNING id",[Number(v.id)]);
+      if(!deleted.rowCount){
+        await client.query("ROLLBACK");
+        return res.status(404).json({error:"Account not found in the database; no local changes were made."});
+      }
+      await client.query("COMMIT");
+    }catch(error){
+      try{await client.query("ROLLBACK");}catch{}
+      console.error("Owner account deletion failed:",error);
+      return res.status(500).json({error:"The account could not be fully deleted from the database. No local account-list changes were made."});
+    }finally{
+      client.release();
+    }
 
+    db.users=db.users.filter(x=>String(x.id)!==String(v.id));
+    db.friends=(db.friends||[]).filter(f=>String(f.a)!==String(v.id)&&String(f.b)!==String(v.id));
+    db.privateMessages=(db.privateMessages||[]).filter(m=>String(m.from)!==String(v.id)&&String(m.to)!==String(v.id));
     save();
-
-    log(
-      current(req),
-      "ACCOUNT_DELETE",
-      v.username
-    );
-
-    res.json({
-      ok:true
-    });
+    log(current(req),"ACCOUNT_DELETE",v.username,{userId:String(v.id)});
+    io.emit("presence");
+    res.json({ok:true});
   }
 );
 
