@@ -1811,7 +1811,7 @@ app.post(
       return res.status(403).json({error:"You have been banned"});
     }
     if(u.kickedUntil && u.kickedUntil>Date.now()){
-      return res.status(403).json({error:`You have been kicked. You will be able to come back after ${new Date(u.kickedUntil).toLocaleTimeString()}`,kickedUntil:u.kickedUntil});
+      return res.status(403).json({error:"You have been kicked",reason:u.kickReason||"Community rules",kickedUntil:u.kickedUntil});
     }
 
  
@@ -1899,8 +1899,8 @@ app.post("/api/rooms/:id/messages",auth,featureAllowed("send_messages"),upload.s
   const roomMute=roomSettings.room_mutes[roomKey]?.[uid];
   if(roomMute&&Number(roomMute.until)>Date.now())return res.status(403).json({error:"You are muted in this room until "+new Date(Number(roomMute.until)).toLocaleTimeString()+". Reason: "+String(roomMute.reason||"Room rules").slice(0,240)});
   if(roomMute&&Number(roomMute.until)<=Date.now())delete roomSettings.room_mutes[roomKey][uid];
-  if(u.banned===true)return res.status(403).json({error:"You have been banned"});
-  if(u.kickedUntil&&u.kickedUntil>Date.now())return res.status(403).json({error:`You have been kicked. You will be able to come back after ${new Date(u.kickedUntil).toLocaleTimeString()}`,kickedUntil:u.kickedUntil});
+  if(u.banned===true)return res.status(403).json({error:"You have been banned",reason:u.banReason||"Community rules"});
+  if(u.kickedUntil&&u.kickedUntil>Date.now())return res.status(403).json({error:"You have been kicked",reason:u.kickReason||"Community rules",kickedUntil:u.kickedUntil});
   if(u.mutedUntil&&u.mutedUntil>Date.now())return res.status(403).json({error:"You are muted until "+new Date(u.mutedUntil).toLocaleString()});
   if(req.file && String(u.rank).toUpperCase()!=="DEVELOPER" && !featureGrantAllowed(u,"chat_file_upload")) return res.status(403).json({error:"Your rank cannot upload files in chat."});
   if(String(u.rank).toUpperCase()!=="DEVELOPER" && req.file&&!/^image\/|^audio\//.test(req.file.mimetype))return res.status(400).json({error:"Only image/audio uploads are allowed."});
