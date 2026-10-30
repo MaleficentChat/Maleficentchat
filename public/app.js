@@ -3589,16 +3589,24 @@ function showConstructionPanel(){
 async function checkUnderConstruction(){
   try{
     const status=await api("/api/under-construction/status");
-    // Ignore stale status responses that arrive while an owner change is being saved.
+    // A status poll can finish after a switch write began; never let it overwrite
+    // the more recent state while the save is still in progress.
     if(constructionWriteInFlight)return;
+    const configured=Boolean(status.configuredEnabled??status.enabled);
     if(status.enabled&&!status.exempt)showConstructionPanel(status.until);
     else hideConstructionPanel();
     const toggle=$("staffUnderConstructionToggle");
-    if(toggle&&isOwnerExempt()){const configured=Boolean(status.configuredEnabled??status.enabled);toggle.checked=configured;toggle.setAttribute("aria-checked",configured?"true":"false");}
+    if(toggle&&isOwnerExempt()){
+      toggle.checked=configured;
+      toggle.setAttribute("aria-checked",configured?"true":"false");
+    }
     const label=$("staffConstructionStatus");
-    if(label){label.textContent=(status.configuredEnabled??status.enabled)?"ON · Maintenance enabled":"OFF · Site open";label.classList.toggle("is-on",Boolean(status.configuredEnabled??status.enabled));}
+    if(label){
+      label.textContent=configured?"ON · Maintenance enabled":"OFF · Site open";
+      label.classList.toggle("is-on",configured);
+    }
     const result=$("staffConstructionResult");
-    if(result&&!constructionWriteInFlight)result.textContent="Last checked: "+new Date().toLocaleTimeString();
+    if(result)result.textContent="Server status verified: "+(configured?"ON · regular users are blocked":"OFF · site is open")+" · "+new Date().toLocaleTimeString();
   }catch(error){
     console.warn("Under Construction status check failed:",error?.message||error);
     const label=$("staffConstructionStatus");if(label)label.textContent="Status unavailable";
@@ -3618,20 +3626,22 @@ async function toggleUnderConstruction(requestedEnabled){
     const active=Boolean(result.enabled);
     if(toggle){toggle.checked=active;toggle.setAttribute("aria-checked",active?"true":"false");}
     const resultLabel=$("staffConstructionResult");
-    if(resultLabel)resultLabel.textContent=active?"Saved successfully. Regular users will see the maintenance screen.":"Saved successfully. The site is open to regular users.";
+    if(resultLabel)resultLabel.textContent=active?"Server saved ON. Verifying the persisted setting…":"Server saved OFF. Verifying the persisted setting…";
     const statusLabel=$("staffConstructionStatus");
-    if(statusLabel){statusLabel.textContent=active?"ON · Maintenance enabled":"OFF · Site open";statusLabel.classList.toggle("is-on",active);}
+    if(statusLabel){
+      statusLabel.textContent=active?"ON · Maintenance enabled":"OFF · Site open";
+      statusLabel.classList.toggle("is-on",active);
+    }
     toast(active?"Under Construction enabled.":"Under Construction disabled.");
-    await checkUnderConstruction();
   }catch(e){
     const resultLabel=$("staffConstructionResult");
     if(resultLabel)resultLabel.textContent="Save failed: "+(e.message||"Unknown server error");
     toast(e.message||"Could not change Under Construction mode.");
-    await checkUnderConstruction();
   }finally{
     constructionWriteInFlight=false;
     if(toggle)toggle.disabled=false;
-    // Read back the persisted value only after the write has completed.
+    // Always read the database-backed setting after unlocking; previously these
+    // checks ran while constructionWriteInFlight was true and returned immediately.
     await checkUnderConstruction();
   }
 }
