@@ -688,6 +688,33 @@ app.get("/api/under-construction/status",async(req,res)=>{
     res.status(500).json({error:"Could not read under-construction status from the database."});
   }
 });
+app.post("/api/under-construction/disable",express.json(),async(req,res)=>{
+  try{
+    const suppliedCode=String(req.body?.code||"");
+    if(suppliedCode.length<1||suppliedCode.length>128){
+      return res.status(400).json({error:"Enter the shutdown code to reopen the site."});
+    }
+    const stored=await pool.query("SELECT value FROM settings WHERE key='under_construction' LIMIT 1");
+    const existing=stored.rows[0]?.value||db.settings?.under_construction||{};
+    if(existing.enabled!==true)return res.json({enabled:false,alreadyDisabled:true});
+    if(!existing.codeSalt||!existing.codeHash){
+      return res.status(409).json({error:"This maintenance session has no saved shutdown code. An Owner or Developer must sign in to secure it first."});
+    }
+    const expected=Buffer.from(String(existing.codeHash),"hex");
+    const actual=crypto.scryptSync(suppliedCode,String(existing.codeSalt),64);
+    if(expected.length!==actual.length||!crypto.timingSafeEqual(expected,actual)){
+      return res.status(403).json({error:"Incorrect shutdown code. The site is still under construction."});
+    }
+    const setting={enabled:false,until:0,updatedBy:"Shutdown code",updatedAt:Date.now()};
+    await persistUnderConstructionSetting(setting);
+    io.emit("under-construction:status",{enabled:false,until:0});
+    return res.json({enabled:false});
+  }catch(error){
+    console.error("Public maintenance shutdown failed:",error);
+    return res.status(500).json({error:"Could not disable maintenance mode. Check the server logs."});
+  }
+});
+
 app.post("/api/staff/under-construction",express.json(),auth,ownerOnly,async(req,res)=>{
   try{
     const enabled=req.body?.enabled===true;
