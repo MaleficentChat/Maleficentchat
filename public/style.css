@@ -3741,3 +3741,20 @@ body.party-mode-active .msg.dm-msg .chat-gif{
   66%{filter:drop-shadow(0 0 7px rgba(0,200,255,.55))}
 }
 /* Party Mode is an explicit opt-in, so reduced-motion OS settings must not silently cancel its requested spin. */
+
+
+/* Staff-only cleared room message evidence viewer */
+.cleared-room-evidence-card{border-color:rgba(155,92,255,.42);background:linear-gradient(145deg,rgba(22,15,36,.94),rgba(10,9,17,.96))}
+.cleared-room-evidence-card>h3{margin-top:0}
+#clearedRoomEvidenceSearch{display:flex;gap:8px;align-items:center;margin:12px 0}
+#clearedRoomEvidenceSearch input{flex:1;min-width:0}
+.cleared-room-evidence-entry{padding:11px 12px;margin:9px 0;border:1px solid var(--border,rgba(155,92,255,.28));border-radius:10px;background:rgba(8,7,14,.55)}
+.cleared-room-evidence-entry summary{cursor:pointer;overflow-wrap:anywhere}
+.cleared-room-evidence-entry summary small{color:var(--muted,#aaa);margin-top:4px}
+.cleared-evidence-viewer{width:min(760px,90vw);max-height:78vh;overflow:auto}
+.cleared-evidence-message-list{display:flex;flex-direction:column;gap:9px;margin:14px 0}
+.cleared-evidence-message{padding:11px 12px;border:1px solid var(--border,rgba(155,92,255,.24));border-radius:10px;background:rgba(20,14,32,.64);overflow-wrap:anywhere}
+.cleared-evidence-message .toolbar{gap:8px}
+.cleared-evidence-message .toolbar small{color:var(--muted,#aaa);text-align:right}
+.cleared-evidence-message-text{white-space:pre-wrap;overflow-wrap:anywhere;margin-top:8px}
+.cleared-evidence-message a{display:inline-block;margin-top:8px;color:var(--accent,#c99bff);text-decoration:underline}
