@@ -3879,3 +3879,47 @@ body.party-mode-active .msg.dm-msg .chat-gif{
 .staff-compact-dropdown[open]>summary::after{content:'−'}
 .staff-compact-dropdown>section{margin:0;border:0;border-top:1px solid var(--border,rgba(155,92,255,.24));border-radius:0;box-shadow:none}
 .staff-compact-dropdown>section> .under-construction-admin-heading,.staff-compact-dropdown>section>div:first-child{margin-top:0}
+
+
+/* Midnight Cyber profile refresh — scoped to the My Profile view */
+#viewProfile .my-profile-wrap{display:block;min-height:0;height:auto;overflow:visible;padding:clamp(10px,2.5vw,26px);background:transparent}
+#viewProfile .profile-settings-card{width:min(760px,100%);margin:0 auto;overflow:hidden;border-radius:24px;background:linear-gradient(145deg,#0d0c17 0%,#08090f 65%,#100b1b 100%);border:1px solid rgba(160,112,255,.22);box-shadow:0 18px 48px rgba(0,0,0,.28)}
+#viewProfile .profile-settings-head{position:relative;box-sizing:border-box;min-height:0;padding:24px 18px 26px;gap:9px;justify-content:flex-start;background:radial-gradient(ellipse at 50% 8%,rgba(128,49,219,.18),transparent 48%),linear-gradient(160deg,#0b0a12,#08090f 70%,#100b19);background-size:cover;background-position:center}
+#viewProfile .profile-settings-top{position:static;align-self:stretch;top:auto;display:flex;justify-content:center;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 12px}
+#viewProfile .profile-settings-top span,#viewProfile .profile-settings-top .mini{box-sizing:border-box;min-height:42px;display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:8px 13px;border-radius:999px;background:rgba(18,17,31,.88);border:1px solid rgba(157,111,255,.2);color:#f5f1ff;font-size:14px}
+#viewProfile .profile-settings-head .big-avatar{width:124px;height:124px;margin:0 auto 4px;border:3px solid #9b4dff;box-shadow:0 0 0 5px rgba(155,77,255,.08),0 0 26px rgba(155,77,255,.17);font-size:38px}
+#viewProfile .profile-settings-head .profile-rank{display:inline-flex;align-items:center;justify-content:center;align-self:center;margin:3px 0 0;padding:7px 18px;border-radius:999px;background:rgba(94,40,171,.18);border:1px solid rgba(155,77,255,.3);color:#bd83ff;font-size:12px;font-weight:800;letter-spacing:.045em}
+#viewProfile .profile-settings-head .profile-name{margin:0;font-size:clamp(25px,5vw,34px);line-height:1.18;font-weight:750;text-shadow:none;color:#f7f4ff!important;overflow-wrap:anywhere}
+#viewProfile .profile-settings-head .profile-handle{margin:0;color:#a9acd0;font-size:15px;line-height:1.5}
+#viewProfile .profile-extra{display:flex;justify-content:center;align-items:center;gap:8px;max-width:560px;margin:7px auto 2px;font-size:13px}
+#viewProfile .profile-extra span{padding:7px 12px;border:1px solid rgba(150,120,220,.17);border-radius:999px;background:rgba(255,255,255,.035);color:#d4c5f4}
+#viewProfile .profile-extra a{color:#c6a0ff;text-decoration:none}
+#viewProfile .profile-settings-head>button.mini{min-height:42px;margin-top:3px;padding:9px 17px;border:1px solid rgba(155,77,255,.23);border-radius:999px;background:#11101b;color:#e4d7ff;font-size:14px}
+#viewProfile #selfAchievementsBtn{display:flex;align-items:center;justify-content:flex-start;gap:10px;width:100%;min-height:58px;padding:14px 22px;border:0;border-top:1px solid rgba(160,112,255,.16);border-bottom:1px solid rgba(160,112,255,.16);border-radius:0;background:rgba(20,16,33,.82);color:#c995ff;font-size:16px;font-weight:750;text-align:left}
+#viewProfile .settings-tabs{justify-content:stretch;background:#100f19;color:#eee8ff;border-bottom:1px solid rgba(160,112,255,.16)}
+#viewProfile .settings-tab{padding:15px 12px;background:transparent;color:#aaa6c2;font-size:14px}
+#viewProfile .settings-tab.active,#viewProfile .settings-tab:hover{background:rgba(155,77,255,.12);color:#e7d4ff;box-shadow:inset 0 -2px #a855f7}
+#viewProfile .settings-list{padding:6px 18px 18px;background:transparent}
+#viewProfile .settings-row{grid-template-columns:34px minmax(0,1fr) 22px;column-gap:12px;min-height:78px;padding:15px 8px;border-bottom:1px solid rgba(160,150,200,.12);background:transparent;color:#f0edfa}
+#viewProfile .settings-row span{align-self:center;grid-row:1/3;font-size:22px;color:#b477ff}
+#viewProfile .settings-row b{font-size:15px;font-weight:700;line-height:1.4}
+#viewProfile .settings-row small{margin-top:4px;color:#9898b5;font-size:12px;white-space:normal;line-height:1.4}
+#viewProfile .settings-row strong{color:#8988b1;font-size:23px;font-weight:400}
+#viewProfile .settings-row:hover{background:rgba(155,77,255,.065)}
+#viewProfile .settings-row.danger-row b{color:#ff6d9c}
+#viewProfile .settings-row.danger-row span{color:#ff6d9c}
+@media(max-width:600px){
+ #viewProfile .my-profile-wrap{padding:10px 8px}
+ #viewProfile .profile-settings-card{border-radius:19px}
+ #viewProfile .profile-settings-head{padding:20px 13px 22px;gap:8px}
+ #viewProfile .profile-settings-top{gap:6px;margin-bottom:10px}
+ #viewProfile .profile-settings-top span,#viewProfile .profile-settings-top .mini{min-height:38px;padding:7px 10px;font-size:13px}
+ #viewProfile .profile-settings-head .big-avatar{width:112px;height:112px}
+ #viewProfile .profile-extra{gap:6px}
+ #viewProfile .profile-extra span{padding:6px 9px}
+ #viewProfile #selfAchievementsBtn{min-height:52px;padding:12px 16px}
+ #viewProfile .settings-list{padding:4px 12px 12px}
+ #viewProfile .settings-row{min-height:74px;grid-template-columns:30px minmax(0,1fr) 18px;column-gap:9px;padding:13px 5px}
+ #viewProfile .settings-row b{font-size:14px}
+ #viewProfile .settings-row small{font-size:11px}
+}
