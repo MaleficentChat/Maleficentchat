@@ -3614,3 +3614,13 @@ button,input,select,textarea { max-width:100%; }
 .construction-switch input:focus-visible+.construction-switch-track{outline:2px solid #ff4fd8;outline-offset:3px}
 .construction-switch input:disabled{cursor:wait}
 .construction-switch input:disabled+.construction-switch-track{opacity:.6}
+
+
+/* Staff Dashboard maintenance controls */
+.under-construction-admin-card{border-color:rgba(155,92,255,.48);background:linear-gradient(135deg,rgba(25,17,42,.96),rgba(12,10,20,.96))}
+.under-construction-admin-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.under-construction-admin-heading h3{margin:0 0 5px}
+.under-construction-admin-heading .muted{margin:0;max-width:620px}
+.construction-status-pill{display:inline-flex;align-items:center;justify-content:center;white-space:nowrap;border:1px solid rgba(170,150,190,.4);border-radius:999px;padding:5px 10px;font-size:11px;font-weight:700;background:rgba(100,90,110,.18);color:var(--text,#f3eaff)}
+.construction-status-pill.is-on{border-color:rgba(255,79,216,.65);background:rgba(255,79,216,.12);color:#ff9de8}
+.construction-last-result{margin:8px 2px 0;overflow-wrap:anywhere}
