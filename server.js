@@ -703,8 +703,18 @@ app.post("/api/staff/under-construction",express.json(),auth,ownerOnly,async(req
       const codeHash=crypto.scryptSync(suppliedCode,codeSalt,64).toString("hex");
       setting={enabled:true,until:0,codeSalt,codeHash,updatedBy:current(req)?.username||"Owner",updatedAt:now};
     }else{
+      if(existing.enabled===true&&(!existing.codeSalt||!existing.codeHash)){
+        if(suppliedCode.length<4||suppliedCode.length>128){
+          return res.status(400).json({error:"This maintenance session predates shutdown codes. Enter a new code of 4–128 characters to secure it, then switch OFF again using that code."});
+        }
+        const codeSalt=crypto.randomBytes(16).toString("hex");
+        const codeHash=crypto.scryptSync(suppliedCode,codeSalt,64).toString("hex");
+        setting={...existing,enabled:true,until:0,codeSalt,codeHash,updatedBy:current(req)?.username||"Owner",updatedAt:now};
+        await persistUnderConstructionSetting(setting);
+        return res.json({enabled:true,codeConfigured:true,until:0});
+      }
       if(!existing.codeSalt||!existing.codeHash){
-        return res.status(400).json({error:"No shutdown code is saved for this maintenance session. Turn maintenance OFF is blocked for safety; enable it again with a code first."});
+        return res.status(400).json({error:"No shutdown code is saved for this maintenance session. Enter a new code to secure it first."});
       }
       if(suppliedCode.length<1||suppliedCode.length>128){
         return res.status(400).json({error:"Enter the shutdown code you created when enabling maintenance mode."});
