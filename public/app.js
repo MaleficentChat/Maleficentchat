@@ -1662,8 +1662,10 @@ function setPartyMode(enabled){
       player.src="https://www.youtube-nocookie.com/embed/HIiJ2Q5gFAE?autoplay=1&start=20&playsinline=1&controls=1&rel=0";
       player.className="party-mode-player";
       player.setAttribute("allowfullscreen","");
+      player.setAttribute("tabindex","-1");
       document.body.appendChild(player);
     }
+    // Keep audio playing without covering the chat/composer with a visible video.
     player.style.display="block";
   }else if(player){
     player.src="about:blank";
