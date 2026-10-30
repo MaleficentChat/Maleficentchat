@@ -5340,8 +5340,8 @@ app.get('/api/users/:id/profile',auth,(req,res)=>{
   const friendship=db.friends.find(f=>((f.a===u.id&&f.b===v.id)||(f.a===v.id&&f.b===u.id)));
   const profile=safeUser(v);
   if(String(v.id)!==String(u.id)){
-    const p={lastSeen:true,online:true,country:true,location:true,website:true,socials:true,bio:true,pronouns:true,relationship:true,mood:true,interests:true,...(v.privacy||{})};
-    for(const key of ['country','location','website','socials','bio','pronouns','relationship','mood','interests']) if(p[key]===false){if(key==='socials')profile.socials={};else if(key==='interests')profile.interests=[];else profile[key]='';}
+    const p={lastSeen:true,online:true,country:true,location:true,website:true,bio:true,pronouns:true,relationship:true,mood:true,interests:true,...(v.privacy||{})};
+    for(const key of ['country','location','website','bio','pronouns','relationship','mood','interests']) if(p[key]===false){if(key==='socials')profile.socials={};else if(key==='interests')profile.interests=[];else profile[key]='';}
     if(p.lastSeen===false)profile.lastSeen=null;
     if(p.online===false)profile.online=false;
   }
