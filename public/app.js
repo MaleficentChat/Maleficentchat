@@ -3862,7 +3862,6 @@ async function loadOwner() {
         <p class="muted">Add one entry per line. Normal words filter chat messages; <code>r: word</code> creates an automatic staff report; <code>u: word</code> blocks usernames and display names containing that text.</p>
         <label>Bulk add filter entries<textarea id="bulkFilterWords" placeholder="ordinaryword&#10;r: reportword&#10;u: restrictedname"></textarea></label>
         <div class="toolbar"><button class="primary" id="addBulkFilter">Add Entries</button><input type="search" id="filterSearch" placeholder="Search all filter entries…"></div>
-        <p class="muted">Use the bulk box above to add entries: ordinary words filter chat, <code>r: word</code> creates a staff report, and <code>u: word</code> restricts usernames/display names. Open a category below to review or remove saved rules.</p>
         <div id="filterCounts">Total: ${filterData.total||0} | Showing: ${filterData.total||0}</div>
         ${[
           {title:'🚫 Filter Words',test:w=>!/^r\s*:/i.test(String(w.word||w))&&!/^u\s*:/i.test(String(w.word||w))},
