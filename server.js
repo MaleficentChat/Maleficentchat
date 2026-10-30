@@ -2355,14 +2355,81 @@ app.post(
       });
     }
 
-    const removed=await pool.query("DELETE FROM room_messages WHERE room_id=$1",[Number(room.id)]);
+    // Save an evidence snapshot in the same transaction before deleting visible room history.
+    // A failed archive insert aborts the clear, so messages cannot be lost without evidence.
+    const client=await pool.connect();
+    let evidenceId=null,removedCount=0;
+    try{
+      await client.query("BEGIN");
+      const stored=await client.query(
+        "SELECT id,data,created_at FROM room_messages WHERE room_id=$1 ORDER BY created_at ASC",
+        [Number(room.id)]
+      );
+      const evidenceMessages=stored.rows.map(row=>({
+        ...(row.data&&typeof row.data==="object"?row.data:{text:String(row.data||"")}),
+        _evidenceMessageId:String(row.id),
+        _evidenceCreatedAt:row.created_at
+      }));
+      if(evidenceMessages.length){
+        const archived=await client.query(
+          "INSERT INTO room_clear_evidence(room_id,room_name,cleared_by,cleared_by_username,message_count,messages,cleared_at) VALUES($1,$2,$3,$4,$5,$6::jsonb,NOW()) RETURNING id",
+          [Number(room.id),String(room.name||"Unknown room"),Number(u.id)||null,String(u.username||"Unknown"),evidenceMessages.length,JSON.stringify(evidenceMessages)]
+        );
+        evidenceId=String(archived.rows[0].id);
+      }
+      const removed=await client.query("DELETE FROM room_messages WHERE room_id=$1",[Number(room.id)]);
+      removedCount=Number(removed.rowCount||0);
+      await client.query("COMMIT");
+    }catch(error){
+      try{await client.query("ROLLBACK")}catch{}
+      console.error("Room clear evidence archive failed:",error);
+      return res.status(500).json({error:"Room was not cleared because its message evidence could not be safely archived."});
+    }finally{client.release();}
+
     db.messages=db.messages.filter(m=>String(m.roomId)!==String(room.id));
     await save();
-
+    await log(u,"ROOM_CLEAR",room.name,{roomId:String(room.id),removed:removedCount,evidenceId});
     io.to("room:"+room.id).emit("room:clear");
-    res.json({ok:true,removed:Number(removed.rowCount||0)});
+    res.json({ok:true,removed:removedCount,evidenceId});
   }
 );
+
+// Cleared-room evidence is restricted server-side to Instructor and higher ranks.
+function requireClearedRoomEvidenceAccess(req,res,next){
+  const viewer=current(req);
+  if(!viewer||!hasRank(viewer,"INSTRUCTOR"))return res.status(403).json({error:"Cleared room message inspection requires Instructor rank or higher."});
+  next();
+}
+app.get("/api/staff/cleared-room-evidence",auth,requireClearedRoomEvidenceAccess,async(req,res)=>{
+  try{
+    const q=String(req.query.q||"").trim().toLowerCase();
+    const result=await pool.query(
+      `SELECT id,room_id,room_name,cleared_by,cleared_by_username,cleared_at,message_count
+       FROM room_clear_evidence
+       WHERE ($1='' OR LOWER(room_name) LIKE $2 OR LOWER(cleared_by_username) LIKE $2)
+       ORDER BY cleared_at DESC LIMIT 200`,
+      [q,q?"%"+q+"%":"%"]
+    );
+    res.json({evidence:result.rows.map(row=>({...row,id:String(row.id),room_id:row.room_id===null?null:String(row.room_id),cleared_by:row.cleared_by===null?null:String(row.cleared_by),cleared_at:row.cleared_at}))});
+  }catch(error){console.error("Cleared-room evidence list failed:",error);res.status(500).json({error:"Could not load cleared-room evidence."});}
+});
+app.get("/api/staff/cleared-room-evidence/:id",auth,requireClearedRoomEvidenceAccess,async(req,res)=>{
+  try{
+    const result=await pool.query("SELECT id,room_id,room_name,cleared_by,cleared_by_username,cleared_at,message_count,messages FROM room_clear_evidence WHERE id=$1",[req.params.id]);
+    if(!result.rowCount)return res.status(404).json({error:"Cleared-room evidence record not found."});
+    const row=result.rows[0];
+    res.json({evidence:{...row,id:String(row.id),room_id:row.room_id===null?null:String(row.room_id),cleared_by:row.cleared_by===null?null:String(row.cleared_by),messages:Array.isArray(row.messages)?row.messages:[]}});
+  }catch(error){console.error("Cleared-room evidence detail failed:",error);res.status(500).json({error:"Could not open this evidence record."});}
+});
+app.delete("/api/staff/cleared-room-evidence/:id",auth,requireClearedRoomEvidenceAccess,async(req,res)=>{
+  const viewer=current(req);
+  try{
+    const deleted=await pool.query("DELETE FROM room_clear_evidence WHERE id=$1 RETURNING id,room_name,message_count",[req.params.id]);
+    if(!deleted.rowCount)return res.status(404).json({error:"Cleared-room evidence record not found."});
+    await log(viewer,"ROOM_CLEAR_EVIDENCE_DELETE",deleted.rows[0].room_name,{evidenceId:String(deleted.rows[0].id),messageCount:Number(deleted.rows[0].message_count||0)});
+    res.json({ok:true,deletedId:String(deleted.rows[0].id)});
+  }catch(error){console.error("Cleared-room evidence delete failed:",error);res.status(500).json({error:"Could not delete this evidence record."});}
+});
 
 app.get(
   "/api/search/messages",
