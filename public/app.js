@@ -3332,7 +3332,7 @@ async function loadStaff() {
 
     $('staff').innerHTML=`
       ${canHardRefreshSite ? '<section class="card site-hard-refresh-card"><div><h3>⟳ Site Refresh</h3><p class="muted">Clear cached website files on this device and reload Maleficent Chat. All account data and messages remain stored safely.</p></div><button class="primary" type="button" id="hardRefreshSiteButton">⟳ Hard Refresh Site</button></section>' : ''}
-      ${(String(state.user?.rank||'').toUpperCase()==='DEVELOPER'||String(state.user?.rank||'').toUpperCase()==='OWNER') ? '<section class="card under-construction-admin-card"><div class="under-construction-admin-heading"><div><h3>🚧 Under Construction</h3><p class="muted">Switch maintenance mode ON to block regular users while you work, or OFF to reopen the site. No timer is used. Owner and Developer accounts remain exempt.</p></div><span class="construction-status-pill" id="staffConstructionStatus" aria-live="polite">Checking status…</span></div><div class="construction-switch-row"><span><b>Maintenance mode</b><small>OFF = site open · ON = maintenance screen</small></span><span class="construction-switch"><input type="checkbox" id="staffUnderConstructionToggle" role="switch" aria-label="Under Construction mode" aria-checked="false" onchange="toggleUnderConstruction(this.checked)"><span class="construction-switch-track" aria-hidden="true"></span></span></div><p class="muted construction-last-result" id="staffConstructionResult" aria-live="polite">The saved server setting will be checked before displaying the current state.</p></section>' : ''}
+      ${(String(state.user?.rank||'').toUpperCase()==='DEVELOPER'||String(state.user?.rank||'').toUpperCase()==='OWNER') ? '<section class="card under-construction-admin-card"><div class="under-construction-admin-heading"><div><h3>🚧 Under Construction</h3><p class="muted">Switch maintenance mode ON to block regular users. Create a shutdown code when enabling; the same code is required to switch it OFF. Owner and Developer accounts remain exempt.</p></div><span class="construction-status-pill" id="staffConstructionStatus" aria-live="polite">Checking status…</span></div><div class="construction-switch-row"><span><b>Maintenance mode</b><small>OFF = site open · ON = maintenance screen</small></span><span class="construction-switch"><input type="checkbox" id="staffUnderConstructionToggle" role="switch" aria-label="Under Construction mode" aria-checked="false" onchange="toggleUnderConstruction(this.checked)"><span class="construction-switch-track" aria-hidden="true"></span></span></div><div class="construction-code-box"><label for="staffConstructionCode" id="staffConstructionCodeLabel">Create shutdown code<input type="password" id="staffConstructionCode" minlength="4" maxlength="128" autocomplete="new-password" placeholder="Create a code to switch ON" aria-describedby="staffConstructionCodeHelp"></label><small id="staffConstructionCodeHelp" class="muted">Use 4–128 characters. When maintenance is ON, enter this same code before switching it OFF.</small></div><p class="muted construction-last-result" id="staffConstructionResult" aria-live="polite">The saved server setting will be checked before displaying the current state.</p></section>' : ''}
       ${(state.user?.username==='Maleficent'||String(state.user?.rank).toUpperCase()==='DEVELOPER') ? '<section class="card ip-inspection-card"><div><h3>🔎 IP Inspection</h3><p class="muted">Owner/Developer only · Registered email, recorded IP history and approximate network details.</p></div><form id="ipInspectionForm" class="ip-inspection-form"><input id="ipInspectionSearch" placeholder="Type @ or a username to find an account" maxlength="100" autocomplete="off"><button class="primary" type="submit">Inspect</button></form><div id="ipInspectionSuggestions" class="ip-inspection-suggestions" hidden></div><p class="muted ip-inspection-note">IP and network information is sensitive. Location is approximate. Lookups use IP Info with ipapi.co as a fallback.</p><div id="ipInspectionResults"><p class="muted">Search for an account to inspect its recorded IP history.</p></div></section>' : ''}
       <details class="filter-words-details staff-applications-dropdown" id="staffApplicationsDropdown"><summary>📝 Staff Applications <span class="staff-app-count" id="staffApplicationCount">Loading…</span></summary><div class="staff-applications-content" id="staffApplicationsList"><p class="muted">Loading applications…</p></div></details>
       <details class="filter-words-details system-notifications-dropdown" id="systemNotificationsDropdown">
@@ -3605,8 +3605,17 @@ async function checkUnderConstruction(){
       label.textContent=configured?"ON · Maintenance enabled":"OFF · Site open";
       label.classList.toggle("is-on",configured);
     }
+    const codeInput=$("staffConstructionCode");
+    const codeLabel=$("staffConstructionCodeLabel");
+    const codeHelp=$("staffConstructionCodeHelp");
+    if(codeInput){
+      codeInput.placeholder=configured?"Enter the code to switch OFF":"Create a code to switch ON";
+      codeInput.autocomplete=configured?"current-password":"new-password";
+    }
+    if(codeLabel)codeLabel.firstChild.textContent=configured?"Code required to turn OFF":"Create shutdown code";
+    if(codeHelp)codeHelp.textContent=configured?"Enter the exact code used when you enabled maintenance mode.":"Use 4–128 characters. You will need this exact code to turn maintenance mode OFF.";
     const result=$("staffConstructionResult");
-    if(result)result.textContent="Server status verified: "+(configured?"ON · regular users are blocked":"OFF · site is open")+" · "+new Date().toLocaleTimeString();
+    if(result)result.textContent="Server status verified: "+(configured?"ON · regular users are blocked; shutdown code required":"OFF · site is open")+" · "+new Date().toLocaleTimeString();
   }catch(error){
     console.warn("Under Construction status check failed:",error?.message||error);
     const label=$("staffConstructionStatus");if(label)label.textContent="Status unavailable";
@@ -3615,33 +3624,43 @@ async function checkUnderConstruction(){
 }
 async function toggleUnderConstruction(requestedEnabled){
   if(constructionWriteInFlight)return;
-  // Do not make a client-side rank decision here: the browser's cached user object
-  // can be stale after a rank change. Let the server's ownerOnly middleware decide.
   const toggle=$("staffUnderConstructionToggle");
+  const codeInput=$("staffConstructionCode");
   const enabled=Boolean(requestedEnabled);
+  const code=String(codeInput?.value||"");
+  if(code.length<1 || (enabled&&code.length<4) || code.length>128){
+    if(toggle)toggle.checked=!enabled;
+    if(toggle)toggle.setAttribute("aria-checked",enabled?"false":"true");
+    toast(enabled?"Create a shutdown code with at least 4 characters first.":"Enter the shutdown code before switching maintenance OFF.");
+    codeInput?.focus();
+    return;
+  }
   constructionWriteInFlight=true;
   if(toggle)toggle.disabled=true;
+  if(codeInput)codeInput.disabled=true;
   try{
-    const result=await api("/api/staff/under-construction",{method:"POST",body:JSON.stringify({enabled})});
+    const result=await api("/api/staff/under-construction",{method:"POST",body:JSON.stringify({enabled,code})});
     const active=Boolean(result.enabled);
     if(toggle){toggle.checked=active;toggle.setAttribute("aria-checked",active?"true":"false");}
+    if(codeInput)codeInput.value="";
     const resultLabel=$("staffConstructionResult");
-    if(resultLabel)resultLabel.textContent=active?"Server saved ON. Verifying the persisted setting…":"Server saved OFF. Verifying the persisted setting…";
+    if(resultLabel)resultLabel.textContent=active?"Server saved ON. A shutdown code is now required to turn it OFF. Verifying the persisted setting…":"Server saved OFF after code verification. Verifying the persisted setting…";
     const statusLabel=$("staffConstructionStatus");
     if(statusLabel){
       statusLabel.textContent=active?"ON · Maintenance enabled":"OFF · Site open";
       statusLabel.classList.toggle("is-on",active);
     }
-    toast(active?"Under Construction enabled.":"Under Construction disabled.");
+    toast(active?"Under Construction enabled. Save your code securely; it is not displayed again.":"Shutdown code accepted. Under Construction disabled.");
   }catch(e){
+    if(toggle)toggle.checked=!enabled;
+    if(toggle)toggle.setAttribute("aria-checked",enabled?"false":"true");
     const resultLabel=$("staffConstructionResult");
     if(resultLabel)resultLabel.textContent="Save failed: "+(e.message||"Unknown server error");
     toast(e.message||"Could not change Under Construction mode.");
   }finally{
     constructionWriteInFlight=false;
     if(toggle)toggle.disabled=false;
-    // Always read the database-backed setting after unlocking; previously these
-    // checks ran while constructionWriteInFlight was true and returned immediately.
+    if(codeInput)codeInput.disabled=false;
     await checkUnderConstruction();
   }
 }
