@@ -384,6 +384,27 @@ function featureAllowed(key){
   };
 }
 
+// Enforce per-account feature blocks on feature-using API actions, not just by hiding UI controls.
+app.use('/api',(req,res,next)=>{
+  const u=current(req);
+  if(!u)return next();
+  const method=String(req.method||'GET').toUpperCase();
+  const route=String(req.path||'');
+  let feature=null;
+  if(method==='POST'&&/^\/rooms\/[^/]+\/messages$/.test(route))feature='send_messages';
+  else if(method==='POST'&&/^\/rooms\/[^/]+\/gif$/.test(route))feature='gif_sending';
+  else if(method==='POST'&&/^\/rooms\/[^/]+\/youtube$/.test(route))feature='use_youtube';
+  else if(method==='POST'&&/^\/rooms\/[^/]+\/announcements$/.test(route))feature='room_announcement';
+  else if(method==='POST'&&/^\/rooms(?:\/create)?$/.test(route))feature='create_rooms';
+  else if(method==='POST'&&/^\/wall(?:\/post)?$/.test(route))feature='friend_wall_posting';
+  else if(method==='POST'&&route==='/news')feature='news_posting';
+  else if(method==='POST'&&/^\/users\/[^/]+\/like$/.test(route))feature='profile_like';
+  else if(method==='POST'&&/^\/wall\/[^/]+\/(?:like|reaction|comments)$/.test(route))feature=route.endsWith('/comments')?'friend_wall_posting':'profile_like';
+  else if(method==='POST'&&/^\/rooms\/[^/]+\/messages\/[^/]+\/reaction$/.test(route))feature='react_message';
+  if(feature&&isUserFeatureBlocked(u,feature))return res.status(403).json({error:'This feature has been disabled for your account by staff.'});
+  next();
+});
+
 function safeUser(u){
   if(!u)return null;
 
@@ -1963,6 +1984,7 @@ function malReply(user,rawText){
 
 app.post("/api/rooms/:id/messages",auth,featureAllowed("send_messages"),upload.single("file"),async(req,res)=>{
   const u=current(req);
+  if(req.file&&isUserFeatureBlocked(u,"chat_file_upload"))return res.status(403).json({error:"Sending image/audio attachments has been disabled for your account by staff."});
   // Ghost Mode hides the sender identity; it must never disable message sending.
   const r=db.rooms.find(x=>String(x.id)===String(req.params.id));
   if(!r)return res.status(404).json({error:"Room not found"});
