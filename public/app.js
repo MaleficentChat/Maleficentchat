@@ -648,8 +648,19 @@ async function bootstrap() {
       state.userPermissions = data.userPermissions || {};
       await start();
     }
-  } catch {
-    /* Not logged in */
+  } catch (error) {
+    // A kicked account is intentionally rejected by bootstrap with HTTP 403.
+    // Show the same full-screen moderation lock used after a failed login,
+    // rather than silently leaving the user at the ordinary login screen.
+    if (/you have been kicked/i.test(String(error?.message||"")) && error?.kickedUntil) {
+      $("auth")?.classList.add("hidden");
+      $("app")?.classList.add("hidden");
+      showKickLock(error.kickedUntil,error.reason||"Community rules");
+    } else if (/you have been banned/i.test(String(error?.message||""))) {
+      $("auth")?.classList.add("hidden");
+      $("app")?.classList.add("hidden");
+      showBanLock(error.reason||"Community rules");
+    }
   }
 }
 
