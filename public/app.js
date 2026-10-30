@@ -3563,7 +3563,7 @@ async function clearUserActionHistory(userId){
 }
 /* ---------------- OWNER ---------------- */
 
-let constructionTimer=null,constructionPoll=null;
+let constructionTimer=null,constructionPoll=null,constructionWriteInFlight=false;
 function isOwnerExempt(){
   // The server is authoritative for permission checks. Do not hard-code the owner username here:
   // OWNER_USERNAME may be configured differently in Render, which otherwise disables the UI toggle.
@@ -3586,6 +3586,8 @@ function showConstructionPanel(){
 async function checkUnderConstruction(){
   try{
     const status=await api("/api/under-construction/status");
+    // Ignore stale status responses that arrive while an owner change is being saved.
+    if(constructionWriteInFlight)return;
     if(status.enabled&&!status.exempt)showConstructionPanel(status.until);
     else hideConstructionPanel();
     const toggle=$("underConstructionToggle");
@@ -3593,9 +3595,11 @@ async function checkUnderConstruction(){
   }catch{}
 }
 async function toggleUnderConstruction(requestedEnabled){
+  if(constructionWriteInFlight)return;
   if(!isOwnerExempt()){toast("Owner/Developer access required.");await checkUnderConstruction();return;}
   const toggle=$("underConstructionToggle");
   const enabled=Boolean(requestedEnabled);
+  constructionWriteInFlight=true;
   if(toggle)toggle.disabled=true;
   try{
     const result=await api("/api/owner/under-construction",{method:"POST",body:JSON.stringify({enabled})});
@@ -3607,7 +3611,10 @@ async function toggleUnderConstruction(requestedEnabled){
     toast(e.message||"Could not change Under Construction mode.");
     await checkUnderConstruction();
   }finally{
+    constructionWriteInFlight=false;
     if(toggle)toggle.disabled=false;
+    // Read back the persisted value only after the write has completed.
+    await checkUnderConstruction();
   }
 }
 
@@ -3664,7 +3671,7 @@ async function loadOwner() {
             Inspect private messages
           </button>
           
-          <label class="construction-switch-row" for="underConstructionToggle"><span><b>🚧 Under Construction</b><small>Turn maintenance mode on or off</small></span><span class="construction-switch"><input type="checkbox" id="underConstructionToggle" role="switch" aria-label="Under Construction mode" aria-checked="false" onchange="toggleUnderConstruction(this.checked)"><span class="construction-switch-track" aria-hidden="true"></span></span></label>
+          <div class="construction-switch-row"><span><b>🚧 Under Construction</b><small>Turn maintenance mode on or off</small></span><span class="construction-switch"><input type="checkbox" id="underConstructionToggle" role="switch" aria-label="Under Construction mode" aria-checked="false" onchange="toggleUnderConstruction(this.checked)"><span class="construction-switch-track" aria-hidden="true"></span></span></div>
 
           <button class="mini" onclick="ownerFeatureGrants()">🧩 Feature granting</button>
           
