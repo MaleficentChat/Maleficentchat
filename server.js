@@ -197,6 +197,41 @@ function userFeatureGrant(u,key){
   return entry?!!entry.granted:null;
 }
 
+// Per-account feature blocks configured from the staff profile panel.
+// Store the blocks in persisted settings so they survive restarts.
+const USER_BLOCKABLE_FEATURES = [
+  {key:"send_messages",name:"Send room messages",category:"Messaging"},
+  {key:"private_messages",name:"Private messages",category:"Messaging"},
+  {key:"chat_file_upload",name:"Send image/audio attachments",category:"Media"},
+  {key:"gif_sending",name:"Send GIFs",category:"Media"},
+  {key:"doodle_studio",name:"Use Doodle Studio",category:"Creative"},
+  {key:"use_youtube",name:"Share YouTube videos",category:"Media"},
+  {key:"profile_like",name:"Like profiles",category:"Social"},
+  {key:"friend_wall_posting",name:"Post on Friend Wall",category:"Social"},
+  {key:"news_posting",name:"Publish News posts",category:"Community"},
+  {key:"create_rooms",name:"Create rooms",category:"Rooms"},
+  {key:"report_message",name:"Report messages",category:"Safety"},
+  {key:"react_message",name:"React to messages",category:"Messaging"},
+  {key:"edit_message",name:"Edit messages",category:"Messaging"},
+  {key:"pin_message",name:"Pin messages",category:"Messaging"},
+  {key:"save_message",name:"Save messages",category:"Messaging"},
+  {key:"schedule_message",name:"Schedule messages",category:"Messaging"},
+  {key:"expire_message",name:"Use expiring messages",category:"Messaging"},
+  {key:"room_announcement",name:"Post room announcements",category:"Rooms"},
+  {key:"manage_clubs",name:"Use community clubs",category:"Community"},
+  {key:"manage_bots",name:"Use community bots",category:"AI"}
+];
+function featureBlockKey(key){
+  const aliases={wall_post:"friend_wall_posting",friend_wall_post:"friend_wall_posting",publish_news:"news_posting",create_room:"create_rooms",youtube:"use_youtube",chat_upload:"chat_file_upload"};
+  return aliases[String(key||"").toLowerCase()]||String(key||"").toLowerCase();
+}
+function isUserFeatureBlocked(u,key){
+  if(!u)return false;
+  const blocks=db.settings?.user_feature_blocks?.[String(u.id)];
+  return !!blocks?.[featureBlockKey(key)];
+}
+
+
 // Owner-configurable access controls. The owner can change the minimum rank
 // for these implemented features without editing code.
 const FEATURE_CONTROLS=[
@@ -337,6 +372,7 @@ function featureAllowed(key){
     const u=current(req);
     if(!u) return res.status(401).json({error:"Login required"});
     ensureFeatureGrants();
+    if(isUserFeatureBlocked(u,key)) return res.status(403).json({error:"This feature has been disabled for your account by staff."});
     if(String(u.rank).toUpperCase()==="DEVELOPER") return next();
     const individual=userFeatureGrant(u,key);
     if(individual!==null)return individual?next():res.status(403).json({error:"This feature has not been granted to your account."});
@@ -4192,6 +4228,7 @@ app.post('/api/settings/save',ownerOnly,async(req,res)=>{
 function normalizeFeatureRanks(v,fallback){if(!Array.isArray(v))return [...fallback];const aliases={USER:'MEMBER',STAFF:'MOD',TRUSTED:'PREMIUM'};const allowed=new Set([...GRANT_RANKS,'DEVELOPER']);return [...new Set(v.map(x=>aliases[String(x||'').toUpperCase()]||String(x||'').toUpperCase()).filter(x=>allowed.has(x)))];}
 function featureGrantAllowed(u,key){
   if(!u)return false;
+  if(isUserFeatureBlocked(u,key))return false;
   const rankName=String(u.rank||'MEMBER').toUpperCase()==='USER'?'MEMBER':String(u.rank||'MEMBER').toUpperCase();
   if(rankName==='DEVELOPER'||u.username===DEFAULT_OWNER)return true;
   const granted=userFeatureGrant(u,key);if(granted!==null)return granted;
@@ -4336,6 +4373,32 @@ app.patch('/api/staff/user/:id/account',auth,(req,res)=>{
   res.json({user:safeUser(target),email:target.email||''});
 });
 
+app.get('/api/staff/user/:id/feature-blocks',auth,async(req,res)=>{
+  const actor=current(req),target=findUser(req.params.id);
+  if(!target)return res.status(404).json({error:'User not found'});
+  if(String(target.rank).toUpperCase()==='DEVELOPER'||target.username===DEFAULT_OWNER)return res.status(403).json({error:'The owner account is protected.'});
+  if(!featureGrantAllowed(actor,'profile_note')||rankOrder[target.rank]>=rankOrder[actor.rank])return res.status(403).json({error:'You cannot manage feature blocks for this account.'});
+  db.settings ||= {};db.settings.user_feature_blocks ||= {};
+  res.json({user:{id:target.id,username:target.username},features:USER_BLOCKABLE_FEATURES,blocked:db.settings.user_feature_blocks[String(target.id)]||{}});
+});
+app.put('/api/staff/user/:id/feature-blocks',auth,async(req,res)=>{
+  const actor=current(req),target=findUser(req.params.id);
+  if(!target)return res.status(404).json({error:'User not found'});
+  if(String(target.rank).toUpperCase()==='DEVELOPER'||target.username===DEFAULT_OWNER)return res.status(403).json({error:'The owner account is protected.'});
+  if(!featureGrantAllowed(actor,'profile_note')||rankOrder[target.rank]>=rankOrder[actor.rank])return res.status(403).json({error:'You cannot manage feature blocks for this account.'});
+  const incoming=req.body?.blocked;
+  if(!incoming||typeof incoming!=='object'||Array.isArray(incoming))return res.status(400).json({error:'Provide a feature block list.'});
+  const allowed=new Set(USER_BLOCKABLE_FEATURES.map(f=>f.key));
+  if(Object.entries(incoming).some(([key,value])=>!allowed.has(key)||typeof value!=='boolean'))return res.status(400).json({error:'Unknown feature or invalid block value.'});
+  db.settings ||= {};db.settings.user_feature_blocks ||= {};
+  const cleaned={};
+  for(const f of USER_BLOCKABLE_FEATURES)if(incoming[f.key]===true)cleaned[f.key]=true;
+  if(Object.keys(cleaned).length)db.settings.user_feature_blocks[String(target.id)]=cleaned;
+  else delete db.settings.user_feature_blocks[String(target.id)];
+  save();await flushSave();
+  log(actor,'USER_FEATURE_BLOCKS_UPDATE',target.username,{blocked:Object.keys(cleaned)});
+  res.json({ok:true,blocked:cleaned});
+});
 app.get('/api/staff/user/:id/note',auth,async(req,res)=>{const actor=current(req),target=findUser(req.params.id);if(!target)return res.status(404).json({error:'User not found'});if(!featureGrantAllowed(actor,'profile_note')||rankOrder[target.rank]>=rankOrder[actor.rank])return res.status(403).json({error:'You cannot view this staff note.'});const q=await pool.query(`SELECT n.note,n.created_at,u.username AS author FROM profile_notes n LEFT JOIN users u ON u.id=n.added_by WHERE n.user_id=$1 ORDER BY n.created_at DESC,n.id DESC LIMIT 1`,[Number(target.id)]);const row=q.rows[0];res.json({note:row?.note||'',updatedAt:row?.created_at||null,updatedBy:row?.author||null,hasNote:!!row});});
 app.patch('/api/staff/user/:id/note',auth,async(req,res)=>{
   const actor=current(req),target=findUser(req.params.id);if(!target)return res.status(404).json({error:'User not found'});
