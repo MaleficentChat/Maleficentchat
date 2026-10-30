@@ -721,6 +721,9 @@ function auth(req,res,next){
       error:"Login required"
     });
   }
+  // Enforce account-wide moderation before any authenticated API route, including private messages.
+  if(u.banned===true)return res.status(403).json({error:"You have been banned",reason:u.banReason||"Community rules",moderationLock:"BAN"});
+  if(u.kickedUntil&&Number(u.kickedUntil)>Date.now())return res.status(403).json({error:"You have been kicked",reason:u.kickReason||"Community rules",kickedUntil:Number(u.kickedUntil),moderationLock:"KICK"});
 
   const construction=db.settings?.under_construction||{};
   if(String(u.rank||"").toUpperCase()!=="DEVELOPER" &&
@@ -3165,6 +3168,20 @@ app.post(
 
     if(action==="WARN"){
       target.warnings=(target.warnings||0)+1;
+    }
+
+    // Force every active session/socket out immediately; clients receive the full-screen lock panel first.
+    if(action==="BAN"||action==="KICK"){
+      const event=action==="BAN"?"ban-lock":"kick-lock";
+      const payload=action==="BAN"?{reason:target.banReason||"Community rules"}:{reason:target.kickReason||"Community rules",kickedUntil:target.kickedUntil};
+      for(const sock of io.sockets.sockets.values()){
+        const socketUserId=String(sock.data?.userId||sock.userId||sock.user?.id||"");
+        if(socketUserId!==String(target.id))continue;
+        sock.emit(event,payload);
+        // Drop room memberships and disconnect live transport after delivering the lock event.
+        for(const joined of [...sock.rooms])if(joined!==sock.id)sock.leave(joined);
+        setTimeout(()=>{try{sock.disconnect(true);}catch{}},150);
+      }
     }
 
     db.moderationHistory.push({
