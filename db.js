@@ -230,33 +230,25 @@ async function initDB() {
     );
   }
 
-  // One-time room reset: replace legacy/default rooms with a single persistent Main Room.
-  // The marker prevents future deploys or page refreshes from deleting user-created rooms.
-  const roomStructure = await pool.query(`SELECT value FROM settings WHERE key='room_structure_v1'`);
-  if (!roomStructure.rowCount) {
-    await pool.query('DELETE FROM rooms');
-    await pool.query(`INSERT INTO rooms(name,created_by,icon,description,category,is_public,rank_required,invite_token,min_age,max_age,is_default)
-      VALUES ('Main Room',(SELECT id FROM users WHERE username='Maleficent'),'🏠','The main community chat room.','Community',true,'MEMBER','main-room',0,120,true)
-      ON CONFLICT(name) DO UPDATE SET description=EXCLUDED.description,min_age=0,max_age=120,is_default=true`);
-    await pool.query(`INSERT INTO settings(key,value) VALUES('room_structure_v1','true'::jsonb) ON CONFLICT(key) DO UPDATE SET value=EXCLUDED.value`);
-  } else {
-    await pool.query(`INSERT INTO rooms(name,created_by,icon,description,category,is_public,rank_required,invite_token,min_age,max_age,is_default)
-      VALUES ('Main Room',(SELECT id FROM users WHERE username='Maleficent'),'🏠','The main community chat room.','Community',true,'MEMBER','main-room',0,120,true)
-      ON CONFLICT(name) DO NOTHING`);
-  }
-
-  // Enforce the room structure on EVERY startup, not only on the first migration.
-  // Keep user-created rooms; remove only obsolete age-split rooms and duplicate
-  // case-variants of Main Room. Remove messages before removing their room rows.
+  // Ensure Main Room exists without deleting existing rooms or message history.
+  // The legacy room_structure marker is retained for compatibility with older deploys.
   await pool.query(`INSERT INTO rooms(name,created_by,icon,description,category,is_public,rank_required,invite_token,min_age,max_age,is_default)
     VALUES ('Main Room',(SELECT id FROM users WHERE username='Maleficent'),'🏠','The main community chat room.','Community',true,'MEMBER','main-room',0,120,true)
     ON CONFLICT(name) DO NOTHING`);
+  await pool.query(`INSERT INTO settings(key,value) VALUES('room_structure_v1','true'::jsonb) ON CONFLICT(key) DO NOTHING`);
+
+  // Some older versions created duplicate/case-variant Main Rooms. Preserve
+  // their messages by moving those rows into the canonical Main Room before
+  // removing only the obsolete room records.
   const obsoleteRooms = await pool.query(`SELECT id FROM rooms
     WHERE LOWER(TRIM(name)) IN ('main room 1','main room 2')
        OR (LOWER(TRIM(name))='main room' AND name <> 'Main Room')`);
   if (obsoleteRooms.rowCount) {
     const obsoleteIds = obsoleteRooms.rows.map(row => Number(row.id));
-    await pool.query(`DELETE FROM room_messages WHERE room_id = ANY($1::int[])`, [obsoleteIds]);
+    const mainRoom = await pool.query(`SELECT id FROM rooms WHERE name='Main Room' LIMIT 1`);
+    if (mainRoom.rowCount) {
+      await pool.query(`UPDATE room_messages SET room_id=$1 WHERE room_id = ANY($2::int[])`, [Number(mainRoom.rows[0].id), obsoleteIds]);
+    }
     await pool.query(`DELETE FROM rooms WHERE id = ANY($1::int[])`, [obsoleteIds]);
   }
   await pool.query(`UPDATE rooms SET is_default=(name='Main Room'), min_age=0, max_age=120 WHERE name='Main Room'`);
