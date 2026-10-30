@@ -346,11 +346,22 @@ $("authForm").onsubmit = async e => {
     );
 
     if (result.token) safeStorage.setItem("mc_token", result.token);
+    // A successful login must not be discarded just because the optional
+    // bootstrap request fails. Keep the authenticated user and open the app;
+    // bootstrap can be retried on the next refresh.
     state.user = result.user;
-    const boot = await api("/api/bootstrap");
-    state.featurePermissions = boot.featurePermissions || {};
-    state.featureGrants = boot.settings?.feature_grants || {};
-    state.userPermissions = boot.userPermissions || {};
+    state.featurePermissions = {};
+    state.featureGrants = {};
+    state.userPermissions = {};
+    try {
+      const boot = await api("/api/bootstrap");
+      state.user = boot.user || result.user;
+      state.featurePermissions = boot.featurePermissions || {};
+      state.featureGrants = boot.settings?.feature_grants || {};
+      state.userPermissions = boot.userPermissions || {};
+    } catch (bootstrapError) {
+      console.warn("Login succeeded but bootstrap failed; continuing with the authenticated user.", bootstrapError);
+    }
 
     await start();
   } catch (error) {
