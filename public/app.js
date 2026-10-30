@@ -1606,10 +1606,19 @@ function openPresenceModes(){
       <input type="checkbox" id="modePopupInvisible" style="margin:3px 0 0" ${state.user?.invisible&&!state.user?.deadMode?'checked':''}>
       <span style="display:block;min-width:0;white-space:normal;overflow-wrap:anywhere"><b style="display:block;margin-bottom:4px">😈 Invisible Mode</b><small style="display:block;white-space:normal;overflow-wrap:anywhere;line-height:1.45">Hidden from online and offline user lists for everyone except higher-ranked staff. Your room joins are not announced; eligible staff see a green indicator.</small></span>
     </label>
+    <div class="mode-control-row" style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px;border:1px solid var(--border-color,#393244);border-radius:10px">
+      <span><b>🎉 Party Mode</b><small style="display:block;line-height:1.45;margin-top:4px">Rainbow-glowing usernames, spinning GIFs and a music player starting at 0:20. This affects your current browser only.</small></span>
+      <button type="button" class="mini" id="togglePartyMode">🎉 Turn Party Mode On</button>
+    </div>
     <p class="muted" id="modePopupStatus" aria-live="polite" style="font-size:12px;line-height:1.4;min-height:14px;margin:0;overflow-wrap:anywhere"></p>
     <div class="toolbar" style="display:flex;flex-wrap:wrap;gap:8px"><button type="button" class="primary" id="applyModePopup">Apply mode</button><button type="button" class="mini" onclick="closeModal()">Cancel</button></div>
   </div>`);
   const hide=$("modePopupHide"),dead=$("modePopupDead"),invisible=$("modePopupInvisible"),apply=$("applyModePopup");
+  const partyToggle=$("togglePartyMode");
+  if(partyToggle){
+    partyToggle.textContent=isPartyModeActive()?"🎉 Turn Party Mode Off":"🎉 Turn Party Mode On";
+    partyToggle.addEventListener("click",()=>setPartyMode(!isPartyModeActive()));
+  }
   const boxes=[hide,dead,invisible].filter(Boolean);
   boxes.forEach(box=>box.addEventListener("change",()=>{if(box.checked)boxes.filter(other=>other!==box).forEach(other=>other.checked=false);}));
   apply?.addEventListener("click",async()=>{
@@ -1637,6 +1646,31 @@ function openPresenceModes(){
       closeModal();toast("Presence mode updated.");updateNav();await loadUsers().catch(()=>{});await renderOnline(onlinePanelTab).catch(()=>{});
     }catch(error){if(status)status.textContent=error.message||"Could not update modes.";toast(error.message||"Could not update modes.");apply.disabled=false;}
   });
+}
+function isPartyModeActive(){return document.body.classList.contains("party-mode-active");}
+function setPartyMode(enabled){
+  const active=!!enabled;
+  document.body.classList.toggle("party-mode-active",active);
+  let player=document.getElementById("partyModePlayer");
+  if(active){
+    if(!player){
+      player=document.createElement("iframe");
+      player.id="partyModePlayer";
+      player.title="Party Mode music";
+      player.allow="autoplay; encrypted-media; picture-in-picture";
+      player.referrerPolicy="strict-origin-when-cross-origin";
+      player.src="https://www.youtube-nocookie.com/embed/HIiJ2Q5gFAE?autoplay=1&start=20&playsinline=1&controls=1&rel=0";
+      player.className="party-mode-player";
+      player.setAttribute("allowfullscreen","");
+      document.body.appendChild(player);
+    }
+    player.style.display="block";
+  }else if(player){
+    player.src="about:blank";
+    player.remove();
+  }
+  const toggle=document.getElementById("togglePartyMode");
+  if(toggle)toggle.textContent=active?"🎉 Turn Party Mode Off":"🎉 Turn Party Mode On";
 }
 function openDoodleComposer(){
   if(!state.currentRoom){toast('Join the Main Room before sending a doodle.');return;}
