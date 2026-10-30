@@ -3854,9 +3854,9 @@ async function loadOwner() {
         <div class="toolbar"><button class="primary" id="addBulkFilter">Add Entries</button><input type="search" id="filterSearch" placeholder="Search all filter entries…"></div>
         <div id="filterCounts">Total: ${filterData.total||0} | Showing: ${filterData.total||0}</div>
         ${[
-          {title:'🚫 Filter Words',test:w=>!/^r\\s*:/i.test(String(w.word||w))&&!/^u\\s*:/i.test(String(w.word||w))},
-          {title:'🔒 Restricted Usernames & Display Names',test:w=>/^u\\s*:/i.test(String(w.word||w))},
-          {title:'🚨 Auto System Report Words',test:w=>/^r\\s*:/i.test(String(w.word||w))}
+          {title:'🚫 Filter Words',test:w=>!/^r\s*:/i.test(String(w.word||w))&&!/^u\s*:/i.test(String(w.word||w))},
+          {title:'🔒 Restricted Usernames & Display Names',test:w=>/^u\s*:/i.test(String(w.word||w))},
+          {title:'🚨 Auto System Report Words',test:w=>/^r\s*:/i.test(String(w.word||w))}
         ].map(group=>{const words=(filterData.words||[]).filter(group.test);return `<details class="filter-words-details filter-category-details" open><summary>${group.title} (${words.length})</summary><div class="filter-category-list">${words.map(w=>`<div class="filter-table-row" data-word="${esc(w.word||w)}"><code>${esc(w.word||w)}</code><small>${w.created_at?fmt(w.created_at):''}</small><button class="mini danger" data-filter-delete="${w.id||''}" aria-label="Delete filter entry">×</button></div>`).join('')||'<p class="muted">No entries in this category.</p>'}</div></details>`}).join('')}
       </div>
 
