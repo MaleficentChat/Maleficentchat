@@ -801,6 +801,9 @@ async function renderView() {
     case "rules":
       return loadCommunityRules();
 
+    case "guide":
+      return loadGuide();
+
     case "leaderboard":
       return loadLeaderboard();
 
@@ -3924,6 +3927,33 @@ async function toggleUnderConstruction(requestedEnabled){
   }
 }
 
+
+async function loadGuide(){
+  const host=$("guideContent");if(!host)return;
+  host.innerHTML='<div class="card"><p class="muted">Loading your rank guide…</p></div>';
+  try{
+    const data=await api("/api/guide");
+    const entries=Array.isArray(data.guides)?data.guides:[];
+    host.innerHTML='<div class="card guide-intro"><h3>'+esc(rankIcon[state.user?.rank]||"📘")+' '+esc(state.user?.rank||"MEMBER")+' Guide</h3><p class="muted">Guidance published for your current rank.</p></div>'+
+      (entries.length?entries.map(item=>'<article class="card guide-entry"><h3>'+esc(item.title||"Guide")+'</h3><div class="guide-entry-content">'+esc(item.content||"").replace(/\n/g,"<br>")+'</div></article>').join(""):'<div class="card"><p class="muted">No guide content has been published for your rank yet.</p></div>');
+  }catch(e){host.innerHTML='<div class="card"><p class="muted">Could not load the guide: '+esc(e.message||"Request failed")+'</p></div>';}
+}
+async function loadOwnerGuideManagement(){
+  const host=$("ownerGuideManagement");if(!host)return;
+  const guideRanks=["MEMBER","VIP","PREMIUM","ROYAL","MOD","ADMIN","SUPER_ADMIN","COMMISSOR","INSTRUCTOR","COOWNER","OWNER","DEVELOPER"];
+  let selectedRank="MEMBER", guides=[];
+  const render=()=>{
+    const options=guideRanks.map(r=>'<option value="'+r+'" '+(r===selectedRank?"selected":"")+'>'+esc(rankIcon[r]||"📘")+' '+r+'</option>').join("");
+    host.innerHTML='<div class="card"><h3>📘 Guide Management</h3><p class="muted">Choose the exact rank that should see the content. Members only receive guides assigned to their own current rank.</p><label for="ownerGuideRank">Target rank</label><select id="ownerGuideRank">'+options+'</select><form id="ownerGuideForm" class="stack"><label for="ownerGuideTitle">Guide title</label><input id="ownerGuideTitle" maxlength="100" placeholder="e.g. Getting started" required><label for="ownerGuideBody">Guide content</label><textarea id="ownerGuideBody" rows="6" maxlength="12000" placeholder="Write the instructions for this rank…" required></textarea><div class="toolbar"><button class="primary" type="submit">＋ Add guide content</button></div></form><div class="guide-management-list">'+(guides.length?guides.map((g,i)=>'<article class="guide-management-row"><div><b>'+esc(g.title)+'</b><p class="muted">'+esc((g.content||"").slice(0,180))+(String(g.content||"").length>180?"…":"")+'</p></div><div class="toolbar"><button class="mini" type="button" data-guide-edit="'+i+'">Edit</button><button class="mini danger" type="button" data-guide-delete="'+esc(g.id)+'">Delete</button></div></article>').join(""):'<p class="muted">No guide entries for this rank yet.</p>')+'</div></div>';
+    $("ownerGuideRank").onchange=async e=>{selectedRank=e.target.value;await loadRank();render();};
+    $("ownerGuideForm").onsubmit=async e=>{e.preventDefault();const title=$("ownerGuideTitle").value.trim(),content=$("ownerGuideBody").value.trim();if(!title||!content){toast("Enter a title and guide content.");return;}try{const out=await api("/api/owner/guide",{method:"POST",body:JSON.stringify({rank:selectedRank,title,content})});guides=out.guides||[];render();toast("Guide content added for "+selectedRank+".");}catch(err){toast(err.message||"Could not add guide content.");}};
+    host.querySelectorAll("[data-guide-delete]").forEach(btn=>btn.onclick=async()=>{if(!confirm("Delete this guide entry?"))return;try{const out=await api("/api/owner/guide/"+encodeURIComponent(selectedRank)+"/"+encodeURIComponent(btn.dataset.guideDelete),{method:"DELETE"});guides=out.guides||[];render();toast("Guide entry deleted.");}catch(err){toast(err.message||"Could not delete guide entry.");}});
+    host.querySelectorAll("[data-guide-edit]").forEach(btn=>btn.onclick=()=>{const g=guides[Number(btn.dataset.guideEdit)];if(!g)return;modal('<h2>✏️ Edit guide content</h2><label>Title<input id="editGuideTitle" maxlength="100" value="'+esc(g.title)+'"></label><label>Content<textarea id="editGuideBody" rows="7" maxlength="12000">'+esc(g.content)+'</textarea></label><div class="toolbar"><button class="primary" id="saveEditedGuide">Save changes</button><button class="mini" type="button" onclick="closeModal()">Cancel</button></div>');$("saveEditedGuide").onclick=async()=>{const title=$("editGuideTitle").value.trim(),content=$("editGuideBody").value.trim();if(!title||!content){toast("Enter a title and content.");return;}try{const out=await api("/api/owner/guide/"+encodeURIComponent(selectedRank)+"/"+encodeURIComponent(g.id),{method:"PUT",body:JSON.stringify({title,content})});guides=out.guides||[];closeModal();render();toast("Guide entry updated.");}catch(err){toast(err.message||"Could not update guide entry.");}};});
+  };
+  const loadRank=async()=>{try{const out=await api("/api/owner/guide/"+encodeURIComponent(selectedRank));guides=out.guides||[];}catch(e){guides=[];toast(e.message||"Could not load guide management.");}};
+  await loadRank();render();
+}
+
 async function loadCommunityRules(){
  const host=$('communityRules');if(!host)return;
  const owner=String(state.user?.rank||'').toUpperCase()==='DEVELOPER'||(String(state.user?.rank||'').toUpperCase()==='OWNER'&&state.user?.username==='Maleficent');
@@ -4079,6 +4109,7 @@ async function loadOwner() {
 
     
     
+    loadOwnerGuideManagement();
     $("ownerClearAllMessages")?.addEventListener("click",async()=>{
       const confirmation="PERMANENTLY DELETE EVERY ROOM CHAT MESSAGE AND EVERY PRIVATE MESSAGE FOR ALL USERS?\n\nThis cannot be undone. Accounts, passwords, ranks, gold, settings, rooms, reports, and moderation/audit history will remain. Type CLEAR in the next prompt to continue.";
       if(!window.confirm(confirmation))return;
