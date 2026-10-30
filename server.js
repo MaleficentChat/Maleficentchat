@@ -647,7 +647,7 @@ function auth(req,res,next){
 
   const construction=db.settings?.under_construction||{};
   if(String(u.rank||"").toUpperCase()!=="DEVELOPER" &&
-     !(String(u.rank||"").toUpperCase()==="OWNER"&&u.username===DEFAULT_OWNER) &&
+     !(String(u.rank||"").toUpperCase()==="OWNER"&&String(u.username||"").toLowerCase()===String(DEFAULT_OWNER).toLowerCase()) &&
      construction.enabled===true){
     return res.status(503).json({error:"The site is under construction.",underConstruction:true});
   }
@@ -680,8 +680,8 @@ app.get("/api/under-construction/status",async(req,res)=>{
     // Maintenance stays enabled until the owner/developer explicitly switches it off.
     const enabled=setting.enabled===true;
     const u=current(req),rankName=String(u?.rank||"").toUpperCase();
-    const exempt=rankName==="DEVELOPER"||(rankName==="OWNER"&&u?.username===DEFAULT_OWNER);
-    const canManage=!!u&&(rankName==="DEVELOPER"||(rankName==="OWNER"&&u.username===DEFAULT_OWNER));
+    const exempt=rankName==="DEVELOPER"||(rankName==="OWNER"&&String(u?.username||"").toLowerCase()===String(DEFAULT_OWNER).toLowerCase());
+    const canManage=!!u&&(rankName==="DEVELOPER"||(rankName==="OWNER"&&String(u.username||"").toLowerCase()===String(DEFAULT_OWNER).toLowerCase()));
     res.json({enabled:enabled&&!exempt,configuredEnabled:enabled,until:0,exempt,canManage});
   }catch(error){
     console.error("Under-construction status read failed:",error);
@@ -718,7 +718,7 @@ function staff(r){
 
 function ownerOnly(req,res,next){
   const u=current(req);
-  if(!u || !(String(u.rank).toUpperCase()==="DEVELOPER" || (String(u.rank).toUpperCase()==="OWNER" && u.username===DEFAULT_OWNER))){
+  if(!u || !(String(u.rank).toUpperCase()==="DEVELOPER" || (String(u.rank).toUpperCase()==="OWNER" && String(u.username||"").toLowerCase()===String(DEFAULT_OWNER).toLowerCase()))){
     return res.status(403).json({error:"Owner/Developer only"});
   }
   next();
