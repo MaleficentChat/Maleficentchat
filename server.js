@@ -2853,7 +2853,7 @@ app.delete('/api/notifications',auth,async(req,res)=>{await pool.query(`DELETE F
 app.post(
   "/api/moderation/:action",
   auth,
-  (req,res)=>{
+  async (req,res)=>{
     const actor=current(req);
 
     const action=req.params.action.toUpperCase();
@@ -2874,16 +2874,9 @@ app.post(
         error:"User not found"
       });
     }
-    if(String(target.rank).toUpperCase()==="DEVELOPER") return res.status(403).json({error:"Cannot act on Developer"});
-
-    if(
-      rankOrder[target.rank]>=
-      rankOrder[actor.rank]&&
-      target.id!==actor.id
-    ){
+    if(!canAccessStaffTarget(actor,target)){
       return res.status(403).json({
-        error:
-          "Cannot moderate an equal or higher rank."
+        error:"You cannot moderate yourself or an equal/higher-ranked staff account."
       });
     }
 
