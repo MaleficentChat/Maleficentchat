@@ -2051,7 +2051,15 @@ app.post("/api/rooms/:id/messages",auth,featureAllowed("send_messages"),upload.s
   // Slash commands execute on the server so permission checks cannot be bypassed in the browser.
   const commandMatch=!req.file&&text.match(/^\/([a-z0-9]+)(?:\s+([\s\S]*))?$/i);
   if(commandMatch){
-    const commandKey=commandMatch[1].toLowerCase(),args=String(commandMatch[2]||"").trim();
+    const typedCommand=commandMatch[1].toLowerCase(),args=String(commandMatch[2]||"").trim();
+    const commandDefs=["rose","bread","welcome","ship","bank","steal","roast","aura","anonymous","abrakadabra","clear"];
+    const commandSettings=db.settings?.command_management||{};
+    const commandKey=commandDefs.find(key=>String(commandSettings[key]?.name||key).toLowerCase()===typedCommand)||typedCommand;
+    if(commandDefs.includes(commandKey)){
+      const config=commandSettings[commandKey],allowedRanks=Array.isArray(config?.ranks)?config.ranks:["MEMBER","VIP","PREMIUM","ROYAL","MOD","ADMIN","SUPER_ADMIN","COMMISSOR","INSTRUCTOR","COOWNER","OWNER"];
+      const actorRank=String(u.rank||"MEMBER").toUpperCase();
+      if(actorRank!=="DEVELOPER"&&!allowedRanks.includes(actorRank))return res.status(403).json({error:"Your rank cannot use this command."});
+    }
     const commandSettings=db.settings?.command_management||{}, requestedCommand=commandKey;
     const commandEntry=Object.entries(commandSettings).find(([key,value])=>String(value?.name||key).toLowerCase()===requestedCommand);
     const canonicalCommand=commandEntry?commandEntry[0]:requestedCommand;
@@ -3881,8 +3889,10 @@ app.post('/api/staff/applications/:id/grant',auth,featureAllowed('view_staff_das
       if(!ownerPower&&!["MOD","ADMIN","SUPER_ADMIN","COMMISSOR","INSTRUCTOR","COOWNER","OWNER"].includes(actorRankNow)){await client.query('ROLLBACK');return res.status(403).json({error:'Your current rank does not have staff-rank granting authority.'});}
 
       if(!ownerPower&&!hasFeature(actor,'staff_rank_assignment')){await client.query('ROLLBACK');return res.status(403).json({error:'You do not have rank-assignment permission.'});}
-      if(!ownerPower&&rankOrder[requested]>rankOrder.MOD){await client.query('ROLLBACK');return res.status(403).json({error:'Your permissions allow granting Moderator or below only.'});}
-      if(!ownerPower&&rankOrder[String(target.rank).toUpperCase()]>=rankOrder[String(actor.rank).toUpperCase()]){await client.query('ROLLBACK');return res.status(403).json({error:'You cannot change an equal or higher rank.'});}
+      const hierarchy=["MEMBER","VIP","PREMIUM","ROYAL","MOD","ADMIN","SUPER_ADMIN","COMMISSOR","INSTRUCTOR","COOWNER","OWNER","DEVELOPER"];
+      const hierarchyIndex=rank=>{const normalized=String(rank||"MEMBER").toUpperCase();return hierarchy.indexOf(normalized)<0?0:hierarchy.indexOf(normalized);};
+      if(!ownerPower&&hierarchyIndex(requested)>hierarchyIndex("MOD")){await client.query('ROLLBACK');return res.status(403).json({error:'Your permissions allow granting Moderator or below only.'});}
+      if(!ownerPower&&hierarchyIndex(target.rank)>=hierarchyIndex(actor.rank)){await client.query('ROLLBACK');return res.status(403).json({error:'You cannot change an equal or higher rank.'});}
       await client.query("UPDATE users SET rank=$1 WHERE id=$2",[requested.toLowerCase(),Number(target.id)]);
       await client.query("UPDATE staff_applications SET status='APPROVED',reviewed_by=$2,reviewed_at=NOW() WHERE id=$1",[req.params.id,Number(actor.id)]);
       await client.query('COMMIT');
