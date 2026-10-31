@@ -2049,6 +2049,21 @@ app.post("/api/rooms/:id/messages",auth,featureAllowed("send_messages"),upload.s
   const commandMatch=!req.file&&text.match(/^\/([a-z0-9]+)(?:\s+([\s\S]*))?$/i);
   if(commandMatch){
     const commandKey=commandMatch[1].toLowerCase(),args=String(commandMatch[2]||"").trim();
+    if(commandKey==="anonymous"){
+      const match=args.match(/^@?([a-z0-9_]{2,24})\\s+([\\s\\S]+)$/i);
+      if(!match)return res.status(400).json({error:"Use /anonymous username your message."});
+      const target=db.users.find(x=>String(x.username||"").toLowerCase()===match[1].toLowerCase());
+      if(!target)return res.status(404).json({error:"That username was not found."});
+      if(String(target.id)===String(u.id))return res.status(400).json({error:"You cannot send an anonymous message to yourself."});
+      const anonymousText=cleanText(match[2]).slice(0,2000);
+      if(!anonymousText)return res.status(400).json({error:"Write a message after the username."});
+      const message={id:id(),from:"system-bot",to:target.id,text:anonymousText,time:Date.now(),read:false,delivered:true,anonymous:true,systemBot:true};
+      await pool.query("INSERT INTO private_messages(id,sender_id,receiver_id,message,data,created_at) VALUES($1,NULL,$2,$3,$4::jsonb,NOW())",[message.id,Number(target.id),message.text,JSON.stringify(message)]);
+      db.privateMessages.push(message);
+      notify(target.id,"private-message","Anonymous message","You received an anonymous message from System Bot.");
+      io.to("user:"+target.id).emit("dm",message);
+      return res.json({command:true,anonymousSent:true});
+    }
     if(commandKey==="abrakadabra"){
       if(args)return res.status(400).json({error:"Use /Abrakadabra without an amount."});
       const before=Math.max(0,Math.min(1000000,Math.floor(Number(u.gold)||0)));
@@ -3003,11 +3018,18 @@ app.get("/api/dm/conversations",auth,featureAllowed("private_messages"),async(re
       FROM private_messages WHERE sender_id=$1 OR receiver_id=$1
     ) q ORDER BY other_id,created_at DESC`,[Number(u.id)]);
   const conversations=rows.map(r=>({user:safeUser(findUser(String(r.other_id))),lastMessage:r.data,unreadCount:Number(r.unread_count||0)})).filter(x=>x.user);
+  const anonymous=await pool.query(`SELECT data,created_at,(SELECT COUNT(*)::int FROM private_messages unread WHERE unread.sender_id IS NULL AND unread.receiver_id=$1 AND COALESCE((unread.data->>'read')::boolean,false)=false) AS unread_count FROM private_messages WHERE sender_id IS NULL AND receiver_id=$1 ORDER BY created_at DESC LIMIT 1`,[Number(u.id)]);
+  if(anonymous.rowCount)conversations.push({user:{id:"system-bot",username:"System",displayName:"System Bot",rank:"BOT",online:false,settings:{}},lastMessage:anonymous.rows[0].data,unreadCount:Number(anonymous.rows[0].unread_count||0)});
   res.json({conversations});
 });
 
 app.get("/api/dm/:id",auth,featureAllowed("private_messages"),async(req,res)=>{
-  const u=current(req),v=findUser(req.params.id); if(!v)return res.status(404).json({error:"User not found"});
+  const u=current(req);
+  if(String(req.params.id)==="system-bot"){
+    const {rows}=await pool.query("SELECT data FROM private_messages WHERE sender_id IS NULL AND receiver_id=$1 ORDER BY created_at DESC LIMIT 300",[Number(u.id)]);
+    return res.json({messages:rows.reverse().map(r=>r.data)});
+  }
+  const v=findUser(req.params.id); if(!v)return res.status(404).json({error:"User not found"});
   if((u.blocked||[]).includes(v.id)||(v.blocked||[]).includes(u.id))return res.status(403).json({error:"Messaging blocked"});
   const {rows}=await pool.query(`SELECT data FROM private_messages WHERE (sender_id=$1 AND receiver_id=$2) OR (sender_id=$2 AND receiver_id=$1) ORDER BY created_at DESC LIMIT 300`,[Number(u.id),Number(v.id)]);
   res.json({messages:rows.reverse().map(r=>r.data)});
@@ -3035,6 +3057,11 @@ app.post(
   async(req,res)=>{
     const u=current(req);
     const senderId=String(req.params.id);
+    if(senderId==="system-bot"){
+      await pool.query("UPDATE private_messages SET data=jsonb_set(COALESCE(data,'{}'::jsonb),'{read}','true'::jsonb,true) WHERE sender_id IS NULL AND receiver_id=$1",[Number(u.id)]);
+      db.privateMessages.filter(m=>m.anonymous===true&&String(m.to)===String(u.id)).forEach(m=>m.read=true);
+      return res.json({ok:true});
+    }
     const sender=findUser(senderId);
     if(!sender) return res.status(404).json({error:"User not found"});
     if(senderId===String(u.id)) return res.status(400).json({error:"Cannot mark your own messages as received."});
