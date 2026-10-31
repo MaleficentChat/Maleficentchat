@@ -3783,7 +3783,7 @@ async function loadStaff() {
     $('staff').innerHTML=`
       ${['INSTRUCTOR','COOWNER','OWNER','DEVELOPER'].includes(String(state.user?.rank||'').toUpperCase()) ? '<details class="staff-compact-dropdown"><summary>🗃️ Cleared Room Messages Inspection</summary><section class="card cleared-room-evidence-card"><div class="toolbar" style="justify-content:space-between;align-items:flex-start"><div><h3>🗃️ Cleared Room Messages Inspection</h3><p class="muted">Review archived messages from rooms that were cleared. New clears are archived automatically before messages are removed.</p></div><button class="mini" type="button" id="refreshClearedRoomEvidence">↻ Refresh</button></div><form id="clearedRoomEvidenceSearch" class="toolbar"><input id="clearedRoomEvidenceQuery" maxlength="100" placeholder="Filter by room name or staff username"><button class="mini primary" type="submit">Search</button></form><div id="clearedRoomEvidenceList"><p class="muted">Loading cleared-room evidence…</p></div></section></details>' : ''}
       ${canHardRefreshSite ? '<section class="card site-hard-refresh-card"><div><h3>⟳ Site Refresh</h3><p class="muted">Clear cached website files on this device and reload Maleficent Chat. All account data and messages remain stored safely.</p></div><button class="primary" type="button" id="hardRefreshSiteButton">⟳ Hard Refresh Site</button></section>' : ''}
-      ${(String(state.user?.rank||'').toUpperCase()==='DEVELOPER'||String(state.user?.rank||'').toUpperCase()==='OWNER') ? '<details class="staff-compact-dropdown"><summary>🚧 Under Construction</summary><section class="card under-construction-admin-card"><div class="under-construction-admin-heading"><div><h3>🚧 Under Construction</h3><p class="muted">Switch maintenance mode ON to block regular users. Create a shutdown code when enabling; the same code is required to switch it OFF. Owner and Developer accounts remain exempt.</p></div><span class="construction-status-pill" id="staffConstructionStatus" aria-live="polite">Checking status…</span></div><div class="construction-switch-row"><span><b>Maintenance mode</b><small>OFF = site open · ON = maintenance screen</small></span><span class="construction-switch"><input type="checkbox" id="staffUnderConstructionToggle" role="switch" aria-label="Under Construction mode" aria-checked="false" onchange="toggleUnderConstruction(this.checked)"><span class="construction-switch-track" aria-hidden="true"></span></span></div><div class="construction-code-box"><label for="staffConstructionCode" id="staffConstructionCodeLabel">Create shutdown code<input type="password" id="staffConstructionCode" minlength="4" maxlength="128" autocomplete="new-password" placeholder="Create a code to switch ON" aria-describedby="staffConstructionCodeHelp"></label><small id="staffConstructionCodeHelp" class="muted">Use 4–128 characters. When maintenance is ON, enter this same code before switching it OFF.</small></div><p class="muted construction-last-result" id="staffConstructionResult" aria-live="polite">The saved server setting will be checked before displaying the current state.</p></section></details>' : ''}
+      ${(String(state.user?.rank||'').toUpperCase()==='DEVELOPER'||String(state.user?.rank||'').toUpperCase()==='OWNER') ? '<details class="staff-compact-dropdown"><summary>🚧 Under Construction</summary><section class="card under-construction-admin-card"><div class="under-construction-admin-heading"><div><h3>🚧 Under Construction</h3><p class="muted">Switch maintenance mode ON to block regular users. Create a shutdown code when enabling; the same code is required to switch it OFF. Owner and Developer accounts remain exempt.</p></div><span class="construction-status-pill" id="staffConstructionStatus" aria-live="polite">Checking status…</span></div><div class="construction-switch-row"><span><b>Maintenance mode</b><small>OFF = site open · ON = maintenance screen</small></span><span class="construction-switch"><input type="checkbox" id="staffUnderConstructionToggle" role="switch" aria-label="Under Construction mode" aria-checked="false" onchange="toggleUnderConstruction(this.checked)"><span class="construction-switch-track" aria-hidden="true"></span></span></div><div class="construction-message-box"><label for="staffConstructionMessage">Maintenance message for users</label><textarea id="staffConstructionMessage" maxlength="1000" rows="3" placeholder="Write the message users should see above the shutdown code box"></textarea><small class="muted">This message will appear on the maintenance screen above the Shutdown Code field.</small></div><div class="construction-code-box"><label for="staffConstructionCode" id="staffConstructionCodeLabel">Create shutdown code<input type="password" id="staffConstructionCode" minlength="4" maxlength="128" autocomplete="new-password" placeholder="Create a code to switch ON" aria-describedby="staffConstructionCodeHelp"></label><small id="staffConstructionCodeHelp" class="muted">Use 4–128 characters. When maintenance is ON, enter this same code before switching it OFF.</small></div><p class="muted construction-last-result" id="staffConstructionResult" aria-live="polite">The saved server setting will be checked before displaying the current state.</p></section></details>' : ''}
       ${["INSTRUCTOR","COOWNER","OWNER","DEVELOPER"].includes(String(state.user?.rank||"").toUpperCase()) ? '<details class="staff-compact-dropdown"><summary>🔎 Personalized IP Inspection</summary><section class="card ip-inspection-card"><div><h3>🔎 Personalized IP Inspection</h3><p class="muted">Your rank: <b>'+esc(String(state.user?.rank||"").toUpperCase())+'</b> · Fields are restricted automatically by your staff rank.</p><div class="ip-access-profile" role="status">'+(String(state.user?.rank||"").toUpperCase()==="INSTRUCTOR"?"⚔️ Instructor access · Email + approximate location only":String(state.user?.rank||"").toUpperCase()==="COOWNER"?"👻 Co-owner access · IP and network details, without browser/device details":"👑 Owner access · Full recorded IP and network details")+'</div></div><form id="ipInspectionForm" class="ip-inspection-form"><input id="ipInspectionSearch" placeholder="Search an account by @username" maxlength="100" autocomplete="off"><button class="primary" type="submit">🔎 Inspect</button></form><div id="ipInspectionSuggestions" class="ip-inspection-suggestions" hidden></div><p class="muted ip-inspection-note">Location is approximate. Access is enforced on the server, not just hidden in the interface.</p><div id="ipInspectionResults"><p class="muted">Search for an account to inspect the details available to your rank.</p></div></section></details>' : ''}
       <details class="filter-words-details staff-applications-dropdown" id="staffApplicationsDropdown"><summary>📝 Staff Applications <span class="staff-app-count" id="staffApplicationCount">Loading…</span></summary><div class="staff-applications-content" id="staffApplicationsList"><p class="muted">Loading applications…</p></div></details>
       <details class="filter-words-details system-notifications-dropdown" id="systemNotificationsDropdown">
@@ -4048,7 +4048,7 @@ function hideConstructionPanel(){
   constructionTimer=null;
   document.getElementById("underConstructionOverlay")?.remove();
 }
-function showConstructionPanel(){
+function showConstructionPanel(until,message=""){
   if(isOwnerExempt()){hideConstructionPanel();return;}
   let panel=document.getElementById("underConstructionOverlay");
   if(!panel){
@@ -4056,7 +4056,7 @@ function showConstructionPanel(){
     panel.id="underConstructionOverlay";
     panel.className="under-construction-overlay";
     document.body.appendChild(panel);
-    panel.innerHTML='<div class="under-construction-card"><div class="under-construction-icon">🚧</div><h1>THE SITE IS UNDER CONSTRUCTION</h1><p>We’ll be back when the work is complete.</p><form id="constructionShutdownForm" class="construction-owner-login"><h2>Reopen Maleficent Chat</h2><label for="constructionShutdownCode">Shutdown code</label><input id="constructionShutdownCode" name="code" type="password" autocomplete="current-password" required minlength="4" maxlength="128" placeholder="Enter your shutdown code"><button type="submit" id="constructionShutdownSubmit">Turn OFF maintenance</button><p id="constructionLoginMessage" role="status" aria-live="polite">Enter the code saved when maintenance was enabled.</p></form></div>';
+    panel.innerHTML='<div class="under-construction-card"><div class="under-construction-icon">🚧</div><h1>THE SITE IS UNDER CONSTRUCTION</h1><p>We’ll be back when the work is complete.</p><div id="constructionManualMessage" class="construction-manual-message hidden" role="status"></div><form id="constructionShutdownForm" class="construction-owner-login"><h2>Reopen Maleficent Chat</h2><label for="constructionShutdownCode">Shutdown code</label><input id="constructionShutdownCode" name="code" type="password" autocomplete="current-password" required minlength="4" maxlength="128" placeholder="Enter your shutdown code"><button type="submit" id="constructionShutdownSubmit">Turn OFF maintenance</button><p id="constructionLoginMessage" role="status" aria-live="polite">Enter the code saved when maintenance was enabled.</p></form></div>';
     const form=panel.querySelector("#constructionShutdownForm");
     form?.addEventListener("submit",async event=>{
       event.preventDefault();
@@ -4079,6 +4079,9 @@ function showConstructionPanel(){
       }
     });
   }
+  const manualMessage=panel.querySelector("#constructionManualMessage");
+  const cleanMessage=String(message||"").trim();
+  if(manualMessage){manualMessage.textContent=cleanMessage;manualMessage.classList.toggle("hidden",!cleanMessage);}
   if(constructionTimer){clearTimeout(constructionTimer);constructionTimer=null;}
   panel.classList.remove("hidden");
 }
@@ -4089,7 +4092,7 @@ async function checkUnderConstruction(){
     // the more recent state while the save is still in progress.
     if(constructionWriteInFlight)return;
     const configured=Boolean(status.configuredEnabled??status.enabled);
-    if(status.enabled&&!status.exempt)showConstructionPanel(status.until);
+    if(status.enabled&&!status.exempt)showConstructionPanel(status.until,status.message||"");
     else hideConstructionPanel();
     const toggle=$("staffUnderConstructionToggle");
     if(toggle&&isOwnerExempt()){
@@ -4124,6 +4127,7 @@ async function toggleUnderConstruction(requestedEnabled){
   const codeInput=$("staffConstructionCode");
   const enabled=Boolean(requestedEnabled);
   const code=String(codeInput?.value||"");
+  const manualMessage=String($("staffConstructionMessage")?.value||"").trim();
   if(code.length<1 || (enabled&&code.length<4) || code.length>128){
     if(toggle)toggle.checked=!enabled;
     if(toggle)toggle.setAttribute("aria-checked",enabled?"false":"true");
@@ -4135,7 +4139,7 @@ async function toggleUnderConstruction(requestedEnabled){
   if(toggle)toggle.disabled=true;
   if(codeInput)codeInput.disabled=true;
   try{
-    const result=await api("/api/staff/under-construction",{method:"POST",body:JSON.stringify({enabled,code})});
+    const result=await api("/api/staff/under-construction",{method:"POST",body:JSON.stringify({enabled,code,message:manualMessage})});
     const active=Boolean(result.enabled);
     if(toggle){toggle.checked=active;toggle.setAttribute("aria-checked",active?"true":"false");}
     if(codeInput&&!result.codeConfigured)codeInput.value="";
