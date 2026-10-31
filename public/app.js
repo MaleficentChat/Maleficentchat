@@ -1349,6 +1349,24 @@ function formatMentions(text){
 }
 
 function messageHTML(message) {
+  if(message?.breadCommand && String(message.bot||message.username)==="Bot"){
+    return `<div class="message bot-bread-message" data-mid="${esc(message.id)}">
+      <style>
+        @keyframes mcBreadFlash {0%,100%{opacity:.38;transform:scale(.88) rotate(-5deg);filter:drop-shadow(0 0 12px #e8a64a)}50%{opacity:1;transform:scale(1.04) rotate(4deg);filter:drop-shadow(0 0 42px #ffc66d) drop-shadow(0 0 70px #ff8c42)}}
+        @keyframes mcBreadFade {0%,72%{opacity:1}100%{opacity:0;visibility:hidden}}
+        @keyframes mcBreadTextGlow {0%,100%{text-shadow:0 0 8px #ffbd59,0 0 20px #ff8c42}50%{text-shadow:0 0 18px #fff0bd,0 0 38px #ffc66d,0 0 60px #ff8c42}}
+        .mc-bread-overlay{position:fixed;inset:0;z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;background:radial-gradient(ellipse at center,rgba(74,37,8,.97),rgba(8,4,2,.99) 72%);pointer-events:none;animation:mcBreadFade 5.5s ease forwards}
+        .mc-bread-loaf{font-size:min(72vw,52vh);line-height:1;animation:mcBreadFlash .72s ease-in-out infinite}
+        .mc-bread-for-you{margin-top:18px;font-size:clamp(28px,8vw,58px);font-weight:900;letter-spacing:.14em;color:#fff4dc;text-align:center;animation:mcBreadTextGlow .9s ease-in-out infinite}
+        .mc-bread-username{position:absolute;bottom:9%;max-width:90%;overflow-wrap:anywhere;font-size:clamp(20px,6vw,38px);font-weight:900;color:#ffd08a;text-align:center;text-shadow:0 0 10px #ffbd59,0 0 24px #ff8c42,0 0 44px #ffc66d;animation:mcBreadTextGlow .9s ease-in-out infinite}
+      </style>
+      <div class="mc-bread-overlay" aria-label="Bread for you">
+        <div class="mc-bread-loaf" aria-hidden="true">🍞</div>
+        <div class="mc-bread-for-you">FOR YOU</div>
+        <div class="mc-bread-username">@${esc(message.breadTargetUsername||"")}</div>
+      </div>
+    </div>`;
+  }
   if(message?.roseCommand && String(message.bot||message.username)==="Bot"){
     return `<div class="message bot-rose-message" data-mid="${esc(message.id)}">
       <style>
