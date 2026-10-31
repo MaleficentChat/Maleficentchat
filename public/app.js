@@ -507,9 +507,18 @@ async function syncLiveMessages(){
     }
   }finally{liveSyncBusy=false;}
 }
+let liveSyncWakeListenersBound=false;
 function startLiveSync(){
   if(liveSyncTimer)clearInterval(liveSyncTimer);
   liveSyncTimer=setInterval(syncLiveMessages,5000);
+  // A hidden tab pauses polling; resume immediately when the user returns.
+  // Bind once so repeated starts do not create duplicate listeners.
+  if(!liveSyncWakeListenersBound){
+    liveSyncWakeListenersBound=true;
+    document.addEventListener("visibilitychange",()=>{if(!document.hidden&&state.user)syncLiveMessages();});
+    window.addEventListener("focus",()=>{if(state.user)syncLiveMessages();});
+    window.addEventListener("online",()=>{if(state.user)syncLiveMessages();});
+  }
 }
 async function authenticateSocketAndJoinRoom(socket=state.socket, syncHistory=true) {
   if(!socket || !socket.connected || !state.user) return false;
