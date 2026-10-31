@@ -1349,6 +1349,24 @@ function formatMentions(text){
 }
 
 function messageHTML(message) {
+  if(message?.roseCommand && String(message.bot||message.username)==="Bot"){
+    return `<div class="message bot-rose-message" data-mid="${esc(message.id)}">
+      <style>
+        @keyframes mcRoseFlash {0%,100%{opacity:.28;transform:scale(.88) rotate(-5deg);filter:drop-shadow(0 0 12px #ff1744)}50%{opacity:1;transform:scale(1.04) rotate(4deg);filter:drop-shadow(0 0 42px #ff1744) drop-shadow(0 0 80px #ff4fd8)}}
+        @keyframes mcRoseFade {0%,72%{opacity:1}100%{opacity:0;visibility:hidden}}
+        @keyframes mcRoseTextGlow {0%,100%{text-shadow:0 0 8px #ff4fd8,0 0 20px #ff1744}50%{text-shadow:0 0 18px #fff,0 0 38px #ff4fd8,0 0 65px #ff1744}}
+        .mc-rose-overlay{position:fixed;inset:0;z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;background:radial-gradient(ellipse at center,rgba(55,0,28,.97),rgba(3,2,12,.98) 72%);pointer-events:none;animation:mcRoseFade 5.5s ease forwards}
+        .mc-rose-flower{font-size:min(72vw,52vh);line-height:1;animation:mcRoseFlash .72s ease-in-out infinite;filter:drop-shadow(0 0 24px #ff1744)}
+        .mc-rose-for-you{margin-top:18px;font-size:clamp(28px,8vw,58px);font-weight:900;letter-spacing:.14em;color:#fff;text-align:center;animation:mcRoseTextGlow .9s ease-in-out infinite}
+        .mc-rose-username{position:absolute;bottom:9%;max-width:90%;overflow-wrap:anywhere;font-size:clamp(20px,6vw,38px);font-weight:900;color:#ff8adf;text-align:center;text-shadow:0 0 10px #ff4fd8,0 0 24px #ff1744,0 0 44px #ff4fd8;animation:mcRoseTextGlow .9s ease-in-out infinite}
+      </style>
+      <div class="mc-rose-overlay" aria-label="A rose for you">
+        <div class="mc-rose-flower" aria-hidden="true">🌹</div>
+        <div class="mc-rose-for-you">FOR YOU</div>
+        <div class="mc-rose-username">@${esc(message.roseTargetUsername||"")}</div>
+      </div>
+    </div>`;
+  }
   if(message?.roastCommand && String(message.bot||message.username)==="Bot"){
     return `<div class="message bot-welcome-message bot-roast-message" data-mid="${esc(message.id)}">
       <div class="bot-welcome-bubble">
