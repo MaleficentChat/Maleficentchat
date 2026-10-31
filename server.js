@@ -2239,7 +2239,7 @@ app.post("/api/rooms/:id/messages",auth,featureAllowed("send_messages"),upload.s
       io.to("room:"+r.id).emit("message",roseMessage);
       return res.json({message:roseMessage,command:true});
     }
-    if(commandKey==="roast" || commandKey==="aura"){
+    if(canonicalCommand==="roast" || canonicalCommand==="aura"){
       if(!args)return res.status(400).json({error:"Use /"+commandKey+" username."});
       const requested=args.replace(/^@/,"").trim().split(/\\s+/)[0];
       const target=db.users.find(x=>String(x.username||"").toLowerCase()===requested.toLowerCase());
