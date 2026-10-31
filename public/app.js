@@ -426,6 +426,69 @@ function showBanLock(reason="Community rules"){
 }
 function clearActionLock(){if(actionLockTimer)clearTimeout(actionLockTimer);actionLockTimer=null;const box=$("actionLock");if(box){box.classList.add("hidden");box.innerHTML="";box.dataset.lockType="";}}
 
+let liveSyncTimer=null, liveSyncBusy=false, liveSyncLastInbox=0;
+async function syncLiveMessages(){
+  if(liveSyncBusy||!state.user||document.hidden)return;
+  liveSyncBusy=true;
+  try{
+    if(state.currentRoom){
+      const roomId=String(state.currentRoom);
+      const data=await api("/api/rooms/"+encodeURIComponent(roomId)+"/messages");
+      if(String(state.currentRoom)===roomId&&Array.isArray(data.messages)){
+        const incoming=data.messages;
+        const known=new Set((state.messages||[]).map(m=>String(m.id)));
+        const list=$("messages");
+        for(const message of incoming){
+          if(!known.has(String(message.id))){
+            state.messages=Array.isArray(state.messages)?state.messages:[];
+            state.messages.push(message);
+            if(list)list.insertAdjacentHTML("beforeend",messageHTML(message));
+          }
+        }
+        // Keep deletions/edits synchronized without rebuilding the view every poll.
+        const incomingIds=new Set(incoming.map(m=>String(m.id)));
+        if((state.messages||[]).some(m=>!incomingIds.has(String(m.id)))){
+          state.messages=incoming;
+          if(list)list.innerHTML=incoming.map(messageHTML).join("");
+        }else{
+          const byId=new Map(incoming.map(m=>[String(m.id),m]));
+          state.messages=(state.messages||[]).map(m=>byId.get(String(m.id))||m);
+        }
+        if(list&&incoming.length&&list.scrollHeight-list.scrollTop-list.clientHeight<180)list.scrollTop=list.scrollHeight;
+      }
+    }
+    if(state.dmUserId&&state.dmPeerUser){
+      const peerId=String(state.dmUserId);
+      const data=await api("/api/dm/"+encodeURIComponent(peerId));
+      if(String(state.dmUserId)===peerId&&Array.isArray(data.messages)){
+        const incoming=data.messages;
+        const known=new Set((state.dmMessages||[]).map(m=>String(m.id)));
+        const list=$("dmMessages");
+        for(const message of incoming){
+          if(!known.has(String(message.id))){
+            state.dmMessages=Array.isArray(state.dmMessages)?state.dmMessages:[];
+            state.dmMessages.push(message);
+            if(list)list.insertAdjacentHTML("beforeend",dmMessageHTML(message,state.dmMessages,state.dmPeerUser));
+          }
+        }
+        const incomingIds=new Set(incoming.map(m=>String(m.id)));
+        if((state.dmMessages||[]).some(m=>!incomingIds.has(String(m.id)))){
+          state.dmMessages=incoming;
+          if(list)list.innerHTML=incoming.map(m=>dmMessageHTML(m,incoming,state.dmPeerUser)).join("");
+        }else state.dmMessages=(state.dmMessages||[]).map(m=>incoming.find(n=>String(n.id)===String(m.id))||m);
+        if(list&&incoming.length&&list.scrollHeight-list.scrollTop-list.clientHeight<180)list.scrollTop=list.scrollHeight;
+        api("/api/dm/"+encodeURIComponent(peerId)+"/read",{method:"POST"}).catch(()=>{});
+      }
+    }
+    const now=Date.now();
+    if(now-liveSyncLastInbox>15000){liveSyncLastInbox=now;loadDMList().catch(()=>{});loadNotifications().catch(()=>{});}
+  }catch(error){console.warn("Live message sync retry:",error?.message||error);}
+  finally{liveSyncBusy=false;}
+}
+function startLiveSync(){
+  if(liveSyncTimer)clearInterval(liveSyncTimer);
+  liveSyncTimer=setInterval(syncLiveMessages,5000);
+}
 async function authenticateSocketAndJoinRoom(socket=state.socket, syncHistory=true) {
   if(!socket || !socket.connected || !state.user) return false;
   return new Promise(resolve=>{
@@ -475,6 +538,11 @@ async function start() {
   }
 
   state.socket = io();
+  state.socket.io.opts.reconnection = true;
+  state.socket.io.opts.reconnectionAttempts = Infinity;
+  state.socket.io.opts.reconnectionDelay = 500;
+  state.socket.io.opts.reconnectionDelayMax = 5000;
+  startLiveSync();
   state.socket.on("under-construction:status",payload=>{
     if(payload?.enabled&&!isOwnerExempt())showConstructionPanel(payload.until);
     else hideConstructionPanel();
