@@ -3589,9 +3589,10 @@ async function loadStaff() {
     const statsGrid=staffRoot?.querySelector(".grid2");
     const statsCard=statsGrid?.children[0], filterCard=statsGrid?.children[1];
     const orderedStaffSections=[
-      [statsCard,"staff-order-1"],[filterCard,"staff-order-2"],
+      [statsCard,"staff-order-1"],
+      [staffRoot?.querySelector("#systemNotificationsDropdown"),"staff-order-2"],
       [staffRoot?.querySelector(".ip-inspection-card")?.closest("details"),"staff-order-3"],
-      [staffRoot?.querySelector("#systemNotificationsDropdown"),"staff-order-4"],
+      [filterCard,"staff-order-4"],
       [staffRoot?.querySelector(".cleared-room-evidence-card")?.closest("details"),"staff-order-5"],
       [staffRoot?.querySelector(".under-construction-admin-card")?.closest("details"),"staff-order-6"],
       [staffRoot?.querySelector("#staffApplicationsDropdown"),"staff-order-7"],
