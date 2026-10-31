@@ -1565,6 +1565,7 @@ app.post("/api/me/status",auth,(req,res)=>{
 });
 
 app.post("/api/me/hide-mode",auth,(req,res)=>{
+  const modeRanks=db.settings?.mode_management?.ghost;if(Array.isArray(modeRanks)&&!modeRanks.includes(String(current(req)?.rank||"").toUpperCase())&&String(current(req)?.rank||"").toUpperCase()!=="DEVELOPER")return res.status(403).json({error:"Your rank cannot use Ghost Mode."});
   const u=current(req),rank=String(u?.rank||"").toUpperCase();
   if(!["OWNER","DEVELOPER"].includes(rank))return res.status(403).json({error:"Hide mode is available only to Owner and Developer."});
   u.hideMode=!!req.body?.enabled;
@@ -1573,6 +1574,7 @@ app.post("/api/me/hide-mode",auth,(req,res)=>{
   res.json({ok:true,hideMode:!!u.hideMode,deadMode:!!u.deadMode});
 });
 app.post("/api/me/dead-mode",auth,(req,res)=>{
+  const modeRanks=db.settings?.mode_management?.dead;if(Array.isArray(modeRanks)&&!modeRanks.includes(String(current(req)?.rank||"").toUpperCase())&&String(current(req)?.rank||"").toUpperCase()!=="DEVELOPER")return res.status(403).json({error:"Your rank cannot use Dead Mode."});
   const u=current(req),rank=String(u?.rank||"").toUpperCase();
   if(!["OWNER","DEVELOPER"].includes(rank))return res.status(403).json({error:"Dead mode is available only to Owner and Developer."});
   const enable=!!req.body?.enabled;
@@ -1584,6 +1586,7 @@ app.post("/api/me/dead-mode",auth,(req,res)=>{
   res.json({ok:true,hideMode:!!u.hideMode,deadMode:!!u.deadMode,invisible:!!u.invisible});
 });
 app.post("/api/me/invisible",auth,featureAllowed("invisible_mode"),(req,res)=>{
+  const modeRanks=db.settings?.mode_management?.invisible;if(Array.isArray(modeRanks)&&!modeRanks.includes(String(current(req)?.rank||"").toUpperCase())&&String(current(req)?.rank||"").toUpperCase()!=="DEVELOPER")return res.status(403).json({error:"Your rank cannot use Invisible Mode."});
   const u=current(req);
   u.invisible=!!req.body?.enabled;
   if(u.invisible){u.hideMode=false;u.deadMode=false;delete u.deadModePreviousInvisible;}
@@ -2049,7 +2052,12 @@ app.post("/api/rooms/:id/messages",auth,featureAllowed("send_messages"),upload.s
   const commandMatch=!req.file&&text.match(/^\/([a-z0-9]+)(?:\s+([\s\S]*))?$/i);
   if(commandMatch){
     const commandKey=commandMatch[1].toLowerCase(),args=String(commandMatch[2]||"").trim();
-    if(commandKey==="anonymous"){
+    const commandSettings=db.settings?.command_management||{}, requestedCommand=commandKey;
+    const commandEntry=Object.entries(commandSettings).find(([key,value])=>String(value?.name||key).toLowerCase()===requestedCommand);
+    const canonicalCommand=commandEntry?commandEntry[0]:requestedCommand;
+    if(commandEntry){const allowed=Array.isArray(commandEntry[1]?.ranks)?commandEntry[1].ranks:["MEMBER","VIP","PREMIUM","ROYAL","MOD","ADMIN","SUPER_ADMIN","COMMISSOR","INSTRUCTOR","COOWNER","OWNER"];if(!allowed.includes(String(u.rank||"").toUpperCase())&&String(u.rank||"").toUpperCase()!=="DEVELOPER")return res.status(403).json({error:"Your rank cannot use this command."});}
+
+    if(canonicalCommand==="anonymous"){
       const match=args.match(/^@?([a-z0-9_]{2,24})\s+([\s\S]+)$/i);
       if(!match)return res.status(400).json({error:"Use /anonymous username your message."});
       const target=db.users.find(x=>String(x.username||"").toLowerCase()===match[1].toLowerCase());
@@ -2064,7 +2072,7 @@ app.post("/api/rooms/:id/messages",auth,featureAllowed("send_messages"),upload.s
       io.to("user:"+target.id).emit("dm",message);
       return res.json({command:true,anonymousSent:true});
     }
-    if(commandKey==="abrakadabra"){
+    if(canonicalCommand==="abrakadabra"){
       if(args)return res.status(400).json({error:"Use /Abrakadabra without an amount."});
       const before=Math.max(0,Math.min(1000000,Math.floor(Number(u.gold)||0)));
       const magnitude=Math.floor(Math.random()*1000001);
@@ -2081,7 +2089,7 @@ app.post("/api/rooms/:id/messages",auth,featureAllowed("send_messages"),upload.s
       const notice=await auroraRoomMessage(response,r.id);
       return res.json({message:notice,command:true,gold:after,delta:outcome});
     }
-    if(commandKey==="bank"){
+    if(canonicalCommand==="bank"){
       let target=u;
       if(args){
         const requested=args.replace(/^@/,"").trim().split(/\s+/)[0];
@@ -2101,7 +2109,7 @@ app.post("/api/rooms/:id/messages",auth,featureAllowed("send_messages"),upload.s
       io.to("room:"+r.id).emit("message",bankMessage);
       return res.json({message:bankMessage,command:true});
     }
-    if(commandKey==="steal"){
+    if(canonicalCommand==="steal"){
       if(!args)return res.status(400).json({error:"Use /steal username."});
       const requested=args.replace(/^@/,"").trim().split(/\s+/)[0];
       const target=db.users.find(x=>String(x.username||"").toLowerCase()===requested.toLowerCase());
@@ -2157,7 +2165,7 @@ app.post("/api/rooms/:id/messages",auth,featureAllowed("send_messages"),upload.s
       io.to("room:"+r.id).emit("message",stealMessage);
       return res.json({message:stealMessage,command:true,outcome,amount});
     }
-    if(commandKey==="welcome"){
+    if(canonicalCommand==="welcome"){
       if(!args)return res.status(400).json({error:"Use /welcome username."});
       const requested=args.replace(/^@/,"").trim();
       const target=db.users.find(x=>String(x.username||"").toLowerCase()===requested.toLowerCase());
@@ -2174,7 +2182,7 @@ app.post("/api/rooms/:id/messages",auth,featureAllowed("send_messages"),upload.s
       io.to("room:"+r.id).emit("message",welcomeMessage);
       return res.json({message:welcomeMessage,command:true});
     }
-    if(commandKey==="ship"){
+    if(canonicalCommand==="ship"){
       if(!args)return res.status(400).json({error:"Use /ship username."});
       const requested=args.replace(/^@/,"").trim().split(/\s+/)[0];
       const target=db.users.find(x=>String(x.username||"").toLowerCase()===requested.toLowerCase());
@@ -2195,7 +2203,7 @@ app.post("/api/rooms/:id/messages",auth,featureAllowed("send_messages"),upload.s
       io.to("room:"+r.id).emit("message",shipMessage);
       return res.json({message:shipMessage,command:true});
     }
-    if(commandKey==="bread"){
+    if(canonicalCommand==="bread"){
       let target=u;
       if(args){
         const requested=args.replace(/^@/,"").trim().split(/\\s+/)[0];
@@ -2213,7 +2221,7 @@ app.post("/api/rooms/:id/messages",auth,featureAllowed("send_messages"),upload.s
       io.to("room:"+r.id).emit("message",breadMessage);
       return res.json({message:breadMessage,command:true});
     }
-    if(commandKey==="rose"){
+    if(canonicalCommand==="rose"){
       let target=u;
       if(args){
         const requested=args.replace(/^@/,"").trim().split(/\\s+/)[0];
@@ -2237,7 +2245,7 @@ app.post("/api/rooms/:id/messages",auth,featureAllowed("send_messages"),upload.s
       const target=db.users.find(x=>String(x.username||"").toLowerCase()===requested.toLowerCase());
       if(!target)return res.status(404).json({error:"That username was not found."});
       let botMessage;
-      if(commandKey==="roast"){
+      if(canonicalCommand==="roast"){
         const roasts=[
           "has so many tabs open that even their brain needs a loading screen. 💀",
           "could get lost in their own profile settings. 😭",
@@ -3869,6 +3877,9 @@ app.post('/api/staff/applications/:id/grant',auth,featureAllowed('view_staff_das
       if(!target){await client.query('ROLLBACK');return res.status(404).json({error:'Applicant account not found.'});}
       if(target.username==='Maleficent'||String(target.rank).toUpperCase()==='DEVELOPER'){await client.query('ROLLBACK');return res.status(403).json({error:'Protected account cannot be changed.'});}
       const ownerPower=String(actor.rank).toUpperCase()==='DEVELOPER'||(String(actor.rank).toUpperCase()==='OWNER'&&actor.username==='Maleficent');
+      const actorRankNow=String(actor.rank||"").toUpperCase();
+      if(!ownerPower&&!["MOD","ADMIN","SUPER_ADMIN","COMMISSOR","INSTRUCTOR","COOWNER","OWNER"].includes(actorRankNow)){await client.query('ROLLBACK');return res.status(403).json({error:'Your current rank does not have staff-rank granting authority.'});}
+
       if(!hasFeature(actor,'staff_rank_assignment')){await client.query('ROLLBACK');return res.status(403).json({error:'You do not have rank-assignment permission.'});}
       if(!ownerPower&&rankOrder[requested]>rankOrder.MOD){await client.query('ROLLBACK');return res.status(403).json({error:'Your permissions allow granting Moderator or below only.'});}
       if(!ownerPower&&rankOrder[String(target.rank).toUpperCase()]>=rankOrder[String(actor.rank).toUpperCase()]){await client.query('ROLLBACK');return res.status(403).json({error:'You cannot change an equal or higher rank.'});}
@@ -4388,7 +4399,22 @@ app.delete("/api/owner/guide/:rank/:id",auth,ownerOnly,(req,res)=>{
   save();res.json({ok:true,rank,guides:store[rank]});
 });
 
+app.get("/api/owner/command-management",auth,ownerOnly,(req,res)=>res.json({commands:db.settings?.command_management||{}}));
+app.get("/api/owner/mode-management",auth,ownerOnly,(req,res)=>res.json({modes:db.settings?.mode_management||{}}));
 app.patch("/api/owner/settings",ownerOnly,async(req,res)=>{
+  if(req.body.commandManagement!==undefined){
+    const incoming=req.body.commandManagement, commands={...(db.settings.command_management||{})}, allowed=["rose","bread","welcome","ship","bank","steal","roast","aura","anonymous","abrakadabra","clear"], valid=["MEMBER","VIP","PREMIUM","ROYAL","MOD","ADMIN","SUPER_ADMIN","COMMISSOR","INSTRUCTOR","COOWNER","OWNER"];
+    if(!incoming||typeof incoming!=="object"||Array.isArray(incoming))return res.status(400).json({error:"Invalid command settings."});
+    const seen=new Set();
+    for(const key of allowed){const item=incoming[key]||commands[key]||{},name=String(item.name||key).toLowerCase().replace(/^\\//,"").trim(),allowedRanks=Array.isArray(item.ranks)?item.ranks.map(x=>String(x).toUpperCase()).filter(x=>valid.includes(x)):valid.slice();if(!/^[a-z0-9]{2,24}$/.test(name))return res.status(400).json({error:"Command names must be 2–24 letters or numbers."});if(seen.has(name))return res.status(400).json({error:"Command names must be unique."});seen.add(name);commands[key]={name,ranks:[...new Set(allowedRanks)]};}
+    db.settings.command_management=commands;
+  }
+  if(req.body.modeManagement!==undefined){
+    const incoming=req.body.modeManagement,valid=["MEMBER","VIP","PREMIUM","ROYAL","MOD","ADMIN","SUPER_ADMIN","COMMISSOR","INSTRUCTOR","COOWNER","OWNER","DEVELOPER"];
+    if(!incoming||typeof incoming!=="object"||Array.isArray(incoming))return res.status(400).json({error:"Invalid mode settings."});
+    const next={...(db.settings.mode_management||{})};for(const key of ["ghost","dead","invisible"]){const list=Array.isArray(incoming[key])?incoming[key].map(x=>String(x).toUpperCase()).filter(x=>valid.includes(x)):[];next[key]=[...new Set(list)];}db.settings.mode_management=next;
+  }
+
   if(req.body.systemModeration!==undefined){
     const incoming=req.body.systemModeration;
     const keys=["multi_account","ban_evasion","spam_flood","vpn_proxy"];
