@@ -446,59 +446,29 @@ async function syncLiveMessages(){
           const incoming=data.messages;
           const list=$("messages");
           const incomingIds=incoming.map(m=>String(m.id));
+          const list=$("messages");
           const renderedIds=list?Array.from(list.querySelectorAll("[data-mid]")).map(el=>String(el.dataset.mid)):[];
           const stateIds=(state.messages||[]).map(m=>String(m.id));
-          // The database history is authoritative. Rebuild if either the DOM or
-          // client state drifted; comparing only state.messages can leave a stale
-          // chat visible until the user switches rooms or reloads the page.
           const sameIds=(a,b)=>a.length===b.length&&a.every((id,index)=>id===b[index]);
-          const byId=new Map((state.messages||[]).map(m=>[String(m.id),m]));
-          const stateMatches=incoming.length===stateIds.length&&incoming.every((m,index)=>String(m.id)===stateIds[index]);
           const domMatches=sameIds(renderedIds,incomingIds);
+          const stateMatches=sameIds(stateIds,incomingIds);
           if(list&&(!domMatches||!stateMatches)){
             const wasNearBottom=list.scrollHeight-list.scrollTop-list.clientHeight<180;
             state.messages=incoming;
             list.innerHTML=incoming.map(messageHTML).join("");
             if(wasNearBottom)list.scrollTop=list.scrollHeight;
           }else{
+            const previousById=new Map((state.messages||[]).map(m=>[String(m.id),m]));
             state.messages=incoming;
-            // Update changed message content/metadata without needlessly rebuilding
-            // an already synchronized message list.
             for(const message of incoming){
-              const escapedId=window.CSS&&typeof window.CSS.escape==="function"?window.CSS.escape(String(message.id)):String(message.id).replace(/["\\]/g,"\\          const known=new Set((state.messages||[]).map(m=>String(m.id)));
-          const list=$("messages");
-          for(const message of incoming){
-            if(!known.has(String(message.id))){
-              state.messages=Array.isArray(state.messages)?state.messages:[];
-              state.messages.push(message);
-              if(list)list.insertAdjacentHTML("beforeend",messageHTML(message));
-            }
-          }
-          const incomingIds=new Set(incoming.map(m=>String(m.id)));
-          if((state.messages||[]).some(m=>!incomingIds.has(String(m.id)))){
-            state.messages=incoming;
-            if(list)list.innerHTML=incoming.map(messageHTML).join("");
-          }else{
-            const byId=new Map(incoming.map(m=>[String(m.id),m]));
-            state.messages=(state.messages||[]).map(m=>byId.get(String(m.id))||m);
-            // Reflect edits/reactions from the authoritative history without
-            // replacing the whole list on every poll.
-            for(const message of incoming){
-              const el=document.querySelector('[data-mid="'+CSS.escape(String(message.id))+'"]');
-              const old=(state.messages||[]).find(m=>String(m.id)===String(message.id));
-              if(el&&old&&String(el.dataset.syncStamp||"")!==JSON.stringify([old.edited,old.deleted,old.reactions])){
-                el.outerHTML=messageHTML(old);
-                const fresh=document.querySelector('[data-mid="'+CSS.escape(String(message.id))+'"]');
-                if(fresh)fresh.dataset.syncStamp=JSON.stringify([old.edited,old.deleted,old.reactions]);
-              }
-            }
-          }");
-              const el=list?.querySelector('[data-mid="'+escapedId+'"]');
-              const previous=byId.get(String(message.id));
-              if(el&&previous&&String(el.dataset.syncStamp||"")!==JSON.stringify([message.edited,message.deleted,message.reactions,message.text,message.attachment])){
+              const previous=previousById.get(String(message.id));
+              if(!previous)continue;
+              const stamp=JSON.stringify([message.edited,message.deleted,message.reactions,message.text,message.attachment]);
+              const el=list?Array.from(list.querySelectorAll("[data-mid]")).find(node=>String(node.dataset.mid)===String(message.id)):null;
+              if(el&&String(el.dataset.syncStamp||"")!==stamp){
                 el.outerHTML=messageHTML(message);
-                const fresh=list?.querySelector('[data-mid="'+escapedId+'"]');
-                if(fresh)fresh.dataset.syncStamp=JSON.stringify([message.edited,message.deleted,message.reactions,message.text,message.attachment]);
+                const fresh=list?Array.from(list.querySelectorAll("[data-mid]")).find(node=>String(node.dataset.mid)===String(message.id)):null;
+                if(fresh)fresh.dataset.syncStamp=stamp;
               }
             }
           }
