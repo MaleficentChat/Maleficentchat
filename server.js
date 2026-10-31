@@ -2050,7 +2050,7 @@ app.post("/api/rooms/:id/messages",auth,featureAllowed("send_messages"),upload.s
   if(commandMatch){
     const commandKey=commandMatch[1].toLowerCase(),args=String(commandMatch[2]||"").trim();
     if(commandKey==="anonymous"){
-      const match=args.match(/^@?([a-z0-9_]{2,24})\\s+([\\s\\S]+)$/i);
+      const match=args.match(/^@?([a-z0-9_]{2,24})\s+([\s\S]+)$/i);
       if(!match)return res.status(400).json({error:"Use /anonymous username your message."});
       const target=db.users.find(x=>String(x.username||"").toLowerCase()===match[1].toLowerCase());
       if(!target)return res.status(404).json({error:"That username was not found."});
