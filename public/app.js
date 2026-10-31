@@ -2644,9 +2644,13 @@ function dmMessageHTML(message, messages, user) {
 
 async function openDM(id) {
   try {
-    const users = await api("/api/users");
-    const user = (users.users || []).find(x => String(x.id) === String(id));
-
+    let user;
+    if(String(id)==="system-bot"){
+      user={id:"system-bot",username:"System",displayName:"System Bot",rank:"BOT",online:false,settings:{},avatar:null};
+    }else{
+      const users = await api("/api/users");
+      user = (users.users || []).find(x => String(x.id) === String(id));
+    }
     if (!user) {
       toast("User not found.");
       return;
