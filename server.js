@@ -4415,7 +4415,7 @@ app.patch("/api/owner/settings",ownerOnly,async(req,res)=>{
     const incoming=req.body.commandManagement, commands={...(db.settings.command_management||{})}, allowed=["rose","bread","welcome","ship","bank","steal","roast","aura","anonymous","abrakadabra","clear"], valid=["MEMBER","VIP","PREMIUM","ROYAL","MOD","ADMIN","SUPER_ADMIN","COMMISSOR","INSTRUCTOR","COOWNER","OWNER"];
     if(!incoming||typeof incoming!=="object"||Array.isArray(incoming))return res.status(400).json({error:"Invalid command settings."});
     const seen=new Set();
-    for(const key of allowed){const item=incoming[key]||commands[key]||{},name=String(item.name||key).toLowerCase().replace(/^\\//,"").trim(),allowedRanks=Array.isArray(item.ranks)?item.ranks.map(x=>String(x).toUpperCase()).filter(x=>valid.includes(x)):valid.slice();if(!/^[a-z0-9]{2,24}$/.test(name))return res.status(400).json({error:"Command names must be 2–24 letters or numbers."});if(seen.has(name))return res.status(400).json({error:"Command names must be unique."});seen.add(name);commands[key]={name,ranks:[...new Set(allowedRanks)]};}
+    for(const key of allowed){const item=incoming[key]||commands[key]||{},name=String(item.name||key).toLowerCase().replaceAll("/","").trim(),allowedRanks=Array.isArray(item.ranks)?item.ranks.map(x=>String(x).toUpperCase()).filter(x=>valid.includes(x)):valid.slice();if(!/^[a-z0-9]{2,24}$/.test(name))return res.status(400).json({error:"Command names must be 2–24 letters or numbers."});if(seen.has(name))return res.status(400).json({error:"Command names must be unique."});seen.add(name);commands[key]={name,ranks:[...new Set(allowedRanks)]};}
     db.settings.command_management=commands;
   }
   if(req.body.modeManagement!==undefined){
