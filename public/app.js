@@ -499,7 +499,7 @@ async function syncLiveMessages(){
             String(m?.deleted??""),String(m?.edited??"")
           ]);
           const list=$("dmMessages");
-          const renderedIds=list?Array.from(list.querySelectorAll("[data-mid]")).map(el=>String(el.dataset.mid)):[];
+          const renderedIds=list?Array.from(list.querySelectorAll("[data-dmid]")).map(el=>String(el.dataset.dmid)):[];
           const incomingIds=incoming.map(m=>String(m.id));
           const domMatches=renderedIds.length===incomingIds.length&&renderedIds.every((id,index)=>id===incomingIds[index]);
           const changed=previous.length!==incoming.length ||
