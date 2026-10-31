@@ -1902,6 +1902,24 @@ if(composer && !composer.dataset.submitBound){
     if(!state.currentRoom){toast("Join a room before sending a message.");return;}
     const input=$("message"),fileInput=$("file"),sendButton=composer.querySelector(".send");
     const textValue=(input?.value||"").trim(),file=fileInput?.files?.[0];
+    // /clear uses the same permission-checked, evidence-preserving room clear endpoint as the room controls.
+    if(/^\/clear(?:\s|$)/i.test(textValue)){
+      if(file){toast("Send /clear without an attachment.");return;}
+      if(input)input.value="";
+      if(sendButton){sendButton.disabled=true;sendButton.textContent="Clearing…";}
+      try{
+        const result=await api(`/api/rooms/${encodeURIComponent(state.currentRoom)}/clear`,{method:"POST"});
+        state.messages=(state.messages||[]).filter(m=>String(m.roomId)!==String(state.currentRoom));
+        if($("messages"))$("messages").innerHTML="";
+        toast("Room cleared. "+Number(result.removed||0)+" messages removed.");
+      }catch(error){
+        toast(error.message||"Could not clear room.");
+      }finally{
+        if(sendButton){sendButton.disabled=false;sendButton.textContent="Send";}
+        input?.focus();
+      }
+      return;
+    }
     // /mode is a local command: open the presence-mode controls instead of posting it as chat text.
     if(/^\/mode(?:\s|$)/i.test(textValue)){
       if(input)input.value="";
@@ -4466,9 +4484,7 @@ function openCommandGuide(){
     {title:"🪄 Gold",items:[
       ["/Abrakadabra","Randomly changes your Gold balance, within the site's balance limits."],
       ["/welcome @username","Post a glowing WELCOME BACK bubble for the named user."],
-      ["/ship @username","Show Bot’s compatibility score and glowing percentage bar for you and that user."],
-      ["@rose @username","Send a small glowing rose bubble from Bot to the named user. You can also use /rose."],
-      ["@bread @username","Send a small glowing bread bubble from Bot to the named user. You can also use /bread."]
+      ["/ship @username","Show Bot’s compatibility score and glowing percentage bar for you and that user."]
     ]},
     {title:"🛡️ Room controls",items:[
       ["/clear","Clear messages from the current room (subject to your configured rank permission)."]
