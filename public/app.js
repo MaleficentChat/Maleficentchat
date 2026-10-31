@@ -1349,6 +1349,19 @@ function formatMentions(text){
 }
 
 function messageHTML(message) {
+  if(message?.shipCompatibility && String(message.bot||message.username)==="Bot"){
+    const percent=Math.max(0,Math.min(100,Number(message.shipCompatibilityPercent)||0));
+    const names=Array.isArray(message.shipUsernames)?message.shipUsernames:[];
+    return `<div class="message bot-welcome-message bot-ship-message" data-mid="${esc(message.id)}">
+      <div class="bot-welcome-bubble bot-ship-bubble">
+        <div class="bot-welcome-byline">🤖 Bot</div>
+        <div class="bot-welcome-glow bot-ship-heading">COMPATIBILITY</div>
+        <div class="bot-ship-names">${esc(names[0]||"User")} <span>♡</span> ${esc(names[1]||"")}</div>
+        <div class="bot-ship-track" role="img" aria-label="Compatibility ${percent}%"><div class="bot-ship-fill" style="width:${percent}%"></div></div>
+        <div class="bot-ship-percent">${percent}%</div>
+      </div>
+    </div>`;
+  }
   if(message?.welcomeBack && String(message.bot||message.username)==="Bot"){
     return `<div class="message bot-welcome-message" data-mid="${esc(message.id)}">
       <div class="bot-welcome-bubble">
@@ -4412,7 +4425,8 @@ function openCommandGuide(){
   const groups=[
     {title:"🪄 Gold",items:[
       ["/Abrakadabra","Randomly changes your Gold balance, within the site's balance limits."],
-      ["/welcome @username","Post a glowing WELCOME BACK bubble for the named user."]
+      ["/welcome @username","Post a glowing WELCOME BACK bubble for the named user."],
+      ["/ship @username","Show Bot’s compatibility score and glowing percentage bar for you and that user."]
     ]},
     {title:"🛡️ Room controls",items:[
       ["/clear","Clear messages from the current room (subject to your configured rank permission)."]
