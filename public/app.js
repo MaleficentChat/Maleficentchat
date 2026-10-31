@@ -4401,26 +4401,12 @@ async function openBotManagementBot(botId){
 
 function openCommandGuide(){
   const groups=[
-    {title:"🎲 Fun & games",items:[
-      ["/roll [max]","Roll a number from 1 to the maximum (100 by default)."],
-      ["/ship @user1 @user2","Generate a playful compatibility percentage for two existing users."],
-      ["/8ball question","Ask a question for a random fortune-style answer."],
-      ["/hug @user","Send a friendly hug action."],
-      ["/slap @user","Send a playful slap action."],
-      ["/poke @user","Poke another user playfully."],
-      ["/kiss @user","Send a playful kiss action."],
-      ["/coinflip","Flip a virtual coin: heads or tails."],
-      ["/choose option1, option2","Choose one option randomly; you can also separate options with “or”."],
-      ["/fortune","Receive a random fortune."],
-      ["/joke","Get a random joke."],
-      ["/fact","Get a general-interest fact."]
+    {title:"🪄 Gold",items:[
+      ["/Abrakadabra","Randomly changes your Gold balance, within the site's balance limits."]
     ]},
     {title:"🛡️ Room controls",items:[
-      ["/lock","Lock the current room. Only staff can send messages until it is unlocked."],
-      ["/unlock","Unlock the current room so everyone can send messages again."],
       ["/clear","Clear messages from the current room (subject to your configured rank permission)."]
-    ]},
-    {title:"✨ Help",items:[["/guide","Open this command guide."]]}
+    ]}
   ];
   const html='<div class="command-guide"><h2>Aurora Command Guide</h2><p class="muted">Enter commands in the room message box. Replace example usernames with real usernames. Some commands require a minimum rank set by the site owner.</p>'+groups.map((group,i)=>'<details class="command-guide-group" '+(i===0?'open':'')+'><summary>'+esc(group.title)+'</summary><div class="command-guide-list">'+group.items.map(item=>'<div class="command-guide-item"><code>'+esc(item[0])+'</code><span>'+esc(item[1])+'</span></div>').join('')+'</div></details>').join('')+'<div class="toolbar"><button class="primary" onclick="closeModal()">Got it</button></div></div>';
   modal(html);
