@@ -2066,6 +2066,82 @@ app.post("/api/rooms/:id/messages",auth,featureAllowed("send_messages"),upload.s
       const notice=await auroraRoomMessage(response,r.id);
       return res.json({message:notice,command:true,gold:after,delta:outcome});
     }
+    if(commandKey==="bank"){
+      let target=u;
+      if(args){
+        const requested=args.replace(/^@/,"").trim().split(/\s+/)[0];
+        target=db.users.find(x=>String(x.username||"").toLowerCase()===requested.toLowerCase());
+        if(!target)return res.status(404).json({error:"That username was not found."});
+      }
+      const bankMessage={
+        id:id(),roomId:String(r.id),userId:null,username:"Bot",displayName:"Bot",rank:"BOT",
+        system:false,isBot:true,bot:"Bot",bankCommand:true,bankUsername:String(target.username||"User"),
+        bankLevel:Math.max(1,Number(target.level)||1),bankXp:Math.max(0,Number(target.xp)||0),
+        bankGold:Math.max(0,Number(target.gold)||0),
+        text:"BANK ACCOUNT — "+String(target.username||"User"),reactions:{},edited:false,deleted:false,pinned:false,time:Date.now(),delivered:true
+      };
+      await pool.query(`INSERT INTO room_messages(id,room_id,user_id,data,created_at) VALUES($1,$2,NULL,$3::jsonb,NOW())`,
+        [bankMessage.id,Number(r.id),JSON.stringify(bankMessage)]);
+      db.messages.push(bankMessage);
+      io.to("room:"+r.id).emit("message",bankMessage);
+      return res.json({message:bankMessage,command:true});
+    }
+    if(commandKey==="steal"){
+      if(!args)return res.status(400).json({error:"Use /steal username."});
+      const requested=args.replace(/^@/,"").trim().split(/\s+/)[0];
+      const target=db.users.find(x=>String(x.username||"").toLowerCase()===requested.toLowerCase());
+      if(!target)return res.status(404).json({error:"That username was not found."});
+      if(String(target.id)===String(u.id))return res.status(400).json({error:"You cannot steal from yourself."});
+      const targetGold=Math.max(0,Math.floor(Number(target.gold)||0));
+      const thiefGold=Math.max(0,Math.floor(Number(u.gold)||0));
+      const mode=Math.random();
+      let outcome,amount,textLine;
+      if(targetGold<1){
+        outcome="empty";amount=0;
+        textLine="🪙 @"+target.username+" has no Gold to steal. The attempt found an empty vault.";
+      }else if(mode<0.20){
+        outcome="bail";amount=Math.min(targetGold,Math.max(1,Math.floor(Math.random()*Math.min(101,targetGold)+1)));
+        target.gold=targetGold-amount;
+        await pool.query("UPDATE users SET gold=$1 WHERE id=$2",[target.gold,Number(target.id)]);
+        textLine="🚨 BAIL! @"+u.username+" got caught trying to steal from @"+target.username+". @"+target.username+" lost "+amount.toLocaleString()+" Gold to bail fees — the thief gets nothing.";
+        db.goldTransactions ||= [];
+        db.goldTransactions.push({id:id(),time:Date.now(),actor:u.id,userId:target.id,type:"STEAL_BAIL",delta:-amount,from:target.id});
+        io.to("user:"+target.id).emit("gold:update",{gold:target.gold});
+      }else if(mode<0.35){
+        outcome="reverse";amount=Math.min(thiefGold,Math.max(1,Math.floor(Math.random()*Math.min(101,Math.max(1,thiefGold))+1)));
+        u.gold=thiefGold-amount;target.gold=targetGold+amount;
+        await pool.query("UPDATE users SET gold=$1 WHERE id=$2",[u.gold,Number(u.id)]);
+        await pool.query("UPDATE users SET gold=$1 WHERE id=$2",[target.gold,Number(target.id)]);
+        textLine="🔄 REVERSE LOOT! @"+target.username+" turned the tables and took "+amount.toLocaleString()+" Gold from @"+u.username+"!";
+        db.goldTransactions ||= [];
+        db.goldTransactions.push({id:id(),time:Date.now(),actor:u.id,userId:u.id,type:"STEAL_REVERSE_LOSS",delta:-amount,to:target.id},{id:id(),time:Date.now(),actor:u.id,userId:target.id,type:"STEAL_REVERSE_GAIN",delta:amount,from:u.id});
+        io.to("user:"+target.id).emit("gold:update",{gold:target.gold});
+        io.to("user:"+u.id).emit("gold:update",{gold:u.gold});
+      }else{
+        amount=Math.min(targetGold,Math.max(1,Math.floor(Math.random()*Math.min(101,targetGold)+1)));
+        outcome="success";target.gold=targetGold-amount;u.gold=thiefGold+amount;
+        await pool.query("UPDATE users SET gold=$1 WHERE id=$2",[u.gold,Number(u.id)]);
+        await pool.query("UPDATE users SET gold=$1 WHERE id=$2",[target.gold,Number(target.id)]);
+        textLine="💰 SUCCESSFUL HEIST! @"+u.username+" stole "+amount.toLocaleString()+" Gold from @"+target.username+"!";
+        db.goldTransactions ||= [];
+        db.goldTransactions.push({id:id(),time:Date.now(),actor:u.id,userId:target.id,type:"STEAL_LOSS",delta:-amount,to:u.id},{id:id(),time:Date.now(),actor:u.id,userId:u.id,type:"STEAL_GAIN",delta:amount,from:target.id});
+        io.to("user:"+target.id).emit("gold:update",{gold:target.gold});
+        io.to("user:"+u.id).emit("gold:update",{gold:u.gold});
+      }
+      save();
+      log(u,"GOLD_STEAL",target.username,{outcome,amount,targetId:target.id});
+      const stealMessage={
+        id:id(),roomId:String(r.id),userId:null,username:"Bot",displayName:"Bot",rank:"BOT",
+        system:false,isBot:true,bot:"Bot",stealCommand:true,stealOutcome:outcome,
+        stealActorUsername:String(u.username||"User"),stealTargetUsername:String(target.username||"User"),
+        stealAmount:amount,text:textLine,reactions:{},edited:false,deleted:false,pinned:false,time:Date.now(),delivered:true
+      };
+      await pool.query(`INSERT INTO room_messages(id,room_id,user_id,data,created_at) VALUES($1,$2,NULL,$3::jsonb,NOW())`,
+        [stealMessage.id,Number(r.id),JSON.stringify(stealMessage)]);
+      db.messages.push(stealMessage);
+      io.to("room:"+r.id).emit("message",stealMessage);
+      return res.json({message:stealMessage,command:true,outcome,amount});
+    }
     if(commandKey==="welcome"){
       if(!args)return res.status(400).json({error:"Use /welcome username."});
       const requested=args.replace(/^@/,"").trim();
