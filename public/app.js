@@ -1348,7 +1348,35 @@ function formatMentions(text){
   });
 }
 
+function botStaffDeleteButton(message){
+  const staffRanks=["MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER","DEVELOPER"];
+  const isStaff=staffRanks.includes(String(state.user?.rank||"").toUpperCase());
+  return isStaff ? `<button type="button" class="mini danger bot-message-delete" style="margin-top:7px;padding:3px 9px;font-size:12px" onclick="event.stopPropagation();deleteMsg('${esc(message.id)}')">🗑 Delete</button>` : "";
+}
+
 function messageHTML(message) {
+  if(message?.roastCommand && String(message.bot||message.username)==="Bot"){
+    return `<div class="message bot-welcome-message bot-roast-message" data-mid="${esc(message.id)}">
+      <div class="bot-welcome-bubble">
+        <div class="bot-welcome-byline">🤖 Bot</div>
+        <div class="bot-welcome-glow" style="color:#ff7a45;text-shadow:0 0 12px #ff4fd8">🔥 ROAST INCOMING 🔥</div>
+        <div class="bot-welcome-username">${esc(message.text||"") .replace(/\\n/g,"<br>")}</div>
+      </div>${botStaffDeleteButton(message)}
+    </div>`;
+  }
+  if(message?.auraCommand && String(message.bot||message.username)==="Bot"){
+    const score=Math.max(0,Math.min(100,Number(message.auraScore)||0));
+    const color=/^#[0-9a-f]{6}$/i.test(String(message.auraColor||""))?message.auraColor:"#a855f7";
+    return `<div class="message bot-welcome-message bot-aura-message" data-mid="${esc(message.id)}">
+      <div class="bot-welcome-bubble" style="border-color:${color};box-shadow:0 0 18px ${color}44">
+        <div class="bot-welcome-byline">🤖 Bot · AURA SCAN</div>
+        <div class="bot-welcome-glow" style="color:${color};text-shadow:0 0 12px ${color}">${esc(message.auraName||"MYSTERIOUS ENERGY")}</div>
+        <div class="bot-ship-track" role="img" aria-label="Aura score ${score}%"><div class="bot-ship-fill" style="width:${score}%;background:${color}"></div></div>
+        <div class="bot-ship-percent" style="color:${color}">${score}% AURA</div>
+        <div class="bot-welcome-username">@${esc(message.auraTargetUsername||"")} · ${esc(message.auraVibe||"")}</div>
+      </div>${botStaffDeleteButton(message)}
+    </div>`;
+  }
   if(message?.shipCompatibility && String(message.bot||message.username)==="Bot"){
     const percent=Math.max(0,Math.min(100,Number(message.shipCompatibilityPercent)||0));
     const names=Array.isArray(message.shipUsernames)?message.shipUsernames:[];
