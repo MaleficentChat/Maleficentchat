@@ -3059,7 +3059,9 @@ app.post("/api/dm/:id",auth,featureAllowed("private_messages"),upload.single("fi
   // every user row and filter-word entry for each private message.
   db.privateMessages.push(m);
   notify(v.id,"private-message","New private message",`@${u.username} sent you a private message.`);
-  io.to("user:"+v.id).emit("dm",m);
+  // Notify every active device for both participants. The client deduplicates
+  // by message ID, so the sender can safely reconcile the optimistic/API copy.
+  io.to("user:"+u.id).to("user:"+v.id).emit("dm",m);
   res.json({message:m});
 });
 
