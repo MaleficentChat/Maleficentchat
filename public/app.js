@@ -1350,38 +1350,20 @@ function formatMentions(text){
 
 function messageHTML(message) {
   if(message?.breadCommand && String(message.bot||message.username)==="Bot"){
-    return `<div class="message bot-bread-message" data-mid="${esc(message.id)}">
-      <style>
-        @keyframes mcBreadFlash {0%,100%{opacity:.38;transform:scale(.88) rotate(-5deg);filter:drop-shadow(0 0 12px #e8a64a)}50%{opacity:1;transform:scale(1.04) rotate(4deg);filter:drop-shadow(0 0 42px #ffc66d) drop-shadow(0 0 70px #ff8c42)}}
-        @keyframes mcBreadFade {0%,72%{opacity:1}100%{opacity:0;visibility:hidden}}
-        @keyframes mcBreadTextGlow {0%,100%{text-shadow:0 0 8px #ffbd59,0 0 20px #ff8c42}50%{text-shadow:0 0 18px #fff0bd,0 0 38px #ffc66d,0 0 60px #ff8c42}}
-        .mc-bread-overlay{position:fixed;inset:0;z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;background:radial-gradient(ellipse at center,rgba(74,37,8,.97),rgba(8,4,2,.99) 72%);pointer-events:none;animation:mcBreadFade 5.5s ease forwards}
-        .mc-bread-loaf{font-size:min(72vw,52vh);line-height:1;animation:mcBreadFlash .72s ease-in-out infinite}
-        .mc-bread-for-you{margin-top:18px;font-size:clamp(28px,8vw,58px);font-weight:900;letter-spacing:.14em;color:#fff4dc;text-align:center;animation:mcBreadTextGlow .9s ease-in-out infinite}
-        .mc-bread-username{position:absolute;bottom:9%;max-width:90%;overflow-wrap:anywhere;font-size:clamp(20px,6vw,38px);font-weight:900;color:#ffd08a;text-align:center;text-shadow:0 0 10px #ffbd59,0 0 24px #ff8c42,0 0 44px #ffc66d;animation:mcBreadTextGlow .9s ease-in-out infinite}
-      </style>
-      <div class="mc-bread-overlay" aria-label="Bread for you">
-        <div class="mc-bread-loaf" aria-hidden="true">🍞</div>
-        <div class="mc-bread-for-you">FOR YOU</div>
-        <div class="mc-bread-username">@${esc(message.breadTargetUsername||"")}</div>
+    return `<div class="message bot-welcome-message bot-bread-message" data-mid="${esc(message.id)}">
+      <div class="bot-welcome-bubble" style="border-color:#ffbd59;box-shadow:0 0 16px #ff8c4244">
+        <div class="bot-welcome-byline">🤖 Bot</div>
+        <div class="bot-welcome-glow" style="color:#ffc66d;text-shadow:0 0 12px #ff8c42">🍞 FOR YOU</div>
+        <div class="bot-welcome-username">@${esc(message.breadTargetUsername||"")}</div>
       </div>
     </div>`;
   }
   if(message?.roseCommand && String(message.bot||message.username)==="Bot"){
-    return `<div class="message bot-rose-message" data-mid="${esc(message.id)}">
-      <style>
-        @keyframes mcRoseFlash {0%,100%{opacity:.28;transform:scale(.88) rotate(-5deg);filter:drop-shadow(0 0 12px #ff1744)}50%{opacity:1;transform:scale(1.04) rotate(4deg);filter:drop-shadow(0 0 42px #ff1744) drop-shadow(0 0 80px #ff4fd8)}}
-        @keyframes mcRoseFade {0%,72%{opacity:1}100%{opacity:0;visibility:hidden}}
-        @keyframes mcRoseTextGlow {0%,100%{text-shadow:0 0 8px #ff4fd8,0 0 20px #ff1744}50%{text-shadow:0 0 18px #fff,0 0 38px #ff4fd8,0 0 65px #ff1744}}
-        .mc-rose-overlay{position:fixed;inset:0;z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;background:radial-gradient(ellipse at center,rgba(55,0,28,.97),rgba(3,2,12,.98) 72%);pointer-events:none;animation:mcRoseFade 5.5s ease forwards}
-        .mc-rose-flower{font-size:min(72vw,52vh);line-height:1;animation:mcRoseFlash .72s ease-in-out infinite;filter:drop-shadow(0 0 24px #ff1744)}
-        .mc-rose-for-you{margin-top:18px;font-size:clamp(28px,8vw,58px);font-weight:900;letter-spacing:.14em;color:#fff;text-align:center;animation:mcRoseTextGlow .9s ease-in-out infinite}
-        .mc-rose-username{position:absolute;bottom:9%;max-width:90%;overflow-wrap:anywhere;font-size:clamp(20px,6vw,38px);font-weight:900;color:#ff8adf;text-align:center;text-shadow:0 0 10px #ff4fd8,0 0 24px #ff1744,0 0 44px #ff4fd8;animation:mcRoseTextGlow .9s ease-in-out infinite}
-      </style>
-      <div class="mc-rose-overlay" aria-label="A rose for you">
-        <div class="mc-rose-flower" aria-hidden="true">🌹</div>
-        <div class="mc-rose-for-you">FOR YOU</div>
-        <div class="mc-rose-username">@${esc(message.roseTargetUsername||"")}</div>
+    return `<div class="message bot-welcome-message bot-rose-message" data-mid="${esc(message.id)}">
+      <div class="bot-welcome-bubble" style="border-color:#ff4fd8;box-shadow:0 0 16px #ff174444">
+        <div class="bot-welcome-byline">🤖 Bot</div>
+        <div class="bot-welcome-glow" style="color:#ff8adf;text-shadow:0 0 12px #ff1744">🌹 FOR YOU</div>
+        <div class="bot-welcome-username">@${esc(message.roseTargetUsername||"")}</div>
       </div>
     </div>`;
   }
@@ -4484,7 +4466,9 @@ function openCommandGuide(){
     {title:"🪄 Gold",items:[
       ["/Abrakadabra","Randomly changes your Gold balance, within the site's balance limits."],
       ["/welcome @username","Post a glowing WELCOME BACK bubble for the named user."],
-      ["/ship @username","Show Bot’s compatibility score and glowing percentage bar for you and that user."]
+      ["/ship @username","Show Bot’s compatibility score and glowing percentage bar for you and that user."],
+      ["@rose @username","Send a small glowing rose bubble from Bot to the named user. You can also use /rose."],
+      ["@bread @username","Send a small glowing bread bubble from Bot to the named user. You can also use /bread."]
     ]},
     {title:"🛡️ Room controls",items:[
       ["/clear","Clear messages from the current room (subject to your configured rank permission)."]
