@@ -3975,3 +3975,15 @@ body.party-mode-active .msg.dm-msg .chat-gif{
 .bot-welcome-username{font-weight:800;font-size:clamp(17px,4.5vw,22px);margin-top:10px;color:#f4dcff;text-shadow:0 0 8px rgba(155,92,255,.8);overflow-wrap:anywhere}
 @keyframes botWelcomeGlow{from{filter:brightness(.9);text-shadow:0 0 4px #fff,0 0 9px #ff4fd8,0 0 18px #9b5cff}to{filter:brightness(1.25);text-shadow:0 0 7px #fff,0 0 16px #ff4fd8,0 0 30px #9b5cff,0 0 42px rgba(255,79,216,.85)}}
 @media(prefers-reduced-motion:reduce){.bot-welcome-glow{animation:none}}
+
+
+/* Bot compatibility popup-style chat bubble */
+.bot-ship-message{justify-content:center}
+.bot-ship-bubble{overflow:hidden}
+.bot-ship-heading{font-size:clamp(20px,5vw,28px)}
+.bot-ship-names{font-size:16px;font-weight:800;color:#f4dcff;margin:12px 0 16px;overflow-wrap:anywhere;text-shadow:0 0 8px rgba(155,92,255,.65)}
+.bot-ship-names span{color:#ff4fd8;font-size:21px;padding:0 5px;text-shadow:0 0 10px #ff4fd8}
+.bot-ship-track{width:100%;height:16px;border-radius:999px;padding:2px;box-sizing:border-box;background:rgba(255,255,255,.09);border:1px solid rgba(255,79,216,.55);box-shadow:inset 0 0 8px rgba(0,0,0,.55),0 0 10px rgba(155,92,255,.15);overflow:hidden}
+.bot-ship-fill{height:100%;border-radius:999px;background:linear-gradient(90deg,#9b5cff,#ff4fd8,#fff0fb);box-shadow:0 0 8px #ff4fd8,0 0 18px rgba(155,92,255,.85);transition:width .8s ease}
+.bot-ship-percent{font-size:clamp(25px,6vw,34px);font-weight:900;color:#fff;margin-top:10px;text-shadow:0 0 5px #fff,0 0 14px #ff4fd8,0 0 28px #9b5cff;letter-spacing:.04em}
+@media(prefers-reduced-motion:reduce){.bot-ship-fill{transition:none}}
