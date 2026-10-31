@@ -525,7 +525,7 @@ async function syncLiveMessages(){
 let liveSyncWakeListenersBound=false;
 function startLiveSync(){
   if(liveSyncTimer)clearInterval(liveSyncTimer);
-  liveSyncTimer=setInterval(syncLiveMessages,1500);
+  liveSyncTimer=setInterval(syncLiveMessages,1000);
   // Synchronize immediately instead of waiting for the first interval tick.
   syncLiveMessages();
   // A hidden tab pauses polling; resume immediately when the user returns.
