@@ -501,7 +501,7 @@ async function start() {
   });
 
   state.socket.on('rooms_updated', async()=>{try{await loadRooms();renderRooms();}catch{}});
-  state.socket.on('connect',()=>{loadRooms().catch(()=>{});});
+  state.socket.on("connect",()=>{loadRooms().catch(()=>{});authenticateSocketAndJoinRoom(state.socket,false).catch(()=>{});});
 
   state.socket.on("presence", () => {
     // Presence changes frequently. Do not refetch the room directory on every
@@ -1348,20 +1348,14 @@ function formatMentions(text){
   });
 }
 
-function botStaffDeleteButton(message){
-  const staffRanks=["MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER","DEVELOPER"];
-  const isStaff=staffRanks.includes(String(state.user?.rank||"").toUpperCase());
-  return isStaff ? `<button type="button" class="mini danger bot-message-delete" style="margin-top:7px;padding:3px 9px;font-size:12px" onclick="event.stopPropagation();deleteMsg('${esc(message.id)}')">🗑 Delete</button>` : "";
-}
-
 function messageHTML(message) {
   if(message?.roastCommand && String(message.bot||message.username)==="Bot"){
     return `<div class="message bot-welcome-message bot-roast-message" data-mid="${esc(message.id)}">
       <div class="bot-welcome-bubble">
         <div class="bot-welcome-byline">🤖 Bot</div>
-        <div class="bot-welcome-glow" style="color:#ff7a45;text-shadow:0 0 12px #ff4fd8">🔥 ROAST INCOMING 🔥</div>
+        <div class="bot-welcome-glow" style="color:#ff7a45;text-shadow:0 0 12px #ff4fd8">BOT ROAST</div>
         <div class="bot-welcome-username">${esc(message.text||"") .replace(/\\n/g,"<br>")}</div>
-      </div>${botStaffDeleteButton(message)}
+      </div>
     </div>`;
   }
   if(message?.auraCommand && String(message.bot||message.username)==="Bot"){
@@ -1374,7 +1368,7 @@ function messageHTML(message) {
         <div class="bot-ship-track" role="img" aria-label="Aura score ${score}%"><div class="bot-ship-fill" style="width:${score}%;background:${color}"></div></div>
         <div class="bot-ship-percent" style="color:${color}">${score}% AURA</div>
         <div class="bot-welcome-username">@${esc(message.auraTargetUsername||"")} · ${esc(message.auraVibe||"")}</div>
-      </div>${botStaffDeleteButton(message)}
+      </div>
     </div>`;
   }
   if(message?.shipCompatibility && String(message.bot||message.username)==="Bot"){
