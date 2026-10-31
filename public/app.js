@@ -431,6 +431,9 @@ async function syncLiveMessages(){
   if(!state.user||document.hidden)return;
   // Keep each channel on its own lock. A slow or rejected room-history
   // request must never block private-message synchronization (or vice versa).
+    // Run room history and the active private conversation independently. A slow
+    // room request must not delay private messages (or vice versa).
+    const roomTask=(async()=>{
     if(state.currentRoom&&!liveRoomSyncBusy){
       liveRoomSyncBusy=true;
       try {
@@ -474,6 +477,8 @@ async function syncLiveMessages(){
       }catch(error){console.warn("Live room sync failed:",error?.message||error);}
       } finally { liveRoomSyncBusy=false; }
     }
+    })();
+    const dmTask=(async()=>{
     if(state.dmUserId&&!liveDMSyncBusy){
       liveDMSyncBusy=true;
       try {
@@ -508,6 +513,8 @@ async function syncLiveMessages(){
       }catch(error){console.warn("Live private-message sync failed:",error?.message||error);}
       } finally { liveDMSyncBusy=false; }
     }
+    })();
+    await Promise.allSettled([roomTask,dmTask]);
     const now=Date.now();
     if(now-liveSyncLastInbox>15000){
       liveSyncLastInbox=now;
