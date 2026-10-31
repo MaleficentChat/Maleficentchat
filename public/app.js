@@ -426,14 +426,15 @@ function showBanLock(reason="Community rules"){
 }
 function clearActionLock(){if(actionLockTimer)clearTimeout(actionLockTimer);actionLockTimer=null;const box=$("actionLock");if(box){box.classList.add("hidden");box.innerHTML="";box.dataset.lockType="";}}
 
-let liveSyncTimer=null, liveSyncBusy=false, liveSyncLastInbox=0;
+let liveSyncTimer=null, liveRoomSyncBusy=false, liveDMSyncBusy=false, liveSyncLastInbox=0;
 async function syncLiveMessages(){
-  if(liveSyncBusy||!state.user||document.hidden)return;
-  liveSyncBusy=true;
+  if(!state.user||document.hidden)return;
   try{
-    // Keep room and DM sync isolated: a stale room-access token must not
-    // prevent private messages from being refreshed in the same cycle.
-    if(state.currentRoom){
+    // Keep each channel on its own lock. A slow or rejected room-history
+    // request must never block private-message synchronization (or vice versa).
+    if(state.currentRoom&&!liveRoomSyncBusy){
+      liveRoomSyncBusy=true;
+      try {
       const roomId=String(state.currentRoom);
       try{
         const data=await api("/api/rooms/"+encodeURIComponent(roomId)+"/messages");
@@ -469,9 +470,12 @@ async function syncLiveMessages(){
           }
           if(list&&incoming.length&&list.scrollHeight-list.scrollTop-list.clientHeight<180)list.scrollTop=list.scrollHeight;
         }
-      }catch(error){console.warn("Live room sync failed (DM sync will continue):",error?.message||error);}
+      }catch(error){console.warn("Live room sync failed:",error?.message||error);}
+      } finally { liveRoomSyncBusy=false; }
     }
-    if(state.dmUserId){
+    if(state.dmUserId&&!liveDMSyncBusy){
+      liveDMSyncBusy=true;
+      try {
       const peerId=String(state.dmUserId);
       try{
         const data=await api("/api/dm/"+encodeURIComponent(peerId));
@@ -499,6 +503,7 @@ async function syncLiveMessages(){
           if(peerId!=="system-bot")api("/api/dm/"+encodeURIComponent(peerId)+"/read",{method:"POST"}).catch(()=>{});
         }
       }catch(error){console.warn("Live private-message sync failed:",error?.message||error);}
+      } finally { liveDMSyncBusy=false; }
     }
     const now=Date.now();
     if(now-liveSyncLastInbox>15000){
@@ -506,12 +511,12 @@ async function syncLiveMessages(){
       loadDMList().catch(()=>{});
       loadNotifications().catch(()=>{});
     }
-  }finally{liveSyncBusy=false;}
+  }finally{}
 }
 let liveSyncWakeListenersBound=false;
 function startLiveSync(){
   if(liveSyncTimer)clearInterval(liveSyncTimer);
-  liveSyncTimer=setInterval(syncLiveMessages,5000);
+  liveSyncTimer=setInterval(syncLiveMessages,2500);
   // A hidden tab pauses polling; resume immediately when the user returns.
   // Bind once so repeated starts do not create duplicate listeners.
   if(!liveSyncWakeListenersBound){
