@@ -2046,9 +2046,9 @@ app.post("/api/rooms/:id/messages",auth,featureAllowed("send_messages"),upload.s
   }
 
   // Slash commands execute on the server so permission checks cannot be bypassed in the browser.
-  const commandMatch=!req.file&&text.match(/^\/([a-z0-9]+)(?:\s+([\s\S]*))?$/i);
+  const commandMatch=!req.file&&text.match(/^(?:\/([a-z0-9]+)|@(rose|bread))(?:\s+([\s\S]*))?$/i);
   if(commandMatch){
-    const commandKey=commandMatch[1].toLowerCase(),args=String(commandMatch[2]||"").trim();
+    const commandKey=String(commandMatch[1]||commandMatch[2]).toLowerCase(),args=String(commandMatch[3]||"").trim();
     if(commandKey==="abrakadabra"){
       if(args)return res.status(400).json({error:"Use /Abrakadabra without an amount."});
       const before=Math.max(0,Math.min(1000000,Math.floor(Number(u.gold)||0)));
@@ -2175,7 +2175,7 @@ app.post("/api/rooms/:id/messages",auth,featureAllowed("send_messages"),upload.s
       io.to("room:"+r.id).emit("message",botMessage);
       return res.json({message:botMessage,command:true});
     }
-    if(commandKey!=="clear")return res.status(400).json({error:"Unknown command. Available commands: /clear, /Abrakadabra, /welcome, /ship, /roast, /aura, /rose, and /bread."});
+    if(commandKey!=="clear")return res.status(400).json({error:"Unknown command. Available commands: /clear, /Abrakadabra, /welcome, /ship, /roast, /aura, @rose, and @bread."});
 
   }
   if((r.locked||db.settings?.locked_rooms?.[String(r.id)]) && !hasRank(u,"MOD") && String(u.rank).toUpperCase()!=="DEVELOPER")return res.status(403).json({error:"This room is locked. Only staff can send messages."});
