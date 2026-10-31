@@ -608,6 +608,12 @@ async function start() {
     // Always authenticate and join using the latest room-access token.
     authenticateSocketAndJoinRoom(state.socket,true).catch(error=>console.warn("Socket recovery failed:",error?.message||error));
   });
+  // Socket.IO can finish its first handshake before listeners are attached on slow/older clients.
+  // If it is already connected here, perform the same authentication/join recovery explicitly.
+  if(state.socket.connected){
+    authenticateSocketAndJoinRoom(state.socket,true).catch(error=>console.warn("Initial socket recovery failed:",error?.message||error));
+    syncLiveMessages();
+  }
   state.socket.on("room-error",d=>toast(d?.error||"Could not join room."));
   state.socket.on("dm-typing",d=>{
     if(String(d?.userId||"")!==String(state.dmUserId))return;
