@@ -136,7 +136,7 @@
   <div id="viewRooms" class="view">
     <div class="topbar">
       <div><h2>Rooms & Community</h2><p class="muted">Main Room plus additional public/private communities.</p></div>
-      <div class="top-actions"><input id="roomSearch" placeholder="Search rooms…"><button class="primary coowner-only hidden" id="newRoom">＋ Room</button></div>
+      <div class="top-actions"><input id="roomSearch" placeholder="Search rooms…"><button class="icon-btn" id="refreshRoomsBtn" type="button" title="Refresh rooms only" aria-label="Refresh rooms only" onclick="loadRooms()">↻</button><button class="primary coowner-only hidden" id="newRoom">＋ Room</button></div>
     </div>
     <div id="rooms" class="room-grid"></div>
     <div id="chatWrap" class="chat-wrap hidden">
