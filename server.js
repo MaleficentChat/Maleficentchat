@@ -2104,6 +2104,24 @@ app.post("/api/rooms/:id/messages",auth,featureAllowed("send_messages"),upload.s
       io.to("room:"+r.id).emit("message",shipMessage);
       return res.json({message:shipMessage,command:true});
     }
+    if(commandKey==="bread"){
+      let target=u;
+      if(args){
+        const requested=args.replace(/^@/,"").trim().split(/\\s+/)[0];
+        target=db.users.find(x=>String(x.username||"").toLowerCase()===requested.toLowerCase());
+        if(!target)return res.status(404).json({error:"That username was not found."});
+      }
+      const breadMessage={
+        id:id(),roomId:String(r.id),userId:null,username:"Bot",displayName:"Bot",rank:"BOT",
+        system:false,isBot:true,bot:"Bot",breadCommand:true,breadTargetUsername:String(target.username||"User"),
+        text:"FOR YOU",reactions:{},edited:false,deleted:false,pinned:false,time:Date.now(),delivered:true
+      };
+      await pool.query(`INSERT INTO room_messages(id,room_id,user_id,data,created_at) VALUES($1,$2,NULL,$3::jsonb,NOW())`,
+        [breadMessage.id,Number(r.id),JSON.stringify(breadMessage)]);
+      db.messages.push(breadMessage);
+      io.to("room:"+r.id).emit("message",breadMessage);
+      return res.json({message:breadMessage,command:true});
+    }
     if(commandKey==="rose"){
       let target=u;
       if(args){
@@ -2157,7 +2175,7 @@ app.post("/api/rooms/:id/messages",auth,featureAllowed("send_messages"),upload.s
       io.to("room:"+r.id).emit("message",botMessage);
       return res.json({message:botMessage,command:true});
     }
-    if(commandKey!=="clear")return res.status(400).json({error:"Unknown command. Available commands: /clear, /Abrakadabra, /welcome, /ship, /roast, /aura, and /rose."});
+    if(commandKey!=="clear")return res.status(400).json({error:"Unknown command. Available commands: /clear, /Abrakadabra, /welcome, /ship, /roast, /aura, /rose, and /bread."});
 
   }
   if((r.locked||db.settings?.locked_rooms?.[String(r.id)]) && !hasRank(u,"MOD") && String(u.rank).toUpperCase()!=="DEVELOPER")return res.status(403).json({error:"This room is locked. Only staff can send messages."});
