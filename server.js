@@ -2104,7 +2104,42 @@ app.post("/api/rooms/:id/messages",auth,featureAllowed("send_messages"),upload.s
       io.to("room:"+r.id).emit("message",shipMessage);
       return res.json({message:shipMessage,command:true});
     }
-    if(commandKey!=="clear")return res.status(400).json({error:"Unknown command. Available commands: /clear, /Abrakadabra, /welcome, and /ship."});
+    if(commandKey==="roast" || commandKey==="aura"){
+      if(!args)return res.status(400).json({error:"Use /"+commandKey+" username."});
+      const requested=args.replace(/^@/,"").trim().split(/\\s+/)[0];
+      const target=db.users.find(x=>String(x.username||"").toLowerCase()===requested.toLowerCase());
+      if(!target)return res.status(404).json({error:"That username was not found."});
+      let botMessage;
+      if(commandKey==="roast"){
+        const roasts=[
+          "has so many tabs open that even their brain needs a loading screen. 💀",
+          "could get lost in their own profile settings. 😭",
+          "has the energy of a phone at 1% insisting it is fine. 🔋",
+          "is proof that chaos can have a username. 🌀",
+          "would lose a staring contest to the loading spinner. 🫠",
+          "is buffering in 4K today. 📡"
+        ];
+        const roast=roasts[Math.floor(Math.random()*roasts.length)];
+        botMessage={id:id(),roomId:String(r.id),userId:null,username:"Bot",displayName:"Bot",rank:"BOT",system:false,isBot:true,bot:"Bot",roastCommand:true,roastTargetUsername:target.username,text:"🔥 ROAST INCOMING 🔥\\n@"+target.username+" "+roast,reactions:{},edited:false,deleted:false,pinned:false,time:Date.now(),delivered:true};
+      }else{
+        const auras=[
+          {color:"#a855f7",name:"SHADOW MONARCH",vibe:"mysterious and unstoppable"},
+          {color:"#ff4fd8",name:"CHAOS MAGNET",vibe:"unpredictable main-character energy"},
+          {color:"#5cffb0",name:"FOREST PHANTOM",vibe:"calm, rare, and quietly powerful"},
+          {color:"#60a5fa",name:"MIDNIGHT ORACLE",vibe:"dreamy and hard to read"},
+          {color:"#fbbf24",name:"GOLDEN MENACE",vibe:"bold confidence with a little chaos"}
+        ];
+        const aura=auras[Math.floor(Math.random()*auras.length)];
+        const score=Math.floor(Math.random()*101);
+        botMessage={id:id(),roomId:String(r.id),userId:null,username:"Bot",displayName:"Bot",rank:"BOT",system:false,isBot:true,bot:"Bot",auraCommand:true,auraTargetUsername:target.username,auraScore:score,auraName:aura.name,auraVibe:aura.vibe,auraColor:aura.color,text:"AURA ANALYSIS\\n@"+target.username+" — "+aura.name+" ("+score+"%)",reactions:{},edited:false,deleted:false,pinned:false,time:Date.now(),delivered:true};
+      }
+      await pool.query(`INSERT INTO room_messages(id,room_id,user_id,data,created_at) VALUES($1,$2,NULL,$3::jsonb,NOW())`,
+        [botMessage.id,Number(r.id),JSON.stringify(botMessage)]);
+      db.messages.push(botMessage);
+      io.to("room:"+r.id).emit("message",botMessage);
+      return res.json({message:botMessage,command:true});
+    }
+    if(commandKey!=="clear")return res.status(400).json({error:"Unknown command. Available commands: /clear, /Abrakadabra, /welcome, /ship, /roast, and /aura."});
 
   }
   if((r.locked||db.settings?.locked_rooms?.[String(r.id)]) && !hasRank(u,"MOD") && String(u.rank).toUpperCase()!=="DEVELOPER")return res.status(403).json({error:"This room is locked. Only staff can send messages."});
