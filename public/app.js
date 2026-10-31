@@ -441,7 +441,7 @@ async function syncLiveMessages(){
       try{
         // A stalled fetch must not leave the room-sync lock set forever.
         // Abort this read after 7 seconds so the next poll can recover.
-        const data=await api("/api/rooms/"+encodeURIComponent(roomId)+"/messages",{signal:AbortSignal.timeout(7000)});
+        const data=await api("/api/rooms/"+encodeURIComponent(roomId)+"/messages",{...(typeof AbortSignal!=="undefined"&&typeof AbortSignal.timeout==="function"?{signal:AbortSignal.timeout(7000)}:{})});
         if(String(state.currentRoom)===roomId&&Array.isArray(data.messages)){
           const incoming=data.messages;
           const known=new Set((state.messages||[]).map(m=>String(m.id)));
@@ -486,7 +486,7 @@ async function syncLiveMessages(){
       try{
         // A stalled fetch must not leave the DM-sync lock set forever.
         // Abort this read after 7 seconds so the next poll can recover.
-        const data=await api("/api/dm/"+encodeURIComponent(peerId),{signal:AbortSignal.timeout(7000)});
+        const data=await api("/api/dm/"+encodeURIComponent(peerId),{...(typeof AbortSignal!=="undefined"&&typeof AbortSignal.timeout==="function"?{signal:AbortSignal.timeout(7000)}:{})});
         if(String(state.dmUserId)===peerId&&Array.isArray(data.messages)){
           // PostgreSQL history is authoritative. Reconcile both message order and
           // sender/content fields, not just IDs; otherwise stale bubbles can keep
