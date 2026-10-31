@@ -2083,7 +2083,28 @@ app.post("/api/rooms/:id/messages",auth,featureAllowed("send_messages"),upload.s
       io.to("room:"+r.id).emit("message",welcomeMessage);
       return res.json({message:welcomeMessage,command:true});
     }
-    if(commandKey!=="clear")return res.status(400).json({error:"Unknown command. Available commands: /clear, /Abrakadabra, and /welcome."});
+    if(commandKey==="ship"){
+      if(!args)return res.status(400).json({error:"Use /ship username."});
+      const requested=args.replace(/^@/,"").trim().split(/\s+/)[0];
+      const target=db.users.find(x=>String(x.username||"").toLowerCase()===requested.toLowerCase());
+      if(!target)return res.status(404).json({error:"That username was not found."});
+      const compatibility=Math.floor(Math.random()*101);
+      const shipMessage={
+        id:id(),roomId:String(r.id),userId:null,username:"Bot",displayName:"Bot",rank:"BOT",
+        system:false,isBot:true,bot:"Bot",shipCompatibility:true,
+        shipUsernames:[String(u.username||"User"),String(target.username)],
+        shipCompatibilityPercent:compatibility,
+        usernameColor:"#ff4fd8",
+        text:"COMPATIBILITY CHECK\n"+String(u.username||"User")+" + "+String(target.username)+" = "+compatibility+"%",
+        reactions:{},edited:false,deleted:false,pinned:false,time:Date.now(),delivered:true
+      };
+      await pool.query(\`INSERT INTO room_messages(id,room_id,user_id,data,created_at) VALUES($1,$2,NULL,$3::jsonb,NOW())\`,
+        [shipMessage.id,Number(r.id),JSON.stringify(shipMessage)]);
+      db.messages.push(shipMessage);
+      io.to("room:"+r.id).emit("message",shipMessage);
+      return res.json({message:shipMessage,command:true});
+    }
+    if(commandKey!=="clear")return res.status(400).json({error:"Unknown command. Available commands: /clear, /Abrakadabra, /welcome, and /ship."});
 
   }
   if((r.locked||db.settings?.locked_rooms?.[String(r.id)]) && !hasRank(u,"MOD") && String(u.rank).toUpperCase()!=="DEVELOPER")return res.status(403).json({error:"This room is locked. Only staff can send messages."});
