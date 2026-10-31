@@ -2098,7 +2098,7 @@ app.post("/api/rooms/:id/messages",auth,featureAllowed("send_messages"),upload.s
         text:"COMPATIBILITY CHECK\n"+String(u.username||"User")+" + "+String(target.username)+" = "+compatibility+"%",
         reactions:{},edited:false,deleted:false,pinned:false,time:Date.now(),delivered:true
       };
-      await pool.query(\`INSERT INTO room_messages(id,room_id,user_id,data,created_at) VALUES($1,$2,NULL,$3::jsonb,NOW())\`,
+      await pool.query(`INSERT INTO room_messages(id,room_id,user_id,data,created_at) VALUES($1,$2,NULL,$3::jsonb,NOW())`,
         [shipMessage.id,Number(r.id),JSON.stringify(shipMessage)]);
       db.messages.push(shipMessage);
       io.to("room:"+r.id).emit("message",shipMessage);
