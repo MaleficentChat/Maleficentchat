@@ -3889,6 +3889,8 @@ app.post('/api/staff/applications/:id/grant',auth,featureAllowed('view_staff_das
       if(!ownerPower&&!["MOD","ADMIN","SUPER_ADMIN","COMMISSOR","INSTRUCTOR","COOWNER","OWNER"].includes(actorRankNow)){await client.query('ROLLBACK');return res.status(403).json({error:'Your current rank does not have staff-rank granting authority.'});}
 
       if(!ownerPower&&!hasFeature(actor,'staff_rank_assignment')){await client.query('ROLLBACK');return res.status(403).json({error:'You do not have rank-assignment permission.'});}
+      const assignableRanks=Array.isArray(db.settings?.staff_application_grant_ranks)?db.settings.staff_application_grant_ranks:["MOD"];
+      if(!ownerPower&&!assignableRanks.includes(requested)){await client.query('ROLLBACK');return res.status(403).json({error:'Your current rank permissions do not allow granting '+requested+'.'});}
       const hierarchy=["MEMBER","VIP","PREMIUM","ROYAL","MOD","ADMIN","SUPER_ADMIN","COMMISSOR","INSTRUCTOR","COOWNER","OWNER","DEVELOPER"];
       const hierarchyIndex=rank=>{const normalized=String(rank||"MEMBER").toUpperCase();return hierarchy.indexOf(normalized)<0?0:hierarchy.indexOf(normalized);};
       if(!ownerPower&&hierarchyIndex(requested)>hierarchyIndex("MOD")){await client.query('ROLLBACK');return res.status(403).json({error:'Your permissions allow granting Moderator or below only.'});}
