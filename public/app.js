@@ -444,7 +444,28 @@ async function syncLiveMessages(){
         const data=await api("/api/rooms/"+encodeURIComponent(roomId)+"/messages",{...(typeof AbortSignal!=="undefined"&&typeof AbortSignal.timeout==="function"?{signal:AbortSignal.timeout(7000)}:{})});
         if(String(state.currentRoom)===roomId&&Array.isArray(data.messages)){
           const incoming=data.messages;
-          const known=new Set((state.messages||[]).map(m=>String(m.id)));
+          const list=$("messages");
+          const incomingIds=incoming.map(m=>String(m.id));
+          const renderedIds=list?Array.from(list.querySelectorAll("[data-mid]")).map(el=>String(el.dataset.mid)):[];
+          const stateIds=(state.messages||[]).map(m=>String(m.id));
+          // The database history is authoritative. Rebuild if either the DOM or
+          // client state drifted; comparing only state.messages can leave a stale
+          // chat visible until the user switches rooms or reloads the page.
+          const sameIds=(a,b)=>a.length===b.length&&a.every((id,index)=>id===b[index]);
+          const byId=new Map((state.messages||[]).map(m=>[String(m.id),m]));
+          const stateMatches=incoming.length===stateIds.length&&incoming.every((m,index)=>String(m.id)===stateIds[index]);
+          const domMatches=sameIds(renderedIds,incomingIds);
+          if(list&&(!domMatches||!stateMatches)){
+            const wasNearBottom=list.scrollHeight-list.scrollTop-list.clientHeight<180;
+            state.messages=incoming;
+            list.innerHTML=incoming.map(messageHTML).join("");
+            if(wasNearBottom)list.scrollTop=list.scrollHeight;
+          }else{
+            state.messages=incoming;
+            // Update changed message content/metadata without needlessly rebuilding
+            // an already synchronized message list.
+            for(const message of incoming){
+              const escapedId=window.CSS&&typeof window.CSS.escape==="function"?window.CSS.escape(String(message.id)):String(message.id).replace(/["\\]/g,"\\          const known=new Set((state.messages||[]).map(m=>String(m.id)));
           const list=$("messages");
           for(const message of incoming){
             if(!known.has(String(message.id))){
@@ -469,6 +490,15 @@ async function syncLiveMessages(){
                 el.outerHTML=messageHTML(old);
                 const fresh=document.querySelector('[data-mid="'+CSS.escape(String(message.id))+'"]');
                 if(fresh)fresh.dataset.syncStamp=JSON.stringify([old.edited,old.deleted,old.reactions]);
+              }
+            }
+          }");
+              const el=list?.querySelector('[data-mid="'+escapedId+'"]');
+              const previous=byId.get(String(message.id));
+              if(el&&previous&&String(el.dataset.syncStamp||"")!==JSON.stringify([message.edited,message.deleted,message.reactions,message.text,message.attachment])){
+                el.outerHTML=messageHTML(message);
+                const fresh=list?.querySelector('[data-mid="'+escapedId+'"]');
+                if(fresh)fresh.dataset.syncStamp=JSON.stringify([message.edited,message.deleted,message.reactions,message.text,message.attachment]);
               }
             }
           }
@@ -499,10 +529,13 @@ async function syncLiveMessages(){
             String(m?.replyTo??""),JSON.stringify(m?.attachment??null),
             String(m?.deleted??""),String(m?.edited??"")
           ]);
-          const changed=previous.length!==incoming.length ||
-            previous.some((m,i)=>signature(m)!==signature(incoming[i]));
-          state.dmMessages=incoming;
           const list=$("dmMessages");
+          const renderedIds=list?Array.from(list.querySelectorAll("[data-mid]")).map(el=>String(el.dataset.mid)):[];
+          const incomingIds=incoming.map(m=>String(m.id));
+          const domMatches=renderedIds.length===incomingIds.length&&renderedIds.every((id,index)=>id===incomingIds[index]);
+          const changed=previous.length!==incoming.length ||
+            previous.some((m,i)=>signature(m)!==signature(incoming[i])) || !domMatches;
+          state.dmMessages=incoming;
           if(list&&changed){
             const wasNearBottom=list.scrollHeight-list.scrollTop-list.clientHeight<180;
             list.innerHTML=incoming.map(m=>dmMessageHTML(m,incoming,state.dmPeerUser||{})).join("");
