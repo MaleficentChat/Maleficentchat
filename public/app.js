@@ -1349,6 +1349,15 @@ function formatMentions(text){
 }
 
 function messageHTML(message) {
+  if(message?.welcomeBack && String(message.bot||message.username)==="Bot"){
+    return `<div class="message bot-welcome-message" data-mid="${esc(message.id)}">
+      <div class="bot-welcome-bubble">
+        <div class="bot-welcome-byline">🤖 Bot</div>
+        <div class="bot-welcome-glow">WELCOME BACK</div>
+        <div class="bot-welcome-username">${esc(message.welcomeTargetUsername||"")}</div>
+      </div>
+    </div>`;
+  }
   if(message.system){
     return `<div class="system-message" data-mid="${esc(message.id)}"><span>✦</span><b>${esc(message.text||'')}</b><small>${fmt(message.time)}</small></div>`;
   }
@@ -4402,7 +4411,8 @@ async function openBotManagementBot(botId){
 function openCommandGuide(){
   const groups=[
     {title:"🪄 Gold",items:[
-      ["/Abrakadabra","Randomly changes your Gold balance, within the site's balance limits."]
+      ["/Abrakadabra","Randomly changes your Gold balance, within the site's balance limits."],
+      ["/welcome @username","Post a glowing WELCOME BACK bubble for the named user."]
     ]},
     {title:"🛡️ Room controls",items:[
       ["/clear","Clear messages from the current room (subject to your configured rank permission)."]
