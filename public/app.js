@@ -429,9 +429,8 @@ function clearActionLock(){if(actionLockTimer)clearTimeout(actionLockTimer);acti
 let liveSyncTimer=null, liveRoomSyncBusy=false, liveDMSyncBusy=false, liveSyncLastInbox=0;
 async function syncLiveMessages(){
   if(!state.user||document.hidden)return;
-  try{
-    // Keep each channel on its own lock. A slow or rejected room-history
-    // request must never block private-message synchronization (or vice versa).
+  // Keep each channel on its own lock. A slow or rejected room-history
+  // request must never block private-message synchronization (or vice versa).
     if(state.currentRoom&&!liveRoomSyncBusy){
       liveRoomSyncBusy=true;
       try {
@@ -511,12 +510,13 @@ async function syncLiveMessages(){
       loadDMList().catch(()=>{});
       loadNotifications().catch(()=>{});
     }
-  }finally{}
 }
 let liveSyncWakeListenersBound=false;
 function startLiveSync(){
   if(liveSyncTimer)clearInterval(liveSyncTimer);
   liveSyncTimer=setInterval(syncLiveMessages,2500);
+  // Synchronize immediately instead of waiting for the first interval tick.
+  syncLiveMessages();
   // A hidden tab pauses polling; resume immediately when the user returns.
   // Bind once so repeated starts do not create duplicate listeners.
   if(!liveSyncWakeListenersBound){
