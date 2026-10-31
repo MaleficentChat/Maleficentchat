@@ -2120,7 +2120,7 @@ app.post("/api/rooms/:id/messages",auth,featureAllowed("send_messages"),upload.s
           "is buffering in 4K today. 📡"
         ];
         const roast=roasts[Math.floor(Math.random()*roasts.length)];
-        botMessage={id:id(),roomId:String(r.id),userId:null,username:"Bot",displayName:"Bot",rank:"BOT",system:false,isBot:true,bot:"Bot",roastCommand:true,roastTargetUsername:target.username,text:"🔥 ROAST INCOMING 🔥\\n@"+target.username+" "+roast,reactions:{},edited:false,deleted:false,pinned:false,time:Date.now(),delivered:true};
+        botMessage={id:id(),roomId:String(r.id),userId:null,username:"Bot",displayName:"Bot",rank:"BOT",system:false,isBot:true,bot:"Bot",roastCommand:true,roastTargetUsername:target.username,text:"@"+target.username+" "+roast,reactions:{},edited:false,deleted:false,pinned:false,time:Date.now(),delivered:true};
       }else{
         const auras=[
           {color:"#a855f7",name:"SHADOW MONARCH",vibe:"mysterious and unstoppable"},
