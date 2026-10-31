@@ -1367,6 +1367,32 @@ function messageHTML(message) {
       </div>
     </div>`;
   }
+  if(message?.bankCommand && String(message.bot||message.username)==="Bot"){
+    return `<div class="message bot-welcome-message bot-bank-message" data-mid="${esc(message.id)}">
+      <div class="bot-welcome-bubble" style="border-color:#fbbf24;box-shadow:0 0 16px #fbbf2433">
+        <div class="bot-welcome-byline">🤖 Bot · BANK</div>
+        <div class="bot-welcome-glow" style="color:#fcd34d;text-shadow:0 0 10px #f59e0b">🏦 ACCOUNT DETAILS</div>
+        <div class="bot-welcome-username">@${esc(message.bankUsername||"User")}</div>
+        <div style="display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-top:8px;font-size:13px">
+          <span>⭐ Level <b>${Math.max(1,Number(message.bankLevel)||1)}</b></span>
+          <span>✨ XP <b>${Math.max(0,Number(message.bankXp)||0).toLocaleString()}</b></span>
+          <span>🪙 Gold <b>${Math.max(0,Number(message.bankGold)||0).toLocaleString()}</b></span>
+        </div>
+      </div>
+    </div>`;
+  }
+  if(message?.stealCommand && String(message.bot||message.username)==="Bot"){
+    const outcome=String(message.stealOutcome||"");
+    const color=outcome==="success"?"#5cffb0":outcome==="reverse"?"#c084fc":outcome==="bail"?"#ff7373":"#fbbf24";
+    const heading=outcome==="success"?"💰 HEIST SUCCESS":outcome==="reverse"?"🔄 REVERSE LOOT":outcome==="bail"?"🚨 BAIL FEE":"🪙 EMPTY VAULT";
+    return `<div class="message bot-welcome-message bot-steal-message" data-mid="${esc(message.id)}">
+      <div class="bot-welcome-bubble" style="border-color:${color};box-shadow:0 0 16px ${color}33">
+        <div class="bot-welcome-byline">🤖 Bot · GOLD HEIST</div>
+        <div class="bot-welcome-glow" style="color:${color};text-shadow:0 0 10px ${color}">${heading}</div>
+        <div class="bot-welcome-username">${esc(message.text||"")}</div>
+      </div>
+    </div>`;
+  }
   if(message?.roastCommand && String(message.bot||message.username)==="Bot"){
     return `<div class="message bot-welcome-message bot-roast-message" data-mid="${esc(message.id)}">
       <div class="bot-welcome-bubble">
@@ -4484,6 +4510,8 @@ function openCommandGuide(){
     {title:"🪄 Gold",items:[
       ["/Abrakadabra","Randomly changes your Gold balance, within the site's balance limits."],
       ["/welcome @username","Post a glowing WELCOME BACK bubble for the named user."],
+      ["/bank [username]","Show a Bot bank card with the account XP, level, and Gold. Leave username blank to check your own."],
+      ["/steal username","Try to steal Gold. Outcomes can be a successful heist, a bail fee, or reverse loot."],
       ["/ship @username","Show Bot’s compatibility score and glowing percentage bar for you and that user."]
     ]},
     {title:"🛡️ Room controls",items:[
