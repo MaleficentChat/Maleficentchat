@@ -1082,26 +1082,17 @@ async function loadRooms() {
 }
 
 function joinedRoomIds(){
-  try{return new Set(JSON.parse(safeStorage.getItem('mc_my_rooms_'+(state.user?.id||'guest'))||'[]').map(String));}catch{return new Set();}
+  try{return new Set(JSON.parse(safeStorage.getItem("mc_my_rooms_"+(state.user?.id||"guest"))||"[]").map(String));}catch{return new Set();}
 }
 function rememberMyRoom(id){
-  const ids=joinedRoomIds();ids.add(String(id));safeStorage.setItem('mc_my_rooms_'+(state.user?.id||'guest'),JSON.stringify([...ids]));
-  safeStorage.setItem('mc_last_room_'+(state.user?.id||'guest'),String(id));
+  const ids=joinedRoomIds();ids.add(String(id));safeStorage.setItem("mc_my_rooms_"+(state.user?.id||"guest"),JSON.stringify([...ids]));
+  safeStorage.setItem("mc_last_room_"+(state.user?.id||"guest"),String(id));
 }
-function setRoomListMode(mode){
-  state.roomListMode=mode==='mine'?'mine':'all';
-  $('allRoomsBtn')?.classList.toggle('active',state.roomListMode==='all');
-  $('myRoomsBtn')?.classList.toggle('active',state.roomListMode==='mine');
-  renderRooms();
-}
-$('allRoomsBtn')?.addEventListener('click',()=>setRoomListMode('all'));
-$('myRoomsBtn')?.addEventListener('click',()=>setRoomListMode('mine'));
 function renderRooms() {
   const search=(($('roomSearch')?.value)||'').trim().toLowerCase();
   const visited=joinedRoomIds();
   const allRooms=Array.isArray(state.rooms)?state.rooms:[];
   const rooms=allRooms.filter(room=>{
-    if(state.roomListMode==='mine'&&String(room.ownerId)!==String(state.user?.id)&&!visited.has(String(room.id)))return false;
     const hay=[room.name,room.description,room.category].join(' ').toLowerCase();
     return !search || hay.includes(search);
   });
@@ -3592,6 +3583,22 @@ async function loadStaff() {
 
       
 `;
+
+    // Put staff dashboard sections in the numbered order requested in the mobile screenshot.
+    const staffRoot=$("staff");
+    const statsGrid=staffRoot?.querySelector(".grid2");
+    const statsCard=statsGrid?.children[0], filterCard=statsGrid?.children[1];
+    const orderedStaffSections=[
+      [statsCard,"staff-order-1"],[filterCard,"staff-order-2"],
+      [staffRoot?.querySelector(".ip-inspection-card")?.closest("details"),"staff-order-3"],
+      [staffRoot?.querySelector("#systemNotificationsDropdown"),"staff-order-4"],
+      [staffRoot?.querySelector(".cleared-room-evidence-card")?.closest("details"),"staff-order-5"],
+      [staffRoot?.querySelector(".under-construction-admin-card")?.closest("details"),"staff-order-6"],
+      [staffRoot?.querySelector("#staffApplicationsDropdown"),"staff-order-7"],
+      [staffRoot?.querySelector(".site-hard-refresh-card"),"staff-order-8"]
+    ];
+    orderedStaffSections.forEach(([node,cls])=>{if(node){node.classList.add(cls);staffRoot.appendChild(node);}});
+    if(statsGrid&&!statsGrid.children.length)statsGrid.remove();
     $("hardRefreshSiteButton")?.addEventListener("click",hardRefreshSiteCache);
     if(['INSTRUCTOR','COOWNER','OWNER','DEVELOPER'].includes(String(state.user?.rank||'').toUpperCase())){
       $('refreshClearedRoomEvidence')?.addEventListener('click',()=>loadClearedRoomEvidence());
@@ -4997,24 +5004,17 @@ async function loadSettings(){
       <div class="panel"><h3>👤 Account</h3><p class="muted">Manage the information connected to your account.</p><div class="settings-list">
         <button class="settings-row" onclick="editProfileInfo()"><span>🪪</span><b>Profile information</b><small>Display name, pronouns and basic details</small><strong>›</strong></button>
         <button class="settings-row" onclick="editAboutMe()"><span>💬</span><b>About Me</b><small>Update your profile description</small><strong>›</strong></button>
-        <button class="settings-row" onclick="editProfileStyle()"><span>🎨</span><b>Profile appearance</b><small>Colors, theme, badge, pronouns and background</small><strong>›</strong></button>
         <button class="settings-row" onclick="editEmail()"><span>✉</span><b>Email</b><small>Optional recovery/contact email</small><strong>›</strong></button>
         <button class="settings-row" onclick="changePasswordModal()"><span>🔑</span><b>Change password</b><small>Update your login password</small><strong>›</strong></button>
       </div></div>
       <div class="panel"><h3>🔒 Privacy & visibility</h3><label><input type="checkbox" id="setLastSeen" ${s.lastSeen!==false?'checked':''}> Show last seen</label><label><input type="checkbox" id="setOnline" ${s.online!==false?'checked':''}> Show online status</label><button class="primary" id="savePrivacy">Save privacy</button></div>
     </div>
-    <div class="panel"><h3>🎨 Profile colors</h3><p class="muted">Choose extra colors for your profile and profile banner.</p><label>Profile color <input type="color" id="profileColor" value="${esc(state.user.profileColor||'#9b5cff')}"></label><label>Profile accent <input type="color" id="profileAccentColor" value="${esc(s.profileAccentColor||'#ff4fd8')}"></label><button class="primary" id="saveProfileColors">Save profile colors</button></div>
-    <div class="panel"><h3>🎨 Appearance</h3><p class="muted">Personalize how Maleficent Chat looks for you.</p><div class="theme-picker">${['obsidian','midnight','forest','rose','lavender','sunset','ocean'].map(t=>`<button type="button" class="theme-chip ${s.theme===t?'active':''}" data-theme-choice="${t}"><span class="theme-dot"></span><b>${t[0].toUpperCase()+t.slice(1)}</b></button>`).join('')}</div><select id="v3Theme" class="hidden"><option>obsidian</option><option>midnight</option><option>forest</option><option>rose</option><option>lavender</option><option>sunset</option><option>ocean</option></select><select id="v3Font"><option value="small">Small text</option><option value="medium">Medium text</option><option value="large">Large text</option></select><label><input type="checkbox" id="v3Compact"> Compact mode</label><label><input type="checkbox" id="v3Motion"> Reduced animation</label><label><input type="checkbox" id="v3Contrast"> High contrast</label><label>Username color <input type="color" id="v3UsernameColor" value="${esc(s.usernameColor||'#9b5cff')}"></label><label>Chat bubble color <input type="color" id="v3BubbleColor" value="${esc(s.bubbleColor||'#33244f')}"></label><label>Chat font <select id="v3ChatFont"><option>Inter</option><option>Georgia</option><option>Monospace</option><option>Arial</option><option>Trebuchet MS</option></select></label><label>Message effects <select id="v3Effects"><option value="none">None</option><option value="soft">Soft glow</option><option value="sparkle">Sparkle</option></select></label><button class="primary" id="saveAppearance">Save appearance</button></div>
     <div class="panel"><h3>🔔 Notifications</h3><p class="muted">Turn off notification types you do not want to receive.</p><label><input type="checkbox" id="nMessages" ${np.messages!==false?'checked':''}> Private messages</label><label><input type="checkbox" id="nMentions" ${np.mentions!==false?'checked':''}> Mentions</label><label><input type="checkbox" id="nReplies" ${np.replies!==false?'checked':''}> Replies</label><label><input type="checkbox" id="nSecurity" ${np.security!==false?'checked':''}> Security alerts</label><label><input type="checkbox" id="nStaff" ${np.staff!==false?'checked':''}> Staff / reports</label><label><input type="checkbox" id="nGamification" ${np.gamification!==false?'checked':''}> Gold / level / achievements</label><label><input type="checkbox" id="nOther" ${np.other!==false?'checked':''}> Other notifications</label><button class="primary" id="saveNotifications">Save notifications</button></div>
     <div class="panel"><h3>🛡️ Security & sessions</h3><p class="muted">${sessions.length} active session record${sessions.length===1?'':'s'}.</p><button class="mini" id="viewLoginHistory">View login history</button><button class="mini danger" id="logoutAllDevices">Log out all other devices</button></div>
 <div class="panel danger-panel"><h3>⚠️ Account actions</h3><p class="muted">Deleting your account removes your account and personal conversations permanently.</p><button class="mini danger" onclick="deleteAccount()">Delete my account</button></div>
-    <section class="gold-economy-section settings-gold-boutique"><div class="gold-economy-heading"><div><h3>🪙 Gold Boutique</h3><p class="muted">Personalize your profile with frames, themes and collectible badges.</p></div><div class="gold-balance-pill">Balance <b id="economyGoldBalance">—</b> 🪙</div></div><div id="goldEconomyRoot"><p class="muted">Loading cosmetics…</p></div></section>`;
-  await loadGoldEconomy();
-  $('v3Theme').value=s.theme||'obsidian'; $('v3Font').value=s.fontSize||'medium'; $('v3ChatFont').value=s.chatFont||'Inter'; $('v3Effects').value=s.messageEffects||'none'; $('v3Compact').checked=!!s.compactMode; $('v3Motion').checked=!!s.reducedMotion; $('v3Contrast').checked=!!s.highContrast; applyTheme(s.theme||'obsidian');
-  document.querySelectorAll('[data-theme-choice]').forEach(b=>b.onclick=async()=>{ const theme=b.dataset.themeChoice; $('v3Theme').value=theme; applyTheme(theme); document.querySelectorAll('[data-theme-choice]').forEach(x=>x.classList.toggle('active',x===b)); try{const r=await api('/api/settings',{method:'PUT',body:JSON.stringify({theme})});state.user.settings={...(state.user.settings||{}),...(r.settings||{}),theme};state.user.theme=theme;toast(theme[0].toUpperCase()+theme.slice(1)+' theme applied and saved.');}catch(e){toast('Theme preview applied, but saving failed: '+e.message);} });
-  $('saveProfileColors').onclick=async()=>{try{const r=await api('/api/profile',{method:'PUT',body:JSON.stringify({profileColor:$('profileColor').value,profileAccentColor:$('profileAccentColor').value})});state.user=r.user;toast('Profile colors saved.');await loadProfile(state.user);}catch(e){toast(e.message)}};
+`;
+  applyTheme(s.theme||'obsidian');
    $('savePrivacy').onclick=async()=>{try{await api('/api/profile',{method:'PUT',body:JSON.stringify({privacy:{lastSeen:$('setLastSeen').checked,online:$('setOnline').checked}})});toast('Privacy saved.');}catch(e){toast(e.message)}};
-  $('saveAppearance').onclick=async()=>{try{const payload={theme:$('v3Theme').value,fontSize:$('v3Font').value,compactMode:$('v3Compact').checked,reducedMotion:$('v3Motion').checked,highContrast:$('v3Contrast').checked,usernameColor:$('v3UsernameColor').value,chatFont:$('v3ChatFont').value,messageEffects:$('v3Effects').value,bubbleColor:$('v3BubbleColor').value};const r=await api('/api/settings',{method:'PUT',body:JSON.stringify(payload)});state.user.settings={...(state.user.settings||{}),...(r.settings||payload),theme:payload.theme};applyTheme(state.user.settings.theme);applyUserAppearance();renderMessages();toast('Appearance saved and applied.');}catch(e){toast(e.message)}};
   $('saveNotifications').onclick=async()=>{await api('/api/notifications/preferences',{method:'PUT',body:JSON.stringify({messages:$('nMessages').checked,mentions:$('nMentions').checked,replies:$('nReplies').checked,security:$('nSecurity').checked,staff:$('nStaff').checked,gamification:$('nGamification').checked,other:$('nOther').checked})});toast('Notification preferences saved.');};
   $('viewLoginHistory').onclick=async()=>{const h=await api('/api/security/login-history');modal(`<h2>Login history</h2>${(h.history||[]).map(x=>`<div class="card"><b>${fmt(x.time)}</b><div class="muted">${esc(x.ip||'Unknown device')}</div></div>`).join('')||'<p class="muted">No login history.</p>'}`);};
   $('logoutAllDevices').onclick=async()=>{if(!confirm('Log out all sessions?'))return;try{await api('/api/security/logout-all',{method:'POST'});location.reload();}catch(e){toast(e.message)}};
