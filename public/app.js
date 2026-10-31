@@ -446,7 +446,6 @@ async function syncLiveMessages(){
           const incoming=data.messages;
           const list=$("messages");
           const incomingIds=incoming.map(m=>String(m.id));
-          const list=$("messages");
           const renderedIds=list?Array.from(list.querySelectorAll("[data-mid]")).map(el=>String(el.dataset.mid)):[];
           const stateIds=(state.messages||[]).map(m=>String(m.id));
           const sameIds=(a,b)=>a.length===b.length&&a.every((id,index)=>id===b[index]);
