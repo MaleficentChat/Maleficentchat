@@ -1567,7 +1567,7 @@ app.post("/api/me/status",auth,(req,res)=>{
 app.post("/api/me/hide-mode",auth,(req,res)=>{
   const modeRanks=db.settings?.mode_management?.ghost;if(Array.isArray(modeRanks)&&!modeRanks.includes(String(current(req)?.rank||"").toUpperCase())&&String(current(req)?.rank||"").toUpperCase()!=="DEVELOPER")return res.status(403).json({error:"Your rank cannot use Ghost Mode."});
   const u=current(req),rank=String(u?.rank||"").toUpperCase();
-  if(!["OWNER","DEVELOPER"].includes(rank))return res.status(403).json({error:"Hide mode is available only to Owner and Developer."});
+  if(!Array.isArray(db.settings?.mode_management?.ghost)&&!["OWNER","DEVELOPER"].includes(rank))return res.status(403).json({error:"Ghost Mode is not enabled for your rank."});
   u.hideMode=!!req.body?.enabled;
   if(u.hideMode){u.deadMode=false;u.invisible=false;}
   save();log(u,"HIDE_MODE",u.username,{enabled:u.hideMode});io.emit("presence");
@@ -1576,7 +1576,7 @@ app.post("/api/me/hide-mode",auth,(req,res)=>{
 app.post("/api/me/dead-mode",auth,(req,res)=>{
   const modeRanks=db.settings?.mode_management?.dead;if(Array.isArray(modeRanks)&&!modeRanks.includes(String(current(req)?.rank||"").toUpperCase())&&String(current(req)?.rank||"").toUpperCase()!=="DEVELOPER")return res.status(403).json({error:"Your rank cannot use Dead Mode."});
   const u=current(req),rank=String(u?.rank||"").toUpperCase();
-  if(!["OWNER","DEVELOPER"].includes(rank))return res.status(403).json({error:"Dead mode is available only to Owner and Developer."});
+  if(!Array.isArray(db.settings?.mode_management?.dead)&&!["OWNER","DEVELOPER"].includes(rank))return res.status(403).json({error:"Dead Mode is not enabled for your rank."});
   const enable=!!req.body?.enabled;
   if(enable && !u.deadMode)u.deadModePreviousInvisible=!!u.invisible;
   u.deadMode=enable;
@@ -3880,7 +3880,7 @@ app.post('/api/staff/applications/:id/grant',auth,featureAllowed('view_staff_das
       const actorRankNow=String(actor.rank||"").toUpperCase();
       if(!ownerPower&&!["MOD","ADMIN","SUPER_ADMIN","COMMISSOR","INSTRUCTOR","COOWNER","OWNER"].includes(actorRankNow)){await client.query('ROLLBACK');return res.status(403).json({error:'Your current rank does not have staff-rank granting authority.'});}
 
-      if(!hasFeature(actor,'staff_rank_assignment')){await client.query('ROLLBACK');return res.status(403).json({error:'You do not have rank-assignment permission.'});}
+      if(!ownerPower&&!hasFeature(actor,'staff_rank_assignment')){await client.query('ROLLBACK');return res.status(403).json({error:'You do not have rank-assignment permission.'});}
       if(!ownerPower&&rankOrder[requested]>rankOrder.MOD){await client.query('ROLLBACK');return res.status(403).json({error:'Your permissions allow granting Moderator or below only.'});}
       if(!ownerPower&&rankOrder[String(target.rank).toUpperCase()]>=rankOrder[String(actor.rank).toUpperCase()]){await client.query('ROLLBACK');return res.status(403).json({error:'You cannot change an equal or higher rank.'});}
       await client.query("UPDATE users SET rank=$1 WHERE id=$2",[requested.toLowerCase(),Number(target.id)]);
