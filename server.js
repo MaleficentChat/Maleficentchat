@@ -2328,7 +2328,15 @@ app.post("/api/rooms/:id/messages",auth,featureAllowed("send_messages"),upload.s
   await pool.query(`INSERT INTO room_messages(id,room_id,user_id,data,created_at) VALUES($1,$2,$3,$4::jsonb,NOW())`,
     [m.id,Number(r.id),Number(u.id),JSON.stringify(m)]);
   db.messages.push(m);
-  io.to("room:"+r.id).emit("message",m);
+  // Fan out to the room subscription AND to each participant's authenticated
+  // user room. Socket.IO unions targets, so subscribed clients receive one copy.
+  let roomDelivery=io.to("room:"+r.id);
+  for(const member of db.users){
+    if(String(member.roomId)===String(r.id) && member.id!=null){
+      roomDelivery=roomDelivery.to("user:"+member.id);
+    }
+  }
+  roomDelivery.emit("message",m);
   res.json({message:m,autoMuted});
 
   setImmediate(async()=>{
@@ -3061,7 +3069,10 @@ app.post("/api/dm/:id",auth,featureAllowed("private_messages"),upload.single("fi
   notify(v.id,"private-message","New private message",`@${u.username} sent you a private message.`);
   // Notify every active device for both participants. The client deduplicates
   // by message ID, so the sender can safely reconcile the optimistic/API copy.
-  io.to("user:"+u.id).to("user:"+v.id).emit("dm",m);
+  // Send separately to both authenticated user rooms so every active device
+  // for each participant receives the new private message.
+  io.to("user:"+u.id).emit("dm",m);
+  io.to("user:"+v.id).emit("dm",m);
   res.json({message:m});
 });
 
