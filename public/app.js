@@ -476,25 +476,26 @@ async function syncLiveMessages(){
       try{
         const data=await api("/api/dm/"+encodeURIComponent(peerId));
         if(String(state.dmUserId)===peerId&&Array.isArray(data.messages)){
+          // PostgreSQL history is authoritative. Reconcile both message order and
+          // sender/content fields, not just IDs; otherwise stale bubbles can keep
+          // showing the wrong sender or an obsolete message on one device.
           const incoming=data.messages;
-          const known=new Set((state.dmMessages||[]).map(m=>String(m.id)));
+          const previous=Array.isArray(state.dmMessages)?state.dmMessages:[];
+          const signature=m=>JSON.stringify([
+            String(m?.id??""),String(m?.from??""),String(m?.to??""),
+            String(m?.text??""),String(m?.time??""),String(m?.read??""),
+            String(m?.replyTo??""),JSON.stringify(m?.attachment??null),
+            String(m?.deleted??""),String(m?.edited??"")
+          ]);
+          const changed=previous.length!==incoming.length ||
+            previous.some((m,i)=>signature(m)!==signature(incoming[i]));
+          state.dmMessages=incoming;
           const list=$("dmMessages");
-          for(const message of incoming){
-            if(!known.has(String(message.id))){
-              state.dmMessages=Array.isArray(state.dmMessages)?state.dmMessages:[];
-              state.dmMessages.push(message);
-              if(list)list.insertAdjacentHTML("beforeend",dmMessageHTML(message,state.dmMessages,state.dmPeerUser||{}));
-            }
+          if(list&&changed){
+            const wasNearBottom=list.scrollHeight-list.scrollTop-list.clientHeight<180;
+            list.innerHTML=incoming.map(m=>dmMessageHTML(m,incoming,state.dmPeerUser||{})).join("");
+            if(wasNearBottom)list.scrollTop=list.scrollHeight;
           }
-          const incomingIds=new Set(incoming.map(m=>String(m.id)));
-          if((state.dmMessages||[]).some(m=>!incomingIds.has(String(m.id)))){
-            state.dmMessages=incoming;
-            if(list)list.innerHTML=incoming.map(m=>dmMessageHTML(m,incoming,state.dmPeerUser||{})).join("");
-          }else{
-            const byId=new Map(incoming.map(m=>[String(m.id),m]));
-            state.dmMessages=(state.dmMessages||[]).map(m=>byId.get(String(m.id))||m);
-          }
-          if(list&&incoming.length&&list.scrollHeight-list.scrollTop-list.clientHeight<180)list.scrollTop=list.scrollHeight;
           if(peerId!=="system-bot")api("/api/dm/"+encodeURIComponent(peerId)+"/read",{method:"POST"}).catch(()=>{});
         }
       }catch(error){console.warn("Live private-message sync failed:",error?.message||error);}
@@ -600,7 +601,7 @@ async function start() {
   });
 
   state.socket.on('rooms_updated', async()=>{try{await loadRooms();renderRooms();}catch{}});
-  state.socket.on("connect",()=>{loadRooms().catch(()=>{});authenticateSocketAndJoinRoom(state.socket,false).catch(()=>{});});
+  state.socket.on("connect",()=>{loadRooms().catch(()=>{});});
 
   state.socket.on("presence", () => {
     // Presence changes frequently. Do not refetch the room directory on every
