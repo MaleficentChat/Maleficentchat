@@ -3965,3 +3965,13 @@ body.party-mode-active .msg.dm-msg .chat-gif{
 .feature-block-row b{font-size:13px}
 .feature-block-row small{font-size:11px;color:var(--muted,#9ca3af)}
 .feature-block-toggle{width:18px;height:18px;accent-color:#c084fc;flex:0 0 auto}
+
+
+/* Bot welcome-back message bubble */
+.bot-welcome-message{display:flex;justify-content:center;width:100%;margin:14px 0;padding:0 8px;box-sizing:border-box}
+.bot-welcome-bubble{width:min(100%,420px);box-sizing:border-box;text-align:center;padding:18px 20px 20px;border-radius:18px;border:1px solid rgba(255,79,216,.48);background:radial-gradient(ellipse at 50% 0%,rgba(155,92,255,.22),transparent 68%),linear-gradient(145deg,rgba(19,15,34,.98),rgba(12,12,22,.98));box-shadow:0 0 10px rgba(155,92,255,.25),inset 0 0 22px rgba(255,79,216,.05)}
+.bot-welcome-byline{font-size:12px;font-weight:700;letter-spacing:.08em;color:#c9b6ff;margin-bottom:13px}
+.bot-welcome-glow{font-weight:900;font-size:clamp(20px,5vw,29px);letter-spacing:.12em;line-height:1.25;color:#fff;text-shadow:0 0 5px #fff,0 0 12px #ff4fd8,0 0 25px #9b5cff,0 0 38px rgba(255,79,216,.8);animation:botWelcomeGlow 2s ease-in-out infinite alternate}
+.bot-welcome-username{font-weight:800;font-size:clamp(17px,4.5vw,22px);margin-top:10px;color:#f4dcff;text-shadow:0 0 8px rgba(155,92,255,.8);overflow-wrap:anywhere}
+@keyframes botWelcomeGlow{from{filter:brightness(.9);text-shadow:0 0 4px #fff,0 0 9px #ff4fd8,0 0 18px #9b5cff}to{filter:brightness(1.25);text-shadow:0 0 7px #fff,0 0 16px #ff4fd8,0 0 30px #9b5cff,0 0 42px rgba(255,79,216,.85)}}
+@media(prefers-reduced-motion:reduce){.bot-welcome-glow{animation:none}}
