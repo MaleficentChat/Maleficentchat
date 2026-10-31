@@ -2060,10 +2060,7 @@ app.post("/api/rooms/:id/messages",auth,featureAllowed("send_messages"),upload.s
       const actorRank=String(u.rank||"MEMBER").toUpperCase();
       if(actorRank!=="DEVELOPER"&&!allowedRanks.includes(actorRank))return res.status(403).json({error:"Your rank cannot use this command."});
     }
-    const commandSettings=db.settings?.command_management||{}, requestedCommand=commandKey;
-    const commandEntry=Object.entries(commandSettings).find(([key,value])=>String(value?.name||key).toLowerCase()===requestedCommand);
-    const canonicalCommand=commandEntry?commandEntry[0]:requestedCommand;
-    if(commandEntry){const allowed=Array.isArray(commandEntry[1]?.ranks)?commandEntry[1].ranks:["MEMBER","VIP","PREMIUM","ROYAL","MOD","ADMIN","SUPER_ADMIN","COMMISSOR","INSTRUCTOR","COOWNER","OWNER"];if(!allowed.includes(String(u.rank||"").toUpperCase())&&String(u.rank||"").toUpperCase()!=="DEVELOPER")return res.status(403).json({error:"Your rank cannot use this command."});}
+    const canonicalCommand=commandKey;
 
     if(canonicalCommand==="anonymous"){
       const match=args.match(/^@?([a-z0-9_]{2,24})\s+([\s\S]+)$/i);
