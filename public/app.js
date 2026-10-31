@@ -431,59 +431,81 @@ async function syncLiveMessages(){
   if(liveSyncBusy||!state.user||document.hidden)return;
   liveSyncBusy=true;
   try{
+    // Keep room and DM sync isolated: a stale room-access token must not
+    // prevent private messages from being refreshed in the same cycle.
     if(state.currentRoom){
       const roomId=String(state.currentRoom);
-      const data=await api("/api/rooms/"+encodeURIComponent(roomId)+"/messages");
-      if(String(state.currentRoom)===roomId&&Array.isArray(data.messages)){
-        const incoming=data.messages;
-        const known=new Set((state.messages||[]).map(m=>String(m.id)));
-        const list=$("messages");
-        for(const message of incoming){
-          if(!known.has(String(message.id))){
-            state.messages=Array.isArray(state.messages)?state.messages:[];
-            state.messages.push(message);
-            if(list)list.insertAdjacentHTML("beforeend",messageHTML(message));
+      try{
+        const data=await api("/api/rooms/"+encodeURIComponent(roomId)+"/messages");
+        if(String(state.currentRoom)===roomId&&Array.isArray(data.messages)){
+          const incoming=data.messages;
+          const known=new Set((state.messages||[]).map(m=>String(m.id)));
+          const list=$("messages");
+          for(const message of incoming){
+            if(!known.has(String(message.id))){
+              state.messages=Array.isArray(state.messages)?state.messages:[];
+              state.messages.push(message);
+              if(list)list.insertAdjacentHTML("beforeend",messageHTML(message));
+            }
           }
+          const incomingIds=new Set(incoming.map(m=>String(m.id)));
+          if((state.messages||[]).some(m=>!incomingIds.has(String(m.id)))){
+            state.messages=incoming;
+            if(list)list.innerHTML=incoming.map(messageHTML).join("");
+          }else{
+            const byId=new Map(incoming.map(m=>[String(m.id),m]));
+            state.messages=(state.messages||[]).map(m=>byId.get(String(m.id))||m);
+            // Reflect edits/reactions from the authoritative history without
+            // replacing the whole list on every poll.
+            for(const message of incoming){
+              const el=document.querySelector('[data-mid="'+CSS.escape(String(message.id))+'"]');
+              const old=(state.messages||[]).find(m=>String(m.id)===String(message.id));
+              if(el&&old&&String(el.dataset.syncStamp||"")!==JSON.stringify([old.edited,old.deleted,old.reactions])){
+                el.outerHTML=messageHTML(old);
+                const fresh=document.querySelector('[data-mid="'+CSS.escape(String(message.id))+'"]');
+                if(fresh)fresh.dataset.syncStamp=JSON.stringify([old.edited,old.deleted,old.reactions]);
+              }
+            }
+          }
+          if(list&&incoming.length&&list.scrollHeight-list.scrollTop-list.clientHeight<180)list.scrollTop=list.scrollHeight;
         }
-        // Keep deletions/edits synchronized without rebuilding the view every poll.
-        const incomingIds=new Set(incoming.map(m=>String(m.id)));
-        if((state.messages||[]).some(m=>!incomingIds.has(String(m.id)))){
-          state.messages=incoming;
-          if(list)list.innerHTML=incoming.map(messageHTML).join("");
-        }else{
-          const byId=new Map(incoming.map(m=>[String(m.id),m]));
-          state.messages=(state.messages||[]).map(m=>byId.get(String(m.id))||m);
-        }
-        if(list&&incoming.length&&list.scrollHeight-list.scrollTop-list.clientHeight<180)list.scrollTop=list.scrollHeight;
-      }
+      }catch(error){console.warn("Live room sync failed (DM sync will continue):",error?.message||error);}
     }
-    if(state.dmUserId&&state.dmPeerUser){
+    if(state.dmUserId){
       const peerId=String(state.dmUserId);
-      const data=await api("/api/dm/"+encodeURIComponent(peerId));
-      if(String(state.dmUserId)===peerId&&Array.isArray(data.messages)){
-        const incoming=data.messages;
-        const known=new Set((state.dmMessages||[]).map(m=>String(m.id)));
-        const list=$("dmMessages");
-        for(const message of incoming){
-          if(!known.has(String(message.id))){
-            state.dmMessages=Array.isArray(state.dmMessages)?state.dmMessages:[];
-            state.dmMessages.push(message);
-            if(list)list.insertAdjacentHTML("beforeend",dmMessageHTML(message,state.dmMessages,state.dmPeerUser));
+      try{
+        const data=await api("/api/dm/"+encodeURIComponent(peerId));
+        if(String(state.dmUserId)===peerId&&Array.isArray(data.messages)){
+          const incoming=data.messages;
+          const known=new Set((state.dmMessages||[]).map(m=>String(m.id)));
+          const list=$("dmMessages");
+          for(const message of incoming){
+            if(!known.has(String(message.id))){
+              state.dmMessages=Array.isArray(state.dmMessages)?state.dmMessages:[];
+              state.dmMessages.push(message);
+              if(list)list.insertAdjacentHTML("beforeend",dmMessageHTML(message,state.dmMessages,state.dmPeerUser||{}));
+            }
           }
+          const incomingIds=new Set(incoming.map(m=>String(m.id)));
+          if((state.dmMessages||[]).some(m=>!incomingIds.has(String(m.id)))){
+            state.dmMessages=incoming;
+            if(list)list.innerHTML=incoming.map(m=>dmMessageHTML(m,incoming,state.dmPeerUser||{})).join("");
+          }else{
+            const byId=new Map(incoming.map(m=>[String(m.id),m]));
+            state.dmMessages=(state.dmMessages||[]).map(m=>byId.get(String(m.id))||m);
+          }
+          if(list&&incoming.length&&list.scrollHeight-list.scrollTop-list.clientHeight<180)list.scrollTop=list.scrollHeight;
+          if(peerId!=="system-bot")api("/api/dm/"+encodeURIComponent(peerId)+"/read",{method:"POST"}).catch(()=>{});
         }
-        const incomingIds=new Set(incoming.map(m=>String(m.id)));
-        if((state.dmMessages||[]).some(m=>!incomingIds.has(String(m.id)))){
-          state.dmMessages=incoming;
-          if(list)list.innerHTML=incoming.map(m=>dmMessageHTML(m,incoming,state.dmPeerUser)).join("");
-        }else state.dmMessages=(state.dmMessages||[]).map(m=>incoming.find(n=>String(n.id)===String(m.id))||m);
-        if(list&&incoming.length&&list.scrollHeight-list.scrollTop-list.clientHeight<180)list.scrollTop=list.scrollHeight;
-        api("/api/dm/"+encodeURIComponent(peerId)+"/read",{method:"POST"}).catch(()=>{});
-      }
+      }catch(error){console.warn("Live private-message sync failed:",error?.message||error);}
     }
     const now=Date.now();
-    if(now-liveSyncLastInbox>15000){liveSyncLastInbox=now;loadDMList().catch(()=>{});loadNotifications().catch(()=>{});}
-  }catch(error){console.warn("Live message sync retry:",error?.message||error);}
-  finally{liveSyncBusy=false;}
+    if(now-liveSyncLastInbox>15000){
+      liveSyncLastInbox=now;
+      loadDMList().catch(()=>{});
+      loadNotifications().catch(()=>{});
+    }
+  }finally{liveSyncBusy=false;}
 }
 function startLiveSync(){
   if(liveSyncTimer)clearInterval(liveSyncTimer);
