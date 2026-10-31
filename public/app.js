@@ -1387,7 +1387,7 @@ function messageHTML(message) {
     const heading=outcome==="success"?"💰 HEIST SUCCESS":outcome==="reverse"?"🔄 REVERSE LOOT":outcome==="bail"?"🚨 BAIL FEE":"🪙 EMPTY VAULT";
     return `<div class="message bot-welcome-message bot-steal-message" data-mid="${esc(message.id)}">
       <div class="bot-welcome-bubble" style="border-color:${color};box-shadow:0 0 16px ${color}33">
-        <div class="bot-welcome-byline">🤖 Bot · GOLD HEIST</div>
+        <div class="bot-welcome-byline">🤖 Bot</div>
         <div class="bot-welcome-glow" style="color:${color};text-shadow:0 0 10px ${color}">${heading}</div>
         <div class="bot-welcome-username">${esc(message.text||"")}</div>
       </div>
