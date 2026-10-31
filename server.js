@@ -761,7 +761,7 @@ app.get("/api/under-construction/status",async(req,res)=>{
     const u=current(req),rankName=String(u?.rank||"").toUpperCase();
     const exempt=rankName==="DEVELOPER"||rankName==="OWNER";
     const canManage=!!u&&(rankName==="DEVELOPER"||rankName==="OWNER");
-    res.json({enabled:enabled&&!exempt,configuredEnabled:enabled,until:0,exempt,canManage});
+    res.json({enabled:enabled&&!exempt,configuredEnabled:enabled,until:0,exempt,canManage,message:String(setting.message||"")});
   }catch(error){
     console.error("Under-construction status read failed:",error);
     res.status(500).json({error:"Could not read under-construction status from the database."});
@@ -798,6 +798,7 @@ app.post("/api/staff/under-construction",express.json(),auth,ownerOnly,async(req
   try{
     const enabled=req.body?.enabled===true;
     const suppliedCode=String(req.body?.code||"");
+    const suppliedMessage=String(req.body?.message||"").trim().slice(0,1000);
     const existing=db.settings?.under_construction||{};
     const now=Date.now();
     let setting;
@@ -807,7 +808,7 @@ app.post("/api/staff/under-construction",express.json(),auth,ownerOnly,async(req
       }
       const codeSalt=crypto.randomBytes(16).toString("hex");
       const codeHash=crypto.scryptSync(suppliedCode,codeSalt,64).toString("hex");
-      setting={enabled:true,until:0,codeSalt,codeHash,updatedBy:current(req)?.username||"Owner",updatedAt:now};
+      setting={enabled:true,until:0,codeSalt,codeHash,message:suppliedMessage,updatedBy:current(req)?.username||"Owner",updatedAt:now};
     }else{
       if(existing.enabled===true&&(!existing.codeSalt||!existing.codeHash)){
         if(suppliedCode.length<4||suppliedCode.length>128){
