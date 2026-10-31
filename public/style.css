@@ -3987,3 +3987,10 @@ body.party-mode-active .msg.dm-msg .chat-gif{
 .bot-ship-fill{height:100%;border-radius:999px;background:linear-gradient(90deg,#9b5cff,#ff4fd8,#fff0fb);box-shadow:0 0 8px #ff4fd8,0 0 18px rgba(155,92,255,.85);transition:width .8s ease}
 .bot-ship-percent{font-size:clamp(25px,6vw,34px);font-weight:900;color:#fff;margin-top:10px;text-shadow:0 0 5px #fff,0 0 14px #ff4fd8,0 0 28px #9b5cff;letter-spacing:.04em}
 @media(prefers-reduced-motion:reduce){.bot-ship-fill{transition:none}}
+
+
+/* Private-message unread bubble: keep it visible on the envelope icon at every viewport size. */
+#topMessages{position:relative!important;overflow:visible!important;isolation:isolate}
+#topMessages #topDmDot.count-badge{display:inline-flex!important;position:absolute!important;top:-5px!important;right:-5px!important;left:auto!important;bottom:auto!important;align-items:center!important;justify-content:center!important;min-width:19px!important;width:auto!important;height:19px!important;padding:0 5px!important;margin:0!important;box-sizing:border-box!important;border:2px solid #09090b!important;border-radius:999px!important;background:#ff2f75!important;color:#fff!important;font:800 10px/1 system-ui,sans-serif!important;white-space:nowrap!important;box-shadow:0 0 0 1px rgba(255,47,117,.2),0 2px 10px rgba(255,47,117,.55)!important;z-index:9999!important;pointer-events:none!important}
+#topMessages #topDmDot:not(.count-badge){display:none!important}
+#sidebar #dmDot.count-badge{display:inline-flex!important;align-items:center!important;justify-content:center!important;min-width:19px!important;height:19px!important;padding:0 5px!important;border-radius:999px!important;background:#ff2f75!important;color:#fff!important;font:800 10px/1 system-ui,sans-serif!important;box-shadow:0 2px 8px rgba(255,47,117,.35)!important}
