@@ -428,7 +428,7 @@ function clearActionLock(){if(actionLockTimer)clearTimeout(actionLockTimer);acti
 
 let liveSyncTimer=null, liveRoomSyncBusy=false, liveDMSyncBusy=false, liveSyncLastInbox=0;
 async function syncLiveMessages(){
-  if(!state.user||document.hidden)return;
+  if(!state.user)return; // Keep polling active even when mobile/webview visibility state is unreliable.
   // Keep each channel on its own lock. A slow or rejected room-history
   // request must never block private-message synchronization (or vice versa).
     // Run room history and the active private conversation independently. A slow
@@ -544,7 +544,7 @@ async function authenticateSocketAndJoinRoom(socket=state.socket, syncHistory=tr
       if(!ack?.ok || socket!==state.socket || !socket.connected){resolve(false);return;}
       let access=null;
       try{access=JSON.parse(safeStorage.getItem("mc_room_join")||"null");}catch{}
-      if(!state.currentRoom || access?.roomId!==String(state.currentRoom) || !access?.joinToken){resolve(true);return;}
+      if(!state.currentRoom || String(access?.roomId??"")!==String(state.currentRoom) || !access?.joinToken){resolve(true);return;}
       socket.emit("join-room",access);
       if(!syncHistory){resolve(true);return;}
       const roomId=String(state.currentRoom);
