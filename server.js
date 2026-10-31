@@ -2098,12 +2098,12 @@ app.post("/api/rooms/:id/messages",auth,featureAllowed("send_messages"),upload.s
       let outcome,amount,textLine;
       if(targetGold<1){
         outcome="empty";amount=0;
-        textLine="🪙 @"+target.username+" has no Gold to steal. The attempt found an empty vault.";
+        textLine="🪙 @"+target.username+" has no Gold.";
       }else if(mode<0.20){
         outcome="bail";amount=Math.min(targetGold,Math.max(1,Math.floor(Math.random()*Math.min(101,targetGold)+1)));
         target.gold=targetGold-amount;
         await pool.query("UPDATE users SET gold=$1 WHERE id=$2",[target.gold,Number(target.id)]);
-        textLine="🚨 BAIL! @"+u.username+" got caught trying to steal from @"+target.username+". @"+target.username+" lost "+amount.toLocaleString()+" Gold to bail fees — the thief gets nothing.";
+        textLine="🚨 Bail fee: @"+target.username+" lost "+amount.toLocaleString()+" Gold. You got nothing.";
         db.goldTransactions ||= [];
         db.goldTransactions.push({id:id(),time:Date.now(),actor:u.id,userId:target.id,type:"STEAL_BAIL",delta:-amount,from:target.id});
         io.to("user:"+target.id).emit("gold:update",{gold:target.gold});
@@ -2112,7 +2112,7 @@ app.post("/api/rooms/:id/messages",auth,featureAllowed("send_messages"),upload.s
         u.gold=thiefGold-amount;target.gold=targetGold+amount;
         await pool.query("UPDATE users SET gold=$1 WHERE id=$2",[u.gold,Number(u.id)]);
         await pool.query("UPDATE users SET gold=$1 WHERE id=$2",[target.gold,Number(target.id)]);
-        textLine="🔄 REVERSE LOOT! @"+target.username+" turned the tables and took "+amount.toLocaleString()+" Gold from @"+u.username+"!";
+        textLine="🔄 @"+target.username+" took "+amount.toLocaleString()+" Gold from you.";
         db.goldTransactions ||= [];
         db.goldTransactions.push({id:id(),time:Date.now(),actor:u.id,userId:u.id,type:"STEAL_REVERSE_LOSS",delta:-amount,to:target.id},{id:id(),time:Date.now(),actor:u.id,userId:target.id,type:"STEAL_REVERSE_GAIN",delta:amount,from:u.id});
         io.to("user:"+target.id).emit("gold:update",{gold:target.gold});
@@ -2122,7 +2122,7 @@ app.post("/api/rooms/:id/messages",auth,featureAllowed("send_messages"),upload.s
         outcome="success";target.gold=targetGold-amount;u.gold=thiefGold+amount;
         await pool.query("UPDATE users SET gold=$1 WHERE id=$2",[u.gold,Number(u.id)]);
         await pool.query("UPDATE users SET gold=$1 WHERE id=$2",[target.gold,Number(target.id)]);
-        textLine="💰 SUCCESSFUL HEIST! @"+u.username+" stole "+amount.toLocaleString()+" Gold from @"+target.username+"!";
+        textLine="💰 You stole "+amount.toLocaleString()+" Gold from @"+target.username+".";
         db.goldTransactions ||= [];
         db.goldTransactions.push({id:id(),time:Date.now(),actor:u.id,userId:target.id,type:"STEAL_LOSS",delta:-amount,to:u.id},{id:id(),time:Date.now(),actor:u.id,userId:u.id,type:"STEAL_GAIN",delta:amount,from:target.id});
         io.to("user:"+target.id).emit("gold:update",{gold:target.gold});
