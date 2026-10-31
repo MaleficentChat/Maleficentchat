@@ -4129,8 +4129,12 @@ async function loadOwner() {
 
       </div>
 
-      <details class="filter-words-details owner-settings-dropdown"><summary>⌘ Command Management — open to configure commands</summary><div class="card"><h3>⌘ Command Management</h3><p class="muted">Rename commands and choose which ranks may use each one.</p><div id="ownerCommandManagementRows"></div><button class="primary" type="button" id="saveOwnerCommandManagement">Save Command Settings</button><p class="muted" id="ownerCommandManagementStatus"></p></div></details>
-      <details class="filter-words-details owner-settings-dropdown"><summary>🕶️ Mode Management — open to configure rank access</summary><div class="card"><h3>🕶️ Mode Management</h3><p class="muted">Choose which ranks can use Ghost, Dead and Invisible modes. Developer access remains enabled.</p><div id="ownerModeManagementRows"></div><button class="primary" type="button" id="saveOwnerModeManagement">Save Mode Settings</button><p class="muted" id="ownerModeManagementStatus"></p></div></details>
+      <section class="card owner-management-hub" style="margin-top:12px;border:1px solid rgba(192,132,252,.35)">
+        <h3>⚙️ Owner Management</h3>
+        <p class="muted">These controls are expanded below so they are visible immediately in Owner Space.</p>
+        <details class="filter-words-details owner-settings-dropdown" open><summary>⌘ Command Management — rename commands & set rank access</summary><div class="card"><h3>⌘ Command Management</h3><p class="muted">Rename commands and choose which ranks may use each one.</p><div id="ownerCommandManagementRows"></div><button class="primary" type="button" id="saveOwnerCommandManagement">Save Command Settings</button><p class="muted" id="ownerCommandManagementStatus"></p></div></details>
+        <details class="filter-words-details owner-settings-dropdown" open><summary>🕶️ Mode Management — set Ghost, Dead & Invisible access</summary><div class="card"><h3>🕶️ Mode Management</h3><p class="muted">Choose which ranks can use Ghost, Dead and Invisible modes. Developer access remains enabled.</p><div id="ownerModeManagementRows"></div><button class="primary" type="button" id="saveOwnerModeManagement">Save Mode Settings</button><p class="muted" id="ownerModeManagementStatus"></p></div></details>
+      </section>
       <details class="filter-words-details owner-settings-dropdown owner-audit-dropdown">
         <summary>📜 Audit Logs Management — open to configure event visibility</summary>
         <div class="owner-audit-dropdown-content">
