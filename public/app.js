@@ -5391,7 +5391,7 @@ async function loadSettings(){
 `;
   applyTheme(s.theme||'obsidian');
   const partyButton=$('settingsPartyMode');
-  if(partyButton)partyButton.onclick=()=>{if(!canUsePartyMode){toast('Party Mode is available to ROYAL and higher ranks.');return;}setPartyMode(!isPartyModeActive());partyButton.textContent=isPartyModeActive()?'🎉 Turn Party Mode Off':'🎉 Turn Party Mode On';};
+  if(partyButton)partyButton.onclick=()=>{if(!canUsePartyMode){toast('Party Mode is available to SUPER_ADMIN and higher ranks.');return;}setPartyMode(!isPartyModeActive());partyButton.textContent=isPartyModeActive()?'🎉 Turn Party Mode Off':'🎉 Turn Party Mode On';};
    $('savePrivacy').onclick=async()=>{try{await api('/api/profile',{method:'PUT',body:JSON.stringify({privacy:{lastSeen:$('setLastSeen').checked,online:$('setOnline').checked}})});toast('Privacy saved.');}catch(e){toast(e.message)}};
   $('saveNotifications').onclick=async()=>{await api('/api/notifications/preferences',{method:'PUT',body:JSON.stringify({messages:$('nMessages').checked,mentions:$('nMentions').checked,replies:$('nReplies').checked,security:$('nSecurity').checked,staff:$('nStaff').checked,gamification:$('nGamification').checked,other:$('nOther').checked})});toast('Notification preferences saved.');};
   $('viewLoginHistory').onclick=async()=>{const h=await api('/api/security/login-history');modal(`<h2>Login history</h2>${(h.history||[]).map(x=>`<div class="card"><b>${fmt(x.time)}</b><div class="muted">${esc(x.ip||'Unknown device')}</div></div>`).join('')||'<p class="muted">No login history.</p>'}`);};
