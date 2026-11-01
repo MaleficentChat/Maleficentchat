@@ -985,6 +985,7 @@ function staff(r){
     "ADMIN",
     "SUPER_ADMIN",
     "COMMISSOR",
+    "INSTRUCTOR",
     "COOWNER",
     "OWNER",
     "DEVELOPER"
