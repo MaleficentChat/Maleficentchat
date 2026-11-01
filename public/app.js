@@ -554,7 +554,12 @@ async function syncLiveMessages(){
             list.innerHTML=incoming.map(m=>dmMessageHTML(m,incoming,state.dmPeerUser||{})).join("");
             if(wasNearBottom)list.scrollTop=list.scrollHeight;
           }
-          if(peerId!=="system-bot")api("/api/dm/"+encodeURIComponent(peerId)+"/read",{method:"POST"}).catch(()=>{});
+          // Mark the conversation read only when there is actually an unread
+          // incoming message. Posting this on every history poll created needless
+          // database writes while the conversation was idle.
+          if(peerId!=="system-bot"&&incoming.some(m=>String(m?.from??"")===peerId&&!m?.read)){
+            api("/api/dm/"+encodeURIComponent(peerId)+"/read",{method:"POST"}).catch(()=>{});
+          }
         }
       }catch(error){console.warn("Live private-message sync failed:",error?.message||error);}
       } finally { liveDMSyncBusy=false; }
@@ -570,24 +575,30 @@ async function syncLiveMessages(){
 }
 let liveSyncWakeListenersBound=false;
 let liveRoomPollTimer=null, liveDMPollTimer=null;
+let liveRoomLastFallbackPoll=0, liveDMLastFallbackPoll=0;
 function startLiveSync(){
-  // Keep room and private-message polling independent. A slow request in one
-  // channel must not postpone the next attempt for the other channel.
+  // Socket.IO delivers new messages immediately. Keep a frequent recovery poll
+  // only while disconnected; when connected, periodically reconcile history to
+  // recover missed events without querying PostgreSQL every second.
   if(liveRoomPollTimer)clearInterval(liveRoomPollTimer);
   if(liveDMPollTimer)clearInterval(liveDMPollTimer);
-  // Start immediately, then retry each active channel once per second.
-  // syncLiveMessages has per-channel locks, so slow requests cannot overlap.
   syncLiveMessages();
   liveRoomPollTimer=setInterval(()=>{
-    if(state.user&&state.currentRoom&&!liveRoomSyncBusy){
+    const now=Date.now(), connected=!!state.socket?.connected;
+    const interval=connected?4000:1000;
+    if(state.user&&state.currentRoom&&!liveRoomSyncBusy&&now-liveRoomLastFallbackPoll>=interval){
+      liveRoomLastFallbackPoll=now;
       syncLiveMessages().catch(error=>console.warn("Automatic room sync failed:",error?.message||error));
     }
-  },1000);
+  },500);
   liveDMPollTimer=setInterval(()=>{
-    if(state.user&&state.dmUserId&&!liveDMSyncBusy){
+    const now=Date.now(), connected=!!state.socket?.connected;
+    const interval=connected?4000:1000;
+    if(state.user&&state.dmUserId&&!liveDMSyncBusy&&now-liveDMLastFallbackPoll>=interval){
+      liveDMLastFallbackPoll=now;
       syncLiveMessages().catch(error=>console.warn("Automatic private-message sync failed:",error?.message||error));
     }
-  },1000);
+  },500);
   // Bind once so app focus/reconnect immediately catches up without sending a message.
   if(!liveSyncWakeListenersBound){
     liveSyncWakeListenersBound=true;
