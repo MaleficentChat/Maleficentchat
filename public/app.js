@@ -4038,6 +4038,7 @@ async function loadDeveloperNetworkSecurity(query='',populatePolicy=false){
       $('devBlockVpn').checked=!!cfg.blockVpn;
       $('devAllowedCountries').value=(cfg.allowedCountries||[]).join('\n');
       $('devBlockedCountries').value=(cfg.blockedCountries||[]).join('\n');
+      $('devBlockedVpnCountries').value=(cfg.blockedVpnCountries||[]).join('\\n');
       $('devBlockedRegions').value=(cfg.blockedRegions||[]).join('\n');
     }
     const rules=cfg.ipRules||[];
