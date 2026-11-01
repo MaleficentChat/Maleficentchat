@@ -966,6 +966,10 @@ document
     button.onclick = async () => {
       state.view = button.dataset.view;
 
+      // Close the mobile navigation immediately so it cannot cover the selected view
+      // while profile/settings data is loading.
+      $("sidebar")?.classList.remove("open");
+
       document
         .querySelectorAll(".nav[data-view]")
         .forEach(x =>
