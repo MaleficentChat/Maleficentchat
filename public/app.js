@@ -916,16 +916,13 @@ function updateNav() {
     $("topProfile").innerHTML = avatar(state.user, "top-avatar");
   }
 
-  document
-    .querySelectorAll(".staff-only")
-    .forEach(el =>
-      el.classList.toggle("hidden", !can("MOD")&&!canFeature("view_staff_dashboard"))
-    );
+  const staffSpaceLabels={MOD:"Moderator Space",ADMIN:"Admin Space",SUPER_ADMIN:"Superadmin Space",COMMISSOR:"Commissor Space",INSTRUCTOR:"Instructor Space",COOWNER:"Coowner Space",OWNER:"Owner Space",DEVELOPER:"Developer Space"};
+  const currentStaffRank=String(state.user?.rank||"").toUpperCase();
+  document.querySelectorAll(".staff-only").forEach(el =>
+    el.classList.toggle("hidden", !Object.prototype.hasOwnProperty.call(staffSpaceLabels,currentStaffRank))
+  );
   const managementLabel=$("managementSpaceNavLabel");
-  if(managementLabel){
-    const labels={MOD:"Moderator Space",ADMIN:"Admin Space",SUPER_ADMIN:"Super Admin Space",COMMISSOR:"Commissor Space",INSTRUCTOR:"Instructor Space",COOWNER:"Co-owner Space",OWNER:"Owner Space",DEVELOPER:"Developer Space"};
-    managementLabel.textContent=labels[String(state.user?.rank||"").toUpperCase()]||"Management Space";
-  }
+  if(managementLabel) managementLabel.textContent=staffSpaceLabels[currentStaffRank]||"Management Space";
   const reportButton=$("topFlag");
   if(reportButton) reportButton.classList.toggle("hidden", !can("MOD")&&!canFeature("view_staff_dashboard"));
 
@@ -1043,18 +1040,23 @@ async function renderView() {
       return loadStaffApplication();
 
     case "management": {
-      const rank=String(state.user?.rank||"MEMBER").toUpperCase();
+      const rank=String(state.user?.rank||"").toUpperCase();
       const labels={
         MOD:["🛡️","Moderator Space"], ADMIN:["⭐","Admin Space"],
-        SUPER_ADMIN:["🌟","Super Admin Space"], COMMISSOR:["👻","Commissor Space"],
-        INSTRUCTOR:["⚔️","Instructor Space"], COOWNER:["🦉","Co-owner Space"],
+        SUPER_ADMIN:["🌟","Superadmin Space"], COMMISSOR:["👻","Commissor Space"],
+        INSTRUCTOR:["⚔️","Instructor Space"], COOWNER:["🦉","Coowner Space"],
         OWNER:["👑","Owner Space"], DEVELOPER:["🛠️","Developer Space"]
       };
-      const [icon,label]=labels[rank]||["🛡️","Management Space"];
+      if(!Object.prototype.hasOwnProperty.call(labels,rank)){
+        toast("Management Spaces are available only to staff ranks.");
+        state.view="rooms";
+        return loadRooms();
+      }
+      const [icon,label]=labels[rank];
       const title=$("managementSpaceTitle"), description=$("managementSpaceDescription"), navLabel=$("managementSpaceNavLabel");
       if(title)title.textContent=icon+" "+label;
       if(navLabel)navLabel.textContent=label;
-      if(description)description.textContent="One place for your staff tools and the controls permitted for your rank.";
+      if(description)description.textContent="Staff Dashboard tools and rank-authorized controls, all in one place.";
       const ownerEligible=["OWNER","DEVELOPER"].includes(rank);
       $("owner")?.classList.toggle("hidden",!ownerEligible);
       await loadStaff();
@@ -4548,14 +4550,11 @@ async function loadOwner() {
               
 
         <h3>
-          Permanent Developer Space
+          ${String(state.user?.rank||"").toUpperCase()==="DEVELOPER"?"🛠️ Developer Controls":"👑 Owner Controls"}
         </h3>
 
         <p>
-          Owner-only controls for
-          users, ranks, gold,
-          private-message inspection,
-          rooms and settings.
+          ${String(state.user?.rank||"").toUpperCase()==="DEVELOPER"?"Developer-level system controls and authorized owner tools.":"Owner-level controls for users, ranks, gold, private-message inspection, rooms and settings."}
         </p>
 
         <div class="toolbar">
