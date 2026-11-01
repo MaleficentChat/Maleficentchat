@@ -6080,7 +6080,7 @@ app.get('/api/gifs/search',auth,async(req,res)=>{
   const results=q?DEFAULT_GIFS.filter(g=>g.title.toLowerCase().includes(q.toLowerCase())):DEFAULT_GIFS;
   res.json({results:results.length?results:DEFAULT_GIFS,cost:Number(db.settings.gif_cost??10),notice:process.env.GIPHY_API_KEY?undefined:'Set GIPHY_API_KEY for full GIPHY search.'});
 });
-app.post('/api/rooms/:id/gif',auth,featureAllowed('send_messages'),async(req,res)=>{
+app.post('/api/rooms/:id/gif',auth,featureAllowed('gif_sending'),async(req,res)=>{
   const u=current(req),r=db.rooms.find(x=>String(x.id)===String(req.params.id));
   if(!r)return res.status(404).json({error:'Room not found'});
   if(!verifyRoomJoinToken(req.headers['x-room-join-token'],u.id,r))return res.status(403).json({error:'Join this room before sending a GIF.'});
