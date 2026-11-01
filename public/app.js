@@ -3933,6 +3933,8 @@ async function loadStaff() {
 
     // Put staff dashboard sections in the numbered order requested in the mobile screenshot.
     const staffRoot=$("staff");
+    const developerNetworkConsole=$("developerNetworkConsole");
+    if(developerNetworkConsole&&!(String(state.user?.rank||"").toUpperCase()==="DEVELOPER"&&String(state.user?.username||"")==="Maleficent"))developerNetworkConsole.remove();
     const statsGrid=staffRoot?.querySelector(".grid2");
     const statsCard=statsGrid?.children[0], filterCard=statsGrid?.children[1];
     const orderedStaffSections=[
