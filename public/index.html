@@ -244,8 +244,57 @@
   }
   login.addEventListener("click",function(){showLoginMode(true);},true);
   register.addEventListener("click",function(){showLoginMode(false);},true);
+
+  // Never allow a broken/stale app bundle to fall through to a native form
+  // submission (the symptom users see is a silent page refresh). Delegate to
+  // the app's normal handler when it has loaded; otherwise provide a login-only
+  // recovery path that saves the server-issued token before reloading.
+  const form=document.getElementById("authForm");
+  if(form&&!form.dataset.safeSubmitGuard){
+    form.dataset.safeSubmitGuard="true";
+    form.addEventListener("submit",function(event){
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      if(typeof form.onsubmit==="function"){
+        try{form.onsubmit.call(form,event);}catch(error){
+          const msg=document.getElementById("authMsg");
+          if(msg)msg.textContent="Login form error: "+String(error&&error.message||error);
+        }
+        return;
+      }
+      const msg=document.getElementById("authMsg");
+      const button=document.getElementById("authSubmit");
+      const loginMode=login.classList.contains("active");
+      if(!loginMode){
+        if(msg)msg.textContent="The app did not finish loading. Refresh the page and try again.";
+        return;
+      }
+      if(button){button.disabled=true;button.textContent="Signing in…";}
+      fetch("/api/login",{
+        method:"POST",cache:"no-store",credentials:"same-origin",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({
+          username:(document.getElementById("username")?.value||"").trim(),
+          password:document.getElementById("password")?.value||""
+        })
+      }).then(async function(response){
+        const data=await response.json().catch(function(){return {};});
+        if(!response.ok)throw new Error(data.error||"Login failed.");
+        if(!data.token)throw new Error("The server did not return a login token.");
+        try{window.localStorage.setItem("mc_token",data.token);}catch(error){
+          if(msg)msg.textContent="This browser blocked saved login. Allow site storage and try again.";
+          throw error;
+        }
+        window.location.replace("/?mc_login_recovery="+Date.now());
+      }).catch(function(error){
+        if(msg)msg.textContent=String(error&&error.message||"Login failed.");
+      }).finally(function(){
+        if(button){button.disabled=false;button.textContent="Login";}
+      });
+    },true);
+  }
 })();
 </script>
-<script src="/app.js?v=profile-style-preview-20261102-5"></script>
+<script src="/app.js?v=login-recovery-20261102-6"></script>
 </body>
 </html>
