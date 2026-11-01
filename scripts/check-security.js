@@ -58,3 +58,12 @@ assert.match(fs.readFileSync("public/app.js", "utf8"), /state\.rooms\.find\(r =>
   "room join must tolerate numeric/string room IDs");
 
 console.log("Security, audit-log, messaging persistence, and profile cosmetic static checks passed.");
+
+
+const app = fs.readFileSync("public/app.js", "utf8");
+assert.equal((app.match(/async function loadSuggestions\(\)/g) || []).length, 1,
+  "suggestions must have a single renderer so the richer status UI is not overwritten");
+assert.equal((app.match(/case "suggestions":/g) || []).length, 1,
+  "navigation must contain only one suggestions route");
+
+console.log("Suggestions renderer/navigation regression checks passed.");
