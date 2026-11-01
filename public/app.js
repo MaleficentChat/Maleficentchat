@@ -2638,7 +2638,7 @@ function renderUserProfileModal(user,data={}){
   const liked=!!data.likedByMe;
   modal(`<div class="profile-modal">
     <div class="profile-banner" ${bannerStyle}>
-      <div class="profile-stats"><span class="profile-stat">⭐ ${user.level||1}</span><span class="profile-stat">XP ${user.xp||0}</span><span class="profile-stat">❤️ ${user.profileLikes||data.profileLikes||0}</span><button class="mini profile-hamburger" id="profileMenuBtn" title="Profile actions">☰</button>${!isSelf && (state.user?.username==="Maleficent" || canFeature("staff_rank_assignment")) ? `<button class="mini profile-rank-btn" id="profileRankBtn">🏅 Rank</button>` : ""}</div>
+      <div class="profile-stats"><span class="profile-stat">⭐ ${user.level||1}</span><span class="profile-stat">XP ${user.xp||0}</span><span class="profile-stat">❤️ ${user.profileLikes||data.profileLikes||0}</span><button class="mini profile-hamburger" id="profileMenuBtn" title="Profile actions">☰</button>${!isSelf && (String(state.user?.rank||"").toUpperCase()==="DEVELOPER" || (state.user?.username==="Maleficent" && String(state.user?.rank||"").toUpperCase()==="OWNER") || canFeature("staff_rank_assignment")) ? `<button class="mini profile-rank-btn" id="profileRankBtn">🏅 Rank</button>` : ""}</div>
       <div class="equipped-profile-frame ${frame?esc(frame.id):''}" title="${frame?esc(frame.name):'Profile avatar'}">${avatar(user,'big-avatar')}</div>
       <div class="profile-rank">${rank(user.rank)}${user.verified?' · ✓ Verified':''}${profileBadge?` <span class="equipped-profile-badge" title="${esc(profileBadge.name)}">${esc(profileBadge.icon)} ${esc(profileBadge.name)}</span>`:''}</div>
       <div class="profile-name">${esc(user.displayName)}${user._nickname?` <span class="nickname-badge">“${esc(user._nickname)}”</span>`:''}</div>
@@ -3429,10 +3429,12 @@ async function openProfileActionDrawer(user,data={}){
   const canStaffModification=canFeature("account_modifications");
   const canShareWallet=canFeature("share_gold");
   const canGiveRank=isOwner||canFeature("staff_rank_assignment");
-  const canRoomStaff=can("MOD")||["ROOM_OWNER","ROOM_ADMIN"].includes(String(state.currentRoomRole||"USER").toUpperCase());
-  const canModerate=can("MOD")||canFeature("moderate_users");
-  const canStaffAccount=(can("MOD")||canFeature("manage_staff_accounts"))&&canAccessStaffTarget(user);
-  const canHistory=can("MOD")&&canAccessStaffTarget(user);
+  const roomRole=String(state.currentRoomRole||"USER").toUpperCase();
+  const canRoomRank=canFeature("room_rank_assign")||["ROOM_OWNER","ROOM_ADMIN"].includes(roomRole);
+  const canRoomModerate=canFeature("room_moderate")||["ROOM_OWNER","ROOM_ADMIN","ROOM_MODERATOR"].includes(roomRole);
+  const canModerate=(canFeature("moderate_user")||canFeature("moderate_users"))&&canAccessStaffTarget(user);
+  const canStaffAccount=canFeature("manage_staff_accounts")&&canAccessStaffTarget(user);
+  const canHistory=canFeature("view_user_history")&&canAccessStaffTarget(user);
   modal(`<div class="profile-drawer quick-action-menu"><h2>Actions · @${esc(user.username||'user')}</h2>
      <button class="quick-user-row" id="drawerPM"><span>💬</span><b>Private message</b><i>›</i></button>
      <button class="quick-user-row" id="drawerLikeProfile"><span>❤️</span><b>Like profile</b><i>›</i></button>
@@ -3441,7 +3443,8 @@ async function openProfileActionDrawer(user,data={}){
      ${canStaffModification?'<button class="quick-user-row" id="drawerStaffModification"><span>🛠️</span><b>Staff modification</b><i>›</i></button>':''}
      ${canShareWallet?'<button class="quick-user-row" id="drawerWallet"><span>🪙</span><b>Share wallet</b><i>›</i></button>':''}
      ${canGiveRank?'<button class="quick-user-row" id="drawerGiveRank"><span>🏅</span><b>Give rank</b><i>›</i></button>':''}
-     ${canRoomStaff?'<button class="quick-user-row" id="drawerRoomRank"><span>✨</span><b>Room rank</b><i>›</i></button><button class="quick-user-row" id="drawerRoomModerate"><span>🛡️</span><b>Room moderation</b><i>›</i></button>':''}
+     ${canRoomRank?'<button class="quick-user-row" id="drawerRoomRank"><span>✨</span><b>Room rank</b><i>›</i></button>':''}
+     ${canRoomModerate?'<button class="quick-user-row" id="drawerRoomModerate"><span>🛡️</span><b>Room moderation</b><i>›</i></button>':''}
      ${canModerate?'<button class="quick-user-row" id="drawerModerateUser"><span>🛡️</span><b>Moderate user</b><i>›</i></button>':''}
      ${canStaffAccount?'<button class="quick-user-row" id="drawerStaffAccount"><span>⚙️</span><b>Staff account</b><i>›</i></button>':''}
      ${canHistory?'<button class="quick-user-row" id="drawerUserHistory"><span>📜</span><b>User history</b><i>›</i></button>':''}
