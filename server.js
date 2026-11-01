@@ -779,10 +779,7 @@ function networkRuleMatches(ip,pattern){
   const address=String(ip||"").replace(/^::ffff:/i,"").trim(),rule=String(pattern||"").trim();
   if(!address||!rule)return false;
   if(rule===address)return true;
-  if(rule.includes("*")){
-    const escaped=rule.split(".").map(part=>part==="*"?"\\d{1,3}":part.replace(/[.*+?^${}()|[\\]\\]/g,"\\function auth(req,res,next){")).join("\\.");
-    return new RegExp("^"+escaped+"$").test(address);
-  }
+  if(rule.includes("*"))return rule.endsWith(".*")&&address.startsWith(rule.slice(0,-1))&&ipv4Integer(address)!==null;
   if(rule.includes("/")){
     const [base,bitsText]=rule.split("/");
     const ipNum=ipv4Integer(address),baseNum=ipv4Integer(base),bits=Number(bitsText);
@@ -796,12 +793,12 @@ function networkRuleIsValid(pattern){
   const p=String(pattern||"").trim();
   if(p.length>64||!p)return false;
   if(ipv4Integer(p)!==null)return true;
-  if(/^\\d{1,3}(?:\\.\\d{1,3}){2}\\.\\*$/.test(p))return p.split(".").slice(0,3).every(x=>Number(x)<=255);
-  if(p.includes("/")){const [ip,bits]=p.split("/");return ipv4Integer(ip)!==null&&/^\\d+$/.test(bits)&&Number(bits)>=0&&Number(bits)<=32;}
+  if(/^\d{1,3}(?:\.\d{1,3}){2}\.\*$/.test(p))return p.split(".").slice(0,3).every(x=>Number(x)<=255);
+  if(p.includes("/")){const [ip,bits]=p.split("/");return ipv4Integer(ip)!==null&&/^\d+$/.test(bits)&&Number(bits)>=0&&Number(bits)<=32;}
   return false;
 }
 function normalizedList(value,max=80){
-  const list=Array.isArray(value)?value:String(value||"").split(/[\\n,;]/);
+  const list=Array.isArray(value)?value:String(value||"").split(/[\n,;]/);
   return [...new Set(list.map(x=>String(x||"").trim().toUpperCase()).filter(Boolean))].slice(0,max);
 }
 async function networkAccessDecision(req,userOverride=null){
