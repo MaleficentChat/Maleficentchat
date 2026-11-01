@@ -391,7 +391,7 @@ function hasFeature(u,key){
   // Apply Owner Space's Feature Granting thresholds to every feature check,
   // not just endpoints that happen to use featureAllowed().
   ensureFeatureGrants();
-  const aliases={moderate_user:"moderate_users",create_room:"create_rooms",manage_filters:"manage_filter_words",publish_news:"news_posting",clear_room:"clear_history_button",wall_post:"friend_wall_posting",report_message:"reports_management"};
+  const aliases={moderate_user:"moderate_users",create_room:"create_rooms",manage_filters:"manage_filter_words",publish_news:"news_posting",wall_post:"friend_wall_posting"};
   const grantKey=aliases[key]||key;
   const rankGrants=db.settings?.feature_grants?.[grantKey];
   if(Array.isArray(rankGrants)) return rankGrants.map(x=>String(x).toUpperCase()).includes(String(u.rank||"").toUpperCase());
@@ -407,7 +407,7 @@ function featureAllowed(key){
     if(String(u.rank).toUpperCase()==="DEVELOPER") return next();
     const individual=userFeatureGrant(u,key);
     if(individual!==null)return individual?next():res.status(403).json({error:"This feature has not been granted to your account."});
-    const alias={create_room:"create_rooms",manage_filters:"manage_filter_words",moderate_user:"moderate_users",publish_news:"news_posting",clear_room:"clear_history_button",wall_post:"friend_wall_posting",report_message:"reports_management"}[key]||key;
+    const alias={create_room:"create_rooms",manage_filters:"manage_filter_words",moderate_user:"moderate_users",publish_news:"news_posting",wall_post:"friend_wall_posting"}[key]||key;
     const grants=db.settings.feature_grants?.[alias];
     if(Array.isArray(grants) && !grants.map(x=>String(x).toUpperCase()).includes(String(u.rank).toUpperCase())) return res.status(403).json({error:"Your rank does not have this feature."});
     if(!grants && !hasFeature(u,key)) return res.status(403).json({error:`${FEATURE_CONTROLS.find(x=>x.key===key)?.name||"Feature"} requires ${featureRank(key)} or higher.`});
@@ -4455,8 +4455,8 @@ app.delete("/api/owner/guide/:rank/:id",auth,ownerOnly,(req,res)=>{
   save();res.json({ok:true,rank,guides:store[rank]});
 });
 
-app.get("/api/owner/command-management",auth,ownerOnly,(req,res)=>res.json({commands:{...Object.fromEntries(Object.entries(REQUESTED_COMMAND_RANKS).map(([key,ranks])=>[key,{name:db.settings?.command_management?.[key]?.name||key,ranks:db.settings?.command_management?.[key]?.ranks||ranks}])),...(db.settings?.command_management||{})}}));
-app.get("/api/owner/mode-management",auth,ownerOnly,(req,res)=>res.json({modes:{...REQUESTED_MODE_RANKS,...(db.settings?.mode_management||{})}}));
+app.get("/api/owner/command-management",auth,ownerOnly,(req,res)=>{ensureFeatureGrants();res.json({commands:{...Object.fromEntries(Object.entries(REQUESTED_COMMAND_RANKS).map(([key,ranks])=>[key,{name:db.settings?.command_management?.[key]?.name||key,ranks:db.settings?.command_management?.[key]?.ranks||ranks}])),...(db.settings?.command_management||{})}});});
+app.get("/api/owner/mode-management",auth,ownerOnly,(req,res)=>{ensureFeatureGrants();res.json({modes:{...REQUESTED_MODE_RANKS,...(db.settings?.mode_management||{})}});});
 app.patch("/api/owner/settings",ownerOnly,async(req,res)=>{
   if(req.body.commandManagement!==undefined){
     const incoming=req.body.commandManagement, commands={...(db.settings.command_management||{})}, allowed=["rose","bread","welcome","ship","bank","steal","roast","aura","anonymous","abrakadabra","clear"], valid=["MEMBER","VIP","PREMIUM","ROYAL","MOD","ADMIN","SUPER_ADMIN","COMMISSOR","INSTRUCTOR","COOWNER","OWNER"];
