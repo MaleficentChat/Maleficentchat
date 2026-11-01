@@ -4309,6 +4309,12 @@ app.delete(
 
 
 // PostgreSQL-backed structured community features.
+function coownerOrAbove(req,res,next){
+  const u=current(req);
+  if(!u||!hasRank(u,"COOWNER"))return res.status(403).json({error:"Coowner rank or higher is required."});
+  next();
+}
+
 function normalizeAllowedRanks(v, fallback){
   const list=Array.isArray(v)?v:[];
   const allowed=["OWNER","ADMIN","STAFF","TRUSTED","PREMIUM","VIP","USER","MEMBER","MOD","SUPER_ADMIN","COMMISSOR","COOWNER"];
@@ -4316,11 +4322,11 @@ function normalizeAllowedRanks(v, fallback){
   return out.length?out:fallback;
 }
 
-app.get('/api/filter-words',ownerOnly,async(req,res)=>{
+app.get('/api/filter-words',auth,coownerOrAbove,async(req,res)=>{
   const {rows}=await pool.query(`SELECT id,word,created_at,added_by FROM filter_words ORDER BY word`);
   res.json({words:rows,total:rows.length});
 });
-app.post('/api/filter-words/bulk',ownerOnly,async(req,res)=>{
+app.post('/api/filter-words/bulk',auth,coownerOrAbove,async(req,res)=>{
   const raw=String(req.body.text||"");
   const words=[...new Set(raw.split('\n').map(w=>w.trim().toLowerCase()).filter(Boolean))];
   for(const word of words) await pool.query(`INSERT INTO filter_words(word,added_by) VALUES($1,$2) ON CONFLICT(word) DO NOTHING`,[word,Number(current(req).id)]);
@@ -4328,7 +4334,7 @@ app.post('/api/filter-words/bulk',ownerOnly,async(req,res)=>{
   save();
   res.json({ok:true,added:words.length});
 });
-app.delete('/api/filter-words/:id',ownerOnly,async(req,res)=>{
+app.delete('/api/filter-words/:id',auth,coownerOrAbove,async(req,res)=>{
   await pool.query(`DELETE FROM filter_words WHERE id=$1`,[req.params.id]);
   const {rows}=await pool.query(`SELECT word FROM filter_words ORDER BY id`);
   db.bannedWords=rows.map(x=>x.word); save(); res.json({ok:true,words:db.bannedWords});
@@ -4667,12 +4673,12 @@ app.get("/api/guide",auth,(req,res)=>{
   const rank=String(u.rank||"MEMBER").toUpperCase();
   res.json({rank,guides:guideContentStore()[rank]||[]});
 });
-app.get("/api/owner/guide/:rank",auth,ownerOnly,(req,res)=>{
+app.get("/api/owner/guide/:rank",auth,coownerOrAbove,(req,res)=>{
   const rank=String(req.params.rank||"").toUpperCase();
   if(!GUIDE_RANKS.includes(rank))return res.status(400).json({error:"Choose a valid rank."});
   res.json({rank,guides:guideContentStore()[rank]||[]});
 });
-app.post("/api/owner/guide",auth,ownerOnly,async(req,res)=>{
+app.post("/api/owner/guide",auth,coownerOrAbove,async(req,res)=>{
   const rank=String(req.body.rank||"").toUpperCase(),title=cleanText(req.body.title||"").trim().slice(0,100),content=String(req.body.content||"").trim().slice(0,12000);
   if(!GUIDE_RANKS.includes(rank))return res.status(400).json({error:"Choose a valid rank."});
   if(!title||!content)return res.status(400).json({error:"Guide title and content are required."});
@@ -4680,14 +4686,14 @@ app.post("/api/owner/guide",auth,ownerOnly,async(req,res)=>{
   store[rank].push({id:"guide-"+Date.now()+"-"+crypto.randomBytes(4).toString("hex"),title,content});
   save();res.status(201).json({ok:true,rank,guides:store[rank]});
 });
-app.put("/api/owner/guide/:rank/:id",auth,ownerOnly,(req,res)=>{
+app.put("/api/owner/guide/:rank/:id",auth,coownerOrAbove,(req,res)=>{
   const rank=String(req.params.rank||"").toUpperCase(),id=String(req.params.id||""),title=cleanText(req.body.title||"").trim().slice(0,100),content=String(req.body.content||"").trim().slice(0,12000);
   if(!GUIDE_RANKS.includes(rank))return res.status(400).json({error:"Choose a valid rank."});
   if(!title||!content)return res.status(400).json({error:"Guide title and content are required."});
   const store=guideContentStore(),item=store[rank].find(g=>g.id===id);if(!item)return res.status(404).json({error:"Guide entry not found."});
   item.title=title;item.content=content;save();res.json({ok:true,rank,guides:store[rank]});
 });
-app.delete("/api/owner/guide/:rank/:id",auth,ownerOnly,(req,res)=>{
+app.delete("/api/owner/guide/:rank/:id",auth,coownerOrAbove,(req,res)=>{
   const rank=String(req.params.rank||"").toUpperCase(),id=String(req.params.id||"");
   if(!GUIDE_RANKS.includes(rank))return res.status(400).json({error:"Choose a valid rank."});
   const store=guideContentStore(),before=store[rank].length;store[rank]=store[rank].filter(g=>g.id!==id);
