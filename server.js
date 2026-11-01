@@ -2251,7 +2251,7 @@ app.post("/api/rooms/:id/messages",auth,featureAllowed("send_messages"),upload.s
         const allowedRanks=Array.isArray(config.ranks)?config.ranks:(REQUESTED_COMMAND_RANKS[key]||RANK_TIERS.all);
         if(rank!=="DEVELOPER"&&!allowedRanks.map(x=>String(x||"").toUpperCase()).includes(rank))continue;
         const item=descriptions[key];if(!item)continue;
-        visible.push({name:String(config.name||key),usage:(item.usage||("/"+key)).replace(/^\\/[^ ]+/,m=>"/"+String(config.name||key)),description:item.description});
+        visible.push({name:String(config.name||key),usage:"/"+String(config.name||key)+(item.usage||("/"+key)).slice(("/"+key).length),description:item.description});
       }
       const clearRanks=Array.isArray(commandSettings.clear?.ranks)?commandSettings.clear.ranks:(REQUESTED_COMMAND_RANKS.clear||RANK_TIERS.admin);
       const clearAllowed=rank==="DEVELOPER"||clearRanks.map(x=>String(x||"").toUpperCase()).includes(rank);
