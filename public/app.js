@@ -1,4 +1,3 @@
-window.__MC_APP_READY__ = true;
 const $ = id => document.getElementById(id);
 
 // Room theme data must exist before early socket events or room rendering can apply it.
@@ -409,6 +408,9 @@ $("authForm").onsubmit = async e => {
     else if(/you have been kicked/i.test(String(error.message||"")) && error.kickedUntil){showKickLock(error.kickedUntil,error.reason||"Community rules");}
   }
 };
+
+// Mark the bundle ready only after the login handler has been registered.
+window.__MC_APP_READY__ = true;
 
 $("logout").onclick = async () => {
   try {
