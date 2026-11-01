@@ -918,11 +918,12 @@ function updateNav() {
 
   const staffSpaceLabels={MOD:"Moderator Space",ADMIN:"Admin Space",SUPER_ADMIN:"Superadmin Space",COMMISSOR:"Commissor Space",INSTRUCTOR:"Instructor Space",COOWNER:"Coowner Space",OWNER:"Owner Space",DEVELOPER:"Developer Space"};
   const currentStaffRank=String(state.user?.rank||"").toUpperCase();
+  const canOpenStaffSpace=Object.prototype.hasOwnProperty.call(staffSpaceLabels,currentStaffRank)||canFeature("view_staff_dashboard");
   document.querySelectorAll(".staff-only").forEach(el =>
-    el.classList.toggle("hidden", !Object.prototype.hasOwnProperty.call(staffSpaceLabels,currentStaffRank))
+    el.classList.toggle("hidden", !canOpenStaffSpace)
   );
   const managementLabel=$("managementSpaceNavLabel");
-  if(managementLabel) managementLabel.textContent=staffSpaceLabels[currentStaffRank]||"Management Space";
+  if(managementLabel) managementLabel.textContent=staffSpaceLabels[currentStaffRank]||"Staff Dashboard";
   const reportButton=$("topFlag");
   if(reportButton) reportButton.classList.toggle("hidden", !can("MOD")&&!canFeature("view_staff_dashboard"));
 
@@ -943,11 +944,13 @@ function updateNav() {
       el.classList.toggle("hidden", !can("ADMIN"))
     );
 
-  document
-    .querySelectorAll(".coowner-only")
-    .forEach(el =>
-      el.classList.toggle("hidden", !canFeature("create_rooms"))
-    );
+  // Room creation is Premium+ by default; staff ranks are explicitly eligible too.
+  const roomCreatorRanks=["PREMIUM","ROYAL","MOD","ADMIN","SUPER_ADMIN","COMMISSOR","INSTRUCTOR","COOWNER","OWNER","DEVELOPER"];
+  const mayCreateRooms=roomCreatorRanks.includes(String(state.user?.rank||"").toUpperCase())||canFeature("create_room")||canFeature("create_rooms");
+  document.querySelectorAll("#newRoom, .room-create-button").forEach(el=>el.classList.toggle("hidden",!mayCreateRooms));
+  document.querySelectorAll(".coowner-only").forEach(el=>{
+    if(el.id==="newRoom"||el.classList.contains("room-create-button")) el.classList.toggle("hidden",!mayCreateRooms);
+  });
 }
 
 document
