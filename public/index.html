@@ -187,11 +187,11 @@
   <div id="viewSaved" class="view hidden"><div class="topbar"><h2>🔖 Saved / Bookmarked Messages</h2></div><div id="saved" class="stack"></div></div>
   <div id="viewSearch" class="view hidden"><div class="topbar"><div><h2>🔎 Advanced Message Search</h2><p class="muted">Search text, room or author.</p></div></div><form id="searchForm" class="searchbar"><input id="sq" placeholder="Keyword"><input id="sa" placeholder="Author username"><select id="sr"><option value="">All rooms</option></select><button class="primary">Search</button></form><div id="searchResults" class="stack"></div></div>
   <div id="viewProfile" class="view hidden"><div id="profile">
-    <!-- Visible fallback: account controls remain accessible even if profile JS fails to render. -->
+    <!-- Fallback mirrors the real Account and More profile tabs if profile rendering fails. -->
     <div class="my-profile-wrap"><div class="profile-settings-card">
       <div class="profile-settings-head"><h2>My Profile</h2><p>Account options</p></div>
-      <div class="settings-tabs"><button class="settings-tab active" type="button">Account</button></div>
-      <div class="settings-list">
+      <div class="settings-tabs"><button class="settings-tab active" id="fallbackAccountTab" type="button" onclick="document.getElementById('fallbackAccountOptions').hidden=false;document.getElementById('fallbackMoreOptions').hidden=true;this.classList.add('active');document.getElementById('fallbackMoreTab').classList.remove('active')">Account</button><button class="settings-tab" id="fallbackMoreTab" type="button" onclick="document.getElementById('fallbackAccountOptions').hidden=true;document.getElementById('fallbackMoreOptions').hidden=false;this.classList.add('active');document.getElementById('fallbackAccountTab').classList.remove('active')">More</button></div>
+      <div class="settings-list" id="fallbackAccountOptions">
         <button class="settings-row" type="button" onclick="editProfileInfo()"><span>🪪</span><b>Edit info</b><small>Display name, pronouns and profile details</small><strong>›</strong></button>
         <button class="settings-row" type="button" onclick="editRelationship()"><span>♥</span><b>Edit relationship</b><small>Relationship status</small><strong>›</strong></button>
         <button class="settings-row" type="button" onclick="editUsername()"><span>✎</span><b>Edit username</b><small>Change your username</small><strong>›</strong></button>
@@ -200,6 +200,14 @@
         <button class="settings-row" type="button" onclick="editEmail()"><span>✉</span><b>Edit email</b><small>Email settings</small><strong>›</strong></button>
         <button class="settings-row" type="button" onclick="showBlockedUsers()"><span>🚫</span><b>Blocked users</b><small>View and unblock people</small><strong>›</strong></button>
         <button class="settings-row" type="button" onclick="changePasswordModal()"><span>🔑</span><b>Change password</b><small>Update your login password</small><strong>›</strong></button>
+        <button class="settings-row" data-daily-reward type="button" onclick="claimDailyReward()"><span>🎁</span><b>Daily Gold and XP Reward</b><small>Claim 25 gold + 15 XP once per day</small><strong>›</strong></button>
+      </div>
+      <div class="settings-list" id="fallbackMoreOptions" hidden>
+        <button class="settings-row" type="button" onclick="privacyModal()"><span>🔒</span><b>Privacy Control</b><small>Choose which profile details other members can see</small><strong>›</strong></button>
+        <button class="settings-row" type="button" onclick="uploadAvatar()"><span>🖼️</span><b>Edit photos</b><small>Profile photo and banner</small><strong>›</strong></button>
+        <button class="settings-row" type="button" onclick="editProfileStyle()"><span>✨</span><b>Profile appearance</b><small>Colors, theme, badge and banner</small><strong>›</strong></button>
+        <button class="settings-row" type="button" onclick="usernameHistory()"><span>📜</span><b>Username history</b><small>View recorded username changes</small><strong>›</strong></button>
+        <button class="settings-row danger-row" type="button" onclick="deleteAccount()"><span>⊘</span><b>Delete account</b><small>This action is permanent</small><strong>›</strong></button>
       </div>
     </div></div>
   </div></div>
