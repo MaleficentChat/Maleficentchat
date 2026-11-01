@@ -711,18 +711,21 @@ function verifyRoomJoinToken(token,userId,room){
   }catch{return false;}
 }
 function current(req){
-  // Prefer the live session when it resolves to an existing account. A stale
-  // session cookie must not shadow a still-valid signed client token after a
-  // session restore or account-state reload.
-  const sessionUid=req.session?.userId;
-  const sessionUser=sessionUid?db.users.find(u=>String(u.id)===String(sessionUid)):null;
-  if(sessionUser) return sessionUser;
-
+  // A valid signed client token must take precedence over a stale session cookie.
+  // Otherwise a session-store recovery or a failed session save can cause the
+  // browser's valid token to resolve to a different, older account.
   const raw=req.headers["x-auth-token"] ||
     (String(req.headers.authorization||"").startsWith("Bearer ")?String(req.headers.authorization).slice(7):"");
   const tokenPayload=verifyToken(raw);
-  if(!tokenPayload) return null;
-  return db.users.find(u=>String(u.id)===String(tokenPayload.sub))||null;
+  if(tokenPayload){
+    const tokenUser=db.users.find(u=>String(u.id)===String(tokenPayload.sub));
+    if(tokenUser) return tokenUser;
+  }
+
+  // Keep cookie-session authentication as a fallback for existing clients that
+  // do not send a signed token, or when their token is stale but the session is valid.
+  const sessionUid=req.session?.userId;
+  return sessionUid?db.users.find(u=>String(u.id)===String(sessionUid))||null:null;
 }
 
 function clientIp(req){
