@@ -579,7 +579,7 @@ async function syncLiveMessages(){
           // incoming message. Posting this on every history poll created needless
           // database writes while the conversation was idle.
           if(peerId!=="system-bot"&&incoming.some(m=>String(m?.from??"")===peerId&&!m?.read)){
-            api("/api/dm/"+encodeURIComponent(peerId)+"/read",{method:"POST"}).catch(()=>{});
+            api("/api/dm/"+encodeURIComponent(peerId)+"/read",{method:"POST"}).then(()=>{refreshTopDMUnreadBadge();loadDMList().catch(()=>{});}).catch(error=>console.warn("Could not mark active conversation read:",error?.message||error));
           }
         }
       }catch(error){console.warn("Live private-message sync failed:",error?.message||error);}
