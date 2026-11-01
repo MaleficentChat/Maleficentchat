@@ -1229,6 +1229,29 @@ function sanitizeRoomList(input) {
   });
 }
 
+async function goToMainRoomFromRoomRefresh() {
+  const button = $("refreshRoomsBtn");
+  if (button) button.disabled = true;
+  try {
+    // Refresh the room data first, then use the same join flow as a room card.
+    await loadRooms();
+    const mainRoom = (state.rooms || []).find(room =>
+      room?.isDefault || /^main room$/i.test(String(room?.name || "").trim().replace(/^🏠\\s*/, ""))
+    );
+    if (!mainRoom) {
+      toast("Main Room could not be found. Please try again.");
+      return;
+    }
+    const joined = await joinRoom(mainRoom.id);
+    if (joined === false) return;
+  } catch (error) {
+    console.warn("Could not navigate to Main Room:", error?.message || error);
+    toast("Could not open Main Room: " + String(error?.message || error));
+  } finally {
+    if (button) button.disabled = false;
+  }
+}
+
 async function loadRooms() {
   let lastError = null;
   for (let attempt = 0; attempt < 2; attempt++) {
