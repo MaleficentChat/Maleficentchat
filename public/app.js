@@ -3818,25 +3818,25 @@ function editProfileStyle(){
     rose:{bg:'#351725',panel:'#1c0c16',accent:'#ff8eb7',text:'#fff0f6'},
     emerald:{bg:'#123128',panel:'#081d17',accent:'#73efbb',text:'#eafff5'}
   };
-  modal(\`<h2>✨ Profile styles</h2>
+  modal(`<h2>✨ Profile styles</h2>
     <p class="muted">Choose a style and see the preview update before saving. This changes the appearance of your profile card.</p>
     <div id="profileStylePreview" style="border:1px solid #7d58aa;border-radius:16px;overflow:hidden;margin:12px 0 16px;background:#171126;color:#f6f0ff">
       <div id="profileStyleBannerPreview" style="height:74px;background:linear-gradient(135deg,#38245c,#120d20);"></div>
       <div style="padding:0 14px 16px;text-align:center">
         <div id="profileStyleAvatarPreview" style="width:64px;height:64px;margin:-32px auto 8px;border:3px solid #171126;border-radius:50%;background:#34224b;display:flex;align-items:center;justify-content:center;font-size:28px;position:relative">🖤</div>
-        <div id="profileStyleNamePreview" style="font-size:18px;font-weight:800;color:#b69aff">\${esc(u.displayName||u.username||'Your profile')}</div>
-        <div style="opacity:.8;font-size:12px">@\${esc(u.username||'username')} · \${esc(u.rank||'MEMBER')}</div>
-        <div id="profileStyleBadgePreview" style="display:inline-block;margin-top:8px;padding:4px 10px;border-radius:999px;background:#302044;color:#b69aff;font-size:12px">\${esc(u.badge||'Profile badge')}</div>
+        <div id="profileStyleNamePreview" style="font-size:18px;font-weight:800;color:#b69aff">${esc(u.displayName||u.username||'Your profile')}</div>
+        <div style="opacity:.8;font-size:12px">@${esc(u.username||'username')} · ${esc(u.rank||'MEMBER')}</div>
+        <div id="profileStyleBadgePreview" style="display:inline-block;margin-top:8px;padding:4px 10px;border-radius:999px;background:#302044;color:#b69aff;font-size:12px">${esc(u.badge||'Profile badge')}</div>
       </div>
     </div>
     <label>Profile theme<select id="profileThemeEdit"><option value="obsidian">Obsidian</option><option value="midnight">Midnight Cyber</option><option value="rose">Rose</option><option value="emerald">Emerald</option></select></label>
-    <label>Display name color<input id="profileColorEdit" type="color" value="\${/^#[0-9a-f]{6}$/i.test(u.profileColor||'')?u.profileColor:'#b69aff'}"></label>
-    <label>Profile badge text<input id="profileBadgeEdit" maxlength="32" value="\${esc(u.badge||'')}" placeholder="e.g. Artist, Gamer"></label>
-    <label>Profile banner image URL<input id="profileBannerEdit" maxlength="500" value="\${esc(u.banner||'')}" placeholder="https://… (optional)"></label>
-    <div class="toolbar"><button class="primary" id="saveProfileStyle">Save appearance</button></div>\`);
+    <label>Display name color<input id="profileColorEdit" type="color" value="${/^#[0-9a-f]{6}$/i.test(u.profileColor||'')?u.profileColor:'#b69aff'}"></label>
+    <label>Profile badge text<input id="profileBadgeEdit" maxlength="32" value="${esc(u.badge||'')}" placeholder="e.g. Artist, Gamer"></label>
+    <label>Profile banner image URL<input id="profileBannerEdit" maxlength="500" value="${esc(u.banner||'')}" placeholder="https://… (optional)"></label>
+    <div class="toolbar"><button class="primary" id="saveProfileStyle">Save appearance</button></div>`);
   const themeInput=$('profileThemeEdit'), colorInput=$('profileColorEdit'), badgeInput=$('profileBadgeEdit'), bannerInput=$('profileBannerEdit');
   themeInput.value=themes[u.theme]?u.theme:'obsidian';
-  const preview=()=>{const t=themes[themeInput.value]||themes.obsidian;const card=$('profileStylePreview');card.style.background=t.bg;card.style.color=t.text;card.style.borderColor=t.accent;$('profileStyleBannerPreview').style.background=bannerInput.value.trim()? \`linear-gradient(180deg,rgba(0,0,0,.1),rgba(0,0,0,.5)),url("\${bannerInput.value.trim().replace(/["\\\\]/g,'')}") center/cover\`:\`linear-gradient(135deg,\${t.accent},\${t.panel})\`;$('profileStyleAvatarPreview').style.borderColor=t.bg;$('profileStyleNamePreview').style.color=colorInput.value;$('profileStyleBadgePreview').style.color=t.accent;$('profileStyleBadgePreview').style.background=t.panel;$('profileStyleBadgePreview').textContent=badgeInput.value.trim()||'Profile badge';};
+  const preview=()=>{const t=themes[themeInput.value]||themes.obsidian;const card=$('profileStylePreview');card.style.background=t.bg;card.style.color=t.text;card.style.borderColor=t.accent;$('profileStyleBannerPreview').style.background=bannerInput.value.trim()? `linear-gradient(180deg,rgba(0,0,0,.1),rgba(0,0,0,.5)),url("${bannerInput.value.trim().replace(/["\\\\]/g,'')}") center/cover`:`linear-gradient(135deg,${t.accent},${t.panel})`;$('profileStyleAvatarPreview').style.borderColor=t.bg;$('profileStyleNamePreview').style.color=colorInput.value;$('profileStyleBadgePreview').style.color=t.accent;$('profileStyleBadgePreview').style.background=t.panel;$('profileStyleBadgePreview').textContent=badgeInput.value.trim()||'Profile badge';};
   [themeInput,colorInput,badgeInput,bannerInput].forEach(el=>el.addEventListener('input',preview));
   preview();
   $('saveProfileStyle').onclick=()=>saveMyProfile({profileColor:colorInput.value,theme:themeInput.value,badge:badgeInput.value.trim(),banner:bannerInput.value.trim()},'Profile appearance saved.');
