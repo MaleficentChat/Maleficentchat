@@ -2232,6 +2232,7 @@ function renderArcade(){
   root.innerHTML=`
     <section class="arcade-home">
       <div class="arcade-welcome"><div><span class="arcade-kicker">MALEFICENT ARCADE</span><h2>Choose your next obsession.</h2><p>Quick games, friendly rivalries, and tiny victories. No drawing tools or old Gravity Run mode.</p></div><div class="arcade-orb">✦</div></div>
+      <section class="arcade-studio-card"><div><span class="arcade-kicker">CREATIVE STUDIO</span><h3>🖌️ Doodle Studio</h3><p>Draw something, save it to your personal library, or share it in the current room.</p></div><button type="button" class="primary" data-open-doodle-studio>Open Doodle Studio ↗</button></section>
       <div class="arcade-game-grid">
         <button class="arcade-game-card" data-arcade-game="memory"><span class="arcade-card-icon arcade-violet">🧠</span><span class="arcade-card-copy"><b>Memory Match</b><small>Flip cards, find pairs, beat your best.</small><em>Solo · Focus</em></span><span class="arcade-play">Play ↗</span></button>
         <button class="arcade-game-card" data-arcade-game="tic"><span class="arcade-card-icon arcade-pink">⭕</span><span class="arcade-card-copy"><b>Tic-Tac-Toe</b><small>A classic head-to-head challenge.</small><em>2 players · Same device</em></span><span class="arcade-play">Play ↗</span></button>
@@ -2241,6 +2242,7 @@ function renderArcade(){
       <div class="arcade-footnote">✧ Your game progress stays in this session. Multiplayer matchmaking and cross-device scores aren’t enabled in this arcade yet.</div>
     </section>`;
   root.querySelectorAll("[data-arcade-game]").forEach(btn=>btn.onclick=()=>launchArcadeGame(btn.dataset.arcadeGame));
+  root.querySelector("[data-open-doodle-studio]")?.addEventListener("click",()=>openDoodleComposer());
 }
 function launchArcadeGame(game){
   const root=$("gamesRoot");if(!root)return;
@@ -2278,11 +2280,12 @@ function launchArcadeGame(game){
 }
 function bindBack(){const b=$("gamesRoot")?.querySelector("[data-arcade-back]");if(b)b.onclick=renderArcade;}
 function openDoodleComposer(){
-  if(!state.currentRoom){toast('Join the Main Room before sending a doodle.');return;}
-  modal(`<div class="doodle-modal"><div class="doodle-head"><h2>🖌️ Doodle</h2><button type="button" class="mini" id="doodleClose">×</button></div>
-    <div class="doodle-tools"><button type="button" id="doodlePen">🖌️ Pen</button><button type="button" id="doodleEraser">🧽 Eraser</button><label>Color <input type="color" id="doodleColor" value="#111111"></label><label>Size <input type="range" id="doodleSize" min="2" max="24" value="5"></label><button type="button" id="doodleUndo">↶ Undo</button><button type="button" id="doodleClear">🗑 Clear</button></div>
+  const canSave=canFeature('doodle_studio_save'),canShare=!!state.currentRoom&&canFeature('doodle_studio_share');
+  if(!canSave&&!canShare){toast('Doodle Studio is not available for your account.');return;}
+  modal(`<div class="doodle-modal"><div class="doodle-head"><h2>🖌️ Doodle Studio</h2><button type="button" class="mini" id="doodleClose">×</button></div>
+    <div class="doodle-tools"><label class="doodle-title-field">Title <input id="doodleTitle" type="text" maxlength="80" value="Untitled doodle" placeholder="Name your drawing"></label><button type="button" id="doodlePen">🖌️ Pen</button><button type="button" id="doodleEraser">🧽 Eraser</button><label>Color <input type="color" id="doodleColor" value="#111111"></label><label>Size <input type="range" id="doodleSize" min="2" max="24" value="5"></label><button type="button" id="doodleUndo">↶ Undo</button><button type="button" id="doodleClear">🗑 Clear</button></div>
     <canvas id="doodleCanvas" width="900" height="620" aria-label="Draw your doodle here"></canvas>
-    <div class="doodle-footer"><span class="muted">Your drawing will be sent to the current room.</span><button type="button" class="primary" id="doodleSend">➤ Send to Main Chat</button></div></div>`);
+    <div class="doodle-footer"><span class="muted">Save a private copy or share it with your current room.</span>${canSave?'<button type="button" id="doodleSave">💾 Save drawing</button>':''}${canShare?'<button type="button" class="primary" id="doodleSend">➤ Send to Room</button>':''}</div></div>`);
   const canvas=$('doodleCanvas'),ctx=canvas.getContext('2d');ctx.fillStyle='#ffffff';ctx.fillRect(0,0,canvas.width,canvas.height);
   let drawing=false,erase=false,color='#111111',size=5,history=[];
   const snapshot=()=>{try{history.push(ctx.getImageData(0,0,canvas.width,canvas.height));if(history.length>20)history.shift()}catch{}};
@@ -2295,7 +2298,13 @@ function openDoodleComposer(){
   $('doodleUndo').onclick=()=>{if(history.length>1){history.pop();ctx.putImageData(history[history.length-1],0,0)}};
   $('doodleClear').onclick=()=>{ctx.fillStyle='#ffffff';ctx.fillRect(0,0,canvas.width,canvas.height);snapshot()};
   $('doodleClose').onclick=closeModal;
-  $('doodleSend').onclick=async()=>{const btn=$('doodleSend');btn.disabled=true;btn.textContent='Sending…';try{
+  $('doodleSave')?.addEventListener('click',async()=>{const btn=$('doodleSave');btn.disabled=true;btn.textContent='Saving…';try{
+    const image=canvas.toDataURL('image/png');
+    const title=($('doodleTitle')?.value||'Untitled doodle').trim().slice(0,80)||'Untitled doodle';
+    await api('/api/doodles',{method:'POST',body:JSON.stringify({title,image})});
+    toast('Doodle saved to your personal library.');btn.textContent='✓ Saved';
+  }catch(e){toast(e.message||'Could not save doodle.');btn.disabled=false;btn.textContent='💾 Save drawing';}});
+  $('doodleSend')?.addEventListener('click',async()=>{const btn=$('doodleSend');btn.disabled=true;btn.textContent='Sending…';try{
     const blob=await new Promise((resolve,reject)=>canvas.toBlob(b=>b?resolve(b):reject(Error('Could not export the doodle.')),'image/png'));
     const file=new File([blob],'maleficent-doodle.png',{type:'image/png'}),form=new FormData();form.append('text','');form.append('file',file);
     const data=await api('/api/rooms/'+encodeURIComponent(state.currentRoom)+'/messages',{method:'POST',body:form});

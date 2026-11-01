@@ -4500,7 +4500,7 @@ app.get('/api/doodles/:id/image',auth,async(req,res)=>{
   if(!rows.length)return res.status(404).json({error:'Doodle not found.'});
   res.json({image:rows[0].image_data,title:rows[0].title});
 });
-app.post('/api/doodles',auth,featureAllowed('doodle_studio'),async(req,res)=>{
+app.post('/api/doodles',auth,featureAllowed('doodle_studio_save'),async(req,res)=>{
   const u=current(req),title=cleanText(req.body?.title||'Untitled doodle').trim().slice(0,80)||'Untitled doodle';
   const image=String(req.body?.image||'');
   if(!/^data:image\/png;base64,[A-Za-z0-9+/=]+$/.test(image))return res.status(400).json({error:'Upload a valid PNG doodle.'});
