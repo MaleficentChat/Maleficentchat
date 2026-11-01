@@ -4473,7 +4473,6 @@ async function loadOwner() {
   try {
     const data =
       await api("/api/owner/overview");
-    const filterData = await api("/api/filter-words").catch(()=>({words:[],total:0}));
     const premiumRequests = await api("/api/owner/premium-requests").catch(()=>({requests:[]}));
 
     $("owner").innerHTML = `
@@ -4518,26 +4517,7 @@ async function loadOwner() {
         </div>
       </details>
 
-      <details class="filter-words-details owner-settings-dropdown owner-filter-management">
-        <summary>🧩 Filter Management <span class="muted">— click to open</span></summary>
-        <div class="owner-filter-management-content">
-        <div class="card owner-filter-intro">
-          <h3>🧩 Filter Management</h3>
-          <p class="muted">Choose what you want to manage below. Add one word or phrase, then press its matching button. Changes save immediately.</p>
-        </div>
-        <p class="muted">Add one entry per line. Normal words filter chat messages; <code>r: word</code> creates an automatic staff report; <code>u: word</code> blocks usernames and display names containing that text.</p>
-        <label>Bulk add filter entries<textarea id="bulkFilterWords" placeholder="ordinaryword&#10;r: reportword&#10;u: restrictedname"></textarea></label>
-        <div class="toolbar"><button class="primary" id="addBulkFilter">Add Entries</button><input type="search" id="filterSearch" placeholder="Search all filter entries…"></div>
-        <div id="filterCounts">Total: ${filterData.total||0} | Showing: ${filterData.total||0}</div>
-        ${[
-          {title:'🚫 Filter Words',test:w=>!/^r\s*:/i.test(String(w.word||w))&&!/^u\s*:/i.test(String(w.word||w))},
-          {title:'🔒 Restricted Usernames & Display Names',test:w=>/^u\s*:/i.test(String(w.word||w))},
-          {title:'🚨 Auto System Report Words',test:w=>/^r\s*:/i.test(String(w.word||w))}
-        ].map(group=>{const words=(filterData.words||[]).filter(group.test);return `<details class="filter-words-details filter-category-details"><summary>${group.title} (${words.length})</summary><div class="filter-category-list">${words.map(w=>`<div class="filter-table-row" data-word="${esc(w.word||w)}"><code>${esc(w.word||w)}</code><small>${w.created_at?fmt(w.created_at):''}</small><button class="mini danger" data-filter-delete="${w.id||''}" aria-label="Delete filter entry">×</button></div>`).join('')||'<p class="muted">No entries in this category.</p>'}</div></details>`}).join('')}
-        </div>
-      </details>
-
-      <div class="card"><h3>💎 Premium Requests</h3>${(premiumRequests.requests||[]).map(r=>`<div class="hub-row"><span>@${esc(r.username||'Unknown')} · ${esc(r.created_at||'')}</span><button class="mini" data-grant-premium="${r.id}">Grant Premium</button><button class="mini danger" data-cancel-premium="${r.user_id||r.id}">Cancel Premium</button></div>`).join('')||'<p class="muted">No requests.</p>'}</div><div class="card owner-settings-card">
+      <details class="filter-words-details owner-settings-dropdown owner-filter-managemp(r=>`<div class="hub-row"><span>@${esc(r.username||'Unknown')} · ${esc(r.created_at||'')}</span><button class="mini" data-grant-premium="${r.id}">Grant Premium</button><button class="mini danger" data-cancel-premium="${r.user_id||r.id}">Cancel Premium</button></div>`).join('')||'<p class="muted">No requests.</p>'}</div><div class="card owner-settings-card">
         <h3>⚙️ Site Settings</h3>
         <details class="filter-words-details owner-settings-dropdown">
           <summary>Site settings — open to view and manage options</summary>
