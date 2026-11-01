@@ -1566,6 +1566,15 @@ function messageHTML(message) {
       </div>
     </div>`;
   }
+  if(message?.brainCommand && String(message.bot||message.username)==="Bot"){
+    return `<div class="message bot-welcome-message bot-brain-message" data-mid="${esc(message.id)}">
+      <div class="bot-welcome-bubble" style="border-color:#8b5cf6;box-shadow:0 0 18px #8b5cf644">
+        <div class="bot-welcome-byline">🤖 Bot</div>
+        <div class="bot-welcome-glow" style="color:#c4b5fd;text-shadow:0 0 12px #8b5cf6">🧠 BRAIN POWER</div>
+        <div class="bot-welcome-username">@${esc(message.brainTargetUsername||"")}</div>
+      </div>
+    </div>`;
+  }
   if(message?.roseCommand && String(message.bot||message.username)==="Bot"){
     return `<div class="message bot-welcome-message bot-rose-message" data-mid="${esc(message.id)}">
       <div class="bot-welcome-bubble" style="border-color:#ff4fd8;box-shadow:0 0 16px #ff174444">
@@ -2028,8 +2037,8 @@ function openPresenceModes(){
 function isPartyModeActive(){return document.body.classList.contains("party-mode-active");}
 function setPartyMode(enabled){
   const rank=String(state.user?.rank||"").toUpperCase();
-  const allowed=["ROYAL","MOD","ADMIN","SUPER_ADMIN","COMMISSOR","INSTRUCTOR","COOWNER","OWNER","DEVELOPER"].includes(rank);
-  if(enabled&&!allowed){toast("Party Mode is available to ROYAL and higher ranks.");return;}
+  const allowed=["SUPER_ADMIN","COMMISSOR","INSTRUCTOR","COOWNER","OWNER","DEVELOPER"].includes(rank);
+  if(enabled&&!allowed){toast("Party Mode is available to SUPER_ADMIN and higher ranks.");return;}
   const active=!!enabled;
   document.body.classList.toggle("party-mode-active",active);
   let player=document.getElementById("partyModePlayer");
@@ -4546,7 +4555,7 @@ async function loadOwner() {
     const addQuickFilterEntry=async(inputId,prefix,label)=>{const input=$(inputId),value=String(input?.value||'').trim();if(!value){toast('Enter a word or phrase first.');input?.focus();return;}const entry=prefix+value;const button=input?.parentElement?.nextElementSibling;try{if(button){button.disabled=true;button.textContent='Saving…';}await api('/api/filter-words/bulk',{method:'POST',body:JSON.stringify({text:entry})});toast(label+' saved.');await loadOwner();}catch(e){toast(e.message||'Could not save filter entry.');}finally{if(button){button.disabled=false;button.textContent=label;}}};
     if($('filterSearch')) $('filterSearch').oninput=()=>{const q=$('filterSearch').value.toLowerCase();const rows=[...document.querySelectorAll('.filter-table-row')];let showing=0;rows.forEach(r=>{const show=r.dataset.word.toLowerCase().includes(q);r.style.display=show?'':'none';if(show)showing++});$('filterCounts').textContent=`Total: ${rows.length} | Showing: ${showing}`};
 
-    const commandKeys=["rose","bread","welcome","ship","bank","steal","roast","aura","anonymous","abrakadabra","clear"],rankChoices=["MEMBER","VIP","PREMIUM","ROYAL","MOD","ADMIN","SUPER_ADMIN","COMMISSOR","INSTRUCTOR","COOWNER","OWNER","DEVELOPER"],commandLabels={rose:"Rose",bread:"Bread",welcome:"Welcome",ship:"Ship",bank:"Bank",steal:"Steal",roast:"Roast",aura:"Aura",anonymous:"Anonymous message",abrakadabra:"Abrakadabra",clear:"Clear room"};
+    const commandKeys=["rose","bread","brain","welcome","ship","bank","steal","roast","aura","anonymous","abrakadabra","clear"],rankChoices=["MEMBER","VIP","PREMIUM","ROYAL","MOD","ADMIN","SUPER_ADMIN","COMMISSOR","INSTRUCTOR","COOWNER","OWNER","DEVELOPER"],commandLabels={rose:"Rose",bread:"Bread",brain:"Brain",welcome:"Welcome",ship:"Ship",bank:"Bank",steal:"Steal",roast:"Roast",aura:"Aura",anonymous:"Anonymous message",abrakadabra:"Abrakadabra",clear:"Clear room"};
     const commandData=(await api("/api/owner/command-management").catch(()=>({commands:{}}))).commands||{},commandHost=$("ownerCommandManagementRows");
     if(commandHost)commandHost.innerHTML=commandKeys.map(key=>{const item=commandData[key]||{name:key,ranks:rankChoices},chosen=Array.isArray(item.ranks)?item.ranks:rankChoices;return '<div class="card" style="margin:8px 0"><b>'+esc(commandLabels[key]||key)+'</b><label>Command name<input data-command-name="'+key+'" maxlength="24" value="'+esc(item.name||key)+'"></label><div class="rank-check-grid">'+rankChoices.map(rank=>'<label><input type="checkbox" data-command-rank="'+key+'" value="'+rank+'" '+(chosen.includes(rank)?'checked':'')+'> '+rank+'</label>').join('')+'</div></div>';}).join('');
     $("saveOwnerCommandManagement")?.addEventListener("click",async()=>{const commands={};commandKeys.forEach(key=>commands[key]={name:$('[data-command-name="'+key+'"]')?.value||key,ranks:[...document.querySelectorAll('[data-command-rank="'+key+'"]:checked')].map(x=>x.value)});const status=$("ownerCommandManagementStatus");try{await api("/api/owner/settings",{method:"PATCH",body:JSON.stringify({commandManagement:commands})});if(status)status.textContent="Saved.";toast("Command settings saved.");}catch(e){if(status)status.textContent=e.message;toast(e.message);}});
@@ -5363,10 +5372,10 @@ async function loadSettings(){
   const np=s.notificationPrefs||{};
   const sessions=(await api('/api/security/sessions').catch(()=>({sessions:[]}))).sessions||[];
   const partyRank=String(state.user?.rank||'').toUpperCase();
-  const canUsePartyMode=['ROYAL','MOD','ADMIN','SUPER_ADMIN','COMMISSOR','INSTRUCTOR','COOWNER','OWNER','DEVELOPER'].includes(partyRank);
+  const canUsePartyMode=['SUPER_ADMIN','COMMISSOR','INSTRUCTOR','COOWNER','OWNER','DEVELOPER'].includes(partyRank);
   $('settings').innerHTML=`
     <section class="settings-hero"><div class="settings-hero-glow"></div><div class="settings-hero-copy"><span class="settings-eyebrow">MALEFICENT CHAT · CONTROL CENTER</span><h2>Account settings</h2><p>Your account, your privacy, your aesthetic. Make this space yours.</p><div class="settings-hero-tags"><span>✦ Personalize</span><span>♢ Stay secure</span><span>♡ Your choices</span></div></div><div class="settings-hero-emblem">✧</div></section>
-    ${canUsePartyMode ? `<div class="panel party-mode-settings-panel"><h3>🎉 Party Mode <small class="muted">ROYAL+</small></h3><p class="muted">Add rainbow username glow, spinning GIFs and party music to this browser. This does not change what other users see.</p><button type="button" class="primary" id="settingsPartyMode">${isPartyModeActive()?'🎉 Turn Party Mode Off':'🎉 Turn Party Mode On'}</button></div>` : ''}
+    ${canUsePartyMode ? `<div class="panel party-mode-settings-panel"><h3>🎉 Party Mode <small class="muted">SUPER_ADMIN+</small></h3><p class="muted">Add rainbow username glow, spinning GIFs and party music to this browser. This does not change what other users see.</p><button type="button" class="primary" id="settingsPartyMode">${isPartyModeActive()?'🎉 Turn Party Mode Off':'🎉 Turn Party Mode On'}</button></div>` : ''}
     <div class="grid2">
       <div class="panel"><h3>👤 Account</h3><p class="muted">Manage the information connected to your account.</p><div class="settings-list">
         <button class="settings-row" onclick="editProfileInfo()"><span>🪪</span><b>Profile information</b><small>Display name, pronouns and basic details</small><strong>›</strong></button>
