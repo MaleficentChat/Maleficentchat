@@ -823,6 +823,10 @@ async function networkAccessDecision(req,userOverride=null){
   if(config.blockedRegions?.length&&config.blockedRegions.some(v=>region===v||String(network?.region||"").toUpperCase()===v)){
     return {allowed:false,reason:"Access from this region is blocked by the Developer.",ip,network};
   }
+  if(config.blockVpn&&!network?.vpnDetected&&network){
+    const networkName=[network.networkProvider,network.organization,network.asn,network.hostname,network.networkType].join(" ").toLowerCase();
+    if(/\b(vpn|proxy|tor exit|nordvpn|expressvpn|surfshark|proton vpn|mullvad|private internet access|cyberghost|torguard|windscribe|datacenter|data center|hosting|vps|dedicated server|cloud server)\b/i.test(networkName))network={...network,vpnDetected:true,vpnSignals:["Possible VPN / proxy / hosting network"]};
+  }
   if(config.blockVpn&&network?.vpnDetected)return {allowed:false,reason:"VPN, proxy, Tor, or hosting-network access is blocked by the Developer.",ip,network};
   return {allowed:true,ip,network};
 }
