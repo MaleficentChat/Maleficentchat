@@ -4056,8 +4056,10 @@ async function loadStaff() {
     staffRoot?.querySelector("#staffGuideManagementDropdown")?.remove();
     staffRoot?.querySelector("#staffFilterManagementDropdown")?.remove();
     const staffRank=String(state.user?.rank||"").toUpperCase();
-    const canManageGuidesAndFilters=["COOWNER","OWNER","DEVELOPER"].includes(staffRank);
+    const canManageGuidesAndFilters=["COMMISSOR","INSTRUCTOR","COOWNER","OWNER","DEVELOPER"].includes(staffRank);
+    const canManageGuides=["COOWNER","OWNER","DEVELOPER"].includes(staffRank);
     if(canManageGuidesAndFilters&&staffRoot){
+      if(canManageGuides){
       const guideDropdown=document.createElement("details");
       guideDropdown.id="staffGuideManagementDropdown";guideDropdown.className="staff-compact-dropdown filter-words-details";
       guideDropdown.innerHTML='<summary>📘 Guide Management <span class="muted">— click to open</span></summary><div class="owner-filter-management-content"><div id="staffGuideManagement" class="stack"></div></div>';
@@ -4067,7 +4069,9 @@ async function loadStaff() {
       const clearedSection=staffRoot.querySelector(".cleared-room-evidence-card")?.closest("details");
       if(clearedSection){staffRoot.insertBefore(guideDropdown,clearedSection);staffRoot.insertBefore(filterDropdown,clearedSection);}
       else staffRoot.append(guideDropdown,filterDropdown);
-      loadOwnerGuideManagement();loadStaffFilterManagement();
+      loadOwnerGuideManagement();
+      }
+      loadStaffFilterManagement();
     }
     const statsGrid=staffRoot?.querySelector(".grid2");
     const statsCard=statsGrid?.children[0], filterCard=statsGrid?.children[1];
