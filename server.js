@@ -751,7 +751,7 @@ async function recordUserIp(req,user,eventType){
 
 
 const DEFAULT_NETWORK_SECURITY={
-  ipRules:[],blockVpn:false,allowedCountries:[],blockedCountries:[],blockedRegions:[],updatedAt:null,updatedBy:null
+  ipRules:[],blockVpn:false,allowedCountries:[],blockedCountries:[],blockedVpnCountries:[],blockedRegions:[],updatedAt:null,updatedBy:null
 };
 async function getDeveloperNetworkSecurity(){
   if(db.settings?.developer_network_security && typeof db.settings.developer_network_security==="object")return {...DEFAULT_NETWORK_SECURITY,...db.settings.developer_network_security};
@@ -809,7 +809,7 @@ async function networkAccessDecision(req,userOverride=null){
   const matchingRule=(config.ipRules||[]).find(rule=>networkRuleMatches(ip,rule.pattern));
   if(matchingRule)return {allowed:false,reason:matchingRule.reason||"Network address is blocked by the Developer.",rule:matchingRule,ip};
   let network=null;
-  if(config.blockVpn||config.allowedCountries?.length||config.blockedCountries?.length||config.blockedRegions?.length){
+  if(config.blockVpn||config.allowedCountries?.length||config.blockedCountries?.length||config.blockedVpnCountries?.length||config.blockedRegions?.length){
     if(ip&&ip!=="unknown")network=await lookupIpNetworkDetails(ip);
   }
   const country=String(network?.countryCode||network?.country||"").trim().toUpperCase();
@@ -827,6 +827,7 @@ async function networkAccessDecision(req,userOverride=null){
     const networkName=[network.networkProvider,network.organization,network.asn,network.hostname,network.networkType].join(" ").toLowerCase();
     if(/\b(vpn|proxy|tor exit|nordvpn|expressvpn|surfshark|proton vpn|mullvad|private internet access|cyberghost|torguard|windscribe|datacenter|data center|hosting|vps|dedicated server|cloud server)\b/i.test(networkName))network={...network,vpnDetected:true,vpnSignals:["Possible VPN / proxy / hosting network"]};
   }
+  if(config.blockedVpnCountries?.length&&network?.vpnDetected&&config.blockedVpnCountries.some(v=>country===v||String(network?.country||"").toUpperCase()===v))return {allowed:false,reason:"VPN / proxy access from this country is blocked by the Developer.",ip,network};
   if(config.blockVpn&&network?.vpnDetected)return {allowed:false,reason:"VPN, proxy, Tor, or hosting-network access is blocked by the Developer.",ip,network};
   return {allowed:true,ip,network};
 }
@@ -3866,9 +3867,10 @@ app.put("/api/developer/network-security",auth,developerOnly,async(req,res)=>{
     if(body.blockVpn!==undefined)next.blockVpn=body.blockVpn===true;
     if(body.allowedCountries!==undefined)next.allowedCountries=normalizedList(body.allowedCountries);
     if(body.blockedCountries!==undefined)next.blockedCountries=normalizedList(body.blockedCountries);
+    if(body.blockedVpnCountries!==undefined)next.blockedVpnCountries=normalizedList(body.blockedVpnCountries);
     if(body.blockedRegions!==undefined)next.blockedRegions=normalizedList(body.blockedRegions);
     const saved=await saveDeveloperNetworkSecurity(next,current(req));
-    log(current(req),"DEV_NETWORK_POLICY_UPDATE","Developer network access policy",{blockVpn:saved.blockVpn,allowedCountries:saved.allowedCountries,blockedCountries:saved.blockedCountries,blockedRegions:saved.blockedRegions});
+    log(current(req),"DEV_NETWORK_POLICY_UPDATE","Developer network access policy",{blockVpn:saved.blockVpn,allowedCountries:saved.allowedCountries,blockedCountries:saved.blockedCountries,blockedVpnCountries:saved.blockedVpnCountries,blockedRegions:saved.blockedRegions});
     res.json({ok:true,config:saved});
   }catch(error){console.error("[DEV_NETWORK_SECURITY] update failed:",error?.stack||error);res.status(500).json({error:"Could not save Developer network policy."});}
 });
