@@ -253,6 +253,8 @@
   if(form&&!form.dataset.safeSubmitGuard){
     form.dataset.safeSubmitGuard="true";
     form.addEventListener("submit",function(event){
+      // Let the real app handler own login whenever app.js has loaded.
+      if(window.__MC_APP_READY__) return;
       event.preventDefault();
       event.stopImmediatePropagation();
       // Use the standalone request even if a partially initialized app attached
