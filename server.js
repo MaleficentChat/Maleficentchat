@@ -2225,6 +2225,41 @@ app.post("/api/rooms/:id/messages",auth,featureAllowed("send_messages"),upload.s
   if(commandMatch){
     const typedCommand=commandMatch[1].toLowerCase(),args=String(commandMatch[2]||"").trim();
     const commandDefs=["rose","bread","brain","welcome","ship","bank","steal","roast","aura","anonymous","abrakadabra","clear"];
+    if(typedCommand==="guide"){
+      if(args)return res.status(400).json({error:"Use /guide without extra text."});
+      const rank=String(u.rank||"MEMBER").toUpperCase();
+      const commandSettings=db.settings?.command_management||{};
+      const descriptions={
+        rose:{usage:"/rose [username]",description:"Send a rose to yourself or another user."},
+        bread:{usage:"/bread [username]",description:"Send bread to yourself or another user."},
+        brain:{usage:"/brain [username]",description:"Show brain power for a user."},
+        welcome:{usage:"/welcome username",description:"Show the Welcome Back popup for a user."},
+        ship:{usage:"/ship username",description:"Check compatibility with a user."},
+        bank:{usage:"/bank [username]",description:"Show a user's level, XP and Gold account."},
+        steal:{usage:"/steal username",description:"Try the Gold-steal game against a user."},
+        roast:{usage:"/roast username",description:"Generate a playful roast for a user."},
+        aura:{usage:"/aura username",description:"Generate an aura reading for a user."},
+        anonymous:{usage:"/anonymous username message",description:"Send an anonymous private message."},
+        abrakadabra:{usage:"/abrakadabra",description:"Try your luck with your Gold balance."},
+        clear:{usage:"/clear",description:"Clear the current room (authorized ranks only)."},
+        mode:{usage:"/mode",description:"Open your available presence-mode controls."},
+        guide:{usage:"/guide",description:"Show this rank-specific command guide."}
+      };
+      const visible=[];
+      for(const key of commandDefs){
+        const config=commandSettings[key]||{};
+        const allowedRanks=Array.isArray(config.ranks)?config.ranks:(REQUESTED_COMMAND_RANKS[key]||RANK_TIERS.all);
+        if(rank!=="DEVELOPER"&&!allowedRanks.map(x=>String(x||"").toUpperCase()).includes(rank))continue;
+        const item=descriptions[key];if(!item)continue;
+        visible.push({name:String(config.name||key),usage:(item.usage||("/"+key)).replace(/^\\/[^ ]+/,m=>"/"+String(config.name||key)),description:item.description});
+      }
+      const clearRanks=Array.isArray(commandSettings.clear?.ranks)?commandSettings.clear.ranks:(REQUESTED_COMMAND_RANKS.clear||RANK_TIERS.admin);
+      const clearAllowed=rank==="DEVELOPER"||clearRanks.map(x=>String(x||"").toUpperCase()).includes(rank);
+      const modes=["invisible","dead","ghost"].filter(mode=>modeRankAllowed(mode,rank));
+      if(modes.length)visible.push({...descriptions.mode,description:"Open available modes: "+modes.join(", ")+".",name:"mode"});
+      visible.push(descriptions.guide);
+      return res.json({command:true,guide:true,rank,commands:visible.filter(item=>item.name!=="clear"||clearAllowed)});
+    }
     const commandSettings=db.settings?.command_management||{};
     const commandKey=commandDefs.find(key=>String(commandSettings[key]?.name||key).toLowerCase()===typedCommand)||typedCommand;
     if(commandDefs.includes(commandKey)){
