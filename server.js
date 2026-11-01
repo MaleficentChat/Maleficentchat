@@ -352,7 +352,7 @@ view_online_users:RANK_TIERS.all,manage_push_notifications:RANK_TIERS.all,modera
     .map(([key,ranks])=>[key,[...ranks]]))
 };
 
-const REQUESTED_COMMAND_RANKS={clear:RANK_TIERS.admin,abrakadabra:RANK_TIERS.all,aura:RANK_TIERS.all,roast:RANK_TIERS.all,anonymous:RANK_TIERS.superAdmin,bank:RANK_TIERS.vip,ship:RANK_TIERS.vip,welcome:RANK_TIERS.vip,steal:RANK_TIERS.premium,bread:RANK_TIERS.premium,rose:RANK_TIERS.premium};
+const REQUESTED_COMMAND_RANKS={clear:RANK_TIERS.admin,abrakadabra:RANK_TIERS.all,aura:RANK_TIERS.all,roast:RANK_TIERS.all,anonymous:RANK_TIERS.superAdmin,bank:RANK_TIERS.vip,ship:RANK_TIERS.vip,welcome:RANK_TIERS.vip,steal:RANK_TIERS.premium,bread:RANK_TIERS.premium,rose:RANK_TIERS.premium,brain:RANK_TIERS.premium};
 const REQUESTED_MODE_RANKS={invisible:["COMMISSOR","INSTRUCTOR","COOWNER","OWNER","DEVELOPER"],dead:["INSTRUCTOR","COOWNER","OWNER","DEVELOPER"],ghost:["OWNER","DEVELOPER"]};
 
 const OWNER_USER_PERMISSIONS=[
@@ -2087,7 +2087,7 @@ app.post("/api/rooms/:id/messages",auth,featureAllowed("send_messages"),upload.s
   const commandMatch=!req.file&&text.match(/^\/([a-z0-9]+)(?:\s+([\s\S]*))?$/i);
   if(commandMatch){
     const typedCommand=commandMatch[1].toLowerCase(),args=String(commandMatch[2]||"").trim();
-    const commandDefs=["rose","bread","welcome","ship","bank","steal","roast","aura","anonymous","abrakadabra","clear"];
+    const commandDefs=["rose","bread","brain","welcome","ship","bank","steal","roast","aura","anonymous","abrakadabra","clear"];
     const commandSettings=db.settings?.command_management||{};
     const commandKey=commandDefs.find(key=>String(commandSettings[key]?.name||key).toLowerCase()===typedCommand)||typedCommand;
     if(commandDefs.includes(commandKey)){
@@ -2261,6 +2261,24 @@ app.post("/api/rooms/:id/messages",auth,featureAllowed("send_messages"),upload.s
       io.to("room:"+r.id).emit("message",breadMessage);
       return res.json({message:breadMessage,command:true});
     }
+    if(canonicalCommand==="brain"){
+      let target=u;
+      if(args){
+        const requested=args.replace(/^@/,"").trim().split(/\\s+/)[0];
+        target=db.users.find(x=>String(x.username||"").toLowerCase()===requested.toLowerCase());
+        if(!target)return res.status(404).json({error:"That username was not found."});
+      }
+      const brainMessage={
+        id:id(),roomId:String(r.id),userId:null,username:"Bot",displayName:"Bot",rank:"BOT",
+        system:false,isBot:true,bot:"Bot",brainCommand:true,brainTargetUsername:String(target.username||"User"),
+        text:"BRAIN POWER",reactions:{},edited:false,deleted:false,pinned:false,time:Date.now(),delivered:true
+      };
+      await pool.query(`INSERT INTO room_messages(id,room_id,user_id,data,created_at) VALUES($1,$2,NULL,$3::jsonb,NOW())`,
+        [brainMessage.id,Number(r.id),JSON.stringify(brainMessage)]);
+      db.messages.push(brainMessage);
+      io.to("room:"+r.id).emit("message",brainMessage);
+      return res.json({message:brainMessage,command:true});
+    }
     if(canonicalCommand==="rose"){
       let target=u;
       if(args){
@@ -2314,7 +2332,7 @@ app.post("/api/rooms/:id/messages",auth,featureAllowed("send_messages"),upload.s
       io.to("room:"+r.id).emit("message",botMessage);
       return res.json({message:botMessage,command:true});
     }
-    if(commandKey!=="clear")return res.status(400).json({error:"Unknown command. Available commands: /clear, /Abrakadabra, /welcome, /ship, /roast, /aura, /rose, and /bread."});
+    if(commandKey!=="clear")return res.status(400).json({error:"Unknown command. Available commands: /clear, /Abrakadabra, /welcome, /ship, /roast, /aura, /rose, /bread, and /brain."});
 
   }
   if((r.locked||db.settings?.locked_rooms?.[String(r.id)]) && !hasRank(u,"MOD") && String(u.rank).toUpperCase()!=="DEVELOPER")return res.status(403).json({error:"This room is locked. Only staff can send messages."});
@@ -4462,7 +4480,7 @@ app.get("/api/owner/command-management",auth,ownerOnly,(req,res)=>{ensureFeature
 app.get("/api/owner/mode-management",auth,ownerOnly,(req,res)=>{ensureFeatureGrants();res.json({modes:{...REQUESTED_MODE_RANKS,...(db.settings?.mode_management||{})}});});
 app.patch("/api/owner/settings",ownerOnly,async(req,res)=>{
   if(req.body.commandManagement!==undefined){
-    const incoming=req.body.commandManagement, commands={...(db.settings.command_management||{})}, allowed=["rose","bread","welcome","ship","bank","steal","roast","aura","anonymous","abrakadabra","clear"], valid=["MEMBER","VIP","PREMIUM","ROYAL","MOD","ADMIN","SUPER_ADMIN","COMMISSOR","INSTRUCTOR","COOWNER","OWNER"];
+    const incoming=req.body.commandManagement, commands={...(db.settings.command_management||{})}, allowed=["rose","bread","brain","welcome","ship","bank","steal","roast","aura","anonymous","abrakadabra","clear"], valid=["MEMBER","VIP","PREMIUM","ROYAL","MOD","ADMIN","SUPER_ADMIN","COMMISSOR","INSTRUCTOR","COOWNER","OWNER"];
     if(!incoming||typeof incoming!=="object"||Array.isArray(incoming))return res.status(400).json({error:"Invalid command settings."});
     const seen=new Set();
     for(const key of allowed){const item=incoming[key]||commands[key]||{},name=String(item.name||key).toLowerCase().replaceAll("/","").trim(),allowedRanks=Array.isArray(item.ranks)?item.ranks.map(x=>String(x).toUpperCase()).filter(x=>valid.includes(x)):valid.slice();if(!/^[a-z0-9]{2,24}$/.test(name))return res.status(400).json({error:"Command names must be 2–24 letters or numbers."});if(seen.has(name))return res.status(400).json({error:"Command names must be unique."});seen.add(name);commands[key]={name,ranks:[...new Set(allowedRanks)]};}
