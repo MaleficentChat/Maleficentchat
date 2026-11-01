@@ -6077,9 +6077,25 @@ const DEFAULT_GIFS=[
 ];
 app.get('/api/gifs/search',auth,async(req,res)=>{
   const q=String(req.query.q||'').trim().slice(0,80);
-  if(process.env.GIPHY_API_KEY){try{const endpoint=q?'search':'trending';const params=new URLSearchParams({api_key:process.env.GIPHY_API_KEY,limit:'50',rating:'pg'});if(q)params.set('q',q);const r=await fetch('https://api.giphy.com/v1/gifs/'+endpoint+'?'+params.toString());const d=await r.json();if(r.ok)return res.json({results:(d.data||[]).map(x=>({url:x.images?.original?.url,preview:x.images?.fixed_width_small?.url||x.images?.preview_gif?.url,title:x.title||'GIF'})).filter(x=>x.url),cost:Number(db.settings.gif_cost??10),hasMore:true});}catch(e){}}
-  const results=q?DEFAULT_GIFS.filter(g=>g.title.toLowerCase().includes(q.toLowerCase())):DEFAULT_GIFS;
-  res.json({results:results.length?results:DEFAULT_GIFS,cost:Number(db.settings.gif_cost??10),notice:process.env.GIPHY_API_KEY?undefined:'Set GIPHY_API_KEY for full GIPHY search.'});
+  const offset=Math.max(0,Math.min(1000,Number.parseInt(String(req.query.offset||'0'),10)||0));
+  const limit=18;
+  if(process.env.GIPHY_API_KEY){
+    try{
+      const endpoint=q?'search':'trending';
+      const params=new URLSearchParams({api_key:process.env.GIPHY_API_KEY,limit:String(limit),offset:String(offset),rating:'pg'});
+      if(q)params.set('q',q);
+      const response=await fetch('https://api.giphy.com/v1/gifs/'+endpoint+'?'+params.toString());
+      const payload=await response.json();
+      if(response.ok){
+        const results=(payload.data||[]).map(x=>({url:x.images?.original?.url,preview:x.images?.fixed_width_small?.url||x.images?.preview_gif?.url,title:x.title||'GIF'})).filter(x=>x.url&&x.preview);
+        const total=Number(payload.pagination?.total_count||0);
+        return res.json({results,cost:Number(db.settings.gif_cost??10),hasMore:offset+results.length<total,nextOffset:offset+results.length});
+      }
+    }catch(e){console.warn("GIF provider search failed:",e?.message||e);}
+  }
+  const filtered=q?DEFAULT_GIFS.filter(g=>String(g.title||'').toLowerCase().includes(q.toLowerCase())):DEFAULT_GIFS;
+  const results=filtered.slice(offset,offset+limit);
+  res.json({results,cost:Number(db.settings.gif_cost??10),hasMore:offset+results.length<filtered.length,nextOffset:offset+results.length,notice:process.env.GIPHY_API_KEY?undefined:'Set GIPHY_API_KEY for full GIPHY search.'});
 });
 app.post('/api/rooms/:id/gif',auth,featureAllowed('gif_sending'),async(req,res)=>{
   const u=current(req),r=db.rooms.find(x=>String(x.id)===String(req.params.id));
