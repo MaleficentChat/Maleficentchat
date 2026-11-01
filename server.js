@@ -258,6 +258,7 @@ const FEATURE_CONTROLS=[
   {key:"delete_news",name:"Delete news",category:"News",defaultRank:"ADMIN"},
   {key:"manage_staff_accounts",name:"Manage staff username/email",category:"Staff",defaultRank:"OWNER"},
   {key:"profile_note",name:"View and add staff profile notes",category:"Staff",defaultRank:"MOD"},
+  {key:"view_user_history",name:"View and manage user action history",category:"Staff",defaultRank:"MOD"},
   {key:"staff_rank_assignment",name:"Assign MOD or lower",category:"Staff",defaultRank:"MOD"},
   {key:"manage_gold",name:"Manage user gold",category:"Owner",defaultRank:"OWNER"},
   {key:"manage_ranks",name:"Manage ranks",category:"Owner",defaultRank:"OWNER"},
@@ -3394,7 +3395,7 @@ app.post(
     const action=req.params.action.toUpperCase();
     const permission={MUTE:"can_mute",UNMUTE:"can_mute",KICK:"can_kick",REVOKE_KICK:"can_kick",BAN:"can_ban",REVOKE_BAN:"can_ban",WARN:"can_warn"}[action];
     const explicit=permission?userFeatureGrant(actor,permission):null;
-    if(explicit===false || (!hasRank(actor,"MOD")&&explicit!==true)){
+    if(explicit===false || (explicit!==true&&!hasFeature(actor,"moderate_user"))){
       return res.status(403).json({
         error:"Moderator required"
       });
@@ -3570,7 +3571,7 @@ app.post(
 
 app.get("/api/users/:id/action-history",auth,(req,res)=>{
   const u=current(req);
-  if(!hasRank(u,"MOD")) return res.status(403).json({error:"Staff only"});
+  if(!hasFeature(u,"view_user_history")) return res.status(403).json({error:"User history access is not granted to your rank."});
   const target=findUser(req.params.id);
   if(!target) return res.status(404).json({error:"User not found"});
   if(!canAccessStaffTarget(u,target))return res.status(403).json({error:"You can only view staff history for users ranked below you."});
@@ -3582,7 +3583,7 @@ app.get("/api/users/:id/action-history",auth,(req,res)=>{
 
 app.delete("/api/users/:id/action-history/:actionId",auth,(req,res)=>{
   const actor=current(req);
-  if(!hasRank(actor,"MOD")) return res.status(403).json({error:"Staff only"});
+  if(!hasFeature(actor,"view_user_history")) return res.status(403).json({error:"User history access is not granted to your rank."});
   const target=findUser(req.params.id);
   if(!target) return res.status(404).json({error:"User not found"});
   if(!canAccessStaffTarget(actor,target))return res.status(403).json({error:"You can only manage staff history for users ranked below you."});
@@ -3596,7 +3597,7 @@ app.delete("/api/users/:id/action-history/:actionId",auth,(req,res)=>{
 
 app.post("/api/users/:id/action-history/clear",auth,(req,res)=>{
   const actor=current(req);
-  if(!hasRank(actor,"MOD")) return res.status(403).json({error:"Staff only"});
+  if(!hasFeature(actor,"view_user_history")) return res.status(403).json({error:"User history access is not granted to your rank."});
   const target=findUser(req.params.id);
   if(!target) return res.status(404).json({error:"User not found"});
   if(!canAccessStaffTarget(actor,target))return res.status(403).json({error:"You can only manage staff history for users ranked below you."});
