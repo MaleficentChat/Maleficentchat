@@ -946,7 +946,7 @@ function updateNav() {
   document
     .querySelectorAll(".coowner-only")
     .forEach(el =>
-      el.classList.toggle("hidden", !canFeature("create_room"))
+      el.classList.toggle("hidden", !canFeature("create_rooms"))
     );
 }
 
