@@ -67,3 +67,14 @@ assert.equal((app.match(/case "suggestions":/g) || []).length, 1,
   "navigation must contain only one suggestions route");
 
 console.log("Suggestions renderer/navigation regression checks passed.");
+
+const currentStart = server.indexOf("function current(req){");
+const currentEnd = server.indexOf("\n}", currentStart);
+assert.ok(currentStart >= 0 && currentEnd > currentStart,
+  "current() authentication resolver must exist");
+const currentSource = server.slice(currentStart, currentEnd);
+assert.ok(
+  currentSource.indexOf('const raw=req.headers["x-auth-token"]') >= 0 &&
+  currentSource.indexOf('const raw=req.headers["x-auth-token"]') < currentSource.indexOf("const sessionUid=req.session?.userId"),
+  "a valid signed client token must be resolved before a possibly stale cookie session"
+);
