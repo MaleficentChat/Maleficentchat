@@ -332,12 +332,43 @@ const FEATURE_GRANT_DEFAULTS={
   leaderboard_access:GRANT_RANKS,saved_messages:GRANT_RANKS,advanced_search:GRANT_RANKS,staff_application_submit:GRANT_RANKS,staff_application_review:["OWNER","COOWNER","COMMISSOR"],staff_dashboard_access:["MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],staff_notifications:["MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],system_notifications:["OWNER"],audit_log_access:["MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],audit_log_settings:["OWNER"],under_construction_control:["OWNER"],site_hard_refresh:["MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],
   inspect_ip_details:["ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],inspect_similar_ips:["ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],view_user_history:["MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],view_username_history:["MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],manage_profile_notes:["MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],manage_account_locks:["ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],manage_avatar:["MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],delete_accounts:["OWNER"],manage_bans:["MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],manage_mutes:["MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],manage_kicks:["MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],manage_warnings:["MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],manage_automated_filters:["ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],manage_vpn_proxy_rules:["OWNER"],manage_multi_account_rules:["OWNER"],manage_spam_flood_rules:["ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],manage_user_feature_exceptions:["OWNER"],manage_rank_feature_grants:["OWNER"],manage_individual_feature_grants:["OWNER"],manage_owner_space:["OWNER"],manage_site_refresh:["OWNER"],view_system_diagnostics:["OWNER"],manage_site_themes:["OWNER"],manage_economy_settings:["OWNER"],manage_premium_settings:["OWNER"],manage_notifications_settings:["OWNER"],manage_room_permissions:["OWNER"],manage_room_themes:["OWNER"],manage_room_staff:["OWNER","COOWNER","COMMISSOR"],manage_suggestions_settings:["OWNER"],manage_feature_granting:["OWNER"]
 };
+
+const FEATURE_GRANT_POLICY_VERSION=2;
+const RANK_TIERS={all:[...GRANT_RANKS],vip:GRANT_RANKS.slice(1),premium:GRANT_RANKS.slice(2),royal:GRANT_RANKS.slice(3),mod:GRANT_RANKS.slice(4),admin:GRANT_RANKS.slice(5),superAdmin:GRANT_RANKS.slice(6),commissor:GRANT_RANKS.slice(7),instructor:GRANT_RANKS.slice(8),coowner:GRANT_RANKS.slice(9),owner:GRANT_RANKS.slice(10)};
+const REQUESTED_FEATURE_GRANTS={
+send_messages:RANK_TIERS.all,private_messages:RANK_TIERS.vip,gif_sending:RANK_TIERS.vip,emojis_stickers:RANK_TIERS.all,chat_file_upload:RANK_TIERS.vip,chat_attachments:RANK_TIERS.vip,chat_image_upload:RANK_TIERS.vip,chat_video_upload:RANK_TIERS.vip,chat_audio_upload:RANK_TIERS.vip,use_youtube:RANK_TIERS.vip,chat_youtube_music:RANK_TIERS.vip,
+edit_message:RANK_TIERS.royal,pin_message:RANK_TIERS.mod,save_message:RANK_TIERS.all,react_message:RANK_TIERS.all,reply_messages:RANK_TIERS.all,quote_messages:RANK_TIERS.all,copy_messages:RANK_TIERS.all,hide_messages:RANK_TIERS.all,delete_own_messages:RANK_TIERS.premium,mention_users:RANK_TIERS.all,chat_unread_counts:RANK_TIERS.all,chat_message_search:RANK_TIERS.all,report_message:RANK_TIERS.all,
+join_rooms:RANK_TIERS.all,view_pinned:RANK_TIERS.all,search_rooms:RANK_TIERS.all,leave_rooms:RANK_TIERS.all,room_passwords:RANK_TIERS.all,create_rooms:RANK_TIERS.premium,edit_rooms:RANK_TIERS.premium,room_rank_assign:RANK_TIERS.mod,room_moderate:RANK_TIERS.mod,room_delete_messages:RANK_TIERS.mod,room_manage_staff:RANK_TIERS.commissor,manage_room_staff:RANK_TIERS.commissor,room_edit_own:RANK_TIERS.superAdmin,delete_rooms:RANK_TIERS.superAdmin,room_announcement:RANK_TIERS.superAdmin,chat_aurora_announcements:RANK_TIERS.superAdmin,
+friend_wall_posting:RANK_TIERS.all,wall_post:RANK_TIERS.all,wall_commenting:RANK_TIERS.all,wall_comment:RANK_TIERS.all,wall_liking:RANK_TIERS.all,wall_react:RANK_TIERS.all,wall_read:RANK_TIERS.all,wall_report:RANK_TIERS.all,wall_pin:RANK_TIERS.premium,wall_upload:RANK_TIERS.vip,nickname_users:RANK_TIERS.vip,room_clear_own:RANK_TIERS.admin,clear_room:RANK_TIERS.admin,room_member_limits:RANK_TIERS.admin,room_rank_restrictions:RANK_TIERS.admin,room_topics:RANK_TIERS.admin,room_friends_only:RANK_TIERS.admin,
+change_avatar:RANK_TIERS.all,change_bio:RANK_TIERS.all,account_register:RANK_TIERS.all,account_login:RANK_TIERS.all,account_settings:RANK_TIERS.all,change_own_password:RANK_TIERS.all,change_own_email:RANK_TIERS.all,account_modifications:RANK_TIERS.mod,profile_note:RANK_TIERS.mod,manage_profile_notes:RANK_TIERS.mod,change_password:RANK_TIERS.instructor,edit_email:RANK_TIERS.commissor,view_emails:RANK_TIERS.commissor,
+dm_search:RANK_TIERS.vip,dm_unread_counts:RANK_TIERS.vip,dm_previews:RANK_TIERS.vip,dm_reply:RANK_TIERS.vip,dm_pin:RANK_TIERS.vip,dm_mute:RANK_TIERS.vip,dm_archive:RANK_TIERS.vip,dm_filters:RANK_TIERS.vip,dm_nicknames:RANK_TIERS.vip,dm_preferences:RANK_TIERS.vip,dm_report:RANK_TIERS.vip,inspect_private_messages:RANK_TIERS.owner,manage_dm_reports:RANK_TIERS.mod,
+suggestions_submit:RANK_TIERS.all,view_rules:RANK_TIERS.all,submit_reports:RANK_TIERS.all,suggestions_review:RANK_TIERS.coowner,suggestions_set_status:RANK_TIERS.coowner,suggestions_notify_submitter:RANK_TIERS.coowner,manage_reports:RANK_TIERS.mod,reports_management:RANK_TIERS.mod,report_resolve:RANK_TIERS.mod,edit_room_rules:RANK_TIERS.mod,report_assign:RANK_TIERS.superAdmin,edit_site_rules:RANK_TIERS.commissor,
+news_posting:RANK_TIERS.admin,manage_news:RANK_TIERS.admin,delete_news:RANK_TIERS.admin,news_pin:RANK_TIERS.admin,news_read:RANK_TIERS.all,news_comment:RANK_TIERS.all,news_react:RANK_TIERS.all,news_report:RANK_TIERS.all,
+view_online_users:RANK_TIERS.all,manage_push_notifications:RANK_TIERS.all,moderate_users:RANK_TIERS.mod,moderate_user:RANK_TIERS.mod,delete_message:RANK_TIERS.mod,bypass_filter_words:RANK_TIERS.mod,bypass_mute:RANK_TIERS.mod,staff_rank_assignment:RANK_TIERS.mod,staff_dashboard_access:RANK_TIERS.mod,view_user_history:RANK_TIERS.mod,view_username_history:RANK_TIERS.mod,manage_mutes:RANK_TIERS.mod,manage_kicks:RANK_TIERS.mod,manage_warnings:RANK_TIERS.mod,staff_notifications:RANK_TIERS.mod,manage_bans:RANK_TIERS.admin,manage_account_locks:RANK_TIERS.admin,audit_log_access:RANK_TIERS.admin,inspect_ip_details:RANK_TIERS.instructor,inspect_similar_ips:RANK_TIERS.instructor,view_ips:RANK_TIERS.instructor,site_hard_refresh:RANK_TIERS.instructor,manage_site_refresh:RANK_TIERS.instructor,invisible_mode:RANK_TIERS.commissor,presence_modes:RANK_TIERS.commissor,manage_filter_words:RANK_TIERS.commissor,manage_automated_filters:RANK_TIERS.commissor,manage_spam_flood_rules:RANK_TIERS.commissor,grant_premium:RANK_TIERS.owner,premium_granting:RANK_TIERS.owner,manage_multi_account_rules:RANK_TIERS.owner,system_notifications:RANK_TIERS.coowner,ghost_mode:RANK_TIERS.owner,dead_mode:RANK_TIERS.instructor
+};
+const REQUESTED_COMMAND_RANKS={clear:RANK_TIERS.admin,abrakadabra:RANK_TIERS.all,aura:RANK_TIERS.all,roast:RANK_TIERS.all,anonymous:RANK_TIERS.superAdmin,bank:RANK_TIERS.vip,ship:RANK_TIERS.vip,welcome:RANK_TIERS.vip,steal:RANK_TIERS.premium,bread:RANK_TIERS.premium,rose:RANK_TIERS.premium};
+const REQUESTED_MODE_RANKS={invisible:RANK_TIERS.commissor,dead:RANK_TIERS.instructor,ghost:RANK_TIERS.owner};
+
 const OWNER_USER_PERMISSIONS=[
   "can_mute","can_kick","can_ban","can_warn","can_delete_messages","can_view_ips","can_view_emails","can_edit_rooms","can_delete_rooms","can_create_rooms","can_grant_features","can_manage_users","can_clear_history","can_add_notes","can_send_global_announcement","can_share_gold","can_manage_ranks","can_edit_usernames","can_edit_emails","can_manage_reports","can_manage_announcements","can_manage_clubs","can_manage_news","can_manage_profiles","can_view_deleted_messages","can_manage_settings"
 ];
 function ensureFeatureGrants(){
   db.settings ||= {}; db.settings.feature_grants ||= {}; delete db.settings.feature_grants.gift_sending; delete db.settings.feature_grants.gift_receiving; delete db.settings.feature_grants.gift_share;
   for(const [k,v] of Object.entries(FEATURE_GRANT_DEFAULTS)) if(!Array.isArray(db.settings.feature_grants[k])) db.settings.feature_grants[k]=[...v];
+  if(Number(db.settings.feature_grant_policy_version||0)<FEATURE_GRANT_POLICY_VERSION){
+    for(const [key,ranks] of Object.entries(REQUESTED_FEATURE_GRANTS)) if(Object.prototype.hasOwnProperty.call(FEATURE_GRANT_DEFAULTS,key)) db.settings.feature_grants[key]=[...ranks];
+    db.settings.feature_grant_policy_version=FEATURE_GRANT_POLICY_VERSION;
+    db.settings.command_management ||= {};
+    for(const [key,ranks] of Object.entries(REQUESTED_COMMAND_RANKS)){const item=db.settings.command_management[key]||{};db.settings.command_management[key]={...item,name:String(item.name||key),ranks:[...ranks]};}
+    db.settings.mode_management ||= {};
+    for(const [key,ranks] of Object.entries(REQUESTED_MODE_RANKS)) db.settings.mode_management[key]=[...ranks];
+    Promise.all([
+      pool.query(`INSERT INTO settings(key,value) VALUES('feature_grants',$1::jsonb) ON CONFLICT(key) DO UPDATE SET value=EXCLUDED.value`,[JSON.stringify(db.settings.feature_grants)]),
+      pool.query(`INSERT INTO settings(key,value) VALUES('feature_grant_policy_version',$1::jsonb) ON CONFLICT(key) DO UPDATE SET value=EXCLUDED.value`,[JSON.stringify(FEATURE_GRANT_POLICY_VERSION)]),
+      pool.query(`INSERT INTO settings(key,value) VALUES('command_management',$1::jsonb) ON CONFLICT(key) DO UPDATE SET value=EXCLUDED.value`,[JSON.stringify(db.settings.command_management)]),
+      pool.query(`INSERT INTO settings(key,value) VALUES('mode_management',$1::jsonb) ON CONFLICT(key) DO UPDATE SET value=EXCLUDED.value`,[JSON.stringify(db.settings.mode_management)])
+    ]).catch(e=>console.error("Feature grant policy migration failed:",e));
+  }
 }
 function ensureFeaturePermissions(){
   db.featurePermissions ||= {};
@@ -4424,8 +4455,8 @@ app.delete("/api/owner/guide/:rank/:id",auth,ownerOnly,(req,res)=>{
   save();res.json({ok:true,rank,guides:store[rank]});
 });
 
-app.get("/api/owner/command-management",auth,ownerOnly,(req,res)=>res.json({commands:db.settings?.command_management||{}}));
-app.get("/api/owner/mode-management",auth,ownerOnly,(req,res)=>res.json({modes:db.settings?.mode_management||{}}));
+app.get("/api/owner/command-management",auth,ownerOnly,(req,res)=>res.json({commands:{...Object.fromEntries(Object.entries(REQUESTED_COMMAND_RANKS).map(([key,ranks])=>[key,{name:db.settings?.command_management?.[key]?.name||key,ranks:db.settings?.command_management?.[key]?.ranks||ranks}])),...(db.settings?.command_management||{})}}));
+app.get("/api/owner/mode-management",auth,ownerOnly,(req,res)=>res.json({modes:{...REQUESTED_MODE_RANKS,...(db.settings?.mode_management||{})}}));
 app.patch("/api/owner/settings",ownerOnly,async(req,res)=>{
   if(req.body.commandManagement!==undefined){
     const incoming=req.body.commandManagement, commands={...(db.settings.command_management||{})}, allowed=["rose","bread","welcome","ship","bank","steal","roast","aura","anonymous","abrakadabra","clear"], valid=["MEMBER","VIP","PREMIUM","ROYAL","MOD","ADMIN","SUPER_ADMIN","COMMISSOR","INSTRUCTOR","COOWNER","OWNER"];
@@ -4557,17 +4588,20 @@ app.put('/api/owner/feature-grants',ownerOnly,async(req,res)=>{
   if(!incoming||typeof incoming!=="object"||Array.isArray(incoming))return res.status(400).json({error:"Provide feature grants."});
   for(const [key,value] of Object.entries(incoming)){
     if(!Object.prototype.hasOwnProperty.call(FEATURE_GRANT_DEFAULTS,key))return res.status(400).json({error:"Unknown feature: "+key});
-    let threshold=value;
-    if(Array.isArray(threshold)) threshold=threshold.find(x=>GRANT_RANKS.includes(String(x).toUpperCase()))||null;
-    threshold=String(threshold||"").toUpperCase();
-    const idx=GRANT_RANKS.indexOf(threshold);
+    if(Array.isArray(value)){
+      const selected=value.map(x=>String(x).toUpperCase());
+      if(selected.some(rank=>!GRANT_RANKS.includes(rank)))return res.status(400).json({error:"Invalid rank for feature "+key});
+      db.settings.feature_grants[key]=[...new Set(selected)];
+      continue;
+    }
+    const threshold=String(value||"").toUpperCase(),idx=GRANT_RANKS.indexOf(threshold);
     if(idx>=0) db.settings.feature_grants[key]=GRANT_RANKS.slice(idx);
     else if(value===null||threshold==="OFF"||threshold==="") db.settings.feature_grants[key]=[];
     else return res.status(400).json({error:"Invalid rank for feature "+key});
   }
   try{
     await pool.query(`INSERT INTO settings(key,value) VALUES('feature_grants',$1::jsonb) ON CONFLICT(key) DO UPDATE SET value=EXCLUDED.value`,[JSON.stringify(db.settings.feature_grants)]);
-    const actor=current(req);log(actor,'FEATURE_ACCESS_BULK_SAVE','site',{features:Object.keys(incoming).map(key=>({key,minimumRank:db.settings.feature_grants[key]?.[0]||'DISABLED'}))});
+    const actor=current(req);log(actor,'FEATURE_ACCESS_BULK_SAVE','site',{features:Object.keys(incoming).map(key=>({key,allowedRanks:db.settings.feature_grants[key]||[]}))});
     res.json({ok:true,grants:db.settings.feature_grants});
   }catch(e){console.error("Feature grant settings save failed:",e);res.status(500).json({error:"Could not save feature grants."});}
 });
