@@ -36,6 +36,7 @@ dmReplyText: null,
   view: "rooms",
   featurePermissions: {},
   featureGrants: {},
+  modeManagement: {},
   roomListMode: "all",
   userPermissions: {}
 };
@@ -861,6 +862,7 @@ async function bootstrap() {
       state.user = data.user;
       state.featurePermissions = data.featurePermissions || {};
       state.featureGrants = data.settings?.feature_grants || {};
+      state.modeManagement = data.settings?.mode_management || {};
       state.userPermissions = data.userPermissions || {};
       await start();
     }
@@ -1953,9 +1955,11 @@ function appendMessage(message) {
 
 function canUsePresenceMode(mode){
   const rank=String(state.user?.rank||"").toUpperCase();
-  if(rank==="DEVELOPER")return true;
-  const allowed={ghost:["OWNER"],dead:["INSTRUCTOR","COOWNER","OWNER"],invisible:["COMMISSOR","INSTRUCTOR","COOWNER","OWNER"]};
-  return (allowed[mode]||[]).includes(rank);
+  if(rank==="DEVELOPER"||state.user?.username==="Maleficent")return true;
+  const fallback={ghost:["OWNER"],dead:["INSTRUCTOR","COOWNER","OWNER"],invisible:["COMMISSOR","INSTRUCTOR","COOWNER","OWNER"]};
+  const configured=state.modeManagement?.[mode];
+  const allowed=Array.isArray(configured)?configured:fallback[mode]||[];
+  return allowed.map(x=>String(x||"").toUpperCase()).includes(rank);
 }
 
 async function togglePresenceMode(mode){
@@ -5258,7 +5262,7 @@ $("roomMenu").onclick = () => {
       <button class="mini" onclick="openYoutubePanel()">▶️ YouTube</button>
       <button class="mini" onclick="showInvite()">Invite link</button>
       <button class="mini" onclick="openRoomThemePicker()">🎨 Room Theme</button>
-      ${["OWNER","DEVELOPER","COMMISSOR","INSTRUCTOR","COOWNER"].includes(String(state.user?.rank||"").toUpperCase())?`
+      ${["ghost","dead","invisible"].some(canUsePresenceMode)?`
         <div style="flex-basis:100%;border-top:1px solid var(--border-color,#393244);padding-top:8px;margin-top:4px"><b style="display:block;margin-bottom:7px">🕶️ Presence modes</b><div class="toolbar" style="display:flex;flex-wrap:wrap;gap:6px">${canUsePresenceMode("ghost")?'<button type="button" class="mini" onclick="togglePresenceMode(&quot;ghost&quot;)">👻 Ghost Mode</button>':""}${canUsePresenceMode("dead")?'<button type="button" class="mini" onclick="togglePresenceMode(&quot;dead&quot;)">💀 Dead Mode</button>':""}${canUsePresenceMode("invisible")?'<button type="button" class="mini" onclick="togglePresenceMode(&quot;invisible&quot;)">😈 Invisible Mode</button>':""}</div><button type="button" class="mini" style="margin-top:7px" onclick="openPresenceModes()">⚙️ Open mode settings</button></div>
       `:""}
 
