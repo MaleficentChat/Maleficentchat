@@ -1363,6 +1363,9 @@ $("messages").innerHTML =
 
     renderOnline();
     renderRooms();
+    // Reconcile against the server immediately after the room UI is ready;
+    // do not rely solely on a Socket.IO event that may have raced the join.
+    syncLiveMessages().catch(error=>console.warn("Post-join live sync failed:",error?.message||error));
     return true;
   } catch (error) {
     toast(error.message);
@@ -2865,6 +2868,9 @@ async function openDM(id) {
     }));
     const box = $("dmMessages");
     if (box) box.scrollTop = box.scrollHeight;
+    // The conversation DOM now exists. Fetch again now so a message that arrived
+    // while the contact list/modal was loading appears without reopening the DM.
+    syncLiveMessages().catch(error=>console.warn("Post-open private-message sync failed:",error?.message||error));
     const dmSearch=$("dmMessageSearch");
     dmSearch?.addEventListener("input",()=>{
       const q=dmSearch.value.trim().toLowerCase();
