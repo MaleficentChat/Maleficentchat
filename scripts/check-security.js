@@ -78,3 +78,10 @@ assert.ok(
   currentSource.indexOf('const raw=req.headers["x-auth-token"]') < currentSource.indexOf("const sessionUid=req.session?.userId"),
   "a valid signed client token must be resolved before a possibly stale cookie session"
 );
+
+const doodleSaveStart = app.indexOf("$('doodleSave')?.addEventListener");
+const doodleSendStart = app.indexOf("$('doodleSend')?.addEventListener", doodleSaveStart);
+assert.ok(doodleSaveStart >= 0 && doodleSendStart > doodleSaveStart,
+  "Doodle Studio save and send handlers must exist");
+assert.match(app.slice(doodleSaveStart, doodleSendStart), /await loadDoodleLibrary\(\)/,
+  "saving a doodle must refresh the saved-drawings library immediately");

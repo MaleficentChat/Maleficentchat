@@ -2329,7 +2329,7 @@ function openDoodleComposer(){
     const image=canvas.toDataURL('image/png');
     const title=($('doodleTitle')?.value||'Untitled doodle').trim().slice(0,80)||'Untitled doodle';
     await api('/api/doodles',{method:'POST',body:JSON.stringify({title,image})});
-    toast('Doodle saved to your personal library.');btn.textContent='✓ Saved';
+    toast('Doodle saved to your personal library.');await loadDoodleLibrary();btn.textContent='✓ Saved';
   }catch(e){toast(e.message||'Could not save doodle.');btn.disabled=false;btn.textContent='💾 Save drawing';}});
   $('doodleSend')?.addEventListener('click',async()=>{const btn=$('doodleSend');btn.disabled=true;btn.textContent='Sending…';try{
     const blob=await new Promise((resolve,reject)=>canvas.toBlob(b=>b?resolve(b):reject(Error('Could not export the doodle.')),'image/png'));
