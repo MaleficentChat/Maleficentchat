@@ -1,4 +1,4 @@
-const CACHE="maleficent-chat-v21-login-recovery";
+const CACHE="maleficent-chat-v22-gif-doodle-refresh";
 const ASSETS=["/","/style.css","/app.js","/manifest.json","/favicon.svg","/robots.txt","/sitemap.xml","/doodle-studio.js"];
 
 self.addEventListener("install",event=>{
