@@ -1,5 +1,8 @@
 const $ = id => document.getElementById(id);
 
+// Declare maintenance polling state before bootstrap can start the app.
+let constructionTimer=null,constructionPoll=null,constructionWriteInFlight=false;
+
 // Some embedded login browsers deny access to the localStorage property itself.
 // Keep an in-memory fallback so storage restrictions never prevent login requests.
 const memoryStorage = new Map();
@@ -4318,7 +4321,7 @@ async function clearUserActionHistory(userId){
 }
 /* ---------------- OWNER ---------------- */
 
-let constructionTimer=null,constructionPoll=null,constructionWriteInFlight=false;
+
 function isOwnerExempt(){
   // The server is authoritative for permission checks. Do not hard-code the owner username here:
   // OWNER_USERNAME may be configured differently in Render, which otherwise disables the UI toggle.
