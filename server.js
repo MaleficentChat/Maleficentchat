@@ -2091,7 +2091,7 @@ app.post("/api/rooms/:id/messages",auth,featureAllowed("send_messages"),upload.s
     const commandSettings=db.settings?.command_management||{};
     const commandKey=commandDefs.find(key=>String(commandSettings[key]?.name||key).toLowerCase()===typedCommand)||typedCommand;
     if(commandDefs.includes(commandKey)){
-      const config=commandSettings[commandKey],allowedRanks=Array.isArray(config?.ranks)?config.ranks:["MEMBER","VIP","PREMIUM","ROYAL","MOD","ADMIN","SUPER_ADMIN","COMMISSOR","INSTRUCTOR","COOWNER","OWNER"];
+      const config=commandSettings[commandKey],allowedRanks=Array.isArray(config?.ranks)?config.ranks:(REQUESTED_COMMAND_RANKS[commandKey]||RANK_TIERS.all);
       const actorRank=String(u.rank||"MEMBER").toUpperCase();
       if(actorRank!=="DEVELOPER"&&!allowedRanks.includes(actorRank))return res.status(403).json({error:"Your rank cannot use this command."});
     }
