@@ -2020,6 +2020,9 @@ function openPresenceModes(){
 }
 function isPartyModeActive(){return document.body.classList.contains("party-mode-active");}
 function setPartyMode(enabled){
+  const rank=String(state.user?.rank||"").toUpperCase();
+  const allowed=["ROYAL","MOD","ADMIN","SUPER_ADMIN","COMMISSOR","INSTRUCTOR","COOWNER","OWNER","DEVELOPER"].includes(rank);
+  if(enabled&&!allowed){toast("Party Mode is available to ROYAL and higher ranks.");return;}
   const active=!!enabled;
   document.body.classList.toggle("party-mode-active",active);
   let player=document.getElementById("partyModePlayer");
@@ -5358,8 +5361,11 @@ async function loadSettings(){
   const s=r.settings||{};
   const np=s.notificationPrefs||{};
   const sessions=(await api('/api/security/sessions').catch(()=>({sessions:[]}))).sessions||[];
+  const partyRank=String(state.user?.rank||'').toUpperCase();
+  const canUsePartyMode=['ROYAL','MOD','ADMIN','SUPER_ADMIN','COMMISSOR','INSTRUCTOR','COOWNER','OWNER','DEVELOPER'].includes(partyRank);
   $('settings').innerHTML=`
     <section class="settings-hero"><div class="settings-hero-glow"></div><div class="settings-hero-copy"><span class="settings-eyebrow">MALEFICENT CHAT · CONTROL CENTER</span><h2>Account settings</h2><p>Your account, your privacy, your aesthetic. Make this space yours.</p><div class="settings-hero-tags"><span>✦ Personalize</span><span>♢ Stay secure</span><span>♡ Your choices</span></div></div><div class="settings-hero-emblem">✧</div></section>
+    ${canUsePartyMode ? `<div class="panel party-mode-settings-panel"><h3>🎉 Party Mode <small class="muted">ROYAL+</small></h3><p class="muted">Add rainbow username glow, spinning GIFs and party music to this browser. This does not change what other users see.</p><button type="button" class="primary" id="settingsPartyMode">${isPartyModeActive()?'🎉 Turn Party Mode Off':'🎉 Turn Party Mode On'}</button></div>` : ''}
     <div class="grid2">
       <div class="panel"><h3>👤 Account</h3><p class="muted">Manage the information connected to your account.</p><div class="settings-list">
         <button class="settings-row" onclick="editProfileInfo()"><span>🪪</span><b>Profile information</b><small>Display name, pronouns and basic details</small><strong>›</strong></button>
@@ -5374,6 +5380,8 @@ async function loadSettings(){
 <div class="panel danger-panel"><h3>⚠️ Account actions</h3><p class="muted">Deleting your account removes your account and personal conversations permanently.</p><button class="mini danger" onclick="deleteAccount()">Delete my account</button></div>
 `;
   applyTheme(s.theme||'obsidian');
+  const partyButton=$('settingsPartyMode');
+  if(partyButton)partyButton.onclick=()=>{if(!canUsePartyMode){toast('Party Mode is available to ROYAL and higher ranks.');return;}setPartyMode(!isPartyModeActive());partyButton.textContent=isPartyModeActive()?'🎉 Turn Party Mode Off':'🎉 Turn Party Mode On';};
    $('savePrivacy').onclick=async()=>{try{await api('/api/profile',{method:'PUT',body:JSON.stringify({privacy:{lastSeen:$('setLastSeen').checked,online:$('setOnline').checked}})});toast('Privacy saved.');}catch(e){toast(e.message)}};
   $('saveNotifications').onclick=async()=>{await api('/api/notifications/preferences',{method:'PUT',body:JSON.stringify({messages:$('nMessages').checked,mentions:$('nMentions').checked,replies:$('nReplies').checked,security:$('nSecurity').checked,staff:$('nStaff').checked,gamification:$('nGamification').checked,other:$('nOther').checked})});toast('Notification preferences saved.');};
   $('viewLoginHistory').onclick=async()=>{const h=await api('/api/security/login-history');modal(`<h2>Login history</h2>${(h.history||[]).map(x=>`<div class="card"><b>${fmt(x.time)}</b><div class="muted">${esc(x.ip||'Unknown device')}</div></div>`).join('')||'<p class="muted">No login history.</p>'}`);};
