@@ -6083,6 +6083,8 @@ app.get('/api/gifs/search',auth,async(req,res)=>{
 app.post('/api/rooms/:id/gif',auth,featureAllowed('send_messages'),async(req,res)=>{
   const u=current(req),r=db.rooms.find(x=>String(x.id)===String(req.params.id));
   if(!r)return res.status(404).json({error:'Room not found'});
+  if(!verifyRoomJoinToken(req.headers['x-room-join-token'],u.id,r))return res.status(403).json({error:'Join this room before sending a GIF.'});
+  if(!roomRankCanEnter(u,r))return res.status(403).json({error:'Your rank cannot enter this room.'});
   if(u.banned===true || (u.kickedUntil&&u.kickedUntil>Date.now()) || (u.mutedUntil&&u.mutedUntil>Date.now()))return res.status(403).json({error:'Your account cannot send messages right now.'});
   if(!featureGrantAllowed(u,'gif_sending'))return res.status(403).json({error:'Your rank cannot send GIFs.'});
   const url=String(req.body.url||''); let parsed;try{parsed=new URL(url)}catch{return res.status(400).json({error:'Invalid GIF URL.'})}
