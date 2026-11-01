@@ -1446,18 +1446,27 @@ app.post(
 app.post(
   "/api/login",
   async(req,res)=>{
-    const loginUsername=String(req.body.username||"").trim();
+    const loginUsername=String(req.body?.username||"").trim();
+    const passwordInput=String(req.body?.password||"");
+    if(!loginUsername||!passwordInput){
+      return res.status(400).json({error:"Enter both your username and password."});
+    }
     const u=findUser(loginUsername);
+    let passwordValid=!!(u?.password && passwordInput===String(u.password));
 
-    if(
-      !u||
-      !((u.password && String(req.body.password||"")===String(u.password)) ||
-        (u.passwordHash && await bcrypt.compare(req.body.password||"",u.passwordHash)))
-    ){
-      return res.status(401).json({
-        error:
-          "Invalid username or password."
-      });
+    // Some older accounts may contain a malformed legacy hash. A bad stored
+    // hash must be treated as a failed login, not an uncaught exception/500
+    // that the client reports as a generic login error.
+    if(!passwordValid&&u?.passwordHash){
+      try{
+        passwordValid=await bcrypt.compare(passwordInput,String(u.passwordHash));
+      }catch(error){
+        console.error("Login password-hash verification failed:",error?.message||error);
+        passwordValid=false;
+      }
+    }
+    if(!u||!passwordValid){
+      return res.status(401).json({error:"Invalid username or password."});
     }
 
     if(String(u.rank).toUpperCase()==="VIP" && u.vipExpiresAt && Number(u.vipExpiresAt)<Date.now()){
