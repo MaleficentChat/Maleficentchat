@@ -3667,11 +3667,11 @@ app.get(
     const u=current(req);
 
     if(
-      !hasRank(u,"MOD")&&
-      u.id!==req.params.id
+      String(u.id)!==String(req.params.id)&&
+      !hasFeature(u,"view_user_history")
     ){
       return res.status(403).json({
-        error:"No permission"
+        error:"User history access is not granted to your rank."
       });
     }
 
