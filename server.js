@@ -5332,7 +5332,11 @@ app.get("/api/owner/dms",ownerOnly,async(req,res)=>{
 
 app.get("/api/dm/unread-count",auth,(req,res)=>{
   const u=current(req);
-  const count=db.privateMessages.filter(m=>m.to===u.id&&!m.read).length;
+  // IDs can be strings in legacy JSON-backed records and numbers after DB
+  // hydration. Normalize before comparing so unread counts remain consistent.
+  const count=db.privateMessages.filter(m=>
+    String(m.to??m.receiverId??"")===String(u.id)&&!m.read
+  ).length;
   res.json({count});
 });
 
