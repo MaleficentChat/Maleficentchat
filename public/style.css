@@ -4245,3 +4245,68 @@ button:focus-visible{outline:2px solid #d38bff;outline-offset:2px}
   #viewProfile .settings-list { padding-bottom: max(18px, env(safe-area-inset-bottom)); }
   #viewProfile .settings-row { overflow-wrap: anywhere; }
 }
+
+
+/* Prevent My Profile controls and tabs from colliding on narrow/mobile screens. */
+#viewProfile .profile-settings-top {
+  position: static !important;
+  inset: auto !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex-wrap: wrap !important;
+  gap: 8px !important;
+  margin: 0 0 12px !important;
+  box-sizing: border-box !important;
+}
+#viewProfile .profile-settings-top > span,
+#viewProfile .profile-settings-top > button {
+  position: static !important;
+  inset: auto !important;
+  float: none !important;
+  flex: 0 1 auto !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  margin: 0 !important;
+  box-sizing: border-box !important;
+}
+#viewProfile .profile-settings-top > button {
+  white-space: nowrap;
+}
+#viewProfile .settings-tabs {
+  display: flex !important;
+  flex-flow: row nowrap !important;
+  align-items: stretch !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+  scrollbar-width: thin;
+  -webkit-overflow-scrolling: touch;
+}
+#viewProfile .settings-tab {
+  position: relative !important;
+  flex: 1 0 auto !important;
+  min-width: max-content !important;
+  max-width: 100% !important;
+  white-space: nowrap !important;
+  line-height: 1.25 !important;
+  box-sizing: border-box !important;
+}
+@media (max-width: 600px) {
+  #viewProfile .profile-settings-top { gap: 6px !important; }
+  #viewProfile .profile-settings-top > span,
+  #viewProfile .profile-settings-top > button {
+    min-height: 36px !important;
+    padding: 7px 9px !important;
+    font-size: 12px !important;
+  }
+  #viewProfile .settings-tab {
+    padding: 12px 11px !important;
+    font-size: 12px !important;
+  }
+}
