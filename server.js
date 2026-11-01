@@ -1431,11 +1431,12 @@ app.post(
 
     req.session.save(err=>{
       if(err){
-        console.error("Session save error:",err);
-        return res.status(500).json({error:"Could not create session."});
+        // Registration can still complete through the signed-token auth path if
+        // PostgreSQL's optional session store is temporarily unavailable.
+        console.error("Registration session persistence failed; returning signed-token fallback:",err);
       }
 
-      res.json({
+      return res.json({
         user:{...safeUser(u),invisible:!!u.invisible}, token:makeToken(u.id)
       });
     });
