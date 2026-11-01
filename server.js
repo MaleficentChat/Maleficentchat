@@ -848,7 +848,7 @@ async function auth(req,res,next){
   }
   if(!(await enforceNetworkAccess(req,res,u)))return;
   // Enforce account-wide moderation before any authenticated API route, including private messages.
-  if(u.banned===truereturn res.status(403).json({error:"You have been banned",reason:u.banReason||"Community rules",moderationLock:"BAN"});
+  if(u.banned===true)return res.status(403).json({error:"You have been banned",reason:u.banReason||"Community rules",moderationLock:"BAN"});
   if(u.kickedUntil&&Number(u.kickedUntil)>Date.now())return res.status(403).json({error:"You have been kicked",reason:u.kickReason||"Community rules",kickedUntil:Number(u.kickedUntil),moderationLock:"KICK"});
 
   const construction=db.settings?.under_construction||{};
