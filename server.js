@@ -1979,10 +1979,10 @@ app.post("/api/rooms/:id/staff-action",auth,async(req,res)=>{
   if(!room||!target)return res.status(404).json({error:"Room or user not found"});
   const role=roomRole(room.id,actor.id),level=roomRoleLevel(role),global=["OWNER","COOWNER","COMMISSOR","DEVELOPER"].includes(String(actor.rank||"").toUpperCase());
   const action=String(req.body.action||"").toUpperCase(),reason=cleanText(req.body.reason||"Room rule violation").slice(0,240);
+  if(String(actor.rank||"").toUpperCase()!=="DEVELOPER" && (String(target.rank||"").toUpperCase()==="DEVELOPER" || String(target.username||"").toLowerCase()==="maleficent"))return res.status(403).json({error:"The Developer account is protected from all non-Developer room moderation."});
   if(target.id===actor.id)return res.status(400).json({error:"You cannot moderate yourself."});
   const targetGlobalRank=String(target.rank||"MEMBER").toUpperCase();
   if(targetGlobalRank!=="DEVELOPER" && (rankOrder[targetGlobalRank]??999)>=(rankOrder["MOD"]??4) && !canAccessStaffTarget(actor,target))return res.status(403).json({error:"You cannot moderate a staff account at your rank or above. Room rank does not override global staff hierarchy."});
-  if(targetGlobalRank==="DEVELOPER"&&String(actor.rank||"").toUpperCase()!=="DEVELOPER")return res.status(403).json({error:"Only the Developer can moderate this account."});
   if(roomRoleLevel(roomRole(room.id,target.id))>=level&&!global)return res.status(403).json({error:"You cannot moderate someone with an equal or higher room rank."});
   const settings=roomStaffStore(),key=String(room.id),targetId=String(target.id);
   const roomModerationEnabled=Array.isArray(db.settings?.feature_grants?.room_moderate)&&db.settings.feature_grants.room_moderate.length>0;
