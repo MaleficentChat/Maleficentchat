@@ -251,7 +251,7 @@ const FEATURE_CONTROLS=[
   {key:"manage_bots",name:"Manage community bots",category:"AI",defaultRank:"OWNER"},
   {key:"delete_message",name:"Delete messages",category:"Staff",defaultRank:"MOD"},
   {key:"clear_room",name:"Clear rooms",category:"Rooms",defaultRank:"COOWNER"},
-  {key:"create_room",name:"Create rooms",category:"Rooms",defaultRank:"SUPER_ADMIN"},
+  {key:"create_room",name:"Create rooms",category:"Rooms",defaultRank:"PREMIUM"},
   {key:"edit_room",name:"Edit rooms",category:"Rooms",defaultRank:"COOWNER"},
   {key:"delete_room",name:"Delete rooms",category:"Rooms",defaultRank:"COOWNER"},
   {key:"publish_news",name:"Publish news",category:"News",defaultRank:"ADMIN"},
@@ -287,7 +287,7 @@ const FEATURE_GRANT_DEFAULTS={
   change_password:["OWNER"],
   edit_email:["OWNER"],
   manage_xp_level:["OWNER"],
-  create_rooms:["ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],
+  create_rooms:["PREMIUM","ROYAL","MOD","ADMIN","SUPER_ADMIN","COMMISSOR","INSTRUCTOR","COOWNER","OWNER","DEVELOPER"],
   edit_rooms:["ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],
   delete_rooms:["ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],
   join_rooms:GRANT_RANKS,
@@ -334,7 +334,7 @@ const FEATURE_GRANT_DEFAULTS={
   inspect_ip_details:["ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],inspect_similar_ips:["ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],view_user_history:["MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],view_username_history:["MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],manage_profile_notes:["MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],manage_account_locks:["ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],manage_avatar:["MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],delete_accounts:["COOWNER","OWNER"],manage_bans:["MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],manage_mutes:["MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],manage_kicks:["MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],manage_warnings:["MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],manage_automated_filters:["ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],manage_vpn_proxy_rules:["OWNER"],manage_multi_account_rules:["OWNER"],manage_spam_flood_rules:["ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],manage_user_feature_exceptions:["OWNER"],manage_rank_feature_grants:["OWNER"],manage_individual_feature_grants:["OWNER"],manage_owner_space:["OWNER"],manage_site_refresh:["OWNER"],view_system_diagnostics:["OWNER"],manage_site_themes:["OWNER"],manage_economy_settings:["OWNER"],manage_premium_settings:["OWNER"],manage_notifications_settings:["OWNER"],manage_room_permissions:["OWNER"],manage_room_themes:["OWNER"],manage_room_staff:["OWNER","COOWNER","COMMISSOR"],manage_suggestions_settings:["OWNER"],manage_feature_granting:["OWNER"]
 };
 
-const FEATURE_GRANT_POLICY_VERSION=5;
+const FEATURE_GRANT_POLICY_VERSION=6;
 const RANK_TIERS={all:[...GRANT_RANKS],vip:GRANT_RANKS.slice(1),premium:GRANT_RANKS.slice(2),royal:GRANT_RANKS.slice(3),mod:GRANT_RANKS.slice(4),admin:GRANT_RANKS.slice(5),superAdmin:GRANT_RANKS.slice(6),commissor:GRANT_RANKS.slice(7),instructor:GRANT_RANKS.slice(8),coowner:GRANT_RANKS.slice(9),owner:GRANT_RANKS.slice(10)};
 const REQUESTED_FEATURE_GRANTS_EXPLICIT={
 send_messages:RANK_TIERS.all,private_messages:RANK_TIERS.vip,gif_sending:RANK_TIERS.vip,emojis_stickers:RANK_TIERS.all,chat_file_upload:RANK_TIERS.vip,chat_attachments:RANK_TIERS.vip,chat_image_upload:RANK_TIERS.vip,chat_video_upload:RANK_TIERS.vip,chat_audio_upload:RANK_TIERS.vip,use_youtube:RANK_TIERS.vip,chat_youtube_music:RANK_TIERS.vip,
