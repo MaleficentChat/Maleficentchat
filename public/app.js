@@ -1,5 +1,22 @@
 const $ = id => document.getElementById(id);
 
+// Room theme data must exist before early socket events or room rendering can apply it.
+const ROOM_THEMES = [
+{id:"obsidian",name:"Obsidian",emoji:"🌑",bg:"#0b0b14",bubble:"#302342",accent:"#b58cff"},
+{id:"midnight",name:"Midnight",emoji:"🌌",bg:"#080d20",bubble:"#17264a",accent:"#7197ff"},
+{id:"lavender",name:"Lavender",emoji:"💜",bg:"#171027",bubble:"#4b3268",accent:"#d1a5ff"},
+{id:"rose",name:"Rose",emoji:"🌹",bg:"#210f1b",bubble:"#593044",accent:"#ff8fbe"},
+{id:"forest",name:"Forest",emoji:"🌲",bg:"#091a16",bubble:"#1b4035",accent:"#69d5a7"},
+{id:"sunset",name:"Sunset",emoji:"🌇",bg:"#24120e",bubble:"#653522",accent:"#ffab70"},
+{id:"ocean",name:"Ocean",emoji:"🌊",bg:"#071a24",bubble:"#16465a",accent:"#65d9ef"},
+{id:"cyberpunk",name:"Cyberpunk",emoji:"⚡",bg:"#10091f",bubble:"#39205a",accent:"#ff4fd8"},
+{id:"aurora",name:"Aurora",emoji:"✨",bg:"#071b20",bubble:"#16434a",accent:"#76f0d0"},
+{id:"sakura",name:"Sakura",emoji:"🌸",bg:"#21111f",bubble:"#60304f",accent:"#ffa8db"},
+{id:"ember",name:"Ember",emoji:"🔥",bg:"#1d100d",bubble:"#51271f",accent:"#ff765e"},
+{id:"ice",name:"Ice Palace",emoji:"🧊",bg:"#0b1724",bubble:"#263d52",accent:"#b3e7ff"}
+];
+
+
 // Declare maintenance polling state before bootstrap can start the app.
 let constructionTimer=null,constructionPoll=null,constructionWriteInFlight=false;
 
@@ -5289,20 +5306,7 @@ $("roomMenu").onclick = () => {
 };
 
 
-const ROOM_THEMES = [
-{id:"obsidian",name:"Obsidian",emoji:"🌑",bg:"#0b0b14",bubble:"#302342",accent:"#b58cff"},
-{id:"midnight",name:"Midnight",emoji:"🌌",bg:"#080d20",bubble:"#17264a",accent:"#7197ff"},
-{id:"lavender",name:"Lavender",emoji:"💜",bg:"#171027",bubble:"#4b3268",accent:"#d1a5ff"},
-{id:"rose",name:"Rose",emoji:"🌹",bg:"#210f1b",bubble:"#593044",accent:"#ff8fbe"},
-{id:"forest",name:"Forest",emoji:"🌲",bg:"#091a16",bubble:"#1b4035",accent:"#69d5a7"},
-{id:"sunset",name:"Sunset",emoji:"🌇",bg:"#24120e",bubble:"#653522",accent:"#ffab70"},
-{id:"ocean",name:"Ocean",emoji:"🌊",bg:"#071a24",bubble:"#16465a",accent:"#65d9ef"},
-{id:"cyberpunk",name:"Cyberpunk",emoji:"⚡",bg:"#10091f",bubble:"#39205a",accent:"#ff4fd8"},
-{id:"aurora",name:"Aurora",emoji:"✨",bg:"#071b20",bubble:"#16434a",accent:"#76f0d0"},
-{id:"sakura",name:"Sakura",emoji:"🌸",bg:"#21111f",bubble:"#60304f",accent:"#ffa8db"},
-{id:"ember",name:"Ember",emoji:"🔥",bg:"#1d100d",bubble:"#51271f",accent:"#ff765e"},
-{id:"ice",name:"Ice Palace",emoji:"🧊",bg:"#0b1724",bubble:"#263d52",accent:"#b3e7ff"}
-];
+
 function applyRoomTheme(themeId){
  const t=ROOM_THEMES.find(x=>x.id===themeId)||ROOM_THEMES[0],root=$("viewRooms");if(!root)return;
  root.dataset.roomTheme=t.id;root.style.setProperty("--room-theme-bg",t.bg);root.style.setProperty("--room-theme-bubble",t.bubble);root.style.setProperty("--room-theme-accent",t.accent);
