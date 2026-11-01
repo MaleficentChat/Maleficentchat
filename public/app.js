@@ -4059,18 +4059,18 @@ async function loadStaff() {
     const canManageGuidesAndFilters=["COMMISSOR","INSTRUCTOR","COOWNER","OWNER","DEVELOPER"].includes(staffRank);
     const canManageGuides=["COOWNER","OWNER","DEVELOPER"].includes(staffRank);
     if(canManageGuidesAndFilters&&staffRoot){
+      const clearedSection=staffRoot.querySelector(".cleared-room-evidence-card")?.closest("details");
       if(canManageGuides){
-      const guideDropdown=document.createElement("details");
-      guideDropdown.id="staffGuideManagementDropdown";guideDropdown.className="staff-compact-dropdown filter-words-details";
-      guideDropdown.innerHTML='<summary>📘 Guide Management <span class="muted">— click to open</span></summary><div class="owner-filter-management-content"><div id="staffGuideManagement" class="stack"></div></div>';
+        const guideDropdown=document.createElement("details");
+        guideDropdown.id="staffGuideManagementDropdown";guideDropdown.className="staff-compact-dropdown filter-words-details";
+        guideDropdown.innerHTML='<summary>📘 Guide Management <span class="muted">— click to open</span></summary><div class="owner-filter-management-content"><div id="staffGuideManagement" class="stack"></div></div>';
+        if(clearedSection)staffRoot.insertBefore(guideDropdown,clearedSection);else staffRoot.append(guideDropdown);
+        loadOwnerGuideManagement();
+      }
       const filterDropdown=document.createElement("details");
       filterDropdown.id="staffFilterManagementDropdown";filterDropdown.className="staff-compact-dropdown filter-words-details";
       filterDropdown.innerHTML='<summary>🧩 Filter Management <span class="muted">— click to open</span></summary><div class="owner-filter-management-content" id="staffFilterManagement"></div>';
-      const clearedSection=staffRoot.querySelector(".cleared-room-evidence-card")?.closest("details");
-      if(clearedSection){staffRoot.insertBefore(guideDropdown,clearedSection);staffRoot.insertBefore(filterDropdown,clearedSection);}
-      else staffRoot.append(guideDropdown,filterDropdown);
-      loadOwnerGuideManagement();
-      }
+      if(clearedSection)staffRoot.insertBefore(filterDropdown,clearedSection);else staffRoot.append(filterDropdown);
       loadStaffFilterManagement();
     }
     const statsGrid=staffRoot?.querySelector(".grid2");
