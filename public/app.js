@@ -1608,6 +1608,26 @@ function formatMentions(text){
   });
 }
 
+function youtubePreviewHTML(videoId, title="YouTube video") {
+  const id=String(videoId||"");
+  if(!/^[A-Za-z0-9_-]{11}$/.test(id)) return "";
+  const label=String(title||"YouTube video").slice(0,180);
+  return '<div class="youtube-message"><button class="youtube-preview" type="button" data-video-id="' + id + '" data-title="' + esc(label) + '" onclick="playYouTubeMessage(this)" aria-label="Play YouTube video: ' + esc(label) + '"><img src="https://i.ytimg.com/vi/' + id + '/hqdefault.jpg" alt="" loading="lazy"><span class="youtube-play-icon" aria-hidden="true">▶</span><span class="youtube-preview-label">' + esc(label) + '</span></button></div>';
+}
+function playYouTubeMessage(button) {
+  const videoId=String(button?.dataset?.videoId||"");
+  if(!/^[A-Za-z0-9_-]{11}$/.test(videoId)) return;
+  const wrapper=button.closest(".youtube-message");
+  if(!wrapper) return;
+  const frame=document.createElement("iframe");
+  frame.src="https://www.youtube-nocookie.com/embed/"+videoId+"?autoplay=1&rel=0";
+  frame.title=String(button.dataset.title||"YouTube video");
+  frame.loading="lazy";
+  frame.allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share";
+  frame.referrerPolicy="strict-origin-when-cross-origin";
+  frame.allowFullscreen=true;
+  wrapper.replaceChildren(frame);
+}
 function messageHTML(message) {
   if(message?.breadCommand && String(message.bot||message.username)==="Bot"){
     return `<div class="message bot-welcome-message bot-bread-message" data-mid="${esc(message.id)}">
@@ -1724,13 +1744,13 @@ function messageHTML(message) {
   if (message.youtube?.videoId) {
     const videoId = String(message.youtube.videoId);
     if (/^[A-Za-z0-9_-]{11}$/.test(videoId)) {
-      attachment = `<div class="youtube-message"><iframe src="https://www.youtube-nocookie.com/embed/${esc(videoId)}" title="${esc(message.youtube.title||"YouTube video")}" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe></div>`;
+      attachment = youtubePreviewHTML(videoId,message.youtube.title||"YouTube video");
     }
   }
 
   if (message.attachment) {
     if(message.attachment.type==='video/youtube' && message.attachment.videoId){
-      attachment=`<div class="youtube-message"><iframe src="https://www.youtube.com/embed/${esc(message.attachment.videoId)}" title="${esc(message.attachment.name||'YouTube video')}" loading="lazy" allowfullscreen></iframe></div>`;
+      attachment=youtubePreviewHTML(message.attachment.videoId,message.attachment.name||"YouTube video");
     } else if (
       message.attachment.type &&
       message.attachment.type.startsWith("image/")
