@@ -255,13 +255,8 @@
     form.addEventListener("submit",function(event){
       event.preventDefault();
       event.stopImmediatePropagation();
-      if(typeof form.onsubmit==="function"){
-        try{form.onsubmit.call(form,event);}catch(error){
-          const msg=document.getElementById("authMsg");
-          if(msg)msg.textContent="Login form error: "+String(error&&error.message||error);
-        }
-        return;
-      }
+      // Use the standalone request even if a partially initialized app attached
+      // an onsubmit handler. This path is intentionally independent of app.js.
       const msg=document.getElementById("authMsg");
       const button=document.getElementById("authSubmit");
       const loginMode=login.classList.contains("active");
@@ -295,6 +290,6 @@
   }
 })();
 </script>
-<script src="/app.js?v=login-recovery-20261102-6"></script>
+<script src="/app.js?v=login-recovery-20261102-7"></script>
 </body>
 </html>
