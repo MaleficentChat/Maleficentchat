@@ -4400,7 +4400,7 @@ async function loadGuide(){
   }catch(e){host.innerHTML='<div class="card"><p class="muted">Could not load the guide: '+esc(e.message||"Request failed")+'</p></div>';}
 }
 async function loadOwnerGuideManagement(){
-  const host=$("ownerGuideManagement");if(!host)return;
+  const host=$("staffGuideManagement");if(!host)return;
   const guideRanks=["MEMBER","VIP","PREMIUM","ROYAL","MOD","ADMIN","SUPER_ADMIN","COMMISSOR","INSTRUCTOR","COOWNER","OWNER","DEVELOPER"];
   let selectedRank="MEMBER", guides=[];
   const render=()=>{
@@ -4572,7 +4572,7 @@ async function loadOwner() {
 
     
     
-    loadOwnerGuideManagement();
+    $("owner")?.querySelector(".owner-filter-management")?.remove();
     $("ownerClearAllMessages")?.addEventListener("click",async()=>{
       const confirmation="PERMANENTLY DELETE EVERY ROOM CHAT MESSAGE AND EVERY PRIVATE MESSAGE FOR ALL USERS?\n\nThis cannot be undone. Accounts, passwords, ranks, gold, settings, rooms, reports, and moderation/audit history will remain. Type CLEAR in the next prompt to continue.";
       if(!window.confirm(confirmation))return;
