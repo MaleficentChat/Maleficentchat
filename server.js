@@ -3935,7 +3935,7 @@ async function evaluateDeveloperNetworkPolicy(ip){
 app.get("/api/developer/network-security",auth,(req,res)=>{const a=developerNetworkAccess(req,res);if(a)res.json({config:a.cfg});});
 app.post("/api/developer/network-security/rules",auth,(req,res)=>{
  const a=developerNetworkAccess(req,res);if(!a)return;const pattern=String(req.body?.pattern||"").trim().slice(0,64);
- const valid=networkIpv4Number(pattern)!==null||(/^((\\d{1,3}\\.){0,2}\\d{1,3}\\.\\*)$/.test(pattern)&&pattern.split(".").every(x=>x==="*"||Number(x)<=255))||(/^((\\d{1,3}\\.){3}\\d{1,3})\\/(\\d|[12]\\d|3[0-2])$/.test(pattern)&&networkIpv4Number(pattern.split("/")[0])!==null);
+ const valid=networkRuleIsValid(pattern);
  if(!valid)return res.status(400).json({error:"Enter an IPv4 address, wildcard such as 45.67.1.*, or CIDR such as 45.67.0.0/16."});
  if(a.cfg.ipRules.some(r=>r.pattern===pattern&&r.enabled!==false))return res.status(409).json({error:"That rule already exists."});
  a.cfg.ipRules.unshift({id:crypto.randomUUID(),pattern,reason:String(req.body?.reason||"Developer network ban").slice(0,240),enabled:true,createdAt:Date.now(),createdBy:a.actor.username});save();log(a.actor,"DEVELOPER_IP_RANGE_BAN",pattern);res.json({ok:true,config:a.cfg});
