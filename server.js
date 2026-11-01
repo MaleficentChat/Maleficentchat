@@ -1967,6 +1967,8 @@ app.put("/api/rooms/:id/staff/:userId",auth,(req,res)=>{
   if(!roomOwnerOrGlobal(actor,room)&&!roomRoleCan(room.id,actor.id,permissionNeeded))return res.status(403).json({error:"Your room role does not have permission to "+(role==="USER"?"manage or remove room staff.":"assign room ranks.")});
   if(role!=="USER"&&(!Array.isArray(db.settings?.feature_grants?.room_rank_assign)||!db.settings.feature_grants.room_rank_assign.length))return res.status(403).json({error:"Room-rank assignment is disabled in Feature Granting."});
   if(String(target.rank||"").toUpperCase()==="DEVELOPER"&&String(actor.rank||"").toUpperCase()!=="DEVELOPER")return res.status(403).json({error:"Only the Developer can change this account's room rank."});
+  const targetGlobalRank=String(target.rank||"MEMBER").toUpperCase();
+  if(targetGlobalRank!=="DEVELOPER" && (rankOrder[targetGlobalRank]??999)>=(rankOrder["MOD"]??4) && !canAccessStaffTarget(actor,target))return res.status(403).json({error:"You cannot change room ranks for a staff account at your rank or above. Room rank does not override global staff hierarchy."});
   const settings=roomStaffStore(),key=String(room.id);settings.room_staff[key] ||= {};
   if(role==="USER")delete settings.room_staff[key][String(target.id)];else settings.room_staff[key][String(target.id)]=role;
   save();log(actor,"ROOM_RANK_CHANGE",target.username,{roomId:String(room.id),role});recordRoomModeration(room.id,{actorId:String(actor.id),actorUsername:actor.username,targetId:String(target.id),targetUsername:target.username,action:"RANK_CHANGE",role});
@@ -1978,6 +1980,9 @@ app.post("/api/rooms/:id/staff-action",auth,async(req,res)=>{
   const role=roomRole(room.id,actor.id),level=roomRoleLevel(role),global=["OWNER","COOWNER","COMMISSOR","DEVELOPER"].includes(String(actor.rank||"").toUpperCase());
   const action=String(req.body.action||"").toUpperCase(),reason=cleanText(req.body.reason||"Room rule violation").slice(0,240);
   if(target.id===actor.id)return res.status(400).json({error:"You cannot moderate yourself."});
+  const targetGlobalRank=String(target.rank||"MEMBER").toUpperCase();
+  if(targetGlobalRank!=="DEVELOPER" && (rankOrder[targetGlobalRank]??999)>=(rankOrder["MOD"]??4) && !canAccessStaffTarget(actor,target))return res.status(403).json({error:"You cannot moderate a staff account at your rank or above. Room rank does not override global staff hierarchy."});
+  if(targetGlobalRank==="DEVELOPER"&&String(actor.rank||"").toUpperCase()!=="DEVELOPER")return res.status(403).json({error:"Only the Developer can moderate this account."});
   if(roomRoleLevel(roomRole(room.id,target.id))>=level&&!global)return res.status(403).json({error:"You cannot moderate someone with an equal or higher room rank."});
   const settings=roomStaffStore(),key=String(room.id),targetId=String(target.id);
   const roomModerationEnabled=Array.isArray(db.settings?.feature_grants?.room_moderate)&&db.settings.feature_grants.room_moderate.length>0;
