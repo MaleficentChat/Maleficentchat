@@ -3994,3 +3994,184 @@ body.party-mode-active .msg.dm-msg .chat-gif{
 #topMessages #topDmDot.count-badge{display:inline-flex!important;position:absolute!important;top:-5px!important;right:-5px!important;left:auto!important;bottom:auto!important;align-items:center!important;justify-content:center!important;min-width:19px!important;width:auto!important;height:19px!important;padding:0 5px!important;margin:0!important;box-sizing:border-box!important;border:2px solid #09090b!important;border-radius:999px!important;background:#ff2f75!important;color:#fff!important;font:800 10px/1 system-ui,sans-serif!important;white-space:nowrap!important;box-shadow:0 0 0 1px rgba(255,47,117,.2),0 2px 10px rgba(255,47,117,.55)!important;z-index:9999!important;pointer-events:none!important}
 #topMessages #topDmDot:not(.count-badge){display:none!important}
 #sidebar #dmDot.count-badge{display:inline-flex!important;align-items:center!important;justify-content:center!important;min-width:19px!important;height:19px!important;padding:0 5px!important;border-radius:999px!important;background:#ff2f75!important;color:#fff!important;font:800 10px/1 system-ui,sans-serif!important;box-shadow:0 2px 8px rgba(255,47,117,.35)!important}
+
+
+/* === MALeficent Chat: Midnight Eclipse visual overhaul ===
+   A full visual skin layered over the existing app without changing its behaviour. */
+:root{
+  color-scheme:dark;
+  --bg:#080611;--bg-deep:#05030b;
+  --panel:#100c1b;--panel-2:#171126;--panel-3:#211832;
+  --border:rgba(190,155,255,.14);--border-strong:rgba(208,177,255,.25);
+  --text:#f7f1ff;--muted:#a69ab9;
+  --accent:#b56bff;--accent-2:#f14bd8;--accent-soft:rgba(181,107,255,.15);
+  --bubble:#20172f;--mine:#51266d;--pink:#ff4fd8;--purple:#9b5cff;
+  --green:#66f0c1;--danger:#ff668d;
+  --shadow:0 24px 80px rgba(0,0,0,.52);
+}
+html{background:#07040d}
+body{
+  background:
+    radial-gradient(ellipse at 15% -10%,rgba(115,48,161,.22),transparent 38%),
+    radial-gradient(ellipse at 95% 100%,rgba(184,35,132,.10),transparent 36%),
+    #080611;
+  color:var(--text);
+  scrollbar-color:#56346e #0b0712;
+}
+::selection{background:rgba(211,93,255,.35);color:#fff}
+button,input,textarea,select{accent-color:#c06cff}
+input,textarea,select,form input,form textarea,form select,.field input,.field textarea,.field select{
+  background:rgba(12,8,21,.92);color:var(--text);border:1px solid rgba(190,155,255,.18);
+  border-radius:12px;transition:border-color .18s,box-shadow .18s,background .18s;
+}
+input:focus,textarea:focus,select:focus{
+  border-color:rgba(216,123,255,.75);box-shadow:0 0 0 3px rgba(181,107,255,.13),0 0 18px rgba(181,107,255,.08);
+  background:#100a1c;outline:none
+}
+a{color:#e4a4ff}a:hover{color:#ffd3f7}
+.auth-screen{
+  background:radial-gradient(ellipse at 50% 18%,rgba(112,48,157,.28),transparent 35%),
+    radial-gradient(ellipse at 85% 80%,rgba(224,50,164,.12),transparent 35%),#07040d;
+}
+.auth-card{
+  position:relative;overflow:hidden;background:linear-gradient(145deg,rgba(24,15,39,.97),rgba(10,7,18,.98));
+  border:1px solid rgba(207,153,255,.28);border-radius:25px;
+  box-shadow:0 30px 100px rgba(0,0,0,.58),0 0 50px rgba(157,73,224,.12);
+}
+.auth-card:before{
+  content:"";position:absolute;left:12%;right:12%;top:0;height:2px;
+  background:linear-gradient(90deg,transparent,#a967ff,#ff4fd8,transparent);
+  filter:drop-shadow(0 0 8px #bb62ff)
+}
+.brand-mark{filter:drop-shadow(0 0 18px rgba(221,84,255,.36))}
+.auth-card h1{letter-spacing:-.035em}
+.auth-tabs button{border-radius:12px;color:#b9a9ce}
+.auth-tabs button:hover,.auth-tabs button.active{
+  color:#fff;background:linear-gradient(135deg,rgba(151,75,220,.25),rgba(238,66,196,.11));
+  border-color:rgba(204,131,255,.34);box-shadow:inset 0 0 18px rgba(173,88,255,.06)
+}
+.primary,.send{
+  background:linear-gradient(115deg,#8546d8 0%,#bd4be8 48%,#ed49c2 100%);
+  color:#fff;border:1px solid rgba(255,255,255,.13);border-radius:12px;
+  box-shadow:0 7px 20px rgba(142,54,194,.2);transition:transform .16s,filter .16s,box-shadow .16s
+}
+.primary:hover,.send:hover{filter:brightness(1.13);box-shadow:0 8px 26px rgba(194,65,220,.3);transform:translateY(-1px)}
+.top-header{
+  background:rgba(12,8,21,.94);backdrop-filter:blur(20px) saturate(140%);
+  border-bottom:1px solid rgba(190,135,255,.18);box-shadow:0 8px 28px rgba(0,0,0,.2)
+}
+.top-menu,.top-icon,.top-profile{color:#e7d9f8;border-radius:13px}
+.top-menu:hover,.top-icon:hover{background:rgba(184,104,255,.13);color:#fff}
+.brand-avatar,.rail-logo{
+  background:radial-gradient(circle at 30% 20%,#7540a4,#1b102c 72%);
+  border:1px solid rgba(220,173,255,.35);box-shadow:0 0 18px rgba(175,86,255,.13)
+}
+.top-brand-copy{font-weight:800;letter-spacing:-.025em}
+.top-brand-copy span{color:#c7a0eb}
+.sidebar{
+  background:rgba(12,8,20,.97);backdrop-filter:blur(18px);
+  border-right:1px solid rgba(190,135,255,.13)
+}
+.nav,.icon-btn,.action{color:#bbaaca;border-radius:13px;transition:background .16s,color .16s,border-color .16s,transform .16s}
+.nav:hover,.nav.active{
+  color:#fff;background:linear-gradient(135deg,rgba(163,84,238,.22),rgba(236,69,199,.09));
+  border-color:rgba(196,126,255,.23);box-shadow:inset 2px 0 #c06cff,0 4px 18px rgba(0,0,0,.12)
+}
+.main{background:transparent}
+.topbar{background:rgba(13,8,23,.94);border-bottom:1px solid var(--border);backdrop-filter:blur(12px)}
+.topbar h2{letter-spacing:-.025em}
+.room-grid{gap:15px}
+.room{
+  position:relative;overflow:hidden;padding:19px;
+  background:linear-gradient(145deg,rgba(30,20,47,.98),rgba(13,9,23,.98));
+  border:1px solid rgba(190,145,255,.16);border-radius:19px;
+  box-shadow:0 9px 28px rgba(0,0,0,.15);transition:transform .2s,border-color .2s,box-shadow .2s
+}
+.room:before{
+  content:"";position:absolute;inset:0 0 auto;height:2px;
+  background:linear-gradient(90deg,transparent,rgba(184,107,255,.8),rgba(255,79,216,.55),transparent);opacity:.6
+}
+.room:hover,.room.selected{
+  border-color:rgba(202,119,255,.55);transform:translateY(-3px);
+  box-shadow:0 14px 34px rgba(0,0,0,.25),0 0 25px rgba(156,74,223,.12)
+}
+.room h3{letter-spacing:-.02em}.room p{color:#b1a2c5}.room-meta{color:#d6a3ff}
+.chat-wrap{gap:12px;padding:12px;background:transparent}
+.chat-card,.online-panel,.card{
+  background:rgba(13,9,22,.94);border:1px solid rgba(188,143,255,.15);border-radius:18px;
+  box-shadow:0 12px 38px rgba(0,0,0,.19)
+}
+.chat-card{
+  position:relative;overflow:hidden;
+  background-color:#0b0713;
+  background-image:
+    radial-gradient(ellipse at 15% 0%,rgba(126,58,175,.10),transparent 40%),
+    radial-gradient(circle at 1px 1px,rgba(190,144,255,.045) 1px,transparent 1.4px);
+  background-size:auto,26px 26px
+}
+.chat-head,.panel-head{
+  background:linear-gradient(100deg,rgba(28,18,43,.98),rgba(18,11,29,.98));
+  border-bottom:1px solid rgba(192,144,255,.15);padding:11px 15px
+}
+.chat-head b{letter-spacing:-.02em}.chat-head small{color:#ad9cbe}
+.announcement{background:rgba(129,65,159,.12);color:#e6d3f6;border-bottom:1px solid rgba(193,125,255,.14)}
+.messages{scrollbar-color:#55346a transparent;padding:17px}
+.msg{gap:10px;padding:8px 5px}
+.msg > .avatar{width:36px;height:36px}
+.msg-top{gap:7px}.msg-time{color:#857394}
+.msg-text{color:#f1e9fb;line-height:1.5}
+.msg .avatar,.big-avatar{box-shadow:0 0 0 1px rgba(208,157,255,.17)}
+.quoted{border-left-color:#c17aff;background:rgba(135,75,177,.12);border-radius:8px}
+.quoted-label{color:#e0b1ff}
+.replybar,.typing{background:rgba(20,12,31,.96);border-color:var(--border);color:#b9a8cb}
+.composer{background:rgba(19,12,29,.98);border-top:1px solid rgba(191,140,255,.17);padding:10px;gap:8px}
+.composer input{background:#0d0817;border:1px solid rgba(194,145,255,.18);border-radius:13px}
+.composer > button:first-child{border-radius:10px;color:#d6b6f5}
+.composer > button:first-child:hover,.composer .icon-btn:hover{background:rgba(183,105,255,.13);color:#fff}
+.online-panel{background:rgba(15,10,24,.96);border-color:rgba(188,143,255,.15)}
+.online-tabs{border-bottom-color:var(--border)}
+.online-tabs span{color:#b9a7ce}
+.avatar{background:linear-gradient(145deg,#50316b,#20152f);border:1px solid rgba(204,158,255,.2)}
+.big-avatar{background:linear-gradient(145deg,#51306e,#1b1028);border-color:rgba(213,164,255,.65)}
+.mini{background:#1a1129;border:1px solid rgba(195,145,255,.17);color:#e8d8f8;border-radius:9px}
+.mini:hover{background:#2a1940;border-color:rgba(214,147,255,.35)}
+.reaction{gap:5px}.pinned{color:#f0d18b}
+.badge,.rank{color:#e4c8ff}
+hr{border-top-color:var(--border)}
+/* Panels, popups and modals share the same soft glass / violet edge treatment. */
+.modal,.modal-content,.popup,.profile-panel,.floating-panel,.dropdown-menu,[role="dialog"]{
+  border-color:rgba(196,139,255,.24)
+}
+@supports(backdrop-filter:blur(8px)){
+  .modal,.modal-content,.popup,.profile-panel,.floating-panel,[role="dialog"]{backdrop-filter:blur(18px)}
+}
+button:not(:disabled){transition:filter .16s,background-color .16s,border-color .16s}
+button:focus-visible{outline:2px solid #d38bff;outline-offset:2px}
+::-webkit-scrollbar{width:8px;height:8px}
+::-webkit-scrollbar-track{background:rgba(5,3,10,.25)}
+::-webkit-scrollbar-thumb{background:linear-gradient(#75439b,#44265c);border:2px solid #0b0712;border-radius:999px}
+::-webkit-scrollbar-thumb:hover{background:linear-gradient(#a45bd2,#693b86)}
+@keyframes eclipseGlow{0%,100%{box-shadow:0 0 0 rgba(191,93,255,0)}50%{box-shadow:0 0 20px rgba(191,93,255,.08)}}
+@media(min-width:900px){
+  .room-grid{padding:22px}
+}
+@media(max-width:760px){
+  :root{--header-h:54px;--rail-w:48px}
+  .top-header{padding-inline:6px}
+  .top-brand{gap:6px}.brand-avatar{width:34px;height:34px}
+  .top-brand-copy{font-size:13px}
+  .sidebar{padding:6px 3px;gap:4px}
+  .nav{width:40px;height:40px;border-radius:12px}
+  .main{width:calc(100% - var(--rail-w))}
+  .room-grid{padding:12px;grid-template-columns:repeat(auto-fill,minmax(min(100%,155px),1fr));gap:10px}
+  .room{padding:14px;border-radius:15px;min-height:132px}
+  .chat-wrap{padding:0;gap:0}
+  .chat-card,.online-panel,.card{border-radius:0}
+  .messages{padding:12px 10px}
+  .chat-head{padding:9px 10px}
+  .composer{padding:7px;gap:5px}
+  .composer input{min-width:0;padding:10px}
+}
+@media(prefers-reduced-motion:reduce){
+  *,*:before,*:after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
+}
