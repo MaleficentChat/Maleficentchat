@@ -330,7 +330,7 @@ const FEATURE_GRANT_DEFAULTS={
   games_access:GRANT_RANKS,gravity_run:GRANT_RANKS,doodle_studio_save:GRANT_RANKS,doodle_studio_share:GRANT_RANKS,gif_search:GRANT_RANKS,media_embeds:GRANT_RANKS,
   premium_access:GRANT_RANKS,vip_access:GRANT_RANKS,gold_wallet:GRANT_RANKS,gold_catalogue:GRANT_RANKS,gold_purchase:GRANT_RANKS,gold_equip:GRANT_RANKS,gold_transaction_history:GRANT_RANKS,daily_rewards:GRANT_RANKS,achievement_access:GRANT_RANKS,premium_requests:GRANT_RANKS,grant_premium:["MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],
   view_rules:GRANT_RANKS,submit_reports:GRANT_RANKS,manage_reports:["MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],report_assign:["MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],report_resolve:["MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],edit_site_rules:["INSTRUCTOR","COMMISSOR","COOWNER","OWNER","DEVELOPER"],edit_room_rules:["MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],
-  leaderboard_access:GRANT_RANKS,saved_messages:GRANT_RANKS,advanced_search:GRANT_RANKS,staff_application_submit:GRANT_RANKS,staff_application_review:["OWNER","COOWNER","COMMISSOR"],staff_dashboard_access:["MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],staff_notifications:["MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],system_notifications:["OWNER"],audit_log_access:["MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],audit_log_settings:["OWNER"],under_construction_control:["OWNER"],site_hard_refresh:["MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],
+  leaderboard_access:GRANT_RANKS,saved_messages:GRANT_RANKS,advanced_search:GRANT_RANKS,staff_application_submit:GRANT_RANKS,staff_application_review:["OWNER","COOWNER","COMMISSOR"],staff_dashboard_access:["MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],staff_notifications:["MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],system_notifications:["COOWNER","OWNER","DEVELOPER"],audit_log_access:["MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],audit_log_settings:["OWNER"],under_construction_control:["OWNER"],site_hard_refresh:["MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],
   inspect_ip_details:["ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],inspect_similar_ips:["ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],view_user_history:["MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],view_username_history:["MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],manage_profile_notes:["MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],manage_account_locks:["ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],manage_avatar:["MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],delete_accounts:["COOWNER","OWNER"],manage_bans:["MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],manage_mutes:["MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],manage_kicks:["MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],manage_warnings:["MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],manage_automated_filters:["ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],manage_vpn_proxy_rules:["OWNER"],manage_multi_account_rules:["OWNER"],manage_spam_flood_rules:["ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],manage_user_feature_exceptions:["OWNER"],manage_rank_feature_grants:["OWNER"],manage_individual_feature_grants:["OWNER"],manage_owner_space:["OWNER"],manage_site_refresh:["OWNER"],view_system_diagnostics:["OWNER"],manage_site_themes:["OWNER"],manage_economy_settings:["OWNER"],manage_premium_settings:["OWNER"],manage_notifications_settings:["OWNER"],manage_room_permissions:["OWNER"],manage_room_themes:["OWNER"],manage_room_staff:["OWNER","COOWNER","COMMISSOR"],manage_suggestions_settings:["OWNER"],manage_feature_granting:["OWNER"]
 };
 
@@ -3379,19 +3379,19 @@ app.get('/api/account/export',auth,(req,res)=>{
 
 app.post('/api/staff/system-notifications',auth,featureAllowed('view_staff_dashboard'),async(req,res)=>{
   const actor=current(req);
-  if(!hasRank(actor,'MOD'))return res.status(403).json({error:'Staff only'});
+  if(!hasRank(actor,'COOWNER'))return res.status(403).json({error:'Co-owner rank or higher required to send system notifications.'});
   const title=String(req.body?.title||'').trim().slice(0,100);
   const message=String(req.body?.message||'').trim().slice(0,2000);
   const targetRank=String(req.body?.targetRank||'ALL').trim().toUpperCase();
   const targetRange=String(req.body?.targetRange||'EXACT').trim().toUpperCase();
-  const allowedTargets=['ALL','MEMBER','VIP','PREMIUM','MOD','ADMIN','SUPER_ADMIN','COMMISSOR','COOWNER','OWNER','DEVELOPER'];
+  const allowedTargets=['ALL','MEMBER','VIP','PREMIUM','ROYAL','MOD','ADMIN','SUPER_ADMIN','COMMISSOR','INSTRUCTOR','COOWNER','OWNER','DEVELOPER'];
   const allowedRanges=['EXACT','AND_ABOVE','AND_BELOW'];
   if(!title||!message)return res.status(400).json({error:'Enter both a notification title and message.'});
   if(!allowedTargets.includes(targetRank))return res.status(400).json({error:'Choose a valid recipient rank.'});
   if(!allowedRanges.includes(targetRange))return res.status(400).json({error:'Choose a valid recipient range.'});
   try{
     const q=await pool.query('SELECT id,rank FROM users ORDER BY id');
-    const rankLevels={MEMBER:0,USER:0,VIP:1,PREMIUM:2,MOD:3,MODERATOR:3,ADMIN:4,SUPER_ADMIN:5,COMMISSOR:6,COOWNER:7,OWNER:8,DEVELOPER:9};
+    const rankLevels={MEMBER:0,USER:0,VIP:1,PREMIUM:2,ROYAL:3,MOD:4,MODERATOR:4,ADMIN:5,SUPER_ADMIN:6,COMMISSOR:7,INSTRUCTOR:8,COOWNER:9,OWNER:10,DEVELOPER:11};
     const selectedLevel=rankLevels[targetRank];
     const audience=q.rows.filter(row=>{
       if(targetRank==='ALL')return true;
