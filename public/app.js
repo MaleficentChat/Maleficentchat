@@ -5120,8 +5120,8 @@ $("roomMenu").onclick = () => {
       <button class="mini" onclick="openYoutubePanel()">▶️ YouTube</button>
       <button class="mini" onclick="showInvite()">Invite link</button>
       <button class="mini" onclick="openRoomThemePicker()">🎨 Room Theme</button>
-      ${["OWNER","DEVELOPER"].includes(String(state.user?.rank||"").toUpperCase())?`
-        <div style="flex-basis:100%;border-top:1px solid var(--border-color,#393244);padding-top:8px;margin-top:4px"><b style="display:block;margin-bottom:7px">🕶️ Presence modes</b><div class="toolbar" style="display:flex;flex-wrap:wrap;gap:6px"><button type="button" class="mini" onclick="togglePresenceMode('ghost')">👻 Ghost Mode</button><button type="button" class="mini" onclick="togglePresenceMode('dead')">💀 Dead Mode</button><button type="button" class="mini" onclick="togglePresenceMode('invisible')">😈 Invisible Mode</button></div><button type="button" class="mini" style="margin-top:7px" onclick="openPresenceModes()">⚙️ Open mode settings</button></div>
+      ${["OWNER","DEVELOPER","COMMISSOR","INSTRUCTOR","COOWNER"].includes(String(state.user?.rank||"").toUpperCase())?`
+        <div style="flex-basis:100%;border-top:1px solid var(--border-color,#393244);padding-top:8px;margin-top:4px"><b style="display:block;margin-bottom:7px">🕶️ Presence modes</b><div class="toolbar" style="display:flex;flex-wrap:wrap;gap:6px">${canUsePresenceMode("ghost")?'<button type="button" class="mini" onclick="togglePresenceMode("ghost")">👻 Ghost Mode</button>':""}${canUsePresenceMode("dead")?'<button type="button" class="mini" onclick="togglePresenceMode("dead")">💀 Dead Mode</button>':""}${canUsePresenceMode("invisible")?'<button type="button" class="mini" onclick="togglePresenceMode("invisible")">😈 Invisible Mode</button>':""}</div><button type="button" class="mini" style="margin-top:7px" onclick="openPresenceModes()">⚙️ Open mode settings</button></div>
       `:""}
 
     </div>
