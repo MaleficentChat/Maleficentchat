@@ -426,7 +426,7 @@ function showBanLock(reason="Community rules"){
 }
 function clearActionLock(){if(actionLockTimer)clearTimeout(actionLockTimer);actionLockTimer=null;const box=$("actionLock");if(box){box.classList.add("hidden");box.innerHTML="";box.dataset.lockType="";}}
 
-let liveSyncTimer=null, liveRoomSyncBusy=false, liveDMSyncBusy=false, liveSyncLastInbox=0;
+let liveSyncTimer=null, liveSyncRunId=0, liveRoomSyncBusy=false, liveDMSyncBusy=false, liveSyncLastInbox=0;
 
 async function refreshRoomMessageList(roomId,{force=false}={}){
   if(!state.user||!roomId||String(state.currentRoom)!==String(roomId))return false;
@@ -570,11 +570,22 @@ async function syncLiveMessages(){
 }
 let liveSyncWakeListenersBound=false;
 function startLiveSync(){
-  if(liveSyncTimer)clearInterval(liveSyncTimer);
-  liveSyncTimer=setInterval(syncLiveMessages,1000);
-  // Synchronize immediately instead of waiting for the first interval tick.
+  // Use a completion-based timer instead of setInterval so a slow sync cycle
+  // cannot queue another cycle on top of it. The per-channel locks below also
+  // prevent overlapping room-history and DM-history requests.
+  if(liveSyncTimer)clearTimeout(liveSyncTimer);
+  const runId=++liveSyncRunId;
+  const scheduleNext=()=>{
+    if(runId!==liveSyncRunId)return;
+    liveSyncTimer=setTimeout(async()=>{
+      if(runId!==liveSyncRunId)return;
+      await syncLiveMessages();
+      scheduleNext();
+    },500);
+  };
+  // Synchronize immediately, then repeat every 500ms after each cycle finishes.
   syncLiveMessages();
-  // A hidden tab pauses polling; resume immediately when the user returns.
+  scheduleNext();
   // Bind once so repeated starts do not create duplicate listeners.
   if(!liveSyncWakeListenersBound){
     liveSyncWakeListenersBound=true;
