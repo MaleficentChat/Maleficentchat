@@ -4297,7 +4297,7 @@ async function loadOwnerGuideManagement(){
 
 async function loadCommunityRules(){
  const host=$('communityRules');if(!host)return;
- const owner=['COMMISSOR','COOWNER','OWNER','DEVELOPER'].includes(String(state.user?.rank||'').toUpperCase());
+ const owner=['INSTRUCTOR','COMMISSOR','COOWNER','OWNER','DEVELOPER'].includes(String(state.user?.rank||'').toUpperCase());
  try{
   const data=await api('/api/community-rules');let rules=(data.rules||[]).map(r=>({id:String(r.id),text:String(r.text||'')}));
   let editMode=false;const editing=new Set();const drafts=new Map();
