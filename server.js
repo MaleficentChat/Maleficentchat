@@ -4222,17 +4222,17 @@ app.post('/api/staff-applications',auth,async(req,res)=>{
   }catch(e){console.error('Staff application submission failed:',e);res.status(500).json({error:'Could not submit your application. Please try again.'});}
 });
 app.get('/api/staff/applications',auth,featureAllowed('view_staff_dashboard'),async(req,res)=>{
-  const actor=current(req);if(!hasRank(actor,'MOD'))return res.status(403).json({error:'Staff only.'});
+  const actor=current(req);if(!['COMMISSOR','INSTRUCTOR','COOWNER','OWNER','DEVELOPER'].includes(String(actor.rank||'').toUpperCase()))return res.status(403).json({error:'Commissor rank or higher required to review staff applications.'});
   try{await ensureStaffApplicationsTable();const q=await pool.query("SELECT a.id,a.user_id AS \"userId\",a.username,a.display_name AS \"displayName\",a.requested_rank AS \"requestedRank\",a.activity,a.reason,a.experience,a.status,a.created_at AS \"createdAt\",a.reviewed_at AS \"reviewedAt\",reviewer.username AS \"reviewedBy\" FROM staff_applications a LEFT JOIN users reviewer ON reviewer.id=a.reviewed_by ORDER BY CASE WHEN a.status='PENDING' THEN 0 ELSE 1 END,a.created_at DESC LIMIT 300");res.json({applications:q.rows.map(x=>({...x,id:String(x.id),userId:String(x.userId),createdAt:new Date(x.createdAt).getTime(),reviewedAt:x.reviewedAt?new Date(x.reviewedAt).getTime():null}))});}
   catch(e){console.error('Staff application list failed:',e);res.status(500).json({error:'Could not load staff applications.'});}
 });
 app.post('/api/staff/applications/:id/reject',auth,featureAllowed('view_staff_dashboard'),async(req,res)=>{
-  const actor=current(req);if(!hasRank(actor,'MOD'))return res.status(403).json({error:'Staff only.'});
+  const actor=current(req);if(!['COMMISSOR','INSTRUCTOR','COOWNER','OWNER','DEVELOPER'].includes(String(actor.rank||'').toUpperCase()))return res.status(403).json({error:'Commissor rank or higher required to review staff applications.'});
   try{await ensureStaffApplicationsTable();const q=await pool.query("UPDATE staff_applications SET status='REJECTED',reviewed_by=$2,reviewed_at=NOW() WHERE id=$1 AND status='PENDING' RETURNING username",[req.params.id,Number(actor.id)]);if(!q.rowCount)return res.status(404).json({error:'Pending application not found.'});await log(actor,'STAFF_APPLICATION_REJECT',q.rows[0].username,{applicationId:req.params.id});res.json({ok:true});}
   catch(e){console.error('Staff application rejection failed:',e);res.status(500).json({error:'Could not reject this application.'});}
 });
 app.post('/api/staff/applications/:id/grant',auth,featureAllowed('view_staff_dashboard'),async(req,res)=>{
-  const actor=current(req);if(!hasRank(actor,'MOD'))return res.status(403).json({error:'Staff only.'});
+  const actor=current(req);if(!['COMMISSOR','INSTRUCTOR','COOWNER','OWNER','DEVELOPER'].includes(String(actor.rank||'').toUpperCase()))return res.status(403).json({error:'Commissor rank or higher required to review staff applications.'});
   const requested=String(req.body.rank||'').toUpperCase();
   if(!['MOD','ADMIN','SUPER_ADMIN','COMMISSOR','COOWNER'].includes(requested))return res.status(400).json({error:'Choose a rank from Moderator to Co-owner.'});
   try{
