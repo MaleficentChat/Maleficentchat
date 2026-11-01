@@ -3842,6 +3842,7 @@ app.get("/api/developer/network-security",auth,developerOnly,async(req,res)=>{
         timeline=history.rows.map(row=>({ip_address:row.ip_address,event_type:row.event_type,recorded_at:row.recorded_at,user_agent:row.user_agent||"",network:byIp[row.ip_address]||{}}));
         const device=await pool.query("SELECT COUNT(*)::int AS registrations,COUNT(DISTINCT ip_hash)::int AS ip_hashes,MAX(created_at) AS last_seen FROM device_fingerprints WHERE user_id=$1",[Number(user.id)]);
         const sameIps=ips.length?await pool.query("SELECT COUNT(DISTINCT user_id)::int AS accounts FROM user_ip_history WHERE host(ip_address)=ANY($1::text[])",[ips]):{rows:[{accounts:0}]};
+        const deviceIpMatches=await pool.query("SELECT COUNT(DISTINCT other.user_id)::int AS accounts FROM device_fingerprints mine JOIN device_fingerprints other ON other.ip_hash=mine.ip_hash AND other.user_id<>mine.user_id WHERE mine.user_id=$1 AND mine.ip_hash IS NOT NULL",[Number(user.id)]);
         const twoHourIps=new Set(recent.map(row=>row.ip_address).filter(Boolean)).size;
         const cities=new Set(recentDetails.map(x=>[x.network?.city,x.network?.region,x.network?.country].filter(Boolean).join("|")).filter(Boolean));
         const vpnSignals=recentDetails.filter(x=>x.network?.vpnDetected).length;
@@ -3856,7 +3857,7 @@ app.get("/api/developer/network-security",auth,developerOnly,async(req,res)=>{
         if(recent.length>=10){score+=15;reasons.push(recent.length+" connection events in 2 hours");}
         score=Math.min(100,score);
         risk={score,level:score>=70?"High":score>=40?"Elevated":score>=20?"Moderate":"Low",reasons};
-        deviceSignals=[{label:"Registered device records",value:Number(device.rows[0]?.registrations||0)},{label:"Distinct stored IP hashes",value:Number(device.rows[0]?.ip_hashes||0)},{label:"Accounts sharing recent IPs",value:sharedAccounts}];
+        deviceSignals=[{label:"Registered device records",value:Number(device.rows[0]?.registrations||0)},{label:"Distinct stored IP hashes",value:Number(device.rows[0]?.ip_hashes||0)},{label:"Accounts sharing recent IPs",value:sharedAccounts},{label:"Accounts correlated by registration device/IP record",value:Number(deviceIpMatches.rows[0]?.accounts||0)}];
       }
     }
     res.json({config,account,timeline,deviceSignals,risk,disclaimer:"Risk is a local heuristic, not a third-party global blacklist. IP geolocation and VPN flags can be inaccurate; shared IPs do not prove shared ownership."});
