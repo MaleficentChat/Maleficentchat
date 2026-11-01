@@ -4056,7 +4056,6 @@ async function loadStaff() {
     if(developerNetworkConsole&&!(String(state.user?.rank||"").toUpperCase()==="DEVELOPER"&&String(state.user?.username||"")==="Maleficent"))developerNetworkConsole.remove();
     staffRoot?.querySelector("#staffGuideManagementDropdown")?.remove();
     staffRoot?.querySelector("#staffFilterManagementDropdown")?.remove();
-    const staffRank=String(state.user?.rank||"").toUpperCase();
     const canManageGuidesAndFilters=["COMMISSOR","INSTRUCTOR","COOWNER","OWNER","DEVELOPER"].includes(staffRank);
     const canManageGuides=["COOWNER","OWNER","DEVELOPER"].includes(staffRank);
     if(canManageGuidesAndFilters&&staffRoot){
