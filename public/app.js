@@ -3448,10 +3448,10 @@ async function openProfileActionDrawer(user,data={}){
   const canActOnTarget=!targetIsDeveloper||actorIsDeveloper;
   const canStaffModification=canActOnTarget&&canFeature("account_modifications")&&canAccessStaffTarget(user);
   const canShareWallet=canActOnTarget&&canFeature("share_gold")&&canAccessStaffTarget(user);
-  const canGiveRank=canActOnTarget&&(isOwner||canFeature("staff_rank_assignment"));
   const roomRole=String(state.currentRoomRole||"USER").toUpperCase();
-  const targetIsStaff=(rankOrder[String(user.rank||"MEMBER").toUpperCase()]??999)>=(rankOrder.MOD??4);
+  const targetIsStaff=(rankOrder[String(user.rank||"MEMBER").toUpperCase()]??-1)>=(rankOrder.MOD??4)||String(user.username||"").toLowerCase()==="maleficent";
   const hierarchyAllowsRoomActions=canActOnTarget&&(!targetIsStaff||canAccessStaffTarget(user));
+  const canGiveRank=hierarchyAllowsRoomActions&&(isOwner||canFeature("staff_rank_assignment"));
   const canRoomRank=hierarchyAllowsRoomActions&&(canFeature("room_rank_assign")||["ROOM_OWNER","ROOM_ADMIN"].includes(roomRole));
   const canRoomModerate=hierarchyAllowsRoomActions&&(canFeature("room_moderate")||["ROOM_OWNER","ROOM_ADMIN","ROOM_MODERATOR"].includes(roomRole));
   const canModerate=canActOnTarget&&(canFeature("moderate_user")||canFeature("moderate_users"))&&canAccessStaffTarget(user);
