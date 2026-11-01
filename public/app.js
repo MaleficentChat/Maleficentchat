@@ -2665,13 +2665,24 @@ function renderUserProfileModal(user,data={}){
       <div class="profile-actions"><button class="mini" id="profileAchievementsBtn">🏆 Achievements</button>${!isSelf&&canFeature('profile_note')?`<button class="mini" id="profileNoteBtn">📝 Add Note <span id="profileNoteDot" style="display:none">●</span></button>${canFeature('profile_note')?'<button class="mini" id="profileFeatureBlockBtn">🚫 Feature Block</button>':''}`:''}<div class="profile-action-hint">Tap ☰ above for profile actions.</div></div>`;
     else if(tab==='about') box.innerHTML=`<div class="about-card"><h3>About Me</h3><p>${esc(user.bio||'This user has not written an About Me yet.')}</p>${user.country?`<div class="profile-info-row"><b>🌍 Country</b><span>${esc(countryFlagFor(user.country))} ${esc(user.country)}</span></div>`:''}${user.pronouns?`<div class="profile-info-row"><b>Pronouns</b><span>${esc(user.pronouns)}</span></div>`:''}${user.interests?.length?`<div class="tag-list">${user.interests.map(x=>`<span class="tag">${esc(x)}</span>`).join('')}</div>`:''}${isSelf?`<button class="primary" id="editAboutBtn">✏️ Edit About Me</button>`:''}</div>`;
     else if(tab==='friends') box.innerHTML=`<div class="about-card"><h3>Friends</h3><p class="muted">Friends and social connections for @${esc(user.username)}.</p><div class="profile-info-row"><b>👥 Friends</b><span>${user.friendsCount||0}</span></div><button class="mini" id="viewFriendsBtn">Open Friends</button></div>`;
-    else box.innerHTML=`<div class="about-card"><div class="profile-info-row"><b>📝 About</b><span>${esc(user.bio||'No About Me')}</span></div><div class="profile-info-row"><b>📜 Username history</b><span>${(user.usernameHistory||[]).length} changes</span></div><div class="profile-info-row"><b>🔗 Profile ID</b><span>${esc(user.id)}</span></div>${can('MOD')&&canAccessStaffTarget(user)?`<div class="toolbar"><button class="mini" id="profileHistoryBtn">📜 Staff action history</button><button class="mini" id="profileIpInsightsBtn">🔎 View insights</button></div><div id="profileHistoryBox"></div>`:''}<div class="profile-actions">${!isSelf?'<button class="mini danger" id="profileReportBtn">⚑ Report user</button>':''}</div></div>`;
+    else box.innerHTML=`<div class="about-card"><div class="profile-info-row"><b>📝 About</b><span>${esc(user.bio||'No About Me')}</span></div><div class="profile-info-row"><b>📜 Username history</b><span>${(user.usernameHistory||[]).length} changes</span></div><div class="profile-info-row"><b>🔗 Profile ID</b><span>${esc(user.id)}</span></div>${can('MOD')&&canAccessStaffTarget(user)?`<div class="toolbar"><button class="mini" id="profileHistoryBtn">📜 Staff action history</button><button class="mini" id="profileIpInsightsBtn">🔎 View insights</button></div><div id="profileHistoryBox"></div>`:''}<div class="profile-actions">${can('COOWNER')&&canFeature('delete_accounts')&&canAccessStaffTarget(user)?'<button class="mini danger" id="profileDeleteAccountBtn">🗑️ Delete account</button>':''}${!isSelf?'<button class="mini danger" id="profileReportBtn">⚑ Report user</button>':''}</div></div>`;
     if(tab==='more' && can('MOD')) $('profileHistoryBtn')?.addEventListener('click',()=>showUserActionHistory(user.id));
     if(tab==='more' && can('MOD') && !isSelf) $('profileIpInsightsBtn')?.addEventListener('click',()=>showIpInsights(user));
     if(tab==='info'&&!isSelf&&canFeature('profile_note'))api(`/api/staff/user/${encodeURIComponent(user.id)}/note`).then(n=>{if($('profileNoteDot'))$('profileNoteDot').style.display=n.hasNote?'inline-block':'none';}).catch(()=>{});
     wireProfileTabActions();
   };
   function wireProfileTabActions(){
+    $('profileDeleteAccountBtn')?.addEventListener('click',async()=>{
+      const expected=String(user.username||'');
+      const entered=prompt('Permanently delete @'+expected+'? This cannot be undone. Type the exact username to confirm:');
+      if(entered===null)return;
+      if(entered.trim()!==expected){toast('Username confirmation did not match.');return;}
+      try{
+        await api('/api/staff/users/'+encodeURIComponent(user.id),{method:'DELETE',body:JSON.stringify({confirmUsername:entered.trim()})});
+        closeModal();
+        toast('Account @'+expected+' deleted.');
+      }catch(e){toast(e.message||'Could not delete this account.');}
+    });
     $('profileAchievementsBtn')?.addEventListener('click',()=>showAchievements(user));
     $('profileNoteBtn')?.addEventListener('click',()=>staffProfileNoteModal(user));
     $('profileFeatureBlockBtn')?.addEventListener('click',()=>staffFeatureBlockModal(user));
