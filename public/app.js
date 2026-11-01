@@ -3965,12 +3965,14 @@ async function loadStaff() {
     const staffRankIndex=["MEMBER","VIP","PREMIUM","ROYAL","MOD","ADMIN","SUPER_ADMIN","COMMISSOR","INSTRUCTOR","COOWNER","OWNER","DEVELOPER"].indexOf(String(state.user?.rank||"").toUpperCase());
     if(staffRankIndex>=9&&staffRoot){
       const guideDropdown=document.createElement("details");
-      guideDropdown.id="staffGuideManagementDropdown";guideDropdown.className="filter-words-details owner-settings-dropdown";
+      guideDropdown.id="staffGuideManagementDropdown";guideDropdown.className="staff-compact-dropdown filter-words-details";
       guideDropdown.innerHTML='<summary>📘 Guide Management <span class="muted">— click to open</span></summary><div class="owner-filter-management-content"><div id="staffGuideManagement" class="stack"></div></div>';
       const filterDropdown=document.createElement("details");
-      filterDropdown.id="staffFilterManagementDropdown";filterDropdown.className="filter-words-details owner-settings-dropdown";
+      filterDropdown.id="staffFilterManagementDropdown";filterDropdown.className="staff-compact-dropdown filter-words-details";
       filterDropdown.innerHTML='<summary>🧩 Filter Management <span class="muted">— click to open</span></summary><div class="owner-filter-management-content" id="staffFilterManagement"></div>';
-      staffRoot.append(guideDropdown,filterDropdown);
+      const clearedSection=staffRoot.querySelector(".cleared-room-evidence-card")?.closest("details");
+      if(clearedSection){staffRoot.insertBefore(guideDropdown,clearedSection);staffRoot.insertBefore(filterDropdown,clearedSection);}
+      else staffRoot.append(guideDropdown,filterDropdown);
       loadOwnerGuideManagement();loadStaffFilterManagement();
     }
     const statsGrid=staffRoot?.querySelector(".grid2");
@@ -4601,7 +4603,13 @@ async function loadOwner() {
 
     
     
-    $("owner")?.querySelector(".owner-filter-management")?.remove();
+    // Keep these management tools exclusively in Staff Dashboard, never Owner Space.
+    const ownerRoot=$("owner");
+    ownerRoot?.querySelectorAll("details").forEach(section=>{
+      const heading=String(section.querySelector("summary")?.textContent||"").toLowerCase();
+      if(heading.includes("guide management")||heading.includes("filter management"))section.remove();
+    });
+    ownerRoot?.querySelector(".owner-filter-management")?.remove();
     $("ownerClearAllMessages")?.addEventListener("click",async()=>{
       const confirmation="PERMANENTLY DELETE EVERY ROOM CHAT MESSAGE AND EVERY PRIVATE MESSAGE FOR ALL USERS?\n\nThis cannot be undone. Accounts, passwords, ranks, gold, settings, rooms, reports, and moderation/audit history will remain. Type CLEAR in the next prompt to continue.";
       if(!window.confirm(confirmation))return;
