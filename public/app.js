@@ -1,3 +1,4 @@
+window.__MC_APP_READY__ = true;
 const $ = id => document.getElementById(id);
 
 // Room theme data must exist before early socket events or room rendering can apply it.
