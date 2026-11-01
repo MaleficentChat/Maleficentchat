@@ -2473,7 +2473,6 @@ async function loadUsers() {
     if(state.currentRoom){
       try{const roomStaff=await api(`/api/rooms/${encodeURIComponent(state.currentRoom)}/staff`);for(const item of (roomStaff.staff||[])){if(item.user?.id)state.roomRankByUser[String(item.user.id)]=item.role;}}catch{}
     }
-    const selectedRank=$("userRankFilter")?.value||"";
     const selectedGender=$("userGenderFilter")?.value||"";
     const countryQuery=($("userCountryFilter")?.value||"").trim().toLowerCase();
     const minRaw=$("userAgeMin")?.value, maxRaw=$("userAgeMax")?.value;
@@ -2506,11 +2505,11 @@ async function loadUsers() {
   } catch(error){toast(error.message);}
 }
 $("userSearch").oninput=()=>loadUsers();
-["userRankFilter","userGenderFilter","userAgeMin","userAgeMax","userCountryFilter","userSortBy"].forEach(id=>$ (id)?.addEventListener("input",()=>loadUsers()));
-["userRankFilter","userGenderFilter","userSortBy"].forEach(id=>$ (id)?.addEventListener("change",()=>loadUsers()));
+["userGenderFilter","userAgeMin","userAgeMax","userCountryFilter","userSortBy"].forEach(id=>$ (id)?.addEventListener("input",()=>loadUsers()));
+["userGenderFilter","userSortBy"].forEach(id=>$ (id)?.addEventListener("change",()=>loadUsers()));
 $("resetUserFilters")?.addEventListener("click",()=>{
   ["userSearch","userCountryFilter","userAgeMin","userAgeMax"].forEach(id=>{if($(id))$(id).value="";});
-  ["userRankFilter","userGenderFilter"].forEach(id=>{if($(id))$(id).value="";});
+  ["userGenderFilter"].forEach(id=>{if($(id))$(id).value="";});
   if($("userSortBy"))$("userSortBy").value="default";
   loadUsers();
 });
@@ -4839,13 +4838,13 @@ async function ownerFeatureGrants(){
     const keys=Object.keys(d.features||{}).filter(key=>!['schedule_message','expire_message'].includes(key)), categories={};
     keys.forEach(key=>{const category=categoryFor[key]||'Other site features';if(!categories[category])categories[category]=[];categories[category].push(key);});
     function renderRow(key){
-      const allowed=d.grants?.[key]||[], selected=ranks.find(rank=>allowed.includes(rank));
+      const allowed=d.grants?.[key]||[];
       const name=labels[key]||key.replaceAll('_',' ').replace(/^./,c=>c.toUpperCase());
-      const description=descriptions[key]||'Controls which ranks can use this site feature.';
-      return '<div class="feature-grant-row" data-feature-row="'+esc(key)+'" data-feature-search="'+esc((name+' '+key+' '+description).toLowerCase())+'"><div><b>'+esc(name)+'</b><small>'+esc(description)+'</small></div><select data-grant="'+esc(key)+'" aria-label="Minimum rank for '+esc(name)+'"><option value="off" '+(selected?'':'selected')+'>Disabled</option>'+ranks.map(rank=>'<option value="'+rank+'" '+(rank===selected?'selected':'')+'>'+(rankLabels[rank]||rank)+'</option>').join('')+'</select></div>';
+      const description=descriptions[key]||'Select exactly which ranks can use this feature.';
+      return '<div class="feature-grant-row" data-feature-row="'+esc(key)+'" data-feature-search="'+esc((name+' '+key+' '+description).toLowerCase())+'"><div><b>'+esc(name)+'</b><small>'+esc(description)+'</small></div><div class="feature-grant-rank-checks">'+ranks.map(rank=>'<label><input type="checkbox" data-grant-rank="'+esc(key)+'" value="'+rank+'" '+(allowed.includes(rank)?'checked':'')+'> '+esc(rankLabels[rank]||rank)+'</label>').join('')+'</div></div>';
     }
     const grouped=Object.entries(categories).map(([name,items])=>'<details class="grant-category" '+(name==='Chat & media'?'open':'')+'><summary>'+esc(name)+' <span class="muted">('+items.length+')</span></summary>'+items.map(renderRow).join('')+'</details>').join('');
-    modal('<div class="feature-grant-modal feature-grant-simple"><h2>🧩 Feature Access</h2><p class="muted">Choose the lowest rank allowed to use each feature. That rank and higher ranks will be allowed. Choose Disabled to block the feature for regular ranks. Developer and the protected owner account keep built-in access.</p><label class="feature-grant-search-label">🔎 Find a feature<input id="featureGrantSearch" type="search" placeholder="Search messages, rooms, gold, reports…"></label><div class="feature-grant-summary">'+keys.length+' feature controls · Changes are saved together</div><div id="featureGrantCategories">'+(grouped||'<p class="muted">No feature controls are available.</p>')+'</div><div class="toolbar feature-grant-footer"><button class="primary" id="saveAllFeatureGrants">Save all changes</button><button class="mini" id="closeFeatureGrants">Close</button></div><p class="muted feature-grant-note">These are rank-based permissions. Individual account exceptions are managed separately in User Permissions.</p></div>');
+    modal('<div class="feature-grant-modal feature-grant-simple"><h2>🧩 Feature Access</h2><p class="muted">Choose the exact ranks allowed to use each feature. Select multiple ranks when needed. Developer and the protected owner account keep built-in access.</p><label class="feature-grant-search-label">🔎 Find a feature<input id="featureGrantSearch" type="search" placeholder="Search messages, rooms, gold, reports…"></label><div class="feature-grant-summary">'+keys.length+' feature controls · Changes are saved together</div><div id="featureGrantCategories">'+(grouped||'<p class="muted">No feature controls are available.</p>')+'</div><div class="toolbar feature-grant-footer"><button class="primary" id="saveAllFeatureGrants">Save all changes</button><button class="mini" id="closeFeatureGrants">Close</button></div><p class="muted feature-grant-note">These are exact rank permissions. Individual account exceptions are managed separately in User Permissions.</p></div>');
     const search=$('featureGrantSearch');
     search?.addEventListener('input',()=>{
       const query=search.value.trim().toLowerCase();
@@ -4856,7 +4855,7 @@ async function ownerFeatureGrants(){
     $('saveAllFeatureGrants')?.addEventListener('click',async event=>{
       const button=event.currentTarget;button.disabled=true;button.textContent='Saving…';
       try{
-        const grants={};document.querySelectorAll('[data-grant]').forEach(select=>{grants[select.dataset.grant]=select.value==='off'?null:select.value;});
+        const grants={};keys.forEach(key=>{grants[key]=[...document.querySelectorAll('[data-grant-rank="'+key+'"]:checked')].map(input=>input.value);});
         await api('/api/owner/feature-grants',{method:'PUT',body:JSON.stringify({grants})});
         toast('All feature access settings saved.');await ownerFeatureGrants();
       }catch(error){toast(error.message||'Could not save feature access.');button.disabled=false;button.textContent='Save all changes';}
