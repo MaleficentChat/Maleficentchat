@@ -186,7 +186,23 @@
   <div id="viewLeaderboard" class="view hidden"><div class="topbar"><h2>🏆 XP & Gold Leaderboards</h2></div><div id="leaderboard" class="grid2"></div></div>
   <div id="viewSaved" class="view hidden"><div class="topbar"><h2>🔖 Saved / Bookmarked Messages</h2></div><div id="saved" class="stack"></div></div>
   <div id="viewSearch" class="view hidden"><div class="topbar"><div><h2>🔎 Advanced Message Search</h2><p class="muted">Search text, room or author.</p></div></div><form id="searchForm" class="searchbar"><input id="sq" placeholder="Keyword"><input id="sa" placeholder="Author username"><select id="sr"><option value="">All rooms</option></select><button class="primary">Search</button></form><div id="searchResults" class="stack"></div></div>
-  <div id="viewProfile" class="view hidden"><div id="profile"></div></div>
+  <div id="viewProfile" class="view hidden"><div id="profile">
+    <!-- Visible fallback: account controls remain accessible even if profile JS fails to render. -->
+    <div class="my-profile-wrap"><div class="profile-settings-card">
+      <div class="profile-settings-head"><h2>My Profile</h2><p>Account options</p></div>
+      <div class="settings-tabs"><button class="settings-tab active" type="button">Account</button></div>
+      <div class="settings-list">
+        <button class="settings-row" type="button" onclick="editProfileInfo()"><span>🪪</span><b>Edit info</b><small>Display name, pronouns and profile details</small><strong>›</strong></button>
+        <button class="settings-row" type="button" onclick="editRelationship()"><span>♥</span><b>Edit relationship</b><small>Relationship status</small><strong>›</strong></button>
+        <button class="settings-row" type="button" onclick="editUsername()"><span>✎</span><b>Edit username</b><small>Change your username</small><strong>›</strong></button>
+        <button class="settings-row" type="button" onclick="editAboutMe()"><span>?</span><b>Edit about me</b><small>Profile bio</small><strong>›</strong></button>
+        <button class="settings-row" type="button" onclick="editMood()"><span>☻</span><b>Edit mood</b><small>Current mood</small><strong>›</strong></button>
+        <button class="settings-row" type="button" onclick="editEmail()"><span>✉</span><b>Edit email</b><small>Email settings</small><strong>›</strong></button>
+        <button class="settings-row" type="button" onclick="showBlockedUsers()"><span>🚫</span><b>Blocked users</b><small>View and unblock people</small><strong>›</strong></button>
+        <button class="settings-row" type="button" onclick="changePasswordModal()"><span>🔑</span><b>Change password</b><small>Update your login password</small><strong>›</strong></button>
+      </div>
+    </div></div>
+  </div></div>
   <div id="viewSettings" class="view hidden"><div class="topbar"><div><h2>⚙️ Account Settings</h2><p class="muted">Security, status, appearance and notification controls.</p></div><div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end"><button class="mini" id="enableSiteNotifications" type="button">🔔 Enable site notifications</button><button class="mini" id="testSiteNotifications" type="button">🧪 Send test</button></div></div><div id="settings" class="settings-grid"></div></div>
   <div id="viewStaffApplications" class="view hidden"><div class="topbar"><div><h2>📝 Staff Application</h2><p class="muted">Apply to join the Maleficent Chat moderation team.</p></div></div><div id="staffApplicationFormRoot"></div></div>
   <div id="viewManagement" class="view hidden">
