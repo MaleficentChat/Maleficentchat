@@ -1936,8 +1936,15 @@ function appendMessage(message) {
   }
 }
 
+function canUsePresenceMode(mode){
+  const rank=String(state.user?.rank||"").toUpperCase();
+  if(rank==="DEVELOPER")return true;
+  const allowed={ghost:["OWNER"],dead:["INSTRUCTOR","COOWNER","OWNER"],invisible:["COMMISSOR","INSTRUCTOR","COOWNER","OWNER"]};
+  return (allowed[mode]||[]).includes(rank);
+}
+
 async function togglePresenceMode(mode){
-  if(!["OWNER","DEVELOPER"].includes(String(state.user?.rank||"").toUpperCase())){toast("Only Owner and Developer can use presence modes.");return;}
+  if(!canUsePresenceMode(mode)){toast("Your rank has not been granted this presence mode.");return;}
   const active = mode==="ghost" ? !!state.user?.hideMode : mode==="dead" ? !!state.user?.deadMode : !!state.user?.invisible;
   const enable = !active;
   try{
@@ -1961,20 +1968,20 @@ async function togglePresenceMode(mode){
 }
 
 function openPresenceModes(){
-  if(!["OWNER","DEVELOPER"].includes(String(state.user?.rank||"").toUpperCase())){toast("Only Owner and Developer can use presence modes.");return;}
+  if(!["ghost","dead","invisible"].some(canUsePresenceMode)){toast("Your rank has not been granted any presence modes.");return;}
   modal(`<div class="mode-control-panel" style="display:flex;flex-direction:column;gap:10px;width:100%;max-width:420px;min-width:0;box-sizing:border-box;padding:14px">
     <h2 style="margin:0;font-size:18px;line-height:1.25">🕶️ Presence Modes</h2>
     <p class="muted" style="margin:0;font-size:13px;line-height:1.5;white-space:normal;overflow-wrap:anywhere">Select one mode. Read the description before applying it.</p>
     <label class="mode-control-row" style="display:grid;grid-template-columns:20px minmax(0,1fr);align-items:start;gap:10px;width:100%;min-width:0;box-sizing:border-box;padding:10px;border:1px solid var(--border-color,#393244);border-radius:10px;white-space:normal">
-      <input type="checkbox" id="modePopupHide" style="margin:3px 0 0" ${state.user?.hideMode&&!state.user?.deadMode?'checked':''}>
+      <input type="checkbox" id="modePopupHide" style="margin:3px 0 0" ${state.user?.hideMode&&!state.user?.deadMode?'checked':''} ${canUsePresenceMode("ghost")?'':'disabled title="Not granted to your rank"'}>
       <span style="display:block;min-width:0;white-space:normal;overflow-wrap:anywhere"><b style="display:block;margin-bottom:4px">👻 Ghost Mode</b><small style="display:block;white-space:normal;overflow-wrap:anywhere;line-height:1.45">Your account is hidden from all user lists, search, profiles, and presence—including from staff. You can still chat; your messages appear as Aurora and no join announcement is sent.</small></span>
     </label>
     <label class="mode-control-row" style="display:grid;grid-template-columns:20px minmax(0,1fr);align-items:start;gap:10px;width:100%;min-width:0;box-sizing:border-box;padding:10px;border:1px solid var(--border-color,#393244);border-radius:10px;white-space:normal">
-      <input type="checkbox" id="modePopupDead" style="margin:3px 0 0" ${state.user?.deadMode?'checked':''}>
+      <input type="checkbox" id="modePopupDead" style="margin:3px 0 0" ${state.user?.deadMode?'checked':''} ${canUsePresenceMode("dead")?'':'disabled title="Not granted to your rank"'}>
       <span style="display:block;min-width:0;white-space:normal;overflow-wrap:anywhere"><b style="display:block;margin-bottom:4px">💀 Dead Mode</b><small style="display:block;white-space:normal;overflow-wrap:anywhere;line-height:1.45">Your account stays visible in online/offline lists and profiles. Aurora announces when you join, but all messages you send appear as Aurora.</small></span>
     </label>
     <label class="mode-control-row" style="display:grid;grid-template-columns:20px minmax(0,1fr);align-items:start;gap:10px;width:100%;min-width:0;box-sizing:border-box;padding:10px;border:1px solid var(--border-color,#393244);border-radius:10px;white-space:normal">
-      <input type="checkbox" id="modePopupInvisible" style="margin:3px 0 0" ${state.user?.invisible&&!state.user?.deadMode?'checked':''}>
+      <input type="checkbox" id="modePopupInvisible" style="margin:3px 0 0" ${state.user?.invisible&&!state.user?.deadMode?'checked':''} ${canUsePresenceMode("invisible")?'':'disabled title="Not granted to your rank"'}>
       <span style="display:block;min-width:0;white-space:normal;overflow-wrap:anywhere"><b style="display:block;margin-bottom:4px">😈 Invisible Mode</b><small style="display:block;white-space:normal;overflow-wrap:anywhere;line-height:1.45">Hidden from online and offline user lists for everyone except higher-ranked staff. Your room joins are not announced; eligible staff see a green indicator.</small></span>
     </label>
     <div class="mode-control-row" style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px;border:1px solid var(--border-color,#393244);border-radius:10px">
