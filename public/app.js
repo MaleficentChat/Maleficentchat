@@ -780,6 +780,7 @@ async function start() {
   });
 
   state.socket.on("dm", message => {
+    refreshTopDMUnreadBadge();
     const from=String(message?.from??message?.senderId??message?.fromId??"");
     const to=String(message?.to??message?.receiverId??message?.toId??"");
     const myId=String(state.user?.id??"");
@@ -4940,6 +4941,26 @@ async function toggleNotificationDropdown(){
 
 /* ---------------- NOTIFICATIONS ---------------- */
 
+let topDMUnreadRefreshBusy=false;
+async function refreshTopDMUnreadBadge(){
+  if(!state.user||topDMUnreadRefreshBusy)return;
+  topDMUnreadRefreshBusy=true;
+  try{
+    // The conversations endpoint already powers the inbox dropdown; use its
+    // per-conversation unread counts so the header badge matches what users see.
+    const data=await api("/api/dm/conversations");
+    const conversations=Array.isArray(data.conversations)?data.conversations:[];
+    const count=conversations.reduce((total,conversation)=>total+Math.max(0,Number(conversation.unreadCount)||0),0);
+    for(const id of ["topDmDot","dmDot"]){
+      const el=$(id);if(!el)continue;
+      el.textContent=count>99?"99+":String(count);
+      el.classList.toggle("count-badge",count>0);
+      el.style.setProperty("display",count>0?"inline-flex":"none","important");
+      el.setAttribute("aria-label",count+" unread private messages");
+    }
+  }catch(error){console.warn("Private-message badge refresh failed:",error?.message||error);}
+  finally{topDMUnreadRefreshBusy=false;}
+}
 let notificationRefreshPromise=null;
 async function loadNotifications() {
   // This runs on a timer and socket reconnects. Do not hit authenticated APIs
@@ -4987,8 +5008,9 @@ async function loadNotifications() {
 // Notification counters are a background convenience, not a live chat
 // transport. Polling five APIs every 5 seconds was creating needless load.
 // Opening notification views and socket reconnects refresh immediately.
-setInterval(()=>{if(state.user)loadNotifications();},30000);
-setTimeout(()=>{if(state.user)loadNotifications();},1200);
+setInterval(()=>{if(state.user)loadNotifications();},15000);
+setInterval(()=>{if(state.user)refreshTopDMUnreadBadge();},5000);
+setTimeout(()=>{if(state.user){loadNotifications();refreshTopDMUnreadBadge();}},1200);
 
 $("notifications").onclick=async()=>{
   try{
