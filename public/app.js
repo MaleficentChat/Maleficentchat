@@ -569,24 +569,26 @@ async function syncLiveMessages(){
     }
 }
 let liveSyncWakeListenersBound=false;
+let liveRoomPollTimer=null, liveDMPollTimer=null;
 function startLiveSync(){
-  // Use a completion-based timer instead of setInterval so a slow sync cycle
-  // cannot queue another cycle on top of it. The per-channel locks below also
-  // prevent overlapping room-history and DM-history requests.
-  if(liveSyncTimer)clearTimeout(liveSyncTimer);
-  const runId=++liveSyncRunId;
-  const scheduleNext=()=>{
-    if(runId!==liveSyncRunId)return;
-    liveSyncTimer=setTimeout(async()=>{
-      if(runId!==liveSyncRunId)return;
-      await syncLiveMessages();
-      scheduleNext();
-    },500);
-  };
-  // Synchronize immediately, then repeat every 500ms after each cycle finishes.
+  // Keep room and private-message polling independent. A slow request in one
+  // channel must not postpone the next attempt for the other channel.
+  if(liveRoomPollTimer)clearInterval(liveRoomPollTimer);
+  if(liveDMPollTimer)clearInterval(liveDMPollTimer);
+  // Start immediately, then retry each active channel once per second.
+  // syncLiveMessages has per-channel locks, so slow requests cannot overlap.
   syncLiveMessages();
-  scheduleNext();
-  // Bind once so repeated starts do not create duplicate listeners.
+  liveRoomPollTimer=setInterval(()=>{
+    if(state.user&&state.currentRoom&&!liveRoomSyncBusy){
+      syncLiveMessages().catch(error=>console.warn("Automatic room sync failed:",error?.message||error));
+    }
+  },1000);
+  liveDMPollTimer=setInterval(()=>{
+    if(state.user&&state.dmUserId&&!liveDMSyncBusy){
+      syncLiveMessages().catch(error=>console.warn("Automatic private-message sync failed:",error?.message||error));
+    }
+  },1000);
+  // Bind once so app focus/reconnect immediately catches up without sending a message.
   if(!liveSyncWakeListenersBound){
     liveSyncWakeListenersBound=true;
     document.addEventListener("visibilitychange",()=>{if(!document.hidden&&state.user)syncLiveMessages();});
