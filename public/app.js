@@ -2200,6 +2200,13 @@ if(composer && !composer.dataset.submitBound){
     try{
       const sentRoomId=String(state.currentRoom);
       const result=await api("/api/rooms/"+encodeURIComponent(sentRoomId)+"/messages",{method:"POST",body:form});
+      if(result.guide){
+        const rows=(result.commands||[]).map(item=>'<div style="padding:10px 12px;border:1px solid var(--border,#342544);border-radius:10px;background:rgba(155,92,255,.07);margin:7px 0"><b style="color:#d8b4fe">'+esc(item.usage||("/"+item.name))+'</b><div style="font-size:13px;margin-top:4px">'+esc(item.description||"")+'</div></div>').join("");
+        modal('<div class="guide-command-dialog"><h2>📖 Your Command Guide</h2><p class="muted">Commands available to your <b>'+esc(result.rank||state.user.rank||"MEMBER")+'</b> rank only.</p><div style="max-height:55vh;overflow:auto;padding-right:3px">'+(rows||'<p class="muted">No commands are currently available for your rank.</p>')+'</div><div style="display:flex;justify-content:flex-end;margin-top:12px"><button class="primary" onclick="closeModal()">Close</button></div></div>');
+        if(input)input.value="";
+        input?.focus();
+        return;
+      }
       if(result.message)appendMessage(result.message);
       // Targeted refresh: reconcile only this room's message list after a successful send.
       // This never reloads the page or touches login/session state.
