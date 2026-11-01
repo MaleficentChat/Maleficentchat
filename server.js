@@ -3916,15 +3916,15 @@ function developerNetworkAccess(req,res){
  const cfg=db.settings.developer_network_security;cfg.ipRules||=[];cfg.allowedCountries||=[];cfg.blockedCountries||=[];cfg.blockedRegions||=[];
  return {actor,cfg};
 }
-function networkIpNorm(ip){return String(ip||"").trim().replace(/^::ffff:/i,"").replace(/^\\[|\\]$/g,"").replace(/\\/\\d{1,3}$/,"");}
-function networkIpv4Number(ip){const p=networkIpNorm(ip).split(".");if(p.length!==4||p.some(x=>!/^\\d{1,3}$/.test(x)||Number(x)>255))return null;return p.reduce((n,x)=>n*256+Number(x),0);}
+function networkIpNorm(ip){return String(ip||"").trim().replace(/^::ffff:/i,"").replace(/^\[|\]$/g,"").replace(/\/\d{1,3}$/,"");}
+function networkIpv4Number(ip){return ipv4Integer(networkIpNorm(ip));}
 function networkRuleMatches(ip,pattern){
  const value=networkIpNorm(ip),rule=String(pattern||"").trim();if(!value||!rule)return false;
- if(rule.includes("*")){const p=rule.split(".");if(p.length!==4)return false;return value.split(".").length===4&&p.every((x,i)=>x==="*"?(Number(value.split(".")[i])<=255&&/^\\d{1,3}$/.test(value.split(".")[i])):x===value.split(".")[i]);}
+ if(rule.includes("*")){const p=rule.split(".");if(p.length!==4)return false;const v=value.split(".");return v.length===4&&p.every((x,i)=>x==="*"?(Number(v[i])<=255&&/^\d{1,3}$/.test(v[i])):x===v[i]);}
  if(rule.includes("/")){const parts=rule.split("/"),n=networkIpv4Number(value),b=networkIpv4Number(parts[0]),bits=Number(parts[1]);if(n===null||b===null||!Number.isInteger(bits)||bits<0||bits>32)return false;const mask=bits===0?0:(0xffffffff<<(32-bits))>>>0;return (n&mask)===(b&mask);}
  return value===rule;
 }
-function networkPolicyList(v){return String(v||"").split(/[,;\\n]+/).map(x=>x.trim().toLowerCase()).filter(Boolean).slice(0,100);}
+function networkPolicyList(v){return String(v||"").split(/[,;\n]+/).map(x=>x.trim().toLowerCase()).filter(Boolean).slice(0,100);}
 async function evaluateDeveloperNetworkPolicy(ip){
  const c=db.settings?.developer_network_security||{};const rule=(c.ipRules||[]).find(r=>r.enabled!==false&&networkRuleMatches(ip,r.pattern));if(rule)return {blocked:true,reason:rule.reason||"IP / range ban"};
  if(!(c.ipRules||[]).some(r=>r.enabled!==false)&&(c.blockVpn!==true)&&!(c.allowedCountries||[]).length&&!(c.blockedCountries||[]).length&&!(c.blockedRegions||[]).length)return {blocked:false};
