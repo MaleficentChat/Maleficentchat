@@ -355,6 +355,13 @@ view_online_users:RANK_TIERS.all,manage_push_notifications:RANK_TIERS.all,modera
 
 const REQUESTED_COMMAND_RANKS={clear:RANK_TIERS.admin,abrakadabra:RANK_TIERS.all,aura:RANK_TIERS.all,roast:RANK_TIERS.all,anonymous:RANK_TIERS.superAdmin,bank:RANK_TIERS.vip,ship:RANK_TIERS.vip,welcome:RANK_TIERS.vip,steal:RANK_TIERS.premium,bread:RANK_TIERS.premium,rose:RANK_TIERS.premium,brain:RANK_TIERS.premium};
 const REQUESTED_MODE_RANKS={invisible:["COMMISSOR","INSTRUCTOR","COOWNER","OWNER","DEVELOPER"],dead:["INSTRUCTOR","COOWNER","OWNER","DEVELOPER"],ghost:["OWNER","DEVELOPER"]};
+function modeRankAllowed(mode,rank){
+  const normalized=String(rank||"").toUpperCase();
+  if(normalized==="DEVELOPER")return true;
+  const configured=db.settings?.mode_management?.[mode];
+  const allowed=Array.isArray(configured)?configured:REQUESTED_MODE_RANKS[mode]||[];
+  return allowed.map(x=>String(x||"").toUpperCase()).includes(normalized);
+}
 
 const OWNER_USER_PERMISSIONS=[
   "can_mute","can_kick","can_ban","can_warn","can_delete_messages","can_view_ips","can_view_emails","can_edit_rooms","can_delete_rooms","can_create_rooms","can_grant_features","can_manage_users","can_clear_history","can_add_notes","can_send_global_announcement","can_share_gold","can_manage_ranks","can_edit_usernames","can_edit_emails","can_manage_reports","can_manage_announcements","can_manage_clubs","can_manage_news","can_manage_profiles","can_view_deleted_messages","can_manage_settings"
@@ -1728,7 +1735,7 @@ app.post("/api/me/status",auth,(req,res)=>{
 
 app.post("/api/me/hide-mode",auth,(req,res)=>{
   const u=current(req),rank=String(u?.rank||"").toUpperCase(),enable=!!req.body?.enabled;
-  if(enable&&!REQUESTED_MODE_RANKS.ghost.includes(rank))return res.status(403).json({error:"Your rank cannot use Ghost Mode."});
+  if(enable&&!modeRankAllowed("ghost",rank))return res.status(403).json({error:"Your rank cannot use Ghost Mode."});
   u.hideMode=enable;
   if(u.hideMode){u.deadMode=false;u.invisible=false;}
   save();log(u,"HIDE_MODE",u.username,{enabled:u.hideMode});io.emit("presence");
@@ -1736,7 +1743,7 @@ app.post("/api/me/hide-mode",auth,(req,res)=>{
 });
 app.post("/api/me/dead-mode",auth,(req,res)=>{
   const u=current(req),rank=String(u?.rank||"").toUpperCase(),enable=!!req.body?.enabled;
-  if(enable&&!REQUESTED_MODE_RANKS.dead.includes(rank))return res.status(403).json({error:"Your rank cannot use Dead Mode."});
+  if(enable&&!modeRankAllowed("dead",rank))return res.status(403).json({error:"Your rank cannot use Dead Mode."});
   if(enable && !u.deadMode)u.deadModePreviousInvisible=!!u.invisible;
   u.deadMode=enable;
   if(u.deadMode){u.hideMode=false;u.invisible=false;}
@@ -1746,7 +1753,7 @@ app.post("/api/me/dead-mode",auth,(req,res)=>{
 });
 app.post("/api/me/invisible",auth,(req,res)=>{
   const u=current(req),rank=String(current(req)?.rank||"").toUpperCase();
-  if(!!req.body?.enabled&&!REQUESTED_MODE_RANKS.invisible.includes(rank))return res.status(403).json({error:"Your rank cannot use Invisible Mode."});
+  if(!!req.body?.enabled&&!modeRankAllowed("invisible",rank))return res.status(403).json({error:"Your rank cannot use Invisible Mode."});
   u.invisible=!!req.body?.enabled;
   if(u.invisible){u.hideMode=false;u.deadMode=false;delete u.deadModePreviousInvisible;}
   save();
