@@ -1652,7 +1652,7 @@ app.delete(
 app.delete("/api/staff/users/:id",auth,async(req,res)=>{
   const actor=current(req);
   const actorRank=String(actor?.rank||"").toUpperCase();
-  if((rankOrder[actorRank]??-1)<rankOrder.COOWNER || !hasFeature(actor,"delete_accounts")){
+  if((rankOrder[actorRank]??-1)<rankOrder.COOWNER){
     return res.status(403).json({error:"Account deletion is restricted to Coowner and above."});
   }
   const target=findUser(req.params.id);
