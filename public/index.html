@@ -30,7 +30,7 @@
   "description": "Join Maleficent Chat for online chat rooms, friends, private messages, community posts and mini-games."
 }
 </script>
-<link rel="stylesheet" href="/style.css?v=profile-options-layout-20261102-1">
+<link rel="stylesheet" href="/style.css?v=profile-header-overlap-fix-20261102-4">
  <link rel="manifest" href="/manifest.json">
 <script src="/socket.io/socket.io.js"></script>
 <style>
@@ -189,7 +189,7 @@
   <div id="viewProfile" class="view hidden"><div id="profile">
     <!-- Fallback mirrors the real Account and More profile tabs if profile rendering fails. -->
     <div class="my-profile-wrap"><div class="profile-settings-card">
-      <div class="profile-settings-head"><h2>My Profile</h2><p>Account options</p></div>
+      <div class="profile-settings-head"><h2>My Profile</h2><p>Account options</p><div class="profile-media-actions"><button class="mini profile-media-action" type="button" onclick="uploadAvatar()" title="Add or change profile picture" aria-label="Add or change profile picture">📷 Profile picture</button><button class="mini profile-media-action" type="button" onclick="uploadBanner()" title="Add or change profile banner" aria-label="Add or change profile banner">🖼️ Profile banner</button></div></div>
       <div class="settings-tabs"><button class="settings-tab active" id="fallbackAccountTab" type="button" onclick="document.getElementById('fallbackAccountOptions').hidden=false;document.getElementById('fallbackMoreOptions').hidden=true;this.classList.add('active');document.getElementById('fallbackMoreTab').classList.remove('active')">Account</button><button class="settings-tab" id="fallbackMoreTab" type="button" onclick="document.getElementById('fallbackAccountOptions').hidden=true;document.getElementById('fallbackMoreOptions').hidden=false;this.classList.add('active');document.getElementById('fallbackAccountTab').classList.remove('active')">More</button></div>
       <div class="settings-list" id="fallbackAccountOptions">
         <button class="settings-row" type="button" onclick="editProfileInfo()"><span>🪪</span><b>Edit info</b><small>Display name, pronouns and profile details</small><strong>›</strong></button>
@@ -246,6 +246,6 @@
   register.addEventListener("click",function(){showLoginMode(false);},true);
 })();
 </script>
-<script src="/app.js?v=profile-empty-view-fix-20261102-3"></script>
+<script src="/app.js?v=profile-media-controls-20261102-4"></script>
 </body>
 </html>
