@@ -4318,7 +4318,7 @@ app.get(
   auth,
   (req,res)=>{
     const u=current(req);
-    if(!hasRank(u,"ADMIN")) return res.status(403).json({error:"Admin required"});
+    if(!hasRank(u,"COMMISSOR")) return res.status(403).json({error:"Commissor rank or higher required"});
     res.json({words:db.bannedWords||[]});
   }
 );
@@ -4329,10 +4329,8 @@ app.post(
   (req,res)=>{
     const u=current(req);
 
-    if(!hasRank(u,"ADMIN")){
-      return res.status(403).json({
-        error:"Admin required"
-      });
+    if(!hasRank(u,"COMMISSOR")){
+      return res.status(403).json({error:"Commissor rank or higher required"});
     }
 
     const w=
@@ -4367,10 +4365,8 @@ app.delete(
   (req,res)=>{
     const u=current(req);
 
-    if(!hasRank(u,"ADMIN")){
-      return res.status(403).json({
-        error:"Admin required"
-      });
+    if(!hasRank(u,"COMMISSOR")){
+      return res.status(403).json({error:"Commissor rank or higher required"});
     }
 
     db.bannedWords=
