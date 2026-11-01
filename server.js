@@ -644,8 +644,24 @@ function getSessionSecret() {
     return configured;
   }
 
-  // Production fallback: persist a cryptographically random secret on the
-  // mounted data disk so restarts do not invalidate sessions and signed tokens.
+  // Render instances may have ephemeral local filesystems and may run more
+  // than one instance. A secret generated into a local file can therefore differ
+  // between instances or change after a restart, invalidating freshly issued
+  // login tokens and sending users back to the login screen.
+  //
+  // Prefer a stable secret derived from the private DATABASE_URL when SESSION_SECRET
+  // has not been configured. DATABASE_URL contains a high-entropy database
+  // credential and is shared by all instances. Explicit SESSION_SECRET remains
+  // the recommended configuration and takes precedence.
+  if (process.env.NODE_ENV === "production" && process.env.DATABASE_URL) {
+    return crypto
+      .createHmac("sha256", process.env.DATABASE_URL)
+      .update("MaleficentChat/session-secret/v1")
+      .digest("hex");
+  }
+
+  // Last-resort production fallback for deployments without DATABASE_URL:
+  // persist a cryptographically random secret on a mounted data disk.
   if (process.env.NODE_ENV === "production") {
     const dataDir = process.env.PERSISTENT_DATA_DIR || path.join(__dirname, "data");
     const secretFile = path.join(dataDir, ".session-secret");
