@@ -749,7 +749,92 @@ async function recordUserIp(req,user,eventType){
   catch(err){ console.error("IP history recording failed:",err.message); }
 }
 
-function auth(req,res,next){
+
+const DEFAULT_NETWORK_SECURITY={
+  ipRules:[],blockVpn:false,allowedCountries:[],blockedCountries:[],blockedRegions:[],updatedAt:null,updatedBy:null
+};
+async function getDeveloperNetworkSecurity(){
+  if(db.settings?.developer_network_security && typeof db.settings.developer_network_security==="object")return {...DEFAULT_NETWORK_SECURITY,...db.settings.developer_network_security};
+  try{
+    const stored=await pool.query("SELECT value FROM settings WHERE key='developer_network_security' LIMIT 1");
+    const value=stored.rows[0]?.value;
+    db.settings ||= {};
+    db.settings.developer_network_security=value&&typeof value==="object"?value:{...DEFAULT_NETWORK_SECURITY};
+  }catch{db.settings ||= {};db.settings.developer_network_security={...DEFAULT_NETWORK_SECURITY};}
+  return {...DEFAULT_NETWORK_SECURITY,...db.settings.developer_network_security};
+}
+async function saveDeveloperNetworkSecurity(value,actor){
+  const clean={...DEFAULT_NETWORK_SECURITY,...value,updatedAt:Date.now(),updatedBy:String(actor?.username||"Maleficent")};
+  await pool.query("INSERT INTO settings(key,value) VALUES('developer_network_security',$1::jsonb) ON CONFLICT(key) DO UPDATE SET value=EXCLUDED.value",[JSON.stringify(clean)]);
+  db.settings ||= {};db.settings.developer_network_security=clean;
+  await flushSave();
+  return clean;
+}
+function ipv4Integer(ip){
+  const parts=String(ip||"").split(".");
+  if(parts.length!==4||parts.some(part=>!/^\d{1,3}$/.test(part)||Number(part)>255))return null;
+  return parts.reduce((acc,part)=>((acc<<8)|Number(part))>>>0,0);
+}
+function networkRuleMatches(ip,pattern){
+  const address=String(ip||"").replace(/^::ffff:/i,"").trim(),rule=String(pattern||"").trim();
+  if(!address||!rule)return false;
+  if(rule===address)return true;
+  if(rule.includes("*")){
+    const escaped=rule.split(".").map(part=>part==="*"?"\\d{1,3}":part.replace(/[.*+?^${}()|[\\]\\]/g,"\\function auth(req,res,next){")).join("\\.");
+    return new RegExp("^"+escaped+"$").test(address);
+  }
+  if(rule.includes("/")){
+    const [base,bitsText]=rule.split("/");
+    const ipNum=ipv4Integer(address),baseNum=ipv4Integer(base),bits=Number(bitsText);
+    if(ipNum===null||baseNum===null||!Number.isInteger(bits)||bits<0||bits>32)return false;
+    const mask=bits===0?0:(0xffffffff<<(32-bits))>>>0;
+    return (ipNum&mask)===(baseNum&mask);
+  }
+  return false;
+}
+function networkRuleIsValid(pattern){
+  const p=String(pattern||"").trim();
+  if(p.length>64||!p)return false;
+  if(ipv4Integer(p)!==null)return true;
+  if(/^\\d{1,3}(?:\\.\\d{1,3}){2}\\.\\*$/.test(p))return p.split(".").slice(0,3).every(x=>Number(x)<=255);
+  if(p.includes("/")){const [ip,bits]=p.split("/");return ipv4Integer(ip)!==null&&/^\\d+$/.test(bits)&&Number(bits)>=0&&Number(bits)<=32;}
+  return false;
+}
+function normalizedList(value,max=80){
+  const list=Array.isArray(value)?value:String(value||"").split(/[\\n,;]/);
+  return [...new Set(list.map(x=>String(x||"").trim().toUpperCase()).filter(Boolean))].slice(0,max);
+}
+async function networkAccessDecision(req){
+  const config=await getDeveloperNetworkSecurity();
+  const ip=clientIp(req);
+  const matchingRule=(config.ipRules||[]).find(rule=>networkRuleMatches(ip,rule.pattern));
+  if(matchingRule)return {allowed:false,reason:matchingRule.reason||"Network address is blocked by the Developer.",rule:matchingRule,ip};
+  let network=null;
+  if(config.blockVpn||config.allowedCountries?.length||config.blockedCountries?.length||config.blockedRegions?.length){
+    if(ip&&ip!=="unknown")network=await lookupIpNetworkDetails(ip);
+  }
+  const country=String(network?.countryCode||network?.country||"").trim().toUpperCase();
+  const region=String(network?.region||"").trim().toUpperCase();
+  if(config.allowedCountries?.length&&network?.lookupStatus==="Success"&&!config.allowedCountries.some(v=>country===v||String(network?.country||"").toUpperCase()===v)){
+    return {allowed:false,reason:"Access is restricted to the countries allowed by the Developer.",ip,network};
+  }
+  if(config.blockedCountries?.length&&config.blockedCountries.some(v=>country===v||String(network?.country||"").toUpperCase()===v)){
+    return {allowed:false,reason:"Access from this country is blocked by the Developer.",ip,network};
+  }
+  if(config.blockedRegions?.length&&config.blockedRegions.some(v=>region===v||String(network?.region||"").toUpperCase()===v)){
+    return {allowed:false,reason:"Access from this region is blocked by the Developer.",ip,network};
+  }
+  if(config.blockVpn&&network?.vpnDetected)return {allowed:false,reason:"VPN, proxy, Tor, or hosting-network access is blocked by the Developer.",ip,network};
+  return {allowed:true,ip,network};
+}
+async function enforceNetworkAccess(req,res){
+  const decision=await networkAccessDecision(req);
+  if(decision.allowed)return true;
+  res.status(403).json({error:decision.reason,networkBlocked:true});
+  return false;
+}
+
+async function auth(req,res,next){
   const u=current(req);
 
   if(!u){
@@ -757,8 +842,9 @@ function auth(req,res,next){
       error:"Login required"
     });
   }
+  if(!(await enforceNetworkAccess(req,res)))return;
   // Enforce account-wide moderation before any authenticated API route, including private messages.
-  if(u.banned===true)return res.status(403).json({error:"You have been banned",reason:u.banReason||"Community rules",moderationLock:"BAN"});
+  if(u.banned===truereturn res.status(403).json({error:"You have been banned",reason:u.banReason||"Community rules",moderationLock:"BAN"});
   if(u.kickedUntil&&Number(u.kickedUntil)>Date.now())return res.status(403).json({error:"You have been kicked",reason:u.kickReason||"Community rules",kickedUntil:Number(u.kickedUntil),moderationLock:"KICK"});
 
   const construction=db.settings?.under_construction||{};
@@ -1175,6 +1261,7 @@ app.post(
       });
     }
 
+    if(!(await enforceNetworkAccess(req,res)))return;
     const registrationIp=clientIp(req);
     const ipHash=crypto.createHmac("sha256",TOKEN_SECRET).update(registrationIp||"unknown").digest("hex");
     const fingerprintHash = deviceFingerprint ? crypto.createHash("sha256").update(String(deviceFingerprint).slice(0, 2000)).digest("hex") : "ip:"+ipHash;
@@ -1304,6 +1391,7 @@ app.post(
       u.rank="MEMBER"; u.vipExpiresAt=null; u.vip_expires_at=null;
       await pool.query(`UPDATE users SET rank='user',vip_expires_at=NULL WHERE id=$1`,[Number(u.id)]);
     }
+    if(!(await enforceNetworkAccess(req,res)))return;
     if(u.banned===true){
       return res.status(403).json({error:"You have been banned",reason:u.banReason||"Community rules"});
     }
@@ -3724,6 +3812,89 @@ app.get('/api/staff/user/:id/ip-insights',auth,async(req,res)=>{
     console.error('[IP_INSIGHTS] failed:',err?.stack||err?.message||err);
     res.status(500).json({error:'Could not load account insights.'});
   }
+});
+
+
+app.get("/api/developer/network-security",auth,developerOnly,async(req,res)=>{
+  try{
+    const config=await getDeveloperNetworkSecurity();
+    const q=String(req.query.q||"").trim().replace(/^@/,"").slice(0,80);
+    let account=null,timeline=[],deviceSignals=[],risk={score:0,level:"Low",reasons:[]};
+    if(q){
+      const found=await pool.query("SELECT id,username,created_at FROM users WHERE username ILIKE $1 ORDER BY LOWER(username) LIMIT 1",["%"+q+"%"]);
+      const user=found.rows[0];
+      if(user){
+        account={id:String(user.id),username:user.username,registeredAt:user.created_at};
+        const history=await pool.query("SELECT host(ip_address) AS ip_address,event_type,recorded_at,user_agent FROM user_ip_history WHERE user_id=$1 ORDER BY recorded_at DESC LIMIT 250",[Number(user.id)]);
+        const cutoff=Date.now()-2*60*60*1000;
+        const recent=history.rows.filter(row=>new Date(row.recorded_at).getTime()>=cutoff);
+        const ips=[...new Set(recent.map(row=>row.ip_address).filter(Boolean))];
+        const recentDetails=await Promise.all(ips.slice(0,15).map(async ip=>({ip,network:await lookupIpNetworkDetails(ip)})));
+        const byIp=Object.fromEntries(recentDetails.map(x=>[x.ip,x.network]));
+        timeline=history.rows.map(row=>({ip_address:row.ip_address,event_type:row.event_type,recorded_at:row.recorded_at,user_agent:row.user_agent||"",network:byIp[row.ip_address]||{}}));
+        const device=await pool.query("SELECT COUNT(*)::int AS registrations,COUNT(DISTINCT ip_hash)::int AS ip_hashes,MAX(created_at) AS last_seen FROM device_fingerprints WHERE user_id=$1",[Number(user.id)]);
+        const sameIps=ips.length?await pool.query("SELECT COUNT(DISTINCT user_id)::int AS accounts FROM user_ip_history WHERE host(ip_address)=ANY($1::text[])",[ips]):{rows:[{accounts:0}]};
+        const twoHourIps=new Set(recent.map(row=>row.ip_address).filter(Boolean)).size;
+        const cities=new Set(recentDetails.map(x=>[x.network?.city,x.network?.region,x.network?.country].filter(Boolean).join("|")).filter(Boolean));
+        const vpnSignals=recentDetails.filter(x=>x.network?.vpnDetected).length;
+        const sharedAccounts=Number(sameIps.rows[0]?.accounts||0);
+        const reasons=[];
+        let score=0;
+        if(twoHourIps>=5){score+=25;reasons.push(twoHourIps+" IP addresses used in 2 hours");}
+        else if(twoHourIps>=3){score+=15;reasons.push(twoHourIps+" IP addresses used in 2 hours");}
+        if(cities.size>=3){score+=20;reasons.push(cities.size+" approximate locations in recent IP history");}
+        if(vpnSignals){score+=20;reasons.push(vpnSignals+" recent IPs flagged as VPN/proxy/hosting");}
+        if(sharedAccounts>=5){score+=20;reasons.push(sharedAccounts+" accounts share recent IPs");}
+        if(recent.length>=10){score+=15;reasons.push(recent.length+" connection events in 2 hours");}
+        score=Math.min(100,score);
+        risk={score,level:score>=70?"High":score>=40?"Elevated":score>=20?"Moderate":"Low",reasons};
+        deviceSignals=[{label:"Registered device records",value:Number(device.rows[0]?.registrations||0)},{label:"Distinct stored IP hashes",value:Number(device.rows[0]?.ip_hashes||0)},{label:"Accounts sharing recent IPs",value:sharedAccounts}];
+      }
+    }
+    res.json({config,account,timeline,deviceSignals,risk,disclaimer:"Risk is a local heuristic, not a third-party global blacklist. IP geolocation and VPN flags can be inaccurate; shared IPs do not prove shared ownership."});
+  }catch(error){console.error("[DEV_NETWORK_SECURITY] read failed:",error?.stack||error);res.status(500).json({error:"Could not load Developer network security data."});}
+});
+app.put("/api/developer/network-security",auth,developerOnly,async(req,res)=>{
+  try{
+    const old=await getDeveloperNetworkSecurity(),body=req.body||{};
+    const next={...old};
+    if(body.blockVpn!==undefined)next.blockVpn=body.blockVpn===true;
+    if(body.allowedCountries!==undefined)next.allowedCountries=normalizedList(body.allowedCountries);
+    if(body.blockedCountries!==undefined)next.blockedCountries=normalizedList(body.blockedCountries);
+    if(body.blockedRegions!==undefined)next.blockedRegions=normalizedList(body.blockedRegions);
+    const saved=await saveDeveloperNetworkSecurity(next,current(req));
+    log(current(req),"DEV_NETWORK_POLICY_UPDATE","Developer network access policy",{blockVpn:saved.blockVpn,allowedCountries:saved.allowedCountries,blockedCountries:saved.blockedCountries,blockedRegions:saved.blockedRegions});
+    res.json({ok:true,config:saved});
+  }catch(error){console.error("[DEV_NETWORK_SECURITY] update failed:",error?.stack||error);res.status(500).json({error:"Could not save Developer network policy."});}
+});
+app.post("/api/developer/network-security/ip-rules",auth,developerOnly,async(req,res)=>{
+  try{
+    const pattern=String(req.body?.pattern||"").trim();
+    const reason=String(req.body?.reason||"").trim().slice(0,240);
+    if(!networkRuleIsValid(pattern))return res.status(400).json({error:"Use an IPv4 address, wildcard such as 45.67.1.*, or CIDR range such as 45.67.0.0/16."});
+    const config=await getDeveloperNetworkSecurity();
+    if((config.ipRules||[]).some(rule=>rule.pattern===pattern))return res.status(409).json({error:"That IP/range rule already exists."});
+    config.ipRules=[...(config.ipRules||[]),{id:crypto.randomUUID(),pattern,reason:reason||"Blocked by Developer",createdAt:Date.now(),createdBy:current(req).username}].slice(-500);
+    const saved=await saveDeveloperNetworkSecurity(config,current(req));
+    log(current(req),"DEV_NETWORK_RULE_ADD",pattern,{reason});
+    res.json({ok:true,config:saved});
+  }catch(error){console.error("[DEV_NETWORK_SECURITY] rule add failed:",error?.stack||error);res.status(500).json({error:"Could not add the IP/range rule."});}
+});
+app.delete("/api/developer/network-security/ip-rules/:id",auth,developerOnly,async(req,res)=>{
+  try{
+    const config=await getDeveloperNetworkSecurity(),before=(config.ipRules||[]).length;
+    config.ipRules=(config.ipRules||[]).filter(rule=>String(rule.id)!==String(req.params.id));
+    if(config.ipRules.length===before)return res.status(404).json({error:"IP/range rule not found."});
+    const saved=await saveDeveloperNetworkSecurity(config,current(req));
+    log(current(req),"DEV_NETWORK_RULE_REMOVE",req.params.id,{});
+    res.json({ok:true,config:saved});
+  }catch(error){console.error("[DEV_NETWORK_SECURITY] rule remove failed:",error?.stack||error);res.status(500).json({error:"Could not remove the IP/range rule."});}
+});
+app.get("/api/developer/network-security/lookup",auth,developerOnly,async(req,res)=>{
+  const ip=String(req.query.ip||"").trim();
+  if(!networkRuleIsValid(ip)||ip.includes("*")||ip.includes("/"))return res.status(400).json({error:"Enter a single IPv4 address to look up."});
+  try{const network=await lookupIpNetworkDetails(ip);res.json({ip,network,mapUrl:/^-?\d+(?:\.\d+)?,-?\d+(?:\.\d+)?$/.test(String(network.coordinates||""))?"https://www.openstreetmap.org/?mlat="+encodeURIComponent(network.coordinates.split(",")[0])+"&mlon="+encodeURIComponent(network.coordinates.split(",")[1])+"&zoom=10":null});}
+  catch(error){res.status(500).json({error:"IP lookup failed."});}
 });
 
 app.get("/api/staff/ip-inspection",auth,async(req,res)=>{
