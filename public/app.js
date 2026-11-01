@@ -1253,10 +1253,64 @@ async function loadGoldEconomy(){
 async function claimDailyReward(){try{const r=await api('/api/daily/claim',{method:'POST'});state.user.gold=r.gold;state.user.xp=r.xp;updateNav();const b=document.querySelector('[data-daily-reward]');if(b){b.disabled=true;b.querySelector('small').textContent='Already claimed today';}toast(`🎁 Daily reward: +${r.amount} gold, +${r.xpAmount} XP · Streak ${r.streak}`);return r;}catch(e){toast(e.message)}}
 
 async function openGifPicker(){
-  const cost=Number(state.gifCost||10);
-  modal(`<div class="gif-picker"><h2>GIFs · 🪙 ${cost} gold each</h2><input id="gifSearch" placeholder="Search GIFs…"><div id="gifResults" class="gif-results"><p class="muted">Search for a GIF or choose a suggestion.</p></div><p class="muted">Your balance: 🪙 ${Number(state.user?.gold||0)}</p></div>`);
-  const search=async()=>{const q=$('gifSearch').value.trim();try{const d=await api('/api/gifs/search?q='+encodeURIComponent(q));state.gifCost=Number(d.cost??state.gifCost??10);$('gifResults').innerHTML=(d.results||[]).map(g=>`<button class="gif-choice" data-gif-url="${esc(g.url)}"><img src="${esc(g.preview||g.url)}" alt="GIF"><span>${esc(g.title||'GIF')}</span></button>`).join('')||'<p class="muted">No GIFs found. Try another search.</p>';document.querySelectorAll('[data-gif-url]').forEach(b=>b.onclick=async()=>{try{const r=await api(`/api/rooms/${encodeURIComponent(state.currentRoom)}/gif`,{method:'POST',body:JSON.stringify({url:b.dataset.gifUrl})});if(state.user&&r.gold!==undefined){state.user.gold=r.gold;updateNav();}if(r.message&&String(state.currentRoom)===String(r.message.roomId))appendMessage(r.message);closeModal();toast("GIF sent successfully.");}catch(e){toast(e.message)}});}catch(e){toast(e.message)}};
-  $('gifSearch').oninput=search; await search();
+  const roomIdAtOpen=String(state.currentRoom||"");
+  if(!roomIdAtOpen){toast("Join a room before sending a GIF.");return;}
+  let searchVersion=0;
+  let searchTimer=null;
+  let sending=false;
+  const initialCost=Number(state.gifCost||10);
+  modal(`<div class="gif-picker"><h2>GIFs · 🪙 ${initialCost} gold each</h2><input id="gifSearch" placeholder="Search GIFs…" autocomplete="off"><div id="gifResults" class="gif-results" aria-live="polite"><p class="muted">Loading GIFs…</p></div><p id="gifBalance" class="muted">Your balance: 🪙 ${Number(state.user?.gold||0)}</p></div>`);
+  const input=$("gifSearch"), results=$("gifResults");
+  if(!input||!results)return;
+  const search=async()=>{
+    const version=++searchVersion;
+    const q=input.value.trim();
+    results.innerHTML='<p class="muted">Loading GIFs…</p>';
+    try{
+      const d=await api('/api/gifs/search?q='+encodeURIComponent(q));
+      if(version!==searchVersion||!$("gifResults"))return;
+      state.gifCost=Number(d.cost??state.gifCost??10);
+      const heading=document.querySelector(".gif-picker h2");
+      if(heading)heading.textContent=`GIFs · 🪙 ${state.gifCost} gold each`;
+      const gifs=Array.isArray(d.results)?d.results:[];
+      results.innerHTML=gifs.map(g=>`<button type="button" class="gif-choice" data-gif-url="${esc(g.url)}"><img src="${esc(g.preview||g.url)}" alt="" loading="lazy"><span>${esc(g.title||'GIF')}</span></button>`).join('')||'<p class="muted">No GIFs found. Try another search.</p>';
+    }catch(e){
+      if(version!==searchVersion||!$("gifResults"))return;
+      results.innerHTML=`<p class="muted">Could not load GIFs: ${esc(e.message||"Please try again.")}</p><button type="button" id="gifRetry" class="mini">Retry</button>`;
+      $("gifRetry")?.addEventListener("click",search,{once:true});
+    }
+  };
+  input.addEventListener("input",()=>{
+    clearTimeout(searchTimer);
+    searchTimer=setTimeout(search,250);
+  });
+  results.addEventListener("click",async event=>{
+    const button=event.target.closest("[data-gif-url]");
+    if(!button||sending)return;
+    const url=button.dataset.gifUrl;
+    if(!url)return;
+    sending=true;
+    const allChoices=results.querySelectorAll("[data-gif-url]");
+    allChoices.forEach(choice=>choice.disabled=true);
+    button.querySelector("span")?.replaceChildren(document.createTextNode("Sending…"));
+    try{
+      if(String(state.currentRoom)!==roomIdAtOpen)throw new Error("Your room changed. Reopen the GIF picker in the room you want.");
+      const r=await api(`/api/rooms/${encodeURIComponent(roomIdAtOpen)}/gif`,{method:"POST",body:JSON.stringify({url})});
+      if(state.user&&r.gold!==undefined){state.user.gold=r.gold;updateNav();}
+      const balance=$("gifBalance");
+      if(balance)balance.textContent=`Your balance: 🪙 ${Number(state.user?.gold||0)}`;
+      if(r.message&&String(state.currentRoom)===String(r.message.roomId))appendMessage(r.message);
+      closeModal();
+      toast("GIF sent successfully.");
+    }catch(e){
+      sending=false;
+      allChoices.forEach(choice=>choice.disabled=false);
+      const label=button.querySelector("span");
+      if(label)label.textContent=button.dataset.originalTitle||"Send GIF";
+      toast(e.message||"Could not send this GIF.");
+    }
+  });
+  await search();
 }
 
 document.getElementById("chatGifBtn")?.addEventListener("click",()=>{if(!state.currentRoom){toast("Join a room before sending a GIF.");return;}openGifPicker();});
