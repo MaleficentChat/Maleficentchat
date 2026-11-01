@@ -2243,7 +2243,7 @@ app.post("/api/rooms/:id/messages",auth,featureAllowed("send_messages"),upload.s
         abrakadabra:{usage:"/abrakadabra",description:"Try your luck with your Gold balance."},
         clear:{usage:"/clear",description:"Clear the current room (authorized ranks only)."},
         mode:{usage:"/mode",description:"Open your available presence-mode controls."},
-        guide:{usage:"/guide",description:"Show this rank-specific command guide."}
+        guide:{name:"guide",usage:"/guide",description:"Show this rank-specific command guide."}
       };
       const visible=[];
       for(const key of commandDefs){
