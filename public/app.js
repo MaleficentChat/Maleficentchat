@@ -3995,6 +3995,48 @@ async function loadStaff() {
     ipSuggestions?.addEventListener('click',e=>{const btn=e.target.closest('[data-ip-user]');if(!btn)return;ipSearch.value='@'+btn.dataset.ipUser;ipSuggestions.hidden=true;loadIpInspection(btn.dataset.ipUser);});
     ipSearch?.addEventListener('focus',()=>{if(ipSearch.value.trim())ipSearch.dispatchEvent(new Event('input'));});
     $('ipInspectionForm')?.addEventListener('submit',e=>{e.preventDefault();loadIpInspection((ipSearch?.value||'').trim().replace(/^@/,''));});
+
+    const developerOnly=String(state.user?.rank||"").toUpperCase()==="DEVELOPER";
+    if(!developerOnly)$('developerNetworkConsole')?.remove();
+    async function loadDeveloperNetworkConfig(){
+      if(!developerOnly)return;
+      try{
+        const d=await api('/api/developer/network-security'),c=d.config||{};
+        const list=$('devIpRulesList');
+        if(list)list.innerHTML=(c.ipRules||[]).map(r=>'<div class="about-card"><b>'+esc(r.pattern)+'</b><small>'+esc(r.reason||'No reason')+'</small><button type="button" class="secondary" data-remove-ip-rule="'+esc(r.id)+'">Remove rule</button></div>').join('')||'<p class="muted">No IP/range bans configured.</p>';
+        if($('devBlockVpn'))$('devBlockVpn').checked=!!c.blockVpn;
+        if($('devAllowedCountries'))$('devAllowedCountries').value=(c.allowedCountries||[]).join(', ');
+        if($('devBlockedCountries'))$('devBlockedCountries').value=(c.blockedCountries||[]).join(', ');
+        if($('devBlockedRegions'))$('devBlockedRegions').value=(c.blockedRegions||[]).join(', ');
+      }catch(e){const list=$('devIpRulesList');if(list)list.innerHTML='<p class="muted">'+esc(e.message||'Developer security settings unavailable')+'</p>';}
+    }
+    $('devIpRuleForm')?.addEventListener('submit',async e=>{
+      e.preventDefault();
+      try{await api('/api/developer/network-security/rules',{method:'POST',body:JSON.stringify({pattern:$('devIpRulePattern')?.value,reason:$('devIpRuleReason')?.value})});if($('devIpRulePattern'))$('devIpRulePattern').value='';if($('devIpRuleReason'))$('devIpRuleReason').value='';toast('IP/range rule added');await loadDeveloperNetworkConfig();}
+      catch(err){toast(err.message||'Could not add IP rule');}
+    });
+    $('devIpRulesList')?.addEventListener('click',async e=>{
+      const btn=e.target.closest('[data-remove-ip-rule]');if(!btn)return;
+      try{await api('/api/developer/network-security/rules/'+encodeURIComponent(btn.dataset.removeIpRule),{method:'DELETE'});toast('IP/range rule removed');await loadDeveloperNetworkConfig();}catch(err){toast(err.message||'Could not remove IP rule');}
+    });
+    $('devNetworkPolicyForm')?.addEventListener('submit',async e=>{
+      e.preventDefault();
+      try{await api('/api/developer/network-security/policy',{method:'PUT',body:JSON.stringify({blockVpn:$('devBlockVpn')?.checked,allowedCountries:$('devAllowedCountries')?.value||'',blockedCountries:$('devBlockedCountries')?.value||'',blockedRegions:$('devBlockedRegions')?.value||''})});toast('Network restrictions saved');}
+      catch(err){toast(err.message||'Could not save network restrictions');}
+    });
+    $('devNetworkAccountForm')?.addEventListener('submit',async e=>{
+      e.preventDefault();const out=$('devNetworkAccountResults');if(!out)return;
+      out.innerHTML='<p class="muted">Loading IP history and risk signals…</p>';
+      try{const d=await api('/api/developer/network-security/timeline?q='+encodeURIComponent($('devNetworkAccountSearch')?.value||''));out.innerHTML='<div class="about-card"><h4>@'+esc(d.username)+' · Local risk score '+esc(d.riskScore)+'/100</h4><p>'+esc((d.riskSignals||[]).join(' · ')||'No heuristic risk signals detected')+'</p><p class="muted">'+esc(d.distinctIpCount)+' distinct IP addresses recorded. Device fingerprint registered: '+(d.deviceFingerprintRegistered?'Yes':'No')+'.</p><div class="ip-inspection-table-wrap"><table class="ip-inspection-table"><thead><tr><th>IP</th><th>Approx. location / ISP</th><th>Event</th><th>Time</th><th>Map</th></tr></thead><tbody>'+(d.events||[]).map(r=>{const n=r.network||{},ip=esc(r.ip_address||'Unavailable'),xy=String(n.coordinates||'').split(','),map=xy.length===2&&xy.every(v=>Number.isFinite(Number(v)))?'https://www.openstreetmap.org/?mlat='+encodeURIComponent(xy[0])+'&mlon='+encodeURIComponent(xy[1])+'#map=10/'+encodeURIComponent(xy[0])+'/'+encodeURIComponent(xy[1]):'';return '<tr><td><code>'+ip+'</code></td><td>'+esc([n.city,n.region,n.country,n.networkProvider].filter(Boolean).join(', ')||'Unavailable')+(n.vpnDetected?'<small>⚠ VPN/proxy signal</small>':'')+'</td><td>'+esc(r.event_type||'Unknown')+'</td><td>'+esc(r.recorded_at?fmt(new Date(r.recorded_at).getTime()):'Unknown')+'</td><td>'+(map?'<a href="'+esc(map)+'" target="_blank" rel="noopener">Open map</a>':'Unavailable')+'</td></tr>';}).join('')+'</tbody></table></div><p class="muted">'+esc(d.disclaimer||'IP location is approximate.')+'</p></div>';}
+      catch(err){out.innerHTML='<p class="muted">'+esc(err.message||'Could not load timeline')+'</p>';}
+    });
+    $('devIpLookupForm')?.addEventListener('submit',async e=>{
+      e.preventDefault();const out=$('devIpLookupResults');if(!out)return;out.innerHTML='<p class="muted">Looking up network…</p>';
+      try{const d=await api('/api/developer/network-security/lookup?ip='+encodeURIComponent($('devIpLookupAddress')?.value||'')),n=d.network||{};out.innerHTML='<div class="about-card"><h4>'+esc(d.ip)+' · Local risk '+esc(d.riskScore)+'/100</h4><p>'+esc([n.city,n.region,n.country].filter(Boolean).join(', ')||'Location unavailable')+'</p><p>ISP / organization: '+esc(n.networkProvider||n.organization||'Unavailable')+' · ASN: '+esc(n.asn||'Unavailable')+'</p><p>Signals: '+esc((d.riskSignals||[]).join(', ')||'No local risk signals')+'</p>'+(d.mapUrl?'<p><a href="'+esc(d.mapUrl)+'" target="_blank" rel="noopener">🗺️ Open approximate map pin</a></p>':'<p class="muted">No map coordinates returned by the provider.</p>')+'<p class="muted">Provider results can be inaccurate. This is not a global blacklist lookup.</p></div>';}
+      catch(err){out.innerHTML='<p class="muted">'+esc(err.message||'IP lookup failed')+'</p>';}
+    });
+    if(developerOnly)loadDeveloperNetworkConfig();
+
     if(String(state.user?.rank||'').toUpperCase()==='DEVELOPER'&&String(state.user?.username||'')==='Maleficent'){
       loadDeveloperNetworkSecurity('',true);
       $('devIpRuleForm')?.addEventListener('submit',async e=>{e.preventDefault();try{await api('/api/developer/network-security/ip-rules',{method:'POST',body:JSON.stringify({pattern:$('devIpRulePattern').value.trim(),reason:$('devIpRuleReason').value.trim()})});$('devIpRulePattern').value='';$('devIpRuleReason').value='';toast('IP / range ban added.');await loadDeveloperNetworkSecurity();}catch(err){toast(err.message);}});
