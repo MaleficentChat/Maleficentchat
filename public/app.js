@@ -3988,10 +3988,32 @@ async function loadStaffFilterManagement(){
 async function loadStaff() {
   try {
     const data=await api('/api/staff/dashboard');
+    const staffRank=String(state.user?.rank||'').toUpperCase();
+
+    // Moderators are intentionally limited to the Statistics card in their staff space.
+    // Return before requesting Admin-only endpoints, which previously rejected MOD and
+    // caused the entire dashboard to stay blank.
+    if(staffRank==='MOD'){
+      const stats=data.stats||{};
+      $('staff').innerHTML=`
+        <section class="card moderator-statistics-card">
+          <h3>📊 Moderator Statistics</h3>
+          <p class="muted">Read-only community overview for Moderators.</p>
+          <div class="grid2">
+            <div class="card"><h3>👥 Users</h3><p>${Number(stats.users||0)}</p></div>
+            <div class="card"><h3>🟢 Online</h3><p>${Number(stats.online||0)}</p></div>
+            <div class="card"><h3>💬 Messages</h3><p>${Number(stats.messages||0)}</p></div>
+            <div class="card"><h3>🚩 Open Reports</h3><p>${Number(stats.reportsOpen||0)}</p></div>
+          </div>
+        </section>`;
+      $('owner')?.classList.add('hidden');
+      return;
+    }
+
     const bootstrapData=await api('/api/bootstrap');
     const filterWords=await api('/api/staff/filter-word');
     const systemCenter=await api('/api/staff/system-center').catch(()=>null);
-    const canUseAdminPanel=['ADMIN','SUPER_ADMIN','COMMISSOR','INSTRUCTOR','COOWNER','OWNER','DEVELOPER'].includes(String(state.user?.rank||'').toUpperCase());
+    const canUseAdminPanel=['ADMIN','SUPER_ADMIN','COMMISSOR','INSTRUCTOR','COOWNER','OWNER','DEVELOPER'].includes(staffRank);
     const staffRankOrder=['MEMBER','VIP','PREMIUM','ROYAL','MOD','ADMIN','SUPER_ADMIN','COMMISSOR','INSTRUCTOR','COOWNER','OWNER','DEVELOPER'];
     const canHardRefreshSite=staffRankOrder.indexOf(String(state.user?.rank||'').toUpperCase())>=staffRankOrder.indexOf('INSTRUCTOR');
 
