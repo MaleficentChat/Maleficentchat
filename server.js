@@ -1267,6 +1267,7 @@ app.post(
 
     if(!(await enforceNetworkAccess(req,res,null)))return;
     const registrationIp=clientIp(req);
+    try{const p=await evaluateDeveloperNetworkPolicy(registrationIp);if(p.blocked)return res.status(403).json({error:"Registration blocked by Developer network security.",reason:p.reason});}catch(e){console.error("Developer network policy check failed:",e?.message||e);}
     const ipHash=crypto.createHmac("sha256",TOKEN_SECRET).update(registrationIp||"unknown").digest("hex");
     const fingerprintHash = deviceFingerprint ? crypto.createHash("sha256").update(String(deviceFingerprint).slice(0, 2000)).digest("hex") : "ip:"+ipHash;
     const fingerprintTaken = await pool.query(`SELECT id FROM device_fingerprints WHERE fingerprint_hash=$1`,[fingerprintHash]);
@@ -1399,6 +1400,7 @@ app.post(
     if(u.banned===true){
       return res.status(403).json({error:"You have been banned",reason:u.banReason||"Community rules"});
     }
+    try{const p=await evaluateDeveloperNetworkPolicy(clientIp(req));if(p.blocked)return res.status(403).json({error:"Access blocked by Developer network security.",reason:p.reason});}catch(e){console.error("Developer network policy check failed:",e?.message||e);}
 
     u.online=true;
     u.lastSeen=Date.now();
@@ -3903,6 +3905,42 @@ app.get("/api/developer/network-security/lookup",auth,developerOnly,async(req,re
   try{const network=await lookupIpNetworkDetails(ip);res.json({ip,network,mapUrl:/^-?\d+(?:\.\d+)?,-?\d+(?:\.\d+)?$/.test(String(network.coordinates||""))?"https://www.openstreetmap.org/?mlat="+encodeURIComponent(network.coordinates.split(",")[0])+"&mlon="+encodeURIComponent(network.coordinates.split(",")[1])+"&zoom=10":null});}
   catch(error){res.status(500).json({error:"IP lookup failed."});}
 });
+
+
+function developerNetworkAccess(req,res){
+ const actor=current(req);
+ if(String(actor?.rank||"").toUpperCase()!=="DEVELOPER"){res.status(403).json({error:"Developer account access required."});return null;}
+ db.settings ||= {}; db.settings.developer_network_security ||= {ipRules:[],blockVpn:false,allowedCountries:[],blockedCountries:[],blockedRegions:[]};
+ const cfg=db.settings.developer_network_security;cfg.ipRules||=[];cfg.allowedCountries||=[];cfg.blockedCountries||=[];cfg.blockedRegions||=[];
+ return {actor,cfg};
+}
+function networkIpNorm(ip){return String(ip||"").trim().replace(/^::ffff:/i,"").replace(/^\\[|\\]$/g,"").replace(/\\/\\d{1,3}$/,"");}
+function networkIpv4Number(ip){const p=networkIpNorm(ip).split(".");if(p.length!==4||p.some(x=>!/^\\d{1,3}$/.test(x)||Number(x)>255))return null;return p.reduce((n,x)=>n*256+Number(x),0);}
+function networkRuleMatches(ip,pattern){
+ const value=networkIpNorm(ip),rule=String(pattern||"").trim();if(!value||!rule)return false;
+ if(rule.includes("*")){const p=rule.split(".");if(p.length!==4)return false;return value.split(".").length===4&&p.every((x,i)=>x==="*"?(Number(value.split(".")[i])<=255&&/^\\d{1,3}$/.test(value.split(".")[i])):x===value.split(".")[i]);}
+ if(rule.includes("/")){const parts=rule.split("/"),n=networkIpv4Number(value),b=networkIpv4Number(parts[0]),bits=Number(parts[1]);if(n===null||b===null||!Number.isInteger(bits)||bits<0||bits>32)return false;const mask=bits===0?0:(0xffffffff<<(32-bits))>>>0;return (n&mask)===(b&mask);}
+ return value===rule;
+}
+function networkPolicyList(v){return String(v||"").split(/[,;\\n]+/).map(x=>x.trim().toLowerCase()).filter(Boolean).slice(0,100);}
+async function evaluateDeveloperNetworkPolicy(ip){
+ const c=db.settings?.developer_network_security||{};const rule=(c.ipRules||[]).find(r=>r.enabled!==false&&networkRuleMatches(ip,r.pattern));if(rule)return {blocked:true,reason:rule.reason||"IP / range ban"};
+ const n=await lookupIpNetworkDetails(networkIpNorm(ip)),country=String(n.country||"").toLowerCase(),region=String(n.region||"").toLowerCase(),code=String(n.countryCode||n.country_code||"").toLowerCase();
+ if(country||code){if((c.allowedCountries||[]).length&&!(c.allowedCountries||[]).some(x=>x===country||x===code||country.includes(x)||x.includes(country)))return {blocked:true,reason:"Country is not on the developer allowlist"};if((c.blockedCountries||[]).some(x=>x===country||x===code||country.includes(x)||x.includes(country)))return {blocked:true,reason:"Access from this country is blocked"};if((c.blockedRegions||[]).some(x=>region.includes(x)||x.includes(region)))return {blocked:true,reason:"Access from this region is blocked"};}
+ if(c.blockVpn&&n.vpnDetected)return {blocked:true,reason:"VPN / proxy / hosting network is blocked"};return {blocked:false,network:n};
+}
+app.get("/api/developer/network-security",auth,(req,res)=>{const a=developerNetworkAccess(req,res);if(a)res.json({config:a.cfg});});
+app.post("/api/developer/network-security/rules",auth,(req,res)=>{
+ const a=developerNetworkAccess(req,res);if(!a)return;const pattern=String(req.body?.pattern||"").trim().slice(0,64);
+ const valid=networkIpv4Number(pattern)!==null||(/^((\\d{1,3}\\.){0,2}\\d{1,3}\\.\\*)$/.test(pattern)&&pattern.split(".").every(x=>x==="*"||Number(x)<=255))||(/^((\\d{1,3}\\.){3}\\d{1,3})\\/(\\d|[12]\\d|3[0-2])$/.test(pattern)&&networkIpv4Number(pattern.split("/")[0])!==null);
+ if(!valid)return res.status(400).json({error:"Enter an IPv4 address, wildcard such as 45.67.1.*, or CIDR such as 45.67.0.0/16."});
+ if(a.cfg.ipRules.some(r=>r.pattern===pattern&&r.enabled!==false))return res.status(409).json({error:"That rule already exists."});
+ a.cfg.ipRules.unshift({id:crypto.randomUUID(),pattern,reason:String(req.body?.reason||"Developer network ban").slice(0,240),enabled:true,createdAt:Date.now(),createdBy:a.actor.username});save();log(a.actor,"DEVELOPER_IP_RANGE_BAN",pattern);res.json({ok:true,config:a.cfg});
+});
+app.delete("/api/developer/network-security/rules/:id",auth,(req,res)=>{const a=developerNetworkAccess(req,res);if(!a)return;const old=a.cfg.ipRules.length;a.cfg.ipRules=a.cfg.ipRules.filter(r=>String(r.id)!==String(req.params.id));if(old===a.cfg.ipRules.length)return res.status(404).json({error:"Rule not found."});save();log(a.actor,"DEVELOPER_IP_RANGE_UNBAN",String(req.params.id));res.json({ok:true,config:a.cfg});});
+app.put("/api/developer/network-security/policy",auth,(req,res)=>{const a=developerNetworkAccess(req,res);if(!a)return;const b=req.body||{};a.cfg.blockVpn=b.blockVpn===true;a.cfg.allowedCountries=networkPolicyList(b.allowedCountries);a.cfg.blockedCountries=networkPolicyList(b.blockedCountries);a.cfg.blockedRegions=networkPolicyList(b.blockedRegions);save();log(a.actor,"DEVELOPER_NETWORK_POLICY_UPDATE","network policy");res.json({ok:true,config:a.cfg});});
+app.get("/api/developer/network-security/lookup",auth,async(req,res)=>{const a=developerNetworkAccess(req,res);if(!a)return;const ip=networkIpNorm(req.query.ip);if(networkIpv4Number(ip)===null)return res.status(400).json({error:"Enter a valid public IPv4 address."});const network=await lookupIpNetworkDetails(ip);const signals=[];if(network.vpnDetected)signals.push("VPN / proxy / hosting signal");if((a.cfg.ipRules||[]).some(r=>networkRuleMatches(ip,r.pattern)))signals.push("Matches a developer IP ban rule");const xy=String(network.coordinates||"").split(",");const mapUrl=xy.length===2&&xy.every(x=>Number.isFinite(Number(x)))?"https://www.openstreetmap.org/?mlat="+xy[0]+"&mlon="+xy[1]+"#map=10/"+xy[0]+"/"+xy[1]:null;res.json({ip,network,riskScore:Math.min(100,signals.reduce((v,x)=>v+(x.includes("ban")?70:35),0)),riskSignals:signals,mapUrl});});
+app.get("/api/developer/network-security/timeline",auth,async(req,res)=>{const a=developerNetworkAccess(req,res);if(!a)return;const qname=String(req.query.q||"").trim().replace(/^@/,"").slice(0,80);const u=(db.users||[]).find(x=>String(x.username||"").toLowerCase()===qname.toLowerCase());if(!u)return res.status(404).json({error:"Account not found."});const q=await pool.query("SELECT host(ip_address) AS ip_address,event_type,recorded_at,user_agent FROM user_ip_history WHERE user_id=$1 ORDER BY recorded_at DESC LIMIT 200",[Number(u.id)]);const events=q.rows,ips=[...new Set(events.map(x=>networkIpNorm(x.ip_address)).filter(Boolean))],geo={};await Promise.all(ips.slice(0,40).map(async ip=>{if(networkIpv4Number(ip)!==null)geo[ip]=await lookupIpNetworkDetails(ip);}));const recent=events.filter(x=>Date.now()-new Date(x.recorded_at).getTime()<7200000).length,signals=[];if(ips.length>=5)signals.push("Frequent IP changes");if(ips.length>=10)signals.push("High IP churn");if(recent>=10)signals.push("Many IP-history events in the last 2 hours");if(events.some(x=>geo[networkIpNorm(x.ip_address)]?.vpnDetected))signals.push("VPN / proxy signal in history");const riskScore=Math.min(100,(ips.length>=10?45:ips.length>=5?25:0)+(recent>=10?25:0)+(signals.some(x=>x.startsWith("VPN"))?30:0));res.json({username:u.username,distinctIpCount:ips.length,riskScore,riskSignals:signals,events:events.map(x=>({...x,network:geo[networkIpNorm(x.ip_address)]||{}})),deviceFingerprintRegistered:!!(await pool.query("SELECT 1 FROM device_fingerprints WHERE user_id=$1 LIMIT 1",[Number(u.id)])).rowCount,disclaimer:"Local heuristic only, not a global blacklist or proof of abuse. IP locations are approximate."});});
 
 app.get("/api/staff/ip-inspection",auth,async(req,res)=>{
   const actor=current(req),viewerRank=String(actor?.rank||"").toUpperCase();
