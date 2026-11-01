@@ -1041,8 +1041,34 @@ async function renderView() {
     case "search":
       return loadSearchRooms();
 
-    case "profile":
-      return loadProfile(state.user);
+    case "profile": {
+      // Recover the account object if a stale/partial session left the profile view empty.
+      if (!state.user) {
+        try {
+          const fresh = await api("/api/bootstrap");
+          if (fresh?.user) {
+            state.user = fresh.user;
+            state.featurePermissions = fresh.featurePermissions || state.featurePermissions || {};
+            state.userPermissions = fresh.userPermissions || state.userPermissions || {};
+          }
+        } catch (error) {
+          console.error("Could not reload account for My Profile", error);
+        }
+      }
+      if (!state.user) {
+        const root = $("profile");
+        if (root) root.innerHTML = '<section class="card profile-load-message"><h2>My Profile</h2><p>Your account details could not be loaded. Please refresh the page and try again.</p><button class="primary" type="button" onclick="location.reload()">Refresh profile</button></section>';
+        return;
+      }
+      try {
+        return loadProfile(state.user);
+      } catch (error) {
+        console.error("My Profile failed to render", error);
+        const root = $("profile");
+        if (root) root.innerHTML = '<section class="card profile-load-message"><h2>My Profile</h2><p>The profile editor hit an error while loading. Your account has not been changed. Please refresh and try again.</p><button class="primary" type="button" onclick="location.reload()">Refresh profile</button></section>';
+      }
+      return;
+    }
 
     case "settings":
       return loadSettings();
