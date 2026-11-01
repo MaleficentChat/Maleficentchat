@@ -3447,8 +3447,10 @@ async function openProfileActionDrawer(user,data={}){
   const canShareWallet=canFeature("share_gold");
   const canGiveRank=isOwner||canFeature("staff_rank_assignment");
   const roomRole=String(state.currentRoomRole||"USER").toUpperCase();
-  const canRoomRank=canFeature("room_rank_assign")||["ROOM_OWNER","ROOM_ADMIN"].includes(roomRole);
-  const canRoomModerate=canFeature("room_moderate")||["ROOM_OWNER","ROOM_ADMIN","ROOM_MODERATOR"].includes(roomRole);
+  const targetIsStaff=(rankOrder[String(user.rank||"MEMBER").toUpperCase()]??999)>=(rankOrder.MOD??4);
+  const hierarchyAllowsRoomActions=!targetIsStaff||canAccessStaffTarget(user);
+  const canRoomRank=hierarchyAllowsRoomActions&&(canFeature("room_rank_assign")||["ROOM_OWNER","ROOM_ADMIN"].includes(roomRole));
+  const canRoomModerate=hierarchyAllowsRoomActions&&(canFeature("room_moderate")||["ROOM_OWNER","ROOM_ADMIN","ROOM_MODERATOR"].includes(roomRole));
   const canModerate=(canFeature("moderate_user")||canFeature("moderate_users"))&&canAccessStaffTarget(user);
   const canStaffAccount=canFeature("manage_staff_accounts")&&canAccessStaffTarget(user);
   const canHistory=canFeature("view_user_history")&&canAccessStaffTarget(user);
