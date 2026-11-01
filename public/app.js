@@ -921,6 +921,11 @@ function updateNav() {
     .forEach(el =>
       el.classList.toggle("hidden", !can("MOD")&&!canFeature("view_staff_dashboard"))
     );
+  const managementLabel=$("managementSpaceNavLabel");
+  if(managementLabel){
+    const labels={MOD:"Moderator Space",ADMIN:"Admin Space",SUPER_ADMIN:"Super Admin Space",COMMISSOR:"Commissor Space",INSTRUCTOR:"Instructor Space",COOWNER:"Co-owner Space",OWNER:"Owner Space",DEVELOPER:"Developer Space"};
+    managementLabel.textContent=labels[String(state.user?.rank||"").toUpperCase()]||"Management Space";
+  }
   const reportButton=$("topFlag");
   if(reportButton) reportButton.classList.toggle("hidden", !can("MOD")&&!canFeature("view_staff_dashboard"));
 
@@ -1037,11 +1042,25 @@ async function renderView() {
     case "staffApplications":
       return loadStaffApplication();
 
-    case "staff":
-      return loadStaff();
-
-    case "owner":
-      return loadOwner();
+    case "management": {
+      const rank=String(state.user?.rank||"MEMBER").toUpperCase();
+      const labels={
+        MOD:["🛡️","Moderator Space"], ADMIN:["⭐","Admin Space"],
+        SUPER_ADMIN:["🌟","Super Admin Space"], COMMISSOR:["👻","Commissor Space"],
+        INSTRUCTOR:["⚔️","Instructor Space"], COOWNER:["🦉","Co-owner Space"],
+        OWNER:["👑","Owner Space"], DEVELOPER:["🛠️","Developer Space"]
+      };
+      const [icon,label]=labels[rank]||["🛡️","Management Space"];
+      const title=$("managementSpaceTitle"), description=$("managementSpaceDescription"), navLabel=$("managementSpaceNavLabel");
+      if(title)title.textContent=icon+" "+label;
+      if(navLabel)navLabel.textContent=label;
+      if(description)description.textContent="One place for your staff tools and the controls permitted for your rank.";
+      const ownerEligible=["OWNER","DEVELOPER"].includes(rank);
+      $("owner")?.classList.toggle("hidden",!ownerEligible);
+      await loadStaff();
+      if(ownerEligible) await loadOwner();
+      return;
+    }
   }
 }
 
@@ -4304,7 +4323,7 @@ async function resolveReport(id) {
   try {
     await api(`/api/staff/reports/${encodeURIComponent(id)}/resolve`,{method:"POST",body:JSON.stringify({status:"RESOLVED",resolutionNote})});
     toast("Report resolved and note saved.");
-    if(state.view==="staff") await loadStaff();
+    if(state.view==="management") await loadStaff();
     const box=$("reportDropdown");
     if(box&&!box.classList.contains("hidden")) await toggleReportDropdown(true);
     await loadNotifications();
@@ -4316,7 +4335,7 @@ async function assignReport(id){
   try{
     await api(`/api/staff/reports/${encodeURIComponent(id)}/assign`,{method:"POST",body:JSON.stringify({username:username.trim().replace(/^@/,"")})});
     toast("Report assigned.");
-    if(state.view==="staff")await loadStaff();
+    if(state.view==="management")await loadStaff();
   }catch(error){toast(error.message||"Could not assign report.");}
 }
 
