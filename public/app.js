@@ -427,6 +427,50 @@ function showBanLock(reason="Community rules"){
 function clearActionLock(){if(actionLockTimer)clearTimeout(actionLockTimer);actionLockTimer=null;const box=$("actionLock");if(box){box.classList.add("hidden");box.innerHTML="";box.dataset.lockType="";}}
 
 let liveSyncTimer=null, liveRoomSyncBusy=false, liveDMSyncBusy=false, liveSyncLastInbox=0;
+
+async function refreshRoomMessageList(roomId,{force=false}={}){
+  if(!state.user||!roomId||String(state.currentRoom)!==String(roomId))return false;
+  const requestedRoom=String(roomId);
+  const data=await api("/api/rooms/"+encodeURIComponent(requestedRoom)+"/messages",{
+    ...(typeof AbortSignal!=="undefined"&&typeof AbortSignal.timeout==="function"?{signal:AbortSignal.timeout(7000)}:{})
+  });
+  if(String(state.currentRoom)!==requestedRoom||!Array.isArray(data.messages))return false;
+  const list=$("messages");if(!list)return false;
+  const incoming=data.messages;
+  const incomingIds=incoming.map(m=>String(m.id));
+  const renderedIds=Array.from(list.querySelectorAll("[data-mid]")).map(el=>String(el.dataset.mid));
+  const same=incomingIds.length===renderedIds.length&&incomingIds.every((id,i)=>id===renderedIds[i]);
+  if(!same||force){
+    const nearBottom=list.scrollHeight-list.scrollTop-list.clientHeight<180;
+    state.messages=incoming;
+    list.innerHTML=incoming.map(messageHTML).join("");
+    if(nearBottom)list.scrollTop=list.scrollHeight;
+  }else{state.messages=incoming;}
+  return true;
+}
+
+async function refreshActiveDMMessageList(peerId){
+  if(!state.user||!peerId||String(state.dmUserId)!==String(peerId))return false;
+  const requestedPeer=String(peerId);
+  const data=await api("/api/dm/"+encodeURIComponent(requestedPeer),{
+    ...(typeof AbortSignal!=="undefined"&&typeof AbortSignal.timeout==="function"?{signal:AbortSignal.timeout(7000)}:{})
+  });
+  if(String(state.dmUserId)!==requestedPeer||!Array.isArray(data.messages))return false;
+  const list=$("dmMessages");if(!list)return false;
+  const incoming=data.messages,peer=state.dmPeerUser||{};
+  const oldIds=Array.from(list.querySelectorAll("[data-dmid]")).map(el=>String(el.dataset.dmid));
+  const newIds=incoming.map(m=>String(m.id));
+  const same=oldIds.length===newIds.length&&oldIds.every((id,i)=>id===newIds[i]);
+  const nearBottom=list.scrollHeight-list.scrollTop-list.clientHeight<180;
+  if(!same){
+    state.dmMessages=incoming;
+    list.innerHTML=incoming.length?incoming.map(m=>dmMessageHTML(m,incoming,peer)).join(""):'<p class="muted">No private messages yet.</p>';
+    if(nearBottom)list.scrollTop=list.scrollHeight;
+    const count=$("dmSearchCount");if(count)count.textContent=incoming.length+" messages";
+  }else{state.dmMessages=incoming;}
+  return true;
+}
+
 async function syncLiveMessages(){
   if(!state.user)return; // Keep polling active even when mobile/webview visibility state is unreliable.
   // Keep each channel on its own lock. A slow or rejected room-history
@@ -2086,8 +2130,12 @@ if(composer && !composer.dataset.submitBound){
     if(state.replyTo)form.append("replyTo",String(state.replyTo));
     if(sendButton){sendButton.disabled=true;sendButton.textContent="Sending…";}
     try{
-      const result=await api("/api/rooms/"+encodeURIComponent(state.currentRoom)+"/messages",{method:"POST",body:form});
+      const sentRoomId=String(state.currentRoom);
+      const result=await api("/api/rooms/"+encodeURIComponent(sentRoomId)+"/messages",{method:"POST",body:form});
       if(result.message)appendMessage(result.message);
+      // Targeted refresh: reconcile only this room's message list after a successful send.
+      // This never reloads the page or touches login/session state.
+      try{await refreshRoomMessageList(sentRoomId,{force:true});}catch(refreshError){console.warn("Post-send room refresh failed:",refreshError?.message||refreshError);}
       if(input)input.value="";
       if(fileInput)fileInput.value="";
       const fileName=$("fileName");if(fileName)fileName.textContent="";
@@ -2913,6 +2961,8 @@ async function openDM(id) {
         if (state.dmReplyTo) fd.append("replyTo", state.dmReplyTo);
         if (file) fd.append("file", file);
         const sent = await api(`/api/dm/${encodeURIComponent(id)}`, {method:"POST",body:fd});
+        // Reconcile only this private conversation after a successful send.
+        // The refresh updates the open message list, not the website or modal.
         // Render the acknowledged message immediately instead of reloading users,
         // conversation history and nicknames after every send.
         if(sent.message){
@@ -2926,6 +2976,8 @@ async function openDM(id) {
         input.value=""; safeStorage.removeItem(draftKey); if(state.socket?.connected)state.socket.emit("dm-typing",{userId:id,user:state.user?.displayName||state.user?.username,typing:false}); if($("dmFile")) $("dmFile").value=""; if($("dmFileName")) $("dmFileName").textContent="";
         state.dmReplyTo=null; state.dmReplyUser=null; state.dmReplyAuthor=null; state.dmReplyText=null;
         const count=$("dmSearchCount");if(count)count.textContent=(state.dmMessages||[]).length+" messages";
+        // A final targeted reconciliation catches any message state omitted from the send response.
+        refreshActiveDMMessageList(String(id)).catch(refreshError=>console.warn("Post-send private-message refresh failed:",refreshError?.message||refreshError));
         loadDMList().catch(()=>{});
       } catch(error){ toast(error.message); }
     };
