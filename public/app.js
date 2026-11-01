@@ -1256,7 +1256,7 @@ function saveRecentGifSearch(query){
   const items=[q,...getRecentGifSearches().filter(x=>x.toLowerCase()!==q.toLowerCase())].slice(0,6);
   safeStorage.setItem("mc_gif_recent_searches",JSON.stringify(items));
 }
-function openGifPicker(){
+async function openGifPicker(){
   const roomIdAtOpen=String(state.currentRoom||"");
   if(!roomIdAtOpen){toast("Join a room before sending a GIF.");return;}
   let searchVersion=0;
