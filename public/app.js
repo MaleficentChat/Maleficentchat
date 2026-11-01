@@ -981,6 +981,26 @@ document
 
       await renderView();
 
+      // Defensive mobile recovery: ensure My Profile never opens as an empty black view.
+      if (state.view === "profile") {
+        const profileRoot = $("profile");
+        if (profileRoot && !profileRoot.children.length) {
+          try {
+            if (state.user) loadProfile(state.user);
+            else {
+              const fresh = await api("/api/bootstrap");
+              if (fresh?.user) {
+                state.user = fresh.user;
+                loadProfile(state.user);
+              }
+            }
+          } catch (error) {
+            console.error("My Profile navigation recovery failed", error);
+            if (profileRoot) profileRoot.innerHTML = '<section class="card profile-load-message" style="display:block!important;padding:20px;color:#f5edf9;background:#171126"><h2>My Profile could not load</h2><p>Please refresh the page and try again. If this message remains, the browser console has the loading error.</p><button class="primary" type="button" onclick="location.reload()">Refresh profile</button></section>';
+          }
+        }
+      }
+
       $("sidebar").classList.remove("open");
     };
   });
