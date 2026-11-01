@@ -3443,17 +3443,20 @@ async function openProfileActionDrawer(user,data={}){
   if(isSelf){modal(`<div class="profile-drawer"><h2>Account actions</h2><button class="quick-user-row" id="drawerEdit">✏️ Edit profile</button><button class="quick-user-row" id="drawerBlocked">🚫 Blocked users</button></div>`);$('drawerEdit')?.addEventListener('click',()=>{closeModal();state.view='profile';renderView()});$('drawerBlocked')?.addEventListener('click',showBlockedUsers);return;}
   const prefs=dmPrefs(),id=String(user.id),muted=!!prefs.muted?.[id],archived=!!prefs.archived?.[id],blocked=(state.user.blocked||[]).map(String).includes(id);
   const isOwner=String(state.user?.rank||"").toUpperCase()==="DEVELOPER" || (state.user?.username==="Maleficent" && String(state.user?.rank||"").toUpperCase()==="OWNER");
-  const canStaffModification=canFeature("account_modifications");
-  const canShareWallet=canFeature("share_gold");
-  const canGiveRank=isOwner||canFeature("staff_rank_assignment");
+  const actorIsDeveloper=String(state.user?.rank||"").toUpperCase()==="DEVELOPER"||String(state.user?.username||"").toLowerCase()==="maleficent";
+  const targetIsDeveloper=String(user.rank||"").toUpperCase()==="DEVELOPER"||String(user.username||"").toLowerCase()==="maleficent";
+  const canActOnTarget=!targetIsDeveloper||actorIsDeveloper;
+  const canStaffModification=canActOnTarget&&canFeature("account_modifications")&&canAccessStaffTarget(user);
+  const canShareWallet=canActOnTarget&&canFeature("share_gold")&&canAccessStaffTarget(user);
+  const canGiveRank=canActOnTarget&&(isOwner||canFeature("staff_rank_assignment"));
   const roomRole=String(state.currentRoomRole||"USER").toUpperCase();
   const targetIsStaff=(rankOrder[String(user.rank||"MEMBER").toUpperCase()]??999)>=(rankOrder.MOD??4);
-  const hierarchyAllowsRoomActions=!targetIsStaff||canAccessStaffTarget(user);
+  const hierarchyAllowsRoomActions=canActOnTarget&&(!targetIsStaff||canAccessStaffTarget(user));
   const canRoomRank=hierarchyAllowsRoomActions&&(canFeature("room_rank_assign")||["ROOM_OWNER","ROOM_ADMIN"].includes(roomRole));
   const canRoomModerate=hierarchyAllowsRoomActions&&(canFeature("room_moderate")||["ROOM_OWNER","ROOM_ADMIN","ROOM_MODERATOR"].includes(roomRole));
-  const canModerate=(canFeature("moderate_user")||canFeature("moderate_users"))&&canAccessStaffTarget(user);
-  const canStaffAccount=canFeature("manage_staff_accounts")&&canAccessStaffTarget(user);
-  const canHistory=canFeature("view_user_history")&&canAccessStaffTarget(user);
+  const canModerate=canActOnTarget&&(canFeature("moderate_user")||canFeature("moderate_users"))&&canAccessStaffTarget(user);
+  const canStaffAccount=canActOnTarget&&canFeature("manage_staff_accounts")&&canAccessStaffTarget(user);
+  const canHistory=canActOnTarget&&canFeature("view_user_history")&&canAccessStaffTarget(user);
   modal(`<div class="profile-drawer quick-action-menu"><h2>Actions · @${esc(user.username||'user')}</h2>
      <button class="quick-user-row" id="drawerPM"><span>💬</span><b>Private message</b><i>›</i></button>
      <button class="quick-user-row" id="drawerLikeProfile"><span>❤️</span><b>Like profile</b><i>›</i></button>
