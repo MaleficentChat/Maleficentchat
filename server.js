@@ -3731,6 +3731,7 @@ async function lookupIpNetworkDetails(ip){
       const d=await response.json();
       const value={
         country:d.country||d.country_name||"",
+        countryCode:d.country_code||d.countryCode||d.countryCode2||"",
         countryCode:d.country_code||d.countryCode||d.country_code2||"",
         region:d.region||d.region_name||"",
         city:d.city||"",
@@ -3926,6 +3927,7 @@ function networkRuleMatches(ip,pattern){
 function networkPolicyList(v){return String(v||"").split(/[,;\\n]+/).map(x=>x.trim().toLowerCase()).filter(Boolean).slice(0,100);}
 async function evaluateDeveloperNetworkPolicy(ip){
  const c=db.settings?.developer_network_security||{};const rule=(c.ipRules||[]).find(r=>r.enabled!==false&&networkRuleMatches(ip,r.pattern));if(rule)return {blocked:true,reason:rule.reason||"IP / range ban"};
+ if(!(c.ipRules||[]).some(r=>r.enabled!==false)&&(c.blockVpn!==true)&&!(c.allowedCountries||[]).length&&!(c.blockedCountries||[]).length&&!(c.blockedRegions||[]).length)return {blocked:false};
  const n=await lookupIpNetworkDetails(networkIpNorm(ip)),country=String(n.country||"").toLowerCase(),region=String(n.region||"").toLowerCase(),code=String(n.countryCode||n.country_code||"").toLowerCase();
  if(country||code){if((c.allowedCountries||[]).length&&!(c.allowedCountries||[]).some(x=>x===country||x===code||country.includes(x)||x.includes(country)))return {blocked:true,reason:"Country is not on the developer allowlist"};if((c.blockedCountries||[]).some(x=>x===country||x===code||country.includes(x)||x.includes(country)))return {blocked:true,reason:"Access from this country is blocked"};if((c.blockedRegions||[]).some(x=>region.includes(x)||x.includes(region)))return {blocked:true,reason:"Access from this region is blocked"};}
  if(c.blockVpn&&n.vpnDetected)return {blocked:true,reason:"VPN / proxy / hosting network is blocked"};return {blocked:false,network:n};
