@@ -12,6 +12,7 @@ if(webPushConfigured())webPush.setVapidDetails(VAPID_SUBJECT,VAPID_PUBLIC_KEY,VA
 const bcrypt=require("bcryptjs");
 const session=require("express-session");
 const multer=require("multer");
+const {createWorker}=require("tesseract.js");
 const {Server}=require("socket.io");
 const {initDB,loadState,persistState,pool}=require("./db");
 
@@ -1039,7 +1040,7 @@ function filteredWord(text){
   const low=t.toLowerCase();
   for(const raw of db.bannedWords||[]){
     const entry=String(raw||"").trim();
-    if(!entry||/^r\s*:\s*/i.test(entry)||/^u\s*:\s*/i.test(entry)) continue;
+    if(!entry||/^(?:r|u|p)\s*:\s*/i.test(entry)) continue;
     if(low.includes(entry.toLowerCase())) return entry;
   }
   if(db.settings.linkFilter && /https?:\/\/|www\./i.test(t)) return "link";
@@ -1049,6 +1050,63 @@ function filteredWord(text){
 function filtered(text){
   return !!filteredWord(text);
 }
+
+let restrictedMediaOcrWorkerPromise=null;
+async function recognizeRestrictedMediaText(imageInput){
+  if(!restrictedMediaOcrWorkerPromise){
+    restrictedMediaOcrWorkerPromise=createWorker("eng").catch(err=>{restrictedMediaOcrWorkerPromise=null;throw err;});
+  }
+  const worker=await restrictedMediaOcrWorkerPromise;
+  const result=await worker.recognize(imageInput);
+  return String(result?.data?.text||"").toLowerCase();
+}
+function restrictedMediaPhrases(){
+  return [...new Set((db.bannedWords||[]).map(raw=>String(raw||"").trim()).filter(raw=>/^p\s*:\s*/i.test(raw)).map(raw=>raw.replace(/^p\s*:\s*/i,"").trim().toLowerCase()).filter(Boolean))];
+}
+async function sendRestrictedMediaBotMessage(user){
+  const text="The File Contains Restricted Content. Try Different One";
+  const message={id:id(),from:"system-bot",to:user.id,text,time:Date.now(),read:false,delivered:true,systemBot:true,restrictedMediaNotice:true};
+  await pool.query("INSERT INTO private_messages(id,sender_id,receiver_id,message,data,created_at) VALUES($1,NULL,$2,$3,$4::jsonb,NOW())",[message.id,Number(user.id),text,JSON.stringify(message)]);
+  db.privateMessages.push(message);
+  notify(user.id,"private-message","System Bot",text);
+  io.to("user:"+user.id).emit("dm",message);
+}
+async function checkRestrictedMediaUpload(req,res,user,file){
+  if(!file||!String(file.mimetype||"").toLowerCase().startsWith("image/"))return false;
+  if(!user||hasRank(user,"SUPER_ADMIN"))return false;
+  const phrases=restrictedMediaPhrases();
+  if(!phrases.length)return false;
+  try{
+    const text=await recognizeRestrictedMediaText(file.path);
+    if(!phrases.some(phrase=>text.includes(phrase)))return false;
+    await fs.promises.unlink(file.path).catch(()=>{});
+    await sendRestrictedMediaBotMessage(user);
+    res.status(400).json({error:"The File Contains Restricted Content. Try Different One",restrictedMedia:true});
+    return true;
+  }catch(err){
+    console.error("Restricted media OCR failed:",err?.message||err);
+    await fs.promises.unlink(file.path).catch(()=>{});
+    res.status(503).json({error:"Image content could not be checked safely. Please try again later."});
+    return true;
+  }
+}
+async function checkRestrictedMediaBuffer(res,user,buffer){
+  if(!user||hasRank(user,"SUPER_ADMIN"))return false;
+  const phrases=restrictedMediaPhrases();
+  if(!phrases.length)return false;
+  try{
+    const text=await recognizeRestrictedMediaText(buffer);
+    if(!phrases.some(phrase=>text.includes(phrase)))return false;
+    await sendRestrictedMediaBotMessage(user);
+    res.status(400).json({error:"The File Contains Restricted Content. Try Different One",restrictedMedia:true});
+    return true;
+  }catch(err){
+    console.error("Restricted media OCR failed:",err?.message||err);
+    res.status(503).json({error:"Image content could not be checked safely. Please try again later."});
+    return true;
+  }
+}
+
 
 
 function awardXp(u,n=5){
@@ -1558,13 +1616,14 @@ app.post(
   "/api/me/avatar",
   auth,
   upload.single("file"),
-  (req,res)=>{
+  async(req,res)=>{
     if(!req.file){
       return res.status(400).json({
         error:"No file"
       });
     }
 
+    if(await checkRestrictedMediaUpload(req,res,current(req),req.file))return;
     current(req).avatar=
       "/uploads/"+req.file.filename;
 
@@ -1589,13 +1648,14 @@ app.post(
   "/api/me/banner",
   auth,
   upload.single("file"),
-  (req,res)=>{
+  async(req,res)=>{
     if(!req.file){
       return res.status(400).json({
         error:"No file"
       });
     }
 
+    if(await checkRestrictedMediaUpload(req,res,current(req),req.file))return;
     current(req).banner=
       "/uploads/"+req.file.filename;
 
@@ -2162,6 +2222,7 @@ function malReply(user,rawText){
 
 app.post("/api/rooms/:id/messages",auth,featureAllowed("send_messages"),upload.single("file"),async(req,res)=>{
   const u=current(req);
+  if(await checkRestrictedMediaUpload(req,res,u,req.file))return;
   if(req.file&&isUserFeatureBlocked(u,"chat_file_upload"))return res.status(403).json({error:"Sending image/audio attachments has been disabled for your account by staff."});
   // Ghost Mode hides the sender identity; it must never disable message sending.
   const r=db.rooms.find(x=>String(x.id)===String(req.params.id));
@@ -3284,6 +3345,7 @@ app.get("/api/dm/:id",auth,featureAllowed("private_messages"),async(req,res)=>{
 
 app.post("/api/dm/:id",auth,featureAllowed("private_messages"),upload.single("file"),async(req,res)=>{
   const u=current(req),v=findUser(req.params.id); if(!v)return res.status(404).json({error:"User not found"});
+  if(await checkRestrictedMediaUpload(req,res,u,req.file))return;
   if((u.blocked||[]).includes(v.id)||(v.blocked||[]).includes(u.id))return res.status(403).json({error:"Messaging blocked"});
   const m={id:id(),from:u.id,to:v.id,text:cleanText(req.body.text),attachment:req.file?{url:"/uploads/"+req.file.filename,type:req.file.mimetype,name:req.file.originalname}:null,replyTo:req.body.replyTo||null,time:Date.now(),read:false,delivered:true};
   if(!m.text&&!m.attachment)return res.status(400).json({error:"Empty message"});
@@ -4397,11 +4459,12 @@ function normalizeAllowedRanks(v, fallback){
   return out.length?out:fallback;
 }
 
-app.get('/api/filter-words',auth,coownerOrAbove,async(req,res)=>{
+function filterWordsManager(req,res,next){const u=current(req);if(!u||!hasFeature(u,"manage_filter_words"))return res.status(403).json({error:"Your rank does not have Filter Words management access."});next();}
+app.get('/api/filter-words',auth,filterWordsManager,async(req,res)=>{
   const {rows}=await pool.query(`SELECT id,word,created_at,added_by FROM filter_words ORDER BY word`);
   res.json({words:rows,total:rows.length});
 });
-app.post('/api/filter-words/bulk',auth,coownerOrAbove,async(req,res)=>{
+app.post('/api/filter-words/bulk',auth,filterWordsManager,async(req,res)=>{
   const raw=String(req.body.text||"");
   const words=[...new Set(raw.split('\n').map(w=>w.trim().toLowerCase()).filter(Boolean))];
   for(const word of words) await pool.query(`INSERT INTO filter_words(word,added_by) VALUES($1,$2) ON CONFLICT(word) DO NOTHING`,[word,Number(current(req).id)]);
@@ -4409,7 +4472,7 @@ app.post('/api/filter-words/bulk',auth,coownerOrAbove,async(req,res)=>{
   save();
   res.json({ok:true,added:words.length});
 });
-app.delete('/api/filter-words/:id',auth,coownerOrAbove,async(req,res)=>{
+app.delete('/api/filter-words/:id',auth,filterWordsManager,async(req,res)=>{
   await pool.query(`DELETE FROM filter_words WHERE id=$1`,[req.params.id]);
   const {rows}=await pool.query(`SELECT word FROM filter_words ORDER BY id`);
   db.bannedWords=rows.map(x=>x.word); save(); res.json({ok:true,words:db.bannedWords});
@@ -4468,6 +4531,7 @@ app.post('/api/wall/:id/reaction',auth,async(req,res)=>{
 });
 async function wallPostHandler(req,res){
   const u=current(req), grants=db.settings?.feature_grants?.wall_post||["OWNER","ADMIN"], rank=String(u.rank||'').toUpperCase();
+  if(await checkRestrictedMediaUpload(req,res,u,req.file))return;
   if(String(u.rank).toUpperCase()!=="DEVELOPER" && u.username!==DEFAULT_OWNER&&!grants.map(x=>String(x).toUpperCase()).includes(rank))return res.status(403).json({error:"Your rank cannot create wall posts."});
   const content=cleanText(req.body.content||"").trim().slice(0,5000), media=req.file;
   if(media&&!/^(image\/(png|jpe?g|gif|webp|avif)|video\/)/i.test(media.mimetype))return res.status(400).json({error:"Only image or video files are allowed."});
@@ -4988,6 +5052,7 @@ app.patch('/api/staff/user/:id/profile',auth,accountModificationAccess,async(req
 app.post('/api/staff/user/:id/avatar',auth,accountModificationAccess,upload.single('file'),async(req,res)=>{
   const file=req.file;
   if(!file)return res.status(400).json({error:'Choose an image to upload.'});
+  if(await checkRestrictedMediaUpload(req,res,current(req),file))return;
   if(!/^image\/(png|jpe?g|gif|webp|avif)$/i.test(file.mimetype||'')){await fs.promises.unlink(file.path).catch(()=>{});return res.status(400).json({error:'Profile pictures must be PNG, JPG, GIF, WebP or AVIF images.'});}
   const target=req.profileTarget;target.avatar='/uploads/'+file.filename;save();log(req.profileActor,'ACCOUNT_AVATAR_MODIFY',target.username,{operation:'upload'});
   res.json({ok:true,user:safeUser(target)});
@@ -5313,8 +5378,9 @@ app.get(
     })
 );
 
-app.post("/api/news",auth,upload.single("file"),(req,res)=>{
+app.post("/api/news",auth,upload.single("file"),async(req,res)=>{
     const u=current(req);
+    if(await checkRestrictedMediaUpload(req,res,u,req.file))return;
 
     if(!hasFeature(u,"publish_news")){
       return res.status(403).json({error:`Publish news requires ${featureRank("publish_news")} or higher.`});
