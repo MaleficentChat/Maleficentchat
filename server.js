@@ -331,7 +331,7 @@ const FEATURE_GRANT_DEFAULTS={
   premium_access:GRANT_RANKS,vip_access:GRANT_RANKS,gold_wallet:GRANT_RANKS,gold_catalogue:GRANT_RANKS,gold_purchase:GRANT_RANKS,gold_equip:GRANT_RANKS,gold_transaction_history:GRANT_RANKS,daily_rewards:GRANT_RANKS,achievement_access:GRANT_RANKS,premium_requests:GRANT_RANKS,grant_premium:["MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],
   view_rules:GRANT_RANKS,submit_reports:GRANT_RANKS,manage_reports:["MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],report_assign:["MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],report_resolve:["MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],edit_site_rules:["INSTRUCTOR","COMMISSOR","COOWNER","OWNER","DEVELOPER"],edit_room_rules:["MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],
   leaderboard_access:GRANT_RANKS,saved_messages:GRANT_RANKS,advanced_search:GRANT_RANKS,staff_application_submit:GRANT_RANKS,staff_application_review:["OWNER","COOWNER","COMMISSOR"],staff_dashboard_access:["MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],staff_notifications:["MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],system_notifications:["OWNER"],audit_log_access:["MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],audit_log_settings:["OWNER"],under_construction_control:["OWNER"],site_hard_refresh:["MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],
-  inspect_ip_details:["ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],inspect_similar_ips:["ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],view_user_history:["MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],view_username_history:["MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],manage_profile_notes:["MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],manage_account_locks:["ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],manage_avatar:["MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],delete_accounts:["OWNER"],manage_bans:["MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],manage_mutes:["MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],manage_kicks:["MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],manage_warnings:["MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],manage_automated_filters:["ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],manage_vpn_proxy_rules:["OWNER"],manage_multi_account_rules:["OWNER"],manage_spam_flood_rules:["ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],manage_user_feature_exceptions:["OWNER"],manage_rank_feature_grants:["OWNER"],manage_individual_feature_grants:["OWNER"],manage_owner_space:["OWNER"],manage_site_refresh:["OWNER"],view_system_diagnostics:["OWNER"],manage_site_themes:["OWNER"],manage_economy_settings:["OWNER"],manage_premium_settings:["OWNER"],manage_notifications_settings:["OWNER"],manage_room_permissions:["OWNER"],manage_room_themes:["OWNER"],manage_room_staff:["OWNER","COOWNER","COMMISSOR"],manage_suggestions_settings:["OWNER"],manage_feature_granting:["OWNER"]
+  inspect_ip_details:["ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],inspect_similar_ips:["ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],view_user_history:["MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],view_username_history:["MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],manage_profile_notes:["MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],manage_account_locks:["ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],manage_avatar:["MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],delete_accounts:["COOWNER","OWNER"],manage_bans:["MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],manage_mutes:["MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],manage_kicks:["MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],manage_warnings:["MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],manage_automated_filters:["ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],manage_vpn_proxy_rules:["OWNER"],manage_multi_account_rules:["OWNER"],manage_spam_flood_rules:["ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],manage_user_feature_exceptions:["OWNER"],manage_rank_feature_grants:["OWNER"],manage_individual_feature_grants:["OWNER"],manage_owner_space:["OWNER"],manage_site_refresh:["OWNER"],view_system_diagnostics:["OWNER"],manage_site_themes:["OWNER"],manage_economy_settings:["OWNER"],manage_premium_settings:["OWNER"],manage_notifications_settings:["OWNER"],manage_room_permissions:["OWNER"],manage_room_themes:["OWNER"],manage_room_staff:["OWNER","COOWNER","COMMISSOR"],manage_suggestions_settings:["OWNER"],manage_feature_granting:["OWNER"]
 };
 
 const FEATURE_GRANT_POLICY_VERSION=5;
@@ -1648,6 +1648,35 @@ app.delete(
     });
   }
 );
+
+app.delete("/api/staff/users/:id",auth,async(req,res)=>{
+  const actor=current(req);
+  const actorRank=String(actor?.rank||"").toUpperCase();
+  if((rankOrder[actorRank]??-1)<rankOrder.COOWNER || !hasFeature(actor,"delete_accounts")){
+    return res.status(403).json({error:"Account deletion is restricted to Coowner and above."});
+  }
+  const target=findUser(req.params.id);
+  if(!target)return res.status(404).json({error:"User not found."});
+  if(!canAccessStaffTarget(actor,target)){
+    return res.status(403).json({error:"You may only delete accounts ranked below you. The permanent owner and Developer are protected."});
+  }
+  const confirmUsername=String(req.body?.confirmUsername||"").trim();
+  if(confirmUsername!==String(target.username||"")){
+    return res.status(400).json({error:"Confirmation username does not match."});
+  }
+  const targetId=String(target.id);
+  const targetUsername=String(target.username||"");
+  const targetRank=String(target.rank||"MEMBER");
+  db.users=db.users.filter(x=>String(x.id)!==targetId);
+  db.friends=(db.friends||[]).filter(f=>String(f.a)!==targetId&&String(f.b)!==targetId);
+  db.privateMessages=(db.privateMessages||[]).filter(m=>String(m.from)!==targetId&&String(m.to)!==targetId);
+  if(Array.isArray(db.friendRequests))db.friendRequests=db.friendRequests.filter(f=>String(f.from)!==targetId&&String(f.to)!==targetId&&String(f.userId)!==targetId);
+  if(Array.isArray(db.notifications))db.notifications=db.notifications.filter(n=>String(n.userId)!==targetId&&String(n.fromUserId)!==targetId&&String(n.actorId)!==targetId);
+  log(actor,"STAFF_ACCOUNT_DELETE",targetUsername,{targetId,targetRank});
+  save();
+  await flushSave();
+  res.json({ok:true,deletedUser:{id:targetId,username:targetUsername}});
+});
 
 app.get(
   "/api/users",
