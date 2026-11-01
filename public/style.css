@@ -4310,3 +4310,121 @@ button:focus-visible{outline:2px solid #d38bff;outline-offset:2px}
     font-size: 12px !important;
   }
 }
+
+
+/* Profile header: keep rank, avatar, and action icons in a clean vertical flow on mobile. */
+#viewProfile,
+#viewProfile #profile,
+#viewProfile .my-profile-wrap,
+#viewProfile .profile-settings-card {
+  min-width: 0 !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+#viewProfile .profile-settings-card { overflow: hidden !important; }
+#viewProfile .profile-settings-head {
+  position: relative !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  gap: 10px !important;
+  min-height: 0 !important;
+  height: auto !important;
+  padding: 14px 12px 18px !important;
+  overflow: hidden !important;
+  box-sizing: border-box !important;
+}
+#viewProfile .profile-settings-top {
+  position: static !important;
+  inset: auto !important;
+  order: 0 !important;
+  display: flex !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  flex-wrap: wrap !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+  margin: 0 0 4px !important;
+}
+#viewProfile .profile-settings-top > span {
+  position: static !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-height: 34px !important;
+  padding: 6px 10px !important;
+  border-radius: 999px !important;
+  background: rgba(155,92,255,.13) !important;
+  white-space: nowrap !important;
+}
+#viewProfile .profile-settings-top > button,
+#viewProfile .profile-settings-head > button {
+  position: static !important;
+  inset: auto !important;
+  float: none !important;
+  flex: 0 0 auto !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-width: 42px !important;
+  min-height: 42px !important;
+  padding: 8px 12px !important;
+  margin: 0 !important;
+  border-radius: 12px !important;
+  line-height: 1.2 !important;
+}
+#viewProfile .profile-settings-head > .big-avatar,
+#viewProfile .profile-settings-head > img.big-avatar,
+#viewProfile .profile-settings-head > .avatar.big-avatar {
+  position: relative !important;
+  inset: auto !important;
+  float: none !important;
+  order: 1 !important;
+  display: flex !important;
+  flex: 0 0 auto !important;
+  margin: 4px auto !important;
+  width: 104px !important;
+  height: 104px !important;
+  max-width: 38vw !important;
+  max-height: 38vw !important;
+  box-sizing: border-box !important;
+}
+#viewProfile .profile-rank,
+#viewProfile .profile-name,
+#viewProfile .profile-handle,
+#viewProfile .profile-extra {
+  position: static !important;
+  inset: auto !important;
+  float: none !important;
+  display: flex !important;
+  flex: 0 0 auto !important;
+  max-width: 100% !important;
+  width: auto !important;
+  height: auto !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+  text-align: center !important;
+  overflow-wrap: anywhere !important;
+  box-sizing: border-box !important;
+}
+#viewProfile .profile-rank { order: 2 !important; margin-top: 0 !important; }
+#viewProfile .profile-name { order: 3 !important; line-height: 1.2 !important; }
+#viewProfile .profile-handle { order: 4 !important; }
+#viewProfile .profile-extra { order: 5 !important; flex-wrap: wrap !important; justify-content: center !important; }
+#viewProfile .profile-settings-head > button[onclick*="uploadBanner"] {
+  order: 6 !important;
+  white-space: normal !important;
+  max-width: 100% !important;
+}
+#viewProfile .settings-tabs { position: relative !important; display: flex !important; flex-wrap: nowrap !important; gap: 8px !important; min-width: 0 !important; overflow-x: auto !important; }
+#viewProfile .settings-tab { position: static !important; flex: 1 0 auto !important; min-width: max-content !important; white-space: nowrap !important; }
+#viewProfile .settings-list { min-width: 0 !important; width: 100% !important; box-sizing: border-box !important; }
+#viewProfile .settings-row { position: relative !important; display: grid !important; grid-template-columns: 30px minmax(0,1fr) 18px !important; align-items: center !important; gap: 8px !important; width: 100% !important; min-width: 0 !important; height: auto !important; min-height: 68px !important; box-sizing: border-box !important; white-space: normal !important; }
+#viewProfile .settings-row b,
+#viewProfile .settings-row small { position: static !important; display: block !important; min-width: 0 !important; max-width: 100% !important; overflow-wrap: anywhere !important; }
+#viewProfile .settings-row small { grid-column: 2 !important; }
+#viewProfile .settings-row strong { position: static !important; grid-column: 3 !important; grid-row: 1 / span 2 !important; }
