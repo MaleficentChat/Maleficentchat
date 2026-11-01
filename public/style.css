@@ -4428,3 +4428,7 @@ button:focus-visible{outline:2px solid #d38bff;outline-offset:2px}
 #viewProfile .settings-row small { position: static !important; display: block !important; min-width: 0 !important; max-width: 100% !important; overflow-wrap: anywhere !important; }
 #viewProfile .settings-row small { grid-column: 2 !important; }
 #viewProfile .settings-row strong { position: static !important; grid-column: 3 !important; grid-row: 1 / span 2 !important; }
+
+#viewProfile .profile-media-actions { position:static!important; display:flex!important; flex-wrap:wrap!important; align-items:center!important; justify-content:center!important; gap:8px!important; width:100%!important; max-width:100%!important; margin:8px auto 0!important; }
+#viewProfile .profile-media-actions .profile-media-action { position:static!important; display:inline-flex!important; flex:0 1 auto!important; align-items:center!important; justify-content:center!important; min-width:0!important; max-width:100%!important; min-height:42px!important; padding:9px 12px!important; white-space:normal!important; overflow-wrap:anywhere!important; }
+#viewProfile .profile-settings-head > .profile-media-actions { order:6!important; }
