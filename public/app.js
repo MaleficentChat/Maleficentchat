@@ -3962,8 +3962,9 @@ async function loadStaff() {
     if(developerNetworkConsole&&!(String(state.user?.rank||"").toUpperCase()==="DEVELOPER"&&String(state.user?.username||"")==="Maleficent"))developerNetworkConsole.remove();
     staffRoot?.querySelector("#staffGuideManagementDropdown")?.remove();
     staffRoot?.querySelector("#staffFilterManagementDropdown")?.remove();
-    const staffRankIndex=["MEMBER","VIP","PREMIUM","ROYAL","MOD","ADMIN","SUPER_ADMIN","COMMISSOR","INSTRUCTOR","COOWNER","OWNER","DEVELOPER"].indexOf(String(state.user?.rank||"").toUpperCase());
-    if(staffRankIndex>=9&&staffRoot){
+    const staffRank=String(state.user?.rank||"").toUpperCase();
+    const canManageGuidesAndFilters=["COOWNER","OWNER","DEVELOPER"].includes(staffRank);
+    if(canManageGuidesAndFilters&&staffRoot){
       const guideDropdown=document.createElement("details");
       guideDropdown.id="staffGuideManagementDropdown";guideDropdown.className="staff-compact-dropdown filter-words-details";
       guideDropdown.innerHTML='<summary>📘 Guide Management <span class="muted">— click to open</span></summary><div class="owner-filter-management-content"><div id="staffGuideManagement" class="stack"></div></div>';
