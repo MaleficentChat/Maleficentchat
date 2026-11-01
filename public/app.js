@@ -1236,7 +1236,7 @@ async function goToMainRoomFromRoomRefresh() {
     // Refresh the room data first, then use the same join flow as a room card.
     await loadRooms();
     const mainRoom = (state.rooms || []).find(room =>
-      room?.isDefault || /^main room$/i.test(String(room?.name || "").trim().replace(/^🏠\\s*/, ""))
+      room?.isDefault || /^main room$/i.test(String(room?.name || "").trim().replace(/^🏠\s*/, ""))
     );
     if (!mainRoom) {
       toast("Main Room could not be found. Please try again.");
