@@ -4175,3 +4175,15 @@ button:focus-visible{outline:2px solid #d38bff;outline-offset:2px}
 @media(prefers-reduced-motion:reduce){
   *,*:before,*:after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
 }
+
+.gif-recent{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:9px}
+.gif-recent-label{width:100%;font-size:11px;color:var(--muted,#a5a5b5)}
+.gif-recent-chip{border:1px solid var(--border-color,rgba(255,255,255,.12));border-radius:999px;padding:4px 9px;background:rgba(155,92,255,.12);color:inherit;font-size:11px;cursor:pointer}
+.gif-selected{display:flex;gap:10px;align-items:center;margin-top:10px;padding:9px;border:1px solid rgba(155,92,255,.45);border-radius:12px;background:rgba(155,92,255,.09)}
+.gif-selected img{width:108px;height:76px;flex:0 0 auto;object-fit:cover;border-radius:8px}
+.gif-selected-copy{display:flex;min-width:0;flex-direction:column;align-items:flex-start;gap:5px}
+.gif-selected-copy strong{font-size:12px;max-width:100%;overflow-wrap:anywhere}
+.gif-selected-copy span{font-size:11px;color:var(--muted,#a5a5b5)}
+.gif-selected-copy button{margin-top:2px}
+.gif-choice.selected{border-color:#9b5cff;box-shadow:0 0 0 2px rgba(155,92,255,.2)}
+.gif-more-wrap{display:flex;justify-content:center;margin-top:10px}
