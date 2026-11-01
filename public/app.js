@@ -2233,6 +2233,7 @@ function renderArcade(){
     <section class="arcade-home">
       <div class="arcade-welcome"><div><span class="arcade-kicker">MALEFICENT ARCADE</span><h2>Choose your next obsession.</h2><p>Quick games, friendly rivalries, and tiny victories. No drawing tools or old Gravity Run mode.</p></div><div class="arcade-orb">✦</div></div>
       <section class="arcade-studio-card"><div><span class="arcade-kicker">CREATIVE STUDIO</span><h3>🖌️ Doodle Studio</h3><p>Draw something, save it to your personal library, or share it in the current room.</p></div><button type="button" class="primary" data-open-doodle-studio>Open Doodle Studio ↗</button></section>
+      <section class="arcade-library"><div class="news-card-top"><h3>Saved drawings</h3><button type="button" class="mini" data-refresh-doodle-library>Refresh</button></div><div id="doodleLibrary" class="doodle-library-list"><p class="muted">Loading your drawings…</p></div></section>
       <div class="arcade-game-grid">
         <button class="arcade-game-card" data-arcade-game="memory"><span class="arcade-card-icon arcade-violet">🧠</span><span class="arcade-card-copy"><b>Memory Match</b><small>Flip cards, find pairs, beat your best.</small><em>Solo · Focus</em></span><span class="arcade-play">Play ↗</span></button>
         <button class="arcade-game-card" data-arcade-game="tic"><span class="arcade-card-icon arcade-pink">⭕</span><span class="arcade-card-copy"><b>Tic-Tac-Toe</b><small>A classic head-to-head challenge.</small><em>2 players · Same device</em></span><span class="arcade-play">Play ↗</span></button>
@@ -2243,6 +2244,32 @@ function renderArcade(){
     </section>`;
   root.querySelectorAll("[data-arcade-game]").forEach(btn=>btn.onclick=()=>launchArcadeGame(btn.dataset.arcadeGame));
   root.querySelector("[data-open-doodle-studio]")?.addEventListener("click",()=>openDoodleComposer());
+  root.querySelector("[data-refresh-doodle-library]")?.addEventListener("click",()=>loadDoodleLibrary()); 
+  loadDoodleLibrary();
+}
+async function loadDoodleLibrary(){
+  const list=$("doodleLibrary");if(!list)return;
+  try{
+    const data=await api("/api/doodles");
+    const drawings=Array.isArray(data.doodles)?data.doodles:[];
+    list.innerHTML=drawings.length?drawings.map(d=>`<article class="card doodle-library-item"><div><b>${esc(d.title||"Untitled doodle")}</b><p class="muted">${esc(fmt(d.createdAt||d.created_at))}</p></div><div class="toolbar"><button type="button" data-doodle-view="${esc(d.id)}">View</button><button type="button" data-doodle-delete="${esc(d.id)}">Delete</button></div></article>`).join(""):'<p class="muted">No saved drawings yet. Open Doodle Studio and save your first drawing.</p>';
+    list.querySelectorAll("[data-doodle-view]").forEach(btn=>btn.onclick=async()=>{
+      btn.disabled=true;
+      try{
+        const result=await api("/api/doodles/"+encodeURIComponent(btn.dataset.doodleView)+"/image");
+        if(!/^data:image\\/png;base64,/.test(String(result.image||"")))throw Error("Saved drawing image is invalid.");
+        modal(`<div class="doodle-preview"><div class="news-card-top"><h3>${esc(result.title||"Saved doodle")}</h3><button type="button" class="mini" id="doodlePreviewClose">×</button></div><img src="${esc(result.image)}" alt="Saved doodle preview"></div>`);
+        $("doodlePreviewClose")?.addEventListener("click",closeModal);
+      }catch(e){toast(e.message||"Could not open drawing.");}
+      finally{btn.disabled=false;}
+    });
+    list.querySelectorAll("[data-doodle-delete]").forEach(btn=>btn.onclick=async()=>{
+      if(!confirm("Delete this saved drawing?"))return;
+      btn.disabled=true;
+      try{await api("/api/doodles/"+encodeURIComponent(btn.dataset.doodleDelete),{method:"DELETE"});toast("Saved drawing deleted.");await loadDoodleLibrary();}
+      catch(e){toast(e.message||"Could not delete drawing.");btn.disabled=false;}
+    });
+  }catch(e){list.innerHTML='<p class="error">'+esc(e.message||"Could not load saved drawings.")+'</p>';}
 }
 function launchArcadeGame(game){
   const root=$("gamesRoot");if(!root)return;
