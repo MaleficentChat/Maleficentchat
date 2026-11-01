@@ -3900,6 +3900,20 @@ async function deleteClearedRoomEvidence(id){
   }catch(error){toast(error.message||'Could not delete evidence.');}
 }
 
+async function loadStaffFilterManagement(){
+  const host=$("staffFilterManagement");if(!host)return;
+  let words=[];
+  const render=()=>{
+    const q=String($("staffFilterSearch")?.value||"").trim().toLowerCase();
+    const shown=words.filter(x=>String(x.word||"").toLowerCase().includes(q));
+    host.innerHTML='<p class="muted">Manage chat filters, automatic report triggers, and restricted usernames. Changes save immediately.</p><label>Add entries<textarea id="staffFilterBulkWords" rows="3" placeholder="ordinaryword&#10;r: reportword&#10;u: restrictedname"></textarea></label><div class="toolbar"><button type="button" class="primary" id="staffAddFilterEntries">＋ Add entries</button><input id="staffFilterSearch" type="search" placeholder="Search entries…" value="'+esc(q)+'"></div><p class="muted">Total: '+words.length+' · Showing: '+shown.length+'</p>'+shown.map(x=>'<div class="card toolbar" style="justify-content:space-between"><div><b>'+esc(/^r\s*:/i.test(x.word)?'Auto System Report Words':(/^u\s*:/i.test(x.word)?'Restricted Usernames & Display Names':'Filter Words'))+'</b><br><code>'+esc(x.word)+'</code></div><button type="button" class="mini danger" data-staff-filter-delete="'+esc(x.id)+'">Delete</button></div>').join("");
+    $("staffFilterSearch")?.addEventListener("input",()=>render());
+    $("staffAddFilterEntries")?.addEventListener("click",async()=>{const input=$("staffFilterBulkWords"),text=String(input?.value||"").trim();if(!text){toast("Enter at least one filter entry.");return;}try{await api("/api/filter-words/bulk",{method:"POST",body:JSON.stringify({text})});toast("Filter entries saved.");await refresh();}catch(e){toast(e.message||"Could not save filter entries.");}});
+    host.querySelectorAll("[data-staff-filter-delete]").forEach(b=>b.addEventListener("click",async()=>{if(!confirm("Delete this filter entry?"))return;try{await api("/api/filter-words/"+encodeURIComponent(b.dataset.staffFilterDelete),{method:"DELETE"});toast("Filter entry deleted.");await refresh();}catch(e){toast(e.message||"Could not delete filter entry.");}}));
+  };
+  const refresh=async()=>{try{const d=await api("/api/filter-words");words=Array.isArray(d.words)?d.words:[];render();}catch(e){host.innerHTML='<p class="muted">'+esc(e.message||"Could not load filter management.")+'</p>';}};
+  await refresh();
+}
 async function loadStaff() {
   try {
     const data=await api('/api/staff/dashboard');
