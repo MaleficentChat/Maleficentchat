@@ -696,8 +696,15 @@ async function start() {
   state.socket.on("connect", () => {
     loadNotifications();
     // A connect event can fire before or after the login flow joins Main Room.
-    // Always authenticate and join using the latest room-access token.
-    authenticateSocketAndJoinRoom(state.socket,true).catch(error=>console.warn("Socket recovery failed:",error?.message||error));
+    // Authenticate and restore room membership first, then reconcile both live
+    // channels so messages missed while offline appear without reopening a view.
+    const connectedSocket=state.socket;
+    authenticateSocketAndJoinRoom(connectedSocket,true).then(ok=>{
+      if(!ok||connectedSocket!==state.socket||!connectedSocket.connected)return;
+      syncLiveMessages().catch(error=>console.warn("Post-reconnect message sync failed:",error?.message||error));
+      loadDMList().catch(error=>console.warn("Post-reconnect inbox sync failed:",error?.message||error));
+      refreshTopDMUnreadBadge();
+    }).catch(error=>console.warn("Socket recovery failed:",error?.message||error));
   });
   // Socket.IO can finish its first handshake before listeners are attached on slow/older clients.
   // If it is already connected here, perform the same authentication/join recovery explicitly.
