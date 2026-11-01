@@ -3694,7 +3694,7 @@ app.get("/api/staff/ip-inspection/diagnostics",auth,ownerOnly,(req,res)=>{
   };
   const isPrivateIp=value=>{
     const ip=normalizeIp(value).toLowerCase();
-    return ip==="unavailable"||ip==="unknown"||ip==="::1"||ip==="127.0.0.1"||ip.startsWith("10.")||ip.startsWith("192.168.")||/^172\\.(1[6-9]|2[0-9]|3[0-1])\\./.test(ip)||ip.startsWith("fc")||ip.startsWith("fd")||ip.startsWith("fe80:");
+    return ip==="unavailable"||ip==="unknown"||ip==="::1"||ip==="127.0.0.1"||ip.startsWith("10.")||ip.startsWith("192.168.")||/^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(ip)||ip.startsWith("fc")||ip.startsWith("fd")||ip.startsWith("fe80:");
   };
   const sources={
     expressIp:normalizeIp(req.ip),
@@ -6059,7 +6059,7 @@ app.get('/api/me/email',auth,(req,res)=>{
 });
 app.put('/api/me/email',auth,async(req,res)=>{
   const u=current(req),email=String(req.body.email||"").trim().toLowerCase();
-  if(email && !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email))return res.status(400).json({error:"Enter a valid email address."});
+  if(email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))return res.status(400).json({error:"Enter a valid email address."});
   try{
     const q=await pool.query("UPDATE users SET email=$1 WHERE id=$2 RETURNING email",[email||null,Number(u.id)]);
     if(!q.rowCount)return res.status(404).json({error:"Account not found."});
