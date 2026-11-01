@@ -103,7 +103,6 @@
   <div class="logo"><div class="rail-logo">MC</div><div class="rail-brand"><b>Maleficent</b><span>Chat</span></div></div>
   <button class="nav active" data-view="rooms">🏠 <span>Rooms</span></button>
   <details class="nav-group" open><summary>✦ <span>Community</span><i>⌄</i></summary>
-    <button class="nav" data-view="users">👥 <span>Users</span></button>
     <button class="nav" data-view="friends">💜 <span>Friends</span></button>
     <button class="nav" data-view="dms">✉️ <span>Private Messages</span><i id="dmDot"></i></button>
     <button class="nav" data-view="news">📰 <span>News</span></button>
@@ -174,7 +173,6 @@
             <button type="button" data-online-tab="roomstaff" title="Room staff">🏠</button>
             <button type="button" data-online-tab="recent" title="Recently active">🕘</button>
             <button type="button" data-online-tab="friends" title="Friends">💜</button>
-            <button type="button" data-online-tab="search" title="Search users">⌕</button>
           </div>
           <div class="panel-head"><b id="onlinePanelTitle">Online <span class="online-badge" id="roomOnlineBadge"></span></b><button class="panel-more" type="button" onclick="openOnlinePanelMenu()">⋯</button></div>
           <div id="onlineUsers"></div>
@@ -182,7 +180,6 @@
     </div>
   </div>
 
-  <div id="viewUsers" class="view hidden"><div class="topbar"><div><h2>User Search</h2><p class="muted">Find members by profile details and activity.</p></div></div><div class="user-search-filters card"><input id="userSearch" placeholder="🔎 Username or display name…" autocomplete="off"><select id="userGenderFilter" aria-label="Filter by gender"><option value="">All genders</option><option>Male</option><option>Female</option><option>Non-binary</option><option>Other</option><option>Prefer not to say</option></select><input id="userAgeMin" type="number" min="13" max="120" placeholder="Min age" aria-label="Minimum age"><input id="userAgeMax" type="number" min="13" max="120" placeholder="Max age" aria-label="Maximum age"><input id="userCountryFilter" placeholder="Country / profile location…" aria-label="Country or profile location" autocomplete="off"><select id="userSortBy" aria-label="Sort users by"><option value="default">Sort by: Online &amp; rank</option><option value="rank">Highest rank</option><option value="age-asc">Age: youngest first</option><option value="age-desc">Age: oldest first</option><option value="name">Username A–Z</option><option value="country">Country / location</option><option value="newest">Recently registered</option><option value="active">Recently active</option></select><button type="button" class="mini" id="resetUserFilters">Reset filters</button></div><div id="users" class="user-grid"></div></div>
   <div id="viewFriends" class="view hidden"><div class="topbar"><h2>Friends & Requests</h2></div><div id="friends"></div></div>
   <div id="viewDms" class="view hidden"><div class="topbar"><div><h2>Private Messages</h2><p class="muted">Your conversations, or search by username to start a chat.</p></div><input id="dmUserSearch" placeholder="Search username…"><button class="primary" id="dmSearchBtn">Find user</button></div><div id="dmSearchResults" class="user-grid"></div><div id="dmList" class="user-grid"></div></div>
     <div id="viewGames" class="view hidden"><div class="topbar"><div><h2>🎮 Maleficent Arcade</h2><p class="muted">Pick a mini-game and chase a new high score.</p></div></div><div id="gamesRoot" class="games-root"></div></div>
