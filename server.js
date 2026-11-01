@@ -806,7 +806,7 @@ async function networkAccessDecision(req,userOverride=null){
   if(String(actor?.rank||"").toUpperCase()==="DEVELOPER"&&String(actor?.username||"")==="Maleficent")return {allowed:true,ip:clientIp(req)};
   const config=await getDeveloperNetworkSecurity();
   const ip=clientIp(req);
-  const matchingRule=(config.ipRules||[]).find(rule=>networkRuleMatches(ip,rule.pattern));
+  const matchingRule=(config.ipRules||[]).find(rule=>rule.enabled!==false&&networkRuleMatches(ip,rule.pattern));
   if(matchingRule)return {allowed:false,reason:matchingRule.reason||"Network address is blocked by the Developer.",rule:matchingRule,ip};
   let network=null;
   if(config.blockVpn||config.allowedCountries?.length||config.blockedCountries?.length||config.blockedVpnCountries?.length||config.blockedRegions?.length){
@@ -3842,7 +3842,7 @@ app.get("/api/developer/network-security",auth,developerOnly,async(req,res)=>{
         const byIp=Object.fromEntries(recentDetails.map(x=>[x.ip,x.network]));
         timeline=history.rows.map(row=>({ip_address:row.ip_address,event_type:row.event_type,recorded_at:row.recorded_at,user_agent:row.user_agent||"",network:byIp[row.ip_address]||{}}));
         const device=await pool.query("SELECT COUNT(*)::int AS registrations,COUNT(DISTINCT ip_hash)::int AS ip_hashes,MAX(created_at) AS last_seen FROM device_fingerprints WHERE user_id=$1",[Number(user.id)]);
-        const sameIps=ips.length?await pool.query("SELECT COUNT(DISTINCT user_id)::int AS accounts FROM user_ip_history WHERE host(ip_address)=ANY($1::text[])",[ips]):{rows:[{accounts:0}]};
+        const sameIps=ips.length?await pool.query("SELECT COUNT(DISTINCT user_id)::int AS accounts FROM user_ip_history WHERE host(ip_address)=ANY($1::text[]) AND user_id<>$2",[ips,Number(user.id)]):{rows:[{accounts:0}]};
         const deviceIpMatches=await pool.query("SELECT COUNT(DISTINCT other.user_id)::int AS accounts FROM device_fingerprints mine JOIN device_fingerprints other ON other.ip_hash=mine.ip_hash AND other.user_id<>mine.user_id WHERE mine.user_id=$1 AND mine.ip_hash IS NOT NULL",[Number(user.id)]);
         const twoHourIps=new Set(recent.map(row=>row.ip_address).filter(Boolean)).size;
         const cities=new Set(recentDetails.map(x=>[x.network?.city,x.network?.region,x.network?.country].filter(Boolean).join("|")).filter(Boolean));
