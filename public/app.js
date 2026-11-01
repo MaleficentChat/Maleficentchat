@@ -2337,7 +2337,7 @@ function openDoodleComposer(){
     const data=await api('/api/rooms/'+encodeURIComponent(state.currentRoom)+'/messages',{method:'POST',body:form});
     if(data.message&&String(data.message.roomId)===String(state.currentRoom))appendMessage(data.message);
     closeModal();toast('Doodle sent to the room!');
-  }catch(e){btn.disabled=false;btn.textContent='➤ Send to Main Chat';toast(e.message||'Could not send doodle.')}};
+  }catch(e){btn.disabled=false;btn.textContent='➤ Send to Main Chat';toast(e.message||'Could not send doodle.')}});
 }
 $('doodleBtn')?.addEventListener('click',openDoodleComposer);
 
