@@ -2257,7 +2257,7 @@ async function loadDoodleLibrary(){
       btn.disabled=true;
       try{
         const result=await api("/api/doodles/"+encodeURIComponent(btn.dataset.doodleView)+"/image");
-        if(!/^data:image\\/png;base64,/.test(String(result.image||"")))throw Error("Saved drawing image is invalid.");
+        if(!/^data:image\/png;base64,/.test(String(result.image||"")))throw Error("Saved drawing image is invalid.");
         modal(`<div class="doodle-preview"><div class="news-card-top"><h3>${esc(result.title||"Saved doodle")}</h3><button type="button" class="mini" id="doodlePreviewClose">×</button></div><img src="${esc(result.image)}" alt="Saved doodle preview"></div>`);
         $("doodlePreviewClose")?.addEventListener("click",closeModal);
       }catch(e){toast(e.message||"Could not open drawing.");}
