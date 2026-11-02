@@ -5543,7 +5543,7 @@ app.get("/api/gold/history",auth,async(req,res)=>{
   const {rows:ledgerRows}=await pool.query(
     `SELECT id,user_id,actor_user_id,entry_type,amount,balance_after,item_id,description,created_at
      FROM gold_ledger
-     WHERE user_id=$1 OR actor_user_id=$1
+     WHERE user_id=$1
      ORDER BY created_at DESC,id DESC LIMIT 300`,
     [Number(u.id)]
   );
@@ -5561,7 +5561,7 @@ app.get("/api/gold/history",auth,async(req,res)=>{
   }));
   const ledgerKeys=new Set(durable.map(t=>`${t.type}:${t.userId}:${t.delta}:${t.to||t.from||""}`));
   const legacy=(db.goldTransactions||[]).filter(t=>{
-    const belongs=String(t.userId)===String(u.id)||String(t.actor)===String(u.id)||String(t.actor)===String(u.username);
+    const belongs=String(t.userId)===String(u.id);
     if(!belongs)return false;
     if(["GOLD_SENT","GOLD_RECEIVED"].includes(t.type)){
       return !ledgerKeys.has(`${t.type}:${String(t.userId)}:${Number(t.delta)}:${String(t.to||t.from||"")}`);
