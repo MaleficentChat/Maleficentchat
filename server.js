@@ -5538,29 +5538,43 @@ app.get(
     })
 );
 
-app.get(
-  "/api/gold/history",
-  auth,
-  (req,res)=>{
-    res.json({
-      transactions:
-        db.goldTransactions
-          .filter(
-            t=>
-              t.userId===
-                current(req).id||
-              t.actor===
-                current(req).id
-          )
-          .slice(-300)
-          .reverse()
-    });
-  }
-);
+app.get("/api/gold/history",auth,async(req,res)=>{
+  const u=current(req);
+  const {rows:ledgerRows}=await pool.query(
+    `SELECT id,user_id,actor_user_id,entry_type,amount,balance_after,item_id,description,created_at
+     FROM gold_ledger
+     WHERE user_id=$1 OR actor_user_id=$1
+     ORDER BY created_at DESC,id DESC LIMIT 300`,
+    [Number(u.id)]
+  );
+  const durable=ledgerRows.map(row=>({
+    id:`ledger-${row.id}`,
+    time:row.created_at?new Date(row.created_at).getTime():Date.now(),
+    actor:row.actor_user_id==null?"SYSTEM":String(row.actor_user_id),
+    userId:String(row.user_id),
+    type:row.entry_type,
+    delta:Number(row.amount),
+    balanceAfter:Number(row.balance_after),
+    ...(row.entry_type==="GOLD_SENT"?{to:String(row.item_id||"")}:
+       row.entry_type==="GOLD_RECEIVED"?{from:String(row.item_id||"")}:{ }),
+    description:row.description||""
+  }));
+  const ledgerKeys=new Set(durable.map(t=>`${t.type}:${t.userId}:${t.delta}:${t.to||t.from||""}`));
+  const legacy=(db.goldTransactions||[]).filter(t=>{
+    const belongs=String(t.userId)===String(u.id)||String(t.actor)===String(u.id)||String(t.actor)===String(u.username);
+    if(!belongs)return false;
+    if(["GOLD_SENT","GOLD_RECEIVED"].includes(t.type)){
+      return !ledgerKeys.has(`${t.type}:${String(t.userId)}:${Number(t.delta)}:${String(t.to||t.from||"")}`);
+    }
+    return true;
+  });
+  res.json({transactions:[...durable,...legacy].sort((a,b)=>Number(b.time||0)-Number(a.time||0)).slice(0,300)});
+});
 
 app.post(
   "/api/gold/gift",
   auth,
+  featureAllowed("share_gold"),
   async(req,res)=>{
     const u=current(req);
     const v=findUser(req.body.userId);
@@ -5588,9 +5602,15 @@ app.post(
         await client.query("ROLLBACK");
         return res.status(404).json({error:"Recipient account no longer exists."});
       }
-      await client.query("COMMIT");
       fromGold=Number(debit.rows[0].gold);
       toGold=Number(credit.rows[0].gold);
+      await client.query(
+        `INSERT INTO gold_ledger(user_id,actor_user_id,entry_type,amount,balance_after,item_id,description)
+         VALUES($1,$2,'GOLD_SENT',$3,$4,$5,$6),($7,$8,'GOLD_RECEIVED',$9,$10,$11,$12)`,
+        [Number(u.id),Number(u.id),-amount,fromGold,String(v.id),`Sent ${amount} gold to @${v.username}`,
+         Number(v.id),Number(u.id),amount,toGold,String(u.id),`Received ${amount} gold from @${u.username}`]
+      );
+      await client.query("COMMIT");
     }catch(err){
       await client.query("ROLLBACK").catch(()=>{});
       console.error("Gold transfer failed:",err);
@@ -6080,14 +6100,60 @@ app.put('/api/friends/:id/nickname',auth,(req,res)=>{
 });
 app.delete('/api/friends/:id/nickname',auth,(req,res)=>{const u=current(req);u.nicknames ||= {};delete u.nicknames[req.params.id];save();res.json({ok:true});});
 
-app.post('/api/users/:id/gold/share',auth,(req,res)=>{
+app.post('/api/users/:id/gold/share',auth,async(req,res)=>{
   const u=current(req), v=findUser(req.params.id), amount=Math.floor(Number(req.body.amount));
   if(!featureGrantAllowed(u,'share_gold'))return res.status(403).json({error:'Gold sharing permission required.'});
-  if(!v||v.id===u.id||!Number.isFinite(amount)||amount<1)return res.status(400).json({error:'Invalid recipient or amount.'});
-  if((u.gold||0)<amount)return res.status(400).json({error:'Not enough gold.'});
-  u.gold=(u.gold||0)-amount; v.gold=(v.gold||0)+amount;
-  db.goldTransactions.push({id:id(),time:Date.now(),actor:u.username,userId:u.id,type:'SHARE',delta:-amount,to:v.id}); db.goldTransactions.push({id:id(),time:Date.now(),actor:u.username,userId:v.id,type:'RECEIVE',delta:amount,from:u.id});
-  save(); log(u,'GOLD_SHARE',v.username,{amount}); io.to('user:'+v.id).emit('gold:update',{gold:v.gold}); io.to('user:'+u.id).emit('gold:update',{gold:u.gold}); notify(v.id,'gold','Gold received',`@${u.username} sent you ${amount} gold.`); res.json({ok:true,remainingGold:u.gold});
+  if(!v||String(v.id)===String(u.id)||!Number.isSafeInteger(amount)||amount<1||amount>1000000)
+    return res.status(400).json({error:'Choose another user and a valid gold amount.'});
+
+  const client=await pool.connect();
+  let fromGold,toGold;
+  try{
+    await client.query("BEGIN");
+    const debit=await client.query(
+      "UPDATE users SET gold=gold-$1 WHERE id=$2 AND gold >= $1 RETURNING gold",
+      [amount,Number(u.id)]
+    );
+    if(!debit.rowCount){
+      await client.query("ROLLBACK");
+      return res.status(400).json({error:'Not enough gold.'});
+    }
+    const credit=await client.query(
+      "UPDATE users SET gold=COALESCE(gold,0)+$1 WHERE id=$2 RETURNING gold",
+      [amount,Number(v.id)]
+    );
+    if(!credit.rowCount){
+      await client.query("ROLLBACK");
+      return res.status(404).json({error:'Recipient account no longer exists.'});
+    }
+    fromGold=Number(debit.rows[0].gold);
+    toGold=Number(credit.rows[0].gold);
+    await client.query(
+      `INSERT INTO gold_ledger(user_id,actor_user_id,entry_type,amount,balance_after,item_id,description)
+       VALUES($1,$2,'GOLD_SENT',$3,$4,$5,$6),($7,$8,'GOLD_RECEIVED',$9,$10,$11,$12)`,
+      [Number(u.id),Number(u.id),-amount,fromGold,String(v.id),`Sent ${amount} gold to @${v.username}`,
+       Number(v.id),Number(u.id),amount,toGold,String(u.id),`Received ${amount} gold from @${u.username}`]
+    );
+    await client.query("COMMIT");
+  }catch(err){
+    await client.query("ROLLBACK").catch(()=>{});
+    console.error("Gold share failed:",err);
+    return res.status(500).json({error:'Could not transfer gold. Please try again.'});
+  }finally{client.release();}
+
+  u.gold=fromGold;
+  v.gold=toGold;
+  db.goldTransactions ||= [];
+  db.goldTransactions.push(
+    {id:id(),time:Date.now(),actor:u.id,userId:u.id,type:'GOLD_SENT',delta:-amount,to:v.id},
+    {id:id(),time:Date.now(),actor:u.id,userId:v.id,type:'GOLD_RECEIVED',delta:amount,from:u.id}
+  );
+  save();
+  log(u,'GOLD_SHARE',v.username,{amount});
+  io.to('user:'+v.id).emit('gold:update',{gold:v.gold});
+  io.to('user:'+u.id).emit('gold:update',{gold:u.gold});
+  notify(v.id,'gold','Gold received',`@${u.username} sent you ${amount} gold.`);
+  res.json({ok:true,remainingGold:u.gold});
 });
 
 const DEFAULT_GIFS=[
