@@ -5773,34 +5773,23 @@ io.on(
       io.emit("presence");
     });
 
-    socket.on(
-      "typing",
-      d=>
-        socket
-          .to("room:"+d.roomId)
-          .emit(
-            "typing",
-            {
-              user:d.user,
-              userId:socket.data.userId,
-              typing:!!d.typing
-            }
-          )
-    );
+    socket.on("typing", d=>{
+      const u=findUser(socket.data.userId);
+      const roomId=String(socket.data.roomId||"");
+      if(!u||!roomId||String(d?.roomId||"")!==roomId)return;
+      socket.to("room:"+roomId).emit("typing",{
+        roomId,user:u.displayName||u.username,userId:String(u.id),typing:!!d.typing
+      });
+    });
 
-    socket.on(
-      "dm-typing",
-      d=>
-        socket
-          .to("user:"+d.userId)
-          .emit(
-            "dm-typing",
-            {
-              user:d.user,
-              typing:!!d.typing
-            }
-          )
-    );
+    socket.on("dm-typing", d=>{
+      const u=findUser(socket.data.userId);
+      const recipientId=String(d?.userId||"");
+      if(!u||!recipientId||recipientId===String(u.id)||!findUser(recipientId))return;
+      socket.to("user:"+recipientId).emit("dm-typing",{
+        userId:String(u.id),recipientId,user:u.displayName||u.username,typing:!!d.typing
+      });
+    });
 
     socket.on(
       "disconnect",
