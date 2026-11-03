@@ -6083,7 +6083,7 @@ app.post('/api/users/:id/gifts',auth,async(req,res)=>{
     sender.gold=balance-cost;
     save();
     notify(target.id,'profile-gift','You received a gift',`@${sender.username} sent you ${gift.image||'🎁'} ${gift.name}!`);
-    io.emit('gold:update',{userId:String(sender.id),gold:sender.gold});
+    io.to("user:"+String(sender.id)).emit('gold:update',{userId:String(sender.id),gold:sender.gold});
     res.json({ok:true,gold:sender.gold,gift:{id:String(inserted.rows[0].id),name:gift.name,icon:gift.image||'🎁',goldCost:cost,message,createdAt:inserted.rows[0].created_at}});
   }catch(e){try{await client.query('ROLLBACK')}catch{};res.status(500).json({error:'Could not send gift.'});}
   finally{client.release();}
