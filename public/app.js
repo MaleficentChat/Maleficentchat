@@ -735,10 +735,12 @@ async function start() {
   }
   state.socket.on("room-error",d=>toast(d?.error||"Could not join room."));
   state.socket.on("dm-typing",d=>{
-    if(String(d?.userId||"")!==String(state.dmUserId))return;
+    if(String(d?.recipientId||"")!==String(state.user?.id)||String(d?.userId||"")!==String(state.dmUserId))return;
     const status=$("dmTypingStatus");
     if(!status||!state.dmUserId)return;
+    clearTimeout(state.dmTypingResetTimer);
     status.textContent=d?.typing?((typeof d.user==="string"?d.user:"Someone")+" is typing…"):"Quote a message to reply · Attach photos or files";
+    if(d?.typing)state.dmTypingResetTimer=setTimeout(()=>{if(status.isConnected)status.textContent="Quote a message to reply · Attach photos or files";},3500);
   });
 
   state.socket.on('rooms_updated', async()=>{try{await loadRooms();renderRooms();}catch{}});
@@ -802,10 +804,12 @@ async function start() {
   state.socket.on("site:messages-cleared",()=>{state.messages=[];if($("messages"))$("messages").innerHTML="";if(state.dmUserId)openDM(state.dmUserId);if(state.currentRoom)toast("Owner cleared all site chat messages.");});
 
   state.socket.on("typing", data => {
-    $("typing").textContent =
-      data.typing
-        ? `${esc(data.user)} is typing…`
-        : "";
+    if(String(data?.roomId||"")!==String(state.currentRoom||""))return;
+    const indicator=$("typing");
+    if(!indicator)return;
+    clearTimeout(state.roomTypingResetTimer);
+    indicator.textContent=data?.typing? `${esc(data.user)} is typing…`:"";
+    if(data?.typing)state.roomTypingResetTimer=setTimeout(()=>{if(indicator.isConnected)indicator.textContent="";},3500);
   });
 
   state.socket.on("notification", data => {
