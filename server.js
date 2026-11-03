@@ -2133,7 +2133,8 @@ app.put("/api/rooms/:id",auth,async(req,res)=>{
     }
     io.emit("presence");
   }
-  log(u,"ROOM_EDIT",r.name);res.json({room:{...r,passwordHash:undefined}});
+  log(u,"ROOM_EDIT",r.name);io.emit("rooms_updated");
+  res.json({room:{...r,passwordHash:undefined}});
 });
 
 app.put("/api/rooms/:id/theme",auth,(req,res)=>{
@@ -2153,7 +2154,7 @@ app.delete("/api/rooms/:id",auth,async(req,res)=>{
   if(!featureGrantAllowed(u,"delete_rooms")&&!(roomOwnerOrGlobal(u,r)&&Array.isArray(db.settings?.feature_grants?.room_edit_own)&&db.settings.feature_grants.room_edit_own.length)) return res.status(403).json({error:"Room deletion permission required or disabled in Feature Granting."});
   await pool.query(`DELETE FROM rooms WHERE id=$1`,[Number(req.params.id)]);
   db.rooms=db.rooms.filter(x=>String(x.id)!==String(req.params.id)); db.messages=db.messages.filter(m=>String(m.roomId)!==String(req.params.id));
-  log(u,"ROOM_DELETE",r.name); res.json({ok:true});
+  log(u,"ROOM_DELETE",r.name); io.emit("rooms_updated"); res.json({ok:true});
 });
 
 app.post(
