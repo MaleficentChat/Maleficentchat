@@ -5258,3 +5258,46 @@ html,body,#app,.app,.main,.view,#profile,#viewProfile {
 }
 #modal:has(.profile-modal) .profile-tabs{position:relative!important;flex-wrap:nowrap!important;}
 @media(max-width:600px){#modal:has(.profile-modal) #modalBody{height:calc(100dvh - 16px)!important;max-height:calc(100dvh - 16px)!important;overflow-y:auto!important;}}
+
+
+/* Public profile scrolling: put the scroll viewport on the actual modal card,
+   not on #modalBody. This avoids nested/fixed-height scroll areas on mobile. */
+#modal:has(.profile-modal) .modal-card{
+  display:block!important;
+  box-sizing:border-box!important;
+  height:calc(100dvh - 16px)!important;
+  max-height:calc(100dvh - 16px)!important;
+  min-height:0!important;
+  padding:0!important;
+  overflow-x:hidden!important;
+  overflow-y:auto!important;
+  -webkit-overflow-scrolling:touch!important;
+  overscroll-behavior-y:contain!important;
+  touch-action:pan-y!important;
+  scrollbar-width:thin!important;
+}
+#modal:has(.profile-modal) #modalBody{
+  display:block!important;
+  width:100%!important;
+  height:auto!important;
+  max-height:none!important;
+  min-height:0!important;
+  margin:0!important;
+  padding:0!important;
+  overflow:visible!important;
+  touch-action:pan-y!important;
+}
+#modal:has(.profile-modal) .profile-modal,
+#modal:has(.profile-modal) .profile-info,
+#modal:has(.profile-modal) #profileTabContent{
+  height:auto!important;
+  max-height:none!important;
+  min-height:0!important;
+  overflow:visible!important;
+}
+@media(max-width:600px){
+  #modal:has(.profile-modal) .modal-card{
+    height:calc(100dvh - 16px)!important;
+    max-height:calc(100dvh - 16px)!important;
+  }
+}
