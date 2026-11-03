@@ -291,14 +291,13 @@ function modal(html) {
 
 function avatar(u, cls = "avatar") {
   const name = u?.displayName || u?.username || "?";
-
+  const initial = esc(name.slice(0, 1).toUpperCase());
+  const src = String(u?.avatar || "").trim();
   return `
     <div class="${cls}">
-      ${
-        u?.avatar
-          ? `<img src="${esc(u.avatar)}" alt="">`
-          : esc(name.slice(0, 1).toUpperCase())
-      }
+      ${src
+        ? `<img src="${esc(src)}" alt="" loading="lazy" onerror="this.onerror=null;this.remove();this.parentElement.classList.add('avatar-image-failed');this.parentElement.textContent='${initial}'">`
+        : initial}
     </div>
   `;
 }
