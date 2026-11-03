@@ -5186,3 +5186,40 @@ html,body,#app,.app,.main,.view,#profile,#viewProfile {
 #modal:has(.profile-modal) .profile-message-button{color:#fff;border:1px solid #a978ff;background:linear-gradient(115deg,#7b35d4,#a34de6)}
 #modal:has(.profile-modal) .profile-friend-button{color:#fff;border:1px solid #ff72d1;background:linear-gradient(115deg,#b82c86,#e54ca9)}
 @media(max-width:480px){#modal:has(.profile-modal) .profile-banner{padding:13px 10px 15px;gap:8px}#modal:has(.profile-modal) .profile-social-stat{min-width:75px;padding:8px 5px}#modal:has(.profile-modal) .profile-social-stat b{font-size:12px}#modal:has(.profile-modal) .profile-social-button{flex:1;min-width:118px;padding:9px 10px}}
+
+/* Mobile fix: make the public profile dialog an explicitly touch-scrollable viewport. */
+#modal:has(.profile-modal){
+  align-items:flex-start!important;
+  justify-content:center!important;
+  padding:8px!important;
+  overflow:hidden!important;
+  touch-action:pan-y!important;
+}
+#modal:has(.profile-modal) #modalBody{
+  height:calc(100dvh - 16px)!important;
+  max-height:calc(100dvh - 16px)!important;
+  min-height:0!important;
+  flex:0 1 auto!important;
+  overflow-x:hidden!important;
+  overflow-y:scroll!important;
+  -webkit-overflow-scrolling:touch!important;
+  overscroll-behavior-y:contain!important;
+  touch-action:pan-y!important;
+  scrollbar-width:thin;
+}
+#modal:has(.profile-modal) .profile-modal{
+  height:auto!important;
+  min-height:0!important;
+  overflow:visible!important;
+  touch-action:pan-y!important;
+}
+#modal:has(.profile-modal) .profile-tabs{
+  position:relative!important;
+  top:auto!important;
+}
+@media(max-width:600px){
+  #modal:has(.profile-modal) #modalBody{
+    height:calc(100dvh - 16px)!important;
+    max-height:calc(100dvh - 16px)!important;
+  }
+}
