@@ -3319,7 +3319,12 @@ async function openDM(id) {
 
     try {
       await api(`/api/dm/${id}/read`, { method: "POST" });
-    } catch {}
+      // Refresh badges/inbox only after the server confirms read receipts.
+      refreshTopDMUnreadBadge().catch(()=>{});
+      loadDMList().catch(()=>{});
+    } catch (error) {
+      console.warn("Could not mark opened conversation as read:",error?.message||error);
+    }
 
     $("dmFile")?.addEventListener("change",()=>{
       const f=$("dmFile").files?.[0];
