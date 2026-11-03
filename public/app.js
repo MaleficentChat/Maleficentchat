@@ -2911,6 +2911,12 @@ function renderUserProfileModal(user,data={}){
       <div class="profile-rank">${rank(user.rank)}${user.verified?' · ✓ Verified':''}${profileBadge?` <span class="equipped-profile-badge" title="${esc(profileBadge.name)}">${esc(profileBadge.icon)} ${esc(profileBadge.name)}</span>`:''}</div>
       <div class="profile-name">${esc(user.displayName)}${user._nickname?` <span class="nickname-badge">“${esc(user._nickname)}”</span>`:''}</div>
       <div class="profile-handle">@${esc(user.username)}</div>
+      <div class="profile-social-stats">
+        <span class="profile-social-stat"><b>🪙 ${Number(user.gold||0).toLocaleString()}</b><small>Gold</small></span>
+        <span class="profile-social-stat"><b>👥 ${Number(user.friendsCount||user.friendCount||0).toLocaleString()}</b><small>Friends</small></span>
+        <span class="profile-social-stat"><b>🏅 ${esc(String(user.rank||"MEMBER").replace(/_/g," "))}</b><small>Rank</small></span>
+      </div>
+      ${!isSelf?`<div class="profile-primary-actions"><button class="profile-social-button profile-message-button" id="profileSendPM"><span>✉</span> Send PM</button><button class="profile-social-button profile-friend-button" id="profileAddFriend"><span>＋</span> Add Friend</button></div>`:""}
     </div>
     <div class="profile-tabs">
       <button class="profile-tab active" data-tab="info">Account</button>
@@ -2963,6 +2969,8 @@ function renderUserProfileModal(user,data={}){
     $('profileNicknameBtn')?.addEventListener('click',()=>nicknameModal(user));
     $('profileModerateBtn')?.addEventListener('click',()=>moderate(user.id));
     $('profileStaffAccountBtn')?.addEventListener('click',()=>staffAccountModal(user));
+    $('profileSendPM')?.addEventListener('click',()=>{closeModal();openDM(user.id);});
+    $('profileAddFriend')?.addEventListener('click',async()=>{try{await friend(user.id);toast('Friend request sent.');}catch(e){toast(e.message)}});
     $('profileMenuBtn')?.addEventListener('click',()=>openProfileActionDrawer(user,data));
     $('profileRankBtn')?.addEventListener('click',()=>rankFromProfile(user));
     $('editProfileFromModal')?.addEventListener('click',()=>{closeModal();state.view='profile';renderView();});
