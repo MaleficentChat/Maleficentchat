@@ -2926,6 +2926,7 @@ function renderUserProfileModal(user,data={}){
       <button class="profile-tab active" data-tab="info">Account</button>
       <button class="profile-tab" data-tab="about">About Me</button>
       <button class="profile-tab" data-tab="friends">Friends</button>
+      <button class="profile-tab" data-tab="gifts">🎁 Gifts</button>
       <button class="profile-tab" data-tab="more">More</button>
     </div>
     <div id="profileTabContent" class="profile-info"></div>
@@ -2943,12 +2944,39 @@ function renderUserProfileModal(user,data={}){
       <div class="profile-actions"><button class="mini" id="profileAchievementsBtn">🏆 Achievements</button>${!isSelf&&canFeature('profile_note')?`<button class="mini" id="profileNoteBtn">📝 Add Note <span id="profileNoteDot" style="display:none">●</span></button>${canFeature('profile_note')?'<button class="mini" id="profileFeatureBlockBtn">🚫 Feature Block</button>':''}`:''}<div class="profile-action-hint">Tap ☰ above for profile actions.</div></div>`;
     else if(tab==='about') box.innerHTML=`<div class="about-card"><h3>About Me</h3><p>${esc(user.bio||'This user has not written an About Me yet.')}</p>${user.country?`<div class="profile-info-row"><b>🌍 Country</b><span>${esc(countryFlagFor(user.country))} ${esc(user.country)}</span></div>`:''}${user.pronouns?`<div class="profile-info-row"><b>Pronouns</b><span>${esc(user.pronouns)}</span></div>`:''}${user.interests?.length?`<div class="tag-list">${user.interests.map(x=>`<span class="tag">${esc(x)}</span>`).join('')}</div>`:''}${isSelf?`<button class="primary" id="editAboutBtn">✏️ Edit About Me</button>`:''}</div>`;
     else if(tab==='friends') box.innerHTML=`<div class="about-card"><h3>Friends</h3><p class="muted">Friends and social connections for @${esc(user.username)}.</p><div class="profile-info-row"><b>👥 Friends</b><span>${user.friendsCount||0}</span></div><button class="mini" id="viewFriendsBtn">Open Friends</button></div>`;
+    else if(tab==='gifts'){
+      box.innerHTML='<div class="about-card"><h3>🎁 Gifts</h3><p class="muted">Gold gifts received by this user.</p><div class="gift-profile-list">Loading gifts…</div></div>';
+      Promise.all([api('/api/users/'+encodeURIComponent(user.id)+'/gifts'),api('/api/gifts/catalog')]).then(([giftData,catalogData])=>{
+        if(!box.isConnected)return;
+        if(giftData.hidden){box.innerHTML='<div class="about-card"><h3>🎁 Gifts</h3><p class="muted">This user has hidden their gifts.</p></div>';return;}
+        const gifts=giftData.gifts||[],catalog=catalogData.gifts||[];
+        box.innerHTML='<div class="about-card"><h3>🎁 Gifts</h3><p class="muted">Gifts received by @'+esc(user.username)+'.</p>'+
+          (isSelf?'<label class="gift-visibility-toggle"><input type="checkbox" id="giftVisibilityToggle" '+(user.privacy?.showGifts===false?'':'checked')+'> Show my gifts on my public profile</label>':'')+
+          (!isSelf?'<button class="primary gift-open-send" id="sendGiftFromProfile">🎁 Send a gift · Use gold</button>':'')+
+          '<div class="gift-profile-list">'+(gifts.length?gifts.map(g=>'<article class="gift-profile-item"><span class="gift-profile-icon">'+esc(g.gift_icon||'🎁')+'</span><div class="gift-profile-copy"><b>'+esc(g.gift_name)+'</b><small>From @'+esc(g.sender_username||'deleted')+' · 🪙 '+Number(g.goldCost||0).toLocaleString()+'</small>'+(g.message?'<p>'+esc(g.message)+'</p>':'')+'</div></article>').join(''):'<p class="muted">No gifts yet. Send the first one! 💜</p>')+'</div></div>';
+        $('giftVisibilityToggle')?.addEventListener('change',async e=>{try{await api('/api/users/me/gift-visibility',{method:'PATCH',body:JSON.stringify({showGifts:e.target.checked})});toast(e.target.checked?'Gifts are visible on your profile.':'Gifts are now hidden from your profile.');}catch(err){e.target.checked=!e.target.checked;toast(err.message)}});
+        $('sendGiftFromProfile')?.addEventListener('click',()=>openGiftPicker(user,catalog));
+      }).catch(e=>{if(box.isConnected)box.innerHTML='<div class="about-card"><h3>🎁 Gifts</h3><p class="muted">'+esc(e.message||'Could not load gifts.')+'</p></div>';});
+    }
     else box.innerHTML=`<div class="about-card"><div class="profile-info-row"><b>📝 About</b><span>${esc(user.bio||'No About Me')}</span></div><div class="profile-info-row"><b>📜 Username history</b><span>${(user.usernameHistory||[]).length} changes</span></div><div class="profile-info-row"><b>🔗 Profile ID</b><span>${esc(user.id)}</span></div>${can('MOD')&&canAccessStaffTarget(user)?`<div class="toolbar"><button class="mini" id="profileHistoryBtn">📜 Staff action history</button><button class="mini" id="profileIpInsightsBtn">🔎 View insights</button></div><div id="profileHistoryBox"></div>`:''}<div class="profile-actions">${can('COOWNER')&&canAccessStaffTarget(user)?'<button class="mini danger" id="profileDeleteAccountBtn">🗑️ Delete account</button>':''}${!isSelf?'<button class="mini danger" id="profileReportBtn">⚑ Report user</button>':''}</div></div>`;
     if(tab==='more' && can('MOD')) $('profileHistoryBtn')?.addEventListener('click',()=>showUserActionHistory(user.id));
     if(tab==='more' && can('MOD') && !isSelf) $('profileIpInsightsBtn')?.addEventListener('click',()=>showIpInsights(user));
     if(tab==='info'&&!isSelf&&canFeature('profile_note'))api(`/api/staff/user/${encodeURIComponent(user.id)}/note`).then(n=>{if($('profileNoteDot'))$('profileNoteDot').style.display=n.hasNote?'inline-block':'none';}).catch(()=>{});
     wireProfileTabActions();
   };
+  function openGiftPicker(target,catalog){
+    if(!Array.isArray(catalog)||!catalog.length){toast('No gifts are available right now.');return;}
+    modal('<div class="gift-picker"><h2>🎁 Send a gift</h2><p class="muted">Choose a gift for @'+esc(target.username)+'. Your gold balance: 🪙 '+Number(state.user?.gold||0).toLocaleString()+'</p><div class="gift-picker-grid">'+catalog.map(g=>'<button type="button" class="gift-choice" data-gift-id="'+esc(g.id)+'"><span>'+esc(g.icon||'🎁')+'</span><b>'+esc(g.name)+'</b><small>🪙 '+Number(g.price||0).toLocaleString()+'</small></button>').join('')+'</div><label for="giftMessage">Add a note (optional)</label><textarea id="giftMessage" maxlength="180" rows="2" placeholder="A little something for you…"></textarea><div class="toolbar"><button class="primary" id="giftSendConfirm" disabled>Send gift</button><button class="mini" id="giftSendCancel">Cancel</button></div><p id="giftPickerStatus" class="muted"></p></div>');
+    let selected=null;
+    document.querySelectorAll('.gift-choice').forEach(btn=>btn.addEventListener('click',()=>{selected=btn.dataset.giftId;document.querySelectorAll('.gift-choice').forEach(x=>x.classList.toggle('selected',x===btn));$('giftSendConfirm').disabled=false;}));
+    $('giftSendCancel').onclick=closeModal;
+    $('giftSendConfirm').onclick=async()=>{
+      if(!selected)return;
+      const btn=$('giftSendConfirm');btn.disabled=true;btn.textContent='Sending…';
+      try{const result=await api('/api/users/'+encodeURIComponent(target.id)+'/gifts',{method:'POST',body:JSON.stringify({giftId:selected,message:$('giftMessage')?.value||''})});state.user.gold=result.gold;updateNav();closeModal();toast('Gift sent! 🎁');}
+      catch(e){$('giftPickerStatus').textContent=e.message||'Could not send gift.';btn.disabled=false;btn.textContent='Send gift';}
+    };
+  }
   function wireProfileTabActions(){
     $('profileDeleteAccountBtn')?.addEventListener('click',async()=>{
       const expected=String(user.username||'');
