@@ -5167,3 +5167,22 @@ html,body,#app,.app,.main,.view,#profile,#viewProfile {
     height:clamp(108px,34vw,140px)!important;
   }
 }
+
+/* Midnight Cyber profile social actions and gold/friends/rank stats */
+#modal:has(.profile-modal) .profile-banner{display:flex;flex-direction:column;align-items:center;gap:9px;min-height:0;height:auto;padding:16px 14px 18px;overflow:visible;background-color:#100b1c;background-size:cover;background-position:center}
+#modal:has(.profile-modal) .profile-stats{position:relative;inset:auto;display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:7px;width:100%;margin:0 0 4px;order:0}
+#modal:has(.profile-modal) .profile-stat{display:inline-flex;align-items:center;justify-content:center;gap:4px;padding:6px 10px;border:1px solid rgba(177,117,255,.38);border-radius:999px;background:rgba(15,10,28,.82);color:#f3eaff;font-size:12px;line-height:1.2}
+#modal:has(.profile-modal) .equipped-profile-frame{order:1;position:relative;margin:0 auto 2px;flex:none}
+#modal:has(.profile-modal) .profile-rank{order:2;margin:0;text-align:center}
+#modal:has(.profile-modal) .profile-name{order:3;text-align:center;margin:0}
+#modal:has(.profile-modal) .profile-handle{order:4;text-align:center;margin:0;color:#c9b8e8}
+#modal:has(.profile-modal) .profile-social-stats{order:5;display:flex;align-items:stretch;justify-content:center;gap:8px;flex-wrap:wrap;width:100%;max-width:420px;margin:5px auto 0}
+#modal:has(.profile-modal) .profile-social-stat{min-width:88px;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:9px 8px;border:1px solid rgba(164,92,255,.42);border-radius:13px;background:linear-gradient(145deg,rgba(49,25,76,.94),rgba(16,12,29,.96));box-shadow:inset 0 1px rgba(255,255,255,.04);text-align:center;overflow-wrap:anywhere}
+#modal:has(.profile-modal) .profile-social-stat b{font-size:13px;color:#f4e9ff;font-weight:750}
+#modal:has(.profile-modal) .profile-social-stat small{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:#c2a9e8}
+#modal:has(.profile-modal) .profile-primary-actions{order:6;display:flex;justify-content:center;gap:9px;flex-wrap:wrap;width:100%;margin:5px auto 0}
+#modal:has(.profile-modal) .profile-social-button{min-height:40px;min-width:130px;padding:9px 17px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;gap:8px;font-size:13px;font-weight:750;letter-spacing:.01em;cursor:pointer;transition:transform .16s ease,filter .16s ease;box-shadow:0 5px 18px rgba(0,0,0,.22)}
+#modal:has(.profile-modal) .profile-social-button:hover{transform:translateY(-1px);filter:brightness(1.12)}
+#modal:has(.profile-modal) .profile-message-button{color:#fff;border:1px solid #a978ff;background:linear-gradient(115deg,#7b35d4,#a34de6)}
+#modal:has(.profile-modal) .profile-friend-button{color:#fff;border:1px solid #ff72d1;background:linear-gradient(115deg,#b82c86,#e54ca9)}
+@media(max-width:480px){#modal:has(.profile-modal) .profile-banner{padding:13px 10px 15px;gap:8px}#modal:has(.profile-modal) .profile-social-stat{min-width:75px;padding:8px 5px}#modal:has(.profile-modal) .profile-social-stat b{font-size:12px}#modal:has(.profile-modal) .profile-social-button{flex:1;min-width:118px;padding:9px 10px}}
