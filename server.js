@@ -6040,6 +6040,62 @@ app.put('/api/profile',auth,(req,res)=>{
   if(!u.hideMode&&!u.deadMode)io.emit('profile:update',safeUser(u)); res.json({user:safeUser(u)});
 });
 
+
+// Gold-funded profile gifts. The sender pays once; received gifts remain visible on the recipient profile.
+app.get('/api/gifts/catalog',auth,async(req,res)=>{
+  try{
+    let {rows}=await pool.query('SELECT id,name,image,price FROM gifts ORDER BY price,id');
+    if(!rows.length){
+      const starter=[['Rose','🌹',100],['Chocolate','🍫',250],['Crystal Heart','💜',500],['Crown','👑',1500],['Dragon','🐉',3000]];
+      for(const [name,image,price] of starter) await pool.query('INSERT INTO gifts(name,image,price,is_predefined) VALUES($1,$2,$3,true) ON CONFLICT DO NOTHING',[name,image,price]);
+      ({rows}=await pool.query('SELECT id,name,image,price FROM gifts ORDER BY price,id'));
+    }
+    res.json({gifts:rows.map(g=>({id:String(g.id),name:g.name,icon:g.image||'🎁',price:Number(g.price||0)}))});
+  }catch(e){res.status(500).json({error:'Could not load gifts.'});}
+});
+app.get('/api/users/:id/gifts',auth,async(req,res)=>{
+  const viewer=current(req),target=findUser(req.params.id);
+  if(!target||(target.hideMode&&String(target.id)!==String(viewer.id)))return res.status(404).json({error:'User not found'});
+  if(String(target.id)!==String(viewer.id)&&target.privacy?.showGifts===false)return res.json({hidden:true,gifts:[]});
+  try{
+    const {rows}=await pool.query('SELECT id,sender_user_id,sender_username,sender_display_name,gift_name,gift_icon,gold_cost,message,created_at FROM user_gifts WHERE receiver_user_id=$1 ORDER BY created_at DESC LIMIT 100',[Number(target.id)]);
+    res.json({hidden:false,gifts:rows.map(g=>({...g,id:String(g.id),goldCost:Number(g.gold_cost||0),senderId:g.sender_user_id?String(g.sender_user_id):null,createdAt:g.created_at}))});
+  }catch(e){res.status(500).json({error:'Could not load profile gifts.'});}
+});
+app.post('/api/users/:id/gifts',auth,async(req,res)=>{
+  const sender=current(req),target=findUser(req.params.id);
+  if(!target||String(target.id)===String(sender.id))return res.status(400).json({error:'Choose another user to send a gift to.'});
+  const giftId=Number(req.body?.giftId),message=String(req.body?.message||'').trim().slice(0,180);
+  if(!Number.isSafeInteger(giftId)||giftId<1)return res.status(400).json({error:'Choose a valid gift.'});
+  const client=await pool.connect();
+  try{
+    await client.query('BEGIN');
+    const found=await client.query('SELECT id,name,image,price FROM gifts WHERE id=$1',[giftId]);
+    if(!found.rowCount){await client.query('ROLLBACK');return res.status(404).json({error:'Gift not found.'});}
+    const gift=found.rows[0],cost=Math.max(0,Number(gift.price)||0);
+    const locked=await client.query('SELECT gold FROM users WHERE id=$1 FOR UPDATE',[Number(sender.id)]);
+    if(!locked.rowCount){await client.query('ROLLBACK');return res.status(401).json({error:'Please log in again.'});}
+    const balance=Number(locked.rows[0].gold||0);
+    if(balance<cost){await client.query('ROLLBACK');return res.status(400).json({error:'Not enough gold for this gift.'});}
+    await client.query('UPDATE users SET gold=$2 WHERE id=$1',[Number(sender.id),balance-cost]);
+    const inserted=await client.query('INSERT INTO user_gifts(sender_user_id,receiver_user_id,sender_username,sender_display_name,gift_id,gift_name,gift_icon,gold_cost,message) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id,created_at',[Number(sender.id),Number(target.id),String(sender.username),String(sender.displayName||sender.username),gift.id,String(gift.name),String(gift.image||'🎁'),cost,message]);
+    await client.query('COMMIT');
+    sender.gold=balance-cost;
+    save();
+    notify(target.id,'profile-gift','You received a gift',`@${sender.username} sent you ${gift.image||'🎁'} ${gift.name}!`);
+    io.emit('gold:update',{userId:String(sender.id),gold:sender.gold});
+    res.json({ok:true,gold:sender.gold,gift:{id:String(inserted.rows[0].id),name:gift.name,icon:gift.image||'🎁',goldCost:cost,message,createdAt:inserted.rows[0].created_at}});
+  }catch(e){try{await client.query('ROLLBACK')}catch{};res.status(500).json({error:'Could not send gift.'});}
+  finally{client.release();}
+});
+app.patch('/api/users/me/gift-visibility',auth,(req,res)=>{
+  const u=current(req);
+  if(typeof req.body?.showGifts!=='boolean')return res.status(400).json({error:'Choose whether profile gifts should be visible.'});
+  u.privacy={...(u.privacy||{}),showGifts:req.body.showGifts};
+  save();
+  res.json({ok:true,showGifts:u.privacy.showGifts});
+});
+
 app.get('/api/users/:id/profile',auth,(req,res)=>{
   const u=current(req), v=findUser(req.params.id);
   if(!v || (v.hideMode && String(v.id)!==String(u.id))) return res.status(404).json({error:"User not found"});
