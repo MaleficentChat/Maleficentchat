@@ -1071,16 +1071,26 @@ function filtered(text){
 }
 
 let restrictedMediaOcrWorkerPromise=null;
+function normalizeRestrictedOcrText(value){
+  return String(value||"").normalize("NFKC").toLowerCase()
+    .replace(/[^a-z0-9\\s]+/g," ")
+    .trim().replace(/\\s+/g," ");
+}
 async function recognizeRestrictedMediaText(imageInput){
   if(!restrictedMediaOcrWorkerPromise){
     restrictedMediaOcrWorkerPromise=createWorker("eng").catch(err=>{restrictedMediaOcrWorkerPromise=null;throw err;});
   }
   const worker=await restrictedMediaOcrWorkerPromise;
   const result=await worker.recognize(imageInput);
-  return String(result?.data?.text||"").toLowerCase();
+  return normalizeRestrictedOcrText(result?.data?.text||"");
 }
 function restrictedMediaPhrases(){
-  return [...new Set((db.bannedWords||[]).map(raw=>String(raw||"").trim()).filter(raw=>/^p\s*:\s*/i.test(raw)).map(raw=>raw.replace(/^p\s*:\s*/i,"").trim().toLowerCase()).filter(Boolean))];
+  return [...new Set((db.bannedWords||[]).map(raw=>String(raw||"").trim()).filter(raw=>/^p\\s*:\\s*/i.test(raw)).map(raw=>normalizeRestrictedOcrText(raw.replace(/^p\\s*:\\s*/i,""))).filter(Boolean))];
+}
+function restrictedMediaMatches(ocrText,phrases){
+  const normalized=normalizeRestrictedOcrText(ocrText);
+  if(!normalized)return false;
+  return phrases.some(phrase=>normalized.includes(phrase));
 }
 async function sendRestrictedMediaBotMessage(user){
   const text="The File Contains Restricted Content. Try Different One";
@@ -1097,7 +1107,7 @@ async function checkRestrictedMediaUpload(req,res,user,file){
   if(!phrases.length)return false;
   try{
     const text=await recognizeRestrictedMediaText(file.path);
-    if(!phrases.some(phrase=>text.includes(phrase)))return false;
+    if(!restrictedMediaMatches(text,phrases))return false;
     await fs.promises.unlink(file.path).catch(()=>{});
     await sendRestrictedMediaBotMessage(user);
     res.status(400).json({error:"The File Contains Restricted Content. Try Different One",restrictedMedia:true});
