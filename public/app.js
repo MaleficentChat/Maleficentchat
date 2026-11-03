@@ -276,7 +276,12 @@ function toast(text) {
 }
 
 function closeModal() {
-  $("modal").classList.add("hidden");
+  const overlay = $("modal");
+  overlay.classList.add("hidden");
+  // Tear down file inputs, image previews and temporary controls when a dialog
+  // closes so an upload/crop preview cannot linger over the chat viewport.
+  const body = $("modalBody");
+  if (body) body.replaceChildren();
 }
 
 function modal(html) {
