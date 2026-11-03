@@ -3359,13 +3359,13 @@ app.get(
 app.get("/api/dm/conversations",auth,featureAllowed("private_messages"),async(req,res)=>{
   const u=current(req);
   const {rows}=await pool.query(`SELECT DISTINCT ON (other_id) other_id,data,created_at,
-    (SELECT COUNT(*)::int FROM private_messages unread WHERE unread.sender_id=other_id AND unread.receiver_id=$1 AND COALESCE((unread.data->>'read')::boolean,false)=false) AS unread_count
+    (SELECT COUNT(*)::int FROM private_messages unread WHERE unread.sender_id=other_id AND unread.receiver_id=$1 AND unread.data->>'read' IS DISTINCT FROM 'true') AS unread_count
     FROM (
       SELECT CASE WHEN sender_id=$1 THEN receiver_id ELSE sender_id END AS other_id,data,created_at
       FROM private_messages WHERE sender_id=$1 OR receiver_id=$1
     ) q ORDER BY other_id,created_at DESC`,[Number(u.id)]);
   const conversations=rows.map(r=>({user:safeUser(findUser(String(r.other_id))),lastMessage:r.data,unreadCount:Number(r.unread_count||0)})).filter(x=>x.user);
-  const anonymous=await pool.query(`SELECT data,created_at,(SELECT COUNT(*)::int FROM private_messages unread WHERE unread.sender_id IS NULL AND unread.receiver_id=$1 AND COALESCE((unread.data->>'read')::boolean,false)=false) AS unread_count FROM private_messages WHERE sender_id IS NULL AND receiver_id=$1 ORDER BY created_at DESC LIMIT 1`,[Number(u.id)]);
+  const anonymous=await pool.query(`SELECT data,created_at,(SELECT COUNT(*)::int FROM private_messages unread WHERE unread.sender_id IS NULL AND unread.receiver_id=$1 AND unread.data->>'read' IS DISTINCT FROM 'true') AS unread_count FROM private_messages WHERE sender_id IS NULL AND receiver_id=$1 ORDER BY created_at DESC LIMIT 1`,[Number(u.id)]);
   if(anonymous.rowCount)conversations.push({user:{id:"system-bot",username:"System",displayName:"System Bot",rank:"BOT",online:false,settings:{}},lastMessage:anonymous.rows[0].data,unreadCount:Number(anonymous.rows[0].unread_count||0)});
   res.json({conversations});
 });
@@ -3412,7 +3412,7 @@ app.post(
     const senderId=String(req.params.id);
     if(senderId==="system-bot"){
       await pool.query("UPDATE private_messages SET data=jsonb_set(COALESCE(data,'{}'::jsonb),'{read}','true'::jsonb,true) WHERE sender_id IS NULL AND receiver_id=$1",[Number(u.id)]);
-      db.privateMessages.filter(m=>m.anonymous===true&&String(m.to)===String(u.id)).forEach(m=>m.read=true);
+      db.privateMessages.filter(m=>(m.anonymous===true||m.from==null)&&String(m.to??m.receiverId)===String(u.id)).forEach(m=>m.read=true);
       return res.json({ok:true});
     }
     const sender=findUser(senderId);
@@ -3428,10 +3428,12 @@ app.post(
          WHERE sender_id=$1 AND receiver_id=$2`,
         [Number(senderId),Number(u.id)]
       );
+      // Update the compatibility cache without rewriting the entire legacy
+      // application snapshot. PostgreSQL already committed the authoritative read state.
       db.privateMessages
-        .filter(m=>String(m.from)===senderId&&String(m.to)===String(u.id))
+        .filter(m=>String(m.from??m.sender_id)===senderId&&String(m.to??m.receiverId)===String(u.id))
         .forEach(m=>m.read=true);
-      save();
+      res.set("Cache-Control","no-store");
       res.json({ok:true});
     } catch(err) {
       console.error("Could not persist private-message read receipts:",err.message);
@@ -5356,14 +5358,21 @@ app.get("/api/owner/dms",ownerOnly,async(req,res)=>{
   res.json({privateMessages:q.rows.map(r=>{const m=r.data||{};const fu=usersById.get(String(m.from)),tu=usersById.get(String(m.to));return {...m,fromUsername:fu?.username||m.from,toUsername:tu?.username||m.to,fromDisplayName:fu?.displayName||'',toDisplayName:tu?.displayName||''};})});
 });
 
-app.get("/api/dm/unread-count",auth,(req,res)=>{
+app.get("/api/dm/unread-count",auth,featureAllowed("private_messages"),async(req,res)=>{
   const u=current(req);
-  // IDs can be strings in legacy JSON-backed records and numbers after DB
-  // hydration. Normalize before comparing so unread counts remain consistent.
-  const count=db.privateMessages.filter(m=>
-    String(m.to??m.receiverId??"")===String(u.id)&&!m.read
-  ).length;
-  res.json({count});
+  try{
+    // PostgreSQL is authoritative. The in-memory legacy cache can be stale
+    // across restarts and does not reliably contain read-receipt updates.
+    const result=await pool.query(
+      "SELECT COUNT(*)::int AS count FROM private_messages WHERE receiver_id=$1 AND data->>'read' IS DISTINCT FROM 'true'",
+      [Number(u.id)]
+    );
+    res.set("Cache-Control","no-store");
+    res.json({count:Number(result.rows[0]?.count||0)});
+  }catch(error){
+    console.error("Private-message unread count failed:",error?.message||error);
+    res.status(500).json({error:"Could not load unread private-message count."});
+  }
 });
 
 app.post('/api/reports',auth,async(req,res)=>{
