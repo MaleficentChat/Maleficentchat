@@ -5223,3 +5223,22 @@ html,body,#app,.app,.main,.view,#profile,#viewProfile {
     max-height:calc(100dvh - 16px)!important;
   }
 }
+
+/* Midnight Cyber gift collection */
+.profile-tab[data-tab="gifts"]{white-space:nowrap}
+.gift-profile-list{display:grid;gap:10px;margin-top:14px}
+.gift-profile-item{display:flex;align-items:center;gap:12px;padding:12px;border:1px solid rgba(177,117,255,.3);border-radius:14px;background:linear-gradient(135deg,rgba(52,27,79,.58),rgba(18,14,31,.95))}
+.gift-profile-icon{width:48px;height:48px;flex:0 0 48px;display:grid;place-items:center;font-size:27px;border-radius:13px;background:rgba(143,77,220,.15);border:1px solid rgba(186,125,255,.35)}
+.gift-profile-copy{min-width:0;display:flex;flex-direction:column;gap:4px}
+.gift-profile-copy b{color:#f3e8ff}
+.gift-profile-copy small{color:#c4b0df;font-size:11px}
+.gift-profile-copy p{margin:3px 0 0;overflow-wrap:anywhere}
+.gift-visibility-toggle{display:flex;align-items:center;gap:10px;padding:12px;border:1px solid rgba(177,117,255,.32);border-radius:12px;background:rgba(92,48,132,.18)}
+.gift-visibility-toggle input{accent-color:#b05cff;width:18px;height:18px}
+.gift-picker-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:9px;margin:14px 0}
+.gift-choice{display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px 6px;border:1px solid rgba(170,112,255,.3);border-radius:13px;background:#171124;color:#f5eaff;cursor:pointer}
+.gift-choice>span{font-size:28px}
+.gift-choice small{color:#d6b5ff}
+.gift-choice.selected{border-color:#ff65d5;background:linear-gradient(145deg,rgba(113,49,155,.6),rgba(67,23,83,.65));box-shadow:0 0 0 1px #e65fc4,0 0 18px #9c4cff30}
+.gift-picker textarea{width:100%;margin:8px 0;border-radius:10px}
+#giftSendConfirm:disabled{opacity:.45;cursor:not-allowed}
