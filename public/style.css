@@ -4524,3 +4524,121 @@ button:focus-visible{outline:2px solid #d38bff;outline-offset:2px}
   .profile-settings-card .settings-row small{white-space:normal;overflow:visible;text-overflow:clip;line-height:1.35}
   .settings-tabs .settings-tab{padding:12px 8px}
 }
+
+
+/* Corrective mobile profile modal sizing and stat/avatar separation */
+#modal{
+  width:100%;
+  max-width:100vw;
+  overflow-x:hidden!important;
+  box-sizing:border-box!important;
+}
+#modal .modal-card:has(.profile-modal){
+  width:calc(100vw - 24px)!important;
+  max-width:calc(100vw - 24px)!important;
+  min-width:0!important;
+  box-sizing:border-box!important;
+  padding:0!important;
+  margin:0 auto!important;
+  overflow-x:hidden!important;
+  overflow-y:auto!important;
+  max-height:calc(100dvh - 28px)!important;
+}
+#modal .profile-modal{
+  display:block!important;
+  position:relative!important;
+  width:100%!important;
+  min-width:0!important;
+  max-width:100%!important;
+  box-sizing:border-box!important;
+  overflow-x:hidden!important;
+  overflow-y:visible!important;
+}
+#modal .profile-modal .profile-banner{
+  position:relative!important;
+  min-width:0!important;
+  min-height:350px!important;
+  padding:128px 14px 24px!important;
+  box-sizing:border-box!important;
+  overflow:hidden!important;
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:center!important;
+  justify-content:flex-end!important;
+  gap:7px!important;
+}
+#modal .profile-modal .profile-stats{
+  position:absolute!important;
+  top:10px!important;
+  left:10px!important;
+  right:10px!important;
+  width:auto!important;
+  max-width:calc(100% - 20px)!important;
+  display:flex!important;
+  flex-wrap:wrap!important;
+  justify-content:flex-start!important;
+  align-items:center!important;
+  gap:5px!important;
+  z-index:4!important;
+  box-sizing:border-box!important;
+}
+#modal .profile-modal .profile-stat,
+#modal .profile-modal .profile-hamburger,
+#modal .profile-modal .profile-rank-btn{
+  position:static!important;
+  flex:0 1 auto!important;
+  min-width:0!important;
+  max-width:100%!important;
+  margin:0!important;
+  box-sizing:border-box!important;
+  white-space:nowrap!important;
+}
+#modal .profile-modal .profile-hamburger{
+  margin-left:auto!important;
+}
+#modal .profile-modal .equipped-profile-frame{
+  position:relative!important;
+  flex:0 0 auto!important;
+  margin:0 auto 8px!important;
+}
+#modal .profile-modal .profile-rank{
+  position:relative!important;
+  max-width:100%!important;
+  overflow-wrap:anywhere!important;
+  margin-top:4px!important;
+}
+#modal .profile-modal .profile-name,
+#modal .profile-modal .profile-handle{
+  position:relative!important;
+  max-width:100%!important;
+  overflow-wrap:anywhere!important;
+}
+#modal .profile-modal .profile-tabs{
+  display:flex!important;
+  width:100%!important;
+  max-width:100%!important;
+  min-width:0!important;
+  overflow-x:auto!important;
+  box-sizing:border-box!important;
+}
+#modal .profile-modal .profile-tab{
+  flex:0 0 auto!important;
+  min-width:0!important;
+}
+#modal .profile-modal .profile-info{
+  min-width:0!important;
+  max-width:100%!important;
+  box-sizing:border-box!important;
+  overflow-wrap:anywhere!important;
+}
+#modal .profile-modal *{max-width:100%}
+@media(max-width:600px){
+  #modal .profile-modal .profile-banner{
+    min-height:370px!important;
+    padding:136px 12px 24px!important;
+  }
+  #modal .profile-modal .profile-stats{top:9px!important;left:9px!important;right:9px!important;gap:4px!important}
+  #modal .profile-modal .profile-stat,
+  #modal .profile-modal .profile-rank-btn{font-size:11px!important;padding:6px 8px!important}
+  #modal .profile-modal .profile-hamburger{padding:6px 9px!important}
+}
