@@ -102,6 +102,20 @@ const esc = s =>
     "'": "&#039;"
   }[c]));
 
+// Validate profile links before rendering them. Keep this helper available before
+// loadProfile() so a profile refresh cannot fail with a ReferenceError.
+function safeProfileUrl(value) {
+  const raw = String(value ?? "").trim();
+  if (!raw) return "";
+  try {
+    const parsed = new URL(/^https?:\/\//i.test(raw) ? raw : "https://" + raw);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return "";
+    return parsed.href;
+  } catch {
+    return "";
+  }
+}
+
 const fmt = t => {
   const d = new Date(t);
   return Number.isNaN(d.getTime()) ? "" : d.toLocaleString();
@@ -3833,12 +3847,19 @@ function editProfileStyle(){
     <label>Display name color<input id="profileColorEdit" type="color" value="${/^#[0-9a-f]{6}$/i.test(u.profileColor||'')?u.profileColor:'#b69aff'}"></label>
     <label>Profile badge text<input id="profileBadgeEdit" maxlength="32" value="${esc(u.badge||'')}" placeholder="e.g. Artist, Gamer"></label>
     <label>Profile banner image URL<input id="profileBannerEdit" maxlength="500" value="${esc(u.banner||'')}" placeholder="https://… (optional)"></label>
-    <div class="toolbar"><button class="primary" id="saveProfileStyle">Save appearance</button></div>`);
+    <div class="toolbar"><button class="mini" type="button" id="previewProfileStyle">Preview profile</button><button class="primary" id="saveProfileStyle">Save appearance</button></div>`);
   const themeInput=$('profileThemeEdit'), colorInput=$('profileColorEdit'), badgeInput=$('profileBadgeEdit'), bannerInput=$('profileBannerEdit');
   themeInput.value=themes[u.theme]?u.theme:'obsidian';
   const preview=()=>{const t=themes[themeInput.value]||themes.obsidian;const card=$('profileStylePreview');card.style.background=t.bg;card.style.color=t.text;card.style.borderColor=t.accent;$('profileStyleBannerPreview').style.background=bannerInput.value.trim()? `linear-gradient(180deg,rgba(0,0,0,.1),rgba(0,0,0,.5)),url("${bannerInput.value.trim().replace(/["\\\\]/g,'')}") center/cover`:`linear-gradient(135deg,${t.accent},${t.panel})`;$('profileStyleAvatarPreview').style.borderColor=t.bg;$('profileStyleNamePreview').style.color=colorInput.value;$('profileStyleBadgePreview').style.color=t.accent;$('profileStyleBadgePreview').style.background=t.panel;$('profileStyleBadgePreview').textContent=badgeInput.value.trim()||'Profile badge';};
   [themeInput,colorInput,badgeInput,bannerInput].forEach(el=>el.addEventListener('input',preview));
   preview();
+  $('previewProfileStyle').onclick=()=>{
+    const card=$('profileStylePreview');
+    const previewHtml=card.outerHTML;
+    modal('<h2>✨ Profile preview</h2><p class="muted">This is how your profile card will look with the current selections. Nothing has been saved yet.</p>'+previewHtml+'<div class="toolbar"><button class="mini" type="button" id="backToProfileStyle">Back to settings</button><button class="primary" type="button" id="savePreviewedProfileStyle">Save appearance</button></div>');
+    $('backToProfileStyle').onclick=editProfileStyle;
+    $('savePreviewedProfileStyle').onclick=()=>saveMyProfile({profileColor:colorInput.value,theme:themeInput.value,badge:badgeInput.value.trim(),banner:bannerInput.value.trim()},'Profile appearance saved.');
+  };
   $('saveProfileStyle').onclick=()=>saveMyProfile({profileColor:colorInput.value,theme:themeInput.value,badge:badgeInput.value.trim(),banner:bannerInput.value.trim()},'Profile appearance saved.');
 }
 
