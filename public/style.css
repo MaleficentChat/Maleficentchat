@@ -4998,3 +4998,172 @@ body:has(#modal:not(.hidden) .profile-modal){
   #modal:has(.profile-modal) .profile-rank-btn{font-size:11px!important;padding:6px 8px!important}
   #modal:has(.profile-modal) .profile-info{padding:13px!important}
 }
+
+
+/* 2026-11-03 profile viewport + avatar spacing correction */
+#profile,
+#profile .my-profile-wrap,
+#profile .profile-settings-card,
+#profile .profile-settings-head,
+#profile .profile-settings-card * {
+  min-width:0;
+  box-sizing:border-box;
+}
+#profile .profile-settings-card {
+  width:min(100%,760px)!important;
+  margin:0 auto!important;
+  overflow:visible!important;
+}
+#profile .profile-settings-head {
+  height:auto!important;
+  min-height:0!important;
+  overflow:visible!important;
+  padding:18px 14px 24px!important;
+  gap:12px!important;
+}
+#profile .profile-settings-top {
+  position:relative!important;
+  inset:auto!important;
+  order:0!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  flex-wrap:wrap!important;
+  width:100%!important;
+  margin:0 0 8px!important;
+  gap:8px!important;
+}
+#profile .profile-settings-head > .big-avatar {
+  position:relative!important;
+  inset:auto!important;
+  display:grid!important;
+  flex:0 0 auto!important;
+  width:clamp(104px,30vw,148px)!important;
+  height:clamp(104px,30vw,148px)!important;
+  margin:0 auto 4px!important;
+  overflow:hidden!important;
+}
+#profile .profile-settings-head > .big-avatar img,
+#profile .profile-settings-head img {
+  display:block!important;
+  max-width:100%!important;
+  max-height:100%!important;
+  object-fit:cover!important;
+}
+#profile .profile-settings-card .profile-name,
+#profile .profile-settings-card .profile-handle,
+#profile .profile-settings-card .profile-rank {
+  max-width:100%!important;
+  overflow-wrap:anywhere!important;
+}
+#profile .profile-settings-card .profile-settings-head ~ * {
+  min-width:0!important;
+  max-width:100%!important;
+}
+#profile .profile-settings-card img,
+#profile .profile-settings-card video,
+#profile .profile-settings-card canvas {
+  max-width:100%!important;
+}
+
+/* Keep all app views inside the viewport when a large profile photo/frame is equipped. */
+html,body,#app,.app,.main,.view,#profile,#viewProfile {
+  min-width:0!important;
+  max-width:100%!important;
+}
+#profile,.view:not(#viewRooms) {
+  overflow-x:hidden!important;
+}
+#profile .equipped-profile-frame,
+#profile .big-avatar,
+#modal:has(.profile-modal) .equipped-profile-frame,
+#modal:has(.profile-modal) .big-avatar {
+  flex-shrink:0!important;
+  max-width:100%!important;
+}
+#profile .big-avatar img,
+#modal:has(.profile-modal) .big-avatar img {
+  width:100%!important;
+  height:100%!important;
+  object-fit:cover!important;
+}
+
+/* Public profile: use the same tall, stacked composition as profile editing.
+   Stats/actions occupy their own row above the avatar, never on top of its circle. */
+#modal:has(.profile-modal) #modalBody {
+  width:min(100%,680px)!important;
+  max-height:calc(100dvh - 16px)!important;
+  overflow-x:hidden!important;
+  overflow-y:auto!important;
+}
+#modal:has(.profile-modal) .profile-modal {
+  min-height:0!important;
+  overflow:visible!important;
+}
+#modal:has(.profile-modal) .profile-banner {
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:center!important;
+  justify-content:flex-start!important;
+  gap:10px!important;
+  height:auto!important;
+  min-height:0!important;
+  padding:14px 14px 26px!important;
+  overflow:visible!important;
+}
+#modal:has(.profile-modal) .profile-stats {
+  position:relative!important;
+  inset:auto!important;
+  order:0!important;
+  display:flex!important;
+  flex:0 0 auto!important;
+  align-items:center!important;
+  justify-content:center!important;
+  flex-wrap:wrap!important;
+  gap:7px!important;
+  width:100%!important;
+  max-width:100%!important;
+  margin:0 0 8px!important;
+  z-index:2!important;
+}
+#modal:has(.profile-modal) .profile-stat,
+#modal:has(.profile-modal) .profile-hamburger,
+#modal:has(.profile-modal) .profile-rank-btn {
+  position:relative!important;
+  inset:auto!important;
+  margin:0!important;
+}
+#modal:has(.profile-modal) .profile-hamburger { margin-left:0!important; }
+#modal:has(.profile-modal) .equipped-profile-frame {
+  position:relative!important;
+  order:1!important;
+  width:clamp(112px,32vw,156px)!important;
+  height:clamp(112px,32vw,156px)!important;
+  margin:0 auto 4px!important;
+}
+#modal:has(.profile-modal) .profile-rank,
+#modal:has(.profile-modal) .profile-name,
+#modal:has(.profile-modal) .profile-handle,
+#modal:has(.profile-modal) .profile-bio {
+  position:relative!important;
+  order:2!important;
+  width:100%!important;
+  max-width:100%!important;
+  text-align:center!important;
+  overflow-wrap:anywhere!important;
+}
+#modal:has(.profile-modal) .profile-tabs {
+  position:sticky!important;
+  top:0!important;
+  z-index:8!important;
+}
+@media(max-width:600px) {
+  #profile .profile-settings-head { padding:14px 10px 20px!important; }
+  #profile .profile-settings-top { margin:0 0 8px!important; gap:6px!important; }
+  #modal:has(.profile-modal) .profile-banner { padding:12px 10px 22px!important; }
+  #modal:has(.profile-modal) .profile-stats { gap:5px!important; margin-bottom:6px!important; }
+  #modal:has(.profile-modal) .equipped-profile-frame {
+    width:clamp(108px,34vw,140px)!important;
+    height:clamp(108px,34vw,140px)!important;
+  }
+}
