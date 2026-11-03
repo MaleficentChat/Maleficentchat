@@ -5242,3 +5242,19 @@ html,body,#app,.app,.main,.view,#profile,#viewProfile {
 .gift-choice.selected{border-color:#ff65d5;background:linear-gradient(145deg,rgba(113,49,155,.6),rgba(67,23,83,.65));box-shadow:0 0 0 1px #e65fc4,0 0 18px #9c4cff30}
 .gift-picker textarea{width:100%;margin:8px 0;border-radius:10px}
 #giftSendConfirm:disabled{opacity:.45;cursor:not-allowed}
+
+
+/* Fix scrolling across every public-profile tab on mobile. */
+#modal:has(.profile-modal) #modalBody{
+  display:block!important;height:calc(100dvh - 16px)!important;max-height:calc(100dvh - 16px)!important;min-height:0!important;
+  overflow-y:auto!important;overflow-x:hidden!important;-webkit-overflow-scrolling:touch!important;
+  overscroll-behavior:contain!important;touch-action:pan-y!important;scrollbar-width:thin!important;
+}
+#modal:has(.profile-modal) .profile-modal{
+  display:block!important;height:auto!important;max-height:none!important;min-height:0!important;overflow:visible!important;touch-action:pan-y!important;
+}
+#modal:has(.profile-modal) .profile-info,#modal:has(.profile-modal) #profileTabContent{
+  height:auto!important;max-height:none!important;min-height:0!important;overflow:visible!important;touch-action:pan-y!important;
+}
+#modal:has(.profile-modal) .profile-tabs{position:relative!important;flex-wrap:nowrap!important;}
+@media(max-width:600px){#modal:has(.profile-modal) #modalBody{height:calc(100dvh - 16px)!important;max-height:calc(100dvh - 16px)!important;overflow-y:auto!important;}}
