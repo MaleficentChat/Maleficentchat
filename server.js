@@ -5485,8 +5485,14 @@ app.get('/api/dm/:peerId/search',auth,async(req,res)=>{
   const u=current(req),peer=findUser(req.params.peerId),q=cleanText(req.query.q||'').trim().slice(0,100);
   if(!peer)return res.status(404).json({error:'User not found.'});
   if(!q)return res.json({messages:[]});
-  const {rows}=await pool.query(`SELECT data FROM private_messages WHERE ((sender_id=$1 AND receiver_id=$2) OR (sender_id=$2 AND receiver_id=$1))
-    AND COALESCE(data->>'text',message,'') ILIKE $3 ORDER BY created_at DESC LIMIT 100`,[Number(u.id),Number(peer.id),'%'+q.replace(/[\\%_]/g,'\\app.get("/api/dm/unread-count",auth')+'%']);
+  const {rows}=await pool.query(`SELECT data FROM private_messages
+    WHERE ((sender_id=$1 AND receiver_id=$2) OR (sender_id=$2 AND receiver_id=$1))
+      AND COALESCE(data->>'text',message,'') ILIKE $3
+    ORDER BY created_at DESC LIMIT 100`,[Number(u.id),Number(peer.id),'%'+q+'%']);
+  res.json({messages:rows.reverse().map(x=>x.data)});
+});
+
+app.get("/api/dm/unread-count",auth')+'%']);
   res.json({messages:rows.reverse().map(x=>x.data)});
 });
 
