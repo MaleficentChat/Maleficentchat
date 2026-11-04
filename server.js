@@ -1968,7 +1968,13 @@ function areAcceptedFriends(userA,userB){
 
 async function createRoomHandler(req,res){
   const u=current(req); if(!u)return res.status(401).json({error:"Login required"});
-  if(!(featureGrantAllowed(u,"create_rooms")||hasFeature(u,"create_room"))) return res.status(403).json({error:`Create room requires ${featureRank("create_room")} or higher.`});
+  // Keep the API permission aligned with the room-creation button in the client.
+  // Premium/Royal and the staff ranks explicitly allowed by the UI can create rooms;
+  // feature grants remain an additional way to authorize other accounts.
+  const roomCreatorRanks=["PREMIUM","ROYAL","MOD","MODERATOR","ADMIN","SUPER_ADMIN","SUPERADMIN","COMMISSOR","INSTRUCTOR","COOWNER","OWNER","DEVELOPER"];
+  if(!roomCreatorRanks.includes(String(u.rank||"").toUpperCase()) && !(featureGrantAllowed(u,"create_rooms")||hasFeature(u,"create_room"))) {
+    return res.status(403).json({error:`Create room requires ${featureRank("create_room")} or an explicit create-room permission.`});
+  }
   const name=cleanText(req.body.name).trim().slice(0,50)||"New Room";
   const password=req.body.password?await bcrypt.hash(String(req.body.password),10):null;
   try{
@@ -6537,13 +6543,8 @@ app.get('/api/me/account',auth,async(req,res)=>{
     await pool.query('CREATE TABLE IF NOT EXISTS push_subscriptions(id BIGSERIAL PRIMARY KEY,user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,endpoint TEXT NOT NULL UNIQUE,p256dh TEXT NOT NULL,auth TEXT NOT NULL,created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),last_used_at TIMESTAMPTZ)');
     await pool.query('CREATE INDEX IF NOT EXISTS push_subscriptions_user_idx ON push_subscriptions(user_id)');
 
-    // Remove Chill Zone permanently on startup so it cannot reappear after a deploy.
-    const unwantedRoom = await pool.query(`SELECT id FROM rooms WHERE LOWER(TRIM(name))='chill zone'`);
-    if (unwantedRoom.rowCount) {
-      const unwantedIds = unwantedRoom.rows.map(row => Number(row.id));
-      await pool.query(`DELETE FROM room_messages WHERE room_id = ANY($1::int[])`, [unwantedIds]);
-      await pool.query(`DELETE FROM rooms WHERE id = ANY($1::int[])`, [unwantedIds]);
-    }
+    // Never delete user-created rooms or their message history during startup.
+    // Room cleanup must be an explicit, separately authorized action.
 
     // Initialize the permanent Main Room during server startup, before the
     // first browser request. This prevents an empty room list after login.
