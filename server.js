@@ -2214,15 +2214,14 @@ app.post(
       return res.status(403).json({error:"This room is for the room owner's accepted friends only."});
     }
 
+    const inviteAccepted=!!r.hidden&&String(req.body.inviteToken||"")!==""&&String(req.body.inviteToken)===String(r.inviteToken||"");
+    const owner=String(r.ownerId||r.created_by||"")===String(u.id);
+    const roomStaff=roomRole(r.id,u.id)!=="USER";
+    const member=r.hidden?await pool.query("SELECT 1 FROM room_members WHERE room_id=$1 AND user_id=$2",[Number(r.id),Number(u.id)]):{rowCount:0};
+    const hasSecretRoomAccess=owner||roomStaff||!!member.rowCount||inviteAccepted;
     const passwordAccepted=!!r.passwordHash&&!!req.body.password&&await bcrypt.compare(String(req.body.password),String(r.passwordHash));
-    if(r.passwordHash&&!passwordAccepted)return res.status(403).json({error:"Wrong room password."});
-    if(r.hidden){
-      const member=await pool.query("SELECT 1 FROM room_members WHERE room_id=$1 AND user_id=$2",[Number(r.id),Number(u.id)]);
-      const owner=String(r.ownerId||r.created_by||"")===String(u.id);
-      const roomStaff=roomRole(r.id,u.id)!=="USER";
-      const inviteAccepted=String(req.body.inviteToken||"")!==""&&String(req.body.inviteToken)===String(r.inviteToken||"");
-      if(!owner&&!roomStaff&&!member.rowCount&&!inviteAccepted&&!passwordAccepted)return res.status(403).json({error:"This room is hidden. Open a valid invitation or enter its password."});
-    }
+    if(r.passwordHash&&!passwordAccepted&&!(r.hidden&&hasSecretRoomAccess))return res.status(403).json({error:"Wrong room password."});
+    if(r.hidden&&!hasSecretRoomAccess&&!passwordAccepted)return res.status(403).json({error:"This room is hidden. Open a valid invitation or enter its password."});
     await pool.query("INSERT INTO room_members(room_id,user_id,invited_by) VALUES($1,$2,$3) ON CONFLICT(room_id,user_id) DO NOTHING",[Number(r.id),Number(u.id),Number(r.ownerId||r.created_by||u.id)]);
 
     if(!u.hideMode&&!u.invisible)systemNotice(`${u.displayName||u.username} has joined the room ${r.name}.`,r.id);
