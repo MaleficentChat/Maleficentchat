@@ -3246,7 +3246,7 @@ async function openDM(id) {
 <button type="button" data-dm-action="report">⚑ <span><b>Report</b><small>Report this conversation</small></span></button></div></div>
       </div>
       <div class="dm-message-search"><span>⌕</span><input id="dmMessageSearch" placeholder="Search in this conversation…" autocomplete="off"><small id="dmSearchCount">${messages.length} messages</small></div>
-      <div class="dm-conversation-tools"><span>🔒 Private conversation</span><span id="dmTypingStatus" aria-live="polite">Quote a message to reply · Attach photos or files</span></div>
+      <div class="dm-conversation-tools"><span>🔒 Private conversation</span><span id="dmTypingStatus" aria-live="polite">Reply · Attach photos or voice notes</span><button type="button" class="mini" id="dmShowPins">📌 Pinned</button></div>
       <div
         id="dmMessages"
         class="messages dm-message-list"
@@ -3318,7 +3318,9 @@ async function openDM(id) {
     // The conversation DOM now exists. Fetch again now so a message that arrived
     // while the contact list/modal was loading appears without reopening the DM.
     syncLiveMessages().catch(error=>console.warn("Post-open private-message sync failed:",error?.message||error));
+    $("dmShowPins")?.addEventListener("click",async()=>{try{const pins=await api("/api/dm/"+encodeURIComponent(dmTargetId)+"/pins");modal('<h2>📌 Pinned messages</h2><div class="stack">'+(pins.messages||[]).map(m=>'<article class="card"><b>'+esc(m.from===state.user?.id?'You':(user.displayName||user.username))+'</b><p>'+esc(m.text||'📎 Attachment')+'</p><small class="muted">'+fmt(m.pinnedAt)+'</small></article>').join('')+'</div><button class="mini" onclick="closeModal()">Close</button>');}catch(e){toast(e.message||"Could not load pinned messages.");}});
     const dmSearch=$("dmMessageSearch");
+    dmSearch?.addEventListener("keydown",async e=>{if(e.key!=="Enter")return;const q=dmSearch.value.trim();if(!q)return;e.preventDefault();try{const result=await api("/api/dm/"+encodeURIComponent(dmTargetId)+"/search?q="+encodeURIComponent(q));state.dmMessages=result.messages||[];const list=$("dmMessages");if(list)list.innerHTML=state.dmMessages.map(m=>dmMessageHTML(m,state.dmMessages,user)).join("")||'<p class="muted">No matching messages.</p>';if($("dmSearchCount"))$("dmSearchCount").textContent=state.dmMessages.length+" search results";}catch(err){toast(err.message||"Could not search conversation history.");}});
     dmSearch?.addEventListener("input",()=>{
       const q=dmSearch.value.trim().toLowerCase();
       let visible=0;
