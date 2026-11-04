@@ -4621,7 +4621,7 @@ app.post('/api/wall/:id/reaction',auth,async(req,res)=>{
 async function wallPostHandler(req,res){
   const u=current(req), grants=db.settings?.feature_grants?.wall_post||["OWNER","ADMIN"], rank=String(u.rank||'').toUpperCase();
   if(await checkRestrictedMediaUpload(req,res,u,req.file))return;
-  if(String(u.rank).toUpperCase()!=="DEVELOPER" && u.username!==DEFAULT_OWNER&&!grants.map(x=>String(x).toUpperCase()).includes(rank))return res.status(403).json({error:"Your rank cannot create wall posts."});
+  // Shadow Feed is a member-facing social feature; moderation controls remain separately permission-gated.
   const content=cleanText(req.body.content||"").trim().slice(0,5000), media=req.file;
   if(media&&!/^(image\/(png|jpe?g|gif|webp|avif)|video\/)/i.test(media.mimetype))return res.status(400).json({error:"Only image or video files are allowed."});
   if(!content&&!media)return res.status(400).json({error:"Post cannot be empty."});
