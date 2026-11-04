@@ -1944,7 +1944,8 @@ app.get("/api/rooms",auth,async(req,res)=>{
   const rooms=rows.map(r=>({id:String(r.id),name:r.name,icon:r.icon||"💬",description:r.description||"",category:r.category||"Community",public:r.is_public!==false,passwordHash:r.password_hash||null,rankRequired:String(r.rank_required||"MEMBER").toUpperCase(),limit:Number(r.room_limit||100),slowMode:Number(r.slow_mode||0),announcement:r.announcement||"",ownerId:r.created_by?String(r.created_by):null,banner:r.banner||"",inviteToken:r.invite_token||"",creator:r.creator||null,isDefault:!!r.is_default,minAge:Number(r.min_age??0),maxAge:Number(r.max_age??120),friendsOnly:!!(db.settings?.room_access?.[String(r.id)]?.friendsOnly),roomTheme:String(db.settings?.room_themes?.[String(r.id)]||r.theme||"obsidian"),locked:!!r.password_hash,hidden:!!r.is_hidden,expiresAt:r.expires_at?new Date(r.expires_at).getTime():null,onlineCount:visibleRoomOnlineCount(r.id)}));
   db.rooms=rooms.filter(r=>!r.expiresAt||r.expiresAt>Date.now());
   const viewer=current(req);
-  const visibleRooms=db.rooms.filter(r=>!r.hidden||String(r.ownerId)===String(viewer.id)||db.settings?.room_staff?.[String(r.id)]?.[String(viewer.id)]||false);
+  const requestedInvite=String(req.query.invite||"");
+  const visibleRooms=db.rooms.filter(r=>!r.hidden||String(r.ownerId)===String(viewer.id)||db.settings?.room_staff?.[String(r.id)]?.[String(viewer.id)]||false||(requestedInvite&&requestedInvite===String(r.inviteToken||"")));
   res.json({rooms:visibleRooms.map(r=>({...r,passwordHash:undefined,inviteToken:undefined}))});
 });
 
