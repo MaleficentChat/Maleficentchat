@@ -4550,6 +4550,34 @@ app.delete('/api/doodles/:id',auth,async(req,res)=>{
 });
 
 // Friend Wall
+// Shadow Feed extras: saved posts, expiring posts, and staff-featured posts.
+app.get('/api/wall/saved',auth,async(req,res)=>{
+  const u=current(req);
+  const {rows}=await pool.query(`SELECT w.*,u2.username,u2.avatar,u2.rank,true AS saved
+    FROM wall_post_saves s JOIN wall_posts w ON w.id=s.post_id
+    LEFT JOIN users u2 ON u2.id=w.user_id
+    WHERE s.user_id=$1 AND (w.expires_at IS NULL OR w.expires_at>NOW())
+    ORDER BY s.created_at DESC LIMIT 100`,[Number(u.id)]);
+  res.json({posts:rows});
+});
+app.post('/api/wall/:id/save',auth,async(req,res)=>{
+  const u=current(req),pid=Number(req.params.id);
+  const exists=await pool.query('SELECT 1 FROM wall_posts WHERE id=$1 AND (expires_at IS NULL OR expires_at>NOW())',[pid]);
+  if(!exists.rowCount)return res.status(404).json({error:'Post not found or expired.'});
+  const saved=await pool.query('SELECT 1 FROM wall_post_saves WHERE post_id=$1 AND user_id=$2',[pid,Number(u.id)]);
+  if(saved.rowCount)await pool.query('DELETE FROM wall_post_saves WHERE post_id=$1 AND user_id=$2',[pid,Number(u.id)]);
+  else await pool.query('INSERT INTO wall_post_saves(post_id,user_id) VALUES($1,$2) ON CONFLICT DO NOTHING',[pid,Number(u.id)]);
+  res.json({ok:true,saved:!saved.rowCount});
+});
+app.post('/api/wall/:id/feature',auth,async(req,res)=>{
+  const u=current(req);
+  if(!hasFeature(u,'pin_news')&&!['DEVELOPER','OWNER'].includes(String(u.rank||'').toUpperCase()))return res.status(403).json({error:'Only authorized staff can feature community posts.'});
+  const featured=!!req.body?.featured;
+  const result=await pool.query('UPDATE wall_posts SET featured=$2 WHERE id=$1 RETURNING id,featured',[req.params.id,featured]);
+  if(!result.rowCount)return res.status(404).json({error:'Post not found.'});
+  log(u,'WALL_POST_FEATURE',String(req.params.id),{featured});
+  res.json({ok:true,featured});
+});
 app.get('/api/wall',auth,async(req,res)=>{
   await pool.query(`CREATE TABLE IF NOT EXISTS wall_post_reactions(post_id BIGINT NOT NULL,user_id BIGINT NOT NULL,emoji TEXT NOT NULL,created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),PRIMARY KEY(post_id,user_id,emoji))`);
   const {rows}=await pool.query(`
@@ -5357,6 +5385,74 @@ app.get("/api/owner/dms",ownerOnly,async(req,res)=>{
   const q=await pool.query(sql+where+` ORDER BY created_at DESC LIMIT 2000`,params);
   const usersById=new Map(db.users.map(u=>[String(u.id),u]));
   res.json({privateMessages:q.rows.map(r=>{const m=r.data||{};const fu=usersById.get(String(m.from)),tu=usersById.get(String(m.to));return {...m,fromUsername:fu?.username||m.from,toUsername:tu?.username||m.to,fromDisplayName:fu?.displayName||'',toDisplayName:tu?.displayName||''};})});
+});
+
+// Private-message controls: only the sender can edit/delete their own message.
+app.patch('/api/dm/messages/:messageId',auth,async(req,res)=>{
+  const u=current(req),text=cleanText(req.body?.text||'').trim().slice(0,4000);
+  if(!text)return res.status(400).json({error:'Message text cannot be empty.'});
+  const q=await pool.query('SELECT id,sender_id,receiver_id,data FROM private_messages WHERE id=$1',[req.params.messageId]);
+  if(!q.rowCount)return res.status(404).json({error:'Message not found.'});
+  const row=q.rows[0];if(Number(row.sender_id)!==Number(u.id))return res.status(403).json({error:'You can edit only your own messages.'});
+  const data={...(row.data||{}),text,edited:true,editedAt:Date.now()};
+  await pool.query('UPDATE private_messages SET message=$2,data=$3::jsonb WHERE id=$1',[row.id,text,JSON.stringify(data)]);
+  Object.assign(db.privateMessages.find(m=>String(m.id)===String(row.id))||{},data);
+  io.to('user:'+row.sender_id).emit('dm-updated',{message:data});
+  io.to('user:'+row.receiver_id).emit('dm-updated',{message:data});
+  res.json({ok:true,message:data});
+});
+app.delete('/api/dm/messages/:messageId',auth,async(req,res)=>{
+  const u=current(req);
+  const q=await pool.query('SELECT id,sender_id,receiver_id,data FROM private_messages WHERE id=$1',[req.params.messageId]);
+  if(!q.rowCount)return res.status(404).json({error:'Message not found.'});
+  const row=q.rows[0];if(Number(row.sender_id)!==Number(u.id))return res.status(403).json({error:'You can delete only your own messages.'});
+  const data={...(row.data||{}),text:'',attachment:null,deleted:true,deletedAt:Date.now()};
+  await pool.query('UPDATE private_messages SET message=NULL,data=$2::jsonb WHERE id=$1',[row.id,JSON.stringify(data)]);
+  io.to('user:'+row.sender_id).emit('dm-updated',{message:data});
+  io.to('user:'+row.receiver_id).emit('dm-updated',{message:data});
+  res.json({ok:true});
+});
+app.post('/api/dm/messages/:messageId/reaction',auth,async(req,res)=>{
+  const u=current(req),emoji=String(req.body?.emoji||'');
+  const allowed=['❤️','😂','😭','✨','👍','🔥','🥀','👏','😮'];
+  if(!allowed.includes(emoji))return res.status(400).json({error:'Unsupported reaction.'});
+  const q=await pool.query('SELECT sender_id,receiver_id FROM private_messages WHERE id=$1',[req.params.messageId]);
+  if(!q.rowCount)return res.status(404).json({error:'Message not found.'});
+  const row=q.rows[0],uid=Number(u.id);
+  if(uid!==Number(row.sender_id)&&uid!==Number(row.receiver_id))return res.status(403).json({error:'This message is not in your conversation.'});
+  const old=await pool.query('SELECT 1 FROM dm_message_reactions WHERE message_id=$1 AND user_id=$2 AND emoji=$3',[req.params.messageId,uid,emoji]);
+  if(old.rowCount)await pool.query('DELETE FROM dm_message_reactions WHERE message_id=$1 AND user_id=$2 AND emoji=$3',[req.params.messageId,uid,emoji]);
+  else await pool.query('INSERT INTO dm_message_reactions(message_id,user_id,emoji) VALUES($1,$2,$3) ON CONFLICT DO NOTHING',[req.params.messageId,uid,emoji]);
+  const reactions=await pool.query('SELECT emoji,jsonb_agg(user_id::text) AS users FROM dm_message_reactions WHERE message_id=$1 GROUP BY emoji',[req.params.messageId]);
+  const payload={messageId:req.params.messageId,reactions:Object.fromEntries(reactions.rows.map(x=>[x.emoji,x.users]))};
+  io.to('user:'+row.sender_id).emit('dm-reactions',payload);io.to('user:'+row.receiver_id).emit('dm-reactions',payload);
+  res.json({ok:true,...payload});
+});
+app.post('/api/dm/:peerId/pins/:messageId',auth,async(req,res)=>{
+  const u=current(req),peer=findUser(req.params.peerId);
+  if(!peer)return res.status(404).json({error:'User not found.'});
+  const q=await pool.query('SELECT sender_id,receiver_id FROM private_messages WHERE id=$1',[req.params.messageId]);
+  if(!q.rowCount)return res.status(404).json({error:'Message not found.'});
+  const row=q.rows[0],uid=Number(u.id),pid=Number(peer.id);
+  if(!((Number(row.sender_id)===uid&&Number(row.receiver_id)===pid)||(Number(row.sender_id)===pid&&Number(row.receiver_id)===uid)))return res.status(403).json({error:'Message is not part of this conversation.'});
+  const old=await pool.query('SELECT 1 FROM dm_pinned_messages WHERE owner_id=$1 AND peer_id=$2 AND message_id=$3',[uid,pid,req.params.messageId]);
+  if(old.rowCount)await pool.query('DELETE FROM dm_pinned_messages WHERE owner_id=$1 AND peer_id=$2 AND message_id=$3',[uid,pid,req.params.messageId]);
+  else await pool.query('INSERT INTO dm_pinned_messages(owner_id,peer_id,message_id) VALUES($1,$2,$3) ON CONFLICT DO NOTHING',[uid,pid,req.params.messageId]);
+  res.json({ok:true,pinned:!old.rowCount});
+});
+app.get('/api/dm/:peerId/pins',auth,async(req,res)=>{
+  const u=current(req),peer=findUser(req.params.peerId);if(!peer)return res.status(404).json({error:'User not found.'});
+  const {rows}=await pool.query(`SELECT p.pinned_at,m.data FROM dm_pinned_messages p JOIN private_messages m ON m.id=p.message_id
+    WHERE p.owner_id=$1 AND p.peer_id=$2 ORDER BY p.pinned_at DESC LIMIT 50`,[Number(u.id),Number(peer.id)]);
+  res.json({messages:rows.map(x=>({...x.data,pinnedAt:x.pinned_at}))});
+});
+app.get('/api/dm/:peerId/search',auth,async(req,res)=>{
+  const u=current(req),peer=findUser(req.params.peerId),q=cleanText(req.query.q||'').trim().slice(0,100);
+  if(!peer)return res.status(404).json({error:'User not found.'});
+  if(!q)return res.json({messages:[]});
+  const {rows}=await pool.query(`SELECT data FROM private_messages WHERE ((sender_id=$1 AND receiver_id=$2) OR (sender_id=$2 AND receiver_id=$1))
+    AND COALESCE(data->>'text',message,'') ILIKE $3 ORDER BY created_at DESC LIMIT 100`,[Number(u.id),Number(peer.id),'%'+q.replace(/[\\%_]/g,'\\app.get("/api/dm/unread-count",auth')+'%']);
+  res.json({messages:rows.reverse().map(x=>x.data)});
 });
 
 app.get("/api/dm/unread-count",auth,featureAllowed("private_messages"),async(req,res)=>{
