@@ -1487,7 +1487,8 @@ async function loadRooms() {
   let lastError = null;
   for (let attempt = 0; attempt < 2; attempt++) {
     try {
-      const data = await api("/api/rooms");
+      const inviteToken=new URLSearchParams(location.search).get("invite")||"";
+      const data = await api("/api/rooms"+(inviteToken?"?invite="+encodeURIComponent(inviteToken):""));
       state.rooms = sanitizeRoomList(data.rooms);
       // The room endpoint is the source of truth; always display all available rooms on initial load.
       if (state.rooms.length) {
