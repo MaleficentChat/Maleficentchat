@@ -4601,8 +4601,8 @@ app.get('/api/wall',auth,async(req,res)=>{
       COALESCE((SELECT jsonb_object_agg(r.emoji,r.users) FROM (SELECT emoji,jsonb_agg(user_id::text) AS users FROM wall_post_reactions WHERE post_id=w.id GROUP BY emoji) r),'{}'::jsonb) AS reactions,
       (SELECT COUNT(*)::int FROM wall_comments wc WHERE wc.post_id=w.id) AS comment_count
     FROM wall_posts w LEFT JOIN users u ON u.id=w.user_id
-    WHERE w.status IN ('approved','pinned')
-    ORDER BY CASE WHEN w.status='pinned' THEN 0 ELSE 1 END,w.created_at DESC LIMIT 100`);
+    WHERE w.status IN ('approved','pinned') AND (w.expires_at IS NULL OR w.expires_at>NOW())
+    ORDER BY CASE WHEN w.status='pinned' THEN 0 ELSE 1 END,w.featured DESC,w.created_at DESC LIMIT 100`);
   res.json({posts:rows});
 });
 app.post('/api/wall/:id/reaction',auth,async(req,res)=>{
@@ -4625,7 +4625,10 @@ async function wallPostHandler(req,res){
   if(media&&!/^(image\/(png|jpe?g|gif|webp|avif)|video\/)/i.test(media.mimetype))return res.status(400).json({error:"Only image or video files are allowed."});
   if(!content&&!media)return res.status(400).json({error:"Post cannot be empty."});
   const mediaUrl=media?`/uploads/${media.filename}`:null;
-  const {rows}=await pool.query(`INSERT INTO wall_posts(user_id,content,media_url) VALUES($1,$2,$3) RETURNING *`,[Number(u.id),content,mediaUrl]);
+  const requestedHours=Number(req.body.expiresInHours||0),allowedHours=[0,1,6,12,24,72,168];
+  if(!allowedHours.includes(requestedHours))return res.status(400).json({error:"Choose a supported post expiry."});
+  const expiresAt=requestedHours?new Date(Date.now()+requestedHours*3600000):null;
+  const {rows}=await pool.query(`INSERT INTO wall_posts(user_id,content,media_url,expires_at) VALUES($1,$2,$3,$4) RETURNING *`,[Number(u.id),content,mediaUrl,expiresAt]);
   res.json({post:{...rows[0],username:u.username,avatar:u.avatar||"",rank:u.rank}});
 }
 app.post('/api/wall/post',auth,upload.single('file'),wallPostHandler);
