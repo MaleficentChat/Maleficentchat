@@ -843,6 +843,18 @@ async function start() {
     if(state.view==="news") loadNews();
   });
 
+  state.socket.on("dm-updated", payload => {
+    const updated=payload&&payload.message;if(!updated||!updated.id)return;
+    state.dmMessages=(state.dmMessages||[]).map(m=>String(m.id)===String(updated.id)?{...m,...updated}:m);
+    const peer=String(state.dmUserId||""),from=String(updated.from??""),to=String(updated.to??"");
+    if(peer&&(from===peer||to===peer)){const list=$("dmMessages");if(list&&state.dmPeerUser){list.innerHTML=state.dmMessages.map(m=>dmMessageHTML(m,state.dmMessages,state.dmPeerUser)).join("")||'<p class="muted">No private messages yet.</p>';list.scrollTop=list.scrollHeight;}}
+    loadDMList().catch(()=>{});
+  });
+  state.socket.on("dm-reactions", payload => {
+    if(!payload||!payload.messageId)return;
+    state.dmMessages=(state.dmMessages||[]).map(m=>String(m.id)===String(payload.messageId)?{...m,reactions:payload.reactions}:m);
+    const list=$("dmMessages");if(list&&state.dmPeerUser)list.innerHTML=state.dmMessages.map(m=>dmMessageHTML(m,state.dmMessages,state.dmPeerUser)).join("");
+  });
   state.socket.on("dm", message => {
     refreshTopDMUnreadBadge();
     const from=String(message?.from??message?.senderId??message?.fromId??"");
