@@ -2030,6 +2030,23 @@ app.put("/api/owner/room-role-permissions",ownerOnly,async(req,res)=>{
     res.json({ok:true,permissions:clean});
   }catch(error){console.error("Room role permission save failed:",error);res.status(500).json({error:"Could not save room-role permissions."});}
 });
+app.get("/api/rooms/:id/members",auth,async(req,res)=>{
+ const u=current(req),room=db.rooms.find(r=>String(r.id)===String(req.params.id));
+ if(!room)return res.status(404).json({error:"Room not found"});
+ const member=await pool.query("SELECT 1 FROM room_members WHERE room_id=$1 AND user_id=$2",[Number(room.id),Number(u.id)]);
+ if(room.hidden&&String(room.ownerId)!==String(u.id)&&roomRole(room.id,u.id)==="USER"&&!member.rowCount)return res.status(403).json({error:"This room is hidden."});
+ const {rows}=await pool.query("SELECT u.id,u.username,u.rank,u.avatar,m.joined_at FROM room_members m JOIN users u ON u.id=m.user_id WHERE m.room_id=$1 ORDER BY m.joined_at ASC",[Number(room.id)]);
+ res.json({members:rows});
+});
+app.post("/api/rooms/:id/invite",auth,async(req,res)=>{
+ const u=current(req),room=db.rooms.find(r=>String(r.id)===String(req.params.id));
+ if(!room)return res.status(404).json({error:"Room not found"});
+ if(!roomOwnerOrGlobal(u,room)&&!roomRoleCan(room.id,u.id,"manage_staff"))return res.status(403).json({error:"Only the room owner or authorized room staff can create invitations."});
+ const token=crypto.randomBytes(24).toString("hex");
+ await pool.query("UPDATE rooms SET invite_token=$2 WHERE id=$1",[Number(room.id),token]);
+ room.inviteToken=token;
+ res.json({ok:true,token,url:"/?room="+encodeURIComponent(room.id)+"&invite="+token});
+});
 app.get("/api/rooms/:id/staff",auth,(req,res)=>{
   const room=db.rooms.find(x=>String(x.id)===String(req.params.id));if(!room)return res.status(404).json({error:"Room not found"});
   const store=roomStaffStore().room_staff[String(room.id)]||{};
