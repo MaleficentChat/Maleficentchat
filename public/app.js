@@ -5676,7 +5676,7 @@ function editRoom() {
   const room=state.rooms.find(r=>String(r.id)===String(state.currentRoom));
   if(!room)return;
   if(room.isDefault || /^main room$/i.test(String(room.name||"").trim())){toast("Main Room is protected.");return;}
-  const ranks=["MEMBER","VIP","PREMIUM","MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"];
+  const ranks=["MEMBER","VIP","PREMIUM","ROYAL","MOD","ADMIN","SUPER_ADMIN","COMMISSOR","INSTRUCTOR","COOWNER","OWNER","DEVELOPER"];
   const rankLabels={MEMBER:"Member",VIP:"VIP",PREMIUM:"Premium",MOD:"Moderator",ADMIN:"Admin",SUPER_ADMIN:"Super Admin",COMMISSOR:"Commissor",COOWNER:"Co-owner",OWNER:"Owner",ROYAL:"Legacy rank — Royal",INSTRUCTOR:"Legacy rank — Instructor"};
   const savedRequiredRank=String(room.rankRequired||"MEMBER").toUpperCase();
   const rankChoices=ranks.includes(savedRequiredRank)?ranks:[savedRequiredRank,...ranks];
@@ -5797,7 +5797,7 @@ function showInvite() {
 
 $("newRoom").onclick = () => {
   const ranks=["MEMBER","VIP","PREMIUM","MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"];
-  const rankLabels={MEMBER:"Member",VIP:"VIP",PREMIUM:"Premium",MOD:"Moderator",ADMIN:"Admin",SUPER_ADMIN:"Super Admin",COMMISSOR:"Commissor",COOWNER:"Co-owner",OWNER:"Owner"};
+  const rankLabels={MEMBER:"Member",VIP:"VIP",PREMIUM:"Premium",ROYAL:"Royal",MOD:"Moderator",ADMIN:"Admin",SUPER_ADMIN:"Super Admin",COMMISSOR:"Commissor",INSTRUCTOR:"Instructor",COOWNER:"Co-owner",OWNER:"Owner",DEVELOPER:"Developer"};
   modal(`
     <div class="room-editor room-editor-create">
       <header class="room-editor-hero"><span class="room-editor-hero-icon">🌙</span><div><p class="room-editor-eyebrow">MAKE YOUR SPACE</p><h2>Create a room</h2><p>Set up a new corner of Maleficent Chat.</p></div></header>
