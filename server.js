@@ -2170,10 +2170,9 @@ app.post(
     );
 
     if(!r){
-      return res.status(404).json({
-        error:"Room not found"
-      });
+      return res.status(404).json({error:"Room not found"});
     }
+    if(r.expiresAt&&Number(r.expiresAt)<=Date.now())return res.status(410).json({error:"This temporary room has expired."});
     const roomState=roomStaffStore(),roomKey=String(r.id),uid=String(u.id);
     const blocked=roomState.room_blocks[roomKey]?.[uid];
     if(blocked)return res.status(403).json({error:"You are blocked from this room. Reason: "+String(blocked.reason||"Room rules").slice(0,240)});
@@ -2203,17 +2202,15 @@ app.post(
       return res.status(403).json({error:"This room is for the room owner's accepted friends only."});
     }
 
-    if(
-      r.passwordHash&&
-      !(await bcrypt.compare(
-        req.body.password||"",
-        r.passwordHash
-      ))
-    ){
-      return res.status(403).json({
-        error:"Wrong room password."
-      });
+    if(r.hidden){
+      const member=await pool.query("SELECT 1 FROM room_members WHERE room_id=$1 AND user_id=$2",[Number(r.id),Number(u.id)]);
+      const owner=String(r.ownerId||r.created_by||"")===String(u.id);
+      const roomStaff=roomRole(r.id,u.id)!=="USER";
+      const inviteAccepted=String(req.body.inviteToken||"")!==""&&String(req.body.inviteToken)===String(r.inviteToken||"");
+      if(!owner&&!roomStaff&&!member.rowCount&&!inviteAccepted&&!req.body.password)return res.status(403).json({error:"This room is hidden. Open a valid invitation or enter its password."});
     }
+    if(r.passwordHash&&!(await bcrypt.compare(req.body.password||"",r.passwordHash)))return res.status(403).json({error:"Wrong room password."});
+    await pool.query("INSERT INTO room_members(room_id,user_id,invited_by) VALUES($1,$2,$3) ON CONFLICT(room_id,user_id) DO NOTHING",[Number(r.id),Number(u.id),Number(r.ownerId||r.created_by||u.id)]);
 
     if(!u.hideMode&&!u.invisible)systemNotice(`${u.displayName||u.username} has joined the room ${r.name}.`,r.id);
     res.json({
