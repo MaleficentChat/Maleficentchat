@@ -4595,6 +4595,21 @@ app.post('/api/wall/:id/feature',auth,async(req,res)=>{
   log(u,'WALL_POST_FEATURE',String(req.params.id),{featured});
   res.json({ok:true,featured});
 });
+app.get('/api/wall/friends',auth,async(req,res)=>{
+  const u=current(req);
+  const friendIds=[...new Set((db.friends||[]).filter(f=>f.status==="ACCEPTED"&&(String(f.a)===String(u.id)||String(f.b)===String(u.id))).map(f=>Number(String(f.a)===String(u.id)?f.b:f.a)).filter(Number.isSafeInteger))];
+  if(!friendIds.length)return res.json({posts:[]});
+  await pool.query(`CREATE TABLE IF NOT EXISTS wall_post_reactions(post_id BIGINT NOT NULL,user_id BIGINT NOT NULL,emoji TEXT NOT NULL,created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),PRIMARY KEY(post_id,user_id,emoji))`);
+  const {rows}=await pool.query(`
+    SELECT w.*,u.username,u.avatar,u.rank,
+      COALESCE((SELECT jsonb_object_agg(r.emoji,r.users) FROM (SELECT emoji,jsonb_agg(user_id::text) AS users FROM wall_post_reactions WHERE post_id=w.id GROUP BY emoji) r),'{}'::jsonb) AS reactions,
+      (SELECT COUNT(*)::int FROM wall_comments wc WHERE wc.post_id=w.id) AS comment_count
+    FROM wall_posts w LEFT JOIN users u ON u.id=w.user_id
+    WHERE w.user_id=ANY($1::int[]) AND w.status IN ('approved','pinned') AND (w.expires_at IS NULL OR w.expires_at>NOW())
+    ORDER BY CASE WHEN w.status='pinned' THEN 0 ELSE 1 END,w.featured DESC,w.created_at DESC LIMIT 100`,[friendIds]);
+  res.json({posts:rows});
+});
+
 app.get('/api/wall',auth,async(req,res)=>{
   await pool.query(`CREATE TABLE IF NOT EXISTS wall_post_reactions(post_id BIGINT NOT NULL,user_id BIGINT NOT NULL,emoji TEXT NOT NULL,created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),PRIMARY KEY(post_id,user_id,emoji))`);
   const {rows}=await pool.query(`
