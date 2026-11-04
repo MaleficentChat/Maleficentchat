@@ -1,5 +1,14 @@
 const $ = id => document.getElementById(id);
 
+// Register room creation before the rest of the app initializes. Event delegation also
+// survives room-list rerenders and does not depend on the button retaining its onclick.
+document.addEventListener("click", event => {
+  const button = event.target instanceof Element ? event.target.closest("#newRoom, .room-create-button") : null;
+  if (!button || button.classList.contains("hidden") || button.disabled) return;
+  event.preventDefault();
+  openRoomCreationModal();
+}, true);
+
 // Room theme data must exist before early socket events or room rendering can apply it.
 const ROOM_THEMES = [
 {id:"obsidian",name:"Obsidian",emoji:"🌑",bg:"#0b0b14",bubble:"#302342",accent:"#b58cff"},
@@ -5836,15 +5845,6 @@ function openRoomCreationModal() {
     }catch(error){toast(error.message);if(submit){submit.disabled=false;submit.textContent="＋ Create room";}}
   };
 }
-
-// Keep room creation clickable even if an earlier initializer overwrites the button
-// handler. This delegated listener is registered before bootstrap and survives rerenders.
-document.addEventListener("click", event => {
-  const button = event.target instanceof Element ? event.target.closest("#newRoom, .room-create-button") : null;
-  if (!button || button.classList.contains("hidden") || button.disabled) return;
-  event.preventDefault();
-  openRoomCreationModal();
-}, true);
 
 /* ---------------- V3 SETTINGS / FEATURE CENTER ---------------- */
 
