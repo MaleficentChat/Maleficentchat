@@ -2104,7 +2104,7 @@ app.put("/api/rooms/:id",auth,async(req,res)=>{
   const previousRankRequired=String(r.rankRequired||"MEMBER").toUpperCase();
   if(r.isDefault || /^main room$/i.test(String(r.name||"").trim()))return res.status(403).json({error:"The permanent Main Room cannot be modified."});
   if(!featureGrantAllowed(u,"edit_rooms")&&!(roomOwnerOrGlobal(u,r)&&Array.isArray(db.settings?.feature_grants?.room_edit_own)&&db.settings.feature_grants.room_edit_own.length))return res.status(403).json({error:"Room editing is disabled in Feature Granting or you do not own this room."});
-  const fields={}; for(const k of ["name","icon","description","category","rankRequired","limit","slowMode","banner","public","minAge","maxAge"]) if(req.body[k]!==undefined) fields[k]=req.body[k];
+  const fields={}; for(const k of ["name","icon","description","category","rankRequired","limit","slowMode","banner","public","minAge","maxAge","hidden","expiresAt","theme"]) if(req.body[k]!==undefined) fields[k]=req.body[k];
   if(fields.rankRequired!==undefined){
     fields.rankRequired=String(fields.rankRequired||"").toUpperCase();
     const allowedRoomRanks=["MEMBER","VIP","PREMIUM","MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"];
@@ -2116,9 +2116,9 @@ app.put("/api/rooms/:id",auth,async(req,res)=>{
     r.friendsOnly=req.body.friendsOnly===true;save();
   }
   if(req.body.password!==undefined) fields.passwordHash=req.body.password?await bcrypt.hash(String(req.body.password),10):null;
-  const sets=[],vals=[]; const map={name:"name",icon:"icon",description:"description",category:"category",rankRequired:"rank_required",limit:"room_limit",slowMode:"slow_mode",banner:"banner",public:"is_public",passwordHash:"password_hash",minAge:"min_age",maxAge:"max_age"};
+  if(fields.expiresAt!==undefined){const dt=fields.expiresAt?new Date(fields.expiresAt):null;if(dt&&(!Number.isFinite(dt.getTime())||dt.getTime()<=Date.now()))return res.status(400).json({error:"Temporary-room expiry must be a future date."});fields.expiresAt=dt;} if(fields.theme!==undefined)fields.theme=String(fields.theme||"obsidian").slice(0,40); if(fields.hidden!==undefined)fields.hidden=fields.hidden===true; const sets=[],vals=[]; const map={name:"name",icon:"icon",description:"description",category:"category",rankRequired:"rank_required",limit:"room_limit",slowMode:"slow_mode",banner:"banner",public:"is_public",passwordHash:"password_hash",minAge:"min_age",maxAge:"max_age",hidden:"is_hidden",expiresAt:"expires_at",theme:"theme"};
   for(const [k,v] of Object.entries(fields)){sets.push(`${map[k]}=$${vals.length+1}`);vals.push(k==="rankRequired"?String(v).toUpperCase():v);}
-  if(sets.length){vals.push(Number(r.id));const q=await pool.query(`UPDATE rooms SET ${sets.join(",")} WHERE id=${vals.length} RETURNING *`,vals);const x=q.rows[0];Object.assign(r,{name:x.name,icon:x.icon,description:x.description,category:x.category,rankRequired:x.rank_required,limit:x.room_limit,slowMode:x.slow_mode,banner:x.banner,public:x.is_public,passwordHash:x.password_hash,minAge:Number(x.min_age??0),maxAge:Number(x.max_age??99)});}
+  if(sets.length){vals.push(Number(r.id));const q=await pool.query(`UPDATE rooms SET ${sets.join(",")} WHERE id=${vals.length} RETURNING *`,vals);const x=q.rows[0];Object.assign(r,{name:x.name,icon:x.icon,description:x.description,category:x.category,rankRequired:x.rank_required,limit:x.room_limit,slowMode:x.slow_mode,banner:x.banner,public:x.is_public,passwordHash:x.password_hash,minAge:Number(x.min_age??0),maxAge:Number(x.max_age??120),hidden:!!x.is_hidden,expiresAt:x.expires_at?new Date(x.expires_at).getTime():null,theme:x.theme||"obsidian"});}
   save();
   const nextRankRequired=String(r.rankRequired||"MEMBER").toUpperCase();
   if(nextRankRequired!==previousRankRequired){
