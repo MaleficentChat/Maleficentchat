@@ -68,6 +68,16 @@ assert.equal((app.match(/case "suggestions":/g) || []).length, 1,
 
 console.log("Suggestions renderer/navigation regression checks passed.");
 
+assert.match(server, /app\.post\(\s*"\/api\/gold\/gift",[\s\S]*?featureAllowed\(["']share_gold["']\)/,
+  "the gold gift endpoint must enforce the share-gold rank grant");
+assert.match(server, /INSERT INTO gold_ledger\(user_id,actor_user_id,entry_type,amount,balance_after,item_id,description\)/,
+  "gold transfers must write a durable ledger entry inside the balance transaction");
+assert.match(server, /FROM gold_ledger[\s\S]*WHERE user_id=\$1\s+ORDER BY created_at DESC,id DESC/,
+  "gold history must be recoverable from PostgreSQL after a restart");
+assert.match(server, /app\.post\('\/api\/users\/:id\/gold\/share',auth,async\(req,res\)=>\{[\s\S]*?await client\.query\("BEGIN"\)[\s\S]*?await client\.query\("COMMIT"\)/,
+  "the alternate gold-share endpoint must use an atomic transaction");
+
+
 const currentStart = server.indexOf("function current(req){");
 const currentEnd = server.indexOf("\n}", currentStart);
 assert.ok(currentStart >= 0 && currentEnd > currentStart,
