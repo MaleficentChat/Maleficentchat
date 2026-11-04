@@ -889,7 +889,9 @@ async function start() {
 
   // Always enter Main Room after login. Retry the authoritative room list/join
   // while the session and seeded rooms settle; do not switch to an old room.
-  const findMainRoom=()=>state.rooms.find(room=>room.isDefault) ||
+  const inviteRoomId=new URLSearchParams(location.search).get("room")||"";
+  const inviteTokenForJoin=new URLSearchParams(location.search).get("invite")||"";
+  const findMainRoom=()=>inviteRoomId&&inviteTokenForJoin?state.rooms.find(room=>String(room.id)===String(inviteRoomId)):state.rooms.find(room=>room.isDefault) ||
     state.rooms.find(room=>String(room.name||"").trim().toLowerCase()==="main room");
   let mainRoom=findMainRoom();
   let joined=false;
@@ -902,7 +904,7 @@ async function start() {
   for(let attempt=0;attempt<4&&!joined;attempt++){
     if(!mainRoom||attempt>0){
       try{
-        const latest=await api("/api/rooms");
+        const latest=await api("/api/rooms"+(inviteTokenForJoin?"?invite="+encodeURIComponent(inviteTokenForJoin):""));
         state.rooms=sanitizeRoomList(latest.rooms);
         state.roomListMode="all";
         renderRooms();
