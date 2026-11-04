@@ -5695,6 +5695,8 @@ function editRoom() {
         <label>Who can discover this room<select id="rPublic"><option value="true" ${room.public!==false?"selected":""}>Public — listed for everyone</option><option value="false" ${room.public===false?"selected":""}>Private — not publicly listed</option></select></label>
         <label>Minimum rank to join<select id="rRankRequired">${rankChoices.map(r=>'<option value="'+r+'" '+(savedRequiredRank===r?'selected':'')+'>'+(rankLabels[r]||r.replaceAll("_"," "))+'</option>').join("")}</select></label>
         <label>Member access<select id="rFriendsOnly"><option value="false" ${room.friendsOnly?'':'selected'}>Anyone who meets the rank requirement</option><option value="true" ${room.friendsOnly?'selected':''}>Accepted friends only</option></select></label>
+        <label>Secret room<select id="rHidden"><option value="false" ${room.hidden?'':'selected'}>Listed normally</option><option value="true" ${room.hidden?'selected':''}>Hidden — invitation or password required</option></select></label>
+        <label>Temporary room expiry <span class="room-editor-optional">optional</span><input id="rExpiresAt" type="datetime-local" value="${room.expiresAt?new Date(room.expiresAt-Date.now()).toISOString().slice(0,16):''}"></label>
         <label>Change room password <span class="room-editor-optional">leave blank to remove it</span><input id="rp" type="password" autocomplete="new-password" placeholder="Enter a new password"></label>
       </section>
       <section class="room-editor-section"><h3>⚙️ Room limits</h3><div class="room-editor-grid">
@@ -5723,6 +5725,8 @@ async function saveRoom() {
           public: $("rPublic").value === "true",
           rankRequired: $("rRankRequired").value,
           friendsOnly: $("rFriendsOnly").value === "true",
+          hidden: $("rHidden").value === "true",
+          expiresAt: $("rExpiresAt").value ? new Date($("rExpiresAt").value).toISOString() : null,
           password: $("rp").value
         })
       }
@@ -5776,22 +5780,14 @@ async function deleteRoom() {
   }
 }
 
-function showInvite() {
-  const room =
-    state.rooms.find(
-      r => String(r.id) === String(state.currentRoom)
-    );
-
-  if (!room) return;
-
-  modal(`
-    <h2>Room invite</h2>
-
-    <input
-      value="${location.origin}/?room=${encodeURIComponent(room.id)}"
-      readonly
-    >
-  `);
+async function showInvite() {
+  const room=state.rooms.find(r=>String(r.id)===String(state.currentRoom));
+  if(!room)return;
+  try{
+    const invite=await api(`/api/rooms/${encodeURIComponent(room.id)}/invite`,{method:"POST",body:JSON.stringify({})});
+    modal(`<h2>Room invitation</h2><p class="muted">Share this link with people you trust. Hidden rooms stay out of the public room list.</p><input id="roomInviteUrl" readonly value="${esc(location.origin+invite.url)}"><div class="toolbar"><button class="primary" id="copyRoomInvite">Copy invitation link</button></div>`);
+    $("copyRoomInvite").onclick=async()=>{try{await navigator.clipboard.writeText($("roomInviteUrl").value);toast("Invitation link copied.");}catch(e){$("roomInviteUrl").select();document.execCommand("copy");toast("Invitation link copied.");}};
+  }catch(e){toast(e.message||"Could not create invitation.");}
 }
 
 /* ---------------- CREATE ROOM ---------------- */
@@ -5812,6 +5808,8 @@ $("newRoom").onclick = () => {
         <section class="room-editor-section"><h3>🔐 Who can join?</h3>
           <label>Minimum rank<select id="rr">${ranks.map(r=>'<option value="'+r+'" '+(r==="MEMBER"?"selected":"")+'>'+rankLabels[r]+'</option>').join("")}</select></label>
           <label>Member access<select id="rFriendsOnlyCreate"><option value="false">Anyone who meets the rank requirement</option><option value="true">Accepted friends only</option></select></label>
+          <label>Secret room<select id="rHiddenCreate"><option value="false">Listed normally</option><option value="true">Hidden — invitation or password required</option></select></label>
+          <label>Room lifetime<select id="rExpiryCreate"><option value="0">Permanent room</option><option value="1">1 hour</option><option value="24">24 hours</option><option value="168">7 days</option><option value="720">30 days</option></select></label>
           <label>Room password <span class="room-editor-optional">optional</span><input id="rp" type="password" autocomplete="new-password" placeholder="Leave blank for no password"></label>
         </section>
         <section class="room-editor-section"><h3>⚙️ Room capacity</h3><div class="room-editor-grid">
@@ -5830,6 +5828,8 @@ $("newRoom").onclick = () => {
         name:$("rn").value.trim(),icon:$("ri").value.trim()||"💬",description:$("rd").value.trim(),
         category:$("rc").value.trim()||"Community",password:$("rp").value,
         rankRequired:$("rr").value,friendsOnly:$("rFriendsOnlyCreate").value==="true",
+        hidden:$("rHiddenCreate").value==="true",
+        expiresAt:Number($("rExpiryCreate").value)>0?new Date(Date.now()+Number($("rExpiryCreate").value)*3600000).toISOString():null,
         limit:Math.max(2,Math.min(500,Number($("rl").value)||100)),
         slowMode:Math.max(0,Math.min(3600,Number($("rs").value)||0))
       })});
