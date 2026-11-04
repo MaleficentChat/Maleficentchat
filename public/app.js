@@ -1609,7 +1609,7 @@ async function joinRoom(id) {
 
     const access=await api(`/api/rooms/${id}/join`, {
       method: "POST",
-      body: JSON.stringify({ password })
+      body: JSON.stringify({ password, inviteToken: new URLSearchParams(location.search).get("invite") || "" })
     });
 
     if (
@@ -3185,13 +3185,11 @@ function dmMessageHTML(message, messages, user) {
         }
 
         <div class="msg-actions">
-          <button
-            type="button"
-            class="mini"
-            onclick="replyDMMsg('${esc(message.id)}','${esc(user.id)}')"
-          >
-            Quote
-          </button>
+          <button type="button" class="mini" onclick="replyDMMsg('${esc(message.id)}','${esc(user.id)}')">↪ Reply</button>
+          <button type="button" class="mini" data-dm-react="❤️" data-dm-id="${esc(message.id)}">❤️</button>
+          <button type="button" class="mini" data-dm-react="😂" data-dm-id="${esc(message.id)}">😂</button>
+          <button type="button" class="mini" data-dm-pin="${esc(message.id)}">📌 Pin</button>
+          ${String(message.from)===String(state.user?.id)?`<button type="button" class="mini" data-dm-edit="${esc(message.id)}">✏️ Edit</button><button type="button" class="mini danger" data-dm-delete="${esc(message.id)}">🗑 Delete</button>`:''}
         </div>
       </div>
     </div>
@@ -3285,6 +3283,10 @@ async function openDM(id) {
     `);
 
     const dmTargetId=String(user.id),dmSettings=$('dmChatSettingsMenu'),dmSettingsBtn=$('dmChatSettingsBtn');
+    $('dmMessages')?.querySelectorAll('[data-dm-react]').forEach(btn=>btn.addEventListener('click',async()=>{try{await api('/api/dm/messages/'+encodeURIComponent(btn.dataset.dmId)+'/reaction',{method:'POST',body:JSON.stringify({emoji:btn.dataset.dmReact})});toast('Reaction updated.');}catch(e){toast(e.message)}}));
+    $('dmMessages')?.querySelectorAll('[data-dm-pin]').forEach(btn=>btn.addEventListener('click',async()=>{try{const r=await api('/api/dm/'+encodeURIComponent(dmTargetId)+'/pins/'+encodeURIComponent(btn.dataset.dmPin),{method:'POST',body:JSON.stringify({})});toast(r.pinned?'Message pinned.':'Message unpinned.');}catch(e){toast(e.message)}}));
+    $('dmMessages')?.querySelectorAll('[data-dm-edit]').forEach(btn=>btn.addEventListener('click',async()=>{const m=state.dmMessages.find(x=>String(x.id)===String(btn.dataset.dmEdit));if(!m)return;const next=prompt('Edit your message:',m.text||'');if(next===null)return;try{await api('/api/dm/messages/'+encodeURIComponent(m.id),{method:'PATCH',body:JSON.stringify({text:next})});await openDM(dmTargetId);}catch(e){toast(e.message)}}));
+    $('dmMessages')?.querySelectorAll('[data-dm-delete]').forEach(btn=>btn.addEventListener('click',async()=>{if(!confirm('Delete this message for both participants?'))return;try{await api('/api/dm/messages/'+encodeURIComponent(btn.dataset.dmDelete),{method:'DELETE'});await openDM(dmTargetId);}catch(e){toast(e.message)}}));
     dmSettingsBtn?.addEventListener('click',()=>{dmSettings?.classList.toggle('hidden');dmSettingsBtn.setAttribute('aria-expanded',String(!dmSettings?.classList.contains('hidden')));});
     $('dmCloseBtn')?.addEventListener('click',closeModal);
     dmSettings?.querySelectorAll('[data-dm-action]').forEach(btn=>btn.addEventListener('click',async()=>{
@@ -5696,7 +5698,7 @@ function editRoom() {
         <label>Minimum rank to join<select id="rRankRequired">${rankChoices.map(r=>'<option value="'+r+'" '+(savedRequiredRank===r?'selected':'')+'>'+(rankLabels[r]||r.replaceAll("_"," "))+'</option>').join("")}</select></label>
         <label>Member access<select id="rFriendsOnly"><option value="false" ${room.friendsOnly?'':'selected'}>Anyone who meets the rank requirement</option><option value="true" ${room.friendsOnly?'selected':''}>Accepted friends only</option></select></label>
         <label>Secret room<select id="rHidden"><option value="false" ${room.hidden?'':'selected'}>Listed normally</option><option value="true" ${room.hidden?'selected':''}>Hidden — invitation or password required</option></select></label>
-        <label>Temporary room expiry <span class="room-editor-optional">optional</span><input id="rExpiresAt" type="datetime-local" value="${room.expiresAt?new Date(room.expiresAt-Date.now()).toISOString().slice(0,16):''}"></label>
+        <label>Temporary room expiry <span class="room-editor-optional">optional</span><input id="rExpiresAt" type="datetime-local" value="${room.expiresAt?new Date(room.expiresAt).toISOString().slice(0,16):''}"></label>
         <label>Change room password <span class="room-editor-optional">leave blank to remove it</span><input id="rp" type="password" autocomplete="new-password" placeholder="Enter a new password"></label>
       </section>
       <section class="room-editor-section"><h3>⚙️ Room limits</h3><div class="room-editor-grid">
