@@ -1252,9 +1252,10 @@ async function loadSuggestions(){
 
 
 
+let wallShowingSaved=false;
 async function loadWall(){
   try {
-    const d=await api('/api/wall'),feed=$('wallFeed'); if(!feed)return;
+    const d=await api(wallShowingSaved?'/api/wall/saved':'/api/wall'),feed=$('wallFeed'); if(!feed)return;
     const emojis=['👍','❤️','😂','😮','🔥','👏'];
     feed.innerHTML=(d.posts||[]).map(p=>{
       const rx=p.reactions&&typeof p.reactions==='object'?p.reactions:{};
@@ -1276,6 +1277,7 @@ async function loadWall(){
     document.querySelectorAll('[data-wall-comments]').forEach(b=>b.onclick=async()=>{const id=b.dataset.wallComments,box=$('wallComments-'+id);if(!box)return;box.classList.toggle('hidden');if(!box.classList.contains('hidden'))try{const d=await api('/api/wall/'+encodeURIComponent(id)+'/comments');box.innerHTML=(d.comments||[]).map(v=>`<div class="news-comment"><div class="news-comment-main"><div class="news-comment-head"><b>@${esc(v.username)}</b><small>${esc(v.rank||'Member')}</small></div><div class="news-comment-text">${esc(v.content)}</div></div></div>`).join('')+`<form class="wall-comment-form news-comment-form"><input placeholder="Write a comment…" maxlength="1000" required><button class="mini">Send</button></form>`;box.querySelector('form').onsubmit=async e=>{e.preventDefault();const input=e.currentTarget.querySelector('input');try{await api('/api/wall/'+encodeURIComponent(id)+'/comments',{method:'POST',body:JSON.stringify({content:input.value})});await loadWall();$('wallComments-'+id)?.classList.remove('hidden')}catch(err){toast(err.message)}}}catch(e){toast(e.message)}});
   } catch(e){toast(e.message||'Could not load Friends Wall.')}
 }
+if($('wallSavedToggle'))$('wallSavedToggle').onclick=async()=>{wallShowingSaved=!wallShowingSaved;$('wallSavedToggle').textContent=wallShowingSaved?'← Community feed':'🔖 Saved posts';await loadWall();};
 if($('newWallPost'))$('newWallPost').onclick=async()=>{
   modal(`<h2>New Shadow Feed Post</h2><textarea id="wallPostText" maxlength="5000" placeholder="Share something with the community…"></textarea><label class="stack">Post duration<select id="wallPostExpiry"><option value="0">Keep on profile</option><option value="1">Disappear after 1 hour</option><option value="6">Disappear after 6 hours</option><option value="24">Disappear after 24 hours</option><option value="72">Disappear after 3 days</option><option value="168">Disappear after 7 days</option></select></label><input id="wallPostFile" type="file" accept="image/*,video/*"><div id="wallPreview" class="media-preview"></div><button class="primary" id="wallPostSend">Upload & Publish</button>`);
   $('wallPostFile')?.addEventListener('change',()=>{const f=$('wallPostFile').files?.[0],box=$('wallPreview');if(!f){box.innerHTML='';return}const u=URL.createObjectURL(f);box.innerHTML=f.type.startsWith('video/')?`<video controls src="${u}"></video>`:`<img src="${u}">`;});
