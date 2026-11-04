@@ -5805,7 +5805,7 @@ function showInvite() {
 /* ---------------- CREATE ROOM ---------------- */
 
 function openRoomCreationModal() {
-  const ranks=["MEMBER","VIP","PREMIUM","MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"];
+  const ranks=["MEMBER","VIP","PREMIUM","ROYAL","MOD","ADMIN","SUPER_ADMIN","COMMISSOR","INSTRUCTOR","COOWNER","OWNER","DEVELOPER"];
   const rankLabels={MEMBER:"Member",VIP:"VIP",PREMIUM:"Premium",ROYAL:"Royal",MOD:"Moderator",ADMIN:"Admin",SUPER_ADMIN:"Super Admin",COMMISSOR:"Commissor",INSTRUCTOR:"Instructor",COOWNER:"Co-owner",OWNER:"Owner",DEVELOPER:"Developer"};
   modal(`
     <div class="room-editor room-editor-create">
