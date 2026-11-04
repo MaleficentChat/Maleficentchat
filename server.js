@@ -1912,13 +1912,7 @@ app.get('/api/users/blocked',auth,(req,res)=>{
 });
 
 app.get("/api/rooms",auth,async(req,res)=>{
-  // Remove Chill Zone permanently, including any messages left in it.
-  const unwantedRoom = await pool.query(`SELECT id FROM rooms WHERE LOWER(TRIM(name))='chill zone'`);
-  if (unwantedRoom.rowCount) {
-    const unwantedIds = unwantedRoom.rows.map(row => Number(row.id));
-    await pool.query(`DELETE FROM room_messages WHERE room_id = ANY($1::int[])`, [unwantedIds]);
-    await pool.query(`DELETE FROM rooms WHERE id = ANY($1::int[])`, [unwantedIds]);
-  }
+  // Preserve existing rooms and their message history during room-list requests.
   // Normalize legacy Main Room duplicates without discarding their history.
   await pool.query(`INSERT INTO rooms(name,created_by,icon,description,category,is_public,rank_required,invite_token,min_age,max_age,is_default)
     VALUES ('Main Room',(SELECT id FROM users WHERE username='Maleficent'),'🏠','The main Maleficent Chat community room.','Community',true,'MEMBER','main-room',0,120,true)
@@ -2220,14 +2214,15 @@ app.post(
       return res.status(403).json({error:"This room is for the room owner's accepted friends only."});
     }
 
+    const passwordAccepted=!!r.passwordHash&&!!req.body.password&&await bcrypt.compare(String(req.body.password),String(r.passwordHash));
+    if(r.passwordHash&&!passwordAccepted)return res.status(403).json({error:"Wrong room password."});
     if(r.hidden){
       const member=await pool.query("SELECT 1 FROM room_members WHERE room_id=$1 AND user_id=$2",[Number(r.id),Number(u.id)]);
       const owner=String(r.ownerId||r.created_by||"")===String(u.id);
       const roomStaff=roomRole(r.id,u.id)!=="USER";
       const inviteAccepted=String(req.body.inviteToken||"")!==""&&String(req.body.inviteToken)===String(r.inviteToken||"");
-      if(!owner&&!roomStaff&&!member.rowCount&&!inviteAccepted&&!req.body.password)return res.status(403).json({error:"This room is hidden. Open a valid invitation or enter its password."});
+      if(!owner&&!roomStaff&&!member.rowCount&&!inviteAccepted&&!passwordAccepted)return res.status(403).json({error:"This room is hidden. Open a valid invitation or enter its password."});
     }
-    if(r.passwordHash&&!(await bcrypt.compare(req.body.password||"",r.passwordHash)))return res.status(403).json({error:"Wrong room password."});
     await pool.query("INSERT INTO room_members(room_id,user_id,invited_by) VALUES($1,$2,$3) ON CONFLICT(room_id,user_id) DO NOTHING",[Number(r.id),Number(u.id),Number(r.ownerId||r.created_by||u.id)]);
 
     if(!u.hideMode&&!u.invisible)systemNotice(`${u.displayName||u.username} has joined the room ${r.name}.`,r.id);
