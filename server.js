@@ -1912,13 +1912,7 @@ app.get('/api/users/blocked',auth,(req,res)=>{
 });
 
 app.get("/api/rooms",auth,async(req,res)=>{
-  // Remove Chill Zone permanently, including any messages left in it.
-  const unwantedRoom = await pool.query(`SELECT id FROM rooms WHERE LOWER(TRIM(name))='chill zone'`);
-  if (unwantedRoom.rowCount) {
-    const unwantedIds = unwantedRoom.rows.map(row => Number(row.id));
-    await pool.query(`DELETE FROM room_messages WHERE room_id = ANY($1::int[])`, [unwantedIds]);
-    await pool.query(`DELETE FROM rooms WHERE id = ANY($1::int[])`, [unwantedIds]);
-  }
+  // Preserve existing rooms and their message history during room-list requests.
   // Normalize legacy Main Room duplicates without discarding their history.
   await pool.query(`INSERT INTO rooms(name,created_by,icon,description,category,is_public,rank_required,invite_token,min_age,max_age,is_default)
     VALUES ('Main Room',(SELECT id FROM users WHERE username='Maleficent'),'🏠','The main Maleficent Chat community room.','Community',true,'MEMBER','main-room',0,120,true)
@@ -1941,9 +1935,12 @@ app.get("/api/rooms",auth,async(req,res)=>{
   await pool.query(`UPDATE rooms SET is_default=false WHERE name <> 'Main Room'`);
   const {rows}=await pool.query(`SELECT r.*,u.username AS creator FROM rooms r LEFT JOIN users u ON r.created_by=u.id ORDER BY r.is_default DESC,r.created_at ASC,r.id ASC`);
   if(!rows.length) return res.status(503).json({error:'Rooms are not initialized yet. Please retry in a moment.',rooms:[]});
-  const rooms=rows.map(r=>({id:String(r.id),name:r.name,icon:r.icon||"💬",description:r.description||"",category:r.category||"Community",public:r.is_public!==false,passwordHash:r.password_hash||null,rankRequired:String(r.rank_required||"MEMBER").toUpperCase(),limit:Number(r.room_limit||100),slowMode:Number(r.slow_mode||0),announcement:r.announcement||"",ownerId:r.created_by?String(r.created_by):null,banner:r.banner||"",inviteToken:r.invite_token||"",creator:r.creator||null,isDefault:!!r.is_default,minAge:Number(r.min_age??0),maxAge:Number(r.max_age??120),friendsOnly:!!(db.settings?.room_access?.[String(r.id)]?.friendsOnly),roomTheme:String(db.settings?.room_themes?.[String(r.id)]||"obsidian"),locked:!!r.password_hash,onlineCount:visibleRoomOnlineCount(r.id)}));
-  db.rooms=rooms;
-  res.json({rooms:rooms.map(r=>({...r,passwordHash:undefined}))});
+  const rooms=rows.map(r=>({id:String(r.id),name:r.name,icon:r.icon||"💬",description:r.description||"",category:r.category||"Community",public:r.is_public!==false,passwordHash:r.password_hash||null,rankRequired:String(r.rank_required||"MEMBER").toUpperCase(),limit:Number(r.room_limit||100),slowMode:Number(r.slow_mode||0),announcement:r.announcement||"",ownerId:r.created_by?String(r.created_by):null,banner:r.banner||"",inviteToken:r.invite_token||"",creator:r.creator||null,isDefault:!!r.is_default,minAge:Number(r.min_age??0),maxAge:Number(r.max_age??120),friendsOnly:!!(db.settings?.room_access?.[String(r.id)]?.friendsOnly),roomTheme:String(db.settings?.room_themes?.[String(r.id)]||r.theme||"obsidian"),locked:!!r.password_hash,hidden:!!r.is_hidden,expiresAt:r.expires_at?new Date(r.expires_at).getTime():null,onlineCount:visibleRoomOnlineCount(r.id)}));
+  db.rooms=rooms.filter(r=>!r.expiresAt||r.expiresAt>Date.now());
+  const viewer=current(req);
+  const requestedInvite=String(req.query.invite||"");
+  const visibleRooms=db.rooms.filter(r=>!r.hidden||String(r.ownerId)===String(viewer.id)||db.settings?.room_staff?.[String(r.id)]?.[String(viewer.id)]||false||(requestedInvite&&requestedInvite===String(r.inviteToken||"")));
+  res.json({rooms:visibleRooms.map(r=>({...r,passwordHash:undefined,inviteToken:undefined}))});
 });
 
 function userAge(user){
@@ -1971,12 +1968,18 @@ function areAcceptedFriends(userA,userB){
 
 async function createRoomHandler(req,res){
   const u=current(req); if(!u)return res.status(401).json({error:"Login required"});
-  if(!(featureGrantAllowed(u,"create_rooms")||hasFeature(u,"create_room"))) return res.status(403).json({error:`Create room requires ${featureRank("create_room")} or higher.`});
+  // Keep the API permission aligned with the room-creation button in the client.
+  // Premium/Royal and the staff ranks explicitly allowed by the UI can create rooms;
+  // feature grants remain an additional way to authorize other accounts.
+  const roomCreatorRanks=["PREMIUM","ROYAL","MOD","MODERATOR","ADMIN","SUPER_ADMIN","SUPERADMIN","COMMISSOR","INSTRUCTOR","COOWNER","OWNER","DEVELOPER"];
+  if(!roomCreatorRanks.includes(String(u.rank||"").toUpperCase()) && !(featureGrantAllowed(u,"create_rooms")||hasFeature(u,"create_room"))) {
+    return res.status(403).json({error:`Create room requires ${featureRank("create_room")} or an explicit create-room permission.`});
+  }
   const name=cleanText(req.body.name).trim().slice(0,50)||"New Room";
   const password=req.body.password?await bcrypt.hash(String(req.body.password),10):null;
   try{
-    const q=await pool.query(`INSERT INTO rooms(name,created_by,icon,description,category,is_public,password_hash,rank_required,room_limit,slow_mode,banner,invite_token,is_default,min_age,max_age) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,false,$13,$14) RETURNING *, (SELECT username FROM users WHERE id=created_by) AS creator`,[name,Number(u.id),req.body.icon||"💬",cleanText(req.body.description).slice(0,300),cleanText(req.body.category).slice(0,40)||"Community",req.body.public!==false,password,String(req.body.rankRequired||"MEMBER").toUpperCase(),Number(req.body.limit)||100,Number(req.body.slowMode)||0,req.body.banner||"",crypto.randomBytes(12).toString("hex"),Math.max(0,Math.min(120,Number(req.body.minAge)||0)),Math.max(0,Math.min(120,Number(req.body.maxAge??120)||120))]);
-    const r=q.rows[0]; const room={id:String(r.id),name:r.name,icon:r.icon||"💬",description:r.description||"",category:r.category||"Community",public:r.is_public!==false,passwordHash:r.password_hash||null,rankRequired:String(r.rank_required||"MEMBER").toUpperCase(),limit:Number(r.room_limit||100),slowMode:Number(r.slow_mode||0),announcement:r.announcement||"",ownerId:String(r.created_by),banner:r.banner||"",inviteToken:r.invite_token||"",creator:r.creator||u.username,isDefault:false,minAge:Number(r.min_age??0),maxAge:Number(r.max_age??120),friendsOnly:req.body.friendsOnly===true};
+    const q=await pool.query(`INSERT INTO rooms(name,created_by,icon,description,category,is_public,password_hash,rank_required,room_limit,slow_mode,banner,invite_token,is_default,min_age,max_age,is_hidden,expires_at,theme) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,false,$13,$14,$15,$16,$17) RETURNING *, (SELECT username FROM users WHERE id=created_by) AS creator`,[name,Number(u.id),req.body.icon||"💬",cleanText(req.body.description).slice(0,300),cleanText(req.body.category).slice(0,40)||"Community",req.body.public!==false,password,String(req.body.rankRequired||"MEMBER").toUpperCase(),Number(req.body.limit)||100,Number(req.body.slowMode)||0,req.body.banner||"",crypto.randomBytes(12).toString("hex"),Math.max(0,Math.min(120,Number(req.body.minAge)||0)),Math.max(0,Math.min(120,Number(req.body.maxAge??120)||120)),req.body.hidden===true,req.body.expiresAt?new Date(req.body.expiresAt):null,String(req.body.theme||"obsidian").slice(0,40)]);
+    const r=q.rows[0]; const room={id:String(r.id),name:r.name,icon:r.icon||"💬",description:r.description||"",category:r.category||"Community",public:r.is_public!==false,passwordHash:r.password_hash||null,rankRequired:String(r.rank_required||"MEMBER").toUpperCase(),limit:Number(r.room_limit||100),slowMode:Number(r.slow_mode||0),announcement:r.announcement||"",ownerId:String(r.created_by),banner:r.banner||"",inviteToken:r.invite_token||"",creator:r.creator||u.username,isDefault:false,minAge:Number(r.min_age??0),maxAge:Number(r.max_age??120),friendsOnly:req.body.friendsOnly===true,hidden:!!r.is_hidden,expiresAt:r.expires_at?new Date(r.expires_at).getTime():null,theme:r.theme||"obsidian"};
     db.settings ||= {};db.settings.room_access ||= {};db.settings.room_access[String(room.id)]={friendsOnly:room.friendsOnly};
     db.rooms.push(room); db.settings ||= {}; db.settings.room_staff ||= {}; db.settings.room_staff[String(room.id)] ||= {}; db.settings.room_staff[String(room.id)][String(u.id)]="ROOM_OWNER"; save(); log(u,"ROOM_CREATE",room.name); io.emit('rooms_updated'); res.status(201).json({room:{...room,passwordHash:undefined}});
   }catch(e){if(e.code==='23505')return res.status(409).json({error:'A room with that name already exists.'});console.error(e);res.status(500).json({error:'Could not create room.'});}
@@ -2027,6 +2030,23 @@ app.put("/api/owner/room-role-permissions",ownerOnly,async(req,res)=>{
     save();log(current(req),"ROOM_ROLE_PERMISSIONS_UPDATE","room roles",{permissions:clean});
     res.json({ok:true,permissions:clean});
   }catch(error){console.error("Room role permission save failed:",error);res.status(500).json({error:"Could not save room-role permissions."});}
+});
+app.get("/api/rooms/:id/members",auth,async(req,res)=>{
+ const u=current(req),room=db.rooms.find(r=>String(r.id)===String(req.params.id));
+ if(!room)return res.status(404).json({error:"Room not found"});
+ const member=await pool.query("SELECT 1 FROM room_members WHERE room_id=$1 AND user_id=$2",[Number(room.id),Number(u.id)]);
+ if(room.hidden&&String(room.ownerId)!==String(u.id)&&roomRole(room.id,u.id)==="USER"&&!member.rowCount)return res.status(403).json({error:"This room is hidden."});
+ const {rows}=await pool.query("SELECT u.id,u.username,u.rank,u.avatar,m.joined_at FROM room_members m JOIN users u ON u.id=m.user_id WHERE m.room_id=$1 ORDER BY m.joined_at ASC",[Number(room.id)]);
+ res.json({members:rows});
+});
+app.post("/api/rooms/:id/invite",auth,async(req,res)=>{
+ const u=current(req),room=db.rooms.find(r=>String(r.id)===String(req.params.id));
+ if(!room)return res.status(404).json({error:"Room not found"});
+ if(!roomOwnerOrGlobal(u,room)&&!roomRoleCan(room.id,u.id,"manage_staff"))return res.status(403).json({error:"Only the room owner or authorized room staff can create invitations."});
+ const token=crypto.randomBytes(24).toString("hex");
+ await pool.query("UPDATE rooms SET invite_token=$2 WHERE id=$1",[Number(room.id),token]);
+ room.inviteToken=token;
+ res.json({ok:true,token,url:"/?room="+encodeURIComponent(room.id)+"&invite="+token});
 });
 app.get("/api/rooms/:id/staff",auth,(req,res)=>{
   const room=db.rooms.find(x=>String(x.id)===String(req.params.id));if(!room)return res.status(404).json({error:"Room not found"});
@@ -2102,7 +2122,7 @@ app.put("/api/rooms/:id",auth,async(req,res)=>{
   const previousRankRequired=String(r.rankRequired||"MEMBER").toUpperCase();
   if(r.isDefault || /^main room$/i.test(String(r.name||"").trim()))return res.status(403).json({error:"The permanent Main Room cannot be modified."});
   if(!featureGrantAllowed(u,"edit_rooms")&&!(roomOwnerOrGlobal(u,r)&&Array.isArray(db.settings?.feature_grants?.room_edit_own)&&db.settings.feature_grants.room_edit_own.length))return res.status(403).json({error:"Room editing is disabled in Feature Granting or you do not own this room."});
-  const fields={}; for(const k of ["name","icon","description","category","rankRequired","limit","slowMode","banner","public","minAge","maxAge"]) if(req.body[k]!==undefined) fields[k]=req.body[k];
+  const fields={}; for(const k of ["name","icon","description","category","rankRequired","limit","slowMode","banner","public","minAge","maxAge","hidden","expiresAt","theme"]) if(req.body[k]!==undefined) fields[k]=req.body[k];
   if(fields.rankRequired!==undefined){
     fields.rankRequired=String(fields.rankRequired||"").toUpperCase();
     const allowedRoomRanks=["MEMBER","VIP","PREMIUM","MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"];
@@ -2114,9 +2134,9 @@ app.put("/api/rooms/:id",auth,async(req,res)=>{
     r.friendsOnly=req.body.friendsOnly===true;save();
   }
   if(req.body.password!==undefined) fields.passwordHash=req.body.password?await bcrypt.hash(String(req.body.password),10):null;
-  const sets=[],vals=[]; const map={name:"name",icon:"icon",description:"description",category:"category",rankRequired:"rank_required",limit:"room_limit",slowMode:"slow_mode",banner:"banner",public:"is_public",passwordHash:"password_hash",minAge:"min_age",maxAge:"max_age"};
+  if(fields.expiresAt!==undefined){const dt=fields.expiresAt?new Date(fields.expiresAt):null;if(dt&&(!Number.isFinite(dt.getTime())||dt.getTime()<=Date.now()))return res.status(400).json({error:"Temporary-room expiry must be a future date."});fields.expiresAt=dt;} if(fields.theme!==undefined)fields.theme=String(fields.theme||"obsidian").slice(0,40); if(fields.hidden!==undefined)fields.hidden=fields.hidden===true; const sets=[],vals=[]; const map={name:"name",icon:"icon",description:"description",category:"category",rankRequired:"rank_required",limit:"room_limit",slowMode:"slow_mode",banner:"banner",public:"is_public",passwordHash:"password_hash",minAge:"min_age",maxAge:"max_age",hidden:"is_hidden",expiresAt:"expires_at",theme:"theme"};
   for(const [k,v] of Object.entries(fields)){sets.push(`${map[k]}=$${vals.length+1}`);vals.push(k==="rankRequired"?String(v).toUpperCase():v);}
-  if(sets.length){vals.push(Number(r.id));const q=await pool.query(`UPDATE rooms SET ${sets.join(",")} WHERE id=${vals.length} RETURNING *`,vals);const x=q.rows[0];Object.assign(r,{name:x.name,icon:x.icon,description:x.description,category:x.category,rankRequired:x.rank_required,limit:x.room_limit,slowMode:x.slow_mode,banner:x.banner,public:x.is_public,passwordHash:x.password_hash,minAge:Number(x.min_age??0),maxAge:Number(x.max_age??99)});}
+  if(sets.length){vals.push(Number(r.id));const q=await pool.query(`UPDATE rooms SET ${sets.join(",")} WHERE id=${vals.length} RETURNING *`,vals);const x=q.rows[0];Object.assign(r,{name:x.name,icon:x.icon,description:x.description,category:x.category,rankRequired:x.rank_required,limit:x.room_limit,slowMode:x.slow_mode,banner:x.banner,public:x.is_public,passwordHash:x.password_hash,minAge:Number(x.min_age??0),maxAge:Number(x.max_age??120),hidden:!!x.is_hidden,expiresAt:x.expires_at?new Date(x.expires_at).getTime():null,theme:x.theme||"obsidian"});}
   save();
   const nextRankRequired=String(r.rankRequired||"MEMBER").toUpperCase();
   if(nextRankRequired!==previousRankRequired){
@@ -2168,10 +2188,9 @@ app.post(
     );
 
     if(!r){
-      return res.status(404).json({
-        error:"Room not found"
-      });
+      return res.status(404).json({error:"Room not found"});
     }
+    if(r.expiresAt&&Number(r.expiresAt)<=Date.now())return res.status(410).json({error:"This temporary room has expired."});
     const roomState=roomStaffStore(),roomKey=String(r.id),uid=String(u.id);
     const blocked=roomState.room_blocks[roomKey]?.[uid];
     if(blocked)return res.status(403).json({error:"You are blocked from this room. Reason: "+String(blocked.reason||"Room rules").slice(0,240)});
@@ -2201,17 +2220,15 @@ app.post(
       return res.status(403).json({error:"This room is for the room owner's accepted friends only."});
     }
 
-    if(
-      r.passwordHash&&
-      !(await bcrypt.compare(
-        req.body.password||"",
-        r.passwordHash
-      ))
-    ){
-      return res.status(403).json({
-        error:"Wrong room password."
-      });
-    }
+    const inviteAccepted=!!r.hidden&&String(req.body.inviteToken||"")!==""&&String(req.body.inviteToken)===String(r.inviteToken||"");
+    const owner=String(r.ownerId||r.created_by||"")===String(u.id);
+    const roomStaff=roomRole(r.id,u.id)!=="USER";
+    const member=r.hidden?await pool.query("SELECT 1 FROM room_members WHERE room_id=$1 AND user_id=$2",[Number(r.id),Number(u.id)]):{rowCount:0};
+    const hasSecretRoomAccess=owner||roomStaff||!!member.rowCount||inviteAccepted;
+    const passwordAccepted=!!r.passwordHash&&!!req.body.password&&await bcrypt.compare(String(req.body.password),String(r.passwordHash));
+    if(r.passwordHash&&!passwordAccepted&&!(r.hidden&&hasSecretRoomAccess))return res.status(403).json({error:"Wrong room password."});
+    if(r.hidden&&!hasSecretRoomAccess&&!passwordAccepted)return res.status(403).json({error:"This room is hidden. Open a valid invitation or enter its password."});
+    await pool.query("INSERT INTO room_members(room_id,user_id,invited_by) VALUES($1,$2,$3) ON CONFLICT(room_id,user_id) DO NOTHING",[Number(r.id),Number(u.id),Number(r.ownerId||r.created_by||u.id)]);
 
     if(!u.hideMode&&!u.invisible)systemNotice(`${u.displayName||u.username} has joined the room ${r.name}.`,r.id);
     res.json({
@@ -4550,6 +4567,49 @@ app.delete('/api/doodles/:id',auth,async(req,res)=>{
 });
 
 // Friend Wall
+// Shadow Feed extras: saved posts, expiring posts, and staff-featured posts.
+app.get('/api/wall/saved',auth,async(req,res)=>{
+  const u=current(req);
+  const {rows}=await pool.query(`SELECT w.*,u2.username,u2.avatar,u2.rank,true AS saved
+    FROM wall_post_saves s JOIN wall_posts w ON w.id=s.post_id
+    LEFT JOIN users u2 ON u2.id=w.user_id
+    WHERE s.user_id=$1 AND (w.expires_at IS NULL OR w.expires_at>NOW())
+    ORDER BY s.created_at DESC LIMIT 100`,[Number(u.id)]);
+  res.json({posts:rows});
+});
+app.post('/api/wall/:id/save',auth,async(req,res)=>{
+  const u=current(req),pid=Number(req.params.id);
+  const exists=await pool.query('SELECT 1 FROM wall_posts WHERE id=$1 AND (expires_at IS NULL OR expires_at>NOW())',[pid]);
+  if(!exists.rowCount)return res.status(404).json({error:'Post not found or expired.'});
+  const saved=await pool.query('SELECT 1 FROM wall_post_saves WHERE post_id=$1 AND user_id=$2',[pid,Number(u.id)]);
+  if(saved.rowCount)await pool.query('DELETE FROM wall_post_saves WHERE post_id=$1 AND user_id=$2',[pid,Number(u.id)]);
+  else await pool.query('INSERT INTO wall_post_saves(post_id,user_id) VALUES($1,$2) ON CONFLICT DO NOTHING',[pid,Number(u.id)]);
+  res.json({ok:true,saved:!saved.rowCount});
+});
+app.post('/api/wall/:id/feature',auth,async(req,res)=>{
+  const u=current(req);
+  if(!hasFeature(u,'pin_news')&&!['DEVELOPER','OWNER'].includes(String(u.rank||'').toUpperCase()))return res.status(403).json({error:'Only authorized staff can feature community posts.'});
+  const featured=!!req.body?.featured;
+  const result=await pool.query('UPDATE wall_posts SET featured=$2 WHERE id=$1 RETURNING id,featured',[req.params.id,featured]);
+  if(!result.rowCount)return res.status(404).json({error:'Post not found.'});
+  log(u,'WALL_POST_FEATURE',String(req.params.id),{featured});
+  res.json({ok:true,featured});
+});
+app.get('/api/wall/friends',auth,async(req,res)=>{
+  const u=current(req);
+  const friendIds=[...new Set((db.friends||[]).filter(f=>f.status==="ACCEPTED"&&(String(f.a)===String(u.id)||String(f.b)===String(u.id))).map(f=>Number(String(f.a)===String(u.id)?f.b:f.a)).filter(Number.isSafeInteger))];
+  if(!friendIds.length)return res.json({posts:[]});
+  await pool.query(`CREATE TABLE IF NOT EXISTS wall_post_reactions(post_id BIGINT NOT NULL,user_id BIGINT NOT NULL,emoji TEXT NOT NULL,created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),PRIMARY KEY(post_id,user_id,emoji))`);
+  const {rows}=await pool.query(`
+    SELECT w.*,u.username,u.avatar,u.rank,
+      COALESCE((SELECT jsonb_object_agg(r.emoji,r.users) FROM (SELECT emoji,jsonb_agg(user_id::text) AS users FROM wall_post_reactions WHERE post_id=w.id GROUP BY emoji) r),'{}'::jsonb) AS reactions,
+      (SELECT COUNT(*)::int FROM wall_comments wc WHERE wc.post_id=w.id) AS comment_count
+    FROM wall_posts w LEFT JOIN users u ON u.id=w.user_id
+    WHERE w.user_id=ANY($1::int[]) AND w.status IN ('approved','pinned') AND (w.expires_at IS NULL OR w.expires_at>NOW())
+    ORDER BY CASE WHEN w.status='pinned' THEN 0 ELSE 1 END,w.featured DESC,w.created_at DESC LIMIT 100`,[friendIds]);
+  res.json({posts:rows});
+});
+
 app.get('/api/wall',auth,async(req,res)=>{
   await pool.query(`CREATE TABLE IF NOT EXISTS wall_post_reactions(post_id BIGINT NOT NULL,user_id BIGINT NOT NULL,emoji TEXT NOT NULL,created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),PRIMARY KEY(post_id,user_id,emoji))`);
   const {rows}=await pool.query(`
@@ -4557,8 +4617,8 @@ app.get('/api/wall',auth,async(req,res)=>{
       COALESCE((SELECT jsonb_object_agg(r.emoji,r.users) FROM (SELECT emoji,jsonb_agg(user_id::text) AS users FROM wall_post_reactions WHERE post_id=w.id GROUP BY emoji) r),'{}'::jsonb) AS reactions,
       (SELECT COUNT(*)::int FROM wall_comments wc WHERE wc.post_id=w.id) AS comment_count
     FROM wall_posts w LEFT JOIN users u ON u.id=w.user_id
-    WHERE w.status IN ('approved','pinned')
-    ORDER BY CASE WHEN w.status='pinned' THEN 0 ELSE 1 END,w.created_at DESC LIMIT 100`);
+    WHERE w.status IN ('approved','pinned') AND (w.expires_at IS NULL OR w.expires_at>NOW())
+    ORDER BY CASE WHEN w.status='pinned' THEN 0 ELSE 1 END,w.featured DESC,w.created_at DESC LIMIT 100`);
   res.json({posts:rows});
 });
 app.post('/api/wall/:id/reaction',auth,async(req,res)=>{
@@ -4576,12 +4636,15 @@ app.post('/api/wall/:id/reaction',auth,async(req,res)=>{
 async function wallPostHandler(req,res){
   const u=current(req), grants=db.settings?.feature_grants?.wall_post||["OWNER","ADMIN"], rank=String(u.rank||'').toUpperCase();
   if(await checkRestrictedMediaUpload(req,res,u,req.file))return;
-  if(String(u.rank).toUpperCase()!=="DEVELOPER" && u.username!==DEFAULT_OWNER&&!grants.map(x=>String(x).toUpperCase()).includes(rank))return res.status(403).json({error:"Your rank cannot create wall posts."});
+  // Shadow Feed is a member-facing social feature; moderation controls remain separately permission-gated.
   const content=cleanText(req.body.content||"").trim().slice(0,5000), media=req.file;
   if(media&&!/^(image\/(png|jpe?g|gif|webp|avif)|video\/)/i.test(media.mimetype))return res.status(400).json({error:"Only image or video files are allowed."});
   if(!content&&!media)return res.status(400).json({error:"Post cannot be empty."});
   const mediaUrl=media?`/uploads/${media.filename}`:null;
-  const {rows}=await pool.query(`INSERT INTO wall_posts(user_id,content,media_url) VALUES($1,$2,$3) RETURNING *`,[Number(u.id),content,mediaUrl]);
+  const requestedHours=Number(req.body.expiresInHours||0),allowedHours=[0,1,6,12,24,72,168];
+  if(!allowedHours.includes(requestedHours))return res.status(400).json({error:"Choose a supported post expiry."});
+  const expiresAt=requestedHours?new Date(Date.now()+requestedHours*3600000):null;
+  const {rows}=await pool.query(`INSERT INTO wall_posts(user_id,content,media_url,expires_at) VALUES($1,$2,$3,$4) RETURNING *`,[Number(u.id),content,mediaUrl,expiresAt]);
   res.json({post:{...rows[0],username:u.username,avatar:u.avatar||"",rank:u.rank}});
 }
 app.post('/api/wall/post',auth,upload.single('file'),wallPostHandler);
@@ -5357,6 +5420,80 @@ app.get("/api/owner/dms",ownerOnly,async(req,res)=>{
   const q=await pool.query(sql+where+` ORDER BY created_at DESC LIMIT 2000`,params);
   const usersById=new Map(db.users.map(u=>[String(u.id),u]));
   res.json({privateMessages:q.rows.map(r=>{const m=r.data||{};const fu=usersById.get(String(m.from)),tu=usersById.get(String(m.to));return {...m,fromUsername:fu?.username||m.from,toUsername:tu?.username||m.to,fromDisplayName:fu?.displayName||'',toDisplayName:tu?.displayName||''};})});
+});
+
+// Private-message controls: only the sender can edit/delete their own message.
+app.patch('/api/dm/messages/:messageId',auth,async(req,res)=>{
+  const u=current(req),text=cleanText(req.body?.text||'').trim().slice(0,4000);
+  if(!text)return res.status(400).json({error:'Message text cannot be empty.'});
+  const q=await pool.query('SELECT id,sender_id,receiver_id,data FROM private_messages WHERE id=$1',[req.params.messageId]);
+  if(!q.rowCount)return res.status(404).json({error:'Message not found.'});
+  const row=q.rows[0];if(Number(row.sender_id)!==Number(u.id))return res.status(403).json({error:'You can edit only your own messages.'});
+  const data={...(row.data||{}),text,edited:true,editedAt:Date.now()};
+  await pool.query('UPDATE private_messages SET message=$2,data=$3::jsonb WHERE id=$1',[row.id,text,JSON.stringify(data)]);
+  Object.assign(db.privateMessages.find(m=>String(m.id)===String(row.id))||{},data);
+  io.to('user:'+row.sender_id).emit('dm-updated',{message:data});
+  io.to('user:'+row.receiver_id).emit('dm-updated',{message:data});
+  res.json({ok:true,message:data});
+});
+app.delete('/api/dm/messages/:messageId',auth,async(req,res)=>{
+  const u=current(req);
+  const q=await pool.query('SELECT id,sender_id,receiver_id,data FROM private_messages WHERE id=$1',[req.params.messageId]);
+  if(!q.rowCount)return res.status(404).json({error:'Message not found.'});
+  const row=q.rows[0];if(Number(row.sender_id)!==Number(u.id))return res.status(403).json({error:'You can delete only your own messages.'});
+  const data={...(row.data||{}),text:'',attachment:null,deleted:true,deletedAt:Date.now()};
+  await pool.query('UPDATE private_messages SET message=NULL,data=$2::jsonb WHERE id=$1',[row.id,JSON.stringify(data)]);
+  io.to('user:'+row.sender_id).emit('dm-updated',{message:data});
+  io.to('user:'+row.receiver_id).emit('dm-updated',{message:data});
+  res.json({ok:true});
+});
+app.post('/api/dm/messages/:messageId/reaction',auth,async(req,res)=>{
+  const u=current(req),emoji=String(req.body?.emoji||'');
+  const allowed=['❤️','😂','😭','✨','👍','🔥','🥀','👏','😮'];
+  if(!allowed.includes(emoji))return res.status(400).json({error:'Unsupported reaction.'});
+  const q=await pool.query('SELECT sender_id,receiver_id FROM private_messages WHERE id=$1',[req.params.messageId]);
+  if(!q.rowCount)return res.status(404).json({error:'Message not found.'});
+  const row=q.rows[0],uid=Number(u.id);
+  if(uid!==Number(row.sender_id)&&uid!==Number(row.receiver_id))return res.status(403).json({error:'This message is not in your conversation.'});
+  const old=await pool.query('SELECT 1 FROM dm_message_reactions WHERE message_id=$1 AND user_id=$2 AND emoji=$3',[req.params.messageId,uid,emoji]);
+  if(old.rowCount)await pool.query('DELETE FROM dm_message_reactions WHERE message_id=$1 AND user_id=$2 AND emoji=$3',[req.params.messageId,uid,emoji]);
+  else await pool.query('INSERT INTO dm_message_reactions(message_id,user_id,emoji) VALUES($1,$2,$3) ON CONFLICT DO NOTHING',[req.params.messageId,uid,emoji]);
+  const reactions=await pool.query('SELECT emoji,jsonb_agg(user_id::text) AS users FROM dm_message_reactions WHERE message_id=$1 GROUP BY emoji',[req.params.messageId]);
+  const payload={messageId:req.params.messageId,reactions:Object.fromEntries(reactions.rows.map(x=>[x.emoji,x.users]))};
+  io.to('user:'+row.sender_id).emit('dm-reactions',payload);io.to('user:'+row.receiver_id).emit('dm-reactions',payload);
+  res.json({ok:true,...payload});
+});
+app.post('/api/dm/:peerId/pins/:messageId',auth,async(req,res)=>{
+  const u=current(req),peer=findUser(req.params.peerId);
+  if(!peer)return res.status(404).json({error:'User not found.'});
+  const q=await pool.query('SELECT sender_id,receiver_id FROM private_messages WHERE id=$1',[req.params.messageId]);
+  if(!q.rowCount)return res.status(404).json({error:'Message not found.'});
+  const row=q.rows[0],uid=Number(u.id),pid=Number(peer.id);
+  if(!((Number(row.sender_id)===uid&&Number(row.receiver_id)===pid)||(Number(row.sender_id)===pid&&Number(row.receiver_id)===uid)))return res.status(403).json({error:'Message is not part of this conversation.'});
+  const old=await pool.query('SELECT 1 FROM dm_pinned_messages WHERE owner_id=$1 AND peer_id=$2 AND message_id=$3',[uid,pid,req.params.messageId]);
+  if(old.rowCount)await pool.query('DELETE FROM dm_pinned_messages WHERE owner_id=$1 AND peer_id=$2 AND message_id=$3',[uid,pid,req.params.messageId]);
+  else await pool.query('INSERT INTO dm_pinned_messages(owner_id,peer_id,message_id) VALUES($1,$2,$3) ON CONFLICT DO NOTHING',[uid,pid,req.params.messageId]);
+  res.json({ok:true,pinned:!old.rowCount});
+});
+app.get('/api/dm/:peerId/pins',auth,async(req,res)=>{
+  const u=current(req),peer=findUser(req.params.peerId);if(!peer)return res.status(404).json({error:'User not found.'});
+  const {rows}=await pool.query(`SELECT p.pinned_at,m.data FROM dm_pinned_messages p JOIN private_messages m ON m.id=p.message_id
+    WHERE p.owner_id=$1 AND p.peer_id=$2 ORDER BY p.pinned_at DESC LIMIT 50`,[Number(u.id),Number(peer.id)]);
+  res.json({messages:rows.map(x=>({...x.data,pinnedAt:x.pinned_at}))});
+});
+app.get('/api/dm/:peerId/search',auth,async(req,res)=>{
+  const u=current(req),peer=findUser(req.params.peerId),q=cleanText(req.query.q||'').trim().slice(0,100);
+  if(!peer)return res.status(404).json({error:'User not found.'});
+  if(!q)return res.json({messages:[]});
+  const {rows}=await pool.query(`SELECT data FROM private_messages
+    WHERE ((sender_id=$1 AND receiver_id=$2) OR (sender_id=$2 AND receiver_id=$1))
+      AND COALESCE(data->>'text',message,'') ILIKE $3
+    ORDER BY created_at DESC LIMIT 100`,[Number(u.id),Number(peer.id),'%'+q+'%']);
+  res.json({messages:rows.reverse().map(x=>x.data)});
+});
+
+app.get("/api/dm/unread-count",auth')+'%']);
+  res.json({messages:rows.reverse().map(x=>x.data)});
 });
 
 app.get("/api/dm/unread-count",auth,featureAllowed("private_messages"),async(req,res)=>{
@@ -6406,13 +6543,8 @@ app.get('/api/me/account',auth,async(req,res)=>{
     await pool.query('CREATE TABLE IF NOT EXISTS push_subscriptions(id BIGSERIAL PRIMARY KEY,user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,endpoint TEXT NOT NULL UNIQUE,p256dh TEXT NOT NULL,auth TEXT NOT NULL,created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),last_used_at TIMESTAMPTZ)');
     await pool.query('CREATE INDEX IF NOT EXISTS push_subscriptions_user_idx ON push_subscriptions(user_id)');
 
-    // Remove Chill Zone permanently on startup so it cannot reappear after a deploy.
-    const unwantedRoom = await pool.query(`SELECT id FROM rooms WHERE LOWER(TRIM(name))='chill zone'`);
-    if (unwantedRoom.rowCount) {
-      const unwantedIds = unwantedRoom.rows.map(row => Number(row.id));
-      await pool.query(`DELETE FROM room_messages WHERE room_id = ANY($1::int[])`, [unwantedIds]);
-      await pool.query(`DELETE FROM rooms WHERE id = ANY($1::int[])`, [unwantedIds]);
-    }
+    // Never delete user-created rooms or their message history during startup.
+    // Room cleanup must be an explicit, separately authorized action.
 
     // Initialize the permanent Main Room during server startup, before the
     // first browser request. This prevents an empty room list after login.

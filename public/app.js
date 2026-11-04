@@ -843,6 +843,18 @@ async function start() {
     if(state.view==="news") loadNews();
   });
 
+  state.socket.on("dm-updated", payload => {
+    const updated=payload&&payload.message;if(!updated||!updated.id)return;
+    state.dmMessages=(state.dmMessages||[]).map(m=>String(m.id)===String(updated.id)?{...m,...updated}:m);
+    const peer=String(state.dmUserId||""),from=String(updated.from??""),to=String(updated.to??"");
+    if(peer&&(from===peer||to===peer)){const list=$("dmMessages");if(list&&state.dmPeerUser){list.innerHTML=state.dmMessages.map(m=>dmMessageHTML(m,state.dmMessages,state.dmPeerUser)).join("")||'<p class="muted">No private messages yet.</p>';list.scrollTop=list.scrollHeight;}}
+    loadDMList().catch(()=>{});
+  });
+  state.socket.on("dm-reactions", payload => {
+    if(!payload||!payload.messageId)return;
+    state.dmMessages=(state.dmMessages||[]).map(m=>String(m.id)===String(payload.messageId)?{...m,reactions:payload.reactions}:m);
+    const list=$("dmMessages");if(list&&state.dmPeerUser)list.innerHTML=state.dmMessages.map(m=>dmMessageHTML(m,state.dmMessages,state.dmPeerUser)).join("");
+  });
   state.socket.on("dm", message => {
     refreshTopDMUnreadBadge();
     const from=String(message?.from??message?.senderId??message?.fromId??"");
@@ -877,7 +889,9 @@ async function start() {
 
   // Always enter Main Room after login. Retry the authoritative room list/join
   // while the session and seeded rooms settle; do not switch to an old room.
-  const findMainRoom=()=>state.rooms.find(room=>room.isDefault) ||
+  const inviteRoomId=new URLSearchParams(location.search).get("room")||"";
+  const inviteTokenForJoin=new URLSearchParams(location.search).get("invite")||"";
+  const findMainRoom=()=>inviteRoomId&&inviteTokenForJoin?state.rooms.find(room=>String(room.id)===String(inviteRoomId)):state.rooms.find(room=>room.isDefault) ||
     state.rooms.find(room=>String(room.name||"").trim().toLowerCase()==="main room");
   let mainRoom=findMainRoom();
   let joined=false;
@@ -890,7 +904,7 @@ async function start() {
   for(let attempt=0;attempt<4&&!joined;attempt++){
     if(!mainRoom||attempt>0){
       try{
-        const latest=await api("/api/rooms");
+        const latest=await api("/api/rooms"+(inviteTokenForJoin?"?invite="+encodeURIComponent(inviteTokenForJoin):""));
         state.rooms=sanitizeRoomList(latest.rooms);
         state.roomListMode="all";
         renderRooms();
@@ -1252,33 +1266,37 @@ async function loadSuggestions(){
 
 
 
+let wallShowingSaved=false,wallShowingFriends=false;
 async function loadWall(){
   try {
-    const d=await api('/api/wall'),feed=$('wallFeed'); if(!feed)return;
+    const d=await api(wallShowingSaved?'/api/wall/saved':(wallShowingFriends?'/api/wall/friends':'/api/wall')),feed=$('wallFeed'); if(!feed)return;
     const emojis=['👍','❤️','😂','😮','🔥','👏'];
     feed.innerHTML=(d.posts||[]).map(p=>{
       const rx=p.reactions&&typeof p.reactions==='object'?p.reactions:{};
       return `<article class="card wall-post social-feed-card" data-wall-id="${esc(p.id)}">
         <div class="news-card-top"><div class="social-author"><div class="social-author-avatar">${p.avatar?`<img src="${esc(p.avatar)}" alt="">`:'👤'}</div><div><h3>@${esc(p.username||'Unknown')}</h3><div class="muted">${esc(p.rank||'Member')} · ${fmt(p.created_at)}</div></div></div><button class="social-more" data-wall-more="${esc(p.id)}" aria-label="Post options">•••</button></div>
         <div class="news-body wall-content">${esc(p.content||'')}${p.media_url?(String(p.media_url).match(/\.(mp4|webm|ogg)(\?|$)/i)?`<video class="wall-media" controls src="${esc(p.media_url)}"></video>`:`<img class="wall-media" src="${esc(p.media_url)}" alt="Wall upload">`):''}</div>
-        <div class="social-reaction-summary">${emojis.map(e=>`<span>${e} <b>${(Array.isArray(rx[e])?rx[e]:[]).length}</b></span>`).join('')}<button class="social-comments-shortcut" data-wall-comments="${esc(p.id)}">${Number(p.comment_count||0)} 💬</button></div>
-        <div class="news-actions social-reaction-actions">${emojis.map(e=>{const us=Array.isArray(rx[e])?rx[e].map(String):[];return `<button class="mini ${us.includes(String(state.user?.id))?'reacted':''}" type="button" data-wall-reaction="${esc(e)}" data-wall-id="${esc(p.id)}">${e} <b>${us.length}</b></button>`}).join('')}<button class="mini" data-wall-comments="${esc(p.id)}">💬 Comments</button>${(String(p.user_id)===String(state.user?.id)||canFeature('delete_news'))?`<button class="mini danger" type="button" data-wall-delete="${esc(p.id)}">🗑 Delete</button>`:''}</div>
+        <div class="social-reaction-summary">${p.featured?'<span>📌 Featured</span>':''}${p.expires_at?'<span>⏳ Disappearing</span>':''}${emojis.map(e=>`<span>${e} <b>${(Array.isArray(rx[e])?rx[e]:[]).length}</b></span>`).join('')}<button class="social-comments-shortcut" data-wall-comments="${esc(p.id)}">${Number(p.comment_count||0)} 💬</button></div>
+        <div class="news-actions social-reaction-actions">${emojis.map(e=>{const us=Array.isArray(rx[e])?rx[e].map(String):[];return `<button class="mini ${us.includes(String(state.user?.id))?'reacted':''}" type="button" data-wall-reaction="${esc(e)}" data-wall-id="${esc(p.id)}">${e} <b>${us.length}</b></button>`}).join('')}<button class="mini" data-wall-save="${esc(p.id)}">${p.saved?'🔖 Saved':'🔖 Save'}</button><button class="mini" data-wall-comments="${esc(p.id)}">💬 Comments</button>${(canFeature('pin_news')||['OWNER','DEVELOPER'].includes(String(state.user?.rank||'').toUpperCase()))?`<button class="mini" type="button" data-wall-feature="${esc(p.id)}" data-featured="${p.featured?'true':'false'}">${p.featured?'Unfeature':'📌 Feature post'}</button>`:''}${(String(p.user_id)===String(state.user?.id)||canFeature('delete_news'))?`<button class="mini danger" type="button" data-wall-delete="${esc(p.id)}">🗑 Delete</button>`:''} </div>
         <div class="social-post-options hidden" id="wallOptions-${esc(p.id)}"><button type="button" data-wall-report="${esc(p.id)}">⚑ Report</button>${state.user?.username==='Maleficent'?`<button type="button" data-wall-pin="${esc(p.id)}">📌 Pin post</button>`:''}</div>
         <div class="wall-comments hidden" id="wallComments-${esc(p.id)}"></div>
       </article>`;
     }).join('')||'<p class="muted">No wall posts yet.</p>';
     document.querySelectorAll('[data-wall-more]').forEach(b=>b.onclick=()=> $('wallOptions-'+b.dataset.wallMore)?.classList.toggle('hidden'));
+    document.querySelectorAll('[data-wall-save]').forEach(b=>b.onclick=async()=>{try{const r=await api('/api/wall/'+encodeURIComponent(b.dataset.wallSave)+'/save',{method:'POST',body:JSON.stringify({})});toast(r.saved?'Post saved.':'Post removed from saved posts.');await loadWall()}catch(e){toast(e.message||'Could not save post.')}});
     document.querySelectorAll('[data-wall-reaction]').forEach(b=>b.onclick=async()=>{try{await api('/api/wall/'+encodeURIComponent(b.dataset.wallId)+'/reaction',{method:'POST',body:JSON.stringify({emoji:b.dataset.wallReaction})});await loadWall()}catch(e){toast(e.message||'Could not send reaction.')}});
     document.querySelectorAll('[data-wall-report]').forEach(b=>b.onclick=async()=>{try{await api('/api/wall/'+encodeURIComponent(b.dataset.wallReport)+'/report',{method:'POST',body:JSON.stringify({reason:'Reported by community member'})});toast('Wall post reported.')}catch(e){toast(e.message)}});
+    document.querySelectorAll('[data-wall-feature]').forEach(b=>b.onclick=async()=>{try{const featured=b.dataset.featured!=='true';await api('/api/wall/'+encodeURIComponent(b.dataset.wallFeature)+'/feature',{method:'POST',body:JSON.stringify({featured})});toast(featured?'Post featured.':'Post unfeatured.');await loadWall()}catch(e){toast(e.message||'Could not feature post.')}});
     document.querySelectorAll('[data-wall-delete]').forEach(b=>b.onclick=async()=>{const id=b.dataset.wallDelete;if(!confirm('Delete this Friends Wall post?'))return;b.disabled=true;try{await api('/api/wall/'+encodeURIComponent(id),{method:'DELETE'});toast('Friends Wall post deleted.');await loadWall()}catch(e){toast(e.message||'Could not delete wall post.');b.disabled=false}});
     document.querySelectorAll('[data-wall-pin]').forEach(b=>b.onclick=async()=>{try{await api('/api/wall/'+encodeURIComponent(b.dataset.wallPin)+'/pin',{method:'POST'});toast('Post pinned.');await loadWall()}catch(e){toast(e.message)}});
     document.querySelectorAll('[data-wall-comments]').forEach(b=>b.onclick=async()=>{const id=b.dataset.wallComments,box=$('wallComments-'+id);if(!box)return;box.classList.toggle('hidden');if(!box.classList.contains('hidden'))try{const d=await api('/api/wall/'+encodeURIComponent(id)+'/comments');box.innerHTML=(d.comments||[]).map(v=>`<div class="news-comment"><div class="news-comment-main"><div class="news-comment-head"><b>@${esc(v.username)}</b><small>${esc(v.rank||'Member')}</small></div><div class="news-comment-text">${esc(v.content)}</div></div></div>`).join('')+`<form class="wall-comment-form news-comment-form"><input placeholder="Write a comment…" maxlength="1000" required><button class="mini">Send</button></form>`;box.querySelector('form').onsubmit=async e=>{e.preventDefault();const input=e.currentTarget.querySelector('input');try{await api('/api/wall/'+encodeURIComponent(id)+'/comments',{method:'POST',body:JSON.stringify({content:input.value})});await loadWall();$('wallComments-'+id)?.classList.remove('hidden')}catch(err){toast(err.message)}}}catch(e){toast(e.message)}});
   } catch(e){toast(e.message||'Could not load Friends Wall.')}
 }
+if($('wallSavedToggle'))$('wallSavedToggle').onclick=async()=>{wallShowingSaved=!wallShowingSaved;if(wallShowingSaved)wallShowingFriends=false;$('wallSavedToggle').textContent=wallShowingSaved?'← Community feed':'🔖 Saved posts';if($('wallFriendsToggle'))$('wallFriendsToggle').textContent=wallShowingFriends?'✓ Friends activity':'💜 Friends activity';await loadWall();}; if($('wallFriendsToggle'))$('wallFriendsToggle').onclick=async()=>{wallShowingFriends=!wallShowingFriends;if(wallShowingFriends)wallShowingSaved=false;$('wallFriendsToggle').textContent=wallShowingFriends?'✓ Friends activity':'💜 Friends activity';if($('wallSavedToggle'))$('wallSavedToggle').textContent=wallShowingSaved?'← Community feed':'🔖 Saved posts';await loadWall();};
 if($('newWallPost'))$('newWallPost').onclick=async()=>{
-  modal(`<h2>New Wall Post</h2><textarea id="wallPostText" maxlength="5000" placeholder="Write something for your friends…"></textarea><input id="wallPostFile" type="file" accept="image/*,video/*"><div id="wallPreview" class="media-preview"></div><button class="primary" id="wallPostSend">Upload & Publish</button>`);
+  modal(`<h2>New Shadow Feed Post</h2><textarea id="wallPostText" maxlength="5000" placeholder="Share something with the community…"></textarea><label class="stack">Post duration<select id="wallPostExpiry"><option value="0">Keep on profile</option><option value="1">Disappear after 1 hour</option><option value="6">Disappear after 6 hours</option><option value="24">Disappear after 24 hours</option><option value="72">Disappear after 3 days</option><option value="168">Disappear after 7 days</option></select></label><input id="wallPostFile" type="file" accept="image/*,video/*"><div id="wallPreview" class="media-preview"></div><button class="primary" id="wallPostSend">Upload & Publish</button>`);
   $('wallPostFile')?.addEventListener('change',()=>{const f=$('wallPostFile').files?.[0],box=$('wallPreview');if(!f){box.innerHTML='';return}const u=URL.createObjectURL(f);box.innerHTML=f.type.startsWith('video/')?`<video controls src="${u}"></video>`:`<img src="${u}">`;});
-  $('wallPostSend').onclick=async()=>{try{const fd=new FormData();fd.append('content',$('wallPostText').value);const f=$('wallPostFile').files?.[0];if(f)fd.append('file',f);const token=safeStorage.getItem("mc_token"); const headers=token?{"x-auth-token":token}:{}; const r=await fetch('/api/wall/post',{method:'POST',body:fd,headers,credentials:'same-origin'});const d=await r.json().catch(()=>({}));if(!r.ok)throw Error(d.error||'Could not publish wall post.');closeModal();loadWall()}catch(e){toast(e.message)}};
+  $('wallPostSend').onclick=async()=>{try{const fd=new FormData();fd.append('content',$('wallPostText').value);fd.append('expiresInHours',$('wallPostExpiry')?.value||'0');const f=$('wallPostFile').files?.[0];if(f)fd.append('file',f);const token=safeStorage.getItem("mc_token"); const headers=token?{"x-auth-token":token}:{}; const r=await fetch('/api/wall/post',{method:'POST',body:fd,headers,credentials:'same-origin'});const d=await r.json().catch(()=>({}));if(!r.ok)throw Error(d.error||'Could not publish wall post.');closeModal();loadWall()}catch(e){toast(e.message)}};
 };
 
 async function loadRankShop(){
@@ -1472,7 +1490,8 @@ async function loadRooms() {
   let lastError = null;
   for (let attempt = 0; attempt < 2; attempt++) {
     try {
-      const data = await api("/api/rooms");
+      const inviteToken=new URLSearchParams(location.search).get("invite")||"";
+      const data = await api("/api/rooms"+(inviteToken?"?invite="+encodeURIComponent(inviteToken):""));
       state.rooms = sanitizeRoomList(data.rooms);
       // The room endpoint is the source of truth; always display all available rooms on initial load.
       if (state.rooms.length) {
@@ -1608,7 +1627,7 @@ async function joinRoom(id) {
 
     const access=await api(`/api/rooms/${id}/join`, {
       method: "POST",
-      body: JSON.stringify({ password })
+      body: JSON.stringify({ password, inviteToken: new URLSearchParams(location.search).get("invite") || "" })
     });
 
     if (
@@ -2417,6 +2436,58 @@ function openDoodleComposer(){
 $('doodleBtn')?.addEventListener('click',openDoodleComposer);
 
 
+// Voice notes: record in-browser, preview, then send via the existing authenticated room-message upload route.
+const voiceButton=$("voiceBtn");
+if(voiceButton && !voiceButton.dataset.voiceRecorderBound){
+  voiceButton.dataset.voiceRecorderBound="true";
+  voiceButton.addEventListener("click",async()=>{
+    if(!state.user){toast("Please log in before recording a voice note.");return;}
+    if(!state.currentRoom){toast("Join a room before recording a voice note.");return;}
+    if(!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder==="undefined"){
+      toast("Voice recording is not supported by this browser. Try the latest Chrome.");return;
+    }
+    let stream=null,recorder=null,chunks=[],recordedBlob=null,stopped=false;
+    modal(`<h2>🎙️ Voice note</h2><p class="muted">Record a short audio message for the current room.</p><div class="card"><div id="voiceRecordStatus" role="status">Ready to record</div><div class="toolbar"><button class="primary" id="voiceStart" type="button">● Start recording</button><button class="mini" id="voiceStop" type="button" disabled>■ Stop</button></div><audio id="voicePreview" controls class="hidden" style="width:100%;margin-top:12px"></audio><div class="toolbar"><button class="primary hidden" id="voiceSend" type="button">Send voice note</button><button class="mini" id="voiceCancel" type="button">Cancel</button></div></div>`);
+    const start=$("voiceStart"),stop=$("voiceStop"),send=$("voiceSend"),status=$("voiceRecordStatus"),preview=$("voicePreview"),cancel=$("voiceCancel");
+    const cleanup=()=>{try{if(recorder&&recorder.state!=="inactive")recorder.stop();}catch{}if(stream)stream.getTracks().forEach(track=>track.stop());};
+    cancel.onclick=()=>{cleanup();closeModal();};
+    start.onclick=async()=>{
+      start.disabled=true;
+      try{
+        stream=await navigator.mediaDevices.getUserMedia({audio:true});
+        const preferred=["audio/webm;codecs=opus","audio/webm","audio/ogg;codecs=opus"].find(type=>MediaRecorder.isTypeSupported?.(type));
+        recorder=preferred?new MediaRecorder(stream,{mimeType:preferred}):new MediaRecorder(stream);
+        chunks=[];recordedBlob=null;stopped=false;send.classList.add("hidden");preview.classList.add("hidden");
+        recorder.ondataavailable=event=>{if(event.data&&event.data.size)chunks.push(event.data);};
+        recorder.onerror=()=>{status.textContent="Recording failed. Please try again.";cleanup();start.disabled=false;stop.disabled=true;};
+        recorder.onstop=()=>{
+          if(stopped)return;stopped=true;
+          recordedBlob=new Blob(chunks,{type:recorder.mimeType||"audio/webm"});
+          if(!recordedBlob.size){status.textContent="No audio was captured. Try recording again.";start.disabled=false;return;}
+          preview.src=URL.createObjectURL(recordedBlob);preview.classList.remove("hidden");
+          send.classList.remove("hidden");status.textContent="Recording ready. Listen before sending.";
+          stream?.getTracks().forEach(track=>track.stop());stream=null;start.disabled=false;start.textContent="↻ Record again";stop.disabled=true;
+        };
+        recorder.start();status.textContent="Recording… speak now";stop.disabled=false;
+      }catch(error){status.textContent=error?.name==="NotAllowedError"?"Microphone permission was denied. Allow microphone access and retry.":"Could not start the microphone.";start.disabled=false;toast(status.textContent);}
+    };
+    stop.onclick=()=>{if(recorder&&recorder.state!=="inactive"){stop.disabled=true;recorder.stop();}};
+    send.onclick=async()=>{
+      if(!recordedBlob||!recordedBlob.size)return;
+      if(recordedBlob.size>15*1024*1024){toast("This voice note is too large. Record a shorter note.");return;}
+      send.disabled=true;send.textContent="Sending…";
+      try{
+        const ext=recordedBlob.type.includes("ogg")?"ogg":"webm";
+        const file=new File([recordedBlob],"voice-note."+ext,{type:recordedBlob.type||"audio/webm"});
+        const form=new FormData();form.append("text","🎙️ Voice note");form.append("file",file);
+        const result=await api("/api/rooms/"+encodeURIComponent(String(state.currentRoom))+"/messages",{method:"POST",body:form});
+        if(result.message&&String(result.message.roomId)===String(state.currentRoom))appendMessage(result.message);
+        closeModal();toast("Voice note sent.");
+      }catch(error){send.disabled=false;send.textContent="Send voice note";toast(error.message||"Could not send voice note.");}
+    };
+  });
+}
+
 const composer=$("composer");
 if(composer && !composer.dataset.submitBound){
   composer.dataset.submitBound="true";
@@ -3184,13 +3255,11 @@ function dmMessageHTML(message, messages, user) {
         }
 
         <div class="msg-actions">
-          <button
-            type="button"
-            class="mini"
-            onclick="replyDMMsg('${esc(message.id)}','${esc(user.id)}')"
-          >
-            Quote
-          </button>
+          <button type="button" class="mini" onclick="replyDMMsg('${esc(message.id)}','${esc(user.id)}')">↪ Reply</button>
+          <button type="button" class="mini" data-dm-react="❤️" data-dm-id="${esc(message.id)}">❤️</button>
+          <button type="button" class="mini" data-dm-react="😂" data-dm-id="${esc(message.id)}">😂</button>
+          <button type="button" class="mini" data-dm-pin="${esc(message.id)}">📌 Pin</button>
+          ${String(message.from)===String(state.user?.id)?`<button type="button" class="mini" data-dm-edit="${esc(message.id)}">✏️ Edit</button><button type="button" class="mini danger" data-dm-delete="${esc(message.id)}">🗑 Delete</button>`:''}
         </div>
       </div>
     </div>
@@ -3231,7 +3300,7 @@ async function openDM(id) {
 <button type="button" data-dm-action="report">⚑ <span><b>Report</b><small>Report this conversation</small></span></button></div></div>
       </div>
       <div class="dm-message-search"><span>⌕</span><input id="dmMessageSearch" placeholder="Search in this conversation…" autocomplete="off"><small id="dmSearchCount">${messages.length} messages</small></div>
-      <div class="dm-conversation-tools"><span>🔒 Private conversation</span><span id="dmTypingStatus" aria-live="polite">Quote a message to reply · Attach photos or files</span></div>
+      <div class="dm-conversation-tools"><span>🔒 Private conversation</span><span id="dmTypingStatus" aria-live="polite">Reply · Attach photos or voice notes</span><button type="button" class="mini" id="dmShowPins">📌 Pinned</button></div>
       <div
         id="dmMessages"
         class="messages dm-message-list"
@@ -3284,6 +3353,10 @@ async function openDM(id) {
     `);
 
     const dmTargetId=String(user.id),dmSettings=$('dmChatSettingsMenu'),dmSettingsBtn=$('dmChatSettingsBtn');
+    $('dmMessages')?.querySelectorAll('[data-dm-react]').forEach(btn=>btn.addEventListener('click',async()=>{try{await api('/api/dm/messages/'+encodeURIComponent(btn.dataset.dmId)+'/reaction',{method:'POST',body:JSON.stringify({emoji:btn.dataset.dmReact})});toast('Reaction updated.');}catch(e){toast(e.message)}}));
+    $('dmMessages')?.querySelectorAll('[data-dm-pin]').forEach(btn=>btn.addEventListener('click',async()=>{try{const r=await api('/api/dm/'+encodeURIComponent(dmTargetId)+'/pins/'+encodeURIComponent(btn.dataset.dmPin),{method:'POST',body:JSON.stringify({})});toast(r.pinned?'Message pinned.':'Message unpinned.');}catch(e){toast(e.message)}}));
+    $('dmMessages')?.querySelectorAll('[data-dm-edit]').forEach(btn=>btn.addEventListener('click',async()=>{const m=state.dmMessages.find(x=>String(x.id)===String(btn.dataset.dmEdit));if(!m)return;const next=prompt('Edit your message:',m.text||'');if(next===null)return;try{await api('/api/dm/messages/'+encodeURIComponent(m.id),{method:'PATCH',body:JSON.stringify({text:next})});await openDM(dmTargetId);}catch(e){toast(e.message)}}));
+    $('dmMessages')?.querySelectorAll('[data-dm-delete]').forEach(btn=>btn.addEventListener('click',async()=>{if(!confirm('Delete this message for both participants?'))return;try{await api('/api/dm/messages/'+encodeURIComponent(btn.dataset.dmDelete),{method:'DELETE'});await openDM(dmTargetId);}catch(e){toast(e.message)}}));
     dmSettingsBtn?.addEventListener('click',()=>{dmSettings?.classList.toggle('hidden');dmSettingsBtn.setAttribute('aria-expanded',String(!dmSettings?.classList.contains('hidden')));});
     $('dmCloseBtn')?.addEventListener('click',closeModal);
     dmSettings?.querySelectorAll('[data-dm-action]').forEach(btn=>btn.addEventListener('click',async()=>{
@@ -3299,7 +3372,9 @@ async function openDM(id) {
     // The conversation DOM now exists. Fetch again now so a message that arrived
     // while the contact list/modal was loading appears without reopening the DM.
     syncLiveMessages().catch(error=>console.warn("Post-open private-message sync failed:",error?.message||error));
+    $("dmShowPins")?.addEventListener("click",async()=>{try{const pins=await api("/api/dm/"+encodeURIComponent(dmTargetId)+"/pins");modal('<h2>📌 Pinned messages</h2><div class="stack">'+(pins.messages||[]).map(m=>'<article class="card"><b>'+esc(m.from===state.user?.id?'You':(user.displayName||user.username))+'</b><p>'+esc(m.text||'📎 Attachment')+'</p><small class="muted">'+fmt(m.pinnedAt)+'</small></article>').join('')+'</div><button class="mini" onclick="closeModal()">Close</button>');}catch(e){toast(e.message||"Could not load pinned messages.");}});
     const dmSearch=$("dmMessageSearch");
+    dmSearch?.addEventListener("keydown",async e=>{if(e.key!=="Enter")return;const q=dmSearch.value.trim();if(!q)return;e.preventDefault();try{const result=await api("/api/dm/"+encodeURIComponent(dmTargetId)+"/search?q="+encodeURIComponent(q));state.dmMessages=result.messages||[];const list=$("dmMessages");if(list)list.innerHTML=state.dmMessages.map(m=>dmMessageHTML(m,state.dmMessages,user)).join("")||'<p class="muted">No matching messages.</p>';if($("dmSearchCount"))$("dmSearchCount").textContent=state.dmMessages.length+" search results";}catch(err){toast(err.message||"Could not search conversation history.");}});
     dmSearch?.addEventListener("input",()=>{
       const q=dmSearch.value.trim().toLowerCase();
       let visible=0;
@@ -5591,6 +5666,12 @@ async function sendYoutube(videoId,title,music=false){
 }
 $("youtubeComposerBtn")?.addEventListener("click",()=>openYoutubePanel("youtube"));
 
+async function showRoomMembers(){
+  const room=state.rooms.find(r=>String(r.id)===String(state.currentRoom));if(!room)return;
+  try{const d=await api('/api/rooms/'+encodeURIComponent(room.id)+'/members');modal('<h2>👥 '+esc(room.name)+' members</h2><div class="stack">'+(d.members||[]).map(m=>'<div class="user-row">'+avatar(m)+'<div><b>@'+esc(m.username)+'</b><small class="muted"> '+esc(m.rank||'Member')+' · joined '+fmt(m.joined_at)+'</small></div></div>').join('')+'</div><button class="mini" onclick="closeModal()">Close</button>');}
+  catch(e){toast(e.message||'Could not load room members.');}
+}
+
 /* ---------------- ROOM MENU ---------------- */
 
 $("roomMenu").onclick = () => {
@@ -5620,6 +5701,7 @@ $("roomMenu").onclick = () => {
           : ""
       }
 
+      <button class="mini" onclick="showRoomMembers()">👥 Members</button>
       <button class="mini" onclick="postRoomAnnouncement()">📢 Room announcement</button>
       <button class="mini" onclick="showPinnedMessages()">📌 Pinned messages</button>
       <button class="mini" onclick="openYoutubePanel()">▶️ YouTube</button>
@@ -5694,6 +5776,8 @@ function editRoom() {
         <label>Who can discover this room<select id="rPublic"><option value="true" ${room.public!==false?"selected":""}>Public — listed for everyone</option><option value="false" ${room.public===false?"selected":""}>Private — not publicly listed</option></select></label>
         <label>Minimum rank to join<select id="rRankRequired">${rankChoices.map(r=>'<option value="'+r+'" '+(savedRequiredRank===r?'selected':'')+'>'+(rankLabels[r]||r.replaceAll("_"," "))+'</option>').join("")}</select></label>
         <label>Member access<select id="rFriendsOnly"><option value="false" ${room.friendsOnly?'':'selected'}>Anyone who meets the rank requirement</option><option value="true" ${room.friendsOnly?'selected':''}>Accepted friends only</option></select></label>
+        <label>Secret room<select id="rHidden"><option value="false" ${room.hidden?'':'selected'}>Listed normally</option><option value="true" ${room.hidden?'selected':''}>Hidden — invitation or password required</option></select></label>
+        <label>Temporary room expiry <span class="room-editor-optional">optional</span><input id="rExpiresAt" type="datetime-local" value="${room.expiresAt?new Date(room.expiresAt).toISOString().slice(0,16):''}"></label>
         <label>Change room password <span class="room-editor-optional">leave blank to remove it</span><input id="rp" type="password" autocomplete="new-password" placeholder="Enter a new password"></label>
       </section>
       <section class="room-editor-section"><h3>⚙️ Room limits</h3><div class="room-editor-grid">
@@ -5722,6 +5806,8 @@ async function saveRoom() {
           public: $("rPublic").value === "true",
           rankRequired: $("rRankRequired").value,
           friendsOnly: $("rFriendsOnly").value === "true",
+          hidden: $("rHidden").value === "true",
+          expiresAt: $("rExpiresAt").value ? new Date($("rExpiresAt").value).toISOString() : null,
           password: $("rp").value
         })
       }
@@ -5775,22 +5861,14 @@ async function deleteRoom() {
   }
 }
 
-function showInvite() {
-  const room =
-    state.rooms.find(
-      r => String(r.id) === String(state.currentRoom)
-    );
-
-  if (!room) return;
-
-  modal(`
-    <h2>Room invite</h2>
-
-    <input
-      value="${location.origin}/?room=${encodeURIComponent(room.id)}"
-      readonly
-    >
-  `);
+async function showInvite() {
+  const room=state.rooms.find(r=>String(r.id)===String(state.currentRoom));
+  if(!room)return;
+  try{
+    const invite=await api(`/api/rooms/${encodeURIComponent(room.id)}/invite`,{method:"POST",body:JSON.stringify({})});
+    modal(`<h2>Room invitation</h2><p class="muted">Share this link with people you trust. Hidden rooms stay out of the public room list.</p><input id="roomInviteUrl" readonly value="${esc(location.origin+invite.url)}"><div class="toolbar"><button class="primary" id="copyRoomInvite">Copy invitation link</button></div>`);
+    $("copyRoomInvite").onclick=async()=>{try{await navigator.clipboard.writeText($("roomInviteUrl").value);toast("Invitation link copied.");}catch(e){$("roomInviteUrl").select();document.execCommand("copy");toast("Invitation link copied.");}};
+  }catch(e){toast(e.message||"Could not create invitation.");}
 }
 
 /* ---------------- CREATE ROOM ---------------- */
@@ -5811,6 +5889,8 @@ $("newRoom").onclick = () => {
         <section class="room-editor-section"><h3>🔐 Who can join?</h3>
           <label>Minimum rank<select id="rr">${ranks.map(r=>'<option value="'+r+'" '+(r==="MEMBER"?"selected":"")+'>'+rankLabels[r]+'</option>').join("")}</select></label>
           <label>Member access<select id="rFriendsOnlyCreate"><option value="false">Anyone who meets the rank requirement</option><option value="true">Accepted friends only</option></select></label>
+          <label>Secret room<select id="rHiddenCreate"><option value="false">Listed normally</option><option value="true">Hidden — invitation or password required</option></select></label>
+          <label>Room lifetime<select id="rExpiryCreate"><option value="0">Permanent room</option><option value="1">1 hour</option><option value="24">24 hours</option><option value="168">7 days</option><option value="720">30 days</option></select></label>
           <label>Room password <span class="room-editor-optional">optional</span><input id="rp" type="password" autocomplete="new-password" placeholder="Leave blank for no password"></label>
         </section>
         <section class="room-editor-section"><h3>⚙️ Room capacity</h3><div class="room-editor-grid">
@@ -5829,6 +5909,8 @@ $("newRoom").onclick = () => {
         name:$("rn").value.trim(),icon:$("ri").value.trim()||"💬",description:$("rd").value.trim(),
         category:$("rc").value.trim()||"Community",password:$("rp").value,
         rankRequired:$("rr").value,friendsOnly:$("rFriendsOnlyCreate").value==="true",
+        hidden:$("rHiddenCreate").value==="true",
+        expiresAt:Number($("rExpiryCreate").value)>0?new Date(Date.now()+Number($("rExpiryCreate").value)*3600000).toISOString():null,
         limit:Math.max(2,Math.min(500,Number($("rl").value)||100)),
         slowMode:Math.max(0,Math.min(3600,Number($("rs").value)||0))
       })});

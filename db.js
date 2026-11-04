@@ -65,6 +65,28 @@ async function initDB() {
     ALTER TABLE rooms ADD COLUMN IF NOT EXISTS is_default BOOLEAN DEFAULT false;
     UPDATE rooms SET max_age=120 WHERE is_default=false AND min_age=0 AND max_age=99;
 
+    -- Secret-room and social-feed additions. All migrations are additive to preserve existing accounts and history.
+    ALTER TABLE rooms ADD COLUMN IF NOT EXISTS is_hidden BOOLEAN NOT NULL DEFAULT false;
+    ALTER TABLE rooms ADD COLUMN IF NOT EXISTS expires_at TIMESTAMPTZ;
+    ALTER TABLE rooms ADD COLUMN IF NOT EXISTS theme TEXT NOT NULL DEFAULT 'obsidian';
+    CREATE TABLE IF NOT EXISTS room_members(
+      room_id INT NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
+      user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      invited_by INT REFERENCES users(id) ON DELETE SET NULL,
+      joined_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      PRIMARY KEY(room_id,user_id)
+    );
+    CREATE INDEX IF NOT EXISTS room_members_user_idx ON room_members(user_id,room_id);
+    CREATE TABLE IF NOT EXISTS room_invites(
+      id BIGSERIAL PRIMARY KEY,
+      room_id INT NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
+      token TEXT NOT NULL UNIQUE,
+      created_by INT REFERENCES users(id) ON DELETE SET NULL,
+      expires_at TIMESTAMPTZ,
+      max_uses INT,
+      uses INT NOT NULL DEFAULT 0,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
     CREATE TABLE IF NOT EXISTS room_messages(
       id TEXT PRIMARY KEY,
       room_id INT REFERENCES rooms(id) ON DELETE CASCADE,
@@ -185,6 +207,30 @@ async function initDB() {
       content TEXT,
       created_at TIMESTAMP DEFAULT NOW()
     );
+    CREATE TABLE IF NOT EXISTS wall_post_saves(
+      post_id BIGINT NOT NULL REFERENCES wall_posts(id) ON DELETE CASCADE,
+      user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      PRIMARY KEY(post_id,user_id)
+    );
+    ALTER TABLE wall_posts ADD COLUMN IF NOT EXISTS expires_at TIMESTAMPTZ;
+    ALTER TABLE wall_posts ADD COLUMN IF NOT EXISTS featured BOOLEAN NOT NULL DEFAULT false;
+    CREATE INDEX IF NOT EXISTS wall_posts_feed_idx ON wall_posts(status,featured DESC,created_at DESC);
+    CREATE TABLE IF NOT EXISTS dm_message_reactions(
+      message_id TEXT NOT NULL REFERENCES private_messages(id) ON DELETE CASCADE,
+      user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      emoji TEXT NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      PRIMARY KEY(message_id,user_id,emoji)
+    );
+    CREATE TABLE IF NOT EXISTS dm_pinned_messages(
+      owner_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      peer_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      message_id TEXT NOT NULL REFERENCES private_messages(id) ON DELETE CASCADE,
+      pinned_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      PRIMARY KEY(owner_id,peer_id,message_id)
+    );
+    CREATE INDEX IF NOT EXISTS dm_pins_owner_peer_idx ON dm_pinned_messages(owner_id,peer_id,pinned_at DESC);
     CREATE TABLE IF NOT EXISTS achievements(
       id SERIAL PRIMARY KEY, user_id INT REFERENCES users(id) ON DELETE CASCADE,
       name TEXT NOT NULL, icon TEXT DEFAULT '🏆', earned_at TIMESTAMP DEFAULT NOW(),
