@@ -64,8 +64,7 @@ assert.ok(server.includes("const passwordAccepted=!!r.passwordHash") &&
   server.includes("!inviteAccepted&&!passwordAccepted"),
   "hidden rooms must require a valid invitation, membership, staff access, ownership, or a verified password");
 assert.ok(server.includes("app.get('/api/dm/:peerId/search'") &&
-  server.includes("ILIKE $3") && server.includes("'%' + q + '%'") || 
-  (server.includes("app.get('/api/dm/:peerId/search'") && server.includes("ILIKE $3") && server.includes("'%' + q + '%'")),
+  server.includes("ILIKE $3") && server.includes("'%'+q+'%'"),
   "private-message search must use a parameterized SQL query");
 assert.ok(server.includes("app.get('/api/wall/friends'"),
   "friends-only Shadow Feed endpoint must exist");
