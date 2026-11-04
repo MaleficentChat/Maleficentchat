@@ -1971,7 +1971,13 @@ function areAcceptedFriends(userA,userB){
 
 async function createRoomHandler(req,res){
   const u=current(req); if(!u)return res.status(401).json({error:"Login required"});
-  if(!(featureGrantAllowed(u,"create_rooms")||hasFeature(u,"create_room"))) return res.status(403).json({error:`Create room requires ${featureRank("create_room")} or higher.`});
+  // Keep server authorization aligned with the room-creation UI.
+  // Premium/Royal and designated staff ranks may create rooms; explicit feature grants
+  // remain available for other accounts configured by the Owner/Developer.
+  const roomCreatorRanks=["PREMIUM","ROYAL","MOD","MODERATOR","ADMIN","SUPER_ADMIN","SUPERADMIN","COMMISSOR","INSTRUCTOR","COOWNER","OWNER","DEVELOPER"];
+  if(!roomCreatorRanks.includes(String(u.rank||"").toUpperCase()) && !(featureGrantAllowed(u,"create_rooms")||hasFeature(u,"create_room"))) {
+    return res.status(403).json({error:`Create room requires ${featureRank("create_room")} or an explicit create-room permission.`});
+  }
   const name=cleanText(req.body.name).trim().slice(0,50)||"New Room";
   const password=req.body.password?await bcrypt.hash(String(req.body.password),10):null;
   try{
