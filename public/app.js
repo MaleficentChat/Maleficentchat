@@ -2436,6 +2436,58 @@ function openDoodleComposer(){
 $('doodleBtn')?.addEventListener('click',openDoodleComposer);
 
 
+// Voice notes: record in-browser, preview, then send via the existing authenticated room-message upload route.
+const voiceButton=$("voiceBtn");
+if(voiceButton && !voiceButton.dataset.voiceRecorderBound){
+  voiceButton.dataset.voiceRecorderBound="true";
+  voiceButton.addEventListener("click",async()=>{
+    if(!state.user){toast("Please log in before recording a voice note.");return;}
+    if(!state.currentRoom){toast("Join a room before recording a voice note.");return;}
+    if(!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder==="undefined"){
+      toast("Voice recording is not supported by this browser. Try the latest Chrome.");return;
+    }
+    let stream=null,recorder=null,chunks=[],recordedBlob=null,stopped=false;
+    modal(`<h2>🎙️ Voice note</h2><p class="muted">Record a short audio message for the current room.</p><div class="card"><div id="voiceRecordStatus" role="status">Ready to record</div><div class="toolbar"><button class="primary" id="voiceStart" type="button">● Start recording</button><button class="mini" id="voiceStop" type="button" disabled>■ Stop</button></div><audio id="voicePreview" controls class="hidden" style="width:100%;margin-top:12px"></audio><div class="toolbar"><button class="primary hidden" id="voiceSend" type="button">Send voice note</button><button class="mini" id="voiceCancel" type="button">Cancel</button></div></div>`);
+    const start=$("voiceStart"),stop=$("voiceStop"),send=$("voiceSend"),status=$("voiceRecordStatus"),preview=$("voicePreview"),cancel=$("voiceCancel");
+    const cleanup=()=>{try{if(recorder&&recorder.state!=="inactive")recorder.stop();}catch{}if(stream)stream.getTracks().forEach(track=>track.stop());};
+    cancel.onclick=()=>{cleanup();closeModal();};
+    start.onclick=async()=>{
+      start.disabled=true;
+      try{
+        stream=await navigator.mediaDevices.getUserMedia({audio:true});
+        const preferred=["audio/webm;codecs=opus","audio/webm","audio/ogg;codecs=opus"].find(type=>MediaRecorder.isTypeSupported?.(type));
+        recorder=preferred?new MediaRecorder(stream,{mimeType:preferred}):new MediaRecorder(stream);
+        chunks=[];recordedBlob=null;stopped=false;send.classList.add("hidden");preview.classList.add("hidden");
+        recorder.ondataavailable=event=>{if(event.data&&event.data.size)chunks.push(event.data);};
+        recorder.onerror=()=>{status.textContent="Recording failed. Please try again.";cleanup();start.disabled=false;stop.disabled=true;};
+        recorder.onstop=()=>{
+          if(stopped)return;stopped=true;
+          recordedBlob=new Blob(chunks,{type:recorder.mimeType||"audio/webm"});
+          if(!recordedBlob.size){status.textContent="No audio was captured. Try recording again.";start.disabled=false;return;}
+          preview.src=URL.createObjectURL(recordedBlob);preview.classList.remove("hidden");
+          send.classList.remove("hidden");status.textContent="Recording ready. Listen before sending.";
+          stream?.getTracks().forEach(track=>track.stop());stream=null;start.disabled=false;start.textContent="↻ Record again";stop.disabled=true;
+        };
+        recorder.start();status.textContent="Recording… speak now";stop.disabled=false;
+      }catch(error){status.textContent=error?.name==="NotAllowedError"?"Microphone permission was denied. Allow microphone access and retry.":"Could not start the microphone.";start.disabled=false;toast(status.textContent);}
+    };
+    stop.onclick=()=>{if(recorder&&recorder.state!=="inactive"){stop.disabled=true;recorder.stop();}};
+    send.onclick=async()=>{
+      if(!recordedBlob||!recordedBlob.size)return;
+      if(recordedBlob.size>15*1024*1024){toast("This voice note is too large. Record a shorter note.");return;}
+      send.disabled=true;send.textContent="Sending…";
+      try{
+        const ext=recordedBlob.type.includes("ogg")?"ogg":"webm";
+        const file=new File([recordedBlob],"voice-note."+ext,{type:recordedBlob.type||"audio/webm"});
+        const form=new FormData();form.append("text","🎙️ Voice note");form.append("file",file);
+        const result=await api("/api/rooms/"+encodeURIComponent(String(state.currentRoom))+"/messages",{method:"POST",body:form});
+        if(result.message&&String(result.message.roomId)===String(state.currentRoom))appendMessage(result.message);
+        closeModal();toast("Voice note sent.");
+      }catch(error){send.disabled=false;send.textContent="Send voice note";toast(error.message||"Could not send voice note.");}
+    };
+  });
+}
+
 const composer=$("composer");
 if(composer && !composer.dataset.submitBound){
   composer.dataset.submitBound="true";
