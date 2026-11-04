@@ -5795,7 +5795,7 @@ function showInvite() {
 
 /* ---------------- CREATE ROOM ---------------- */
 
-$("newRoom").onclick = () => {
+function openRoomCreationModal() {
   const ranks=["MEMBER","VIP","PREMIUM","MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"];
   const rankLabels={MEMBER:"Member",VIP:"VIP",PREMIUM:"Premium",ROYAL:"Royal",MOD:"Moderator",ADMIN:"Admin",SUPER_ADMIN:"Super Admin",COMMISSOR:"Commissor",INSTRUCTOR:"Instructor",COOWNER:"Co-owner",OWNER:"Owner",DEVELOPER:"Developer"};
   modal(`
@@ -5835,8 +5835,16 @@ $("newRoom").onclick = () => {
       await loadRooms();closeModal();renderRooms();toast("Room created.");
     }catch(error){toast(error.message);if(submit){submit.disabled=false;submit.textContent="＋ Create room";}}
   };
-};
+}
 
+// Keep room creation clickable even if an earlier initializer overwrites the button
+// handler. This delegated listener is registered before bootstrap and survives rerenders.
+document.addEventListener("click", event => {
+  const button = event.target instanceof Element ? event.target.closest("#newRoom, .room-create-button") : null;
+  if (!button || button.classList.contains("hidden") || button.disabled) return;
+  event.preventDefault();
+  openRoomCreationModal();
+}, true);
 
 /* ---------------- V3 SETTINGS / FEATURE CENTER ---------------- */
 
