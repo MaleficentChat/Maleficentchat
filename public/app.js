@@ -1293,13 +1293,15 @@ async function loadSuggestions(){
 
 
 
-let wallShowingSaved=false,wallShowingFriends=false;
+let wallShowingSaved=false,wallShowingFriends=false,wallShowingReels=false;
 async function loadWall(){
   try {
     const endpoint=wallShowingSaved?'/api/wall/saved':(wallShowingFriends?'/api/wall/friends':'/api/wall');
     const d=await api(endpoint),feed=$('wallFeed'); if(!feed)return;
     const emojis=['👍','❤️','😂','😮','🔥','👏'];
-    const wallPosts=d.posts||[];
+    const allWallPosts=d.posts||[];
+    const isVideoPost=p=>/\\.(mp4|webm|ogg)(\\?|$)/i.test(String(p.media_url||""));
+    const wallPosts=wallShowingReels?allWallPosts.filter(isVideoPost):allWallPosts;
     const storyUsers=[];
     const storySeen=new Set();
     wallPosts.forEach(p=>{const key=String(p.user_id||p.username||'');if(key&&!storySeen.has(key)){storySeen.add(key);storyUsers.push(p);}});
@@ -1317,11 +1319,11 @@ async function loadWall(){
       const rx=p.reactions&&typeof p.reactions==='object'?p.reactions:{};
       return `<article class="card wall-post social-feed-card" data-wall-id="${esc(p.id)}" data-wall-author="${esc(p.user_id)}">
         <div class="news-card-top"><div class="social-author"><div class="social-author-avatar">${p.avatar?`<img src="${esc(p.avatar)}" alt="">`:'👤'}</div><div><h3>@${esc(p.username||'Unknown')}</h3><div class="muted">${esc(p.rank||'Member')} · ${fmt(p.created_at)}</div></div></div><button class="social-more" data-wall-more="${esc(p.id)}" aria-label="Post options">•••</button></div>
-        <div class="news-body wall-content">${esc(p.content||'')}${p.media_url?(String(p.media_url).match(/\.(mp4|webm|ogg)(\?|$)/i)?`<video class="wall-media" controls src="${esc(p.media_url)}"></video>`:`<img class="wall-media" src="${esc(p.media_url)}" alt="Wall upload">`):''}</div>
+        <div class="news-body wall-content">${esc(p.content||'')}${p.media_url?(String(p.media_url).match(/\.(mp4|webm|ogg)(\?|$)/i)?`<video class="wall-media ${wallShowingReels?'shadow-reel-video':''}" controls playsinline preload="metadata" src="${esc(p.media_url)}"></video>`:`<img class="wall-media" src="${esc(p.media_url)}" alt="Wall upload">`):''}</div>
         <div class="news-actions social-reaction-actions">
           <button class="mini wall-like-action ${(Array.isArray(rx['❤️'])?rx['❤️'].map(String):[]).includes(String(state.user?.id))?'reacted':''}" type="button" data-wall-reaction="❤️" data-wall-id="${esc(p.id)}">♡ Like <b class="wall-action-count">${(Array.isArray(rx['❤️'])?rx['❤️'].length:0).toLocaleString()}</b></button>
           <button class="mini wall-comment-action" type="button" data-wall-comments="${esc(p.id)}">◯ Comment <b class="wall-action-count">${Math.max(0,Number(p.comment_count)||0).toLocaleString()}</b></button>
-          <button class="mini wall-share-action" type="button" data-wall-share="${esc(p.id)}">↗ Share</button>
+          <button class="mini wall-share-action" type="button" data-wall-share="${esc(p.id)}">${wallShowingReels?'▶ Main Chat':'↗ Share'}</button>
           <button class="mini" type="button" data-wall-save="${esc(p.id)}">${p.saved?'▣ Saved':'▢ Save'}</button>
           <button class="mini wall-options-action" type="button" data-wall-options="${esc(p.id)}" aria-expanded="false">••• More</button>
         </div>
@@ -1341,7 +1343,7 @@ async function loadWall(){
     feed.querySelectorAll('[data-wall-options]').forEach(b=>b.onclick=()=>{const box=$('wallOptions-'+b.dataset.wallOptions);if(!box)return;const opening=box.classList.contains('hidden');box.classList.toggle('hidden');b.setAttribute('aria-expanded',String(opening));});
     document.querySelectorAll('[data-wall-save]').forEach(b=>b.onclick=async()=>{try{const r=await api('/api/wall/'+encodeURIComponent(b.dataset.wallSave)+'/save',{method:'POST',body:JSON.stringify({})});toast(r.saved?'Post saved.':'Post removed from saved posts.');await loadWall()}catch(e){toast(e.message||'Could not save post.')}});
     document.querySelectorAll('[data-wall-reaction]').forEach(b=>b.onclick=async()=>{try{await api('/api/wall/'+encodeURIComponent(b.dataset.wallId)+'/reaction',{method:'POST',body:JSON.stringify({emoji:b.dataset.wallReaction})});await loadWall()}catch(e){toast(e.message||'Could not send reaction.')}});
-    document.querySelectorAll('[data-wall-share]').forEach(b=>b.onclick=async()=>{const id=b.dataset.wallShare;const url=location.origin+'/#shadow-post='+encodeURIComponent(id);const title='Shadow Feed · Maleficent Chat';try{if(navigator.share){await navigator.share({title,text:'Check out this post on Maleficent Chat',url});}else if(navigator.clipboard?.writeText){await navigator.clipboard.writeText(url);toast('Post link copied.');}else{const field=document.createElement('textarea');field.value=url;document.body.appendChild(field);field.select();document.execCommand('copy');field.remove();toast('Post link copied.');}}catch(e){if(e?.name!=='AbortError')toast('Could not share this post.');}});
+    document.querySelectorAll('[data-wall-share]').forEach(b=>b.onclick=async()=>{const id=b.dataset.wallShare;if(wallShowingReels){await sendReelToMainChat(id);return;}const url=location.origin+'/#shadow-post='+encodeURIComponent(id);const title='Shadow Feed · Maleficent Chat';try{if(navigator.share){await navigator.share({title,text:'Check out this post on Maleficent Chat',url});}else if(navigator.clipboard?.writeText){await navigator.clipboard.writeText(url);toast('Post link copied.');}else{const field=document.createElement('textarea');field.value=url;document.body.appendChild(field);field.select();document.execCommand('copy');field.remove();toast('Post link copied.');}}catch(e){if(e?.name!=='AbortError')toast('Could not share this post.');}});
     const wallDoubleTapTimers=new WeakMap();
     feed.querySelectorAll('.wall-media:not(video)').forEach(media=>{media.addEventListener('click',()=>{const previous=wallDoubleTapTimers.get(media);if(previous){clearTimeout(previous);wallDoubleTapTimers.delete(media);const post=media.closest('[data-wall-id]');if(post){const like=post.querySelector('[data-wall-reaction="❤️"]');if(like&&!like.classList.contains('reacted'))like.click();}}else{wallDoubleTapTimers.set(media,setTimeout(()=>wallDoubleTapTimers.delete(media),320));}});});
     document.querySelectorAll('[data-wall-feature]').forEach(b=>b.onclick=async()=>{try{const featured=b.dataset.featured!=='true';await api('/api/wall/'+encodeURIComponent(b.dataset.wallFeature)+'/feature',{method:'POST',body:JSON.stringify({featured})});toast(featured?'Post featured.':'Post unfeatured.');await loadWall()}catch(e){toast(e.message||'Could not feature post.')}});
@@ -1351,13 +1353,29 @@ async function loadWall(){
     document.querySelectorAll('[data-wall-comments]').forEach(b=>b.onclick=async()=>{const id=b.dataset.wallComments,box=$('wallComments-'+id);if(!box)return;box.classList.toggle('hidden');if(!box.classList.contains('hidden'))try{const d=await api('/api/wall/'+encodeURIComponent(id)+'/comments');box.innerHTML=`<div class="wall-comments-header"><strong>Comments</strong><button type="button" class="wall-comments-close" aria-label="Close comments">×</button></div>`+(d.comments||[]).map(v=>{const canDelete=String(v.user_id)===String(state.user?.id)||String(feed.querySelector('[data-wall-id="'+CSS.escape(id)+'"]')?.dataset.wallAuthor||'')===String(state.user?.id);return `<div class="news-comment wall-comment-item" data-wall-comment-id="${esc(v.id)}"><div class="wall-comment-avatar">${v.avatar?`<img src="${esc(v.avatar)}" alt="">`:'👤'}</div><div class="news-comment-main"><div class="news-comment-head"><b>@${esc(v.username||'Member')}</b><small>${esc(v.rank||'Member')}</small></div><div class="news-comment-text">${esc(v.content)}</div><div class="wall-comment-meta">${fmt(v.created_at)}</div></div>${canDelete?`<button type="button" class="wall-comment-delete" data-wall-comment-delete="${esc(v.id)}" aria-label="Delete comment" title="Delete comment">⌫</button>`:''}</div>`}).join('')+`<form class="wall-comment-form news-comment-form"><input placeholder="Add a comment…" maxlength="1000" required><button class="mini">Post</button></form>`;box.querySelector('.wall-comments-close')?.addEventListener('click',()=>box.classList.add('hidden'));box.querySelectorAll('[data-wall-comment-delete]').forEach(del=>del.addEventListener('click',async()=>{if(!confirm('Delete this comment?'))return;del.disabled=true;try{await api('/api/wall/'+encodeURIComponent(id)+'/comments/'+encodeURIComponent(del.dataset.wallCommentDelete),{method:'DELETE'});await loadWall();const post=feed.querySelector('[data-wall-id="'+CSS.escape(id)+'"]');post?.querySelector('[data-wall-comments]')?.click();}catch(err){toast(err.message||'Could not delete comment.');del.disabled=false}}));box.querySelector('form').onsubmit=async e=>{e.preventDefault();const input=e.currentTarget.querySelector('input');try{await api('/api/wall/'+encodeURIComponent(id)+'/comments',{method:'POST',body:JSON.stringify({content:input.value})});await loadWall();$('wallComments-'+id)?.classList.remove('hidden')}catch(err){toast(err.message)}}}catch(e){toast(e.message)}});
   } catch(e){toast(e.message||'Could not load Shadow Feed.')}
 }
+async function sendReelToMainChat(postId){
+  try{
+    const mainRoom=(state.rooms||[]).find(r=>r.isDefault||/^main room$/i.test(String(r.name||"")));
+    if(!mainRoom){toast("Main Room could not be found.");return;}
+    if(String(state.currentRoom)!==String(mainRoom.id)){
+      const joined=await joinRoom(mainRoom.id);
+      if(!joined){toast("Could not open Main Room.");return;}
+    }
+    const form=new FormData();form.append("reelId",String(postId));form.append("text","🎬 Shadow Reel");
+    const result=await api("/api/rooms/"+encodeURIComponent(mainRoom.id)+"/messages",{method:"POST",body:form});
+    if(result.message)appendMessage(result.message);
+    toast("Reel shared to Main Room! 🎬");
+  }catch(error){toast(error.message||"Could not share this Reel to Main Room.");}
+}
 function updateWallModeButtons(){
-  const saved=$('wallSavedToggle'),friends=$('wallFriendsToggle');
+  const saved=$('wallSavedToggle'),friends=$('wallFriendsToggle'),reels=$('wallReelsToggle');
   if(saved){saved.textContent=wallShowingSaved?'← Community feed':'🔖 Saved posts';saved.setAttribute('aria-pressed',String(wallShowingSaved));}
   if(friends){friends.textContent=wallShowingFriends?'✓ Friends activity':'💜 Friends activity';friends.setAttribute('aria-pressed',String(wallShowingFriends));}
+  if(reels){reels.textContent=wallShowingReels?'✓ Reels':'🎬 Reels';reels.setAttribute('aria-pressed',String(wallShowingReels));}
 }
-$('wallSavedToggle')?.addEventListener('click',async()=>{wallShowingSaved=!wallShowingSaved;if(wallShowingSaved)wallShowingFriends=false;updateWallModeButtons();await loadWall();});
-$('wallFriendsToggle')?.addEventListener('click',async()=>{wallShowingFriends=!wallShowingFriends;if(wallShowingFriends)wallShowingSaved=false;updateWallModeButtons();await loadWall();});
+$('wallSavedToggle')?.addEventListener('click',async()=>{wallShowingSaved=!wallShowingSaved;if(wallShowingSaved){wallShowingFriends=false;wallShowingReels=false;}updateWallModeButtons();await loadWall();});
+$('wallFriendsToggle')?.addEventListener('click',async()=>{wallShowingFriends=!wallShowingFriends;if(wallShowingFriends){wallShowingSaved=false;wallShowingReels=false;}updateWallModeButtons();await loadWall();});
+$('wallReelsToggle')?.addEventListener('click',async()=>{wallShowingReels=!wallShowingReels;if(wallShowingReels){wallShowingSaved=false;wallShowingFriends=false;}updateWallModeButtons();await loadWall();});
 if($('newWallPost'))$('newWallPost').onclick=async()=>{
   modal(`<h2>New Shadow Feed Post</h2><textarea id="wallPostText" maxlength="5000" placeholder="Share something with the community…"></textarea><label class="stack">Post duration<select id="wallPostExpiry"><option value="0">Keep on Shadow Feed</option><option value="1">Disappear after 1 hour</option><option value="6">Disappear after 6 hours</option><option value="24">Disappear after 24 hours</option><option value="72">Disappear after 3 days</option><option value="168">Disappear after 7 days</option></select></label><input id="wallPostFile" type="file" accept="image/*,video/*"><div id="wallPreview" class="media-preview"></div><button class="primary" id="wallPostSend">Upload & Publish</button>`);
   $('wallPostFile')?.addEventListener('change',()=>{const f=$('wallPostFile').files?.[0],box=$('wallPreview');if(!f){box.innerHTML='';return}const u=URL.createObjectURL(f);box.innerHTML=f.type.startsWith('video/')?`<video controls src="${u}"></video>`:`<img src="${u}">`;});
@@ -2012,6 +2030,8 @@ function messageHTML(message) {
   if (message.attachment) {
     if(message.attachment.type==='video/youtube' && message.attachment.videoId){
       attachment=youtubePreviewHTML(message.attachment.videoId,message.attachment.name||"YouTube video");
+    } else if(message.attachment.type && message.attachment.type.startsWith("video/")){
+      attachment = `<video class="message-video-attachment" controls playsinline preload="metadata" src="${esc(message.attachment.url)}"></video>`;
     } else if (
       message.attachment.type &&
       message.attachment.type.startsWith("image/")
@@ -2518,6 +2538,17 @@ function openDoodleComposer(){
 }
 $('doodleBtn')?.addEventListener('click',openDoodleComposer);
 
+
+async function openReelSharePicker(){
+  try{
+    const data=await api("/api/wall");
+    const videos=(data.posts||[]).filter(p=>/\\.(mp4|webm|ogg)(\\?|$)/i.test(String(p.media_url||"")));
+    if(!videos.length){toast("No published Reels yet. Upload a video post in Shadow Feed first.");return;}
+    modal('<div class="reel-picker"><h2>🎬 Share a Reel to Main Room</h2><p class="muted">Choose a video from Shadow Feed.</p><div class="reel-picker-list">'+videos.map(p=>'<button type="button" class="reel-picker-item" data-share-reel="'+esc(p.id)+'"><video muted playsinline preload="metadata" src="'+esc(p.media_url)+'"></video><span><b>@'+esc(p.username||"Member")+'</b><small>'+esc(p.content||"Shadow Reel")+'</small></span><strong>Send ↗</strong></button>').join('')+'</div></div>');
+    document.querySelectorAll('[data-share-reel]').forEach(button=>button.addEventListener('click',async()=>{button.disabled=true;const postId=button.dataset.shareReel;closeModal();await sendReelToMainChat(postId);}));
+  }catch(error){toast(error.message||"Could not load Reels.");}
+}
+$('reelComposerBtn')?.addEventListener('click',openReelSharePicker);
 
 const composer=$("composer");
 if(composer && !composer.dataset.submitBound){
