@@ -6704,44 +6704,45 @@ function requireRoomAnnouncementStaff(req,res,next){
   if(!hasRank(u,"COMMISSOR"))return res.status(403).json({error:"Posting and deleting room announcements requires Commissor or higher."});
   next();
 }
-app.get('/api/rooms/:id/announcements',auth,(req,res)=>{
+app.get('/api/rooms/:id/announcements',auth,async(req,res)=>{
   const u=current(req),r=db.rooms.find(x=>String(x.id)===String(req.params.id)); if(!r)return res.status(404).json({error:'Room not found'});
-  // Reading announcements is available to every signed-in rank. Private-room
-  // membership remains enforced, but posting/deleting permissions do not apply
-  // to this read endpoint.
   if(!requirePrivateRoomAccess(req,res,r,u))return;
-  const stored=Array.isArray(r.announcements)?r.announcements:[];
-  // Older rooms may have only the legacy single-announcement field. Preserve
-  // and display it instead of hiding the announcement feed for every viewer.
-  const visible=stored.length?stored.slice(-50).reverse():
-    (String(r.announcement||"").trim()?[{id:"legacy-"+String(r.id),roomId:r.id,text:String(r.announcement),time:0}]:[]);
-  res.json({announcements:visible.map(n=>roomAnnouncementForViewer(n))});
+  try{
+    const {rows}=await pool.query('SELECT id,room_id,user_id,text,created_at FROM room_announcements WHERE room_id=$1 ORDER BY created_at DESC,id DESC',[Number(r.id)]);
+    const announcements=rows.map(row=>roomAnnouncementForViewer({id:row.id,roomId:row.room_id,text:row.text,time:row.created_at?new Date(row.created_at).getTime():0}));
+    // Backward compatibility: show the old single room announcement if no durable rows exist.
+    if(!announcements.length&&String(r.announcement||"").trim())announcements.push(roomAnnouncementForViewer({id:"legacy-"+String(r.id),roomId:r.id,text:r.announcement,time:0}));
+    r.announcements=announcements;
+    res.json({announcements});
+  }catch(error){console.error("Room announcement read failed:",error);res.status(500).json({error:"Could not load room announcements."});}
 });
-app.post('/api/rooms/:id/announcements',auth,requireRoomAnnouncementStaff,(req,res)=>{
+app.post('/api/rooms/:id/announcements',auth,requireRoomAnnouncementStaff,async(req,res)=>{
   const u=current(req),r=db.rooms.find(x=>String(x.id)===String(req.params.id)); if(!r)return res.status(404).json({error:'Room not found'});
   if(!requirePrivateRoomAccess(req,res,r,u))return;
   const text=cleanText(req.body.text||'').slice(0,1000); if(!text)return res.status(400).json({error:'Announcement cannot be empty.'});
-  r.announcements ||= []; const n={id:id(),roomId:r.id,userId:u.id,username:u.username,displayName:u.displayName,text,time:Date.now()}; r.announcements.push(n); r.announcement=text; save();
-  // Never broadcast sender identity in a shared socket payload. Clients reload
-  // the announcement list and the API applies each viewer's permission.
-  io.to('room:'+r.id).emit('room:announcement',{roomId:String(r.id)});
-  res.json({announcement:roomAnnouncementForViewer(n)});
+  const announcementId=id();
+  try{
+    const inserted=await pool.query('INSERT INTO room_announcements(id,room_id,user_id,text) VALUES($1,$2,$3,$4) RETURNING created_at',[announcementId,Number(r.id),Number(u.id),text]);
+    const n={id:announcementId,roomId:String(r.id),userId:String(u.id),text,time:inserted.rows[0]?.created_at?new Date(inserted.rows[0].created_at).getTime():Date.now()};
+    r.announcements||=[];r.announcements.unshift(n);r.announcement=text;
+    io.to('room:'+r.id).emit('room:announcement',{roomId:String(r.id)});
+    res.json({announcement:roomAnnouncementForViewer(n)});
+  }catch(error){console.error("Room announcement insert failed:",error);res.status(500).json({error:"Could not save the announcement. Please try again."});}
 });
-
-app.delete('/api/rooms/:id/announcements/:announcementId',auth,(req,res)=>{
-  const u=current(req), r=db.rooms.find(x=>String(x.id)===String(req.params.id));
-  if(!r) return res.status(404).json({error:'Room not found'});
+app.delete('/api/rooms/:id/announcements/:announcementId',auth,async(req,res)=>{
+  const u=current(req),r=db.rooms.find(x=>String(x.id)===String(req.params.id));
+  if(!r)return res.status(404).json({error:'Room not found'});
   if(!requirePrivateRoomAccess(req,res,r,u))return;
   if(isUserFeatureBlocked(u,"room_announcement"))return res.status(403).json({error:"Room announcements are disabled for your account by staff."});
   if(!hasRank(u,"COMMISSOR"))return res.status(403).json({error:"Deleting announcements requires Commissor or higher."});
-  r.announcements ||= [];
-  const index=r.announcements.findIndex(a=>a.id===req.params.announcementId);
-  if(index<0) return res.status(404).json({error:'Announcement not found'});
-  const removed=r.announcements.splice(index,1)[0];
-  r.announcement=r.announcements.length ? r.announcements[r.announcements.length-1].text : '';
-  save();
-  io.to('room:'+r.id).emit('room:announcement-delete',{id:removed.id,roomId:r.id});
-  res.json({ok:true});
+  try{
+    const removed=await pool.query('DELETE FROM room_announcements WHERE id=$1 AND room_id=$2 RETURNING id',[String(req.params.announcementId),Number(r.id)]);
+    if(!removed.rowCount)return res.status(404).json({error:'Announcement not found'});
+    r.announcements=(r.announcements||[]).filter(item=>String(item.id)!==String(req.params.announcementId));
+    r.announcement=r.announcements[0]?.text||'';
+    io.to('room:'+r.id).emit('room:announcement-delete',{id:String(req.params.announcementId),roomId:String(r.id)});
+    res.json({ok:true});
+  }catch(error){console.error("Room announcement delete failed:",error);res.status(500).json({error:"Could not delete the announcement."});}
 });
 
 app.post('/api/games/quick',auth,(req,res)=>{
