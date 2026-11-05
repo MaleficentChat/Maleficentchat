@@ -3342,12 +3342,13 @@ async function loadDMList() {
       });
       const lastOpenedId=safeStorage.getItem("mc_dm_last_opened_"+String(state.user?.id||""))||"";
       const messageTime=c=>Number(c.lastMessage?.time||c.lastMessage?.createdAt||c.lastMessage?.created_at||0);
-      rows.sort((a,b)=>
-        Number(Number(b.unreadCount||0)>0)-Number(Number(a.unreadCount||0)>0) ||
-        Number(String(b.user.id)===lastOpenedId)-Number(String(a.user.id)===lastOpenedId) ||
-        Number(!!p.pinned?.[String(b.user.id)])-Number(!!p.pinned?.[String(a.user.id)]) ||
-        messageTime(b)-messageTime(a)
-      );
+      // Inbox priority: unread first, then the conversation opened most recently,
+      // then every other conversation by newest message. Pinning never pushes an
+      // unread or recently opened conversation down the list.
+      rows.sort((a,b)=>{
+        const priority=c=>Number(Number(c.unreadCount||0)>0)?2:(String(c.user?.id)===lastOpenedId?1:0);
+        return priority(b)-priority(a) || messageTime(b)-messageTime(a);
+      });
       const list=rows.map(card).join('');
       $("dmList").innerHTML=searchBox+'<div class="dm-inbox-list">'+(list||'<p class="muted dm-empty">No conversations here yet.</p>')+'</div>';
       $("dmInboxSearch").value=q;
@@ -5713,11 +5714,10 @@ async function toggleMessagesDropdown(refresh=false){
     const d=await api("/api/dm/conversations");
     const lastOpenedId=safeStorage.getItem("mc_dm_last_opened_"+String(state.user?.id||""))||"";
     const messageTime=c=>Number(c.lastMessage?.time||c.lastMessage?.createdAt||c.lastMessage?.created_at||0);
-    const conversations=(d.conversations||[]).sort((a,b)=>
-      Number(Number(b.unreadCount||0)>0)-Number(Number(a.unreadCount||0)>0) ||
-      Number(String(b.user?.id)===lastOpenedId)-Number(String(a.user?.id)===lastOpenedId) ||
-      messageTime(b)-messageTime(a)
-    ).slice(0,10);
+    const conversations=(d.conversations||[]).sort((a,b)=>{
+      const priority=c=>Number(Number(c.unreadCount||0)>0)?2:(String(c.user?.id)===lastOpenedId?1:0);
+      return priority(b)-priority(a) || messageTime(b)-messageTime(a);
+    }).slice(0,10);
     const nicknames=(await api('/api/private-nicknames').catch(()=>({nicknames:{}}))).nicknames||{};
     box.innerHTML=`<div class="notification-dropdown-head"><div><b>✉ Private messages</b><small class="notification-unread-summary">${conversations.reduce((n,x)=>n+Number(x.unreadCount||0),0)} unread</small></div></div>${conversations.map(c=>{const u=c.user||{},id=String(u.id),last=c.lastMessage||{},preview=last.attachment?'📎 Attachment':(last.text||'Start a conversation');return `<button class="notification-dropdown-item dm-header-item ${Number(c.unreadCount||0)?'unread':''}" data-header-dm="${esc(id)}"><b>${esc(nicknames[id]||u.displayName||u.username||'User')} ${Number(c.unreadCount||0)?'<span class="dm-unread-badge">'+Number(c.unreadCount)+'</span>':''}</b><span>@${esc(u.username||'')} · ${esc(preview).slice(0,100)}</span><small>${last.time?fmt(last.time):''}</small></button>`}).join("")||'<p class="muted notification-empty">No private conversations yet.</p>'}`;
     box.classList.remove("hidden");
