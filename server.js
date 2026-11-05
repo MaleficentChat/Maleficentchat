@@ -1900,51 +1900,67 @@ app.post(
   }
 );
 
+async function permanentlyDeleteAccountRecord(userId){
+  const numericId=Number(userId);
+  if(!Number.isSafeInteger(numericId)||numericId<=0)throw new Error("Invalid account id.");
+  const client=await pool.connect();
+  try{
+    await client.query("BEGIN");
+    // Remove private conversations and account-owned feed interactions.
+    // Public room messages and gifts received by other members are retained.
+    await client.query("DELETE FROM private_messages WHERE sender_id=$1 OR receiver_id=$1",[numericId]);
+    await client.query("DELETE FROM push_subscriptions WHERE user_id=$1",[numericId]);
+    await client.query("DELETE FROM wall_post_reactions WHERE user_id=$1",[numericId]);
+    await client.query("DELETE FROM history WHERE user_id=$1",[numericId]);
+    // wall_posts.user_id has no ON DELETE action in older databases.
+    await client.query("UPDATE wall_posts SET user_id=NULL WHERE user_id=$1",[numericId]);
+    const deleted=await client.query("DELETE FROM users WHERE id=$1 RETURNING id",[numericId]);
+    if(!deleted.rowCount){
+      await client.query("ROLLBACK");
+      return false;
+    }
+    await client.query("COMMIT");
+    return true;
+  }catch(error){
+    try{await client.query("ROLLBACK");}catch{}
+    throw error;
+  }finally{
+    client.release();
+  }
+}
+function removeDeletedAccountFromMemory(user){
+  const id=String(user.id);
+  db.users=(db.users||[]).filter(x=>String(x.id)!==id);
+  db.friends=(db.friends||[]).filter(x=>String(x.a)!==id&&String(x.b)!==id);
+  db.privateMessages=(db.privateMessages||[]).filter(m=>String(m.from)!==id&&String(m.to)!==id);
+  if(Array.isArray(db.friendRequests))db.friendRequests=db.friendRequests.filter(x=>String(x.from)!==id&&String(x.to)!==id&&String(x.userId)!==id);
+  if(Array.isArray(db.notifications))db.notifications=db.notifications.filter(x=>String(x.userId)!==id&&String(x.fromUserId)!==id&&String(x.actorId)!==id);
+  if(db.userFeatureGrants)delete db.userFeatureGrants[id];
+}
+
 app.delete(
   "/api/me",
   auth,
-  (req,res)=>{
+  async(req,res)=>{
     const u=current(req);
-
-    if(u.rank==="OWNER"){
-      return res.status(400).json({
-        error:
-          "The permanent owner cannot be deleted."
-      });
+    if(!u)return res.status(401).json({error:"Login required"});
+    if(u.username===DEFAULT_OWNER||String(u.rank||"").toUpperCase()==="OWNER"||String(u.rank||"").toUpperCase()==="DEVELOPER"){
+      return res.status(400).json({error:"The permanent Owner/Developer account cannot be deleted."});
     }
-
-    db.users=
-      db.users.filter(
-        x=>x.id!==u.id
-      );
-
-    db.friends=
-      db.friends.filter(
-        f=>f.a!==u.id&&f.b!==u.id
-      );
-
-    db.privateMessages=
-      db.privateMessages.filter(
-        m=>
-          m.from!==u.id&&
-          m.to!==u.id
-      );
-
-    log(
-      u,
-      "ACCOUNT_DELETE",
-      u.username
-    );
-
-    req.session.destroy(
-      ()=>{}
-    );
-
-    save();
-
-    res.json({
-      ok:true
-    });
+    try{
+      log(u,"ACCOUNT_DELETE",u.username,{userId:String(u.id)});
+      const deleted=await permanentlyDeleteAccountRecord(u.id);
+      if(!deleted)return res.status(404).json({error:"Your account was not found in the database; nothing was changed."});
+      removeDeletedAccountFromMemory(u);
+      await flushSave();
+      req.session.destroy(()=>{});
+      res.clearCookie("mc_auth",{httpOnly:true,secure:!!req.secure,sameSite:"lax",path:"/"});
+      io.emit("presence");
+      return res.json({ok:true});
+    }catch(error){
+      console.error("Self-service account deletion failed:",error);
+      return res.status(500).json({error:"Your account could not be permanently deleted. No account-list changes were made."});
+    }
   }
 );
 
@@ -1966,15 +1982,18 @@ app.delete("/api/staff/users/:id",auth,async(req,res)=>{
   const targetId=String(target.id);
   const targetUsername=String(target.username||"");
   const targetRank=String(target.rank||"MEMBER");
-  db.users=db.users.filter(x=>String(x.id)!==targetId);
-  db.friends=(db.friends||[]).filter(f=>String(f.a)!==targetId&&String(f.b)!==targetId);
-  db.privateMessages=(db.privateMessages||[]).filter(m=>String(m.from)!==targetId&&String(m.to)!==targetId);
-  if(Array.isArray(db.friendRequests))db.friendRequests=db.friendRequests.filter(f=>String(f.from)!==targetId&&String(f.to)!==targetId&&String(f.userId)!==targetId);
-  if(Array.isArray(db.notifications))db.notifications=db.notifications.filter(n=>String(n.userId)!==targetId&&String(n.fromUserId)!==targetId&&String(n.actorId)!==targetId);
-  log(actor,"STAFF_ACCOUNT_DELETE",targetUsername,{targetId,targetRank});
-  save();
-  await flushSave();
-  res.json({ok:true,deletedUser:{id:targetId,username:targetUsername}});
+  try{
+    const deleted=await permanentlyDeleteAccountRecord(targetId);
+    if(!deleted)return res.status(404).json({error:"Account was not found in the database; nothing was changed."});
+    removeDeletedAccountFromMemory(target);
+    log(actor,"STAFF_ACCOUNT_DELETE",targetUsername,{targetId,targetRank});
+    await flushSave();
+    io.emit("presence");
+    res.json({ok:true,deletedUser:{id:targetId,username:targetUsername}});
+  }catch(error){
+    console.error("Staff account deletion failed:",error);
+    res.status(500).json({error:"The account could not be permanently deleted. No account-list changes were made."});
+  }
 });
 
 app.get(
@@ -5747,34 +5766,18 @@ app.delete(
       return res.status(400).json({error:"Cannot delete permanent owner"});
     }
 
-    // Remove the PostgreSQL account as well as the app's JSON-backed user entry.
-    // Do the database operation first so a failed deletion never reports success
-    // or hides the account only in memory.
-    const client=await pool.connect();
     try{
-      await client.query("BEGIN");
-      await client.query("DELETE FROM push_subscriptions WHERE user_id=$1",[Number(v.id)]);
-      const deleted=await client.query("DELETE FROM users WHERE id=$1 RETURNING id",[Number(v.id)]);
-      if(!deleted.rowCount){
-        await client.query("ROLLBACK");
-        return res.status(404).json({error:"Account not found in the database; no local changes were made."});
-      }
-      await client.query("COMMIT");
+      const deleted=await permanentlyDeleteAccountRecord(v.id);
+      if(!deleted)return res.status(404).json({error:"Account not found in the database; no changes were made."});
+      removeDeletedAccountFromMemory(v);
+      log(current(req),"ACCOUNT_DELETE",v.username,{userId:String(v.id)});
+      await flushSave();
+      io.emit("presence");
+      res.json({ok:true});
     }catch(error){
-      try{await client.query("ROLLBACK");}catch{}
       console.error("Owner account deletion failed:",error);
-      return res.status(500).json({error:"The account could not be fully deleted from the database. No local account-list changes were made."});
-    }finally{
-      client.release();
+      res.status(500).json({error:"The account could not be permanently deleted. No account-list changes were made."});
     }
-
-    db.users=db.users.filter(x=>String(x.id)!==String(v.id));
-    db.friends=(db.friends||[]).filter(f=>String(f.a)!==String(v.id)&&String(f.b)!==String(v.id));
-    db.privateMessages=(db.privateMessages||[]).filter(m=>String(m.from)!==String(v.id)&&String(m.to)!==String(v.id));
-    save();
-    log(current(req),"ACCOUNT_DELETE",v.username,{userId:String(v.id)});
-    io.emit("presence");
-    res.json({ok:true});
   }
 );
 
