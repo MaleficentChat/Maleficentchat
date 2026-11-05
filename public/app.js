@@ -67,6 +67,7 @@ dmReplyText: null,
   featureGrants: {},
   modeManagement: {},
   roomListMode: "all",
+  showHiddenRoomsOnly: false,
   userPermissions: {}
 };
 
@@ -1673,7 +1674,16 @@ function renderRooms() {
   const search=(($('roomSearch')?.value)||'').trim().toLowerCase();
   const visited=joinedRoomIds();
   const allRooms=Array.isArray(state.rooms)?state.rooms:[];
+  const canViewHiddenRooms=["OWNER","DEVELOPER"].includes(String(state.user?.rank||"").toUpperCase());
+  const hiddenRooms=allRooms.filter(room=>room.public===false);
+  const hiddenToggle=$("hiddenRoomsToggle");
+  if(hiddenToggle){
+    hiddenToggle.classList.toggle("hidden",!canViewHiddenRooms);
+    hiddenToggle.textContent=state.showHiddenRoomsOnly?"← All rooms  ·  "+hiddenRooms.length+" hidden":"🔒 Hidden rooms  ·  "+hiddenRooms.length;
+    hiddenToggle.setAttribute("aria-pressed",state.showHiddenRoomsOnly?"true":"false");
+  }
   const rooms=allRooms.filter(room=>{
+    if(canViewHiddenRooms&&state.showHiddenRoomsOnly&&room.public!==false)return false;
     const hay=[room.name,room.description,room.category].join(' ').toLowerCase();
     return !search || hay.includes(search);
   });
@@ -1705,6 +1715,14 @@ function renderRooms() {
       : '<div class="room-empty"><div>🏠</div><b>Rooms are not loading yet</b><span>Retry loading the room list. If this continues, check the server logs and database connection.</span><button class="primary" type="button" onclick="loadRooms()">↻ Reload rooms</button></div>');
   renderRoomQuickNav();
 }
+
+function toggleHiddenRoomsView(){
+  if(!["OWNER","DEVELOPER"].includes(String(state.user?.rank||"").toUpperCase()))return;
+  state.showHiddenRoomsOnly=!state.showHiddenRoomsOnly;
+  if($("roomSearch"))$("roomSearch").value="";
+  renderRooms();
+}
+window.toggleHiddenRoomsView=toggleHiddenRoomsView;
 
 function renderRoomQuickNav() {
   const nav = $('roomQuickNav');
