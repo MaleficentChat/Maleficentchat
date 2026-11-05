@@ -4303,6 +4303,24 @@ function auditActionLabel(action) {
   const key = String(action || "EVENT").toUpperCase();
   return labels[key] || key.toLowerCase().replace(/[_-]+/g, " ").replace(/\b\w/g, c => c.toUpperCase());
 }
+function auditMediaPreview(media, label="Deleted media") {
+  if (!media) return "";
+  const item = typeof media === "string" ? {url:media} : media;
+  const url = String(item.url || item.mediaUrl || "");
+  if (!url || !(url.startsWith("/uploads/") || url.startsWith("https://"))) return '<div class="audit-detail-empty">Media reference unavailable</div>';
+  const type = String(item.type || item.mimeType || "").toLowerCase();
+  const name = String(item.name || item.filename || label);
+  const safeUrl = esc(url);
+  let preview = "";
+  if (type.startsWith("image/") || /\.(png|jpe?g|gif|webp|avif)(?:[?#]|$)/i.test(url)) {
+    preview = '<img src="' + safeUrl + '" alt="' + esc(name) + '" loading="lazy" style="display:block;max-width:min(100%,420px);max-height:320px;object-fit:contain;border-radius:12px;margin:8px 0">';
+  } else if (type.startsWith("video/") || /\.(mp4|webm|mov|m4v)(?:[?#]|$)/i.test(url)) {
+    preview = '<video controls preload="metadata" style="display:block;max-width:min(100%,420px);max-height:320px;border-radius:12px;margin:8px 0"><source src="' + safeUrl + '" type="' + esc(type) + '"></video>';
+  } else if (type.startsWith("audio/") || /\.(mp3|wav|ogg|m4a|aac|opus)(?:[?#]|$)/i.test(url)) {
+    preview = '<audio controls preload="metadata" style="display:block;max-width:100%;margin:8px 0"><source src="' + safeUrl + '" type="' + esc(type) + '"></audio>';
+  }
+  return '<div class="audit-media-evidence"><b>' + esc(label) + ': ' + esc(name) + '</b>' + preview + '<a href="' + safeUrl + '" target="_blank" rel="noopener noreferrer">Open original media</a></div>';
+}
 function formatAuditDetail(value) {
   if (value == null || value === "") return '<span class="audit-detail-empty">No extra details recorded</span>';
   let parsed = value;
@@ -4316,6 +4334,8 @@ function formatAuditDetail(value) {
   const pretty = key => String(key).replace(/([A-Z])/g, " $1").replace(/[_-]+/g, " ").replace(/^./, c => c.toUpperCase());
   return '<div class="audit-detail-list">' + entries.map(([key, val]) => {
     const label = pretty(key);
+    if (key === "attachment" && val) return '<div class="audit-detail-item">' + auditMediaPreview(val, "Attachment") + '</div>';
+    if (key === "mediaUrl" && val) return '<div class="audit-detail-item">' + auditMediaPreview({url:val,type:parsed.mediaType||""}, "Deleted media") + '</div>';
     if (Array.isArray(val)) {
       if (key.toLowerCase() === "features" || val.some(item => item && typeof item === "object" && (item.key || item.minimumRank || item.minimum_rank))) {
         const items = val.map(item => {
@@ -4326,6 +4346,7 @@ function formatAuditDetail(value) {
         }).join("");
         return '<div class="audit-detail-item audit-feature-group"><b>' + esc(label) + ' (' + val.length + ')</b><ul class="audit-feature-list">' + items + '</ul></div>';
       }
+      if (key === "comments") return '<div class="audit-detail-item"><b>' + esc(label) + ' (' + val.length + ')</b><div class="audit-detail-nested">' + val.map(item => '<div><b>@' + esc(item.username || item.author || "Unknown") + '</b><p>' + esc(item.text || item.content || "") + '</p></div>').join("") + '</div></div>';
       return '<div class="audit-detail-item"><b>' + esc(label) + ':</b> ' + esc(val.map(item => typeof item === "object" ? JSON.stringify(item) : String(item)).join(", ")) + '</div>';
     }
     if (val && typeof val === "object") return '<div class="audit-detail-item"><b>' + esc(label) + ':</b><div class="audit-detail-nested">' + Object.entries(val).map(([k,v]) => '<div><span>' + esc(pretty(k)) + '</span><b>' + esc(v == null || v === "" ? "—" : typeof v === "boolean" ? (v ? "Enabled" : "Disabled") : String(v)) + '</b></div>').join("") + '</div></div>';
@@ -4334,13 +4355,13 @@ function formatAuditDetail(value) {
   }).join("") + '</div>';
 }
 function renderAuditRow(x) {
-  const raw = x.reason == null || x.reason === "" ? null : x.reason;
+  const evidence = x.meta && typeof x.meta === "object" && Object.keys(x.meta).length ? x.meta : (x.reason == null || x.reason === "" ? null : x.reason);
   const actor = x.actorUsername || x.actor || "System", target = x.target || "Site", when = x.time ? fmt(x.time) : "Time unavailable";
-  const details = raw == null ? '<span class="audit-detail-empty">No extra details recorded</span>' : formatAuditDetail(raw);
+  const details = evidence == null ? '<span class="audit-detail-empty">No extra details recorded</span>' : formatAuditDetail(evidence);
   return '<article class="system-audit-row"><div class="system-audit-heading"><b>' + esc(auditActionLabel(x.action)) + '</b><span class="audit-source">' + esc(String(x.source || "system").replace(/[_-]+/g, " ")) + '</span></div>' +
     '<div class="system-audit-meta"><span><small>ACTOR</small><b>' + esc(actor) + '</b></span><span><small>TARGET</small><b>' + esc(target) + '</b></span><span><small>DATE & TIME</small><b>' + esc(when) + '</b></span></div>' +
-    '<details class="audit-evidence-details"><summary>View details</summary><div class="audit-evidence-content">' + details +
-    (raw != null ? '<details class="audit-raw-details"><summary>View raw evidence</summary><pre>' + esc(typeof raw === "string" ? raw : JSON.stringify(raw, null, 2)) + '</pre></details>' : '') + '</div></details></article>';
+    '<details class="audit-evidence-details" open><summary>View deleted content & evidence</summary><div class="audit-evidence-content">' + details +
+    (evidence != null ? '<details class="audit-raw-details"><summary>View raw evidence</summary><pre>' + esc(typeof evidence === "string" ? evidence : JSON.stringify(evidence, null, 2)) + '</pre></details>' : '') + '</div></details></article>';
 }
 
 
