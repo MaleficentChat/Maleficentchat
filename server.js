@@ -1121,8 +1121,8 @@ function filtered(text){
 let restrictedMediaOcrWorkerPromise=null;
 function normalizeRestrictedOcrText(value){
   return String(value||"").normalize("NFKC").toLowerCase()
-    .replace(/[^a-z0-9\\s]+/g," ")
-    .trim().replace(/\\s+/g," ");
+    .replace(/[^\p{L}\p{N}\s]+/gu," ")
+    .replace(/\s+/g," ").trim();
 }
 async function recognizeRestrictedMediaText(imageInput){
   if(!restrictedMediaOcrWorkerPromise){
@@ -1133,12 +1133,20 @@ async function recognizeRestrictedMediaText(imageInput){
   return normalizeRestrictedOcrText(result?.data?.text||"");
 }
 function restrictedMediaPhrases(){
-  return [...new Set((db.bannedWords||[]).map(raw=>String(raw||"").trim()).filter(raw=>/^p\\s*:\\s*/i.test(raw)).map(raw=>normalizeRestrictedOcrText(raw.replace(/^p\\s*:\\s*/i,""))).filter(Boolean))];
+  return [...new Set((db.bannedWords||[])
+    .map(raw=>String(raw||"").trim())
+    .filter(raw=>/^p\s*:\s*/i.test(raw))
+    .map(raw=>normalizeRestrictedOcrText(raw.replace(/^p\s*:\s*/i,"")))
+    .filter(Boolean))];
 }
 function restrictedMediaMatches(ocrText,phrases){
   const normalized=normalizeRestrictedOcrText(ocrText);
   if(!normalized)return false;
-  return phrases.some(phrase=>normalized.includes(phrase));
+  return phrases.some(raw=>{
+    const phrase=normalizeRestrictedOcrText(raw);
+    if(!phrase)return false;
+    return normalized.includes(phrase);
+  });
 }
 async function sendRestrictedMediaBotMessage(user){
   const text="The File Contains Restricted Content. Try Different One";
@@ -1173,7 +1181,7 @@ async function checkRestrictedMediaBuffer(res,user,buffer){
   if(!phrases.length)return false;
   try{
     const text=await recognizeRestrictedMediaText(buffer);
-    if(!phrases.some(phrase=>text.includes(phrase)))return false;
+    if(!restrictedMediaMatches(text,phrases))return false;
     await sendRestrictedMediaBotMessage(user);
     res.status(400).json({error:"The File Contains Restricted Content. Try Different One",restrictedMedia:true});
     return true;
@@ -3495,6 +3503,24 @@ app.get("/api/dm/:id",auth,featureAllowed("private_messages"),async(req,res)=>{
   if(privateMessagesBlocked(u,v))return res.status(403).json({error:"Messaging blocked"});
   const {rows}=await pool.query(`SELECT data FROM private_messages WHERE (sender_id=$1 AND receiver_id=$2) OR (sender_id=$2 AND receiver_id=$1) ORDER BY created_at DESC,id DESC LIMIT 300`,[Number(u.id),Number(v.id)]);
   res.json({messages:rows.reverse().map(r=>r.data)});
+});
+
+app.post("/api/translate",auth,async(req,res)=>{
+  try{
+    const text=String(req.body?.text||"").trim().slice(0,4000);
+    if(!text)return res.status(400).json({error:"There is no text to translate."});
+    const endpoint="https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=en&dt=t&q="+encodeURIComponent(text);
+    const response=await fetch(endpoint,{headers:{"accept":"application/json"},signal:AbortSignal.timeout(12000)});
+    if(!response.ok)throw new Error("Translation provider returned "+response.status);
+    const data=await response.json();
+    const translated=Array.isArray(data?.[0])?data[0].map(part=>String(part?.[0]||"")).join(""):"";
+    const detectedLanguage=String(data?.[2]||"").slice(0,24);
+    if(!translated)throw new Error("Translation provider returned no translated text.");
+    res.json({translated,detectedLanguage,targetLanguage:"en"});
+  }catch(error){
+    console.error("Message translation failed:",error?.message||error);
+    res.status(502).json({error:"Translation is temporarily unavailable. Please try again."});
+  }
 });
 
 app.post("/api/dm/:id",auth,featureAllowed("private_messages"),upload.single("file"),async(req,res)=>{
