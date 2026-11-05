@@ -5648,3 +5648,13 @@ html,body,#app,.app,.main,.view,#profile,#viewProfile {
  #viewWall .wall-comments-header{margin-inline:-12px!important;padding-inline:12px!important}
  #viewWall .wall-comment-item{gap:8px!important;padding:9px 0!important}
 }
+
+/* Keep engagement counts clearly visible beside Like and Comment */
+#viewWall .wall-action-count{
+  display:inline-flex!important;align-items:center!important;justify-content:center!important;
+  min-width:17px!important;margin-left:2px!important;padding:1px 4px!important;
+  border-radius:999px!important;background:rgba(191,119,235,.13)!important;
+  color:#e7c8ff!important;font-size:10px!important;font-weight:750!important;
+  font-variant-numeric:tabular-nums!important;line-height:1.4!important;
+}
+#viewWall .wall-like-action.reacted .wall-action-count{background:rgba(255,94,143,.16)!important;color:#ff9bb8!important}
