@@ -293,8 +293,37 @@ function showPrivateMessagePopup(message){
   clearTimeout(toast.timer);toast.timer=setTimeout(()=>{el.style.display="none";},6500);
 }
 
+let activeWarningNotificationId=null;
+function showPersistentWarning(notification){
+  if(!notification||!notification.id)return;
+  const id=String(notification.id);
+  if(activeWarningNotificationId===id)return;
+  activeWarningNotificationId=id;
+  const reason=String(notification.text||notification.message||"Please review the community rules.");
+  modal(`<div class="warning-popup warning-persistent"><div class="warning-icon" aria-hidden="true">⚠️</div><div class="warning-title">WARNING</div><div class="warning-reason">${esc(reason)}</div><button class="primary warning-understand" id="warningUnderstand" type="button">I understand</button></div>`);
+  $("modal")?.classList.add("warning-modal");
+  $("warningUnderstand")?.addEventListener("click",acknowledgePersistentWarning);
+}
+async function acknowledgePersistentWarning(){
+  const id=activeWarningNotificationId;
+  if(!id)return;
+  const button=$("warningUnderstand");
+  if(button){button.disabled=true;button.textContent="Saving…";}
+  try{
+    await api("/api/notifications/"+encodeURIComponent(id)+"/acknowledge-warning",{method:"POST"});
+    activeWarningNotificationId=null;
+    $("modal")?.classList.remove("warning-modal");
+    closeModal();
+    await loadNotifications();
+  }catch(error){
+    if(button){button.disabled=false;button.textContent="I understand";}
+    toast(error.message||"Could not acknowledge this warning. It will remain on screen.");
+  }
+}
 function closeModal() {
+  if(activeWarningNotificationId)return;
   const overlay = $("modal");
+  overlay.classList.remove("warning-modal");
   overlay.classList.add("hidden");
   // Tear down file inputs, image previews and temporary controls when a dialog
   // closes so an upload/crop preview cannot linger over the chat viewport.
@@ -864,8 +893,8 @@ async function start() {
     modal(`<div class="warning-popup"><div class="warning-title">🔇 Muted</div><div class="warning-reason">${esc(message)}</div>${data?.reason?'<p class="muted">Reason: '+esc(data.reason)+'</p>':''}<button class="primary" onclick="closeModal()">OK</button></div>`);
     loadNotifications();
   });
-  state.socket.on("warning-popup", data => {
-    modal(`<div class="warning-popup"><div class="warning-title">Warning ⚠️</div><div class="warning-reason">${esc(data?.reason||"Please review the community rules.")}</div><button class="primary" onclick="closeModal()">I understand</button></div>`);
+  state.socket.on("warning-popup", () => {
+    // The warning is stored as an unread notification by the server.
     loadNotifications();
   });
   state.socket.on("news", () => {
@@ -5759,6 +5788,8 @@ async function loadNotifications() {
     ]);
     // Fall back to the main notification response if the unread-only endpoint is unavailable.
     const unread=unreadData?.notifications || (data.notifications||[]).filter(n=>!n.read);
+    const pendingWarnings=unread.filter(n=>String(n.type||"").toLowerCase()==="warning").sort((x,y)=>new Date(x.time||0)-new Date(y.time||0));
+    if(!activeWarningNotificationId&&pendingWarnings.length)showPersistentWarning(pendingWarnings[0]);
     const notificationStaffCount=unread.filter(n=>["report","moderation","staff"].includes(n.type)).length;
     const reportCount=Math.max(Number(staffCounts.reports||0),notificationStaffCount);
     const counts={dm:Number(dm.count||0),report:reportCount,all:unread.length,friends:(friendsData.incoming||[]).length};
@@ -5798,7 +5829,7 @@ $("notifications").onclick=async()=>{
     const data=await api("/api/notifications");
     const rows=data.notifications||[];
     modal(`<div class="notification-center"><div class="notification-head"><div><h2>🔔 Notifications</h2><p class="muted">${rows.filter(n=>!n.read).length} unread</p></div><div class="toolbar"><button class="mini" id="markAllNotifications">Mark all read</button><button class="mini danger" id="clearNotifications">Clear all</button></div></div><div class="stack">${rows.map(n=>`<div class="card notification-card ${n.read?'':'unread'}"><div><b>${esc(n.title)}</b><p>${esc(n.text)}</p><small>${fmt(n.time)}</small></div><div class="toolbar"><button class="mini" data-notif-read="${esc(n.id)}">${n.read?'Read':'Mark read'}</button><button class="mini danger" data-notif-delete="${esc(n.id)}">×</button></div></div>`).join("")||'<p class="muted">No notifications.</p>'}</div></div>`);
-    document.querySelectorAll('[data-notif-read]').forEach(b=>b.onclick=async()=>{await api('/api/notifications/'+encodeURIComponent(b.dataset.notifRead)+'/read',{method:'PATCH'});b.textContent='Read';b.closest('.notification-card')?.classList.remove('unread');loadNotifications();});
+    document.querySelectorAll('[data-notif-read]').forEach(b=>b.onclick=async()=>{const row=b.closest('.notification-card');if(row?.querySelector('b')?.textContent==='Warning ⚠️'){closeModal();await loadNotifications();return;}await api('/api/notifications/'+encodeURIComponent(b.dataset.notifRead)+'/read',{method:'PATCH'});b.textContent='Read';row?.classList.remove('unread');loadNotifications();});
     document.querySelectorAll('[data-notif-delete]').forEach(b=>b.onclick=async()=>{await api('/api/notifications/'+encodeURIComponent(b.dataset.notifDelete),{method:'DELETE'});b.closest('.notification-card')?.remove();loadNotifications();});
     $('markAllNotifications').onclick=async()=>{await api('/api/notifications/read',{method:'POST'});closeModal();loadNotifications();toast('Notifications marked as read.');};
     $('clearNotifications').onclick=async()=>{if(!confirm('Clear all notifications?'))return;await api('/api/notifications',{method:'DELETE'});closeModal();loadNotifications();toast('Notifications cleared.');};
