@@ -555,7 +555,7 @@ function notificationPreferenceKey(type){
   if(["gold","achievement","level"].includes(type)) return "gamification";
   return "other";
 }
-async function notify(userId,type,title,text){
+async function notify(userId,type,title,text,url="/"){
   const target=findUser(userId), key=notificationPreferenceKey(type), prefs=target?.settings?.notificationPrefs||{};
   if(prefs[key]===false)return;
   try{
@@ -564,7 +564,7 @@ async function notify(userId,type,title,text){
       [Number(userId),String(type),String(title||type),String(text)]
     );
     io.to("user:"+userId).emit("notification");
-    await sendWebPushToUser(userId,{title:String(title||type||"Maleficent Chat"),body:String(text||"You have a new notification").slice(0,180),url:"/",tag:"mc-alert-"+String(type||"notification"),kind:"site-notification"});
+    await sendWebPushToUser(userId,{title:String(title||type||"Maleficent Chat"),body:String(text||"You have a new notification").slice(0,180),url:String(url||"/"),tag:"mc-alert-"+String(type||"notification"),kind:type==="private-message"?"private-message":"site-notification"});
   }catch(err){console.error("Notification insert failed:",err);}
 }
 
@@ -3628,7 +3628,8 @@ app.post("/api/dm/:id",auth,featureAllowed("private_messages"),upload.single("fi
   // private_messages is already the durable source; avoid save(), which rewrites
   // every user row and filter-word entry for each private message.
   db.privateMessages.push(m);
-  notify(v.id,"private-message","New private message",`@${u.username} sent you a private message.`);
+  const dmPreview=m.text?String(m.text).trim().slice(0,180):(m.attachment?"📎 Attachment":"New private message");
+  notify(v.id,"private-message",`💌 @${u.username}`,dmPreview,`/?dm=${encodeURIComponent(u.id)}`);
   // Notify every active device for both participants. The client deduplicates
   // by message ID, so the sender can safely reconcile the optimistic/API copy.
   // Send separately to both authenticated user rooms so every active device
