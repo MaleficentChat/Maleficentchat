@@ -5301,3 +5301,180 @@ html,body,#app,.app,.main,.view,#profile,#viewProfile {
     max-height:calc(100dvh - 16px)!important;
   }
 }
+
+
+/* ===== Shadow Feed: Instagram-inspired Midnight Cyber redesign (2026-11-05) ===== */
+#viewWall{
+  min-width:0!important;
+  overflow-x:hidden!important;
+  overflow-y:auto!important;
+  background:#08070d!important;
+  scrollbar-width:thin;
+  scrollbar-color:#40304f transparent;
+}
+#viewWall>.topbar{
+  position:sticky!important;
+  top:0!important;
+  z-index:12!important;
+  min-height:68px!important;
+  height:auto!important;
+  padding:12px clamp(12px,3vw,28px)!important;
+  background:rgba(10,8,16,.94)!important;
+  border-bottom:1px solid rgba(190,120,255,.13)!important;
+  backdrop-filter:blur(18px);
+  -webkit-backdrop-filter:blur(18px);
+}
+#viewWall>.topbar h2{
+  margin:0!important;
+  color:#f8efff!important;
+  font-size:clamp(18px,2.5vw,22px)!important;
+  letter-spacing:-.035em;
+}
+#viewWall>.topbar p{margin:3px 0 0!important;color:#9e91aa!important;font-size:11px!important}
+#viewWall>.topbar .toolbar{display:flex;align-items:center;justify-content:flex-end;gap:7px;flex-wrap:wrap}
+#viewWall>.topbar .toolbar .mini{
+  min-height:34px!important;padding:7px 11px!important;border-radius:999px!important;
+  border:1px solid #30243b!important;background:#15101d!important;color:#d9c9e8!important;
+  font-size:11px!important;font-weight:650;
+}
+#viewWall>.topbar .toolbar .mini[aria-pressed="true"]{
+  color:#fff!important;border-color:#a34de6!important;background:rgba(128,57,174,.24)!important;
+}
+#viewWall #newWallPost{
+  min-height:35px!important;padding:8px 15px!important;border:0!important;border-radius:999px!important;
+  background:linear-gradient(110deg,#8d42dc,#d448a9)!important;color:#fff!important;
+  box-shadow:0 5px 18px rgba(167,66,210,.2);font-size:12px!important;
+}
+#viewWall .wall-feed{
+  display:flex!important;flex-direction:column!important;align-items:center!important;
+  gap:15px!important;width:100%!important;max-width:700px!important;
+  margin:0 auto!important;padding:17px 16px 42px!important;box-sizing:border-box!important;
+}
+#viewWall .wall-post{
+  display:flex!important;flex-direction:column!important;gap:0!important;
+  width:100%!important;max-width:100%!important;min-width:0!important;
+  margin:0!important;padding:0!important;overflow:hidden!important;
+  border:1px solid #292132!important;border-radius:16px!important;
+  background:#100d15!important;box-shadow:0 8px 30px rgba(0,0,0,.22)!important;
+  transition:border-color .18s ease,transform .18s ease;
+}
+#viewWall .wall-post:hover{border-color:#493257!important;transform:translateY(-1px)}
+#viewWall .news-card-top{
+  display:flex!important;align-items:center!important;justify-content:space-between!important;
+  gap:10px!important;min-width:0!important;padding:13px 14px 11px!important;
+  background:transparent!important;border:0!important;
+}
+#viewWall .social-author{display:flex!important;align-items:center!important;gap:10px!important;min-width:0!important}
+#viewWall .social-author-avatar{
+  width:42px!important;height:42px!important;flex:0 0 42px!important;padding:2px!important;
+  display:grid!important;place-items:center!important;overflow:hidden!important;border-radius:50%!important;
+  background:linear-gradient(135deg,#ffb14a,#d64cae 52%,#7845e8)!important;
+}
+#viewWall .social-author-avatar img{
+  display:block!important;width:100%!important;height:100%!important;object-fit:cover!important;
+  border:2px solid #100d15!important;border-radius:50%!important;
+}
+#viewWall .social-author>div:last-child{min-width:0!important}
+#viewWall .social-author h3{
+  margin:0!important;color:#f6effb!important;font-size:13px!important;font-weight:750!important;
+  line-height:1.3!important;overflow-wrap:anywhere;
+}
+#viewWall .social-author .muted{margin-top:3px!important;color:#94879e!important;font-size:10px!important;line-height:1.3}
+#viewWall .social-more{
+  flex:0 0 34px!important;width:34px!important;height:34px!important;border:0!important;border-radius:50%!important;
+  background:transparent!important;color:#d6c8df!important;font-size:18px!important;letter-spacing:1px;
+}
+#viewWall .social-more:hover{background:#21182a!important}
+#viewWall .wall-content{
+  order:2!important;margin:0!important;padding:2px 14px 12px!important;
+  color:#eee7f3!important;font-size:13px!important;line-height:1.55!important;
+  white-space:pre-wrap!important;overflow-wrap:anywhere!important;
+}
+#viewWall .wall-media{
+  display:block!important;width:calc(100% + 28px)!important;max-width:calc(100% + 28px)!important;
+  height:auto!important;max-height:680px!important;aspect-ratio:auto!important;
+  margin:12px -14px 0!important;object-fit:contain!important;
+  background:#08070b!important;border-radius:0!important;
+}
+#viewWall video.wall-media{width:calc(100% + 28px)!important}
+#viewWall .social-reaction-summary{
+  order:3!important;display:flex!important;align-items:center!important;flex-wrap:wrap!important;gap:9px!important;
+  min-height:34px!important;padding:7px 14px 8px!important;
+  border-top:1px solid rgba(255,255,255,.035)!important;
+  color:#a99ab4!important;font-size:10px!important;
+}
+#viewWall .social-reaction-summary>span{display:inline-flex;align-items:center;gap:3px}
+#viewWall .social-reaction-summary b{color:#ded1e7!important;font-weight:650}
+#viewWall .social-comments-shortcut{
+  margin-left:auto!important;padding:3px 0!important;border:0!important;background:transparent!important;
+  color:#c8b8d3!important;font-size:11px!important;
+}
+#viewWall .news-actions.social-reaction-actions{
+  order:4!important;display:flex!important;align-items:center!important;gap:4px!important;flex-wrap:nowrap!important;
+  padding:7px 10px 9px!important;border-top:1px solid #28202f!important;background:#100d15!important;
+}
+#viewWall .news-actions.social-reaction-actions .mini{
+  display:inline-flex!important;align-items:center!important;justify-content:center!important;gap:4px!important;
+  min-width:0!important;min-height:34px!important;margin:0!important;padding:6px 9px!important;
+  border:1px solid transparent!important;border-radius:9px!important;background:transparent!important;
+  color:#d6c8df!important;font-size:12px!important;white-space:nowrap!important;
+}
+#viewWall .news-actions.social-reaction-actions .mini:hover{background:#21182a!important}
+#viewWall .news-actions.social-reaction-actions .mini.reacted{
+  color:#ff6f9e!important;background:rgba(255,74,133,.1)!important;
+}
+#viewWall .news-actions.social-reaction-actions .mini b{font-size:10px;color:#a99ab4}
+#viewWall .wall-comments{
+  order:5!important;margin:0!important;padding:10px 14px 13px!important;
+  border-top:1px solid #292132!important;background:#0d0a12!important;
+}
+#viewWall .wall-comments .news-comment{padding:8px 0!important;border-bottom:1px solid rgba(255,255,255,.055)!important}
+#viewWall .wall-comments .news-comment-head{display:flex;align-items:center;gap:7px}
+#viewWall .wall-comments .news-comment-head b{color:#f1e8f7!important;font-size:11px}
+#viewWall .wall-comments .news-comment-head small{color:#9e8daa!important;font-size:10px}
+#viewWall .wall-comments .news-comment-text{margin-top:3px;color:#d8ccdf!important;font-size:12px;line-height:1.45}
+#viewWall .wall-comment-form{display:flex!important;align-items:center!important;gap:8px!important;margin-top:10px!important}
+#viewWall .wall-comment-form input{
+  min-width:0!important;min-height:38px!important;margin:0!important;padding:9px 13px!important;
+  border:1px solid #33273d!important;border-radius:999px!important;background:#17111f!important;
+  color:#f5edf9!important;font-size:12px!important;
+}
+#viewWall .wall-comment-form button{min-height:36px!important;padding:7px 14px!important;border-radius:999px!important}
+#viewWall .social-post-options{
+  order:6!important;margin:0 12px 10px!important;padding:6px!important;
+  border:1px solid #30233a!important;border-radius:12px!important;background:#17111f!important;
+}
+#viewWall .social-post-options button{
+  display:block!important;width:100%!important;padding:9px 10px!important;text-align:left!important;
+  border:0!important;border-radius:8px!important;background:transparent!important;color:#e7d9ef!important;
+}
+#viewWall .social-post-options button:hover{background:#261a30!important}
+#viewWall .wall-feed>.muted{
+  width:100%!important;padding:35px 18px!important;text-align:center!important;
+  border:1px dashed #493454!important;border-radius:16px!important;background:#100d15!important;color:#b8a8c4!important;
+}
+@media(max-width:650px){
+  #viewWall>.topbar{align-items:center!important;gap:8px!important;padding:10px 11px!important}
+  #viewWall>.topbar h2{font-size:17px!important}
+  #viewWall>.topbar p{font-size:10px!important}
+  #viewWall>.topbar .toolbar{gap:5px!important}
+  #viewWall>.topbar .toolbar .mini{min-height:31px!important;padding:6px 9px!important;font-size:10px!important}
+  #viewWall #newWallPost{min-height:32px!important;padding:7px 11px!important;font-size:11px!important}
+  #viewWall .wall-feed{gap:11px!important;padding:11px 0 28px!important}
+  #viewWall .wall-post{border-left:0!important;border-right:0!important;border-radius:0!important}
+  #viewWall .news-card-top{padding:11px 12px 9px!important}
+  #viewWall .social-author-avatar{width:39px!important;height:39px!important;flex-basis:39px!important}
+  #viewWall .wall-content{padding:2px 12px 10px!important;font-size:13px!important}
+  #viewWall .wall-media{width:calc(100% + 24px)!important;max-width:calc(100% + 24px)!important;margin:10px -12px 0!important;max-height:72vh!important;object-fit:contain!important}
+  #viewWall .social-reaction-summary{padding:7px 12px!important}
+  #viewWall .news-actions.social-reaction-actions{padding:6px 7px 8px!important;gap:1px!important}
+  #viewWall .news-actions.social-reaction-actions .mini{flex:1 1 auto!important;padding:6px 5px!important;font-size:11px!important}
+  #viewWall .news-actions.social-reaction-actions .mini[data-wall-save],
+  #viewWall .news-actions.social-reaction-actions .mini[data-wall-feature],
+  #viewWall .news-actions.social-reaction-actions .mini[data-wall-delete]{flex:0 0 auto!important}
+}
+@media(max-width:390px){
+  #viewWall>.topbar{align-items:flex-start!important;flex-direction:column!important}
+  #viewWall>.topbar .toolbar{width:100%!important;justify-content:flex-start!important}
+  #viewWall .news-actions.social-reaction-actions .mini{font-size:10px!important;padding:6px 4px!important}
+}
