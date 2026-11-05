@@ -147,6 +147,11 @@ async function api(url, opt = {}) {
   // and pinned messages, so the YouTube endpoint always rejected the request.
   const roomMatch=String(url).match(/\/api\/rooms\/([^/?#]+)(?:\/|$)/);
   if(roomMatch){try{const roomAccess=JSON.parse(safeStorage.getItem('mc_room_join')||'null');if(roomAccess?.roomId!=null&&String(roomAccess.roomId)===String(roomMatch[1])&&roomAccess.joinToken)headers['x-room-join-token']=roomAccess.joinToken;}catch{}}
+  const messageMatch=String(url).match(/\/api\/messages\/[^/?#]+(?:\/|$)/);
+  if(!roomMatch&&messageMatch){try{const roomAccess=JSON.parse(safeStorage.getItem("mc_room_join")||"null");if(roomAccess?.roomId!=null&&String(roomAccess.roomId)===String(state.currentRoom)&&roomAccess.joinToken)headers["x-room-join-token"]=roomAccess.joinToken;}catch{}}
+  if(!roomMatch&&/\/api\/messages\/[^/?#]+\/forward(?:[?#]|$)/.test(String(url))){
+    try{const body=typeof opt.body==="string"?JSON.parse(opt.body):opt.body;const roomAccess=JSON.parse(safeStorage.getItem("mc_room_join")||"null");if(body?.roomId!=null&&String(roomAccess?.roomId)===String(body.roomId)&&roomAccess?.joinToken)headers["x-room-join-token"]=roomAccess.joinToken;}catch{}
+  }
   // API responses must never be read from or written to the browser HTTP cache.
   // In particular, chat history must be fetched fresh after reloads.
   const res = await fetch(url, {
@@ -742,7 +747,16 @@ async function start() {
     authenticateSocketAndJoinRoom(state.socket,true).catch(error=>console.warn("Initial socket recovery failed:",error?.message||error));
     syncLiveMessages();
   }
-  state.socket.on("room-error",d=>toast(d?.error||"Could not join room."));
+  state.socket.on("room-error",d=>{
+    toast(d?.error||"Could not join room.");
+    if(d?.roomId&&String(d.roomId)===String(state.currentRoom)){
+      try{const access=JSON.parse(safeStorage.getItem("mc_room_join")||"null");if(String(access?.roomId)===String(d.roomId))safeStorage.removeItem("mc_room_join");}catch{}
+      state.currentRoom=null;state.currentRoomRole="USER";state.messages=[];
+      if($("messages"))$("messages").innerHTML="";
+      const main=state.rooms.find(room=>room.isDefault)||state.rooms.find(room=>/^main room$/i.test(String(room.name||"")));
+      if(main)joinRoom(main.id).catch(()=>{});
+    }
+  });
   state.socket.on("dm-typing",d=>{
     if(String(d?.recipientId||"")!==String(state.user?.id)||String(d?.userId||"")!==String(state.dmUserId))return;
     const status=$("dmTypingStatus");
@@ -797,6 +811,8 @@ async function start() {
 
   state.socket.on("room:kicked", data => {
     if(String(data?.roomId)!==String(state.currentRoom))return;
+    try{const access=JSON.parse(safeStorage.getItem("mc_room_join")||"null");if(String(access?.roomId)===String(data.roomId))safeStorage.removeItem("mc_room_join");}catch{}
+    state.currentRoom=null;state.currentRoomRole="USER";
     state.messages=[];
     if($("messages"))$("messages").innerHTML="";
     toast("You were removed from this room. Reason: "+String(data?.reason||"Room rules"));
@@ -890,6 +906,8 @@ async function start() {
     state.rooms.find(room=>String(room.name||"").trim().toLowerCase()==="main room");
   let mainRoom=findMainRoom();
   let joined=false;
+  const invite=roomInviteFromHash();
+  if(invite?.roomId&&state.rooms.some(room=>String(room.id)===invite.roomId))joined=await joinRoom(invite.roomId);
   // Every authenticated visit should land directly in Main Room, not the room directory.
   // Avoid renderView() here because it re-fetches the room list and briefly returns to the directory.
   state.view = "rooms";
@@ -1481,8 +1499,17 @@ async function loadRooms() {
   let lastError = null;
   for (let attempt = 0; attempt < 2; attempt++) {
     try {
-      const data = await api("/api/rooms");
+      let roomAccess=null;
+      try{roomAccess=JSON.parse(safeStorage.getItem("mc_room_join")||"null");}catch{}
+      const data = await api("/api/rooms",{headers:roomAccess?.joinToken?{"x-room-join-token":roomAccess.joinToken}:{}});
       state.rooms = sanitizeRoomList(data.rooms);
+      const invite=roomInviteFromHash();
+      if(invite?.roomId&&invite.inviteToken){
+        try{
+          const resolved=await api("/api/rooms/invites/resolve",{method:"POST",body:JSON.stringify({roomId:invite.roomId,inviteToken:invite.inviteToken})});
+          if(resolved.room)state.rooms=sanitizeRoomList([...state.rooms.filter(room=>String(room.id)!==String(resolved.room.id)),resolved.room]);
+        }catch(error){lastError=error;}
+      }
       // The room endpoint is the source of truth; always display all available rooms on initial load.
       if (state.rooms.length) {
         state.roomListMode = "all";
@@ -1591,6 +1618,13 @@ $("roomSearch").oninput = renderRooms;
 async function loadRoomAnnouncements(roomId){
   try{const r=await api(`/api/rooms/${encodeURIComponent(roomId)}/announcements`); const items=r.announcements||[]; const el=$("announcement"); if(!items.length){el.classList.toggle('hidden',true);return;} el.classList.remove('hidden'); el.innerHTML=`<div class="room-announcement-feed"><b>📢 Room announcements</b>${items.slice(0,3).map(n=>`<div class="room-announcement-item"><div><b>@${esc(n.username)}</b> · ${fmt(n.time)} ${canFeature('edit_room')?`<button class="mini danger announcement-delete" data-announcement="${esc(n.id)}">🗑 Delete</button>`:''}</div><div>${formatMentions(n.text)}</div></div>`).join('')}</div>`; el.querySelectorAll('.announcement-delete').forEach(b=>b.onclick=async()=>{if(!confirm('Delete this announcement?'))return;try{await api(`/api/rooms/${encodeURIComponent(roomId)}/announcements/${encodeURIComponent(b.dataset.announcement)}`,{method:'DELETE'});toast('Announcement deleted.');loadRoomAnnouncements(roomId)}catch(e){toast(e.message)}});}catch(e){console.warn(e)}
 }
+function roomInviteFromHash(){
+  try{
+    const params=new URLSearchParams(String(location.hash||"").replace(/^#/,""));
+    const roomId=String(params.get("room")||"").trim();
+    return roomId?{roomId,inviteToken:String(params.get("invite")||"")}:null;
+  }catch{return null;}
+}
 function postRoomAnnouncement(){
   const text=prompt('Share an announcement in this room:',''); if(!text?.trim()) return;
   api(`/api/rooms/${encodeURIComponent(state.currentRoom)}/announcements`,{method:'POST',body:JSON.stringify({text:text.trim()})}).then(()=>{toast('Room announcement shared.');loadRoomAnnouncements(state.currentRoom)}).catch(e=>toast(e.message));
@@ -1615,10 +1649,14 @@ async function joinRoom(id) {
         prompt("Room password:") || "";
     }
 
+    const roomInvite=roomInviteFromHash();
     const access=await api(`/api/rooms/${id}/join`, {
       method: "POST",
-      body: JSON.stringify({ password })
+      body: JSON.stringify({ password,inviteToken:roomInvite?.roomId===id?roomInvite.inviteToken:"" })
     });
+
+    safeStorage.setItem('mc_room_join',JSON.stringify({roomId:String(id),joinToken:access.joinToken}));
+    if(roomInvite?.roomId===id)history.replaceState(null,"",location.pathname+location.search);
 
     if (
       state.currentRoom &&
@@ -1636,7 +1674,6 @@ async function joinRoom(id) {
     state.currentRoomRole=staffInfo.myRole||'USER';
     rememberMyRoom(id);
 
-    safeStorage.setItem('mc_room_join',JSON.stringify({roomId:String(id),joinToken:access.joinToken}));
     // Joining over HTTP can finish before socket authentication; authenticate
     // again here so the room join cannot be silently ignored during login.
     if(state.socket?.connected) authenticateSocketAndJoinRoom(state.socket,false).catch(error=>console.warn("Room socket join failed:",error?.message||error));
@@ -2036,17 +2073,17 @@ function messageHTML(message) {
           <div class="message-actions-menu hidden" id="message-menu-${esc(message.id)}" role="menu" aria-label="Message actions">
             <button class="message-menu-item" role="menuitem" onclick="replyMsg('${esc(message.id)}');closeMessageMenus()"><span class="menu-icon">↩</span><span><b>Quote</b><small>Reply to this message</small></span></button>
             <button class="message-menu-item" role="menuitem" onclick="hideMsg('${esc(message.id)}');closeMessageMenus()"><span class="menu-icon">◉</span><span><b>Hide</b><small>Hide from my screen</small></span></button>
-            <button class="message-menu-item" role="menuitem" onclick="reportMsg('${esc(message.id)}');closeMessageMenus()"><span class="menu-icon">!</span><span><b>Report</b><small>Report this content</small></span></button>
-            <button class="message-menu-item" role="menuitem" onclick="toggleReactionPicker('${esc(message.id)}');closeMessageMenus()"><span class="menu-icon">☺</span><span><b>React</b><small>Add an emoji reaction</small></span></button>
-            <button class="message-menu-item" role="menuitem" onclick="saveMsg('${esc(message.id)}');closeMessageMenus()"><span class="menu-icon">♧</span><span><b>Save</b><small>Keep in saved messages</small></span></button>
+            ${canFeature("report_message")?`<button class="message-menu-item" role="menuitem" onclick="reportMsg('${esc(message.id)}');closeMessageMenus()"><span class="menu-icon">!</span><span><b>Report</b><small>Report this content</small></span></button>`:""}
+            ${canFeature("react_message")?`<button class="message-menu-item" role="menuitem" onclick="toggleReactionPicker('${esc(message.id)}');closeMessageMenus()"><span class="menu-icon">☺</span><span><b>React</b><small>Add an emoji reaction</small></span></button>`:""}
+            ${canFeature("save_message")?`<button class="message-menu-item" role="menuitem" onclick="saveMsg('${esc(message.id)}');closeMessageMenus()"><span class="menu-icon">♧</span><span><b>Save</b><small>Keep in saved messages</small></span></button>`:""}
             ${message.text ? `<button class="message-menu-item" role="menuitem" onclick="copyMsg('${esc(message.id)}');closeMessageMenus()"><span class="menu-icon">▢</span><span><b>Copy text</b><small>Copy message to clipboard</small></span></button>` : ""}
             ${
-              message.userId === state.user.id
+              String(message.userId) === String(state.user.id) && canFeature("edit_message")
               ? `<button class="message-menu-item" role="menuitem" onclick="editMsg('${esc(message.id)}');closeMessageMenus()"><span class="menu-icon">✎</span><span><b>Edit</b><small>Change your message</small></span></button>`
               : ""
             }
             ${
-              (String(message.userId) === String(state.user?.id) || canFeature("delete_message"))
+              (String(message.userId) === String(state.user?.id) && canFeature("delete_own_messages")) || canFeature("delete_message")
               ? `<button class="message-menu-item danger" role="menuitem" onclick="deleteMsg('${esc(message.id)}');closeMessageMenus()"><span class="menu-icon">×</span><span><b>Delete</b><small>Remove this message</small></span></button>`
               : ""
             }
@@ -5784,7 +5821,7 @@ async function deleteRoom() {
   }
 }
 
-function showInvite() {
+async function showInvite() {
   const room =
     state.rooms.find(
       r => String(r.id) === String(state.currentRoom)
@@ -5792,11 +5829,20 @@ function showInvite() {
 
   if (!room) return;
 
+  let inviteToken="",expiresAt=null;
+  if(room.public===false){
+    try{const result=await api(`/api/rooms/${encodeURIComponent(room.id)}/invites`,{method:"POST",body:JSON.stringify({})});inviteToken=String(result.inviteToken||"");expiresAt=result.expiresAt||null;}
+    catch(error){toast(error.message||"Could not create this room invitation.");return;}
+    if(!inviteToken){toast("Could not create this room invitation.");return;}
+  }
+  const inviteUrl=`${location.origin}/#room=${encodeURIComponent(room.id)}${inviteToken?`&invite=${encodeURIComponent(inviteToken)}`:""}`;
+
   modal(`
     <h2>Room invite</h2>
+    ${expiresAt?`<p class="muted">This private-room invite expires ${esc(new Date(expiresAt).toLocaleString())}.</p>`:""}
 
     <input
-      value="${location.origin}/?room=${encodeURIComponent(room.id)}"
+      value="${esc(inviteUrl)}"
       readonly
     >
   `);

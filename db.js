@@ -252,21 +252,9 @@ async function initDB() {
     ON CONFLICT(name) DO NOTHING`);
   await pool.query(`INSERT INTO settings(key,value) VALUES('room_structure_v1','true'::jsonb) ON CONFLICT(key) DO NOTHING`);
 
-  // Some older versions created duplicate/case-variant Main Rooms. Preserve
-  // their messages by moving those rows into the canonical Main Room before
-  // removing only the obsolete room records.
-  const obsoleteRooms = await pool.query(`SELECT id FROM rooms
-    WHERE LOWER(TRIM(name)) IN ('main room 1','main room 2')
-       OR (LOWER(TRIM(name))='main room' AND name <> 'Main Room')`);
-  if (obsoleteRooms.rowCount) {
-    const obsoleteIds = obsoleteRooms.rows.map(row => Number(row.id));
-    const mainRoom = await pool.query(`SELECT id FROM rooms WHERE name='Main Room' LIMIT 1`);
-    if (mainRoom.rowCount) {
-      await pool.query(`UPDATE room_messages SET room_id=$1 WHERE room_id = ANY($2::int[])`, [Number(mainRoom.rows[0].id), obsoleteIds]);
-    }
-    await pool.query(`DELETE FROM rooms WHERE id = ANY($1::int[])`, [obsoleteIds]);
-  }
-  await pool.query(`UPDATE rooms SET is_default=(name='Main Room'), min_age=0, max_age=120 WHERE name='Main Room'`);
+  // Mark the canonical room without deleting legacy room records or changing
+  // their message associations during startup.
+  await pool.query(`UPDATE rooms SET is_default=(name='Main Room') WHERE name='Main Room'`);
   await pool.query(`UPDATE rooms SET is_default=false WHERE name <> 'Main Room'`);
 
   const giftValues = `VALUES
