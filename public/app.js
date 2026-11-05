@@ -1706,7 +1706,23 @@ async function deleteRoomById(id){
 $("roomSearch").oninput = renderRooms;
 
 async function loadRoomAnnouncements(roomId){
-  try{const r=await api(`/api/rooms/${encodeURIComponent(roomId)}/announcements`); const items=r.announcements||[]; const el=$("announcement"); if(!items.length){el.classList.toggle('hidden',true);return;} el.classList.remove('hidden'); el.innerHTML=`<div class="room-announcement-feed"><b>📢 Room announcements</b>${items.slice(0,3).map(n=>`<div class="room-announcement-item"><div>${n.username?`<b>@${esc(n.username)}</b>`:'<b>📢 Staff announcement</b>'} · ${fmt(n.time)} ${canFeature('edit_room')?`<button class="mini danger announcement-delete" data-announcement="${esc(n.id)}">🗑 Delete</button>`:''}</div><div>${formatMentions(n.text)}</div></div>`).join('')}</div>`; el.querySelectorAll('.announcement-delete').forEach(b=>b.onclick=async()=>{if(!confirm('Delete this announcement?'))return;try{await api(`/api/rooms/${encodeURIComponent(roomId)}/announcements/${encodeURIComponent(b.dataset.announcement)}`,{method:'DELETE'});toast('Announcement deleted.');loadRoomAnnouncements(roomId)}catch(e){toast(e.message)}});}catch(e){console.warn(e)}
+  try{
+    const r=await api(`/api/rooms/${encodeURIComponent(roomId)}/announcements`);
+    const items=r.announcements||[];
+    const el=$("announcement");
+    if(!items.length){el.classList.add("hidden");el.replaceChildren();return;}
+    el.classList.remove("hidden");
+    const canDelete=can("COMMISSOR");
+    el.innerHTML=`<div class="room-announcement-feed"><b>📢 Room announcements</b>${items.slice(0,3).map(n=>`<div class="room-announcement-item"><div class="room-announcement-message">${formatMentions(n.text)}</div>${canDelete?`<button type="button" class="mini danger announcement-delete" data-announcement="${esc(n.id)}">🗑 Delete</button>`:''}</div>`).join('')}</div>`;
+    el.querySelectorAll(".announcement-delete").forEach(button=>button.onclick=async()=>{
+      if(!confirm("Delete this announcement?"))return;
+      try{
+        await api(`/api/rooms/${encodeURIComponent(roomId)}/announcements/${encodeURIComponent(button.dataset.announcement)}`,{method:"DELETE"});
+        toast("Announcement deleted.");
+        await loadRoomAnnouncements(roomId);
+      }catch(error){toast(error.message||"Could not delete announcement.");}
+    });
+  }catch(error){console.warn("Room announcements could not be loaded:",error);}
 }
 function roomInviteFromHash(){
   try{
@@ -1716,9 +1732,15 @@ function roomInviteFromHash(){
   }catch{return null;}
 }
 function postRoomAnnouncement(){
-  const text=prompt('Share an announcement in this room:',''); if(!text?.trim()) return;
-  api(`/api/rooms/${encodeURIComponent(state.currentRoom)}/announcements`,{method:'POST',body:JSON.stringify({text:text.trim()})}).then(()=>{toast('Room announcement shared.');loadRoomAnnouncements(state.currentRoom)}).catch(e=>toast(e.message));
+  if(!can("COMMISSOR")){toast("Posting room announcements requires Commissor or higher.");return;}
+  if(!state.currentRoom){toast("Join a room before posting an announcement.");return;}
+  const text=prompt("Share an announcement in this room:","");
+  if(!text?.trim())return;
+  api(`/api/rooms/${encodeURIComponent(state.currentRoom)}/announcements`,{method:"POST",body:JSON.stringify({text:text.trim()})})
+    .then(()=>{toast("Room announcement shared.");loadRoomAnnouncements(state.currentRoom);})
+    .catch(error=>toast(error.message||"Could not post announcement."));
 }
+window.canPostRoomAnnouncement=()=>can("COMMISSOR");
 
 async function joinRoom(id) {
   const room =
@@ -5826,12 +5848,12 @@ document.addEventListener("click", event => {
     // Core options must always render; optional actions are added only when
     // their permission checks complete successfully.
     const actions = [
-      ["announcement","📢 Room announcement"],
       ["pinned","📌 Pinned messages"],
       ["youtube","▶️ YouTube"],
       ["invite","🔗 Invite link"],
       ["theme","🎨 Room Theme"]
     ];
+    try { if (can("COMMISSOR")) actions.unshift(["announcement","📢 Room announcement"]); } catch (_) {}
     try { if (canFeature("clear_room")) actions.unshift(["clear","🧹 Clear messages"]); } catch (_) {}
     try { if (canFeature("edit_room")) actions.unshift(["edit","✏️ Edit room"]); } catch (_) {}
     try { if (canFeature("delete_room")) actions.unshift(["delete","🗑 Delete room"]); } catch (_) {}
