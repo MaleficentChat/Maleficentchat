@@ -5478,3 +5478,53 @@ html,body,#app,.app,.main,.view,#profile,#viewProfile {
   #viewWall>.topbar .toolbar{width:100%!important;justify-content:flex-start!important}
   #viewWall .news-actions.social-reaction-actions .mini{font-size:10px!important;padding:6px 4px!important}
 }
+
+/* Shadow Feed story rail + floating composer to match approved concept */
+#viewWall .shadow-stories{
+  order:-1!important;display:flex!important;align-items:flex-start!important;gap:14px!important;
+  width:100%!important;max-width:100%!important;overflow-x:auto!important;overflow-y:hidden!important;
+  padding:2px 2px 13px!important;margin:0!important;scrollbar-width:none!important;
+  overscroll-behavior-x:contain!important;
+}
+#viewWall .shadow-stories::-webkit-scrollbar{display:none!important}
+#viewWall .shadow-story{
+  position:relative!important;display:flex!important;flex:0 0 68px!important;flex-direction:column!important;
+  align-items:center!important;gap:6px!important;min-width:0!important;padding:0!important;
+  border:0!important;background:transparent!important;color:#ded1eb!important;
+  font-size:10px!important;line-height:1.25!important;text-align:center!important;
+}
+#viewWall .shadow-story>span:last-child{
+  display:block!important;width:100%!important;overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important;
+}
+#viewWall .shadow-story-ring{
+  position:relative!important;display:grid!important;place-items:center!important;width:66px!important;height:66px!important;
+  padding:3px!important;border-radius:50%!important;
+  background:linear-gradient(135deg,#ffb04a,#ed4ca8 48%,#8744ff)!important;
+}
+#viewWall .shadow-story-avatar{
+  display:grid!important;place-items:center!important;width:100%!important;height:100%!important;
+  overflow:hidden!important;border:3px solid #0c0911!important;border-radius:50%!important;
+  background:radial-gradient(circle at 30% 20%,#46235f,#100c18 70%)!important;color:#d88bff!important;font-size:24px!important;
+}
+#viewWall .shadow-story-avatar img{width:100%!important;height:100%!important;object-fit:cover!important}
+#viewWall .shadow-your-story .shadow-story-ring{background:#554663!important}
+#viewWall .shadow-your-story .shadow-story-ring>i{
+  position:absolute!important;right:-1px!important;bottom:0!important;display:grid!important;place-items:center!important;
+  width:23px!important;height:23px!important;border:2px solid #0b0810!important;border-radius:50%!important;
+  background:#a344ed!important;color:white!important;font-size:18px!important;font-style:normal!important;line-height:1!important;
+}
+#viewWall .shadow-story-highlight{outline:2px solid #c05cff!important;outline-offset:3px!important}
+#viewWall #newWallPost{
+  position:fixed!important;right:20px!important;bottom:24px!important;z-index:30!important;
+  width:56px!important;height:56px!important;min-height:56px!important;padding:0!important;
+  display:grid!important;place-items:center!important;border-radius:50%!important;
+  background:linear-gradient(145deg,#c13cff,#7527dc)!important;color:white!important;
+  font-size:0!important;box-shadow:0 8px 28px rgba(163,52,255,.48)!important;
+}
+#viewWall #newWallPost::before{content:"＋";font-size:29px;line-height:1;font-weight:400}
+@media(max-width:650px){
+ #viewWall .shadow-stories{gap:12px!important;padding:2px 12px 12px!important}
+ #viewWall .shadow-story{flex-basis:66px!important}
+ #viewWall .shadow-story-ring{width:62px!important;height:62px!important}
+ #viewWall #newWallPost{right:16px!important;bottom:20px!important;width:52px!important;height:52px!important;min-height:52px!important}
+}
