@@ -589,7 +589,8 @@ function notificationPreferenceKey(type){
 }
 async function notify(userId,type,title,text,url="/"){
   const target=findUser(userId), key=notificationPreferenceKey(type), prefs=target?.settings?.notificationPrefs||{};
-  if(prefs[key]===false)return;
+  // Moderation warnings are mandatory and cannot be hidden by notification preferences.
+  if(prefs[key]===false&&String(type)!=="warning")return;
   try{
     await pool.query(
       `INSERT INTO notifications(user_id,type,title,message,is_read) VALUES($1,$2,$3,$4,false)`,
@@ -4092,7 +4093,7 @@ app.post(
 
     const moderationReason=cleanText(req.body.reason)||"Community rules";
     if(action==="WARN"){
-      notify(target.id,"warning","Warning ⚠️",moderationReason);
+      await notify(target.id,"warning","Warning ⚠️",moderationReason);
       io.to("user:"+target.id).emit("warning-popup",{reason:moderationReason});
     }else if(action==="MUTE"){
       const minutes=Math.max(1,Number(req.body.minutes)||10);
