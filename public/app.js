@@ -277,16 +277,20 @@ if("Notification" in window && Notification.permission==="granted") registerSite
 
 function toast(text) {
   const el = $("toast");
-  // Some dashboard views do not include the global toast element.
-  // Never let a missing notification node break the action that triggered it.
   if (!el) { console.warn("[Maleficent Chat]", String(text)); return; }
-  el.textContent = String(text ?? "");
-  el.style.display = "block";
+  el.textContent = String(text ?? "");el.style.display = "block";el.onclick=null;el.style.cursor="";
   clearTimeout(toast.timer);
-  toast.timer = setTimeout(() => {
-    const current = $("toast");
-    if (current) current.style.display = "none";
-  }, 2800);
+  toast.timer=setTimeout(()=>{const current=$("toast");if(current)current.style.display="none";},3200);
+}
+function showPrivateMessagePopup(message){
+  const senderId=String(message?.from??message?.senderId??message?.fromId??"");
+  const sender=senderId==="system-bot"?"System Bot":(message?.displayName||message?.username||message?.senderUsername||"New message");
+  const body=String(message?.text||message?.message||"📷 Attachment").trim();
+  const preview=body.length>110?body.slice(0,107)+"…":body;
+  toast("💌  @"+sender+"  ·  "+preview+"  ·  Tap to open");
+  const el=$("toast");if(!el)return;
+  el.style.cursor="pointer";el.onclick=()=>{openDM(senderId||"system-bot");el.style.display="none";};
+  clearTimeout(toast.timer);toast.timer=setTimeout(()=>{el.style.display="none";},6500);
 }
 
 function closeModal() {
@@ -887,7 +891,7 @@ async function start() {
     const from=String(message?.from??message?.senderId??message?.fromId??"");
     const to=String(message?.to??message?.receiverId??message?.toId??"");
     const myId=String(state.user?.id??"");
-    if(document.hidden && from!==myId) showSiteNotification("New private message", String(message?.text||message?.message||"You received a private message").slice(0,180), "messages");
+    if(from!==myId){if(document.hidden)showSiteNotification("New private message",String(message?.text||message?.message||"You received a private message").slice(0,180),"messages");else showPrivateMessagePopup(message);}
     const peer=state.dmPeerUser;
     const activePeerId=String(state.dmUserId??"");
     if(message && peer && activePeerId && (from===activePeerId||to===activePeerId) && (from===myId||to===myId)){
@@ -4365,7 +4369,7 @@ async function renderStaffApplications(){
     <div class="staff-application-answer"><small>DAILY ACTIVE TIME</small><p>${esc(x.activity)}</p></div>
     <div class="staff-application-answer"><small>WHY SHOULD WE HIRE YOU?</small><p>${esc(x.reason)}</p></div>
     <div class="staff-application-answer"><small>PAST MODERATION EXPERIENCE</small><p>${esc(x.experience)}</p></div>
-    ${x.status==='PENDING'?'<label>Rank to grant<select id="staffAppGrantRank"><option value="MOD">Moderator</option><option value="ADMIN">Admin</option><option value="SUPER_ADMIN">Super Admin</option><option value="COMMISSOR">Commissor</option><option value="COOWNER">Co-owner</option></select></label><div class="toolbar staff-application-review-actions"><button class="mini danger" id="staffAppReject">Reject</button><button class="primary" id="staffAppGrant">Grant Rank</button></div><p id="staffAppReviewMessage" class="muted"></p>':'<p class="muted">This application has already been reviewed.</p>'}
+    ${x.status==='PENDING'?'<label>Rank to grant<select id="staffAppGrantRank"><option value="MOD">Moderator</option><option value="ADMIN">Admin</option><option value="SUPER_ADMIN">Super Admin</option><option value="COMMISSOR">Commissor</option>${String(state.user?.rank||"").toUpperCase()==="COOWNER"?'<option value="INSTRUCTOR">Instructor</option>':""}<option value="COOWNER">Co-owner</option></select></label><div class="toolbar staff-application-review-actions"><button class="mini danger" id="staffAppReject">Reject</button><button class="primary" id="staffAppGrant">Grant Rank</button></div><p id="staffAppReviewMessage" class="muted"></p>':'<p class="muted">This application has already been reviewed.</p>'}
     </div>`);
     $('staffAppReject')?.addEventListener('click',async()=>{const b=$('staffAppReject');b.disabled=true;try{await api('/api/staff/applications/'+encodeURIComponent(x.id)+'/reject',{method:'POST'});closeModal();toast('Application rejected.');await loadStaff();}catch(e){$('staffAppReviewMessage').textContent=e.message;b.disabled=false;}});
     $('staffAppGrant')?.addEventListener('click',async()=>{const b=$('staffAppGrant');b.disabled=true;try{await api('/api/staff/applications/'+encodeURIComponent(x.id)+'/grant',{method:'POST',body:JSON.stringify({rank:$('staffAppGrantRank').value})});closeModal();toast('Rank granted and application approved.');await loadStaff();}catch(e){$('staffAppReviewMessage').textContent=e.message;b.disabled=false;}});
