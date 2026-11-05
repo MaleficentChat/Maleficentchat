@@ -676,6 +676,8 @@ function startLiveSync(){
   if(liveRoomPollTimer)clearInterval(liveRoomPollTimer);
   if(liveDMPollTimer)clearInterval(liveDMPollTimer);
   syncLiveMessages();
+  // Keep checking server-side outstanding warnings; reloads never acknowledge them.
+  setInterval(()=>{if(state.user&&!activeWarningNotificationId)loadPendingWarning().catch(()=>{});},5000);
   liveRoomPollTimer=setInterval(()=>{
     const now=Date.now(), connected=!!state.socket?.connected;
     const interval=connected?4000:1000;
@@ -5780,11 +5782,25 @@ async function refreshTopDMUnreadBadge(){
   finally{topDMUnreadRefreshBusy=false;}
 }
 let notificationRefreshPromise=null;
+let pendingWarningFetch=null;
 async function loadPendingWarning(){
-  if(!state.user)return;
-  const data=await api("/api/warnings/pending");
-  const warnings=Array.isArray(data.warnings)?data.warnings:[];
-  if(!activeWarningNotificationId&&warnings.length)showPersistentWarning(warnings[0]);
+  if(!state.user||activeWarningNotificationId)return;
+  if(pendingWarningFetch)return pendingWarningFetch;
+  pendingWarningFetch=(async()=>{
+    try{
+      const data=await api("/api/warnings/pending");
+      const warnings=Array.isArray(data.warnings)?data.warnings:[];
+      if(!activeWarningNotificationId&&warnings.length)showPersistentWarning(warnings[0]);
+    }finally{pendingWarningFetch=null;}
+  })();
+  return pendingWarningFetch;
+}
+// Re-check after browser restores the page from cache/background and periodically
+// while signed in. The server's unread warning row is the source of truth.
+if(!window.__mcWarningPersistenceBound){
+  window.__mcWarningPersistenceBound=true;
+  window.addEventListener("pageshow",()=>{if(state.user)loadPendingWarning().catch(()=>{});});
+  document.addEventListener("visibilitychange",()=>{if(!document.hidden&&state.user)loadPendingWarning().catch(()=>{});});
 }
 
 async function loadNotifications() {
