@@ -7014,7 +7014,7 @@ app.post('/api/admin/private-search',auth,ownerOnly,async(req,res)=>{
     const rowMatchesKeyword=row=>{
       if(!keyword)return true;
       const data=row.data&&typeof row.data==='object'?row.data:{};
-      const content=String(row.message??row.text??data.text??data.message??data.content??'');
+      const content=[row.message,row.text,data.text,data.message,data.content].filter(value=>value!==null&&value!==undefined).map(String).join(' ');
       return content.toLocaleLowerCase().includes(keyword.toLocaleLowerCase());
     };
     const filteredSqlRows=q.rows.filter(rowMatchesKeyword);
