@@ -868,6 +868,20 @@ async function start() {
     if(state.view==="news") loadNews();
   });
 
+  state.socket.on("dm-updated", payload => {
+    const updated=payload?.message;
+    if(!updated?.id)return;
+    state.dmMessages=(state.dmMessages||[]).map(message=>String(message.id)===String(updated.id)?{...message,...updated}:message);
+    const peer=String(state.dmUserId||""),from=String(updated.from??""),to=String(updated.to??"");
+    if(peer&&(from===peer||to===peer)){
+      const list=$("dmMessages");
+      if(list&&state.dmPeerUser){
+        list.innerHTML=state.dmMessages.map(message=>dmMessageHTML(message,state.dmMessages,state.dmPeerUser)).join("")||'<p class="muted">No private messages yet.</p>';
+        list.scrollTop=list.scrollHeight;
+      }
+    }
+    loadDMList().catch(()=>{});
+  });
   state.socket.on("dm", message => {
     refreshTopDMUnreadBadge();
     const from=String(message?.from??message?.senderId??message?.fromId??"");
@@ -1279,33 +1293,44 @@ async function loadSuggestions(){
 
 
 
+let wallShowingSaved=false,wallShowingFriends=false;
 async function loadWall(){
   try {
-    const d=await api('/api/wall'),feed=$('wallFeed'); if(!feed)return;
+    const endpoint=wallShowingSaved?'/api/wall/saved':(wallShowingFriends?'/api/wall/friends':'/api/wall');
+    const d=await api(endpoint),feed=$('wallFeed'); if(!feed)return;
     const emojis=['👍','❤️','😂','😮','🔥','👏'];
     feed.innerHTML=(d.posts||[]).map(p=>{
       const rx=p.reactions&&typeof p.reactions==='object'?p.reactions:{};
       return `<article class="card wall-post social-feed-card" data-wall-id="${esc(p.id)}">
         <div class="news-card-top"><div class="social-author"><div class="social-author-avatar">${p.avatar?`<img src="${esc(p.avatar)}" alt="">`:'👤'}</div><div><h3>@${esc(p.username||'Unknown')}</h3><div class="muted">${esc(p.rank||'Member')} · ${fmt(p.created_at)}</div></div></div><button class="social-more" data-wall-more="${esc(p.id)}" aria-label="Post options">•••</button></div>
         <div class="news-body wall-content">${esc(p.content||'')}${p.media_url?(String(p.media_url).match(/\.(mp4|webm|ogg)(\?|$)/i)?`<video class="wall-media" controls src="${esc(p.media_url)}"></video>`:`<img class="wall-media" src="${esc(p.media_url)}" alt="Wall upload">`):''}</div>
-        <div class="social-reaction-summary">${emojis.map(e=>`<span>${e} <b>${(Array.isArray(rx[e])?rx[e]:[]).length}</b></span>`).join('')}<button class="social-comments-shortcut" data-wall-comments="${esc(p.id)}">${Number(p.comment_count||0)} 💬</button></div>
-        <div class="news-actions social-reaction-actions">${emojis.map(e=>{const us=Array.isArray(rx[e])?rx[e].map(String):[];return `<button class="mini ${us.includes(String(state.user?.id))?'reacted':''}" type="button" data-wall-reaction="${esc(e)}" data-wall-id="${esc(p.id)}">${e} <b>${us.length}</b></button>`}).join('')}<button class="mini" data-wall-comments="${esc(p.id)}">💬 Comments</button>${(String(p.user_id)===String(state.user?.id)||canFeature('delete_news'))?`<button class="mini danger" type="button" data-wall-delete="${esc(p.id)}">🗑 Delete</button>`:''}</div>
+        <div class="social-reaction-summary">${p.featured?'<span>📌 Featured</span>':''}${p.expires_at?'<span>⏳ Disappearing</span>':''}${emojis.map(e=>`<span>${e} <b>${(Array.isArray(rx[e])?rx[e]:[]).length}</b></span>`).join('')}<button class="social-comments-shortcut" data-wall-comments="${esc(p.id)}">${Number(p.comment_count||0)} 💬</button></div>
+        <div class="news-actions social-reaction-actions">${emojis.map(e=>{const us=Array.isArray(rx[e])?rx[e].map(String):[];return `<button class="mini ${us.includes(String(state.user?.id))?'reacted':''}" type="button" data-wall-reaction="${esc(e)}" data-wall-id="${esc(p.id)}">${e} <b>${us.length}</b></button>`}).join('')}<button class="mini" data-wall-save="${esc(p.id)}">${p.saved?'🔖 Saved':'🔖 Save'}</button><button class="mini" data-wall-comments="${esc(p.id)}">💬 Comments</button>${(canFeature('pin_news')||['OWNER','DEVELOPER'].includes(String(state.user?.rank||'').toUpperCase()))?`<button class="mini" type="button" data-wall-feature="${esc(p.id)}" data-featured="${p.featured?'true':'false'}">${p.featured?'Unfeature':'📌 Feature post'}</button>`:''}${(String(p.user_id)===String(state.user?.id)||canFeature('delete_news'))?`<button class="mini danger" type="button" data-wall-delete="${esc(p.id)}">🗑 Delete</button>`:''}</div>
         <div class="social-post-options hidden" id="wallOptions-${esc(p.id)}"><button type="button" data-wall-report="${esc(p.id)}">⚑ Report</button>${state.user?.username==='Maleficent'?`<button type="button" data-wall-pin="${esc(p.id)}">📌 Pin post</button>`:''}</div>
         <div class="wall-comments hidden" id="wallComments-${esc(p.id)}"></div>
       </article>`;
     }).join('')||'<p class="muted">No wall posts yet.</p>';
     document.querySelectorAll('[data-wall-more]').forEach(b=>b.onclick=()=> $('wallOptions-'+b.dataset.wallMore)?.classList.toggle('hidden'));
+    document.querySelectorAll('[data-wall-save]').forEach(b=>b.onclick=async()=>{try{const r=await api('/api/wall/'+encodeURIComponent(b.dataset.wallSave)+'/save',{method:'POST',body:JSON.stringify({})});toast(r.saved?'Post saved.':'Post removed from saved posts.');await loadWall()}catch(e){toast(e.message||'Could not save post.')}});
     document.querySelectorAll('[data-wall-reaction]').forEach(b=>b.onclick=async()=>{try{await api('/api/wall/'+encodeURIComponent(b.dataset.wallId)+'/reaction',{method:'POST',body:JSON.stringify({emoji:b.dataset.wallReaction})});await loadWall()}catch(e){toast(e.message||'Could not send reaction.')}});
+    document.querySelectorAll('[data-wall-feature]').forEach(b=>b.onclick=async()=>{try{const featured=b.dataset.featured!=='true';await api('/api/wall/'+encodeURIComponent(b.dataset.wallFeature)+'/feature',{method:'POST',body:JSON.stringify({featured})});toast(featured?'Post featured.':'Post unfeatured.');await loadWall()}catch(e){toast(e.message||'Could not feature post.')}});
     document.querySelectorAll('[data-wall-report]').forEach(b=>b.onclick=async()=>{try{await api('/api/wall/'+encodeURIComponent(b.dataset.wallReport)+'/report',{method:'POST',body:JSON.stringify({reason:'Reported by community member'})});toast('Wall post reported.')}catch(e){toast(e.message)}});
-    document.querySelectorAll('[data-wall-delete]').forEach(b=>b.onclick=async()=>{const id=b.dataset.wallDelete;if(!confirm('Delete this Friends Wall post?'))return;b.disabled=true;try{await api('/api/wall/'+encodeURIComponent(id),{method:'DELETE'});toast('Friends Wall post deleted.');await loadWall()}catch(e){toast(e.message||'Could not delete wall post.');b.disabled=false}});
+    document.querySelectorAll('[data-wall-delete]').forEach(b=>b.onclick=async()=>{const id=b.dataset.wallDelete;if(!confirm('Delete this Shadow Feed post?'))return;b.disabled=true;try{await api('/api/wall/'+encodeURIComponent(id),{method:'DELETE'});toast('Shadow Feed post deleted.');await loadWall()}catch(e){toast(e.message||'Could not delete Shadow Feed post.');b.disabled=false}});
     document.querySelectorAll('[data-wall-pin]').forEach(b=>b.onclick=async()=>{try{await api('/api/wall/'+encodeURIComponent(b.dataset.wallPin)+'/pin',{method:'POST'});toast('Post pinned.');await loadWall()}catch(e){toast(e.message)}});
     document.querySelectorAll('[data-wall-comments]').forEach(b=>b.onclick=async()=>{const id=b.dataset.wallComments,box=$('wallComments-'+id);if(!box)return;box.classList.toggle('hidden');if(!box.classList.contains('hidden'))try{const d=await api('/api/wall/'+encodeURIComponent(id)+'/comments');box.innerHTML=(d.comments||[]).map(v=>`<div class="news-comment"><div class="news-comment-main"><div class="news-comment-head"><b>@${esc(v.username)}</b><small>${esc(v.rank||'Member')}</small></div><div class="news-comment-text">${esc(v.content)}</div></div></div>`).join('')+`<form class="wall-comment-form news-comment-form"><input placeholder="Write a comment…" maxlength="1000" required><button class="mini">Send</button></form>`;box.querySelector('form').onsubmit=async e=>{e.preventDefault();const input=e.currentTarget.querySelector('input');try{await api('/api/wall/'+encodeURIComponent(id)+'/comments',{method:'POST',body:JSON.stringify({content:input.value})});await loadWall();$('wallComments-'+id)?.classList.remove('hidden')}catch(err){toast(err.message)}}}catch(e){toast(e.message)}});
-  } catch(e){toast(e.message||'Could not load Friends Wall.')}
+  } catch(e){toast(e.message||'Could not load Shadow Feed.')}
 }
+function updateWallModeButtons(){
+  const saved=$('wallSavedToggle'),friends=$('wallFriendsToggle');
+  if(saved){saved.textContent=wallShowingSaved?'← Community feed':'🔖 Saved posts';saved.setAttribute('aria-pressed',String(wallShowingSaved));}
+  if(friends){friends.textContent=wallShowingFriends?'✓ Friends activity':'💜 Friends activity';friends.setAttribute('aria-pressed',String(wallShowingFriends));}
+}
+$('wallSavedToggle')?.addEventListener('click',async()=>{wallShowingSaved=!wallShowingSaved;if(wallShowingSaved)wallShowingFriends=false;updateWallModeButtons();await loadWall();});
+$('wallFriendsToggle')?.addEventListener('click',async()=>{wallShowingFriends=!wallShowingFriends;if(wallShowingFriends)wallShowingSaved=false;updateWallModeButtons();await loadWall();});
 if($('newWallPost'))$('newWallPost').onclick=async()=>{
-  modal(`<h2>New Wall Post</h2><textarea id="wallPostText" maxlength="5000" placeholder="Write something for your friends…"></textarea><input id="wallPostFile" type="file" accept="image/*,video/*"><div id="wallPreview" class="media-preview"></div><button class="primary" id="wallPostSend">Upload & Publish</button>`);
+  modal(`<h2>New Shadow Feed Post</h2><textarea id="wallPostText" maxlength="5000" placeholder="Share something with the community…"></textarea><label class="stack">Post duration<select id="wallPostExpiry"><option value="0">Keep on Shadow Feed</option><option value="1">Disappear after 1 hour</option><option value="6">Disappear after 6 hours</option><option value="24">Disappear after 24 hours</option><option value="72">Disappear after 3 days</option><option value="168">Disappear after 7 days</option></select></label><input id="wallPostFile" type="file" accept="image/*,video/*"><div id="wallPreview" class="media-preview"></div><button class="primary" id="wallPostSend">Upload & Publish</button>`);
   $('wallPostFile')?.addEventListener('change',()=>{const f=$('wallPostFile').files?.[0],box=$('wallPreview');if(!f){box.innerHTML='';return}const u=URL.createObjectURL(f);box.innerHTML=f.type.startsWith('video/')?`<video controls src="${u}"></video>`:`<img src="${u}">`;});
-  $('wallPostSend').onclick=async()=>{try{const fd=new FormData();fd.append('content',$('wallPostText').value);const f=$('wallPostFile').files?.[0];if(f)fd.append('file',f);const token=safeStorage.getItem("mc_token"); const headers=token?{"x-auth-token":token}:{}; const r=await fetch('/api/wall/post',{method:'POST',body:fd,headers,credentials:'same-origin'});const d=await r.json().catch(()=>({}));if(!r.ok)throw Error(d.error||'Could not publish wall post.');closeModal();loadWall()}catch(e){toast(e.message)}};
+  $('wallPostSend').onclick=async()=>{try{const fd=new FormData();fd.append('content',$('wallPostText').value);fd.append('expiresInHours',$('wallPostExpiry')?.value||'0');const f=$('wallPostFile').files?.[0];if(f)fd.append('file',f);const token=safeStorage.getItem("mc_token"); const headers=token?{"x-auth-token":token}:{}; const r=await fetch('/api/wall/post',{method:'POST',body:fd,headers,credentials:'same-origin'});const d=await r.json().catch(()=>({}));if(!r.ok)throw Error(d.error||'Could not publish wall post.');closeModal();loadWall()}catch(e){toast(e.message)}};
 };
 
 async function loadRankShop(){
@@ -1563,7 +1588,7 @@ function renderRooms() {
         <button class="room-open" onclick="joinRoom('${esc(room.id)}')">
           <span class="room-icon-wrap">${esc(room.icon||'💬')}</span>
           <span class="room-main">
-            <span class="room-title-row"><strong>${esc(room.name)}</strong>${locked?'<span class="room-lock">🔒</span>':''}</span>
+          <span class="room-title-row"><strong>${esc(room.name)}</strong>${room.public===false?'<span class="room-lock" title="Secret room">🔒 Secret</span>':''}${locked?'<span class="room-lock">🔒</span>':''}</span>
             <span class="room-desc">${esc(room.description||'No description has been written for this room')}</span>
             <span class="room-subrow"><span>${esc(room.category||'Community')}</span><span>•</span><span>${esc(room.rankRequired||'MEMBER')}+</span>${room.announcement?'<span>• 📌 announcement</span>':''}<span>• Ages ${Number(room.minAge??0)}–${Number(room.maxAge??99)}</span></span>
           </span>
@@ -1593,7 +1618,7 @@ function renderRoomQuickNav() {
   nav.innerHTML = rooms.map(room => {
     const id = String(room.id);
     const selected = String(state.currentRoom || '') === id;
-    return `<button type="button" class="room-quick-chip ${selected ? 'active' : ''}" data-quick-room-id="${esc(id)}" aria-current="${selected ? 'page' : 'false'}"><span>${esc(room.icon || '💬')}</span><span>${esc(room.name || 'Room')}</span>${room.locked || room.passwordHash ? '<span class="room-quick-lock">🔒</span>' : ''}</button>`;
+    return `<button type="button" class="room-quick-chip ${selected ? 'active' : ''}" data-quick-room-id="${esc(id)}" aria-current="${selected ? 'page' : 'false'}"><span>${esc(room.icon || '💬')}</span><span>${esc(room.name || 'Room')}</span>${room.public===false || room.locked || room.passwordHash ? '<span class="room-quick-lock">🔒</span>' : ''}</button>`;
   }).join('');
   nav.querySelectorAll('[data-quick-room-id]').forEach(button => {
     button.addEventListener('click', () => joinRoom(String(button.dataset.quickRoomId)));
@@ -3164,6 +3189,9 @@ async function loadDMList() {
 }
 
 function dmMessageHTML(message, messages, user) {
+  const deleteAction=String(message.from)===String(state.user?.id)&&!message.deleted
+    ? '<button type="button" class="mini danger" data-dm-delete="'+esc(message.id)+'">🗑 Delete</button>'
+    : "";
   const quoted = message.replyTo
     ? messages.find(m => String(m.id) === String(message.replyTo))
     : null;
@@ -3173,7 +3201,7 @@ function dmMessageHTML(message, messages, user) {
     : null;
 
   const quoteText = quoted
-    ? (quoted.text || (quoted.attachment ? "📎 Attachment" : "Message"))
+    ? (quoted.deleted ? "Deleted message" : (quoted.text || (quoted.attachment ? "📎 Attachment" : "Message")))
     : null;
 
   return `
@@ -3210,13 +3238,15 @@ function dmMessageHTML(message, messages, user) {
         }
 
         ${
-          message.text && !message.youtube?.videoId
+          !message.deleted && message.text && !message.youtube?.videoId
             ? `<div class="msg-text">${esc(message.text)}</div>`
             : ""
         }
 
+        ${message.deleted ? '<div class="msg-text muted">This message was deleted.</div>' : ""}
+
         ${
-          message.attachment
+          !message.deleted && message.attachment
             ? `
               <a
                 href="${esc(message.attachment.url)}"
@@ -3237,6 +3267,7 @@ function dmMessageHTML(message, messages, user) {
           >
             Quote
           </button>
+          ${deleteAction}
         </div>
       </div>
     </div>
@@ -3331,6 +3362,24 @@ async function openDM(id) {
 
     const dmTargetId=String(user.id),dmSettings=$('dmChatSettingsMenu'),dmSettingsBtn=$('dmChatSettingsBtn');
     dmSettingsBtn?.addEventListener('click',()=>{dmSettings?.classList.toggle('hidden');dmSettingsBtn.setAttribute('aria-expanded',String(!dmSettings?.classList.contains('hidden')));});
+    $('dmMessages')?.addEventListener("click",async event=>{
+      const button=event.target?.closest?.("[data-dm-delete]");
+      if(!button)return;
+      const messageId=String(button.dataset.dmDelete||"");
+      const message=(state.dmMessages||[]).find(item=>String(item.id)===messageId);
+      if(!message||message.deleted||String(message.from)!==String(state.user?.id))return;
+      if(!confirm("Delete this private message for both participants? This cannot be undone."))return;
+      button.disabled=true;
+      try{
+        const result=await api("/api/dm/messages/"+encodeURIComponent(messageId),{method:"DELETE"});
+        const updated=result.message||{...message,text:"",attachment:null,deleted:true,deletedAt:Date.now()};
+        state.dmMessages=(state.dmMessages||[]).map(item=>String(item.id)===messageId?{...item,...updated}:item);
+        const list=$("dmMessages");
+        if(list&&state.dmPeerUser){list.innerHTML=state.dmMessages.map(item=>dmMessageHTML(item,state.dmMessages,state.dmPeerUser)).join("");list.scrollTop=list.scrollHeight;}
+        toast("Private message deleted.");
+        loadDMList().catch(()=>{});
+      }catch(error){toast(error.message||"Could not delete the message.");button.disabled=false;}
+    });
     $('dmCloseBtn')?.addEventListener('click',closeModal);
     dmSettings?.querySelectorAll('[data-dm-action]').forEach(btn=>btn.addEventListener('click',async()=>{
       const action=btn.dataset.dmAction;dmSettings.classList.add('hidden');
@@ -5821,11 +5870,10 @@ async function deleteRoom() {
   }
 }
 
-async function showInvite() {
-  const room =
-    state.rooms.find(
-      r => String(r.id) === String(state.currentRoom)
-    );
+async function showInvite(roomOrId=state.currentRoom) {
+  const room = roomOrId&&typeof roomOrId==="object"
+    ? roomOrId
+    : state.rooms.find(r => String(r.id) === String(roomOrId));
 
   if (!room) return;
 
@@ -5841,11 +5889,16 @@ async function showInvite() {
     <h2>Room invite</h2>
     ${expiresAt?`<p class="muted">This private-room invite expires ${esc(new Date(expiresAt).toLocaleString())}.</p>`:""}
 
-    <input
+    <input id="roomInviteUrl"
       value="${esc(inviteUrl)}"
       readonly
     >
+    <div class="toolbar"><button type="button" class="primary" id="copyRoomInvite">Copy invite link</button></div>
   `);
+  $("copyRoomInvite")?.addEventListener("click",async()=>{
+    try{await navigator.clipboard.writeText(inviteUrl);toast("Invite link copied.");}
+    catch{const field=$("roomInviteUrl");field?.select();toast("Invite link selected. Copy it from the field.");}
+  });
 }
 
 /* ---------------- CREATE ROOM ---------------- */
@@ -5864,6 +5917,7 @@ function openRoomCreationModal() {
           <label>Topic / category<input id="rc" maxlength="40" value="Community" placeholder="Community"></label>
         </div></section>
         <section class="room-editor-section"><h3>🔐 Who can join?</h3>
+          <label>Room visibility<select id="rVisibility"><option value="public">Public — listed for everyone</option><option value="secret">Secret — hidden, invite link required</option></select></label>
           <label>Minimum rank<select id="rr">${ranks.map(r=>'<option value="'+r+'" '+(r==="MEMBER"?"selected":"")+'>'+rankLabels[r]+'</option>').join("")}</select></label>
           <label>Member access<select id="rFriendsOnlyCreate"><option value="false">Anyone who meets the rank requirement</option><option value="true">Accepted friends only</option></select></label>
           <label>Room password <span class="room-editor-optional">optional</span><input id="rp" type="password" autocomplete="new-password" placeholder="Leave blank for no password"></label>
@@ -5880,14 +5934,15 @@ function openRoomCreationModal() {
     const submit=e.currentTarget.querySelector('[type="submit"]');
     if(submit){submit.disabled=true;submit.textContent="Creating…";}
     try{
-      await api("/api/rooms",{method:"POST",body:JSON.stringify({
+      const created=await api("/api/rooms",{method:"POST",body:JSON.stringify({
         name:$("rn").value.trim(),icon:$("ri").value.trim()||"💬",description:$("rd").value.trim(),
-        category:$("rc").value.trim()||"Community",password:$("rp").value,
+        category:$("rc").value.trim()||"Community",password:$("rp").value,public:$("rVisibility").value!=="secret",
         rankRequired:$("rr").value,friendsOnly:$("rFriendsOnlyCreate").value==="true",
         limit:Math.max(2,Math.min(500,Number($("rl").value)||100)),
         slowMode:Math.max(0,Math.min(3600,Number($("rs").value)||0))
       })});
       await loadRooms();closeModal();renderRooms();toast("Room created.");
+      if(created.room?.public===false&&created.room?.id)await showInvite(created.room);
     }catch(error){toast(error.message);if(submit){submit.disabled=false;submit.textContent="＋ Create room";}}
   };
 }

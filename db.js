@@ -146,6 +146,24 @@ async function initDB() {
       likes INT DEFAULT 0,
       created_at TIMESTAMP DEFAULT NOW()
     );
+    -- Shadow Feed fields and saves are additive; existing posts remain visible.
+    ALTER TABLE wall_posts ADD COLUMN IF NOT EXISTS expires_at TIMESTAMPTZ;
+    ALTER TABLE wall_posts ADD COLUMN IF NOT EXISTS featured BOOLEAN NOT NULL DEFAULT false;
+    CREATE TABLE IF NOT EXISTS wall_post_reactions(
+      post_id BIGINT NOT NULL,
+      user_id BIGINT NOT NULL,
+      emoji TEXT NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      PRIMARY KEY(post_id,user_id,emoji)
+    );
+    CREATE TABLE IF NOT EXISTS wall_post_saves(
+      post_id BIGINT NOT NULL REFERENCES wall_posts(id) ON DELETE CASCADE,
+      user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      PRIMARY KEY(post_id,user_id)
+    );
+    CREATE INDEX IF NOT EXISTS wall_posts_feed_idx ON wall_posts(status,featured DESC,created_at DESC);
+    CREATE INDEX IF NOT EXISTS wall_post_saves_user_created_idx ON wall_post_saves(user_id,created_at DESC);
     CREATE TABLE IF NOT EXISTS doodles(
       id BIGSERIAL PRIMARY KEY,
       user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,

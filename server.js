@@ -3507,6 +3507,38 @@ app.post("/api/dm/:id",auth,featureAllowed("private_messages"),upload.single("fi
   res.json({message:m});
 });
 
+app.delete("/api/dm/messages/:messageId",auth,featureAllowed("private_messages"),async(req,res)=>{
+  const u=current(req),messageId=String(req.params.messageId||"");
+  if(!messageId||messageId.length>160)return res.status(400).json({error:"Invalid message id."});
+  try{
+    const stored=await pool.query(`SELECT data->'attachment' AS attachment FROM private_messages WHERE id=$1 AND sender_id=$2`,[messageId,Number(u.id)]);
+    if(!stored.rowCount)return res.status(404).json({error:"Message not found or it was not sent by you."});
+    const {rows}=await pool.query(`UPDATE private_messages
+      SET message='',data=COALESCE(data,'{}'::jsonb)||jsonb_build_object('text','','attachment',NULL,'deleted',true,'deletedAt',$3::bigint)
+      WHERE id=$1 AND sender_id=$2 AND data->'deleted' IS DISTINCT FROM 'true'::jsonb
+      RETURNING sender_id,receiver_id,data`,[messageId,Number(u.id),Date.now()]);
+    if(!rows.length)return res.status(404).json({error:"Message not found or it was not sent by you."});
+    const message=rows[0].data;
+    const attachmentUrl=String(stored.rows[0].attachment?.url||"");
+    if(attachmentUrl.startsWith("/uploads/")){
+      const fileName=attachmentUrl.slice("/uploads/".length),filePath=path.resolve(UP,fileName);
+      if(fileName&&path.basename(fileName)===fileName&&path.dirname(filePath)===UP){
+        await fs.promises.unlink(filePath).catch(error=>{if(error.code!=="ENOENT")console.warn("Deleted private-message attachment could not be removed:",error.message);});
+      }
+    }
+    const index=(db.privateMessages||[]).findIndex(item=>String(item.id)===messageId);
+    if(index>=0)db.privateMessages[index]=message;
+    const payload={message};
+    io.to("user:"+rows[0].sender_id).emit("dm-updated",payload);
+    io.to("user:"+rows[0].receiver_id).emit("dm-updated",payload);
+    res.set("Cache-Control","no-store");
+    res.json({ok:true,message});
+  }catch(error){
+    console.error("Private message deletion failed:",error.message);
+    res.status(500).json({error:"Could not delete that message. Please try again."});
+  }
+});
+
 app.post(
   "/api/dm/:id/read",
   auth,
@@ -4653,16 +4685,56 @@ app.delete('/api/doodles/:id',auth,async(req,res)=>{
 });
 
 // Friend Wall
+const wallFeedFields = "SELECT w.*,u.username,u.avatar,u.rank,"+
+  "COALESCE((SELECT jsonb_object_agg(r.emoji,r.users) FROM (SELECT emoji,jsonb_agg(user_id::text) AS users FROM wall_post_reactions WHERE post_id=w.id GROUP BY emoji) r),'{}'::jsonb) AS reactions,"+
+  "(SELECT COUNT(*)::int FROM wall_comments wc WHERE wc.post_id=w.id) AS comment_count,";
+const wallFeedFrom = " FROM wall_posts w LEFT JOIN users u ON u.id=w.user_id ";
+const wallFeedOrder = " ORDER BY CASE WHEN w.status='pinned' THEN 0 ELSE 1 END,w.featured DESC,w.created_at DESC LIMIT 100";
 app.get('/api/wall',auth,async(req,res)=>{
-  await pool.query(`CREATE TABLE IF NOT EXISTS wall_post_reactions(post_id BIGINT NOT NULL,user_id BIGINT NOT NULL,emoji TEXT NOT NULL,created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),PRIMARY KEY(post_id,user_id,emoji))`);
-  const {rows}=await pool.query(`
-    SELECT w.*,u.username,u.avatar,u.rank,
-      COALESCE((SELECT jsonb_object_agg(r.emoji,r.users) FROM (SELECT emoji,jsonb_agg(user_id::text) AS users FROM wall_post_reactions WHERE post_id=w.id GROUP BY emoji) r),'{}'::jsonb) AS reactions,
-      (SELECT COUNT(*)::int FROM wall_comments wc WHERE wc.post_id=w.id) AS comment_count
-    FROM wall_posts w LEFT JOIN users u ON u.id=w.user_id
-    WHERE w.status IN ('approved','pinned')
-    ORDER BY CASE WHEN w.status='pinned' THEN 0 ELSE 1 END,w.created_at DESC LIMIT 100`);
+  const u=current(req);
+  const sql=wallFeedFields+"EXISTS(SELECT 1 FROM wall_post_saves s WHERE s.post_id=w.id AND s.user_id=$1) AS saved"+wallFeedFrom+
+    "WHERE w.status IN ('approved','pinned') AND (w.expires_at IS NULL OR w.expires_at>NOW())"+wallFeedOrder;
+  const {rows}=await pool.query(sql,[Number(u.id)]);
   res.json({posts:rows});
+});
+app.get('/api/wall/saved',auth,async(req,res)=>{
+  const u=current(req);
+  const sql=wallFeedFields+"true AS saved FROM wall_post_saves s JOIN wall_posts w ON w.id=s.post_id LEFT JOIN users u ON u.id=w.user_id "+
+    "WHERE s.user_id=$1 AND w.status IN ('approved','pinned') AND (w.expires_at IS NULL OR w.expires_at>NOW()) ORDER BY s.created_at DESC LIMIT 100";
+  const {rows}=await pool.query(sql,[Number(u.id)]);
+  res.json({posts:rows});
+});
+app.get('/api/wall/friends',auth,async(req,res)=>{
+  const u=current(req),userId=Number(u.id);
+  const friendIds=[...new Set((db.friends||[])
+    .filter(f=>String(f.status||'').toUpperCase()==='ACCEPTED'&&(String(f.a)===String(u.id)||String(f.b)===String(u.id)))
+    .map(f=>Number(String(f.a)===String(u.id)?f.b:f.a))
+    .filter(id=>Number.isSafeInteger(id)&&id>0&&id!==userId))];
+  if(!friendIds.length)return res.json({posts:[]});
+  const sql=wallFeedFields+"EXISTS(SELECT 1 FROM wall_post_saves s WHERE s.post_id=w.id AND s.user_id=$2) AS saved"+wallFeedFrom+
+    "WHERE w.user_id=ANY($1::int[]) AND w.status IN ('approved','pinned') AND (w.expires_at IS NULL OR w.expires_at>NOW())"+wallFeedOrder;
+  const {rows}=await pool.query(sql,[friendIds,userId]);
+  res.json({posts:rows});
+});
+app.post('/api/wall/:id/save',auth,async(req,res)=>{
+  const userId=Number(current(req).id),postId=Number(req.params.id);
+  if(!Number.isSafeInteger(postId)||postId<1)return res.status(400).json({error:'Invalid post id.'});
+  const post=await pool.query('SELECT 1 FROM wall_posts WHERE id=$1 AND status IN (\'approved\',\'pinned\') AND (expires_at IS NULL OR expires_at>NOW())',[postId]);
+  if(!post.rowCount)return res.status(404).json({error:'Post not found or expired.'});
+  const existing=await pool.query('SELECT 1 FROM wall_post_saves WHERE post_id=$1 AND user_id=$2',[postId,userId]);
+  if(existing.rowCount)await pool.query('DELETE FROM wall_post_saves WHERE post_id=$1 AND user_id=$2',[postId,userId]);
+  else await pool.query('INSERT INTO wall_post_saves(post_id,user_id) VALUES($1,$2) ON CONFLICT DO NOTHING',[postId,userId]);
+  res.json({ok:true,saved:!existing.rowCount});
+});
+app.post('/api/wall/:id/feature',auth,async(req,res)=>{
+  const u=current(req),rank=String(u.rank||'').toUpperCase();
+  if(!hasFeature(u,'pin_news')&&!['OWNER','DEVELOPER'].includes(rank))return res.status(403).json({error:'Only authorized staff can feature community posts.'});
+  const postId=Number(req.params.id),featured=req.body?.featured===true;
+  if(!Number.isSafeInteger(postId)||postId<1)return res.status(400).json({error:'Invalid post id.'});
+  const result=await pool.query('UPDATE wall_posts SET featured=$2 WHERE id=$1 RETURNING id,featured',[postId,featured]);
+  if(!result.rowCount)return res.status(404).json({error:'Post not found.'});
+  log(u,'WALL_POST_FEATURE',String(postId),{featured});
+  res.json({ok:true,featured});
 });
 app.post('/api/wall/:id/reaction',auth,async(req,res)=>{
   const emoji=String(req.body?.emoji||'👍'),allowed=['👍','❤️','😂','😮','🔥','👏'];
@@ -4684,7 +4756,10 @@ async function wallPostHandler(req,res){
   if(media&&!/^(image\/(png|jpe?g|gif|webp|avif)|video\/)/i.test(media.mimetype))return res.status(400).json({error:"Only image or video files are allowed."});
   if(!content&&!media)return res.status(400).json({error:"Post cannot be empty."});
   const mediaUrl=media?`/uploads/${media.filename}`:null;
-  const {rows}=await pool.query(`INSERT INTO wall_posts(user_id,content,media_url) VALUES($1,$2,$3) RETURNING *`,[Number(u.id),content,mediaUrl]);
+  const expiresInHours=Number(req.body.expiresInHours??0),allowedExpiries=[0,1,6,24,72,168];
+  if(!allowedExpiries.includes(expiresInHours))return res.status(400).json({error:"Choose a supported post duration."});
+  const expiresAt=expiresInHours?new Date(Date.now()+expiresInHours*3600000):null;
+  const {rows}=await pool.query(`INSERT INTO wall_posts(user_id,content,media_url,expires_at) VALUES($1,$2,$3,$4) RETURNING *`,[Number(u.id),content,mediaUrl,expiresAt]);
   res.json({post:{...rows[0],username:u.username,avatar:u.avatar||"",rank:u.rank}});
 }
 app.post('/api/wall/post',auth,upload.single('file'),wallPostHandler);
