@@ -1153,10 +1153,33 @@ async function restrictedMediaPhrases(){
 function restrictedMediaMatches(ocrText,phrases){
   const normalized=normalizeRestrictedOcrText(ocrText);
   if(!normalized)return false;
+  const ocrWords=normalized.split(" ").filter(Boolean);
+  const distance=(a,b)=>{
+    if(Math.abs(a.length-b.length)>1)return 2;
+    let prev=Array.from({length:b.length+1},(_,i)=>i);
+    for(let i=1;i<=a.length;i++){
+      const next=[i];let rowMin=i;
+      for(let j=1;j<=b.length;j++){
+        const value=Math.min(next[j-1]+1,prev[j]+1,prev[j-1]+(a[i-1]===b[j-1]?0:1));
+        next[j]=value;rowMin=Math.min(rowMin,value);
+      }
+      if(rowMin>1)return 2;
+      prev=next;
+    }
+    return prev[b.length];
+  };
   return phrases.some(raw=>{
     const phrase=normalizeRestrictedOcrText(raw);
     if(!phrase)return false;
-    return normalized.includes(phrase);
+    if(normalized.includes(phrase))return true;
+    // OCR commonly confuses one character (e.g. 0/O, 1/I). Match the
+    // complete phrase word-by-word with at most one edit per word.
+    const wanted=phrase.split(" ").filter(Boolean);
+    if(!wanted.length||wanted.some(word=>word.length<5))return false;
+    for(let start=0;start<=ocrWords.length-wanted.length;start++){
+      if(wanted.every((word,index)=>distance(word,ocrWords[start+index])<=1))return true;
+    }
+    return false;
   });
 }
 async function sendRestrictedMediaBotMessage(user){
@@ -1180,7 +1203,9 @@ async function checkRestrictedMediaUpload(req,res,user,file){
   if(!phrases.length)return false;
   try{
     const text=await recognizeRestrictedMediaText(file.path);
-    if(!restrictedMediaMatches(text,phrases))return false;
+    const matched=restrictedMediaMatches(text,phrases);
+    console.info("Restricted media OCR scan:",{userId:String(user.id),phraseCount:phrases.length,recognizedCharacters:text.length,matched});
+    if(!matched)return false;
     await fs.promises.unlink(file.path).catch(()=>{});
     await sendRestrictedMediaBotMessage(user);
     res.status(400).json({error:"The File Contains Restricted Content. Try Different One",restrictedMedia:true});
@@ -1198,7 +1223,9 @@ async function checkRestrictedMediaBuffer(res,user,buffer){
   if(!phrases.length)return false;
   try{
     const text=await recognizeRestrictedMediaText(buffer);
-    if(!restrictedMediaMatches(text,phrases))return false;
+    const matched=restrictedMediaMatches(text,phrases);
+    console.info("Restricted media OCR buffer scan:",{userId:String(user.id),phraseCount:phrases.length,recognizedCharacters:text.length,matched});
+    if(!matched)return false;
     await sendRestrictedMediaBotMessage(user);
     res.status(400).json({error:"The File Contains Restricted Content. Try Different One",restrictedMedia:true});
     return true;
