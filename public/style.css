@@ -5658,3 +5658,16 @@ html,body,#app,.app,.main,.view,#profile,#viewProfile {
   font-variant-numeric:tabular-nums!important;line-height:1.4!important;
 }
 #viewWall .wall-like-action.reacted .wall-action-count{background:rgba(255,94,143,.16)!important;color:#ff9bb8!important}
+
+
+/* Shadow Reels: compact vertical-video cards and the Main Chat picker */
+.shadow-reel-video{display:block;width:100%;max-height:min(72vh,760px);aspect-ratio:9/16;object-fit:contain;background:#05030a;border-radius:14px}
+.message-video-attachment{display:block;width:min(320px,75vw);max-height:420px;aspect-ratio:9/16;object-fit:contain;background:#05030a;border-radius:12px;margin-top:8px}
+.reel-picker-list{display:grid;gap:9px;max-height:65vh;overflow:auto}
+.reel-picker-item{display:flex;align-items:center;gap:12px;width:100%;padding:9px;border:1px solid var(--border-strong);border-radius:12px;background:var(--panel-2);color:var(--text);text-align:left}
+.reel-picker-item video{width:58px;height:78px;object-fit:cover;border-radius:8px;background:#05030a;flex:none}
+.reel-picker-item span{display:grid;gap:4px;min-width:0;flex:1}
+.reel-picker-item small{color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.reel-picker-item strong{color:#d8b4fe;font-size:12px}
+#wallReelsToggle[aria-pressed="true"]{border-color:rgba(155,92,255,.65);background:rgba(155,92,255,.16);color:#e5d4ff}
+@media(max-width:600px){.shadow-reel-video{max-height:68vh}.reel-picker-item{gap:8px;padding:7px}}
