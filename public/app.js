@@ -4683,8 +4683,6 @@ async function loadStaff() {
           auditTarget.innerHTML=(d.audit||[]).map(renderAuditRow).join('')||'<p class="muted">No audit events are visible for your rank or search.</p>';
         }catch(error){auditTarget.innerHTML='<p class="error">'+esc(error.message||'Could not load admin activity logs.')+'</p>';}
       };
-      $('showAllAuditRows')?.addEventListener('click',()=>{if($('systemAuditSearch'))$('systemAuditSearch').value='';loadAdminActivityLogs();});
-      $('systemAuditSearchForm')?.addEventListener('submit',e=>{e.preventDefault();loadAdminActivityLogs(($('systemAuditSearch')?.value||'').trim());});
       loadAdminActivityLogs();
     }
     $('refreshSystemCenter')?.addEventListener('click',()=>loadStaff());
