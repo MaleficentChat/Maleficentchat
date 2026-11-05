@@ -4476,7 +4476,17 @@ async function renderStaffApplications(){
   const appRows=staffApps.applications||[];
   const appList=$('staffApplicationsList'),appCount=$('staffApplicationCount');
   if(appCount)appCount.textContent=String(appRows.filter(x=>x.status==='PENDING').length)+' pending · '+appRows.length+' total';
-  if(appList)appList.innerHTML=appRows.map(x=>`<div class="staff-application-row"><div class="staff-application-user"><div class="staff-application-avatar">${esc((x.displayName||x.username||'?').slice(0,1).toUpperCase())}</div><div><b>${esc(x.displayName||x.username)}</b><div class="muted">@${esc(x.username)} · ${esc(x.requestedRank.replace(/_/g,' '))}</div><small class="staff-application-status-text">${esc(x.status)} · ${fmt(x.createdAt)}</small></div></div><button class="mini primary" type="button" data-staff-app-form="${esc(x.id)}">Form</button></div>`).join('')||'<p class="muted">No staff applications yet.</p>';
+  const developerCanDelete=String(state.user?.rank||"").toUpperCase()==="DEVELOPER";
+  if(appList)appList.innerHTML=appRows.map(x=>`<div class="staff-application-row"><div class="staff-application-user"><div class="staff-application-avatar">${esc((x.displayName||x.username||'?').slice(0,1).toUpperCase())}</div><div><b>${esc(x.displayName||x.username)}</b><div class="muted">@${esc(x.username)} · ${esc(x.requestedRank.replace(/_/g,' '))}</div><small class="staff-application-status-text">${esc(x.status)} · ${fmt(x.createdAt)}</small></div></div><div class="toolbar"><button class="mini primary" type="button" data-staff-app-form="${esc(x.id)}">Form</button>${developerCanDelete?`<button class="mini danger" type="button" data-staff-app-delete="${esc(x.id)}" title="Permanently delete this application">Delete</button>`:""}</div></div>`).join('')||'<p class="muted">No staff applications yet.</p>';
+  appList?.querySelectorAll('[data-staff-app-delete]').forEach(btn=>btn.onclick=async()=>{
+    if(String(state.user?.rank||"").toUpperCase()!=="DEVELOPER"){toast("Developer rank required.");return;}
+    const id=btn.dataset.staffAppDelete;
+    const application=appRows.find(v=>String(v.id)===String(id));
+    if(!application||!confirm("Permanently delete the staff application from @"+application.username+"? This cannot be undone."))return;
+    btn.disabled=true;
+    try{await api('/api/staff/applications/'+encodeURIComponent(id),{method:'DELETE'});toast("Staff application deleted.");await loadStaff();}
+    catch(e){toast(e.message||"Could not delete this application.");btn.disabled=false;}
+  });
   appList?.querySelectorAll('[data-staff-app-form]').forEach(btn=>btn.onclick=()=>{
     const x=appRows.find(v=>String(v.id)===String(btn.dataset.staffAppForm));if(!x)return;
     modal(`<div class="staff-application-review"><h2>📝 Staff Application</h2><p class="muted">@${esc(x.username)} · Submitted ${fmt(x.createdAt)} · Status: ${esc(x.status)}</p>
