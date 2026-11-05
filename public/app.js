@@ -1765,7 +1765,7 @@ async function loadRoomAnnouncements(roomId){
     if(!items.length){el.classList.add("hidden");el.replaceChildren();return;}
     el.classList.remove("hidden");
     const canDelete=can("COMMISSOR");
-    el.innerHTML=`<div class="room-announcement-feed"><b>📢 Room announcements</b>${items.slice(0,3).map(n=>`<div class="room-announcement-item"><div class="room-announcement-message">${formatMentions(n.text)}</div>${canDelete?`<button type="button" class="mini danger announcement-delete" data-announcement="${esc(n.id)}">🗑 Delete</button>`:''}</div>`).join('')}</div>`;
+    el.innerHTML=`<div class="room-announcement-feed"><b>📢 Room announcements</b>${items.map(n=>`<div class="room-announcement-item"><div class="room-announcement-message">${formatMentions(n.text)}</div>${canDelete?`<button type="button" class="mini danger announcement-delete" data-announcement="${esc(n.id)}">🗑 Delete</button>`:''}</div>`).join('')}</div>`;
     el.querySelectorAll(".announcement-delete").forEach(button=>button.onclick=async()=>{
       if(!confirm("Delete this announcement?"))return;
       try{
