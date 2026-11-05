@@ -5785,47 +5785,49 @@ $("youtubeComposerBtn")?.addEventListener("click",()=>openYoutubePanel("youtube"
 
 /* ---------------- ROOM MENU ---------------- */
 
-$("roomMenu").onclick = () => {
-  const room =
-    state.rooms.find(
-      r => String(r.id) === String(state.currentRoom)
-    );
+$("roomMenu").addEventListener("click", () => {
+  const room = state.rooms.find(r => String(r.id) === String(state.currentRoom));
+  if (!room) { toast("Join a room first."); return; }
 
-  if (!room) return;
+  const actions = [];
+  if (canFeature("clear_room")) actions.push('<button type="button" class="room-menu-action" data-room-menu-action="clear">🧹 Clear messages</button>');
+  if (canFeature("edit_room")) actions.push('<button type="button" class="room-menu-action" data-room-menu-action="edit">✏️ Edit room</button>');
+  if (canFeature("delete_room")) actions.push('<button type="button" class="room-menu-action danger" data-room-menu-action="delete">🗑 Delete room</button>');
+  actions.push(
+    '<button type="button" class="room-menu-action" data-room-menu-action="announcement">📢 Room announcement</button>',
+    '<button type="button" class="room-menu-action" data-room-menu-action="pinned">📌 Pinned messages</button>',
+    '<button type="button" class="room-menu-action" data-room-menu-action="youtube">▶️ YouTube</button>',
+    '<button type="button" class="room-menu-action" data-room-menu-action="invite">🔗 Invite link</button>',
+    '<button type="button" class="room-menu-action" data-room-menu-action="theme">🎨 Room Theme</button>'
+  );
 
-  modal(`
-    <h2>
-      ${esc(room.name)}
-    </h2>
+  const presence = ["ghost","dead","invisible"].filter(mode => canUsePresenceMode(mode));
+  if (presence.length) {
+    const labels = {ghost:"👻 Ghost Mode",dead:"💀 Dead Mode",invisible:"😈 Invisible Mode"};
+    actions.push('<div class="room-menu-section"><b>🕶️ Presence modes</b><div class="room-menu-presence">'+presence.map(mode=>'<button type="button" class="room-menu-action" data-room-menu-action="presence" data-mode="'+mode+'">'+labels[mode]+'</button>').join("")+'</div><button type="button" class="room-menu-action" data-room-menu-action="presence-settings">⚙️ Open mode settings</button></div>');
+  }
+  if (canUsePartyMode()) {
+    actions.push('<div class="room-menu-section"><b>🎉 Party Mode</b><button type="button" class="room-menu-action" data-room-menu-action="party">'+(isPartyModeActive()?"🎉 Turn Party Mode Off":"🎉 Turn Party Mode On")+'</button></div>');
+  }
 
-    <div class="toolbar">
-
-      ${
-        canFeature("clear_room") || canFeature("edit_room") || canFeature("delete_room")
-          ? `
-            ${canFeature("clear_room")?`<button class="mini" onclick="clearRoom()">Clear</button>`:""}
-
-            ${canFeature("edit_room")?`<button class="mini" onclick="editRoom()">Edit room</button>`:""}
-
-            ${canFeature("delete_room")?`<button class="mini danger" onclick="deleteRoom()">Delete room</button>`:""}
-          `
-          : ""
-      }
-
-      <button class="mini" onclick="postRoomAnnouncement()">📢 Room announcement</button>
-      <button class="mini" onclick="showPinnedMessages()">📌 Pinned messages</button>
-      <button class="mini" onclick="openYoutubePanel()">▶️ YouTube</button>
-      <button class="mini" onclick="showInvite()">Invite link</button>
-      <button class="mini" onclick="openRoomThemePicker()">🎨 Room Theme</button>
-      ${["ghost","dead","invisible"].some(canUsePresenceMode)?`
-        <div style="flex-basis:100%;border-top:1px solid var(--border-color,#393244);padding-top:8px;margin-top:4px"><b style="display:block;margin-bottom:7px">🕶️ Presence modes</b><div class="toolbar" style="display:flex;flex-wrap:wrap;gap:6px">${canUsePresenceMode("ghost")?'<button type="button" class="mini" onclick="togglePresenceMode(&quot;ghost&quot;)">👻 Ghost Mode</button>':""}${canUsePresenceMode("dead")?'<button type="button" class="mini" onclick="togglePresenceMode(&quot;dead&quot;)">💀 Dead Mode</button>':""}${canUsePresenceMode("invisible")?'<button type="button" class="mini" onclick="togglePresenceMode(&quot;invisible&quot;)">😈 Invisible Mode</button>':""}</div><button type="button" class="mini" style="margin-top:7px" onclick="openPresenceModes()">⚙️ Open mode settings</button></div>
-      `:""}
-      ${canUsePartyMode()?'<div style="flex-basis:100%;border-top:1px solid var(--border-color,#393244);padding-top:8px;margin-top:4px"><b style="display:block;margin-bottom:7px">🎉 Party Mode</b><button type="button" class="mini" onclick="setPartyMode(!isPartyModeActive())">'+(isPartyModeActive()?"🎉 Turn Party Mode Off":"🎉 Turn Party Mode On")+"</button></div>":""}
-
-    </div>
-  `);
-};
-
+  modal('<div class="room-menu-panel"><h2>'+esc(room.name)+' · Room options</h2><div class="room-menu-actions">'+actions.join("")+'</div></div>');
+  $("modalBody").querySelectorAll("[data-room-menu-action]").forEach(button => {
+    button.addEventListener("click", () => {
+      const action=button.dataset.roomMenuAction;
+      if(action==="clear") clearRoom();
+      else if(action==="edit") editRoom();
+      else if(action==="delete") deleteRoom();
+      else if(action==="announcement") postRoomAnnouncement();
+      else if(action==="pinned") showPinnedMessages();
+      else if(action==="youtube") openYoutubePanel();
+      else if(action==="invite") showInvite();
+      else if(action==="theme") openRoomThemePicker();
+      else if(action==="presence") togglePresenceMode(button.dataset.mode);
+      else if(action==="presence-settings") openPresenceModes();
+      else if(action==="party") setPartyMode(!isPartyModeActive());
+    });
+  });
+});
 
 
 function applyRoomTheme(themeId){
