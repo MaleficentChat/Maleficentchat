@@ -2467,7 +2467,7 @@ app.post("/api/rooms/:id/messages",auth,featureAllowed("send_messages"),upload.s
   if(reelId){
     const reelResult=await pool.query("SELECT id,user_id,content,media_url FROM wall_posts WHERE id=$1 AND status IN ('approved','pinned') AND (expires_at IS NULL OR expires_at>NOW())",[reelId]);
     const reel=reelResult.rows[0];
-    if(!reel||!reel.media_url||! /\\.(mp4|webm|ogg)(\\?|$)/i.test(String(reel.media_url))){
+    if(!reel||!reel.media_url||! /\.(mp4|webm|ogg)(\\?|$)/i.test(String(reel.media_url))){
       return res.status(404).json({error:"That Reel is no longer available."});
     }
     reelAttachment={url:String(reel.media_url),type:"video/mp4",name:"Shadow Reel"};
