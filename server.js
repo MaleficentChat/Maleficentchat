@@ -5391,7 +5391,7 @@ app.patch('/api/staff/user/:id/email',auth,async(req,res)=>{
   target.emailHistory ||= [];target.emailHistory.push({email:target.email||'',changedAt:Date.now(),changedBy:actor.username});target.email=email;await pool.query('UPDATE users SET email=$1 WHERE id=$2',[email,Number(target.id)]);save();res.json({ok:true,email:target.email,emailHistory:target.emailHistory});
 });
 
-app.patch('/api/staff/user/:id/rank',auth,(req,res)=>{
+app.patch('/api/staff/user/:id/rank',auth,async(req,res)=>{
   const actor=current(req), target=findUser(req.params.id), nr=String(req.body.rank||'');
   if(!target) return res.status(404).json({error:'User not found'});
   if(!hasFeature(actor,'staff_rank_assignment')) return res.status(403).json({error:`Rank assignment requires ${featureRank('staff_rank_assignment')} or higher.`});
