@@ -777,19 +777,26 @@ function verifyRoomJoinToken(token,userId,room){
   }catch{return false;}
 }
 function current(req){
-  // A valid signed client token must take precedence over a stale session cookie.
-  // Otherwise a session-store recovery or a failed session save can cause the
-  // browser's valid token to resolve to a different, older account.
-  const raw=req.headers["x-auth-token"] ||
-    (String(req.headers.authorization||"").startsWith("Bearer ")?String(req.headers.authorization).slice(7):"");
-  const tokenPayload=verifyToken(raw);
-  if(tokenPayload){
+  // Accept the signed token from the app header, a Bearer header, or the
+  // HttpOnly first-party cookie. The cookie is a durable fallback when mobile
+  // browsers or embedded webviews fail to retain localStorage.
+  const authorization=String(req.headers.authorization||"");
+  const cookieToken=String(req.headers.cookie||"").split(";").map(part=>part.trim()).find(part=>part.startsWith("mc_auth="));
+  let cookieValue="";
+  if(cookieToken){try{cookieValue=decodeURIComponent(cookieToken.slice("mc_auth=".length));}catch{}}
+  const candidates=[
+    req.headers["x-auth-token"],
+    authorization.startsWith("Bearer ")?authorization.slice(7):"",
+    cookieValue
+  ];
+  for(const raw of candidates){
+    const tokenPayload=verifyToken(raw);
+    if(!tokenPayload)continue;
     const tokenUser=db.users.find(u=>String(u.id)===String(tokenPayload.sub));
-    if(tokenUser) return tokenUser;
+    if(tokenUser)return tokenUser;
   }
 
-  // Keep cookie-session authentication as a fallback for existing clients that
-  // do not send a signed token, or when their token is stale but the session is valid.
+  // Keep cookie-session authentication as a final fallback for existing clients.
   const sessionUid=req.session?.userId;
   return sessionUid?db.users.find(u=>String(u.id)===String(sessionUid))||null:null;
 }
@@ -1667,9 +1674,19 @@ app.post(
 
     io.emit("presence");
 
+    const authToken=makeToken(u.id);
+    // Keep an HttpOnly first-party auth cookie as well as the app's local token.
+    // This survives reloads in mobile webviews that intermittently block storage.
+    res.cookie("mc_auth",authToken,{
+      httpOnly:true,
+      secure:!!req.secure,
+      sameSite:"lax",
+      path:"/",
+      maxAge:7*24*60*60*1000
+    });
     const loginResponse={
       user:safeUser(u),
-      token:makeToken(u.id)
+      token:authToken
     };
 
     // The client supports signed-token authentication as well as cookie sessions.
@@ -1701,6 +1718,7 @@ app.post(
     );
 
     req.session.destroy(()=>{});
+    res.clearCookie("mc_auth",{httpOnly:true,secure:!!req.secure,sameSite:"lax",path:"/"});
 
     save();
 
