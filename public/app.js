@@ -5537,7 +5537,7 @@ async function ownerDelete(id) {
 
 async function inspectDMs(){
   try{
-    modal(`<h2>Private-message inspection</h2><p class="muted">Your own conversations are always available. You may also inspect users strictly below your rank; same-rank and higher-rank staff are protected.</p><div class="dm-inspection-fields"><div class="dm-inspection-picker"><label for="dmSearch1">Account 1</label><input id="dmSearch1" value="${esc(state.user?.username||'')}" placeholder="Type @ or username" autocomplete="off"><div id="dmSuggestions1" class="ip-inspection-suggestions" hidden></div></div><div class="dm-inspection-picker"><label for="dmSearch2">Account 2 (optional)</label><input id="dmSearch2" placeholder="Optional: second user" autocomplete="off"><div id="dmSuggestions2" class="ip-inspection-suggestions" hidden></div></div><button class="primary" id="dmSearchBtn">Inspect messages</button></div><div id="ownerDmResults" class="stack"><p class="muted">Select an account and press Inspect messages.</p></div>`);
+    modal(`<h2>Private-message inspection</h2><p class="muted">Restricted to Owner and Developer. Owner can inspect their own conversations and users below Owner. Developer can inspect their own conversations and users below Developer. Equal- and higher-rank accounts are protected.</p><div class="dm-inspection-fields"><div class="dm-inspection-picker"><label for="dmSearch1">Account 1</label><input id="dmSearch1" value="${esc(state.user?.username||'')}" placeholder="Type @ or username" autocomplete="off"><div id="dmSuggestions1" class="ip-inspection-suggestions" hidden></div></div><div class="dm-inspection-picker"><label for="dmSearch2">Account 2 (optional)</label><input id="dmSearch2" placeholder="Optional: second user" autocomplete="off"><div id="dmSuggestions2" class="ip-inspection-suggestions" hidden></div></div><button class="primary" id="dmSearchBtn" type="button">Inspect messages</button></div><div id="ownerDmResults" class="stack" aria-live="polite"><p class="muted">Loading your conversations…</p></div>`);
     const wirePicker=(inputId,suggestId)=>{
       const input=$(inputId),suggestions=$(suggestId);let timer;
       input?.addEventListener('input',()=>{
@@ -5555,24 +5555,32 @@ async function inspectDMs(){
     };
     wirePicker('dmSearch1','dmSuggestions1');wirePicker('dmSearch2','dmSuggestions2');
     const load=async()=>{
-      const user1=($('dmSearch1').value||'').trim().replace(/^@/,'');
-      const user2=($('dmSearch2').value||'').trim().replace(/^@/,'');
-      const target=$('ownerDmResults');if(!user1){target.innerHTML='<p class="error">Select or enter the first username.</p>';return;}
+      const user1=($('dmSearch1')?.value||'').trim().replace(/^@/,'');
+      const user2=($('dmSearch2')?.value||'').trim().replace(/^@/,'');
+      const target=$('ownerDmResults'),button=$('dmSearchBtn');if(!target)return;
+      if(!user1){target.innerHTML='<p class="error">Select or enter the first username.</p>';return;}
+      if(button){button.disabled=true;button.textContent='Inspecting…';}
       target.innerHTML='<p class="muted">Loading private messages…</p>';
       try{
         const d=await api('/api/admin/private-search',{method:'POST',body:JSON.stringify({user1,user2})});
-        const messages=d.messages||[];
+        const messages=Array.isArray(d.messages)?d.messages:[];
         target.innerHTML='<p class="muted">'+messages.length+' message(s) found'+(user2?' between @'+esc(user1)+' and @'+esc(user2):' involving @'+esc(user1))+'.</p>'+
           (messages.map(m=>{
             const body=m.text??m.message??m.data?.text??m.data?.message??m.data?.content??'';
             const attachment=m.attachment||m.data?.attachment;
-            return '<div class="card dm-inspection-message"><b>@'+esc(m.sender_username||m.senderUsername||'Unknown')+' → @'+esc(m.receiver_username||m.receiverUsername||'Unknown')+'</b><div class="dm-inspection-body">'+(String(body).trim()?esc(body).replace(/\n/g,'<br>'):'<span class="muted">'+(attachment?'Attachment message (text is empty).':'Message has no text content.')+'</span>')+'</div>'+(attachment?'<div class="muted">📎 '+esc(attachment.name||attachment.type||'Attachment')+'</div>':'')+'<small class="muted">'+esc(fmt(m.created_at||m.time||m.data?.time))+'</small></div>';
-          }).join('')||'<p class="muted">No private messages were returned for this account. Confirm the username and try again.</p>');
-      }catch(e){target.innerHTML='<p class="error">'+esc(e.message||'Could not inspect private messages.')+'</p>';}
+            const sender=m.sender_username||m.senderUsername||(String(m.from)==='system-bot'?'System Bot':'Unknown');
+            const receiver=m.receiver_username||m.receiverUsername||'Unknown';
+            return '<div class="card dm-inspection-message"><b>'+esc(sender==='System Bot'?'System Bot':'@'+sender)+' → '+esc(receiver==='Unknown'?receiver:'@'+receiver)+'</b><div class="dm-inspection-body">'+(String(body).trim()?esc(body).replace(/\n/g,'<br>'):'<span class="muted">'+(attachment?'Attachment message (text is empty).':'Message has no text content.')+'</span>')+'</div>'+(attachment?'<div class="muted">📎 '+esc(attachment.name||attachment.type||'Attachment')+(attachment.url?' · <a href="'+esc(attachment.url)+'" target="_blank" rel="noopener">Open attachment</a>':'')+'</div>':'')+'<small class="muted">'+esc(fmt(m.created_at||m.time||m.data?.time))+'</small></div>';
+          }).join('')||'<p class="muted">No private messages were found for this account. Check the username or choose a second account to inspect a specific conversation.</p>');
+      }catch(e){target.innerHTML='<p class="error">Inspection failed: '+esc(e.message||'Could not inspect private messages.')+'</p>';}
+      finally{if(button){button.disabled=false;button.textContent='Inspect messages';}}
     };
-    $('dmSearchBtn').onclick=load;
+    $('dmSearchBtn')?.addEventListener('click',load);
     $('dmSearch1')?.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();load();}});
     $('dmSearch2')?.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();load();}});
+    // Show the signed-in Owner/Developer's own conversation history immediately.
+    // The user no longer has to discover that a prefilled username still needs a click.
+    load();
   }catch(e){toast(e.message)}
 }
 
