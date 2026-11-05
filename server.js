@@ -3930,6 +3930,10 @@ app.delete('/api/push/subscribe',auth,async(req,res)=>{
 });
 app.get('/api/notifications',auth,async(req,res)=>{const {rows}=await pool.query(`SELECT id,type,title,message,is_read,created_at FROM notifications WHERE user_id=$1 ORDER BY created_at DESC LIMIT 20`,[Number(current(req).id)]);res.json({notifications:rows.map(n=>({id:String(n.id),type:n.type,title:n.title||n.type,text:n.message,message:n.message,time:n.created_at,read:n.is_read}))});});
 app.get('/api/notifications/unread',auth,async(req,res)=>{const {rows}=await pool.query(`SELECT id,type,title,message,is_read,created_at FROM notifications WHERE user_id=$1 AND is_read=false ORDER BY created_at DESC LIMIT 100`,[Number(current(req).id)]);res.json({notifications:rows.map(n=>({id:String(n.id),type:n.type,title:n.title||n.type,text:n.message,message:n.message,time:n.created_at,read:n.is_read}))});});
+app.get('/api/warnings/pending',auth,async(req,res)=>{
+  const {rows}=await pool.query(`SELECT id,message,created_at FROM notifications WHERE user_id=$1 AND type='warning' AND is_read=false ORDER BY created_at ASC LIMIT 20`,[Number(current(req).id)]);
+  res.json({warnings:rows.map(n=>({id:String(n.id),type:"warning",text:n.message,message:n.message,time:n.created_at}))});
+});
 app.patch('/api/notifications/:id/read',auth,async(req,res)=>{const r=await pool.query(`UPDATE notifications SET is_read=true WHERE id=$1 AND user_id=$2 AND type<>'warning' RETURNING id`,[req.params.id,Number(current(req).id)]);if(!r.rowCount)return res.status(404).json({error:'Notification not found or requires warning acknowledgement.'});res.json({ok:true});});
 app.post('/api/notifications/:id/acknowledge-warning',auth,async(req,res)=>{const r=await pool.query(`UPDATE notifications SET is_read=true WHERE id=$1 AND user_id=$2 AND type='warning' RETURNING id`,[req.params.id,Number(current(req).id)]);if(!r.rowCount)return res.status(404).json({error:'Warning not found or already acknowledged.'});res.json({ok:true});});
 app.post('/api/notifications/read',auth,async(req,res)=>{await pool.query(`UPDATE notifications SET is_read=true WHERE user_id=$1 AND type<>'warning'`,[Number(current(req).id)]);res.json({ok:true});});
@@ -4091,7 +4095,12 @@ app.post(
 
     systemAudit({target:target.id,actor:actor.id,actorUsername:actor.username,action,reason:cleanText(req.body.reason)||action,source:"staff",durationMinutes:(action==="MUTE"||action==="KICK")?Math.max(1,Number(req.body.minutes)||10):0});
     save();
-    const actionText={MUTE:'muted',KICK:'kicked',BAN:'banned',UNMUTE:'unmuted',REVOKE_MUTE:'unmuted',REVOKE_BAN:'unbanned',REVOKE_KICK:'unkicked',WARN:'warned'}[action]||action.toLowerCase(); const mainRoom=db.rooms.find(x=>/^main room 1$/i.test(String(x.name||'')))||db.rooms.find(x=>x.id==='main'||String(x.name).toLowerCase()==='main room')||db.rooms[0]; systemNotice(`@${target.username} has been ${actionText}.`,mainRoom?.id||null);
+    // Warnings are private account-level notices, never public Main Room announcements.
+    if(action!=="WARN"){
+      const actionText={MUTE:'muted',KICK:'kicked',BAN:'banned',UNMUTE:'unmuted',REVOKE_MUTE:'unmuted',REVOKE_BAN:'unbanned',REVOKE_KICK:'unkicked'}[action]||action.toLowerCase();
+      const mainRoom=db.rooms.find(x=>/^main room 1$/i.test(String(x.name||'')))||db.rooms.find(x=>x.id==='main'||String(x.name).toLowerCase()==='main room')||db.rooms[0];
+      systemNotice(`@${target.username} has been ${actionText}.`,mainRoom?.id||null);
+    }
 
     const moderationReason=cleanText(req.body.reason)||"Community rules";
     if(action==="WARN"){
