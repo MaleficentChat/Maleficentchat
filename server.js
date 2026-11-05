@@ -7008,8 +7008,29 @@ app.post('/api/admin/private-search',auth,ownerOnly,async(req,res)=>{
       const matchesKeyword=!keyword||content.toLowerCase().includes(keyword.toLowerCase());
       return (username2?matchesPair:matchesFirst)&&matchesKeyword;
     }).map(m=>{const from=m.from??m.senderId??m.sender_id??m.fromUsername??m.senderUsername??m.sender_username,to=m.to??m.receiverId??m.receiver_id??m.toUsername??m.receiverUsername??m.receiver_username,sender=(db.users||[]).find(u=>String(u.id)===String(from)||norm(u.username)===norm(from)),receiver=(db.users||[]).find(u=>String(u.id)===String(to)||norm(u.username)===norm(to));return {...m,sender_id:sender?.id??from,receiver_id:receiver?.id??to,message:m.text??m.message??m.data?.text??m.data?.message??m.data?.content??'',created_at:m.created_at??m.time,sender_username:sender?.username||m.fromUsername||m.senderUsername||m.sender_username,receiver_username:receiver?.username||m.toUsername||m.receiverUsername||m.receiver_username};});
-    const sqlIds=new Set(q.rows.filter(row=>row.id!==undefined&&row.id!==null).map(row=>String(row.id)));
-    const sourceRows=[...q.rows,...legacyRows.filter(row=>row.id===undefined||row.id===null||!sqlIds.has(String(row.id)))].sort((x,y)=>new Date(y.created_at||y.time||0).getTime()-new Date(x.created_at||x.time||0).getTime()).slice(0,200);
+    // Apply the keyword again to normalized row content in JavaScript. This is
+    // intentional defense-in-depth: older rows can store their text in JSON data
+    // rather than the message column, and SQL-only filtering may miss those rows.
+    const rowMatchesKeyword=row=>{
+      if(!keyword)return true;
+      const data=row.data&&typeof row.data==='object'?row.data:{};
+      const content=String(row.message??row.text??data.text??data.message??data.content??'');
+      return content.toLocaleLowerCase().includes(keyword.toLocaleLowerCase());
+    };
+    const filteredSqlRows=q.rows.filter(rowMatchesKeyword);
+    const sqlIds=new Set(filteredSqlRows.filter(row=>row.id!==undefined&&row.id!==null).map(row=>String(row.id)));
+    const filteredLegacyRows=legacyRows.filter(row=>{
+      if(!rowMatchesKeyword(row))return false;
+      const from=row.from??row.senderId??row.sender_id??row.fromUsername??row.senderUsername??row.sender_username;
+      const to=row.to??row.receiverId??row.receiver_id??row.toUsername??row.receiverUsername??row.receiver_username;
+      const fromName=norm(from),toName=norm(to);
+      const fromUser=(db.users||[]).find(u=>String(u.id)===String(from)||norm(u.username)===fromName),toUser=(db.users||[]).find(u=>String(u.id)===String(to)||norm(u.username)===toName);
+      const fromId=String(fromUser?.id??from),toId=String(toUser?.id??to);
+      const matchesFirst=fromId===firstId||toId===firstId||fromName===firstName||toName===firstName;
+      const matchesPair=(fromId===firstId&&toId===secondId)||(fromId===secondId&&toId===firstId)||(fromName===firstName&&toName===secondName)||(fromName===secondName&&toName===firstName);
+      return username2?matchesPair:matchesFirst;
+    }).map(m=>{const from=m.from??m.senderId??m.sender_id??m.fromUsername??m.senderUsername??m.sender_username,to=m.to??m.receiverId??m.receiver_id??m.toUsername??m.receiverUsername??m.receiver_username,sender=(db.users||[]).find(u=>String(u.id)===String(from)||norm(u.username)===norm(from)),receiver=(db.users||[]).find(u=>String(u.id)===String(to)||norm(u.username)===norm(to));return {...m,sender_id:sender?.id??from,receiver_id:receiver?.id??to,message:m.text??m.message??m.data?.text??m.data?.message??m.data?.content??'',created_at:m.created_at??m.time,sender_username:sender?.username||m.fromUsername||m.senderUsername||m.sender_username,receiver_username:receiver?.username||m.toUsername||m.receiverUsername||m.receiver_username};});
+    const sourceRows=[...filteredSqlRows,...filteredLegacyRows.filter(row=>row.id===undefined||row.id===null||!sqlIds.has(String(row.id)))].sort((x,y)=>new Date(y.created_at||y.time||0).getTime()-new Date(x.created_at||x.time||0).getTime()).slice(0,200);
     const messages=sourceRows.map(row=>{const data=row.data&&typeof row.data==='object'?row.data:{},attachment=row.attachment??data.attachment??data.attachments??null;return {...data,id:row.id,from:row.sender_id??data.from,to:row.receiver_id??data.to,sender_id:row.sender_id,receiver_id:row.receiver_id,sender_username:row.sender_username||data.fromUsername||data.senderUsername||data.sender_username||'Unknown',receiver_username:row.receiver_username||data.toUsername||data.receiverUsername||data.receiver_username||'Unknown',message:row.message??data.text??data.message??data.content??'',text:data.text??row.message??data.message??data.content??'',attachment,created_at:row.created_at??data.created_at,time:data.time??(row.created_at?new Date(row.created_at).getTime():Date.now())};});
     res.json({messages,users});
   }catch(error){console.error('Owner private-message inspection failed:',error);res.status(500).json({error:'Could not inspect private messages. Please retry.'});}
