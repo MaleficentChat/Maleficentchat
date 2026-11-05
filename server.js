@@ -6710,8 +6710,16 @@ function requireRoomAnnouncementStaff(req,res,next){
 }
 app.get('/api/rooms/:id/announcements',auth,(req,res)=>{
   const u=current(req),r=db.rooms.find(x=>String(x.id)===String(req.params.id)); if(!r)return res.status(404).json({error:'Room not found'});
+  // Reading announcements is available to every signed-in rank. Private-room
+  // membership remains enforced, but posting/deleting permissions do not apply
+  // to this read endpoint.
   if(!requirePrivateRoomAccess(req,res,r,u))return;
-  res.json({announcements:(r.announcements||[]).slice(-50).reverse().map(n=>roomAnnouncementForViewer(n))});
+  const stored=Array.isArray(r.announcements)?r.announcements:[];
+  // Older rooms may have only the legacy single-announcement field. Preserve
+  // and display it instead of hiding the announcement feed for every viewer.
+  const visible=stored.length?stored.slice(-50).reverse():
+    (String(r.announcement||"").trim()?[{id:"legacy-"+String(r.id),roomId:r.id,text:String(r.announcement),time:0}]:[]);
+  res.json({announcements:visible.map(n=>roomAnnouncementForViewer(n))});
 });
 app.post('/api/rooms/:id/announcements',auth,requireRoomAnnouncementStaff,(req,res)=>{
   const u=current(req),r=db.rooms.find(x=>String(x.id)===String(req.params.id)); if(!r)return res.status(404).json({error:'Room not found'});
