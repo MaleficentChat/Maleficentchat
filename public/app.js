@@ -5785,48 +5785,47 @@ $("youtubeComposerBtn")?.addEventListener("click",()=>openYoutubePanel("youtube"
 
 /* ---------------- ROOM MENU ---------------- */
 
-$("roomMenu").addEventListener("click", () => {
-  const room = state.rooms.find(r => String(r.id) === String(state.currentRoom));
-  if (!room) { toast("Join a room first."); return; }
-
-  const actions = [];
-  if (canFeature("clear_room")) actions.push('<button type="button" class="room-menu-action" data-room-menu-action="clear">🧹 Clear messages</button>');
-  if (canFeature("edit_room")) actions.push('<button type="button" class="room-menu-action" data-room-menu-action="edit">✏️ Edit room</button>');
-  if (canFeature("delete_room")) actions.push('<button type="button" class="room-menu-action danger" data-room-menu-action="delete">🗑 Delete room</button>');
-  actions.push(
-    '<button type="button" class="room-menu-action" data-room-menu-action="announcement">📢 Room announcement</button>',
-    '<button type="button" class="room-menu-action" data-room-menu-action="pinned">📌 Pinned messages</button>',
-    '<button type="button" class="room-menu-action" data-room-menu-action="youtube">▶️ YouTube</button>',
-    '<button type="button" class="room-menu-action" data-room-menu-action="invite">🔗 Invite link</button>',
-    '<button type="button" class="room-menu-action" data-room-menu-action="theme">🎨 Room Theme</button>'
-  );
-
-  const presence = ["ghost","dead","invisible"].filter(mode => canUsePresenceMode(mode));
-  if (presence.length) {
-    const labels = {ghost:"👻 Ghost Mode",dead:"💀 Dead Mode",invisible:"😈 Invisible Mode"};
-    actions.push('<div class="room-menu-section"><b>🕶️ Presence modes</b><div class="room-menu-presence">'+presence.map(mode=>'<button type="button" class="room-menu-action" data-room-menu-action="presence" data-mode="'+mode+'">'+labels[mode]+'</button>').join("")+'</div><button type="button" class="room-menu-action" data-room-menu-action="presence-settings">⚙️ Open mode settings</button></div>');
-  }
-  if (canUsePartyMode()) {
-    actions.push('<div class="room-menu-section"><b>🎉 Party Mode</b><button type="button" class="room-menu-action" data-room-menu-action="party">'+(isPartyModeActive()?"🎉 Turn Party Mode Off":"🎉 Turn Party Mode On")+'</button></div>');
-  }
-
-  modal('<div class="room-menu-panel"><h2>'+esc(room.name)+' · Room options</h2><div class="room-menu-actions">'+actions.join("")+'</div></div>');
-  $("modalBody").querySelectorAll("[data-room-menu-action]").forEach(button => {
-    button.addEventListener("click", () => {
-      const action=button.dataset.roomMenuAction;
-      if(action==="clear") clearRoom();
-      else if(action==="edit") editRoom();
-      else if(action==="delete") deleteRoom();
-      else if(action==="announcement") postRoomAnnouncement();
-      else if(action==="pinned") showPinnedMessages();
-      else if(action==="youtube") openYoutubePanel();
-      else if(action==="invite") showInvite();
-      else if(action==="theme") openRoomThemePicker();
-      else if(action==="presence") togglePresenceMode(button.dataset.mode);
-      else if(action==="presence-settings") openPresenceModes();
-      else if(action==="party") setPartyMode(!isPartyModeActive());
+$("roomMenu")?.addEventListener("click", () => {
+  try {
+    const rooms = Array.isArray(state.rooms) ? state.rooms : [];
+    const room = rooms.find(r => String(r.id) === String(state.currentRoom));
+    const roomName = esc(room?.name || "Current room");
+    const actions = [
+      ["announcement","📢 Room announcement"],
+      ["pinned","📌 Pinned messages"],
+      ["youtube","▶️ YouTube"],
+      ["invite","🔗 Invite link"],
+      ["theme","🎨 Room Theme"]
+    ];
+    if (canFeature("clear_room")) actions.unshift(["clear","🧹 Clear messages"]);
+    if (canFeature("edit_room")) actions.unshift(["edit","✏️ Edit room"]);
+    if (canFeature("delete_room")) actions.unshift(["delete","🗑 Delete room"]);
+    if (["ghost","dead","invisible"].some(canUsePresenceMode)) {
+      actions.push(["presence-settings","⚙️ Presence mode settings"]);
+    }
+    if (canUsePartyMode()) actions.push(["party","🎉 Party Mode"]);
+    modal('<div class="room-menu-panel"><h2>'+roomName+' · Room options</h2><div class="room-menu-actions">'+actions.map(([key,label])=>'<button type="button" class="room-menu-action" data-room-menu-action="'+key+'">'+label+'</button>').join("")+'</div></div>');
+    const body = $("modalBody");
+    if (!body) throw new Error("Room options panel could not be displayed.");
+    body.querySelectorAll("[data-room-menu-action]").forEach(button => {
+      button.addEventListener("click", () => {
+        const action = button.dataset.roomMenuAction;
+        if (action==="clear") clearRoom();
+        else if (action==="edit") editRoom();
+        else if (action==="delete") deleteRoom();
+        else if (action==="announcement") postRoomAnnouncement();
+        else if (action==="pinned") showPinnedMessages();
+        else if (action==="youtube") openYoutubePanel();
+        else if (action==="invite") showInvite();
+        else if (action==="theme") openRoomThemePicker();
+        else if (action==="presence-settings") openPresenceModes();
+        else if (action==="party") setPartyMode(!isPartyModeActive());
+      });
     });
-  });
+  } catch (error) {
+    console.error("Room menu failed to open:", error);
+    toast("Room options could not open. Please refresh and try again.");
+  }
 });
 
 
