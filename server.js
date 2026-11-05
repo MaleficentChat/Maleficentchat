@@ -3527,6 +3527,22 @@ app.post("/api/translate",auth,async(req,res)=>{
   if(!text)return res.status(400).json({error:"There is no text to translate."});
   const providers=[
     async()=>{
+      const apiKey=String(process.env.OPENAI_API_KEY||"").trim();
+      if(!apiKey)throw new Error("OpenAI translation key is not configured");
+      const response=await fetch("https://api.openai.com/v1/chat/completions",{
+        method:"POST",headers:{authorization:"Bearer "+apiKey,"content-type":"application/json"},
+        body:JSON.stringify({model:String(process.env.OPENAI_MODEL||"gpt-4o-mini"),temperature:0,response_format:{type:"json_object"},messages:[
+          {role:"system",content:'You are a translation engine. Detect the source language and translate the user text into natural English. If it is already English, keep it unchanged. Return only a JSON object with keys "translated" and "detectedLanguage".'},
+          {role:"user",content:text}
+        ]}),signal:AbortSignal.timeout(15000)
+      });
+      if(!response.ok)throw new Error("OpenAI translation returned "+response.status);
+      const data=await response.json(),parsed=JSON.parse(String(data?.choices?.[0]?.message?.content||"{}"));
+      const translated=String(parsed.translated||"").trim();
+      if(!translated)throw new Error("OpenAI returned an empty translation");
+      return {translated,detectedLanguage:String(parsed.detectedLanguage||"").slice(0,24),provider:"OpenAI"};
+    },
+    async()=>{
       const endpoint="https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=en&dt=t&q="+encodeURIComponent(text);
       const response=await fetch(endpoint,{headers:{"accept":"application/json","user-agent":"Mozilla/5.0 MaleficentChat/1.0"},signal:AbortSignal.timeout(10000)});
       if(!response.ok)throw new Error("Google Translate returned "+response.status);
@@ -4558,7 +4574,7 @@ app.post('/api/staff/applications/:id/reject',auth,featureAllowed('view_staff_da
 app.post('/api/staff/applications/:id/grant',auth,featureAllowed('view_staff_dashboard'),async(req,res)=>{
   const actor=current(req);if(!['COMMISSOR','INSTRUCTOR','COOWNER','OWNER','DEVELOPER'].includes(String(actor.rank||'').toUpperCase()))return res.status(403).json({error:'Commissor rank or higher required to review staff applications.'});
   const requested=String(req.body.rank||'').toUpperCase();
-  if(!['MOD','ADMIN','SUPER_ADMIN','COMMISSOR','COOWNER'].includes(requested))return res.status(400).json({error:'Choose a rank from Moderator to Co-owner.'});
+  if(!['MOD','ADMIN','SUPER_ADMIN','COMMISSOR','INSTRUCTOR','COOWNER'].includes(requested))return res.status(400).json({error:'Choose a valid staff rank.'});
   try{
     await ensureStaffApplicationsTable();
     const client=await pool.connect();
@@ -4575,10 +4591,12 @@ app.post('/api/staff/applications/:id/grant',auth,featureAllowed('view_staff_das
 
       if(!ownerPower&&!hasFeature(actor,'staff_rank_assignment')){await client.query('ROLLBACK');return res.status(403).json({error:'You do not have rank-assignment permission.'});}
       const assignableRanks=Array.isArray(db.settings?.staff_application_grant_ranks)?db.settings.staff_application_grant_ranks:["MOD"];
-      if(!ownerPower&&!assignableRanks.includes(requested)){await client.query('ROLLBACK');return res.status(403).json({error:'Your current rank permissions do not allow granting '+requested+'.'});}
+      const coownerPower=actorRankNow==="COOWNER";
+      if(!ownerPower&&!coownerPower&&!assignableRanks.includes(requested)){await client.query('ROLLBACK');return res.status(403).json({error:'Your current rank permissions do not allow granting '+requested+'.'});}
       const hierarchy=["MEMBER","VIP","PREMIUM","ROYAL","MOD","ADMIN","SUPER_ADMIN","COMMISSOR","INSTRUCTOR","COOWNER","OWNER","DEVELOPER"];
       const hierarchyIndex=rank=>{const normalized=String(rank||"MEMBER").toUpperCase();return hierarchy.indexOf(normalized)<0?0:hierarchy.indexOf(normalized);};
-      if(!ownerPower&&hierarchyIndex(requested)>hierarchyIndex("MOD")){await client.query('ROLLBACK');return res.status(403).json({error:'Your permissions allow granting Moderator or below only.'});}
+      const grantCeiling=coownerPower?"INSTRUCTOR":"MOD";
+      if(!ownerPower&&hierarchyIndex(requested)>hierarchyIndex(grantCeiling)){await client.query('ROLLBACK');return res.status(403).json({error:'Your permissions allow granting '+(coownerPower?'Instructor':'Moderator')+' or below only.'});}
       if(!ownerPower&&hierarchyIndex(target.rank)>=hierarchyIndex(actor.rank)){await client.query('ROLLBACK');return res.status(403).json({error:'You cannot change an equal or higher rank.'});}
       await client.query("UPDATE users SET rank=$1 WHERE id=$2",[requested.toLowerCase(),Number(target.id)]);
       await client.query("UPDATE staff_applications SET status='APPROVED',reviewed_by=$2,reviewed_at=NOW() WHERE id=$1",[req.params.id,Number(actor.id)]);
