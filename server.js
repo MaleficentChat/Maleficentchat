@@ -15,6 +15,38 @@ const multer=require("multer");
 const {createWorker}=require("tesseract.js");
 const {Server}=require("socket.io");
 const {initDB,loadState,persistState,pool}=require("./db");
+let firebaseAdminApp=null;
+function getFirebaseAdmin(){
+  if(firebaseAdminApp)return firebaseAdminApp;
+  const raw=String(process.env.FIREBASE_SERVICE_ACCOUNT||"").trim();
+  if(!raw)return null;
+  try{
+    const admin=require("firebase-admin");
+    const serviceAccount=JSON.parse(raw);
+    firebaseAdminApp=admin.apps.length?admin.app():admin.initializeApp({credential:admin.credential.cert(serviceAccount)});
+    return firebaseAdminApp;
+  }catch(error){console.error("Firebase Admin initialization failed:",error?.message||error);return null;}
+}
+async function sendNativePushToUser(userId,payload){
+  const app=getFirebaseAdmin();if(!app)return;
+  try{
+    const result=await pool.query("SELECT fcm_token FROM native_device_tokens WHERE user_id=$1",[Number(userId)]);
+    if(!result.rowCount)return;
+    const admin=require("firebase-admin");
+    const response=await admin.messaging(app).sendEachForMulticast({
+      tokens:result.rows.map(row=>row.fcm_token),
+      data:Object.fromEntries(Object.entries(payload).map(([k,v])=>[k,String(v??"")])),
+      android:{priority:"high"}
+    });
+    for(let i=0;i<response.responses.length;i++){
+      const item=response.responses[i];
+      if(!item.success && /registration-token-not-registered|invalid-registration-token/i.test(String(item.error?.code||""))){
+        await pool.query("DELETE FROM native_device_tokens WHERE fcm_token=$1",[result.rows[i].fcm_token]);
+      }
+    }
+  }catch(error){console.error("Native FCM delivery failed:",error?.message||error);}
+}
+
 
 const app=express(), server=http.createServer(app), io=new Server(server);
 // Express 4 does not automatically forward rejected async route handlers to
@@ -3615,6 +3647,48 @@ app.post("/api/translate",auth,async(req,res)=>{
   }
   console.error("All message translation providers failed:",lastError?.message||lastError);
   return res.status(502).json({error:"Translation services are temporarily unavailable. Please try again shortly."});
+});
+
+
+app.post("/api/native/device/register",auth,featureAllowed("private_messages"),async(req,res)=>{
+  const u=current(req),fcmToken=String(req.body?.fcmToken||"").trim();
+  if(!fcmToken||fcmToken.length>4096)return res.status(400).json({error:"Invalid Firebase device token."});
+  const credential=crypto.randomBytes(32).toString("base64url");
+  const credentialHash=crypto.createHash("sha256").update(credential).digest("hex");
+  try{
+    await pool.query(
+      `INSERT INTO native_device_tokens(user_id,fcm_token,credential_hash,last_used_at)
+       VALUES($1,$2,$3,NOW())
+       ON CONFLICT(fcm_token) DO UPDATE SET user_id=EXCLUDED.user_id,credential_hash=EXCLUDED.credential_hash,last_used_at=NOW()`,
+      [Number(u.id),fcmToken,credentialHash]
+    );
+    res.json({ok:true,deviceCredential:credential});
+  }catch(error){console.error("Native device registration failed:",error?.message||error);res.status(500).json({error:"Could not register this device."});}
+});
+
+app.post("/api/native/dm/reply",async(req,res)=>{
+  const credential=String(req.headers["x-device-credential"]||"").trim();
+  const peerId=String(req.body?.peerId||"").trim();
+  const message=cleanText(req.body?.text).trim();
+  if(!credential||credential.length>256)return res.status(401).json({error:"Device authorization required."});
+  if(!peerId||!message)return res.status(400).json({error:"A recipient and reply are required."});
+  try{
+    const hash=crypto.createHash("sha256").update(credential).digest("hex");
+    const stored=await pool.query("SELECT user_id FROM native_device_tokens WHERE credential_hash=$1 LIMIT 1",[hash]);
+    if(!stored.rowCount)return res.status(401).json({error:"Device authorization expired. Open Maleficent Chat to reconnect."});
+    const u=findUser(String(stored.rows[0].user_id)),v=findUser(peerId);
+    if(!u||!v)return res.status(404).json({error:"Conversation user not found."});
+    if(u.banned===true||(u.kickedUntil&&Number(u.kickedUntil)>Date.now()))return res.status(403).json({error:"Account is restricted."});
+    if(isUserFeatureBlocked(u,"private_messages")||!hasFeature(u,"private_messages"))return res.status(403).json({error:"Private messaging is not available for this account."});
+    if(privateMessagesBlocked(u,v))return res.status(403).json({error:"Messaging blocked."});
+    const m={id:id(),from:u.id,to:v.id,text:message.slice(0,4000),attachment:null,replyTo:null,time:Date.now(),read:false,delivered:true};
+    await pool.query("INSERT INTO private_messages(id,sender_id,receiver_id,message,data,created_at) VALUES($1,$2,$3,$4,$5::jsonb,NOW())",[m.id,Number(u.id),Number(v.id),m.text,JSON.stringify(m)]);
+    db.privateMessages.push(m);
+    notify(v.id,"private-message",`💌 @${u.username}`,m.text.slice(0,180),`/?dm=${encodeURIComponent(u.id)}`);
+    io.to("user:"+u.id).emit("dm",m);io.to("user:"+v.id).emit("dm",m);
+    await pool.query("UPDATE native_device_tokens SET last_used_at=NOW() WHERE credential_hash=$1",[hash]);
+    res.json({ok:true,messageId:m.id});
+  }catch(error){console.error("Native inline reply failed:",error?.message||error);res.status(500).json({error:"Could not send reply."});}
 });
 
 app.post("/api/dm/:id",auth,featureAllowed("private_messages"),upload.single("file"),async(req,res)=>{
