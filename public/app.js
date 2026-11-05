@@ -5808,19 +5808,17 @@ $("notifications").onclick=async()=>{
 async function showPinnedMessages(){
   try{ const data=await api(`/api/rooms/${encodeURIComponent(state.currentRoom)}/pinned`); const pinned=data.messages||[]; modal(`<h2>📌 Pinned messages</h2><p class="muted">Pinned messages in ${esc(state.rooms.find(r=>String(r.id)===String(state.currentRoom))?.name||'this room')}.</p><div class="pinned-list">${pinned.map(m=>`<button class="pinned-result" onclick="closeModal();jumpToMessage('${esc(m.id)}')"><b>${esc(m.displayName||m.username)}</b><small>${fmt(m.time)}</small><span>${esc(m.text||'📎 Attachment')}</span></button>`).join('')||'<p class="muted">No pinned messages in this room.</p>'}</div>`); }catch(e){toast(e.message)}
 }
-async function extractYoutubeVideoId(value){
+function extractYoutubeVideoId(value){
   const raw=String(value||"").trim();
   if(/^[A-Za-z0-9_-]{11}$/.test(raw))return raw;
   try{
-    const url=new URL(/^https?:\\/\\//i.test(raw)?raw:"https://"+raw);
-    const host=url.hostname.toLowerCase().replace(/^www\\./,"");
-    if(host==="youtu.be"||host==="m.youtube.com"||host==="music.youtube.com"||host==="youtube.com"||host==="youtube-nocookie.com"){
-      const id=host==="youtu.be"?url.pathname.split("/").filter(Boolean)[0]:
-        (url.searchParams.get("v")||url.pathname.match(/\\/(?:embed|shorts|live|v)\\/([^/?]+)/i)?.[1]);
-      return /^[A-Za-z0-9_-]{11}$/.test(String(id||""))?String(id):"";
-    }
-  }catch{}
-  return "";
+    const url=new URL(/^https?:\/\//i.test(raw)?raw:"https://"+raw);
+    const host=url.hostname.toLowerCase().replace(/^www\./,"");
+    if(!["youtu.be","m.youtube.com","music.youtube.com","youtube.com","youtube-nocookie.com"].includes(host))return "";
+    const id=host==="youtu.be"?url.pathname.split("/").filter(Boolean)[0]:
+      (url.searchParams.get("v")||url.pathname.match(/\/(?:embed|shorts|live|v)\/([^/?]+)/i)?.[1]);
+    return /^[A-Za-z0-9_-]{11}$/.test(String(id||""))?String(id):"";
+  }catch{return "";}
 }
 function openYoutubePanel(){
   modal(`<div class="youtube-panel"><h2>▶️ YouTube</h2><p class="muted">Search for a video or paste a YouTube video, Shorts or live link.</p><div class="toolbar"><input id="ytQuery" placeholder="Search or paste YouTube URL…" autocomplete="off"><button class="primary" id="ytSearch" type="button">Search</button></div><div id="ytResults" class="youtube-results"><p class="muted">Choose a video to preview it before sharing.</p></div><div id="ytSelected" class="youtube-selected" aria-live="polite"></div></div>`);
