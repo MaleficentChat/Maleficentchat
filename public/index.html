@@ -312,12 +312,12 @@
       var body=document.getElementById("modalBody");
       if(!overlay||!body)throw new Error("Menu dialog is unavailable.");
       var actions=[
-        ["announcement","📢 Room announcement"],
         ["pinned","📌 Pinned messages"],
         ["youtube","▶️ YouTube"],
         ["invite","🔗 Invite link"],
         ["theme","🎨 Room Theme"]
       ];
+      if(typeof window.canPostRoomAnnouncement==="function"&&window.canPostRoomAnnouncement())actions.unshift(["announcement","📢 Room announcement"]);
       body.innerHTML='<div class="room-menu-panel"><h2>Room options</h2><div class="room-menu-actions">'+
         actions.map(function(item){return '<button type="button" class="room-menu-action" data-room-menu-fallback="'+item[0]+'">'+item[1]+'</button>';}).join("")+
         '</div></div>';
@@ -340,6 +340,6 @@
   },true);
 })();
 </script>
-<script src="/app.js?v=room-rank-migration-admin-logs-20261106"></script>
+<script src="/app.js?v=anonymous-announcements-commissor-20261106"></script>
 </body>
 </html>
