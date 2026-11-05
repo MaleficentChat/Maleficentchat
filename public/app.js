@@ -3897,12 +3897,15 @@ async function staffAccountModificationModal(user){
 }
 
 function rankFromProfile(user){
-  const isOwner=String(state.user?.rank||"").toUpperCase()==="DEVELOPER" || (state.user?.username==="Maleficent" && state.user?.rank==="OWNER");
+  const actorRank=String(state.user?.rank||"MEMBER").toUpperCase();
+  const isOwner=actorRank==="DEVELOPER" || (state.user?.username==="Maleficent" && actorRank==="OWNER");
+  const isCoowner=actorRank==="COOWNER";
   const isStaff=canFeature("staff_rank_assignment");
   if(!isOwner && !isStaff){toast("You do not have permission to change ranks.");return;}
   if(user.username==="Maleficent" && !isOwner){toast("The permanent owner is protected.");return;}
-  const allowed=isOwner ? ranks : ranks.filter(r=>rankOrder[r]<=rankOrder.MOD && rankOrder[r]<rankOrder[state.user.rank]);
-  modal(`<h2>🏅 Change rank for @${esc(user.username)}</h2><p class="muted">${isOwner?"Owner control: you may assign any rank, including OWNER.":"Staff control: you may assign MOD or below only."}</p><select id="profileRankSelect">${allowed.map(r=>`<option value="${r}" ${r===user.rank?'selected':''}>${rankIcon[r]||''} ${r}</option>`).join('')}</select><div class="toolbar"><button class="primary" id="saveProfileRank">Save rank</button></div>`);
+  const ceiling=isOwner?rankOrder.DEVELOPER:(isCoowner?rankOrder.INSTRUCTOR:rankOrder.MOD);
+  const allowed=isOwner ? ranks : ranks.filter(r=>rankOrder[r]<=ceiling && rankOrder[r]<rankOrder[actorRank]);
+  modal(`<h2>🏅 Change rank for @${esc(user.username)}</h2><p class="muted">${isOwner?"Owner control: you may assign any rank, including OWNER.":(isCoowner?"Co-owner control: you may assign Instructor or below.":"Staff control: you may assign MOD or below.")}</p><select id="profileRankSelect">${allowed.map(r=>`<option value="${r}" ${r===user.rank?'selected':''}>${rankIcon[r]||''} ${r}</option>`).join('')}</select><div class="toolbar"><button class="primary" id="saveProfileRank">Save rank</button></div>`);
   $('saveProfileRank').onclick=async()=>{
     try{
       const endpoint=isOwner?`/api/owner/user/${encodeURIComponent(user.id)}/rank`:`/api/staff/user/${encodeURIComponent(user.id)}/rank`;
