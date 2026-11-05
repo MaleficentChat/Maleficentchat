@@ -294,17 +294,23 @@ function showPrivateMessagePopup(message){
 }
 
 let activeWarningNotificationId=null;
-let renderingPersistentWarning=false;
 function showPersistentWarning(notification){
   if(!notification||!notification.id)return;
   const id=String(notification.id);
-  if(activeWarningNotificationId===id)return;
+  if(activeWarningNotificationId===id&&$("persistentWarningOverlay"))return;
   activeWarningNotificationId=id;
-  const reason=String(notification.text||notification.message||"Please review the community rules.");
-  renderingPersistentWarning=true;
-  modal(`<div class="warning-popup warning-persistent"><div class="warning-icon" aria-hidden="true">⚠️</div><div class="warning-title">WARNING</div><div class="warning-reason">${esc(reason)}</div><button class="primary warning-understand" id="warningUnderstand" type="button">I understand</button></div>`);
-  renderingPersistentWarning=false;
-  $("modal")?.classList.add("warning-modal");
+  const reason=String(notification.text||notification.message||notification.reason||"Please review the community rules.");
+  // Use a dedicated body-level overlay instead of the shared dialog system:
+  // profile/settings dialogs and their close handlers must never suppress a warning.
+  $("persistentWarningOverlay")?.remove();
+  const overlay=document.createElement("div");
+  overlay.id="persistentWarningOverlay";
+  overlay.setAttribute("role","alertdialog");
+  overlay.setAttribute("aria-modal","true");
+  overlay.setAttribute("aria-labelledby","persistentWarningTitle");
+  overlay.style.cssText="position:fixed;inset:0;z-index:2147483647;display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;background:rgba(5,3,12,.97);backdrop-filter:blur(14px);";
+  overlay.innerHTML=`<div style="width:min(620px,94vw);max-height:calc(100dvh - 40px);overflow:auto;box-sizing:border-box;padding:clamp(24px,6vw,44px);border:1px solid rgba(255,79,216,.6);border-radius:26px;background:linear-gradient(155deg,#21112b,#100b19 68%);box-shadow:0 24px 100px rgba(0,0,0,.8);text-align:center;color:#fff"><div aria-hidden="true" style="font-size:clamp(68px,18vw,112px);line-height:1.1">⚠️</div><h1 id="persistentWarningTitle" style="font-size:clamp(46px,13vw,76px);font-weight:900;letter-spacing:.04em;color:#ffcf65;margin:12px 0 24px">WARNING</h1><div style="overflow-wrap:anywhere;white-space:pre-wrap;font-size:clamp(18px,4.8vw,24px);line-height:1.5;padding:22px 18px;border:1px solid rgba(255,79,216,.25);border-radius:18px;background:rgba(255,79,216,.1);margin:0 0 26px">${esc(reason)}</div><button class="primary" id="warningUnderstand" type="button" style="width:min(340px,100%);min-height:56px;font-size:18px;font-weight:800;border-radius:15px">I understand</button></div>`;
+  document.body.appendChild(overlay);
   $("warningUnderstand")?.addEventListener("click",acknowledgePersistentWarning);
 }
 async function acknowledgePersistentWarning(){
@@ -315,8 +321,7 @@ async function acknowledgePersistentWarning(){
   try{
     await api("/api/notifications/"+encodeURIComponent(id)+"/acknowledge-warning",{method:"POST"});
     activeWarningNotificationId=null;
-    $("modal")?.classList.remove("warning-modal");
-    closeModal();
+    $("persistentWarningOverlay")?.remove();
     await loadNotifications();
   }catch(error){
     if(button){button.disabled=false;button.textContent="I understand";}
