@@ -1300,7 +1300,7 @@ async function loadWall(){
     const d=await api(endpoint),feed=$('wallFeed'); if(!feed)return;
     const emojis=['👍','❤️','😂','😮','🔥','👏'];
     const allWallPosts=d.posts||[];
-    const isVideoPost=p=>/\.(mp4|webm|ogg)(\\?|$)/i.test(String(p.media_url||""));
+    const isVideoPost=p=>/\.(mp4|webm|ogg)(\?|$)/i.test(String(p.media_url||""));
     const wallPosts=wallShowingReels?allWallPosts.filter(isVideoPost):allWallPosts;
     const storyUsers=[];
     const storySeen=new Set();
@@ -2547,7 +2547,7 @@ $('doodleBtn')?.addEventListener('click',openDoodleComposer);
 async function openReelSharePicker(){
   try{
     const data=await api("/api/wall");
-    const videos=(data.posts||[]).filter(p=>/\.(mp4|webm|ogg)(\\?|$)/i.test(String(p.media_url||"")));
+    const videos=(data.posts||[]).filter(p=>/\.(mp4|webm|ogg)(\?|$)/i.test(String(p.media_url||"")));
     if(!videos.length){toast("No published Reels yet. Upload a video post in Shadow Feed first.");return;}
     modal('<div class="reel-picker"><h2>🎬 Share a Reel to Main Room</h2><p class="muted">Choose a video from Shadow Feed.</p><div class="reel-picker-list">'+videos.map(p=>'<button type="button" class="reel-picker-item" data-share-reel="'+esc(p.id)+'"><video muted playsinline preload="metadata" src="'+esc(p.media_url)+'"></video><span><b>@'+esc(p.username||"Member")+'</b><small>'+esc(p.content||"Shadow Reel")+'</small></span><strong>Send ↗</strong></button>').join('')+'</div></div>');
     document.querySelectorAll('[data-share-reel]').forEach(button=>button.addEventListener('click',async()=>{button.disabled=true;const postId=button.dataset.shareReel;closeModal();await sendReelToMainChat(postId);}));
