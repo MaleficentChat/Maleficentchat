@@ -40,7 +40,7 @@ class MainActivity : Activity() {
                           var timer=setInterval(async function(){
                             attempts++;
                             try {
-                              var response=await fetch('/api/native/device/register',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({fcmToken:fcmToken})});
+                              var authToken=localStorage.getItem('mc_token')||'';\n                              if(!authToken) return;\n                              var response=await fetch('/api/native/device/register',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json','x-auth-token':authToken},body:JSON.stringify({fcmToken:fcmToken})});
                               if(response.ok){
                                 var data=await response.json();
                                 if(data.deviceCredential && window.MaleficentNative){
