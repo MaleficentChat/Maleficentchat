@@ -736,6 +736,8 @@ async function start() {
   $("auth").classList.add("hidden");
   $("app").classList.remove("hidden");
 
+  // Restore any outstanding warning immediately on login, independent of socket state.
+  loadPendingWarning().catch(error=>console.warn("Pending warning restore failed:",error?.message||error));
   updateNav();
   applyTheme(state.user?.settings?.theme||'obsidian');
   applyUserAppearance();
@@ -5778,6 +5780,13 @@ async function refreshTopDMUnreadBadge(){
   finally{topDMUnreadRefreshBusy=false;}
 }
 let notificationRefreshPromise=null;
+async function loadPendingWarning(){
+  if(!state.user)return;
+  const data=await api("/api/warnings/pending");
+  const warnings=Array.isArray(data.warnings)?data.warnings:[];
+  if(!activeWarningNotificationId&&warnings.length)showPersistentWarning(warnings[0]);
+}
+
 async function loadNotifications() {
   // This runs on a timer and socket reconnects. Do not hit authenticated APIs
   // while the login screen is active, or start duplicate sets of requests.
