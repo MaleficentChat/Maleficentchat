@@ -1168,7 +1168,13 @@ async function sendRestrictedMediaBotMessage(user){
   io.to("user:"+user.id).emit("dm",message);
 }
 async function checkRestrictedMediaUpload(req,res,user,file){
-  if(!file||!String(file.mimetype||"").toLowerCase().startsWith("image/"))return false;
+  if(!file)return false;
+  const mime=String(file.mimetype||"").toLowerCase();
+  const ext=path.extname(String(file.originalname||file.filename||"")).toLowerCase();
+  const imageExtensions=new Set([".png",".jpg",".jpeg",".gif",".webp",".avif",".bmp",".tif",".tiff",".heic",".heif"]);
+  // Some Android/browser upload paths label real photos as
+  // application/octet-stream. Detect them by extension as well as MIME.
+  if(!mime.startsWith("image/")&&!imageExtensions.has(ext))return false;
   if(!user||hasRank(user,"SUPER_ADMIN"))return false;
   const phrases=await restrictedMediaPhrases();
   if(!phrases.length)return false;
