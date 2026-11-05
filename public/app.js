@@ -1912,6 +1912,20 @@ function playYouTubeMessage(button) {
   frame.allowFullscreen=true;
   wrapper.replaceChildren(frame);
 }
+async function translateMessageText(messageId,scope){
+  const isDM=scope==="dm", safeId=String(messageId);
+  const allMessages=Array.from(document.querySelectorAll(isDM?".msg.dm-msg":".msg"));
+  const messageEl=allMessages.find(el=>String(isDM?el.dataset.dmid:el.dataset.mid)===safeId);
+  if(!messageEl)return;
+  let target=messageEl.querySelector(".message-translation");
+  if(!target){target=document.createElement("div");target.className="message-translation hidden";messageEl.querySelector(".msg-body")?.appendChild(target);}
+  if(target.dataset.translated==="true"){target.classList.toggle("hidden");return;}
+  const source=(isDM?(state.dmMessages||[]):(state.messages||[])).find(m=>String(m.id)===safeId);
+  const original=String(source?.text||"").trim(); if(!original){toast("This message has no text to translate.");return;}
+  target.textContent="Translating…";target.classList.remove("hidden");
+  try{const result=await api("/api/translate",{method:"POST",body:JSON.stringify({text:original})});target.textContent="🇬🇧 "+result.translated;target.dataset.translated="true";target.title="Automatically detected language: "+(result.detectedLanguage||"unknown")+" · English";}
+  catch(error){target.textContent=error.message||"Translation failed."; }
+}
 function messageHTML(message) {
   if(message?.breadCommand && String(message.bot||message.username)==="Bot"){
     return `<div class="message bot-welcome-message bot-bread-message" data-mid="${esc(message.id)}">
