@@ -79,6 +79,15 @@ async function initDB() {
     -- Age gates are no longer supported: normalize existing rooms to unrestricted.
     UPDATE rooms SET min_age=0,max_age=120;
 
+    CREATE TABLE IF NOT EXISTS room_announcements(
+      id TEXT PRIMARY KEY,
+      room_id INT NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
+      user_id INT REFERENCES users(id) ON DELETE SET NULL,
+      text TEXT NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+    CREATE INDEX IF NOT EXISTS room_announcements_room_time_idx ON room_announcements(room_id,created_at DESC);
+
     CREATE TABLE IF NOT EXISTS room_messages(
       id TEXT PRIMARY KEY,
       room_id INT REFERENCES rooms(id) ON DELETE CASCADE,
@@ -371,11 +380,18 @@ async function loadState(defaultState) {
 
   // PostgreSQL is the source of truth for rooms; do not re-import stale legacy room lists.
   const { rows: roomRows } = await pool.query(`SELECT * FROM rooms ORDER BY created_at,id`);
+  const { rows: roomAnnouncementRows } = await pool.query(`SELECT id,room_id,user_id,text,created_at FROM room_announcements ORDER BY created_at DESC,id DESC`);
+  const announcementsByRoom=new Map();
+  for(const item of roomAnnouncementRows){
+    const key=String(item.room_id);
+    if(!announcementsByRoom.has(key))announcementsByRoom.set(key,[]);
+    announcementsByRoom.get(key).push({id:String(item.id),roomId:key,userId:item.user_id?String(item.user_id):null,text:String(item.text||""),time:item.created_at?new Date(item.created_at).getTime():0});
+  }
   state.rooms = roomRows.map(r=>({
     id:String(r.id), name:r.name, icon:r.icon||"💬", description:r.description||"", category:r.category||"Community", isDefault:!!r.is_default,
     minAge:Number(r.min_age??0), maxAge:Number(r.max_age??120),
     public:r.is_public!==false, passwordHash:r.password_hash||null, rankRequired:String(r.rank_required||"MEMBER").toUpperCase(),
-    limit:Number(r.room_limit||100), slowMode:Number(r.slow_mode||0), announcement:r.announcement||"", ownerId:r.created_by?String(r.created_by):null,
+    limit:Number(r.room_limit||100), slowMode:Number(r.slow_mode||0), announcement:r.announcement||"", announcements:announcementsByRoom.get(String(r.id))||[], ownerId:r.created_by?String(r.created_by):null,
     banner:r.banner||"", inviteToken:r.invite_token||""
   }));
 
