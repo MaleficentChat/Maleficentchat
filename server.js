@@ -6687,16 +6687,28 @@ app.get('/api/youtube/search',auth,async(req,res)=>{
   res.json({results:[],notice:'YouTube search is unavailable right now. Add YOUTUBE_API_KEY for a stable YouTube Data API connection.'});
 });
 
+function roomAnnouncementForViewer(announcement,viewer){
+  // Sender identity is visible only to accounts that have permission to post
+  // room announcements. This is enforced in API responses, not just the UI.
+  if(!announcement)return announcement;
+  if(hasFeature(viewer,'room_announcement'))return announcement;
+  const {userId,username,displayName,...publicAnnouncement}=announcement;
+  return publicAnnouncement;
+}
 app.get('/api/rooms/:id/announcements',auth,(req,res)=>{
   const u=current(req),r=db.rooms.find(x=>String(x.id)===String(req.params.id)); if(!r)return res.status(404).json({error:'Room not found'});
   if(!requirePrivateRoomAccess(req,res,r,u))return;
-  res.json({announcements:(r.announcements||[]).slice(-50).reverse()});
+  res.json({announcements:(r.announcements||[]).slice(-50).reverse().map(n=>roomAnnouncementForViewer(n,u))});
 });
 app.post('/api/rooms/:id/announcements',auth,featureAllowed('room_announcement'),(req,res)=>{
   const u=current(req),r=db.rooms.find(x=>String(x.id)===String(req.params.id)); if(!r)return res.status(404).json({error:'Room not found'});
   if(!requirePrivateRoomAccess(req,res,r,u))return;
   const text=cleanText(req.body.text||'').slice(0,1000); if(!text)return res.status(400).json({error:'Announcement cannot be empty.'});
-  r.announcements ||= []; const n={id:id(),roomId:r.id,userId:u.id,username:u.username,displayName:u.displayName,text,time:Date.now()}; r.announcements.push(n); r.announcement=text; save(); io.to('room:'+r.id).emit('room:announcement',n); res.json({announcement:n});
+  r.announcements ||= []; const n={id:id(),roomId:r.id,userId:u.id,username:u.username,displayName:u.displayName,text,time:Date.now()}; r.announcements.push(n); r.announcement=text; save();
+  // Never broadcast sender identity in a shared socket payload. Clients reload
+  // the announcement list and the API applies each viewer's permission.
+  io.to('room:'+r.id).emit('room:announcement',{roomId:String(r.id)});
+  res.json({announcement:roomAnnouncementForViewer(n,u)});
 });
 
 app.delete('/api/rooms/:id/announcements/:announcementId',auth,(req,res)=>{
