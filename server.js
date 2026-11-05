@@ -6990,7 +6990,12 @@ app.post('/api/admin/private-search',auth,ownerOnly,async(req,res)=>{
     if(!canInspectTarget(first))return res.status(403).json({error:'You can only inspect your own messages or messages belonging to users strictly below your rank.'});
     if(username2){const second=await resolveInspectionUser(username2);if(!second)return res.status(404).json({error:'User not found: '+username2});if(!canInspectTarget(second))return res.status(403).json({error:'You cannot inspect messages involving an equal-rank or higher-rank staff member.'});users.push(second);sql='SELECT m.id,m.sender_id,m.receiver_id,m.message,m.data,m.created_at,s.username AS sender_username,r.username AS receiver_username FROM private_messages m LEFT JOIN users s ON s.id=m.sender_id LEFT JOIN users r ON r.id=m.receiver_id WHERE ((m.sender_id=$1 AND m.receiver_id=$2) OR (m.sender_id=$2 AND m.receiver_id=$1))';params=[first.id,second.id];}
     else{sql='SELECT m.id,m.sender_id,m.receiver_id,m.message,m.data,m.created_at,s.username AS sender_username,r.username AS receiver_username FROM private_messages m LEFT JOIN users s ON s.id=m.sender_id LEFT JOIN users r ON r.id=m.receiver_id WHERE (m.sender_id=$1 OR m.receiver_id=$1)';params=[first.id];}
-    if(keyword){params.push(keyword);const k='
+    if(keyword){
+      params.push(keyword);
+      const keywordParam='$'+params.length;
+      sql+=' AND POSITION(LOWER('+keywordParam+') IN LOWER(CONCAT_WS(\' \',m.message,m.data->>\'text\',m.data->>\'message\',m.data->>\'content\'))) > 0';
+    }
+    sql+=' ORDER BY m.created_at DESC LIMIT 200';
     let q={rows:[]};try{q=await pool.query(sql,params);}catch(error){console.error('Private-message SQL inspection failed; using persisted message store:',error?.message||error);}
     const norm=value=>String(value??'').replace(/^@/,'').trim().toLowerCase(),legacyMessages=Array.isArray(db.privateMessages)?db.privateMessages:[];
     const firstId=String(first.id),firstName=norm(first.username),secondId=username2?String(users[1].id):'',secondName=username2?norm(users[1].username):'';
