@@ -2158,6 +2158,7 @@ function messageHTML(message) {
             ${canFeature("react_message")?`<button class="message-menu-item" role="menuitem" onclick="toggleReactionPicker('${esc(message.id)}');closeMessageMenus()"><span class="menu-icon">☺</span><span><b>React</b><small>Add an emoji reaction</small></span></button>`:""}
             ${canFeature("save_message")?`<button class="message-menu-item" role="menuitem" onclick="saveMsg('${esc(message.id)}');closeMessageMenus()"><span class="menu-icon">♧</span><span><b>Save</b><small>Keep in saved messages</small></span></button>`:""}
             ${message.text ? `<button class="message-menu-item" role="menuitem" onclick="copyMsg('${esc(message.id)}');closeMessageMenus()"><span class="menu-icon">▢</span><span><b>Copy text</b><small>Copy message to clipboard</small></span></button>` : ""}
+            ${message.text ? `<button class="message-menu-item" role="menuitem" onclick="translateMessageText(&quot;${esc(message.id)}&quot;,&quot;room&quot;);closeMessageMenus()"><span class="menu-icon">文</span><span><b>Translate</b><small>Detect language · English</small></span></button>` : ""}
             ${
               String(message.userId) === String(state.user.id) && canFeature("edit_message")
               ? `<button class="message-menu-item" role="menuitem" onclick="editMsg('${esc(message.id)}');closeMessageMenus()"><span class="menu-icon">✎</span><span><b>Edit</b><small>Change your message</small></span></button>`
