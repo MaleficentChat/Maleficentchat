@@ -1206,24 +1206,14 @@ $("mobileMenu").onclick = () => {
 const chatToolsToggle=$("chatToolsToggle");
 if(chatToolsToggle) chatToolsToggle.onclick=()=>$("chatToolsDrawer")?.classList.toggle("open");
 
-// Main-room attachment controls: explicitly wire both buttons to the hidden picker.
+// Main-room attachment control: keep ordinary file uploads separate from YouTube sharing.
 const roomFileInput=$("file");
 const roomAttachButton=$("attach");
-const roomMusicButton=$("youtubeMusicComposerBtn");
 const roomFileLabel=$("fileName");
 if(roomAttachButton && roomFileInput && !roomAttachButton.dataset.bound){
   roomAttachButton.dataset.bound="true";
   roomAttachButton.addEventListener("click",()=>{
-    roomFileInput.accept="image/*,audio/*,.mp3,.m4a,.wav,.ogg,.aac,.flac,.opus";
-    roomFileInput.click();
-  });
-}
-if(roomMusicButton && roomFileInput && !roomMusicButton.dataset.bound){
-  roomMusicButton.dataset.bound="true";
-  roomMusicButton.title="Choose an MP3 or audio file to send in chat";
-  roomMusicButton.setAttribute("aria-label","Choose MP3 or audio file");
-  roomMusicButton.addEventListener("click",()=>{
-    roomFileInput.accept="audio/*,.mp3,.m4a,.wav,.ogg,.aac,.flac,.opus";
+    roomFileInput.accept="image/*,video/*,audio/*";
     roomFileInput.click();
   });
 }
@@ -5818,36 +5808,64 @@ $("notifications").onclick=async()=>{
 async function showPinnedMessages(){
   try{ const data=await api(`/api/rooms/${encodeURIComponent(state.currentRoom)}/pinned`); const pinned=data.messages||[]; modal(`<h2>📌 Pinned messages</h2><p class="muted">Pinned messages in ${esc(state.rooms.find(r=>String(r.id)===String(state.currentRoom))?.name||'this room')}.</p><div class="pinned-list">${pinned.map(m=>`<button class="pinned-result" onclick="closeModal();jumpToMessage('${esc(m.id)}')"><b>${esc(m.displayName||m.username)}</b><small>${fmt(m.time)}</small><span>${esc(m.text||'📎 Attachment')}</span></button>`).join('')||'<p class="muted">No pinned messages in this room.</p>'}</div>`); }catch(e){toast(e.message)}
 }
-async function openYoutubePanel(mode='youtube'){
-  modal(`<div class="youtube-panel"><h2>${mode==="music"?"🎵 YouTube Music":"▶️ YouTube"}</h2><p class="muted">Search for a ${mode==="music"?"song or music video":"video"} or paste a YouTube link.</p><div class="toolbar"><input id="ytQuery" placeholder="Search or paste YouTube URL…"><button class="primary" id="ytSearch">Search</button></div><div id="ytResults" class="youtube-results"><p class="muted">Search for a video to share it in this room.</p></div></div>`);
-  $('ytSearch').onclick=async()=>{
-    const q=$('ytQuery').value.trim();
-    if(!q)return;
-    // Direct links work even when YouTube search is temporarily unavailable
-    // or the deployment has no YouTube Data API key.
-    const match=q.match(/(?:youtu\.be\/|youtube(?:-nocookie)?\.com\/(?:watch\?(?:[^#]*&)?v=|embed\/|shorts\/|live\/))([A-Za-z0-9_-]{11})/i);
-    if(match){
-      const videoId=match[1];
-      const title="YouTube video";
-      $('ytResults').innerHTML=`<button class="youtube-result" onclick="sendYoutube('${videoId}','${title}',${mode==='music'})"><img src="https://i.ytimg.com/vi/${videoId}/mqdefault.jpg" alt=""><span><b>YouTube video</b><small>Share this video in chat</small></span></button>`;
-      return;
-    }
-    const button=$('ytSearch');button.disabled=true;button.textContent='Searching…';
-    try{
-      const r=await api('/api/youtube/search?q='+encodeURIComponent(q));
-      const results=(r.results||[]).filter(v=>/^[A-Za-z0-9_-]{11}$/.test(String(v.id||'')));
-      $('ytResults').innerHTML=results.map(v=>`<button class="youtube-result" onclick="sendYoutube('${esc(v.id)}','${esc(v.title)}',${mode==='music'})"><img src="${esc(v.thumbnail||('https://i.ytimg.com/vi/'+v.id+'/mqdefault.jpg'))}" alt=""><span><b>${esc(v.title)}</b><small>${esc(v.channel||'YouTube')}</small></span></button>`).join('')||`<p class="muted">${esc(r.notice||'No results. Try pasting a YouTube video link instead.')}</p>`;
-    }catch(e){toast(e.message||'YouTube search failed. Paste a YouTube video link instead.');}
-    finally{button.disabled=false;button.textContent='Search';}
-  };
-}
-async function sendYoutube(videoId,title,music=false){
+async function extractYoutubeVideoId(value){
+  const raw=String(value||"").trim();
+  if(/^[A-Za-z0-9_-]{11}$/.test(raw))return raw;
   try{
-    if(!state.currentRoom)throw new Error('Join Main Room before sharing a video.');
-    const result=await api(`/api/rooms/${encodeURIComponent(state.currentRoom)}/youtube`,{method:'POST',body:JSON.stringify({videoId,title,music})});
-    if(result.message && !document.querySelector(`[data-mid="${CSS.escape(String(result.message.id))}"]`))appendMessage(result.message);
-    closeModal();toast('YouTube video shared in chat.');
-  }catch(e){toast(e.message||'Could not share this video.')}
+    const url=new URL(/^https?:\\/\\//i.test(raw)?raw:"https://"+raw);
+    const host=url.hostname.toLowerCase().replace(/^www\\./,"");
+    if(host==="youtu.be"||host==="m.youtube.com"||host==="music.youtube.com"||host==="youtube.com"||host==="youtube-nocookie.com"){
+      const id=host==="youtu.be"?url.pathname.split("/").filter(Boolean)[0]:
+        (url.searchParams.get("v")||url.pathname.match(/\\/(?:embed|shorts|live|v)\\/([^/?]+)/i)?.[1]);
+      return /^[A-Za-z0-9_-]{11}$/.test(String(id||""))?String(id):"";
+    }
+  }catch{}
+  return "";
+}
+function openYoutubePanel(){
+  modal(`<div class="youtube-panel"><h2>▶️ YouTube</h2><p class="muted">Search for a video or paste a YouTube video, Shorts or live link.</p><div class="toolbar"><input id="ytQuery" placeholder="Search or paste YouTube URL…" autocomplete="off"><button class="primary" id="ytSearch" type="button">Search</button></div><div id="ytResults" class="youtube-results"><p class="muted">Choose a video to preview it before sharing.</p></div><div id="ytSelected" class="youtube-selected" aria-live="polite"></div></div>`);
+  const query=$("ytQuery"),searchButton=$("ytSearch"),results=$("ytResults"),selected=$("ytSelected");
+  let chosen=null;
+  const selectVideo=(video)=>{
+    if(!video||! /^[A-Za-z0-9_-]{11}$/.test(String(video.id||"")))return;
+    chosen={id:String(video.id),title:String(video.title||"YouTube video").slice(0,200)};
+    selected.innerHTML=`<div class="youtube-selection-preview"><img src="https://i.ytimg.com/vi/${chosen.id}/hqdefault.jpg" alt=""><div><b>${esc(chosen.title)}</b><small>Ready to share in this room</small></div><button type="button" class="primary" id="ytShare">Share video</button></div>`;
+    selected.querySelector("#ytShare")?.addEventListener("click",()=>sendYoutube(chosen.id,chosen.title));
+  };
+  const addResult=(video)=>{
+    const button=document.createElement("button");
+    button.type="button";button.className="youtube-result";
+    const img=document.createElement("img");img.src=video.thumbnail||("https://i.ytimg.com/vi/"+video.id+"/mqdefault.jpg");img.alt="";
+    const span=document.createElement("span"),title=document.createElement("b"),channel=document.createElement("small");
+    title.textContent=video.title||"YouTube video";channel.textContent=video.channel||"YouTube";
+    span.append(title,channel);button.append(img,span);button.addEventListener("click",()=>selectVideo(video));results.append(button);
+  };
+  const search=async()=>{
+    const q=query.value.trim();if(!q)return;
+    chosen=null;selected.replaceChildren();results.innerHTML='<p class="muted">Looking for your video…</p>';
+    const directId=extractYoutubeVideoId(q);
+    if(directId){results.replaceChildren();selectVideo({id:directId,title:"YouTube video"});return;}
+    searchButton.disabled=true;searchButton.textContent="Searching…";
+    try{
+      const response=await api("/api/youtube/search?q="+encodeURIComponent(q));
+      results.replaceChildren();
+      const videos=(response.results||[]).filter(v=>/^[A-Za-z0-9_-]{11}$/.test(String(v.id||"")));
+      videos.forEach(addResult);
+      if(!videos.length){const note=document.createElement("p");note.className="muted";note.textContent=response.notice||"No videos found. Try pasting a YouTube link.";results.append(note);}
+    }catch(error){results.textContent=error.message||"YouTube search failed. Try a video link instead.";}
+    finally{searchButton.disabled=false;searchButton.textContent="Search";}
+  };
+  searchButton.addEventListener("click",search);
+  query.addEventListener("keydown",event=>{if(event.key==="Enter"){event.preventDefault();search();}});
+  query.focus();
+}
+async function sendYoutube(videoId,title){
+  try{
+    if(!state.currentRoom)throw new Error("Join a room before sharing a video.");
+    const result=await api(`/api/rooms/${encodeURIComponent(state.currentRoom)}/youtube`,{method:"POST",body:JSON.stringify({videoId,title,music:false})});
+    if(result.message&&!document.querySelector(`[data-mid="${CSS.escape(String(result.message.id))}"]`))appendMessage(result.message);
+    closeModal();toast("YouTube video shared in chat.");
+  }catch(error){toast(error.message||"Could not share this video.");}
 }
 $("youtubeComposerBtn")?.addEventListener("click",()=>openYoutubePanel("youtube"));
 
