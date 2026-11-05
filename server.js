@@ -4712,6 +4712,17 @@ app.post('/api/staff/applications/:id/reject',auth,featureAllowed('view_staff_da
   try{await ensureStaffApplicationsTable();const q=await pool.query("UPDATE staff_applications SET status='REJECTED',reviewed_by=$2,reviewed_at=NOW() WHERE id=$1 AND status='PENDING' RETURNING username",[req.params.id,Number(actor.id)]);if(!q.rowCount)return res.status(404).json({error:'Pending application not found.'});await log(actor,'STAFF_APPLICATION_REJECT',q.rows[0].username,{applicationId:req.params.id});res.json({ok:true});}
   catch(e){console.error('Staff application rejection failed:',e);res.status(500).json({error:'Could not reject this application.'});}
 });
+app.delete('/api/staff/applications/:id',auth,async(req,res)=>{
+  const actor=current(req);
+  if(String(actor.rank||'').toUpperCase()!=='DEVELOPER')return res.status(403).json({error:'Developer rank required to delete staff applications.'});
+  try{
+    await ensureStaffApplicationsTable();
+    const q=await pool.query('DELETE FROM staff_applications WHERE id=$1 RETURNING username',[req.params.id]);
+    if(!q.rowCount)return res.status(404).json({error:'Staff application not found.'});
+    await log(actor,'STAFF_APPLICATION_DELETE',q.rows[0].username,{applicationId:String(req.params.id)});
+    res.json({ok:true});
+  }catch(e){console.error('Staff application deletion failed:',e);res.status(500).json({error:'Could not delete this staff application.'});}
+});
 app.post('/api/staff/applications/:id/grant',auth,featureAllowed('view_staff_dashboard'),async(req,res)=>{
   const actor=current(req);if(!['COMMISSOR','INSTRUCTOR','COOWNER','OWNER','DEVELOPER'].includes(String(actor.rank||'').toUpperCase()))return res.status(403).json({error:'Commissor rank or higher required to review staff applications.'});
   const requested=String(req.body.rank||'').toUpperCase();
