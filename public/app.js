@@ -5537,7 +5537,7 @@ async function ownerDelete(id) {
 
 async function inspectDMs(){
   try{
-    modal(`<h2>Private-message inspection</h2><p class="muted">Restricted to Owner and Developer. Owner can inspect their own conversations and users below Owner. Developer can inspect their own conversations and users below Developer. Equal- and higher-rank accounts are protected.</p><div class="dm-inspection-fields"><div class="dm-inspection-picker"><label for="dmSearch1">Account 1</label><input id="dmSearch1" value="${esc(state.user?.username||'')}" placeholder="Type @ or username" autocomplete="off"><div id="dmSuggestions1" class="ip-inspection-suggestions" hidden></div></div><div class="dm-inspection-picker"><label for="dmSearch2">Account 2 (optional)</label><input id="dmSearch2" placeholder="Optional: second user" autocomplete="off"><div id="dmSuggestions2" class="ip-inspection-suggestions" hidden></div></div><button class="primary" id="dmSearchBtn" type="button">Inspect messages</button></div><div id="ownerDmResults" class="stack" aria-live="polite"><p class="muted">Loading your conversations…</p></div>`);
+    modal(`<h2>Private-message inspection</h2><p class="muted">Restricted to Owner and Developer. Owner can inspect their own conversations and users below Owner. Developer can inspect their own conversations and users below Developer. Equal- and higher-rank accounts are protected.</p><div class="dm-inspection-fields"><div class="dm-inspection-picker"><label for="dmSearch1">Account 1</label><input id="dmSearch1" value="${esc(state.user?.username||'')}" placeholder="Type @ or username" autocomplete="off"><div id="dmSuggestions1" class="ip-inspection-suggestions" hidden></div></div><div class="dm-inspection-picker"><label for="dmSearch2">Account 2 (optional)</label><input id="dmSearch2" placeholder="Optional: second user" autocomplete="off"><div id="dmSuggestions2" class="ip-inspection-suggestions" hidden></div></div><div class="dm-inspection-picker"><label for="dmKeyword">Search message text</label><input id="dmKeyword" type="search" placeholder="Search for a particular word or phrase…" autocomplete="off"></div><button class="primary" id="dmSearchBtn" type="button">Inspect messages</button></div><div id="ownerDmResults" class="stack" aria-live="polite"><p class="muted">Loading your conversations…</p></div>`);
     const wirePicker=(inputId,suggestId)=>{
       const input=$(inputId),suggestions=$(suggestId);let timer;
       input?.addEventListener('input',()=>{
@@ -5557,12 +5557,13 @@ async function inspectDMs(){
     const load=async()=>{
       const user1=($('dmSearch1')?.value||'').trim().replace(/^@/,'');
       const user2=($('dmSearch2')?.value||'').trim().replace(/^@/,'');
+      const keyword=($('dmKeyword')?.value||'').trim();
       const target=$('ownerDmResults'),button=$('dmSearchBtn');if(!target)return;
       if(!user1){target.innerHTML='<p class="error">Select or enter the first username.</p>';return;}
       if(button){button.disabled=true;button.textContent='Inspecting…';}
       target.innerHTML='<p class="muted">Loading private messages…</p>';
       try{
-        const d=await api('/api/admin/private-search',{method:'POST',body:JSON.stringify({user1,user2})});
+        const d=await api('/api/admin/private-search',{method:'POST',body:JSON.stringify({user1,user2,keyword})});
         const messages=Array.isArray(d.messages)?d.messages:[];
         target.innerHTML='<p class="muted">'+messages.length+' message(s) found'+(user2?' between @'+esc(user1)+' and @'+esc(user2):' involving @'+esc(user1))+'.</p>'+
           (messages.map(m=>{
@@ -5578,6 +5579,7 @@ async function inspectDMs(){
     $('dmSearchBtn')?.addEventListener('click',load);
     $('dmSearch1')?.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();load();}});
     $('dmSearch2')?.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();load();}});
+    $('dmKeyword')?.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();load();}});
     // Show the signed-in Owner/Developer's own conversation history immediately.
     // The user no longer has to discover that a prefilled username still needs a click.
     load();
