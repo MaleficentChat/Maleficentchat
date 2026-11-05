@@ -5785,11 +5785,21 @@ $("youtubeComposerBtn")?.addEventListener("click",()=>openYoutubePanel("youtube"
 
 /* ---------------- ROOM MENU ---------------- */
 
-$("roomMenu")?.addEventListener("click", () => {
+// Use capture-phase delegation so taps still work if the chat header is
+// re-rendered, or another component stops bubbling before the button handler.
+document.addEventListener("click", event => {
+  const trigger = event.target instanceof Element ? event.target.closest("#roomMenu") : null;
+  if (!trigger) return;
+  event.preventDefault();
+  event.stopPropagation();
+  event.stopImmediatePropagation();
+
   try {
-    const rooms = Array.isArray(state.rooms) ? state.rooms : [];
-    const room = rooms.find(r => String(r.id) === String(state.currentRoom));
+    const rooms = Array.isArray(state?.rooms) ? state.rooms : [];
+    const room = rooms.find(r => String(r.id) === String(state?.currentRoom));
     const roomName = esc(room?.name || "Current room");
+    // Core options must always render; optional actions are added only when
+    // their permission checks complete successfully.
     const actions = [
       ["announcement","📢 Room announcement"],
       ["pinned","📌 Pinned messages"],
@@ -5797,37 +5807,49 @@ $("roomMenu")?.addEventListener("click", () => {
       ["invite","🔗 Invite link"],
       ["theme","🎨 Room Theme"]
     ];
-    if (canFeature("clear_room")) actions.unshift(["clear","🧹 Clear messages"]);
-    if (canFeature("edit_room")) actions.unshift(["edit","✏️ Edit room"]);
-    if (canFeature("delete_room")) actions.unshift(["delete","🗑 Delete room"]);
-    if (["ghost","dead","invisible"].some(canUsePresenceMode)) {
-      actions.push(["presence-settings","⚙️ Presence mode settings"]);
-    }
-    if (canUsePartyMode()) actions.push(["party","🎉 Party Mode"]);
-    modal('<div class="room-menu-panel"><h2>'+roomName+' · Room options</h2><div class="room-menu-actions">'+actions.map(([key,label])=>'<button type="button" class="room-menu-action" data-room-menu-action="'+key+'">'+label+'</button>').join("")+'</div></div>');
-    const body = $("modalBody");
-    if (!body) throw new Error("Room options panel could not be displayed.");
+    try { if (canFeature("clear_room")) actions.unshift(["clear","🧹 Clear messages"]); } catch (_) {}
+    try { if (canFeature("edit_room")) actions.unshift(["edit","✏️ Edit room"]); } catch (_) {}
+    try { if (canFeature("delete_room")) actions.unshift(["delete","🗑 Delete room"]); } catch (_) {}
+    try {
+      if (["ghost","dead","invisible"].some(mode => canUsePresenceMode(mode))) {
+        actions.push(["presence-settings","⚙️ Presence mode settings"]);
+      }
+    } catch (_) {}
+    try { if (canUsePartyMode()) actions.push(["party","🎉 Party Mode"]); } catch (_) {}
+
+    const panel = document.getElementById("modal");
+    const body = document.getElementById("modalBody");
+    if (!panel || !body) throw new Error("The menu dialog elements are missing.");
+    body.innerHTML = '<div class="room-menu-panel"><h2>'+roomName+' · Room options</h2><div class="room-menu-actions">'+
+      actions.map(([key,label]) => '<button type="button" class="room-menu-action" data-room-menu-action="'+key+'">'+label+'</button>').join("")+
+      '</div></div>';
+    panel.classList.remove("hidden");
+    panel.setAttribute("aria-hidden","false");
     body.querySelectorAll("[data-room-menu-action]").forEach(button => {
       button.addEventListener("click", () => {
         const action = button.dataset.roomMenuAction;
-        if (action==="clear") clearRoom();
-        else if (action==="edit") editRoom();
-        else if (action==="delete") deleteRoom();
-        else if (action==="announcement") postRoomAnnouncement();
-        else if (action==="pinned") showPinnedMessages();
-        else if (action==="youtube") openYoutubePanel();
-        else if (action==="invite") showInvite();
-        else if (action==="theme") openRoomThemePicker();
-        else if (action==="presence-settings") openPresenceModes();
-        else if (action==="party") setPartyMode(!isPartyModeActive());
+        try {
+          if (action==="clear") clearRoom();
+          else if (action==="edit") editRoom();
+          else if (action==="delete") deleteRoom();
+          else if (action==="announcement") postRoomAnnouncement();
+          else if (action==="pinned") showPinnedMessages();
+          else if (action==="youtube") openYoutubePanel();
+          else if (action==="invite") showInvite();
+          else if (action==="theme") openRoomThemePicker();
+          else if (action==="presence-settings") openPresenceModes();
+          else if (action==="party") setPartyMode(!isPartyModeActive());
+        } catch (error) {
+          console.error("Room menu action failed:", error);
+          toast("That room option could not be opened. Please try again.");
+        }
       });
     });
   } catch (error) {
     console.error("Room menu failed to open:", error);
-    toast("Room options could not open. Please refresh and try again.");
+    toast("Room options could not open: "+(error?.message || "unknown error"));
   }
-});
-
+}, true);
 
 function applyRoomTheme(themeId){
  const t=ROOM_THEMES.find(x=>x.id===themeId)||ROOM_THEMES[0],root=$("viewRooms");if(!root)return;
