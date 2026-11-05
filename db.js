@@ -100,6 +100,16 @@ async function initDB() {
     CREATE INDEX IF NOT EXISTS private_messages_pair_idx ON private_messages(sender_id,receiver_id,created_at DESC);
     CREATE INDEX IF NOT EXISTS private_messages_reverse_pair_idx ON private_messages(receiver_id,sender_id,created_at DESC);
 
+    CREATE TABLE IF NOT EXISTS native_device_tokens(
+      id BIGSERIAL PRIMARY KEY,
+      user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      fcm_token TEXT NOT NULL UNIQUE,
+      credential_hash TEXT NOT NULL UNIQUE,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      last_used_at TIMESTAMPTZ
+    );
+    CREATE INDEX IF NOT EXISTS native_device_tokens_user_idx ON native_device_tokens(user_id);
+
     CREATE TABLE IF NOT EXISTS reports(
       id TEXT PRIMARY KEY,
       reporter_id INT REFERENCES users(id) ON DELETE SET NULL,
