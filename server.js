@@ -4780,6 +4780,23 @@ app.post('/api/wall/:id/comments',auth,async(req,res)=>{
   const {rows}=await pool.query(`INSERT INTO wall_comments(post_id,user_id,content) VALUES($1,$2,$3) RETURNING *`,[req.params.id,Number(u.id),text]);
   res.json({comment:{...rows[0],username:u.username,avatar:u.avatar||"",rank:u.rank}});
 });
+app.delete('/api/wall/:id/comments/:commentId',auth,async(req,res)=>{
+  const u=current(req),postId=String(req.params.id),commentId=String(req.params.commentId);
+  const {rows}=await pool.query(
+    `SELECT c.id,c.user_id,c.content,w.user_id AS post_user_id
+     FROM wall_comments c JOIN wall_posts w ON w.id=c.post_id
+     WHERE c.id=$1 AND c.post_id=$2 LIMIT 1`,
+    [commentId,postId]
+  );
+  if(!rows.length)return res.status(404).json({error:"Comment not found."});
+  const comment=rows[0];
+  const isCommentAuthor=Number(comment.user_id)===Number(u.id);
+  const isPostAuthor=Number(comment.post_user_id)===Number(u.id);
+  if(!isCommentAuthor&&!isPostAuthor)return res.status(403).json({error:"Only the comment author or post author can delete this comment."});
+  await pool.query('DELETE FROM wall_comments WHERE id=$1 AND post_id=$2',[commentId,postId]);
+  log(u,'WALL_COMMENT_DELETE',comment.id,{postId,commentAuthorId:comment.user_id,postAuthorId:comment.post_user_id,content:String(comment.content||'').slice(0,300)});
+  res.json({ok:true});
+});
 app.delete('/api/wall/:id',auth,async(req,res)=>{
   const u=current(req),postId=req.params.id;
   const {rows}=await pool.query('SELECT id,user_id,content,media_url FROM wall_posts WHERE id=$1',[postId]);
