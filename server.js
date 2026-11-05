@@ -650,11 +650,13 @@ function getSessionSecret() {
   // between instances or change after a restart, invalidating freshly issued
   // login tokens and sending users back to the login screen.
   //
-  // Prefer a stable secret derived from the private DATABASE_URL when SESSION_SECRET
-  // has not been configured. DATABASE_URL contains a high-entropy database
-  // credential and is shared by all instances. Explicit SESSION_SECRET remains
-  // the recommended configuration and takes precedence.
-  if (process.env.NODE_ENV === "production" && process.env.DATABASE_URL) {
+  // Prefer a stable secret derived from the private DATABASE_URL whenever it
+  // is available, regardless of NODE_ENV. Hosting platforms do not always set
+  // NODE_ENV consistently; gating this on "production" can otherwise create a
+  // new token secret after a restart and send users back to the login screen.
+  // DATABASE_URL is shared by all app instances. Explicit SESSION_SECRET takes
+  // precedence and remains the recommended configuration.
+  if (process.env.DATABASE_URL) {
     return crypto
       .createHmac("sha256", process.env.DATABASE_URL)
       .update("MaleficentChat/session-secret/v1")
