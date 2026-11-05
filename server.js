@@ -3679,6 +3679,10 @@ app.post("/api/native/dm/reply",async(req,res)=>{
     const u=findUser(String(stored.rows[0].user_id)),v=findUser(peerId);
     if(!u||!v)return res.status(404).json({error:"Conversation user not found."});
     if(u.banned===true||(u.kickedUntil&&Number(u.kickedUntil)>Date.now()))return res.status(403).json({error:"Account is restricted."});
+    const networkDecision=await networkAccessDecision(req,u);
+    if(!networkDecision.allowed)return res.status(403).json({error:networkDecision.reason||"Network access is restricted."});
+    const construction=db.settings?.under_construction||{};
+    if(construction.enabled===true&&!["DEVELOPER","OWNER"].includes(String(u.rank||"").toUpperCase()))return res.status(503).json({error:"The site is under construction."});
     if(isUserFeatureBlocked(u,"private_messages")||!hasFeature(u,"private_messages"))return res.status(403).json({error:"Private messaging is not available for this account."});
     if(privateMessagesBlocked(u,v))return res.status(403).json({error:"Messaging blocked."});
     const m={id:id(),from:u.id,to:v.id,text:message.slice(0,4000),attachment:null,replyTo:null,time:Date.now(),read:false,delivered:true};
