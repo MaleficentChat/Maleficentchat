@@ -3589,6 +3589,23 @@ function systemNotice(text, roomId=null){
   else {const notice={id:id(),system:true,username:'Aurora',displayName:'Aurora',rank:'BOT',text:String(text),roomId:null,time:Date.now(),reactions:{},pinned:false,deleted:false};io.emit('system-message',notice);}
 }
 
+async function sendRankChangeBotDM(target,newRank){
+  if(!target?.id)return;
+  const rank=String(newRank||'MEMBER').toUpperCase();
+  const message={
+    id:id(),from:"system-bot",to:target.id,
+    text:"Your Rank Has Been Changed To "+rank,
+    time:Date.now(),read:false,delivered:true,anonymous:true,systemBot:true
+  };
+  await pool.query(
+    "INSERT INTO private_messages(id,sender_id,receiver_id,message,data,created_at) VALUES($1,NULL,$2,$3,$4::jsonb,NOW())",
+    [message.id,Number(target.id),message.text,JSON.stringify(message)]
+  );
+  db.privateMessages.push(message);
+  notify(target.id,"private-message","Your rank has been changed","Your Rank Has Been Changed To "+rank);
+  io.to("user:"+target.id).emit("dm",message);
+}
+
 app.get('/api/daily/status',auth,async(req,res)=>{const q=await pool.query(`SELECT last_claim,streak,(last_claim AT TIME ZONE 'UTC')::date AS claim_day FROM daily_rewards WHERE user_id=$1`,[Number(current(req).id)]);const today=new Date().toISOString().slice(0,10);res.json({claimed:!!(q.rowCount&&q.rows[0].claim_day===today),streak:Number(q.rows[0]?.streak||0)});});
 app.post('/api/daily/claim',auth,async(req,res)=>{
   const u=current(req); if(!u)return res.status(401).json({error:'Login required'});
@@ -5382,15 +5399,16 @@ app.patch('/api/staff/user/:id/rank',auth,(req,res)=>{
   if(!ranks.includes(nr)) return res.status(400).json({error:'Invalid rank.'});
   if(rankOrder[nr]>rankOrder['MOD']) return res.status(403).json({error:'Staff can only assign MOD or below.'});
   if(rankOrder[target.rank]>=rankOrder[actor.rank]) return res.status(403).json({error:'You cannot change an equal or higher rank.'});
-  target.rank=nr; save(); log(actor,'RANK_CHANGE',target.username,{rank:nr,via:'STAFF'});
-  systemNotice(`@${actor.username} changed @${target.username}'s rank to ${nr}.`);
+  const previousRank=String(target.rank||'MEMBER').toUpperCase();
+  target.rank=nr; save(); log(actor,'RANK_CHANGE',target.username,{rank:nr,previousRank,via:'STAFF'});
+  try{await sendRankChangeBotDM(target,nr);}catch(err){console.error("Rank-change private message failed:",err.message);}
   res.json({user:safeUser(target)});
 });
 
 app.patch(
   "/api/owner/user/:id/rank",
   ownerOnly,
-  (req,res)=>{
+  async(req,res)=>{
     const v=findUser(
       req.params.id
     );
@@ -5414,6 +5432,7 @@ app.patch(
       });
     }
 
+    const previousRank=String(v.rank||'MEMBER').toUpperCase();
     v.rank=req.body.rank;
 
     save();
@@ -5423,9 +5442,11 @@ app.patch(
       "RANK_CHANGE",
       v.username,
       {
-        rank:v.rank
+        rank:v.rank,
+        previousRank
       }
     );
+    try{await sendRankChangeBotDM(v,v.rank);}catch(err){console.error("Rank-change private message failed:",err.message);}
 
     res.json({
       user:safeUser(v)
