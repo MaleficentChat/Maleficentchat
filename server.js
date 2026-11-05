@@ -4624,7 +4624,7 @@ function auditVisibilityKey(row){
 }
 function filterAuditRowsForRank(rows,user){
   const settings=db.settings?.audit_log_visibility||{};
-  const rankNames=["MEMBER","VIP","PREMIUM","MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER","DEVELOPER"];
+  const rankNames=["MEMBER","VIP","PREMIUM","ROYAL","MOD","ADMIN","SUPER_ADMIN","COMMISSOR","INSTRUCTOR","COOWNER","OWNER","DEVELOPER"];
   const viewerRank=String(user?.rank||"MEMBER").toUpperCase(), viewerLevel=rankNames.indexOf(viewerRank);
   return (rows||[]).filter(row=>{
     const key=auditVisibilityKey(row), rule=settings[key]||{enabled:true,minimumRank:"ADMIN"};
