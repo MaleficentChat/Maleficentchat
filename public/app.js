@@ -3342,6 +3342,7 @@ function dmMessageHTML(message, messages, user) {
         }
 
         <div class="msg-actions">
+          ${message.text && !message.deleted ? `<button type="button" class="mini" onclick="translateMessageText(&quot;${esc(message.id)}&quot;,&quot;dm&quot;)">文 Translate</button>` : ""}
           <button
             type="button"
             class="mini"
