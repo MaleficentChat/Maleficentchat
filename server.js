@@ -5025,7 +5025,7 @@ app.delete('/api/wall/:id/comments/:commentId',auth,async(req,res)=>{
   const isPostAuthor=Number(comment.post_user_id)===Number(u.id);
   if(!isCommentAuthor&&!isPostAuthor)return res.status(403).json({error:"Only the comment author or post author can delete this comment."});
   await pool.query('DELETE FROM wall_comments WHERE id=$1 AND post_id=$2',[commentId,postId]);
-  log(u,'WALL_COMMENT_DELETE',comment.id,{postId,commentAuthorId:comment.user_id,postAuthorId:comment.post_user_id,content:String(comment.content||'').slice(0,300)});
+  log(u,'WALL_COMMENT_DELETE',comment.id,{contentType:'wall_comment',postId:String(postId),commentId:String(comment.id),commentAuthorId:comment.user_id,postAuthorId:comment.post_user_id,content:String(comment.content||''),reason:'WALL_COMMENT_DELETE'});
   res.json({ok:true});
 });
 app.delete('/api/wall/:id',auth,async(req,res)=>{
@@ -5037,7 +5037,7 @@ app.delete('/api/wall/:id',auth,async(req,res)=>{
   await pool.query('DELETE FROM wall_comments WHERE post_id=$1',[postId]);
   await pool.query('DELETE FROM wall_post_reactions WHERE post_id=$1',[postId]);
   await pool.query('DELETE FROM wall_posts WHERE id=$1',[postId]);
-  log(u,'WALL_POST_DELETE',post.id,{authorId:post.user_id,content:String(post.content||'').slice(0,500),mediaUrl:post.media_url});
+  log(u,'WALL_POST_DELETE',post.id,{contentType:'wall_post',postId:String(post.id),authorId:post.user_id,content:String(post.content||''),mediaUrl:post.media_url||'',mediaType:post.media_url?(new RegExp('\\.(mp4|webm|mov)(?:[?#]|$)','i').test(String(post.media_url))?'video':new RegExp('\\.(mp3|wav|ogg|m4a)(?:[?#]|$)','i').test(String(post.media_url))?'audio':'image'):'',reason:'WALL_POST_DELETE'});
   res.json({ok:true});
 });
 app.post('/api/wall/:id/report',auth,async(req,res)=>{
@@ -5916,7 +5916,7 @@ app.delete(
     const removed=db.news[index];
     db.news.splice(index,1);
     save();
-    log(u,"NEWS_DELETE",removed.id,{title:removed.title,body:removed.body,author:removed.author,time:removed.time});
+    log(u,"NEWS_DELETE",removed.id,{contentType:"news",newsId:String(removed.id),title:removed.title||"",body:removed.body||"",author:removed.author||"",time:removed.time||null,comments:Array.isArray(removed.comments)?removed.comments:[],attachment:removed.attachment||null,reason:"NEWS_DELETE"});
     io.emit("news");
     res.json({ok:true,news:removed});
   }
