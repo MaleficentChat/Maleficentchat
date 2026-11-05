@@ -351,4 +351,67 @@ assert.match(server.slice(forwardStart, forwardEnd), /featureAllowed\("send_mess
 assert.match(app, /messageMatch=String\(url\)\.match\(\/\\\/api\\\/messages/,
   "private-room message actions must send the active room session token");
 
-console.log("Room history, private-room access, invitations, bootstrap privacy, private messages, capacity, and slow-mode regression checks passed.");
+const indexHtml=fs.readFileSync("public/index.html","utf8");
+const roomCreateStart=app.indexOf("function openRoomCreationModal()"),roomCreateEnd=app.indexOf("/* ---------------- V3 SETTINGS",roomCreateStart);
+assert.ok(roomCreateStart>=0&&roomCreateEnd>roomCreateStart,"room creation modal must exist");
+const roomCreateSource=app.slice(roomCreateStart,roomCreateEnd);
+assert.match(roomCreateSource,/id="rVisibility"[\s\S]*Secret — hidden, invite link required/,
+  "room creation must visibly offer secret rooms");
+assert.match(roomCreateSource,/public:\$\("rVisibility"\)\.value!=="secret"/,
+  "secret-room creation must persist private visibility through the existing room API");
+assert.match(roomCreateSource,/showInvite\(created\.room\)/,
+  "creating a secret room must show its signed invitation link from the creation response");
+assert.match(app,/async function showInvite\(roomOrId=state\.currentRoom\)/,
+  "room invitation UI must accept a newly created room even when the room list hides it");
+assert.match(app,/roomOrId&&typeof roomOrId==="object"[\s\S]*?roomOrId\s*:\s*state\.rooms\.find/,
+  "secret-room invite creation must not depend on the filtered room list");
+assert.match(app,/roomInviteFromHash\(\)/,
+  "secret-room invitation links must continue through the signed invite resolver");
+
+const dmDeleteStart=server.indexOf('app.delete("/api/dm/messages/:messageId"');
+const dmDeleteEnd=server.indexOf('app.post(\n  "/api/dm/:id/read"',dmDeleteStart);
+assert.ok(dmDeleteStart>=0&&dmDeleteEnd>dmDeleteStart,"private-message deletion route must exist");
+const dmDeleteRoute=server.slice(dmDeleteStart,dmDeleteEnd);
+assert.match(dmDeleteRoute,/featureAllowed\("private_messages"\)/,
+  "private-message deletion must honor the private-message permission");
+assert.match(dmDeleteRoute,/WHERE id=\$1 AND sender_id=\$2/,
+  "private-message deletion must be limited to the original sender");
+assert.match(dmDeleteRoute,/data->'deleted' IS DISTINCT FROM 'true'::jsonb/,
+  "private-message deletion must not run repeatedly against an existing tombstone");
+assert.match(dmDeleteRoute,/path\.basename\(fileName\)===fileName[\s\S]*fs\.promises\.unlink\(filePath\)/,
+  "deleting a private message must safely remove its uploaded attachment");
+assert.match(dmDeleteRoute,/deletedAt[\s\S]*dm-updated/,
+  "private-message deletion must persist a tombstone and sync it to both participants");
+assert.match(app,/const deleteAction=String\(message\.from\)===String\(state\.user\?\.id\)&&!message\.deleted/,
+  "the private-message delete button must only render for the sender's active message");
+assert.match(app,/data-dm-delete/,
+  "the private conversation UI must expose a delete control");
+assert.match(app,/Delete this private message for both participants/,
+  "deleting a private message must require user confirmation");
+assert.match(app,/state\.socket\.on\("dm-updated"/,
+  "deleted private messages must synchronize across active sessions");
+
+assert.match(database,/ALTER TABLE wall_posts ADD COLUMN IF NOT EXISTS expires_at/,
+  "Shadow Feed expiry must use a safe additive migration");
+assert.match(database,/ALTER TABLE wall_posts ADD COLUMN IF NOT EXISTS featured/,
+  "Shadow Feed feature flags must use a safe additive migration");
+assert.match(database,/CREATE TABLE IF NOT EXISTS wall_post_saves/,
+  "saved feed posts must have durable per-user storage");
+assert.match(indexHtml,/id="wallSavedToggle"[\s\S]*id="wallFriendsToggle"/,
+  "Shadow Feed must expose Saved posts and Friends activity controls");
+assert.match(app,/wallShowingSaved\?[\s\S]*\/api\/wall\/saved[\s\S]*wallShowingFriends\?[\s\S]*\/api\/wall\/friends/,
+  "Shadow Feed controls must load the matching server feeds");
+assert.match(app,/expiresInHours/,
+  "Shadow Feed posting must submit the selected expiry");
+const friendsFeedStart=server.indexOf("app.get('/api/wall/friends'");
+const friendsFeedEnd=server.indexOf("app.post('/api/wall/:id/save'",friendsFeedStart);
+assert.ok(friendsFeedStart>=0&&friendsFeedEnd>friendsFeedStart,"accepted-friends feed route must exist");
+const friendsFeedRoute=server.slice(friendsFeedStart,friendsFeedEnd);
+assert.match(friendsFeedRoute,/status\|\|''\)\.toUpperCase\(\)==='ACCEPTED'/,
+  "Friends Activity must include accepted friends only");
+assert.match(friendsFeedRoute,/w\.user_id=ANY\(\$1::int\[\]\)/,
+  "Friends Activity must query only accepted friends' posts");
+assert.match(server,/Your rank cannot create wall posts/,
+  "Shadow Feed additions must preserve existing post-creation authorization");
+
+console.log("Room history, private-room access, invitations, private-message deletion, Shadow Feed, Friends Activity, bootstrap privacy, capacity, and slow-mode regression checks passed.");
