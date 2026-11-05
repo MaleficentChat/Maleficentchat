@@ -5530,8 +5530,12 @@ app.patch('/api/staff/user/:id/rank',auth,async(req,res)=>{
   if(!hasFeature(actor,'staff_rank_assignment')) return res.status(403).json({error:`Rank assignment requires ${featureRank('staff_rank_assignment')} or higher.`});
   if(String(target.rank).toUpperCase()==='DEVELOPER' || target.username==='Maleficent') return res.status(403).json({error:'Developer account is protected.'});
   if(!ranks.includes(nr)) return res.status(400).json({error:'Invalid rank.'});
-  if(rankOrder[nr]>rankOrder['MOD']) return res.status(403).json({error:'Staff can only assign MOD or below.'});
-  if(rankOrder[target.rank]>=rankOrder[actor.rank]) return res.status(403).json({error:'You cannot change an equal or higher rank.'});
+  const actorRank=String(actor.rank||'MEMBER').toUpperCase();
+  const coownerPower=actorRank==='COOWNER';
+  const ownerPower=actorRank==='OWNER'&&actor.username===DEFAULT_OWNER;
+  const grantCeiling=ownerPower?'COOWNER':(coownerPower?'INSTRUCTOR':'MOD');
+  if(!ownerPower&&rankOrder[String(nr).toUpperCase()]>rankOrder[grantCeiling]) return res.status(403).json({error:'Your rank can assign '+grantCeiling+' or below only.'});
+  if(rankOrder[String(target.rank||'MEMBER').toUpperCase()]>=rankOrder[actorRank]) return res.status(403).json({error:'You cannot change an equal or higher rank.'});
   const previousRank=String(target.rank||'MEMBER').toUpperCase();
   target.rank=nr; save(); log(actor,'RANK_CHANGE',target.username,{rank:nr,previousRank,via:'STAFF'});
   try{await sendRankChangeBotDM(target,nr);}catch(err){console.error("Rank-change private message failed:",err.message);}
