@@ -294,13 +294,16 @@ function showPrivateMessagePopup(message){
 }
 
 let activeWarningNotificationId=null;
+let renderingPersistentWarning=false;
 function showPersistentWarning(notification){
   if(!notification||!notification.id)return;
   const id=String(notification.id);
   if(activeWarningNotificationId===id)return;
   activeWarningNotificationId=id;
   const reason=String(notification.text||notification.message||"Please review the community rules.");
+  renderingPersistentWarning=true;
   modal(`<div class="warning-popup warning-persistent"><div class="warning-icon" aria-hidden="true">⚠️</div><div class="warning-title">WARNING</div><div class="warning-reason">${esc(reason)}</div><button class="primary warning-understand" id="warningUnderstand" type="button">I understand</button></div>`);
+  renderingPersistentWarning=false;
   $("modal")?.classList.add("warning-modal");
   $("warningUnderstand")?.addEventListener("click",acknowledgePersistentWarning);
 }
@@ -332,6 +335,7 @@ function closeModal() {
 }
 
 function modal(html) {
+  if(activeWarningNotificationId&&!renderingPersistentWarning)return;
   $("modalBody").innerHTML = html;
   $("modal").classList.remove("hidden");
 }
