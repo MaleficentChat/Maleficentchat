@@ -292,6 +292,30 @@
   }
 })();
 </script>
+<script>
+  // Surface app.js startup failures on the login screen so mobile users do not
+  // get trapped in the standalone login/reload fallback without an explanation.
+  (function(){
+    function showStartupError(message){
+      if(window.__MC_APP_READY__)return;
+      var box=document.getElementById("authMsg");
+      if(box)box.textContent="Maleficent Chat could not start: "+String(message||"Unknown JavaScript error").slice(0,220)+" — please send this message to support.";
+      console.error("[Maleficent Chat startup]",message);
+    }
+    window.addEventListener("error",function(event){
+      var file=String(event.filename||"");
+      if(!file||/\/app\.js(?:\?|$)/.test(file)) {
+        showStartupError((event.message||"Script error")+(event.lineno?" (line "+event.lineno+")":""));
+      }
+    });
+    window.addEventListener("unhandledrejection",function(event){
+      if(!window.__MC_APP_READY__)showStartupError(event.reason&&event.reason.message||event.reason||"Unhandled startup rejection");
+    });
+    setTimeout(function(){
+      if(!window.__MC_APP_READY__)showStartupError("app.js did not finish initializing. Please send this message and your browser/device details.");
+    },3500);
+  })();
+</script>
 <script src="/app.js?v=maleficent-chat-login-recovery-20261105-3"></script>
 </body>
 </html>
