@@ -1,5 +1,14 @@
 const $ = id => document.getElementById(id);
 
+// Register room creation before the rest of the app initializes. Event delegation also
+// survives room-list rerenders and does not depend on the button retaining its onclick.
+document.addEventListener("click", event => {
+  const button = event.target instanceof Element ? event.target.closest("#newRoom, .room-create-button") : null;
+  if (!button || button.classList.contains("hidden") || button.disabled) return;
+  event.preventDefault();
+  openRoomCreationModal();
+}, true);
+
 // Room theme data must exist before early socket events or room rendering can apply it.
 const ROOM_THEMES = [
 {id:"obsidian",name:"Obsidian",emoji:"🌑",bg:"#0b0b14",bubble:"#302342",accent:"#b58cff"},
@@ -5676,7 +5685,7 @@ function editRoom() {
   const room=state.rooms.find(r=>String(r.id)===String(state.currentRoom));
   if(!room)return;
   if(room.isDefault || /^main room$/i.test(String(room.name||"").trim())){toast("Main Room is protected.");return;}
-  const ranks=["MEMBER","VIP","PREMIUM","MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"];
+  const ranks=["MEMBER","VIP","PREMIUM","ROYAL","MOD","ADMIN","SUPER_ADMIN","COMMISSOR","INSTRUCTOR","COOWNER","OWNER","DEVELOPER"];
   const rankLabels={MEMBER:"Member",VIP:"VIP",PREMIUM:"Premium",MOD:"Moderator",ADMIN:"Admin",SUPER_ADMIN:"Super Admin",COMMISSOR:"Commissor",COOWNER:"Co-owner",OWNER:"Owner",ROYAL:"Legacy rank — Royal",INSTRUCTOR:"Legacy rank — Instructor"};
   const savedRequiredRank=String(room.rankRequired||"MEMBER").toUpperCase();
   const rankChoices=ranks.includes(savedRequiredRank)?ranks:[savedRequiredRank,...ranks];
@@ -5795,9 +5804,9 @@ function showInvite() {
 
 /* ---------------- CREATE ROOM ---------------- */
 
-$("newRoom").onclick = () => {
-  const ranks=["MEMBER","VIP","PREMIUM","MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"];
-  const rankLabels={MEMBER:"Member",VIP:"VIP",PREMIUM:"Premium",MOD:"Moderator",ADMIN:"Admin",SUPER_ADMIN:"Super Admin",COMMISSOR:"Commissor",COOWNER:"Co-owner",OWNER:"Owner"};
+function openRoomCreationModal() {
+  const ranks=["MEMBER","VIP","PREMIUM","ROYAL","MOD","ADMIN","SUPER_ADMIN","COMMISSOR","INSTRUCTOR","COOWNER","OWNER","DEVELOPER"];
+  const rankLabels={MEMBER:"Member",VIP:"VIP",PREMIUM:"Premium",ROYAL:"Royal",MOD:"Moderator",ADMIN:"Admin",SUPER_ADMIN:"Super Admin",COMMISSOR:"Commissor",INSTRUCTOR:"Instructor",COOWNER:"Co-owner",OWNER:"Owner",DEVELOPER:"Developer"};
   modal(`
     <div class="room-editor room-editor-create">
       <header class="room-editor-hero"><span class="room-editor-hero-icon">🌙</span><div><p class="room-editor-eyebrow">MAKE YOUR SPACE</p><h2>Create a room</h2><p>Set up a new corner of Maleficent Chat.</p></div></header>
@@ -5835,8 +5844,7 @@ $("newRoom").onclick = () => {
       await loadRooms();closeModal();renderRooms();toast("Room created.");
     }catch(error){toast(error.message);if(submit){submit.disabled=false;submit.textContent="＋ Create room";}}
   };
-};
-
+}
 
 /* ---------------- V3 SETTINGS / FEATURE CENTER ---------------- */
 
