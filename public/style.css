@@ -5595,3 +5595,56 @@ html,body,#app,.app,.main,.view,#profile,#viewProfile {
   #viewWall #newWallPost{width:40px!important;height:40px!important;min-width:40px!important;min-height:40px!important}
   #viewWall #newWallPost::before{font-size:22px!important}
 }
+
+/* Instagram-style Shadow Feed comments drawer */
+#viewWall .wall-comments:not(.hidden){
+  display:block!important;margin:0!important;padding:0 14px 13px!important;
+  border-top:1px solid #30243a!important;background:#0d0a12!important;
+}
+#viewWall .wall-comments-header{
+  position:sticky!important;top:0!important;z-index:2!important;
+  display:flex!important;align-items:center!important;justify-content:space-between!important;
+  min-height:43px!important;margin:0 -14px 5px!important;padding:0 14px!important;
+  border-bottom:1px solid rgba(255,255,255,.06)!important;
+  background:rgba(13,10,18,.96)!important;backdrop-filter:blur(10px);
+}
+#viewWall .wall-comments-header strong{color:#f1e7f8!important;font-size:13px!important;font-weight:750!important}
+#viewWall .wall-comments-close{
+  display:grid!important;place-items:center!important;width:30px!important;height:30px!important;
+  border:1px solid #392946!important;border-radius:50%!important;background:#1a1221!important;
+  color:#d9b8f4!important;font-size:19px!important;line-height:1!important;
+}
+#viewWall .wall-comment-item{
+  display:flex!important;align-items:flex-start!important;gap:9px!important;
+  padding:10px 0!important;border-bottom:1px solid rgba(255,255,255,.055)!important;
+}
+#viewWall .wall-comment-avatar{
+  display:grid!important;place-items:center!important;flex:0 0 30px!important;
+  width:30px!important;height:30px!important;overflow:hidden!important;
+  border:1px solid #59376d!important;border-radius:50%!important;
+  background:#21152b!important;color:#d6a8ff!important;font-size:13px!important;
+}
+#viewWall .wall-comment-avatar img{width:100%!important;height:100%!important;object-fit:cover!important}
+#viewWall .wall-comment-item .news-comment-main{flex:1 1 auto!important;min-width:0!important}
+#viewWall .wall-comment-item .news-comment-head{display:flex!important;align-items:center!important;gap:7px!important}
+#viewWall .wall-comment-item .news-comment-head b{color:#f3eafa!important;font-size:12px!important}
+#viewWall .wall-comment-item .news-comment-head small{color:#a88ab8!important;font-size:10px!important}
+#viewWall .wall-comment-item .news-comment-text{
+  margin-top:3px!important;color:#e2d7e9!important;font-size:12px!important;line-height:1.45!important;
+  overflow-wrap:anywhere!important;
+}
+#viewWall .wall-comment-meta{margin-top:4px!important;color:#8f8199!important;font-size:10px!important}
+#viewWall .wall-comment-delete{
+  display:grid!important;place-items:center!important;flex:0 0 30px!important;
+  width:30px!important;height:30px!important;margin:0!important;padding:0!important;
+  border:1px solid #493044!important;border-radius:50%!important;
+  background:#21121d!important;color:#ff9bb5!important;font-size:16px!important;
+}
+#viewWall .wall-comment-delete:hover{border-color:#b84d78!important;background:#3a1929!important}
+#viewWall .wall-comment-delete:disabled{opacity:.45!important}
+#viewWall .wall-comment-form{padding-top:10px!important}
+@media(max-width:650px){
+ #viewWall .wall-comments:not(.hidden){padding:0 12px 12px!important}
+ #viewWall .wall-comments-header{margin-inline:-12px!important;padding-inline:12px!important}
+ #viewWall .wall-comment-item{gap:8px!important;padding:9px 0!important}
+}
