@@ -1299,7 +1299,21 @@ async function loadWall(){
     const endpoint=wallShowingSaved?'/api/wall/saved':(wallShowingFriends?'/api/wall/friends':'/api/wall');
     const d=await api(endpoint),feed=$('wallFeed'); if(!feed)return;
     const emojis=['👍','❤️','😂','😮','🔥','👏'];
-    feed.innerHTML=(d.posts||[]).map(p=>{
+    const wallPosts=d.posts||[];
+    const storyUsers=[];
+    const storySeen=new Set();
+    wallPosts.forEach(p=>{const key=String(p.user_id||p.username||'');if(key&&!storySeen.has(key)){storySeen.add(key);storyUsers.push(p);}});
+    const myAvatar=state.user?.avatar||state.user?.avatar_url||'';
+    const storiesHtml=`<section class="shadow-stories" aria-label="Shadow Feed stories">
+      <button class="shadow-story shadow-your-story" type="button" id="shadowYourStory">
+        <span class="shadow-story-ring"><span class="shadow-story-avatar">${myAvatar?`<img src="${esc(myAvatar)}" alt="">`:'✦'}</span><i>＋</i></span><span>Your story</span>
+      </button>
+      ${storyUsers.slice(0,12).map(p=>`<button class="shadow-story" type="button" data-shadow-story="${esc(p.id)}">
+        <span class="shadow-story-ring"><span class="shadow-story-avatar">${p.avatar?`<img src="${esc(p.avatar)}" alt="">`:'✦'}</span></span>
+        <span>${esc(p.username||'Member')}</span>
+      </button>`).join('')}
+    </section>`;
+    feed.innerHTML=storiesHtml+wallPosts.map(p=>{
       const rx=p.reactions&&typeof p.reactions==='object'?p.reactions:{};
       return `<article class="card wall-post social-feed-card" data-wall-id="${esc(p.id)}">
         <div class="news-card-top"><div class="social-author"><div class="social-author-avatar">${p.avatar?`<img src="${esc(p.avatar)}" alt="">`:'👤'}</div><div><h3>@${esc(p.username||'Unknown')}</h3><div class="muted">${esc(p.rank||'Member')} · ${fmt(p.created_at)}</div></div></div><button class="social-more" data-wall-more="${esc(p.id)}" aria-label="Post options">•••</button></div>
@@ -1310,6 +1324,8 @@ async function loadWall(){
         <div class="wall-comments hidden" id="wallComments-${esc(p.id)}"></div>
       </article>`;
     }).join('')||'<p class="muted">No wall posts yet.</p>';
+    $('shadowYourStory')?.addEventListener('click',()=> $('newWallPost')?.click());
+    feed.querySelectorAll('[data-shadow-story]').forEach(b=>b.addEventListener('click',()=>{const card=feed.querySelector('[data-wall-id="'+CSS.escape(b.dataset.shadowStory)+'"]');card?.scrollIntoView({behavior:'smooth',block:'start'});card?.classList.add('shadow-story-highlight');setTimeout(()=>card?.classList.remove('shadow-story-highlight'),1200);}));
     document.querySelectorAll('[data-wall-more]').forEach(b=>b.onclick=()=> $('wallOptions-'+b.dataset.wallMore)?.classList.toggle('hidden'));
     document.querySelectorAll('[data-wall-save]').forEach(b=>b.onclick=async()=>{try{const r=await api('/api/wall/'+encodeURIComponent(b.dataset.wallSave)+'/save',{method:'POST',body:JSON.stringify({})});toast(r.saved?'Post saved.':'Post removed from saved posts.');await loadWall()}catch(e){toast(e.message||'Could not save post.')}});
     document.querySelectorAll('[data-wall-reaction]').forEach(b=>b.onclick=async()=>{try{await api('/api/wall/'+encodeURIComponent(b.dataset.wallId)+'/reaction',{method:'POST',body:JSON.stringify({emoji:b.dataset.wallReaction})});await loadWall()}catch(e){toast(e.message||'Could not send reaction.')}});
