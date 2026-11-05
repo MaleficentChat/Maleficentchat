@@ -201,9 +201,9 @@ async function registerSiteNotificationWorker(){
     return null;
   }
 }
-async function showSiteNotification(title,body,targetView){
+async function showSiteNotification(title,body,targetView,targetUrl){
   if(!("Notification" in window)||Notification.permission!=="granted")return;
-  const options={body,icon:"/favicon.svg",badge:"/favicon.svg",tag:"mc-"+String(title).slice(0,32),data:{url:"/"+(targetView==="messages"?"#messages":"#rooms")}};
+  const options={body,icon:"/favicon.svg",badge:"/favicon.svg",tag:"mc-"+String(title).slice(0,32),data:{url:targetUrl||("/"+(targetView==="messages"?"#messages":"#rooms"))},actions:targetView==="messages"?[{action:"reply",title:"Reply"},{action:"open",title:"Open chat"}]:[]};
   try{const registration=siteNotificationRegistration||await registerSiteNotificationWorker();if(registration?.showNotification)await registration.showNotification(title,options);else new Notification(title,options);}catch(e){console.warn("Could not show notification",e);}
 }
 function decodePushKey(value){
@@ -891,7 +891,7 @@ async function start() {
     const from=String(message?.from??message?.senderId??message?.fromId??"");
     const to=String(message?.to??message?.receiverId??message?.toId??"");
     const myId=String(state.user?.id??"");
-    if(from!==myId){if(document.hidden)showSiteNotification("New private message",String(message?.text||message?.message||"You received a private message").slice(0,180),"messages");else showPrivateMessagePopup(message);}
+    if(from!==myId){const sender=from==="system-bot"?"System Bot":(message?.displayName||message?.username||"New private message");const preview=String(message?.text||message?.message||(message?.attachment?"📎 Attachment":"You received a private message")).slice(0,180);if(document.hidden)showSiteNotification("💌 @"+sender,preview,"messages",`/?dm=${encodeURIComponent(from)}`);else showPrivateMessagePopup(message);}
     const peer=state.dmPeerUser;
     const activePeerId=String(state.dmUserId??"");
     if(message && peer && activePeerId && (from===activePeerId||to===activePeerId) && (from===myId||to===myId)){
@@ -949,6 +949,13 @@ async function start() {
   }
   if(!joined)toast("Main Room could not open automatically. Please open Rooms and try again.");
   await loadNotifications();
+  // Notification Reply/Open actions deep-link directly into the sender conversation.
+  const notificationPeer=new URL(window.location.href).searchParams.get("dm");
+  if(notificationPeer){
+    await openDM(notificationPeer);
+    window.history.replaceState({},document.title,window.location.pathname+window.location.hash);
+    requestAnimationFrame(()=>{$("dmText")?.focus();});
+  }
 }
 
 async function bootstrap() {
