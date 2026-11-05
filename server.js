@@ -6978,7 +6978,7 @@ app.patch('/api/suggestions/:id',auth,async(req,res)=>{
   }catch(e){console.error('[SUGGESTIONS] update:',e?.message||e);res.status(500).json({error:'Could not update suggestion status.'});}
 });
 
-app.post('/api/admin/private-search',auth,async(req,res)=>{
+app.post('/api/admin/private-search',auth,ownerOnly,async(req,res)=>{
   const actor=current(req);
   const username1=String(req.body.user1||'').trim().replace(/^@/,'').slice(0,80),username2=String(req.body.user2||'').trim().replace(/^@/,'').slice(0,80);
   if(!username1)return res.status(400).json({error:'Enter at least one username'});
