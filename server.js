@@ -592,11 +592,13 @@ async function notify(userId,type,title,text,url="/"){
   // Moderation warnings are mandatory and cannot be hidden by notification preferences.
   if(prefs[key]===false&&String(type)!=="warning")return;
   try{
-    await pool.query(
-      `INSERT INTO notifications(user_id,type,title,message,is_read) VALUES($1,$2,$3,$4,false)`,
+    const inserted=await pool.query(
+      `INSERT INTO notifications(user_id,type,title,message,is_read) VALUES($1,$2,$3,$4,false) RETURNING id`,
       [Number(userId),String(type),String(title||type),String(text)]
     );
-    io.to("user:"+userId).emit("notification");
+    const notificationId=inserted.rows?.[0]?.id;
+    io.to("user:"+userId).emit("notification",{id:notificationId,type:String(type),title:String(title||type),message:String(text)});
+    return notificationId;
     await sendWebPushToUser(userId,{title:String(title||type||"Maleficent Chat"),body:String(text||"You have a new notification").slice(0,180),url:String(url||"/"),tag:"mc-alert-"+String(type||"notification"),kind:type==="private-message"?"private-message":"site-notification"});
   }catch(err){console.error("Notification insert failed:",err);}
 }
@@ -4093,8 +4095,8 @@ app.post(
 
     const moderationReason=cleanText(req.body.reason)||"Community rules";
     if(action==="WARN"){
-      await notify(target.id,"warning","Warning ⚠️",moderationReason);
-      io.to("user:"+target.id).emit("warning-popup",{reason:moderationReason});
+      const warningId=await notify(target.id,"warning","Warning ⚠️",moderationReason);
+      io.to("user:"+target.id).emit("warning-popup",{id:String(warningId||""),reason:moderationReason});
     }else if(action==="MUTE"){
       const minutes=Math.max(1,Number(req.body.minutes)||10);
       const muteMessage="You have been muted for "+minutes+" minutes";
