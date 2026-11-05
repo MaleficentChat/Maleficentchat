@@ -2462,7 +2462,18 @@ app.post("/api/rooms/:id/messages",auth,featureAllowed("send_messages"),upload.s
     if(!allowedType)return res.status(400).json({error:"Only image and audio files are allowed in chat."});
   }
   let text=cleanText(req.body.text);
-  if(!text&&!req.file)return res.status(400).json({error:"Message is empty."});
+  let reelAttachment=null;
+  const reelId=String(req.body.reelId||"").trim();
+  if(reelId){
+    const reelResult=await pool.query("SELECT id,user_id,content,media_url FROM wall_posts WHERE id=$1 AND status IN ('approved','pinned') AND (expires_at IS NULL OR expires_at>NOW())",[reelId]);
+    const reel=reelResult.rows[0];
+    if(!reel||!reel.media_url||! /\\.(mp4|webm|ogg)(\\?|$)/i.test(String(reel.media_url))){
+      return res.status(404).json({error:"That Reel is no longer available."});
+    }
+    reelAttachment={url:String(reel.media_url),type:"video/mp4",name:"Shadow Reel"};
+    if(!text)text=String(reel.content||"").trim().slice(0,1000);
+  }
+  if(!text&&!req.file&&!reelAttachment)return res.status(400).json({error:"Message is empty."});
   // Network-level burst guard: protect the message endpoint without treating shared IPs as proof of ban evasion.
   if(!req.file){
     const networkKey=String(clientIp(req)||"unknown"), now=Date.now();
@@ -2816,7 +2827,7 @@ app.post("/api/rooms/:id/messages",auth,featureAllowed("send_messages"),upload.s
   const anonymousMode=!!(u.hideMode||u.deadMode); // Ghost and Dead messages are sent as Aurora.
    const m={id:id(),roomId:String(r.id),userId:anonymousMode?null:u.id,username:anonymousMode?"Aurora":u.username,displayName:anonymousMode?"Aurora":u.displayName,rank:anonymousMode?"BOT":u.rank,system:anonymousMode,isBot:anonymousMode,bot:anonymousMode?"Aurora":undefined,anonymous:anonymousMode,roomRank:anonymousMode?"USER":roomRank,roomRankBadge:({USER:"✨",ROOM_MODERATOR:"🪄",ROOM_ADMIN:"💫",ROOM_OWNER:"🎩"})[anonymousMode?"USER":roomRank]||"✨",
     usernameColor:u.settings?.usernameColor||"",chatFont:u.settings?.chatFont||"",text,
-    attachment:req.file?{url:"/uploads/"+req.file.filename,type:req.file.mimetype,name:req.file.originalname}:null,
+    attachment:req.file?{url:"/uploads/"+req.file.filename,type:req.file.mimetype,name:req.file.originalname}:reelAttachment,
     replyTo:req.body.replyTo||null,forwardedFrom:req.body.forwardedFrom||null,reactions:{},edited:false,deleted:false,pinned:false,time:Date.now(),delivered:true};
   const expiresIn=Number(req.body.expiresIn||0); if(expiresIn>0)m.expiresAt=Date.now()+Math.min(expiresIn,7*86400000);
 
