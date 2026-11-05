@@ -6687,20 +6687,30 @@ app.get('/api/youtube/search',auth,async(req,res)=>{
   res.json({results:[],notice:'YouTube search is unavailable right now. Add YOUTUBE_API_KEY for a stable YouTube Data API connection.'});
 });
 
-function roomAnnouncementForViewer(announcement,viewer){
-  // Sender identity is visible only to accounts that have permission to post
-  // room announcements. This is enforced in API responses, not just the UI.
+function roomAnnouncementForViewer(announcement){
+  // Announcements are always anonymous. Never expose the author's identity,
+  // including to staff members who can create or delete announcements.
   if(!announcement)return announcement;
-  if(hasFeature(viewer,'room_announcement'))return announcement;
-  const {userId,username,displayName,...publicAnnouncement}=announcement;
-  return publicAnnouncement;
+  return {
+    id:String(announcement.id||""),
+    roomId:String(announcement.roomId||""),
+    text:String(announcement.text||""),
+    time:Number(announcement.time)||0
+  };
+}
+function requireRoomAnnouncementStaff(req,res,next){
+  const u=current(req);
+  if(!u)return res.status(401).json({error:"Login required"});
+  if(isUserFeatureBlocked(u,"room_announcement"))return res.status(403).json({error:"Room announcements are disabled for your account by staff."});
+  if(!hasRank(u,"COMMISSOR"))return res.status(403).json({error:"Posting and deleting room announcements requires Commissor or higher."});
+  next();
 }
 app.get('/api/rooms/:id/announcements',auth,(req,res)=>{
   const u=current(req),r=db.rooms.find(x=>String(x.id)===String(req.params.id)); if(!r)return res.status(404).json({error:'Room not found'});
   if(!requirePrivateRoomAccess(req,res,r,u))return;
-  res.json({announcements:(r.announcements||[]).slice(-50).reverse().map(n=>roomAnnouncementForViewer(n,u))});
+  res.json({announcements:(r.announcements||[]).slice(-50).reverse().map(n=>roomAnnouncementForViewer(n))});
 });
-app.post('/api/rooms/:id/announcements',auth,featureAllowed('room_announcement'),(req,res)=>{
+app.post('/api/rooms/:id/announcements',auth,requireRoomAnnouncementStaff,(req,res)=>{
   const u=current(req),r=db.rooms.find(x=>String(x.id)===String(req.params.id)); if(!r)return res.status(404).json({error:'Room not found'});
   if(!requirePrivateRoomAccess(req,res,r,u))return;
   const text=cleanText(req.body.text||'').slice(0,1000); if(!text)return res.status(400).json({error:'Announcement cannot be empty.'});
@@ -6708,14 +6718,15 @@ app.post('/api/rooms/:id/announcements',auth,featureAllowed('room_announcement')
   // Never broadcast sender identity in a shared socket payload. Clients reload
   // the announcement list and the API applies each viewer's permission.
   io.to('room:'+r.id).emit('room:announcement',{roomId:String(r.id)});
-  res.json({announcement:roomAnnouncementForViewer(n,u)});
+  res.json({announcement:roomAnnouncementForViewer(n)});
 });
 
 app.delete('/api/rooms/:id/announcements/:announcementId',auth,(req,res)=>{
   const u=current(req), r=db.rooms.find(x=>String(x.id)===String(req.params.id));
   if(!r) return res.status(404).json({error:'Room not found'});
   if(!requirePrivateRoomAccess(req,res,r,u))return;
-  if(!hasFeature(u,'edit_room')) return res.status(403).json({error:`Deleting announcements requires ${featureRank('edit_room')} or higher.`});
+  if(isUserFeatureBlocked(u,"room_announcement"))return res.status(403).json({error:"Room announcements are disabled for your account by staff."});
+  if(!hasRank(u,"COMMISSOR"))return res.status(403).json({error:"Deleting announcements requires Commissor or higher."});
   r.announcements ||= [];
   const index=r.announcements.findIndex(a=>a.id===req.params.announcementId);
   if(index<0) return res.status(404).json({error:'Announcement not found'});
@@ -6723,7 +6734,7 @@ app.delete('/api/rooms/:id/announcements/:announcementId',auth,(req,res)=>{
   r.announcement=r.announcements.length ? r.announcements[r.announcements.length-1].text : '';
   save();
   io.to('room:'+r.id).emit('room:announcement-delete',{id:removed.id,roomId:r.id});
-  res.json({ok:true,announcement:removed});
+  res.json({ok:true});
 });
 
 app.post('/api/games/quick',auth,(req,res)=>{
