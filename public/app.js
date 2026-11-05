@@ -1655,7 +1655,7 @@ function renderRooms() {
           <span class="room-main">
           <span class="room-title-row"><strong>${esc(room.name)}</strong>${room.public===false?'<span class="room-lock" title="Secret room">🔒 Secret</span>':''}${locked?'<span class="room-lock">🔒</span>':''}</span>
             <span class="room-desc">${esc(room.description||'No description has been written for this room')}</span>
-            <span class="room-subrow"><span>${esc(room.category||'Community')}</span><span>•</span><span>${esc(room.rankRequired||'MEMBER')}+</span>${room.announcement?'<span>• 📌 announcement</span>':''}<span>• Ages ${Number(room.minAge??0)}–${Number(room.maxAge??99)}</span></span>
+            <span class="room-subrow"><span>${esc(room.category||'Community')}</span><span>•</span><span>${esc(room.rankRequired||'MEMBER')}+</span>${room.announcement?'<span>• 📌 announcement</span>':''}</span>
           </span>
           <span class="room-count"><strong>${count}</strong><span>♟</span></span>
         </button>
