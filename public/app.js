@@ -1319,8 +1319,8 @@ async function loadWall(){
         <div class="news-card-top"><div class="social-author"><div class="social-author-avatar">${p.avatar?`<img src="${esc(p.avatar)}" alt="">`:'👤'}</div><div><h3>@${esc(p.username||'Unknown')}</h3><div class="muted">${esc(p.rank||'Member')} · ${fmt(p.created_at)}</div></div></div><button class="social-more" data-wall-more="${esc(p.id)}" aria-label="Post options">•••</button></div>
         <div class="news-body wall-content">${esc(p.content||'')}${p.media_url?(String(p.media_url).match(/\.(mp4|webm|ogg)(\?|$)/i)?`<video class="wall-media" controls src="${esc(p.media_url)}"></video>`:`<img class="wall-media" src="${esc(p.media_url)}" alt="Wall upload">`):''}</div>
         <div class="news-actions social-reaction-actions">
-          <button class="mini wall-like-action ${(Array.isArray(rx['❤️'])?rx['❤️'].map(String):[]).includes(String(state.user?.id))?'reacted':''}" type="button" data-wall-reaction="❤️" data-wall-id="${esc(p.id)}">♡ Like</button>
-          <button class="mini" type="button" data-wall-comments="${esc(p.id)}">◯ Comment</button>
+          <button class="mini wall-like-action ${(Array.isArray(rx['❤️'])?rx['❤️'].map(String):[]).includes(String(state.user?.id))?'reacted':''}" type="button" data-wall-reaction="❤️" data-wall-id="${esc(p.id)}">♡ Like <b class="wall-action-count">${(Array.isArray(rx['❤️'])?rx['❤️'].length:0).toLocaleString()}</b></button>
+          <button class="mini wall-comment-action" type="button" data-wall-comments="${esc(p.id)}">◯ Comment <b class="wall-action-count">${Math.max(0,Number(p.comment_count)||0).toLocaleString()}</b></button>
           <button class="mini wall-share-action" type="button" data-wall-share="${esc(p.id)}">↗ Share</button>
           <button class="mini" type="button" data-wall-save="${esc(p.id)}">${p.saved?'▣ Saved':'▢ Save'}</button>
           <button class="mini wall-options-action" type="button" data-wall-options="${esc(p.id)}" aria-expanded="false">••• More</button>
