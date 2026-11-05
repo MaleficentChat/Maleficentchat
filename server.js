@@ -6978,14 +6978,17 @@ app.patch('/api/suggestions/:id',auth,async(req,res)=>{
   }catch(e){console.error('[SUGGESTIONS] update:',e?.message||e);res.status(500).json({error:'Could not update suggestion status.'});}
 });
 
-app.post('/api/admin/private-search',auth,ownerOnly,async(req,res)=>{
+app.post('/api/admin/private-search',auth,async(req,res)=>{
+  const actor=current(req);
   const username1=String(req.body.user1||'').trim().replace(/^@/,'').slice(0,80),username2=String(req.body.user2||'').trim().replace(/^@/,'').slice(0,80);
   if(!username1)return res.status(400).json({error:'Enter at least one username'});
   try{
-    const resolveInspectionUser=async username=>{try{const q=await pool.query('SELECT id,username FROM users WHERE LOWER(username)=LOWER($1) LIMIT 1',[username]);if(q.rowCount)return q.rows[0];}catch(error){console.error('Private-message inspection account SQL lookup failed:',error?.message||error);}const legacy=(db.users||[]).find(u=>String(u.username||'').toLowerCase()===username.toLowerCase());return legacy?{id:legacy.id,username:legacy.username}:null;};
+    const resolveInspectionUser=async username=>{try{const q=await pool.query('SELECT id,username,rank FROM users WHERE LOWER(username)=LOWER($1) LIMIT 1',[username]);if(q.rowCount)return q.rows[0];}catch(error){console.error('Private-message inspection account SQL lookup failed:',error?.message||error);}const legacy=(db.users||[]).find(u=>String(u.username||'').toLowerCase()===username.toLowerCase());return legacy?{id:legacy.id,username:legacy.username,rank:legacy.rank}:null;};
     const first=await resolveInspectionUser(username1);if(!first)return res.status(404).json({error:'User not found: '+username1});
     const users=[first];let sql='',params=[];
-    if(username2){const second=await resolveInspectionUser(username2);if(!second)return res.status(404).json({error:'User not found: '+username2});users.push(second);sql='SELECT m.id,m.sender_id,m.receiver_id,m.message,m.data,m.created_at,s.username AS sender_username,r.username AS receiver_username FROM private_messages m LEFT JOIN users s ON s.id=m.sender_id LEFT JOIN users r ON r.id=m.receiver_id WHERE (m.sender_id=$1 AND m.receiver_id=$2) OR (m.sender_id=$2 AND m.receiver_id=$1) ORDER BY m.created_at DESC LIMIT 200';params=[first.id,second.id];}
+    const canInspectTarget=target=>String(actor.id)===String(target.id)||((rankOrder[String(target.rank||'').toUpperCase()]??999)<(rankOrder[String(actor.rank||'').toUpperCase()]??-1));
+    if(!canInspectTarget(first))return res.status(403).json({error:'You can only inspect your own messages or messages belonging to users strictly below your rank.'});
+    if(username2){const second=await resolveInspectionUser(username2);if(!second)return res.status(404).json({error:'User not found: '+username2});if(!canInspectTarget(second))return res.status(403).json({error:'You cannot inspect messages involving an equal-rank or higher-rank staff member.'});users.push(second);sql='SELECT m.id,m.sender_id,m.receiver_id,m.message,m.data,m.created_at,s.username AS sender_username,r.username AS receiver_username FROM private_messages m LEFT JOIN users s ON s.id=m.sender_id LEFT JOIN users r ON r.id=m.receiver_id WHERE (m.sender_id=$1 AND m.receiver_id=$2) OR (m.sender_id=$2 AND m.receiver_id=$1) ORDER BY m.created_at DESC LIMIT 200';params=[first.id,second.id];}
     else{sql='SELECT m.id,m.sender_id,m.receiver_id,m.message,m.data,m.created_at,s.username AS sender_username,r.username AS receiver_username FROM private_messages m LEFT JOIN users s ON s.id=m.sender_id LEFT JOIN users r ON r.id=m.receiver_id WHERE m.sender_id=$1 OR m.receiver_id=$1 ORDER BY m.created_at DESC LIMIT 200';params=[first.id];}
     let q={rows:[]};try{q=await pool.query(sql,params);}catch(error){console.error('Private-message SQL inspection failed; using persisted message store:',error?.message||error);}
     const norm=value=>String(value??'').replace(/^@/,'').trim().toLowerCase(),legacyMessages=Array.isArray(db.privateMessages)?db.privateMessages:[];
