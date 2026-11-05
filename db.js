@@ -60,12 +60,24 @@ async function initDB() {
       banner TEXT DEFAULT '',
       invite_token TEXT
     );
-    -- Upgrade older existing room tables too: CREATE TABLE IF NOT EXISTS does not add columns.
+    -- Upgrade older room tables too: CREATE TABLE IF NOT EXISTS does not add columns.
+    -- Keep every column used by room creation/editing available on older databases.
+    ALTER TABLE rooms ADD COLUMN IF NOT EXISTS icon TEXT DEFAULT '💬';
+    ALTER TABLE rooms ADD COLUMN IF NOT EXISTS description TEXT DEFAULT '';
+    ALTER TABLE rooms ADD COLUMN IF NOT EXISTS category TEXT DEFAULT 'Community';
+    ALTER TABLE rooms ADD COLUMN IF NOT EXISTS is_public BOOLEAN DEFAULT true;
+    ALTER TABLE rooms ADD COLUMN IF NOT EXISTS password_hash TEXT;
     ALTER TABLE rooms ADD COLUMN IF NOT EXISTS rank_required TEXT DEFAULT 'MEMBER';
+    ALTER TABLE rooms ADD COLUMN IF NOT EXISTS room_limit INT DEFAULT 100;
+    ALTER TABLE rooms ADD COLUMN IF NOT EXISTS slow_mode INT DEFAULT 0;
+    ALTER TABLE rooms ADD COLUMN IF NOT EXISTS announcement TEXT DEFAULT '';
+    ALTER TABLE rooms ADD COLUMN IF NOT EXISTS banner TEXT DEFAULT '';
+    ALTER TABLE rooms ADD COLUMN IF NOT EXISTS invite_token TEXT;
     ALTER TABLE rooms ADD COLUMN IF NOT EXISTS min_age INT DEFAULT 0;
     ALTER TABLE rooms ADD COLUMN IF NOT EXISTS max_age INT DEFAULT 120;
     ALTER TABLE rooms ADD COLUMN IF NOT EXISTS is_default BOOLEAN DEFAULT false;
-    UPDATE rooms SET max_age=120 WHERE is_default=false AND min_age=0 AND max_age=99;
+    -- Age gates are no longer supported: normalize existing rooms to unrestricted.
+    UPDATE rooms SET min_age=0,max_age=120;
 
     CREATE TABLE IF NOT EXISTS room_messages(
       id TEXT PRIMARY KEY,
