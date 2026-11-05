@@ -897,8 +897,10 @@ async function start() {
     modal(`<div class="warning-popup"><div class="warning-title">🔇 Muted</div><div class="warning-reason">${esc(message)}</div>${data?.reason?'<p class="muted">Reason: '+esc(data.reason)+'</p>':''}<button class="primary" onclick="closeModal()">OK</button></div>`);
     loadNotifications();
   });
-  state.socket.on("warning-popup", () => {
-    // The warning is stored as an unread notification by the server.
+  state.socket.on("warning-popup", data => {
+    // Show immediately from the live event, then reconcile with the durable
+    // unread notification record so the same warning survives offline periods.
+    if(data?.id)showPersistentWarning({id:String(data.id),type:"warning",text:data.reason||"Please review the community rules."});
     loadNotifications();
   });
   state.socket.on("news", () => {
