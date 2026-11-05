@@ -60,6 +60,8 @@ async function initDB() {
       banner TEXT DEFAULT '',
       invite_token TEXT
     );
+    -- Upgrade older existing room tables too: CREATE TABLE IF NOT EXISTS does not add columns.
+    ALTER TABLE rooms ADD COLUMN IF NOT EXISTS rank_required TEXT DEFAULT 'MEMBER';
     ALTER TABLE rooms ADD COLUMN IF NOT EXISTS min_age INT DEFAULT 0;
     ALTER TABLE rooms ADD COLUMN IF NOT EXISTS max_age INT DEFAULT 120;
     ALTER TABLE rooms ADD COLUMN IF NOT EXISTS is_default BOOLEAN DEFAULT false;
