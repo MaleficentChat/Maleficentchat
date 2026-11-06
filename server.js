@@ -3890,6 +3890,7 @@ app.post('/api/daily/claim',auth,async(req,res)=>{
 });
 app.post('/api/rewards/daily',auth,(req,res)=>res.redirect(307,'/api/daily/claim'));
 
+require('./diamond-store-routes').registerDiamondStoreRoutes({app,pool,current,notify,io,log,id,db,ownerOnly,auth});
 app.get('/api/wallet',auth,async(req,res)=>{
   const u=current(req);
   const account=await pool.query('SELECT diamonds,gold FROM users WHERE id=$1',[Number(u.id)]);
@@ -3898,7 +3899,7 @@ app.get('/api/wallet',auth,async(req,res)=>{
   const history=await pool.query(`SELECT wt.id,wt.currency,wt.amount::text AS amount,wt.type,wt.note,wt.created_at,wt.sender_id,send.username AS sender_username,wt.recipient_id,receive.username AS recipient_username
     FROM wallet_transactions wt LEFT JOIN users send ON send.id=wt.sender_id LEFT JOIN users receive ON receive.id=wt.recipient_id
     WHERE wt.sender_id=$1 OR wt.recipient_id=$1 ORDER BY wt.created_at DESC LIMIT 100`,[Number(u.id)]);
-  res.json({wallet:{diamonds:u.diamonds,gold:u.gold,conversionRate:100},transactions:history.rows.map(row=>({...row,amount:Number(row.amount),created_at:row.created_at})),packages:[{id:'starter',price:1,diamonds:50},{id:'popular',price:2,diamonds:120},{id:'royal',price:3,diamonds:200},{id:'legendary',price:5,diamonds:400}],dailyDiamondRewards:DAILY_DIAMOND_REWARDS});
+  res.json({wallet:{diamonds:u.diamonds,gold:u.gold,conversionRate:100},transactions:history.rows.map(row=>({...row,amount:Number(row.amount),created_at:row.created_at})),packages:[{id:'starter',price:1,diamonds:5000},{id:'popular',price:2,diamonds:12000},{id:'royal',price:3,diamonds:20000},{id:'legendary',price:5,diamonds:40000}],dailyDiamondRewards:DAILY_DIAMOND_REWARDS});
 });
 app.get('/api/wallet/recipients',auth,(req,res)=>{
   const q=String(req.query.q||'').trim().replace(/^@/,'').toLowerCase();
