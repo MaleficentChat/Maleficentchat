@@ -2351,15 +2351,67 @@ function toggleMessageMore(messageId){
   if(willOpen){menu.classList.remove("hidden");menu.parentElement?.querySelector(".message-more-trigger")?.setAttribute("aria-expanded","true");}
 }
 function closeMessageMenus(){
-  document.querySelectorAll(".message-actions-menu,.message-more-submenu").forEach(m=>m.classList.add("hidden"));
+  document.querySelectorAll(".message-actions-menu,.message-more-submenu").forEach(m=>{
+    m.classList.add("hidden");
+    if(m.classList.contains("is-floating")){
+      m.classList.remove("is-floating");
+      ["position","left","top","right","bottom","width","min-width","max-width","max-height","overflow-y","transform"].forEach(prop=>m.style.removeProperty(prop));
+    }
+  });
   document.querySelectorAll(".message-more-trigger").forEach(b=>b.setAttribute("aria-expanded","false"));
 }
+function positionMessageMenu(menu,id){
+  const message=document.querySelector('.msg[data-mid="'+CSS.escape(String(id))+'"]');
+  const bubble=message?.querySelector(".msg-body");
+  const viewport=document.getElementById("messages");
+  const trigger=message?.querySelector(".message-more-button");
+  if(!message||!bubble||!viewport||!trigger)return;
+  const area=viewport.getBoundingClientRect();
+  const bubbleRect=bubble.getBoundingClientRect();
+  const triggerRect=trigger.getBoundingClientRect();
+  const gap=8, edge=8;
+  const width=Math.min(246,Math.max(210,area.width-2*edge));
+  menu.style.setProperty("position","fixed","important");
+  menu.style.setProperty("width",width+"px","important");
+  menu.style.setProperty("min-width","0","important");
+  menu.style.setProperty("max-width",(area.width-2*edge)+"px","important");
+  menu.style.setProperty("max-height",Math.max(150,area.height-2*edge)+"px","important");
+  menu.style.setProperty("overflow-y","auto","important");
+  menu.style.setProperty("transform","none","important");
+  menu.style.setProperty("bottom","auto","important");
+  menu.style.setProperty("right","auto","important");
+  // Outgoing bubbles open to their left; incoming bubbles open to their right.
+  // If there is not enough room, clamp the panel inside the chat viewport.
+  let left=message.classList.contains("mine")
+    ? bubbleRect.left-width-gap
+    : bubbleRect.right+gap;
+  left=Math.max(area.left+edge,Math.min(left,area.right-width-edge));
+  const estimatedHeight=Math.min(menu.scrollHeight,area.height-2*edge);
+  let top=triggerRect.top+(triggerRect.height/2)-(estimatedHeight/2);
+  top=Math.max(area.top+edge,Math.min(top,area.bottom-estimatedHeight-edge));
+  menu.style.setProperty("left",left+"px","important");
+  menu.style.setProperty("top",top+"px","important");
+  menu.classList.add("is-floating");
+}
+document.getElementById("messages")?.addEventListener("scroll",()=>{
+  if(document.querySelector(".message-actions-menu.is-floating:not(.hidden)"))closeMessageMenus();
+},{passive:true});
+window.addEventListener("resize",()=>{
+  const open=document.querySelector(".message-actions-menu.is-floating:not(.hidden)");
+  if(open){
+    const id=open.id.replace(/^message-menu-/,"");
+    positionMessageMenu(open,id);
+  }
+});
 function toggleMessageMenu(id){
   const menu=$(`message-menu-${id}`);
   if(!menu) return;
   const wasHidden=menu.classList.contains("hidden");
   closeMessageMenus();
-  if(wasHidden) menu.classList.remove("hidden");
+  if(wasHidden){
+    menu.classList.remove("hidden");
+    positionMessageMenu(menu,id);
+  }
 }
 document.addEventListener("click",e=>{
   const msg=e.target instanceof Element?e.target.closest(".msg[data-mid]"):null;
