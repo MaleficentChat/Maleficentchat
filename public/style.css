@@ -6688,3 +6688,18 @@ html[data-theme] .settings-tab.active {
   #viewGames .gravity-setup {min-width:0}
   #viewGames .gravity-room-invite {min-width:0}
 }
+
+
+/* Friends are managed from the compact header panel, not a full Community page. */
+#topFriendsDropdown .friend-hub-section{display:grid;gap:5px;margin:10px 0}
+#topFriendsDropdown .friend-hub-section> b{padding:3px 2px;color:var(--accent-2);font-size:12px}
+#topFriendsDropdown .friend-hub-row{display:grid;gap:8px;padding:9px 7px!important;border:1px solid var(--border)!important;border-radius:11px!important;background:rgba(255,255,255,.025)}
+#topFriendsDropdown .friend-hub-person{display:flex;align-items:center;gap:9px;min-width:0}
+#topFriendsDropdown .friend-hub-person>.avatar{width:34px;height:34px;flex:0 0 34px}
+#topFriendsDropdown .friend-hub-person .report-dropdown-copy{min-width:0}
+#topFriendsDropdown .friend-hub-person .report-dropdown-copy b,
+#topFriendsDropdown .friend-hub-person .report-dropdown-copy span{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#topFriendsDropdown .friend-hub-row .toolbar{display:flex;gap:6px;flex-wrap:wrap}
+#topFriendsDropdown .friend-hub-row .toolbar button{flex:1 1 auto;min-width:0}
+#topFriendsDropdown .friend-hub-search{position:sticky;top:48px;z-index:1;margin:5px 0 8px;width:100%}
+#topFriendsDropdown .friend-hub-find{width:100%;margin-top:6px}
