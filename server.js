@@ -2728,7 +2728,7 @@ app.post("/api/rooms/:id/messages",auth,featureAllowed("send_messages"),upload.s
       return res.json({message:bankMessage,command:true});
     }
     if(canonicalCommand==="convert"){
-      if(!/^\\d+$/.test(args))return res.status(400).json({error:"Use /convert X with a whole number of Diamonds."});
+      if(!/^\d+$/.test(args))return res.status(400).json({error:"Use /convert X with a whole number of Diamonds."});
       const amount=Number(args);
       if(!Number.isSafeInteger(amount)||amount<1)return res.status(400).json({error:"Enter a valid whole number of Diamonds."});
       const converted=await convertDiamonds(u,amount);
