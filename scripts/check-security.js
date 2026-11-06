@@ -125,7 +125,7 @@ assert.equal(policyContext.canAccessStaffTarget({id: "1", rank: "MOD"}, {id: "2"
 console.log("Staff note rank-access regression checks passed.");
 
 const roomListStart = server.indexOf('app.get("/api/rooms",auth,async(req,res)=>{');
-const roomListEnd = server.indexOf("function userAge(", roomListStart);
+const roomListEnd = server.indexOf("function roomAgeAllowed(", roomListStart);
 assert.ok(roomListStart >= 0 && roomListEnd > roomListStart, "room directory route must exist");
 const roomListRoute = server.slice(roomListStart, roomListEnd);
 assert.doesNotMatch(roomListRoute, /DELETE\s+FROM\s+(?:rooms|room_messages)/i,
