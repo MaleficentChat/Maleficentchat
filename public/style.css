@@ -6110,23 +6110,6 @@ html,body,#app,.app,.main,.view,#profile,#viewProfile {
 }
 
 
-/* Profile layout corrections: avatar first, stats bar directly underneath. */
-#modal:has(.profile-modal) .equipped-profile-frame{order:0!important}
-#modal:has(.profile-modal) .profile-stats{
-  order:1!important;
-  width:min(100%,520px)!important;
-  margin:2px auto 5px!important;
-  justify-content:center!important;
-  position:relative!important;
-  inset:auto!important;
-}
-#modal:has(.profile-modal) .profile-rank{order:2!important}
-#modal:has(.profile-modal) .profile-name{order:3!important}
-#modal:has(.profile-modal) .profile-handle{order:4!important}
-#modal:has(.profile-modal) .profile-music-pill{order:5!important}
-#modal:has(.profile-modal) .profile-social-stats{order:6!important}
-#modal:has(.profile-modal) .profile-primary-actions{order:7!important}
-
 /* Compact, independently scrollable Friends grid. */
 #modal:has(.profile-modal) .profile-friends-grid-wrap{
   display:block!important;
@@ -6173,4 +6156,122 @@ html,body,#app,.app,.main,.view,#profile,#viewProfile {
   #modal:has(.profile-modal) .profile-friends-grid{grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:6px!important}
   #modal:has(.profile-modal) .profile-friend-photo{width:48px!important;height:48px!important}
   #modal:has(.profile-modal) .profile-friends-grid-wrap{max-height:min(36dvh,250px)!important}
+}
+
+
+/* Profile correction: music player belongs immediately under the avatar.
+   Keep the level / XP / likes strip anchored in its original top-left position. */
+#modal:has(.profile-modal) .equipped-profile-frame{order:0!important}
+#modal:has(.profile-modal) .profile-stats{
+  position:absolute!important;top:12px!important;left:12px!important;right:54px!important;
+  width:auto!important;margin:0!important;justify-content:flex-start!important;z-index:3!important;
+}
+#modal:has(.profile-modal) .profile-music-pill{
+  order:1!important;display:flex!important;align-items:center!important;gap:9px!important;
+  width:min(240px,90%)!important;min-height:36px!important;margin:5px auto 2px!important;
+  padding:5px 10px!important;box-sizing:border-box!important;border:1px solid rgba(92,255,176,.25)!important;
+  border-radius:999px!important;background:rgba(8,12,20,.72)!important;color:#f4efff!important;
+}
+#modal:has(.profile-modal) .profile-music-toggle{
+  width:26px!important;height:26px!important;flex:0 0 26px!important;border:0!important;
+  border-radius:50%!important;background:#5cffb0!important;color:#08110d!important;
+  display:grid!important;place-items:center!important;font-size:12px!important;font-weight:900!important;
+}
+#modal:has(.profile-modal) .profile-music-bars{display:flex!important;align-items:center!important;gap:2px!important;height:18px!important;flex:0 0 auto!important}
+#modal:has(.profile-modal) .profile-music-bars i{display:block!important;width:3px!important;height:6px!important;border-radius:4px!important;background:#5cffb0!important}
+#modal:has(.profile-modal) .profile-music-pill.playing .profile-music-bars i,
+#modal:has(.profile-modal) .profile-music-pill:has(.profile-music-toggle.playing) .profile-music-bars i{animation:profileMusicEqualizer .7s ease-in-out infinite alternate}
+#modal:has(.profile-modal) .profile-music-bars i:nth-child(2){animation-delay:.12s}
+#modal:has(.profile-modal) .profile-music-bars i:nth-child(3){animation-delay:.24s}
+#modal:has(.profile-modal) .profile-music-bars i:nth-child(4){animation-delay:.36s}
+#modal:has(.profile-modal) .profile-music-title{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px!important;font-weight:700!important}
+@keyframes profileMusicEqualizer{from{height:4px}to{height:17px}}
+#modal:has(.profile-modal) .profile-rank{order:2!important}
+#modal:has(.profile-modal) .profile-name{order:3!important}
+#modal:has(.profile-modal) .profile-handle{order:4!important}
+
+/* Reference chat layout: author and timestamp/menu share the top line;
+   the actual message sits below in a cyan-edged charcoal or green bubble. */
+#viewRooms.chatting .msg:not(.dm-msg){align-items:flex-start!important;gap:8px!important}
+#viewRooms.chatting .msg:not(.dm-msg) .message-avatar-button{
+  align-self:flex-start!important;flex:0 0 30px!important;width:30px!important;height:30px!important;
+  margin-top:1px!important;border-radius:50%!important;overflow:hidden!important;
+}
+#viewRooms.chatting .msg:not(.dm-msg) .message-avatar-button .avatar{width:30px!important;height:30px!important}
+#viewRooms.chatting .msg:not(.dm-msg) .msg-body{
+  display:flex!important;flex:0 1 auto!important;flex-direction:column!important;align-items:stretch!important;
+  width:min(78%,760px)!important;max-width:min(78%,760px)!important;min-width:0!important;
+  padding:0!important;margin:0!important;background:transparent!important;border:0!important;
+  box-shadow:none!important;overflow:visible!important;
+}
+#viewRooms.chatting .msg:not(.dm-msg) .msg-top{
+  display:flex!important;align-items:center!important;justify-content:space-between!important;
+  gap:8px!important;width:100%!important;max-width:100%!important;min-height:25px!important;
+  margin:0 0 5px!important;padding:0!important;flex-wrap:nowrap!important;
+}
+#viewRooms.chatting .msg:not(.dm-msg) .msg-author-group{
+  display:flex!important;align-items:center!important;gap:6px!important;min-width:0!important;overflow:hidden!important;
+}
+#viewRooms.chatting .msg:not(.dm-msg) .message-author{
+  max-width:42vw!important;overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important;
+  font-size:13px!important;font-weight:800!important;line-height:1.2!important;
+}
+#viewRooms.chatting .msg:not(.dm-msg) .message-rank-floating{
+  display:inline-flex!important;align-items:center!important;flex:0 0 auto!important;
+  margin:0!important;font-size:12px!important;line-height:1!important;white-space:nowrap!important;
+}
+#viewRooms.chatting .msg:not(.dm-msg) .msg-header-right{
+  display:flex!important;align-items:center!important;justify-content:flex-end!important;
+  gap:9px!important;flex:0 0 auto!important;margin-left:auto!important;
+}
+#viewRooms.chatting .msg:not(.dm-msg) .msg-time-side{
+  display:inline-block!important;order:0!important;color:#aab8c4!important;
+  font-size:11px!important;line-height:1!important;white-space:nowrap!important;
+}
+#viewRooms.chatting .msg:not(.dm-msg) .msg-header-right .message-more-button{
+  display:inline-grid!important;place-items:center!important;width:25px!important;height:23px!important;
+  min-width:25px!important;padding:0!important;border:0!important;border-radius:50%!important;
+  background:transparent!important;color:#aab8c4!important;font-size:19px!important;line-height:1!important;
+}
+#viewRooms.chatting .msg:not(.dm-msg) .msg-text{
+  display:block!important;width:fit-content!important;max-width:100%!important;box-sizing:border-box!important;
+  margin:0!important;padding:12px 15px!important;border:0!important;border-radius:20px!important;
+  background:#202c33!important;border-left:7px solid #55c4e3!important;
+  color:#f4f7f9!important;font-size:clamp(15px,3.8vw,19px)!important;line-height:1.4!important;
+  white-space:pre-wrap!important;overflow-wrap:anywhere!important;box-shadow:none!important;
+}
+#viewRooms.chatting .msg:not(.dm-msg).theirs .msg-text{border-radius:20px!important;border-left:7px solid #55c4e3!important;background:#202c33!important}
+#viewRooms.chatting .msg:not(.dm-msg).mine{
+  flex-direction:row-reverse!important;justify-content:flex-start!important;margin-left:auto!important;
+}
+#viewRooms.chatting .msg:not(.dm-msg).mine .message-avatar-button{display:none!important}
+#viewRooms.chatting .msg:not(.dm-msg).mine .msg-body{align-items:flex-end!important}
+#viewRooms.chatting .msg:not(.dm-msg).mine .msg-top{justify-content:flex-end!important}
+#viewRooms.chatting .msg:not(.dm-msg).mine .msg-author-group{flex-direction:row-reverse!important}
+#viewRooms.chatting .msg:not(.dm-msg).mine .msg-text{
+  background:#006b58!important;border:0!important;border-radius:20px!important;color:#f4fffb!important;
+}
+#viewRooms.chatting .msg:not(.dm-msg) .quoted{
+  display:block!important;width:fit-content!important;max-width:100%!important;box-sizing:border-box!important;
+  margin:0 0 6px!important;padding:10px 13px!important;border:0!important;border-left:7px solid #55c4e3!important;
+  border-radius:20px!important;background:#202c33!important;color:#e8eef2!important;
+}
+#viewRooms.chatting .msg:not(.dm-msg) .quoted-header{display:flex!important;align-items:center!important;gap:9px!important;margin-bottom:5px!important}
+#viewRooms.chatting .msg:not(.dm-msg) .quoted-avatar,
+#viewRooms.chatting .msg:not(.dm-msg) .quoted-avatar .avatar{
+  display:block!important;width:38px!important;height:38px!important;flex:0 0 38px!important;
+  border-radius:50%!important;overflow:hidden!important;
+}
+#viewRooms.chatting .msg:not(.dm-msg) .quoted-author{font-size:14px!important;font-weight:800!important;color:#f1f4f6!important}
+#viewRooms.chatting .msg:not(.dm-msg) .quoted-text{
+  display:block!important;max-width:100%!important;white-space:normal!important;overflow:visible!important;
+  text-overflow:clip!important;font-size:clamp(15px,3.8vw,19px)!important;line-height:1.35!important;color:#f0f3f5!important;
+}
+#viewRooms.chatting .msg:not(.dm-msg) .msg-actions{margin-top:2px!important;min-height:0!important}
+#viewRooms.chatting .msg:not(.dm-msg) .message-actions-menu{z-index:1200!important}
+@media(max-width:700px){
+  #viewRooms.chatting .msg:not(.dm-msg) .msg-body{width:calc(100% - 38px)!important;max-width:calc(100% - 38px)!important}
+  #viewRooms.chatting .msg:not(.dm-msg).mine .msg-body{width:min(82%,760px)!important;max-width:82%!important}
+  #viewRooms.chatting .msg:not(.dm-msg) .msg-time-side{font-size:10px!important}
+  #viewRooms.chatting .msg:not(.dm-msg) .msg-text{padding:11px 13px!important}
 }
