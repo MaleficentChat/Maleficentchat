@@ -85,7 +85,7 @@ async function storeMediaBuffer(mediaKey,buffer,mimeType,originalName){
 }
 async function persistUploadedMedia(file,mediaKey){
   if(!file)return "";
-  const key=String(mediaKey||"").replace(/\\/g,"/").replace(/^\/+/, "");
+  const key=String(mediaKey||file.filename||"").replace(/\\/g,"/").replace(/^\/+/, "");
   const bytes=await fs.promises.readFile(file.path);
   await storeMediaBuffer(key,bytes,file.mimetype,file.originalname);
   file.mediaKey=key;
