@@ -3533,7 +3533,7 @@ function renderUserProfileModal(user,data={}){
             // Keep the sender on the guestbook tab and show a clear confirmation.
             // Pending notes are intentionally not shown in the public message list,
             // so reloading the tab here made a successful send look like a blank page.
-            form.outerHTML='<div class="guestbook-sent-notice" role="status"><b>✓ Note sent successfully</b><p>Your message is waiting for the profile owner to approve it. It will appear on their guestbook once approved.</p></div>';
+            form.outerHTML='<div class="about-card guestbook-sent-notice" role="status"><h3>✓ Note sent successfully</h3><p>Your message is waiting for the profile owner to approve it. It will appear on their guestbook once approved.</p></div>';
           }catch(error){
             if(button){button.disabled=false;button.textContent='Leave message';}
             toast(error.message||'Could not send message.');
