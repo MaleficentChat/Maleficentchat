@@ -6750,14 +6750,19 @@ html[data-theme] .settings-tab.active {
 
 /* Keep the age-room shortcut button spacious, with its full label contained. */
 #refreshRoomsBtn.age-chat-open-button{
+  writing-mode:horizontal-tb!important;
+  text-orientation:mixed!important;
+  flex-direction:row!important;
+  white-space:nowrap!important;
+  overflow:visible;
   display:inline-flex;
   align-items:center;
   justify-content:center;
-  width:260px;
-  min-width:260px;
+  width:auto;
+  min-width:112px;
   max-width:100%;
   min-height:54px;
-  flex:0 1 260px;
+  flex:0 0 auto;
   box-sizing:border-box;
   padding:10px 16px;
   font-size:15px;
@@ -6765,12 +6770,12 @@ html[data-theme] .settings-tab.active {
   line-height:1.2;
   text-align:center;
   white-space:normal!important;
-  overflow-wrap:anywhere;
-  word-break:normal;
+  overflow-wrap:normal;
+  word-break:keep-all;
 }
 #refreshRoomsBtn.age-chat-open-button:disabled{opacity:.7;cursor:wait}
 .room-pinned-badge{display:inline-flex;align-items:center;justify-content:center;flex:none;font-size:13px;margin-left:2px}
 @media(max-width:700px){
   #viewRooms:not(.chatting) .topbar .top-actions{flex-wrap:wrap;align-items:stretch}
-  #refreshRoomsBtn.age-chat-open-button{width:100%;min-width:0;max-width:100%;flex:1 1 100%}
+  #refreshRoomsBtn.age-chat-open-button{width:auto;min-width:112px;max-width:100%;flex:0 0 auto}
 }
