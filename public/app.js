@@ -4423,7 +4423,7 @@ async function openProfileActionDrawer(user,data={}){
   if(isSelf){
     modal(`<div class="profile-drawer"><h2>Account actions</h2><button class="quick-user-row" id="drawerEdit">✏️ Edit profile</button><button class="quick-user-row" id="drawerBlocked">🚫 Blocked users</button><button class="quick-user-row" id="drawerStaffPoints"><span>🏅</span><b>Staff Points</b><i>${Number(staffPointInfo?.staffPoints||0).toLocaleString()}</i></button></div>`);
     $('drawerEdit')?.addEventListener('click',()=>{closeModal();state.view='profile';renderView()});$('drawerBlocked')?.addEventListener('click',showBlockedUsers);
-    $('drawerStaffPoints')?.addEventListener('click',()=>modal(`<div class="profile-drawer"><h2>🏅 Staff Points</h2><div class="profile-info-row"><b>Your points</b><strong>${Number(staffPointInfo?.staffPoints||0).toLocaleString()}</strong></div><p class="muted">Points are earned by reviewing suggestions.</p></div>`));return;
+    $('drawerStaffPoints')?.addEventListener('click',()=>modal(`<div class="profile-drawer"><h2>🏅 Staff Points</h2><div class="profile-info-row"><b>Your points</b><strong>${Number(staffPointInfo?.staffPoints||0).toLocaleString()}</strong></div><p class="muted">Points are earned when your suggestions are accepted or approved.</p></div>`));return;
   }
   const prefs=dmPrefs(),id=String(user.id),muted=!!prefs.muted?.[id],archived=!!prefs.archived?.[id],blocked=(state.user.blocked||[]).map(String).includes(id);
   const isOwner=String(state.user?.rank||'').toUpperCase()==='DEVELOPER' || (state.user?.username==='Maleficent' && String(state.user?.rank||'').toUpperCase()==='OWNER');
