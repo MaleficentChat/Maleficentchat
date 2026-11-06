@@ -3893,6 +3893,9 @@ app.post('/api/rewards/daily',auth,(req,res)=>res.redirect(307,'/api/daily/claim
 require('./diamond-store-routes').registerDiamondStoreRoutes({app,pool,current,notify,io,log,id,db,ownerOnly,auth});
 app.get('/api/wallet',auth,async(req,res)=>{
   const u=current(req);
+  res.set('Cache-Control','no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.set('Pragma','no-cache');
+  res.set('Expires','0');
   const account=await pool.query('SELECT diamonds,gold FROM users WHERE id=$1',[Number(u.id)]);
   if(!account.rowCount)return res.status(404).json({error:'Wallet account not found.'});
   u.diamonds=Number(account.rows[0].diamonds||0);u.gold=Number(account.rows[0].gold||0);
@@ -3928,9 +3931,11 @@ app.post('/api/wallet/reward',auth,async(req,res)=>{
   const client=await pool.connect();let balance;
   try{
     await client.query('BEGIN');
-    const updated=await client.query(`UPDATE users SET ${column}=COALESCE(${column},0)+$1 WHERE id=$2 RETURNING ${column}`,[amount,Number(target.id)]);
+    const updated=await client.query(`UPDATE users SET ${column}=COALESCE(${column},0)+$1 WHERE id=$2 RETURNING diamonds,gold`,[amount,Number(target.id)]);
     if(!updated.rowCount){await client.query('ROLLBACK');return res.status(404).json({error:'Recipient account not found.'});}
-    balance=Number(updated.rows[0][column]);
+    target.diamonds=Number(updated.rows[0].diamonds||0);
+    target.gold=Number(updated.rows[0].gold||0);
+    balance=Number(updated.rows[0][column]||0);
     await client.query(`INSERT INTO wallet_transactions(id,sender_id,recipient_id,currency,amount,type,note) VALUES($1,$2,$3,$4,$5,'STAFF_REWARD',$6)`,[id(),Number(actor.id),Number(target.id),currency,amount,reason]);
     await client.query('COMMIT');
   }catch(error){await client.query('ROLLBACK').catch(()=>{});console.error('Staff wallet reward failed:',error);return res.status(500).json({error:'Could not grant '+unit+'.'});}finally{client.release();}
@@ -5888,7 +5893,7 @@ app.patch(
 app.patch('/api/owner/user/:id/diamonds',ownerOnly,async(req,res)=>{
  const v=findUser(req.params.id);if(!v)return res.status(404).json({error:'User not found'});if(String(v.rank).toUpperCase()==='DEVELOPER'||v.username==='Maleficent')return res.status(403).json({error:'Developer account is protected.'});
  const amount=Number(req.body?.amount);if(!Number.isSafeInteger(amount)||amount<0||amount>2147483647)return res.status(400).json({error:'Enter a valid non-negative Diamond balance.'});
- try{const updated=await pool.query('UPDATE users SET diamonds=$1 WHERE id=$2 RETURNING diamonds',[amount,Number(v.id)]);if(!updated.rowCount)return res.status(404).json({error:'User not found'});v.diamonds=Number(updated.rows[0].diamonds);io.to('user:'+v.id).emit('wallet:update',{userId:v.id,diamonds:v.diamonds,gold:v.gold||0});log(current(req),'DIAMONDS_EDIT',v.username,{after:v.diamonds});save();return res.json({ok:true,user:safeUser(v)});}catch(error){console.error('Owner Diamond edit failed:',error);return res.status(500).json({error:'Could not update Diamonds.'});}
+ try{const updated=await pool.query('UPDATE users SET diamonds=$1 WHERE id=$2 RETURNING diamonds,gold',[amount,Number(v.id)]);if(!updated.rowCount)return res.status(404).json({error:'User not found'});v.diamonds=Number(updated.rows[0].diamonds||0);v.gold=Number(updated.rows[0].gold||0);io.to('user:'+v.id).emit('wallet:update',{userId:v.id,diamonds:v.diamonds,gold:v.gold});log(current(req),'DIAMONDS_EDIT',v.username,{after:v.diamonds});save();return res.json({ok:true,user:safeUser(v)});}catch(error){console.error('Owner Diamond edit failed:',error);return res.status(500).json({error:'Could not update Diamonds.'});}
 });
 app.patch('/api/owner/user/:id/progress',ownerOnly,async(req,res)=>{
  const v=findUser(req.params.id);if(!v)return res.status(404).json({error:'User not found'});if(String(v.rank).toUpperCase()==='DEVELOPER'||v.username==='Maleficent')return res.status(403).json({error:'Developer account is protected.'});
