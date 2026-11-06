@@ -2047,10 +2047,12 @@ function messageHTML(message) {
     return `<div class="message bot-welcome-message bot-bank-message" data-mid="${esc(message.id)}">
       <div class="bot-welcome-bubble" style="border-color:#fbbf24;box-shadow:0 0 16px #fbbf2433">
         <div class="bot-welcome-byline">🤖 Bot · BANK</div>
-        <div class="bot-welcome-glow" style="color:#fcd34d;text-shadow:0 0 10px #f59e0b">💎 DIAMOND BALANCE</div>
+        <div class="bot-welcome-glow" style="color:#fcd34d;text-shadow:0 0 10px #f59e0b">🏦 BANK BALANCE</div>
         <div class="bot-welcome-username">@${esc(message.bankUsername||"User")}</div>
         <div style="display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-top:8px;font-size:13px">
           <span>💎 Diamonds <b>${Math.max(0,Number(message.bankDiamonds)||0).toLocaleString()}</b></span>
+          <span>🪙 Gold <b>${Math.max(0,Number(message.bankGold)||0).toLocaleString()}</b></span>
+          <span>⭐ Level <b>${Math.max(1,Number(message.bankLevel)||1)}</b> · ${Math.max(0,Number(message.bankXp)||0)} XP</span>
         </div>
       </div>
     </div>`;
@@ -3157,6 +3159,7 @@ function renderUserProfileModal(user,data={}){
       <div class="profile-handle">@${esc(user.username)}</div>
       <div class="profile-social-stats">
         <span class="profile-social-stat"><b>🪙 ${Number(user.gold||0).toLocaleString()}</b><small>Gold</small></span>
+        <span class="profile-social-stat"><b>💎 ${Number(user.diamonds||0).toLocaleString()}</b><small>Diamonds</small></span>
         <span class="profile-social-stat"><b>👥 ${Number(user.friendsCount||user.friendCount||0).toLocaleString()}</b><small>Friends</small></span>
         <span class="profile-social-stat"><b>🏅 ${esc(String(user.rank||"MEMBER").replace(/_/g," "))}</b><small>Rank</small></span>
       </div>
@@ -3177,7 +3180,9 @@ function renderUserProfileModal(user,data={}){
     if(tab==='info') box.innerHTML=`
       <div class="profile-info-row"><b>👤 Username</b><span>@${esc(user.username)}</span></div>
       <div class="profile-info-row"><b>🏅 Rank</b><span>${rank(user.rank)}</span></div>
-      <div class="profile-info-row"><b>⭐ Level</b><span>${user.level||1} · ${user.xp||0} XP · 🪙 ${user.gold||0}</span></div>
+      <div class="profile-info-row"><b>⭐ Level</b><span>${user.level||1} · ${user.xp||0} XP</span></div>
+      <div class="profile-info-row"><b>💎 Diamonds</b><span>${Number(user.diamonds||0).toLocaleString()}</span></div>
+      <div class="profile-info-row"><b>🪙 Gold</b><span>${Number(user.gold||0).toLocaleString()}</span></div>
       <div class="profile-info-row"><b>📅 Member since</b><span>${esc(memberSince)}</span></div>
       <div class="profile-info-row"><b>🏠 Status</b><span>${user.online?'Online':'Offline'}</span></div>
       <div class="profile-info-row"><b>◉ Last seen</b><span>${esc(lastSeen)}</span></div>
@@ -3918,6 +3923,17 @@ async function loadLeaderboard() {
         }
 
       </div>
+
+      <div class="card">
+        <h3>Diamonds</h3>
+        ${users.slice().sort((a,b)=>(Number(b.diamonds)||0)-(Number(a.diamonds)||0)).map(user=>`
+          <div class="user-card">
+            ${avatar(user)}
+            <div style="flex:1">${esc(user.displayName)}</div>
+            <b>💎 ${Number(user.diamonds||0).toLocaleString()}</b>
+          </div>
+        `).join("")}
+      </div>
     `;
   } catch (error) {
     toast(error.message);
@@ -4041,11 +4057,11 @@ async function loadWallet(){
     const txHtml=transactions.map(tx=>{const outgoing=String(tx.sender_id)===String(state.user.id),currency=tx.currency==="DIAMONDS"?"💎":"🪙",unit=tx.currency==="DIAMONDS"?"Diamonds":"Gold";let title=tx.type==="TRANSFER"?(outgoing?"Sent to @"+(tx.recipient_username||"member"):"Received from @"+(tx.sender_username||"member")):tx.type==="DAILY_REWARD"?"Daily login reward":tx.type==="STAFF_REWARD"?"Staff reward":tx.type==="CONVERT"?"Diamond conversion":String(tx.type||"Transaction").replaceAll("_"," ").toLowerCase();let sign=(tx.type==="TRANSFER"&&outgoing)||tx.type==="CONVERT"?"−":"+";return "<div class='wallet-transaction'><span class='wallet-transaction-icon'>"+currency+"</span><div class='wallet-transaction-copy'><b>"+esc(title)+"</b>"+(tx.note?"<small>"+esc(tx.note)+"</small>":"")+"<small>"+fmt(tx.created_at)+"</small></div><strong class='"+(sign==="−"?"wallet-negative":"wallet-positive")+"'>"+sign+Number(tx.amount||0).toLocaleString()+" "+unit+"</strong></div>";}).join("")||"<p class='muted'>Your wallet activity will appear here.</p>";
     const rewardDays=schedule.map((value,index)=>"<div class='wallet-reward-day'><small>DAY "+(index+1)+"</small><b>💎 "+value+"</b></div>").join("");
     const packageCards=packages.map(item=>"<article class='wallet-package'><span>💎</span><b>"+item.diamonds+" Diamonds</b><strong>$"+item.price+"</strong><small>Secure checkout not connected yet</small></article>").join("");
-    const staffPanel=canReward?"<section class='wallet-panel wallet-staff-panel'><div class='wallet-panel-heading'><div><span>🛡️ STAFF TOOLS</span><h3>Grant Diamonds</h3></div></div><form id='walletStaffRewardForm' class='wallet-staff-form'><label>Member username<input id='walletRewardUser' maxlength='26' placeholder='@username' required></label><label>Diamond amount<input id='walletRewardAmount' type='number' min='1' max='"+(rank==="COOWNER"?10:rank==="OWNER"?100:Number.MAX_SAFE_INTEGER)+"' step='1' required></label><label>Reason<input id='walletRewardReason' maxlength='240' placeholder='Reason for reward' required></label><button class='primary' type='submit'>Grant Diamonds</button></form><small class='muted'>"+(rank==="COOWNER"?"Coowner limit: 10 Diamonds per reward.":rank==="OWNER"?"Owner limit: 100 Diamonds per reward.":"Developer reward authority.")+"</small></section>":"";
+    const staffPanel=canReward?"<section class='wallet-panel wallet-staff-panel'><div class='wallet-panel-heading'><div><span>🛡️ STAFF TOOLS</span><h3>Grant Gold &amp; Diamonds</h3></div></div><form id='walletStaffRewardForm' class='wallet-staff-form'><label>Member username<input id='walletRewardUser' maxlength='26' placeholder='@username' required></label><label>Currency<select id='walletRewardCurrency'><option value='DIAMONDS'>💎 Diamonds</option><option value='GOLD'>🪙 Gold</option></select></label><label>Amount<input id='walletRewardAmount' type='number' min='1' max='"+(rank==="COOWNER"?10:rank==="OWNER"?100:Number.MAX_SAFE_INTEGER)+"' step='1' required></label><label>Reason<input id='walletRewardReason' maxlength='240' placeholder='Reason for reward' required></label><button class='primary' type='submit'>Grant currency</button></form><small class='muted'>"+(rank==="COOWNER"?"Coowner limit: 10 Diamonds per reward.":rank==="OWNER"?"Owner limit: 100 Diamonds per reward.":"Developer reward authority.")+"</small></section>":"";
     root.innerHTML="<section class='wallet-hero'><div class='wallet-hero-copy'><span class='wallet-eyebrow'>MALEFICENT CHAT · PRIVATE BANK</span><h3>Your Wallet</h3><p>Collect Diamonds, convert them into Gold, and share either currency with your friends.</p></div><div class='wallet-balance-grid'><article class='wallet-balance-card wallet-diamond-card'><span>💎</span><small>DIAMONDS</small><strong>"+state.user.diamonds.toLocaleString()+"</strong></article><article class='wallet-balance-card wallet-gold-card'><span>🪙</span><small>GOLD</small><strong>"+state.user.gold.toLocaleString()+"</strong></article></div><div class='wallet-actions'><button type='button' class='primary' id='walletShareOpen'>💝 Share Wallet</button><button type='button' class='mini' id='walletConvertOpen'>🔄 Convert Diamonds</button><button type='button' class='mini' id='walletRefresh'>↻ Refresh</button></div></section><div class='wallet-content-grid'><section class='wallet-panel'><div class='wallet-panel-heading'><div><span>🎁 DAILY LOGIN</span><h3>Diamond Rewards</h3></div><b>7-day cycle</b></div><div class='wallet-reward-days'>"+rewardDays+"</div><p class='muted'>Claim once every day. Miss a day and your streak starts again.</p><button type='button' class='primary' id='walletDailyClaim' "+(daily.claimed?"disabled":"")+">"+(daily.claimed?"✓ Already claimed today":"Claim +"+(daily.nextDiamonds||2)+" Diamonds")+"</button></section><section class='wallet-panel'><div class='wallet-panel-heading'><div><span>💎 PREMIUM CURRENCY</span><h3>Diamond Store</h3></div></div><div class='wallet-package-grid'>"+packageCards+"</div><p class='wallet-payment-note'>Packages are configured. Purchases will activate after a verified payment provider is connected; MC will not credit unverified payments.</p></section></div>"+staffPanel+"<section class='wallet-panel wallet-history-panel'><div class='wallet-panel-heading'><div><span>📜 WALLET ACTIVITY</span><h3>Transaction History</h3></div></div><div class='wallet-transactions'>"+txHtml+"</div></section>";
     $("walletShareOpen").onclick=openWalletShareByUsername;$("walletConvertOpen").onclick=openWalletConvertModal;$("walletRefresh").onclick=loadWallet;
     $("walletDailyClaim")?.addEventListener("click",async()=>{const result=await claimDailyReward();if(result)await loadWallet();});
-    $("walletStaffRewardForm")?.addEventListener("submit",async event=>{event.preventDefault();const button=event.currentTarget.querySelector("button[type='submit']");if(button){button.disabled=true;button.textContent="Granting…";}try{const result=await api("/api/wallet/reward",{method:"POST",body:JSON.stringify({username:$("walletRewardUser").value.trim().replace(/^@/,""),amount:Number($("walletRewardAmount").value),reason:$("walletRewardReason").value.trim()})});toast("Granted "+result.amount+" Diamonds to @"+result.recipient.username+".");await loadWallet();}catch(error){toast(error.message);if(button){button.disabled=false;button.textContent="Grant Diamonds";}}});
+    $("walletStaffRewardForm")?.addEventListener("submit",async event=>{event.preventDefault();const button=event.currentTarget.querySelector("button[type='submit']");if(button){button.disabled=true;button.textContent="Granting…";}try{const result=await api("/api/wallet/reward",{method:"POST",body:JSON.stringify({username:$("walletRewardUser").value.trim().replace(/^@/,""),currency:$("walletRewardCurrency").value,amount:Number($("walletRewardAmount").value),reason:$("walletRewardReason").value.trim()})});toast("Granted "+result.amount+" "+(result.currency==="GOLD"?"gold":"Diamonds")+" to @"+result.recipient.username+".");await loadWallet();}catch(error){toast(error.message);if(button){button.disabled=false;button.textContent="Grant Diamonds";}}});
   }catch(error){root.innerHTML="<section class='wallet-panel'><p class='error'>Could not load your wallet: "+esc(error.message)+"</p><button class='mini' id='walletRetry'>Retry</button></section>";$("walletRetry")?.addEventListener("click",loadWallet);}
 }
 
@@ -4093,7 +4109,7 @@ async function openProfileActionDrawer(user,data={}){
   $('drawerAddFriend')?.addEventListener('click',async()=>{try{await friend(id);closeModal();}catch(e){toast(e.message)}});
   $('drawerBlock')?.addEventListener('click',async()=>{try{await block(id);closeModal();}catch(e){toast(e.message)}});
   $('drawerStaffModification')?.addEventListener('click',()=>staffAccountModificationModal(user));
-  $('drawerWallet')?.addEventListener('click',()=>shareGoldModal(user));
+  $('drawerWallet')?.addEventListener('click',()=>shareWalletModal(user));
   $('drawerGiveRank')?.addEventListener('click',()=>rankFromProfile(user));
   $('drawerRoomRank')?.addEventListener('click',()=>roomRankModal(user));
   $('drawerRoomModerate')?.addEventListener('click',()=>roomModerationModal(user));
@@ -5303,6 +5319,8 @@ async function loadOwner() {
 
                   · 🪙 ${user.gold || 0}
 
+                  · 💎 ${user.diamonds || 0}
+
                   · Lv ${user.level || 1}
 
                 </div>
@@ -5478,7 +5496,8 @@ async function ownerEdit(id) {
 
       </select>
 
-      <input id="ogold" type="number" value="${user.gold || 0}" placeholder="Gold">
+      <label>Gold<input id="ogold" type="number" min="0" value="${user.gold || 0}" placeholder="Gold"></label>
+      <label>Diamonds<input id="odiamonds" type="number" min="0" value="${Number(user.diamonds||0)}" placeholder="Diamonds"></label>
       <label>XP<input id="oxp" type="number" min="0" value="${Number(user.xp||0)}"></label>
       <label>Level<input id="olevel" type="number" min="1" value="${Number(user.level||1)}"></label>
 
@@ -5531,6 +5550,7 @@ async function saveOwnerUser(id) {
       }
     );
 
+    await api(`/api/owner/user/${id}/diamonds`,{method:"PATCH",body:JSON.stringify({amount:$("odiamonds").value})});
     if($("oxp") && $("olevel")) await api(`/api/owner/user/${id}/progress`,{method:"PATCH",body:JSON.stringify({xp:$("oxp").value,level:$("olevel").value})});
 
     if(id===state.user?.id){const refreshed=await api("/api/me");if(refreshed.user){state.user=refreshed.user;updateNav();}}
