@@ -3520,10 +3520,24 @@ function renderUserProfileModal(user,data={}){
           catch(error){event.target.checked=previous;toast(error.message||'Could not update guestbook privacy.');}
         });
         $('guestbookPostForm')?.addEventListener('submit',async event=>{
-          event.preventDefault();const field=$('guestbookMessage'),message=field?.value||'';if(!message.trim())return;
-          const button=event.currentTarget.querySelector('button[type="submit"]');if(button)button.disabled=true;
-          try{await api('/api/users/'+encodeURIComponent(user.id)+'/guestbook',{method:'POST',body:JSON.stringify({message})});toast('Message sent for approval.');renderTab('guestbook');}
-          catch(error){if(button)button.disabled=false;toast(error.message||'Could not send message.');}
+          event.preventDefault();
+          const form=event.currentTarget;
+          const field=$('guestbookMessage');
+          const message=field?.value||'';
+          if(!message.trim()){field?.focus();return;}
+          const button=form.querySelector('button[type="submit"]');
+          if(button){button.disabled=true;button.textContent='Sending…';}
+          try{
+            await api('/api/users/'+encodeURIComponent(user.id)+'/guestbook',{method:'POST',body:JSON.stringify({message})});
+            toast('Message sent for approval.');
+            // Keep the sender on the guestbook tab and show a clear confirmation.
+            // Pending notes are intentionally not shown in the public message list,
+            // so reloading the tab here made a successful send look like a blank page.
+            form.outerHTML='<div class="about-card guestbook-sent-notice" role="status"><h3>✓ Note sent successfully</h3><p>Your message is waiting for the profile owner to approve it. It will appear on their guestbook once approved.</p></div>';
+          }catch(error){
+            if(button){button.disabled=false;button.textContent='Leave message';}
+            toast(error.message||'Could not send message.');
+          }
         });
         box.querySelectorAll('[data-guestbook-action]').forEach(button=>button.addEventListener('click',async()=>{
           try{await api('/api/users/'+encodeURIComponent(user.id)+'/guestbook/'+encodeURIComponent(button.dataset.entryId),{method:'PATCH',body:JSON.stringify({status:button.dataset.guestbookAction})});toast(button.dataset.guestbookAction==='APPROVED'?'Message approved.':'Message hidden.');renderTab('guestbook');}
