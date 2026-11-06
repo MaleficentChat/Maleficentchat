@@ -1780,7 +1780,9 @@ function rememberMyRoom(id){
 function renderRooms() {
   const search=(($('roomSearch')?.value)||'').trim().toLowerCase();
   const visited=joinedRoomIds();
-  const canSeeRoomPins=["COOWNER","OWNER","DEVELOPER"].includes(String(state.user?.rank||"").toUpperCase().replace(/[\s_-]/g,""));
+  const normalizedRoomRank=String(state.user?.rank||"").toUpperCase().replace(/[\s_-]/g,"");
+  const canSeeRoomPins=["COOWNER","OWNER","DEVELOPER"].includes(normalizedRoomRank);
+  const canPinRooms=canSeeRoomPins;
   const allRooms=(Array.isArray(state.rooms)?state.rooms:[]).slice().sort((a,b)=>canSeeRoomPins?(Number(!!b.pinned)-Number(!!a.pinned)):0);
   const canViewHiddenRooms=["OWNER","DEVELOPER"].includes(String(state.user?.rank||"").toUpperCase());
   const hiddenRooms=allRooms.filter(room=>room.public===false);
@@ -1811,8 +1813,9 @@ function renderRooms() {
           </span>
           <span class="room-count"><strong>${count}</strong><span>♟</span></span>
         </button>
-        ${canManage && room.id!=="main" ? `<div class="room-list-actions" aria-label="Room actions">
+        ${(canManage && room.id!=="main") || canPinRooms ? `<div class="room-list-actions" aria-label="Room actions">
           <button class="mini room-action-icon" type="button" title="Edit room" aria-label="Edit room" onclick="event.stopPropagation();editRoomById('${esc(room.id)}')">✎</button>
+          ${canPinRooms ? `<button class="mini room-action-icon room-pin-toggle" type="button" title="Pin / unpin room" aria-label="Pin / unpin room" onclick="event.stopPropagation();toggleRoomPinById(&quot;${esc(room.id)}&quot;)">📌</button>` : ""}
           ${canFeature("delete_room")?`<button class="mini danger room-action-icon" type="button" title="Delete room" aria-label="Delete room" onclick="event.stopPropagation();deleteRoomById('${esc(room.id)}')">⌫</button>`:""}
         </div>` : ""}
       </article>`;
@@ -1926,7 +1929,8 @@ function roomInviteFromHash(){
   }catch{return null;}
 }
 function postRoomAnnouncement(){
-  if(!can("COMMISSOR")){toast("Posting room announcements requires Commissor or higher.");return;}
+  const announcementRank=String(state.user?.rank||"").toUpperCase().replace(/[\\s_-]/g,"");
+  if((rankOrder[announcementRank]??-1)<(rankOrder.COMMISSOR??7)){toast("Posting room announcements requires Commissor or higher.");return;}
   if(!state.currentRoom){toast("Join a room before posting an announcement.");return;}
   const text=prompt("Share an announcement in this room:","");
   if(!text?.trim())return;
@@ -6454,7 +6458,7 @@ document.addEventListener("click", async event => {
       ["invite","🔐 Room code"],
       ["theme","🎨 Site Theme"]
     ];
-    try { if (can("COMMISSOR")) actions.unshift(["announcement","📢 Room announcement"]); } catch (_) {}
+    try { const announcementRank=String(state.user?.rank||"").toUpperCase().replace(/[\\s_-]/g,""); if ((rankOrder[announcementRank]??-1)>=(rankOrder.COMMISSOR??7)) actions.unshift(["announcement","📢 Room announcement"]); } catch (_) {}
     try { if (canFeature("clear_room")) actions.unshift(["clear","🧹 Clear messages"]); } catch (_) {}
     try { if (canEditRoomFromMenu(room)) actions.unshift(["edit","✏️ Edit room"]); } catch (_) {}
     try { if (canFeature("delete_room")) actions.unshift(["delete","🗑 Delete room"]); } catch (_) {}
@@ -6544,17 +6548,16 @@ function canEditRoomFromMenu(room){
     (ownerId!=null&&String(ownerId)===String(state.user.id))||
     canFeature("edit_room");
 }
-async function toggleCurrentRoomPin(){
-  const room=state.rooms.find(r=>String(r.id)===String(state.currentRoom));
-  if(!room||!["COOWNER","OWNER","DEVELOPER"].includes(String(state.user?.rank||"").toUpperCase().replace(/[\s_-]/g,"")))return;
-  try{
-    const result=await api("/api/rooms/"+encodeURIComponent(room.id)+"/pin",{method:"PUT",body:JSON.stringify({pinned:!room.pinned})});
-    room.pinned=!!result.pinned;
-    await loadRooms();
-    closeModal();
-    toast(room.pinned?"Room pinned for senior staff.":"Room unpinned.");
-  }catch(error){toast(error.message||"Could not update room pin.");}
+async function toggleRoomPinById(roomId){
+  const rank=String(state.user?.rank||"").toUpperCase().replace(/[\\s_-]/g,"");
+  if(!["COOWNER","OWNER","DEVELOPER"].includes(rank)){toast("Only Co-owner, Owner, or Developer can pin rooms.");return;}
+  const room=(state.rooms||[]).find(r=>String(r.id)===String(roomId));
+  if(!room){toast("Room not found. Refresh the room list and try again.");return;}
+  try{const result=await api("/api/rooms/"+encodeURIComponent(room.id)+"/pin",{method:"PUT",body:JSON.stringify({pinned:!room.pinned})});room.pinned=!!result.pinned;await loadRooms();renderRooms();toast(room.pinned?"Room pinned at the top of your staff room list.":"Room unpinned.");}
+  catch(error){toast(error.message||"Could not update room pin.");}
 }
+async function toggleCurrentRoomPin(){return toggleRoomPinById(state.currentRoom);}
+
 function editRoom() {
   const room=state.rooms.find(r=>String(r.id)===String(state.currentRoom));
   if(!room)return;
