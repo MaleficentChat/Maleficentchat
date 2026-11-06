@@ -1261,6 +1261,10 @@ async function renderView() {
   view.classList.remove("hidden");
 
   switch (state.view) {
+    case "entertainment":
+      window.dispatchEvent(new Event("mc:open-entertainment"));
+      return;
+
     case "rooms":
       // Re-fetch the authoritative room list whenever the Rooms view opens.
       // This recovers default rooms if the first login request ran before DB seeding completed.
