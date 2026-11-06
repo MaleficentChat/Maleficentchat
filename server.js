@@ -1005,6 +1005,8 @@ async function auth(req,res,next){
   next();
 }
 
+require("./entertainment").registerEntertainmentRoutes({app,auth,current,pool,uploadRoot:UP});
+
 async function persistUnderConstructionSetting(setting){
   // Persist independently of the legacy whole-state snapshot so Render restarts
   // and concurrent requests cannot silently lose the maintenance switch.
