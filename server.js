@@ -4945,6 +4945,33 @@ app.get("/api/staff/dashboard",auth,featureAllowed("view_staff_dashboard"),async
   }catch(e){console.error("Staff dashboard reports failed:",e);res.status(500).json({error:"Could not load staff reports. Please refresh and try again."});}
 });
 
+app.post("/api/staff/age-change-requests/:id/decision",auth,async(req,res)=>{
+  const actor=current(req),decision=String(req.body?.decision||"").toUpperCase();
+  if(!hasRank(actor,"MOD"))return res.status(403).json({error:"Moderator rank or higher is required."});
+  if(!["ACCEPT","DECLINE"].includes(decision))return res.status(400).json({error:"Choose Accept or Decline."});
+  const client=await pool.connect();
+  try{
+    await client.query("BEGIN");
+    const found=await client.query("SELECT id,reporter_id,reported_id,data FROM reports WHERE id=$1 FOR UPDATE",[req.params.id]);
+    if(!found.rowCount){await client.query("ROLLBACK");return res.status(404).json({error:"Age-change request not found."});}
+    const data=found.rows[0].data&&typeof found.rows[0].data==="object"?found.rows[0].data:{};
+    if(data.kind!=="age_change"){await client.query("ROLLBACK");return res.status(400).json({error:"This report is not an age-change request."});}
+    if(String(data.status||"OPEN").toUpperCase()!=="OPEN"){await client.query("ROLLBACK");return res.status(409).json({error:"This age-change request has already been decided."});}
+    const target=findUser(found.rows[0].reported_id||found.rows[0].reporter_id);
+    if(!target){await client.query("ROLLBACK");return res.status(404).json({error:"The requesting account no longer exists."});}
+    if(!canAccessStaffTarget(actor,target)){await client.query("ROLLBACK");return res.status(403).json({error:"You can only review requests from accounts ranked below you."});}
+    if(decision==="ACCEPT"){const age=ageFromBirthDate(data.requestedBirthDate);if(age===null||age!==Number(data.requestedAge)||age<13||age>99){await client.query("ROLLBACK");return res.status(400).json({error:"The requested age data is invalid. The account was not changed."});}await client.query("UPDATE users SET birth_date=$1 WHERE id=$2",[data.requestedBirthDate,Number(target.id)]);target.birthDate=data.requestedBirthDate;target.dateOfBirth=data.requestedBirthDate;}
+    const status=decision==="ACCEPT"?"RESOLVED":"DISMISSED",now=Date.now(),updated={...data,status,decision,decisionBy:String(actor.id),decisionByUsername:actor.username,decisionAt:now};
+    await client.query("UPDATE reports SET data=$2::jsonb WHERE id=$1",[req.params.id,JSON.stringify(updated)]);
+    await client.query("COMMIT");
+    const cached=(db.reports||[]).find(r=>String(r.id)===String(req.params.id));if(cached)Object.assign(cached,updated);
+    save();log(actor,"AGE_CHANGE_"+decision,target.username,{requestedAge:data.requestedAge});
+    notify(target.id,"staff",decision==="ACCEPT"?"Age change approved":"Age change declined",decision==="ACCEPT"?"Your profile age is now "+data.requestedAge+".":"Your age-change request was declined. Your existing age remains unchanged.");
+    res.json({ok:true,status,decision});
+  }catch(error){await client.query("ROLLBACK").catch(()=>{});console.error("Age-change decision failed:",error);res.status(500).json({error:"Could not process the age-change request."});}
+  finally{client.release();}
+});
+
 app.post("/api/staff/reports/:id/assign",auth,async(req,res)=>{
   const actor=current(req);if(!hasRank(actor,"MOD"))return res.status(403).json({error:"Staff only"});
   const assignee=findUser(req.body.staffUserId||req.body.username||"");
