@@ -1871,6 +1871,30 @@ app.patch(
   }
 );
 
+app.post("/api/me/profile-music",auth,upload.single("file"),async(req,res)=>{
+  const user=current(req);
+  if(!req.file)return res.status(400).json({error:"Choose an audio file to upload."});
+  const allowedExtensions=new Set([".mp3",".m4a",".aac",".ogg",".oga",".wav",".webm",".opus",".flac"]);
+  const extension=path.extname(String(req.file.originalname||"")).toLowerCase();
+  const mime=String(req.file.mimetype||"").toLowerCase();
+  if(!allowedExtensions.has(extension)||(!mime.startsWith("audio/")&&!["application/ogg","application/octet-stream","video/webm"].includes(mime))){
+    await fs.promises.unlink(req.file.path).catch(()=>{});
+    return res.status(400).json({error:"Unsupported audio file. Upload MP3, M4A, AAC, OGG, WAV, WebM, OPUS or FLAC."});
+  }
+  const title=path.basename(String(req.file.originalname||"Profile music"),extension).replace(/[_-]+/g," ").trim().slice(0,100)||"Profile music";
+  user.profileMusicTitle=title;
+  user.profileMusicUrl="/uploads/"+req.file.filename;
+  save();
+  res.json({user:safeUser(user)});
+});
+app.delete("/api/me/profile-music",auth,(req,res)=>{
+  const user=current(req);
+  user.profileMusicTitle="";
+  user.profileMusicUrl="";
+  save();
+  res.json({ok:true,user:safeUser(user)});
+});
+
 app.post(
   "/api/me/avatar",
   auth,
@@ -6654,7 +6678,7 @@ app.put('/api/profile',auth,(req,res)=>{
     u.privacy={...(u.privacy||{lastSeen:true,online:true})};
     for(const key of ['lastSeen','online','country','location','website','bio','pronouns','relationship','mood','interests']) if(req.body.privacy[key]!==undefined)u.privacy[key]=!!req.body.privacy[key];
   }
-  const next={displayName:req.body.displayName,bio:req.body.bio,pronouns:req.body.pronouns,relationship:req.body.relationship,mood:req.body.mood,country:req.body.country,location:req.body.location,website:req.body.website,interests:req.body.interests,profileColor:req.body.profileColor,profileAccentColor:req.body.profileAccentColor,theme:req.body.theme,badge:req.body.badge,banner:req.body.banner,profileMusicTitle:req.body.profileMusicTitle,profileMusicUrl:req.body.profileMusicUrl};
+  const next={displayName:req.body.displayName,bio:req.body.bio,pronouns:req.body.pronouns,relationship:req.body.relationship,mood:req.body.mood,country:req.body.country,location:req.body.location,website:req.body.website,interests:req.body.interests,profileColor:req.body.profileColor,profileAccentColor:req.body.profileAccentColor,theme:req.body.theme,badge:req.body.badge,banner:req.body.banner};
   for(const [k,v] of Object.entries(next)) if(v!==undefined){
     if(k==='displayName') u[k]=String(v).trim().slice(0,40);
     else if(k==='interests') u[k]=Array.isArray(v)?v.map(x=>String(x).slice(0,40)).slice(0,20):String(v).split(',').map(x=>x.trim()).filter(Boolean).slice(0,20);
@@ -6663,12 +6687,6 @@ app.put('/api/profile',auth,(req,res)=>{
       if(color && !/^#[0-9a-f]{6}$/i.test(color)) return res.status(400).json({error:'Profile colors must be valid hex colors.'});
       u[k]=color;
     } else if(k==='banner') u[k]=String(v).trim().slice(0,500);
-    else if(k==='profileMusicTitle') u[k]=cleanText(v).slice(0,100);
-    else if(k==='profileMusicUrl'){
-      const musicUrl=String(v||'').trim();
-      if(musicUrl){try{const parsed=new URL(musicUrl);if(!['http:','https:'].includes(parsed.protocol))throw new Error();}catch{return res.status(400).json({error:'Enter a valid direct audio URL.'});}}
-      u[k]=musicUrl.slice(0,500);
-    }
     else if(k==='country') u[k]=cleanText(v).slice(0,80);
     else if(k==='socials') { const s=v&&typeof v==='object'?v:{}; u.socials={instagram:cleanText(s.instagram||'').slice(0,180),discord:cleanText(s.discord||'').slice(0,180),tiktok:cleanText(s.tiktok||'').slice(0,180),youtube:cleanText(s.youtube||'').slice(0,180)}; }
     else u[k]=cleanText(v).slice(0,500);
