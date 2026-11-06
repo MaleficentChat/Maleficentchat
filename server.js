@@ -387,7 +387,7 @@ view_online_users:RANK_TIERS.all,manage_push_notifications:RANK_TIERS.all,modera
     .map(([key,ranks])=>[key,[...ranks]]))
 };
 
-const REQUESTED_COMMAND_RANKS={clear:RANK_TIERS.admin,abrakadabra:RANK_TIERS.all,aura:RANK_TIERS.all,roast:RANK_TIERS.all,anonymous:RANK_TIERS.superAdmin,bank:RANK_TIERS.vip,ship:RANK_TIERS.vip,welcome:RANK_TIERS.vip,steal:RANK_TIERS.premium,bread:RANK_TIERS.premium,rose:RANK_TIERS.premium,brain:RANK_TIERS.premium};
+const REQUESTED_COMMAND_RANKS={clear:RANK_TIERS.admin,abrakadabra:RANK_TIERS.all,aura:RANK_TIERS.all,roast:RANK_TIERS.all,anonymous:RANK_TIERS.superAdmin,bank:RANK_TIERS.all,convert:RANK_TIERS.all,ship:RANK_TIERS.vip,welcome:RANK_TIERS.vip,steal:RANK_TIERS.premium,bread:RANK_TIERS.premium,rose:RANK_TIERS.premium,brain:RANK_TIERS.premium};
 const REQUESTED_MODE_RANKS={invisible:["COMMISSOR","INSTRUCTOR","COOWNER","OWNER","DEVELOPER"],dead:["INSTRUCTOR","COOWNER","OWNER","DEVELOPER"],ghost:["OWNER","DEVELOPER"]};
 function modeRankAllowed(mode,rank){
   const normalized=String(rank||"").toUpperCase();
@@ -484,6 +484,22 @@ app.use('/api',(req,res,next)=>{
   next();
 });
 
+async function convertDiamonds(u,amount){
+  if(!u||!Number.isSafeInteger(amount)||amount<1||!Number.isSafeInteger(amount*100))return null;
+  const goldAmount=amount*100,client=await pool.connect();let balances;
+  try{
+    await client.query('BEGIN');
+    const updated=await client.query('UPDATE users SET diamonds=diamonds-$1,gold=COALESCE(gold,0)+$2 WHERE id=$3 AND diamonds >= $1 RETURNING diamonds,gold',[amount,goldAmount,Number(u.id)]);
+    if(!updated.rowCount){await client.query('ROLLBACK');return null;}
+    balances={diamonds:Number(updated.rows[0].diamonds||0),gold:Number(updated.rows[0].gold||0)};
+    await client.query(`INSERT INTO wallet_transactions(id,sender_id,currency,amount,type,note) VALUES($1,$2,'DIAMONDS',$3,'CONVERT',$4)`,[id(),Number(u.id),amount,'Converted to '+goldAmount+' Gold']);
+    await client.query('COMMIT');
+  }catch(error){await client.query('ROLLBACK').catch(()=>{});throw error;}finally{client.release();}
+  u.diamonds=balances.diamonds;u.gold=balances.gold;db.goldTransactions ||= [];db.goldTransactions.push({id:id(),time:Date.now(),actor:u.id,userId:u.id,type:'DIAMOND_CONVERSION',delta:goldAmount,diamonds:-amount});
+  io.to('user:'+u.id).emit('wallet:update',{userId:u.id,diamonds:u.diamonds,gold:u.gold});io.to('user:'+u.id).emit('gold:update',{gold:u.gold});
+  return balances;
+}
+
 function safeUser(u){
   if(!u)return null;
 
@@ -516,6 +532,7 @@ function safeUser(u){
     level:u.level||1,
     xp:u.xp||0,
     gold:u.gold||0,
+    diamonds:Number(u.diamonds||0),
     birth_date:u.birthDate||u.dateOfBirth||"",
     birthDate:u.birthDate||u.dateOfBirth||"",
     dateOfBirth:u.dateOfBirth||u.birthDate||"",
@@ -2618,7 +2635,7 @@ app.post("/api/rooms/:id/messages",auth,featureAllowed("send_messages"),upload.s
   const commandMatch=!req.file&&text.match(/^\/([a-z0-9]+)(?:\s+([\s\S]*))?$/i);
   if(commandMatch){
     const typedCommand=commandMatch[1].toLowerCase(),args=String(commandMatch[2]||"").trim();
-    const commandDefs=["rose","bread","brain","welcome","ship","bank","steal","roast","aura","anonymous","abrakadabra","clear"];
+    const commandDefs=["rose","bread","brain","welcome","ship","bank","convert","steal","roast","aura","anonymous","abrakadabra","clear"];
     if(typedCommand==="guide"){
       if(args)return res.status(400).json({error:"Use /guide without extra text."});
       const rank=String(u.rank||"MEMBER").toUpperCase();
@@ -2629,7 +2646,8 @@ app.post("/api/rooms/:id/messages",auth,featureAllowed("send_messages"),upload.s
         brain:{usage:"/brain [username]",description:"Show brain power for a user."},
         welcome:{usage:"/welcome username",description:"Show the Welcome Back popup for a user."},
         ship:{usage:"/ship username",description:"Check compatibility with a user."},
-        bank:{usage:"/bank [username]",description:"Show a user's level, XP and Gold account."},
+        bank:{usage:"/bank",description:"Show your Diamond balance."},
+        convert:{usage:"/convert X",description:"Convert X Diamonds into Gold at 1 Diamond = 100 Gold."},
         steal:{usage:"/steal username",description:"Try the Gold-steal game against a user."},
         roast:{usage:"/roast username",description:"Generate a playful roast for a user."},
         aura:{usage:"/aura username",description:"Generate an aura reading for a user."},
@@ -2642,7 +2660,7 @@ app.post("/api/rooms/:id/messages",auth,featureAllowed("send_messages"),upload.s
       const visible=[];
       for(const key of commandDefs){
         const config=commandSettings[key]||{};
-        const allowedRanks=Array.isArray(config.ranks)?config.ranks:(REQUESTED_COMMAND_RANKS[key]||RANK_TIERS.all);
+        const allowedRanks=(key==="bank"||key==="convert")?RANK_TIERS.all:(Array.isArray(config.ranks)?config.ranks:(REQUESTED_COMMAND_RANKS[key]||RANK_TIERS.all));
         if(rank!=="DEVELOPER"&&!allowedRanks.map(x=>String(x||"").toUpperCase()).includes(rank))continue;
         const item=descriptions[key];if(!item)continue;
         visible.push({name:String(config.name||key),usage:"/"+String(config.name||key)+(item.usage||("/"+key)).slice(("/"+key).length),description:item.description});
@@ -2657,7 +2675,7 @@ app.post("/api/rooms/:id/messages",auth,featureAllowed("send_messages"),upload.s
     const commandSettings=db.settings?.command_management||{};
     const commandKey=commandDefs.find(key=>String(commandSettings[key]?.name||key).toLowerCase()===typedCommand)||typedCommand;
     if(commandDefs.includes(commandKey)){
-      const config=commandSettings[commandKey],allowedRanks=Array.isArray(config?.ranks)?config.ranks:(REQUESTED_COMMAND_RANKS[commandKey]||RANK_TIERS.all);
+      const config=commandSettings[commandKey],allowedRanks=(commandKey==="bank"||commandKey==="convert")?RANK_TIERS.all:(Array.isArray(config?.ranks)?config.ranks:(REQUESTED_COMMAND_RANKS[commandKey]||RANK_TIERS.all));
       const actorRank=String(u.rank||"MEMBER").toUpperCase();
       if(actorRank!=="DEVELOPER"&&!allowedRanks.includes(actorRank))return res.status(403).json({error:"Your rank cannot use this command."});
     }
@@ -2696,24 +2714,37 @@ app.post("/api/rooms/:id/messages",auth,featureAllowed("send_messages"),upload.s
       return res.json({message:notice,command:true,gold:after,delta:outcome});
     }
     if(canonicalCommand==="bank"){
-      let target=u;
-      if(args){
-        const requested=args.replace(/^@/,"").trim().split(/\s+/)[0];
-        target=db.users.find(x=>String(x.username||"").toLowerCase()===requested.toLowerCase());
-        if(!target)return res.status(404).json({error:"That username was not found."});
-      }
+      if(args)return res.status(400).json({error:"Use /bank without a username or extra text."});
       const bankMessage={
         id:id(),roomId:String(r.id),userId:null,username:"Bot",displayName:"Bot",rank:"BOT",
-        system:false,isBot:true,bot:"Bot",bankCommand:true,bankUsername:String(target.username||"User"),
-        bankLevel:Math.max(1,Number(target.level)||1),bankXp:Math.max(0,Number(target.xp)||0),
-        bankGold:Math.max(0,Number(target.gold)||0),
-        text:"BANK ACCOUNT — "+String(target.username||"User"),reactions:{},edited:false,deleted:false,pinned:false,time:Date.now(),delivered:true
+        system:false,isBot:true,bot:"Bot",bankCommand:true,bankUsername:String(u.username||"User"),
+        bankDiamonds:Math.max(0,Number(u.diamonds)||0),
+        text:"DIAMOND BANK — "+String(u.username||"User"),reactions:{},edited:false,deleted:false,pinned:false,time:Date.now(),delivered:true
       };
       await pool.query(`INSERT INTO room_messages(id,room_id,user_id,data,created_at) VALUES($1,$2,NULL,$3::jsonb,NOW())`,
         [bankMessage.id,Number(r.id),JSON.stringify(bankMessage)]);
       db.messages.push(bankMessage);
       io.to("room:"+r.id).emit("message",bankMessage);
       return res.json({message:bankMessage,command:true});
+    }
+    if(canonicalCommand==="convert"){
+      if(!/^\\d+$/.test(args))return res.status(400).json({error:"Use /convert X with a whole number of Diamonds."});
+      const amount=Number(args);
+      if(!Number.isSafeInteger(amount)||amount<1)return res.status(400).json({error:"Enter a valid whole number of Diamonds."});
+      const converted=await convertDiamonds(u,amount);
+      if(!converted)return res.status(400).json({error:"You do not have enough Diamonds."});
+      const walletMessage={
+        id:id(),roomId:String(r.id),userId:null,username:"Bot",displayName:"Bot",rank:"BOT",
+        system:false,isBot:true,bot:"Bot",walletCommand:true,walletCommandTitle:"CONVERSION SUCCESSFUL",
+        walletCommandDiamonds:amount,walletCommandGold:amount*100,
+        text:"Converted "+amount.toLocaleString()+" Diamonds into "+(amount*100).toLocaleString()+" Gold.",
+        reactions:{},edited:false,deleted:false,pinned:false,time:Date.now(),delivered:true
+      };
+      await pool.query(`INSERT INTO room_messages(id,room_id,user_id,data,created_at) VALUES($1,$2,NULL,$3::jsonb,NOW())`,
+        [walletMessage.id,Number(r.id),JSON.stringify(walletMessage)]);
+      db.messages.push(walletMessage);
+      io.to("room:"+r.id).emit("message",walletMessage);
+      return res.json({message:walletMessage,command:true,diamonds:converted.diamonds,gold:converted.gold});
     }
     if(canonicalCommand==="steal"){
       if(!args)return res.status(400).json({error:"Use /steal username."});
@@ -3821,25 +3852,88 @@ async function sendRankChangeBotDM(target,newRank){
   io.to("user:"+target.id).emit("dm",message);
 }
 
-app.get('/api/daily/status',auth,async(req,res)=>{const q=await pool.query(`SELECT last_claim,streak,(last_claim AT TIME ZONE 'UTC')::date AS claim_day FROM daily_rewards WHERE user_id=$1`,[Number(current(req).id)]);const today=new Date().toISOString().slice(0,10);res.json({claimed:!!(q.rowCount&&q.rows[0].claim_day===today),streak:Number(q.rows[0]?.streak||0)});});
+const DAILY_DIAMOND_REWARDS=[2,3,4,5,6,8,15];
+app.get('/api/daily/status',auth,async(req,res)=>{
+  const q=await pool.query(`SELECT last_claim,streak,TO_CHAR(last_claim,'YYYY-MM-DD') AS claim_day FROM daily_rewards WHERE user_id=$1`,[Number(current(req).id)]);
+  const days=await pool.query(`SELECT TO_CHAR((NOW() AT TIME ZONE 'UTC')::date,'YYYY-MM-DD') AS today,TO_CHAR((NOW() AT TIME ZONE 'UTC')::date-1,'YYYY-MM-DD') AS yesterday`);
+  const row=q.rows[0],today=days.rows[0].today,yesterday=days.rows[0].yesterday,claimed=!!(row&&row.claim_day===today);
+  const nextStreak=row&&row.claim_day===yesterday?Number(row.streak||0)+1:claimed?Number(row.streak||0)+1:1;
+  res.json({claimed,streak:Number(row?.streak||0),nextDiamonds:DAILY_DIAMOND_REWARDS[(nextStreak-1)%7],schedule:DAILY_DIAMOND_REWARDS});
+});
 app.post('/api/daily/claim',auth,async(req,res)=>{
-  const u=current(req); if(!u)return res.status(401).json({error:'Login required'});
-  const gold=Number(db.settings?.daily_reward_gold??25), xp=Number(db.settings?.daily_reward_xp??15);
-  const today=new Date().toISOString().slice(0,10);
-  const q=await pool.query(`SELECT last_claim,streak,(last_claim AT TIME ZONE 'UTC')::date AS claim_day FROM daily_rewards WHERE user_id=$1`,[Number(u.id)]);
-  if(q.rowCount && q.rows[0].claim_day===today) return res.status(409).json({error:'Already claimed',claimed:true,streak:Number(q.rows[0].streak||0),gold:u.gold||0,xp:u.xp||0});
-  const previous=q.rows[0]; const streak=previous ? Number(previous.streak||0)+1 : 1;
-  const client=await pool.connect();
+  const u=current(req);if(!u)return res.status(401).json({error:'Login required'});
+  const gold=Math.max(0,Number(db.settings?.daily_reward_gold??25)),xp=Math.max(0,Number(db.settings?.daily_reward_xp??15));
+  const client=await pool.connect();let streak=1,diamonds=DAILY_DIAMOND_REWARDS[0],balances;
   try{
     await client.query('BEGIN');
-    await client.query(`INSERT INTO daily_rewards(user_id,last_claim,streak) VALUES($1,NOW(),$2) ON CONFLICT(user_id) DO UPDATE SET last_claim=NOW(),streak=$2`,[Number(u.id),streak]);
-    await client.query(`UPDATE users SET gold=gold+$1,xp=xp+$2 WHERE id=$3`,[gold,xp,Number(u.id)]);
+    await client.query(`INSERT INTO daily_rewards(user_id,last_claim,streak) VALUES($1,NULL,0) ON CONFLICT(user_id) DO NOTHING`,[Number(u.id)]);
+    const previous=await client.query(`SELECT last_claim,streak,TO_CHAR(last_claim,'YYYY-MM-DD') AS claim_day FROM daily_rewards WHERE user_id=$1 FOR UPDATE`,[Number(u.id)]);
+    const days=await client.query(`SELECT TO_CHAR((NOW() AT TIME ZONE 'UTC')::date,'YYYY-MM-DD') AS today,TO_CHAR((NOW() AT TIME ZONE 'UTC')::date-1,'YYYY-MM-DD') AS yesterday`);
+    const row=previous.rows[0],today=days.rows[0].today,yesterday=days.rows[0].yesterday;
+    if(row?.claim_day===today){await client.query('ROLLBACK');return res.status(409).json({error:'Already claimed today.',claimed:true,streak:Number(row.streak||0),diamonds:Number(u.diamonds||0),gold:Number(u.gold||0),xp:Number(u.xp||0)});}
+    streak=row?.claim_day===yesterday?Number(row.streak||0)+1:1;
+    diamonds=DAILY_DIAMOND_REWARDS[(streak-1)%7];
+    await client.query(`UPDATE daily_rewards SET last_claim=NOW() AT TIME ZONE 'UTC',streak=$2 WHERE user_id=$1`,[Number(u.id),streak]);
+    const updated=await client.query(`UPDATE users SET gold=COALESCE(gold,0)+$1,xp=COALESCE(xp,0)+$2,diamonds=COALESCE(diamonds,0)+$3 WHERE id=$4 RETURNING gold,xp,diamonds`,[gold,xp,diamonds,Number(u.id)]);
+    if(!updated.rowCount)throw new Error('Account not found while claiming daily reward.');
+    balances=updated.rows[0];
+    await client.query(`INSERT INTO wallet_transactions(id,recipient_id,currency,amount,type,note) VALUES($1,$2,'DIAMONDS',$3,'DAILY_REWARD',$4)`,[id(),Number(u.id),diamonds,'Daily login reward · Day '+(((streak-1)%7)+1)]);
     await client.query('COMMIT');
-  }catch(e){await client.query('ROLLBACK');throw e;}finally{client.release();}
-  u.gold=(u.gold||0)+gold; u.xp=(u.xp||0)+xp; u.level=Math.floor(u.xp/(db.settings.xpPerLevel||100))+1; notify(u.id,'gold','Daily reward',`You received ${gold} gold and ${xp} XP.`); save();
-  res.json({ok:true,gold:u.gold,xp:u.xp,amount:gold,xpAmount:xp,streak});
+  }catch(e){await client.query('ROLLBACK').catch(()=>{});console.error('Daily reward claim failed:',e);return res.status(500).json({error:'Could not claim your daily reward. Please try again.'});}finally{client.release();}
+  u.gold=Number(balances.gold||0);u.xp=Number(balances.xp||0);u.diamonds=Number(balances.diamonds||0);u.level=Math.floor(u.xp/(db.settings.xpPerLevel||100))+1;
+  db.goldTransactions ||= [];if(gold)db.goldTransactions.push({id:id(),time:Date.now(),actor:'SYSTEM',userId:u.id,type:'DAILY_REWARD_GOLD',delta:gold});
+  notify(u.id,'wallet','Daily Diamond reward',`You received ${diamonds} Diamonds, ${gold} Gold and ${xp} XP.`);
+  io.to('user:'+u.id).emit('wallet:update',{userId:u.id,diamonds:u.diamonds,gold:u.gold});
+  io.to('user:'+u.id).emit('gold:update',{gold:u.gold});save();
+  res.json({ok:true,diamonds:u.diamonds,diamondAmount:diamonds,gold:u.gold,xp:u.xp,amount:gold,xpAmount:xp,streak,day:((streak-1)%7)+1});
 });
 app.post('/api/rewards/daily',auth,(req,res)=>res.redirect(307,'/api/daily/claim'));
+
+app.get('/api/wallet',auth,async(req,res)=>{
+  const u=current(req);
+  const account=await pool.query('SELECT diamonds,gold FROM users WHERE id=$1',[Number(u.id)]);
+  if(!account.rowCount)return res.status(404).json({error:'Wallet account not found.'});
+  u.diamonds=Number(account.rows[0].diamonds||0);u.gold=Number(account.rows[0].gold||0);
+  const history=await pool.query(`SELECT wt.id,wt.currency,wt.amount::text AS amount,wt.type,wt.note,wt.created_at,wt.sender_id,send.username AS sender_username,wt.recipient_id,receive.username AS recipient_username
+    FROM wallet_transactions wt LEFT JOIN users send ON send.id=wt.sender_id LEFT JOIN users receive ON receive.id=wt.recipient_id
+    WHERE wt.sender_id=$1 OR wt.recipient_id=$1 ORDER BY wt.created_at DESC LIMIT 100`,[Number(u.id)]);
+  res.json({wallet:{diamonds:u.diamonds,gold:u.gold,conversionRate:100},transactions:history.rows.map(row=>({...row,amount:Number(row.amount),created_at:row.created_at})),packages:[{id:'starter',price:1,diamonds:50},{id:'popular',price:2,diamonds:120},{id:'royal',price:3,diamonds:200},{id:'legendary',price:5,diamonds:400}],dailyDiamondRewards:DAILY_DIAMOND_REWARDS});
+});
+app.get('/api/wallet/recipients',auth,(req,res)=>{
+  const q=String(req.query.q||'').trim().replace(/^@/,'').toLowerCase();
+  if(q.length<2)return res.json({users:[]});
+  const users=db.users.filter(v=>String(v.id)!==String(current(req).id)&&String(v.username||'').toLowerCase().includes(q)).slice(0,10).map(safeUser);
+  res.json({users});
+});
+app.post('/api/wallet/convert',auth,async(req,res)=>{
+  const amount=Number(req.body?.amount);
+  if(!Number.isSafeInteger(amount)||amount<1)return res.status(400).json({error:'Enter a whole number of Diamonds to convert.'});
+  try{
+    const result=await convertDiamonds(current(req),amount);
+    if(!result)return res.status(400).json({error:'You do not have enough Diamonds.'});
+    res.json({ok:true,converted:amount,receivedGold:amount*100,wallet:{diamonds:result.diamonds,gold:result.gold}});
+  }catch(error){console.error('Wallet conversion failed:',error);res.status(500).json({error:'Could not convert Diamonds right now.'});}
+});
+app.post('/api/wallet/reward',auth,async(req,res)=>{
+  const actor=current(req),rank=String(actor.rank||'').toUpperCase();
+  if(!['COOWNER','OWNER','DEVELOPER'].includes(rank))return res.status(403).json({error:'Only Coowner, Owner and Developer can grant Diamond rewards.'});
+  const target=findUser(req.body?.userId||req.body?.username),amount=Number(req.body?.amount),reason=cleanText(req.body?.reason||'').trim().slice(0,240);
+  const max=rank==='COOWNER'?10:rank==='OWNER'?100:Number.MAX_SAFE_INTEGER;
+  if(!target||!Number.isSafeInteger(amount)||amount<1||amount>max||!reason)return res.status(400).json({error:rank==='COOWNER'?'Choose a user, reason and a reward from 1 to 10 Diamonds.':rank==='OWNER'?'Choose a user, reason and a reward from 1 to 100 Diamonds.':'Choose a user, valid amount and reason.'});
+  const client=await pool.connect();let diamonds;
+  try{
+    await client.query('BEGIN');
+    const updated=await client.query('UPDATE users SET diamonds=COALESCE(diamonds,0)+$1 WHERE id=$2 RETURNING diamonds',[amount,Number(target.id)]);
+    if(!updated.rowCount){await client.query('ROLLBACK');return res.status(404).json({error:'Recipient account not found.'});}
+    diamonds=Number(updated.rows[0].diamonds);
+    await client.query(`INSERT INTO wallet_transactions(id,sender_id,recipient_id,currency,amount,type,note) VALUES($1,$2,$3,'DIAMONDS',$4,'STAFF_REWARD',$5)`,[id(),Number(actor.id),Number(target.id),amount,reason]);
+    await client.query('COMMIT');
+  }catch(error){await client.query('ROLLBACK').catch(()=>{});console.error('Staff Diamond reward failed:',error);return res.status(500).json({error:'Could not grant Diamonds.'});}finally{client.release();}
+  target.diamonds=diamonds;io.to('user:'+target.id).emit('wallet:update',{userId:target.id,diamonds:target.diamonds,gold:target.gold||0});
+  notify(target.id,'wallet','Diamonds received',`The MC Staff Team awarded you ${amount} Diamonds. Reason: ${reason}`);
+  log(actor,'DIAMOND_STAFF_REWARD',target.username,{amount,reason});
+  res.json({ok:true,recipient:safeUser(target),amount,reason});
+});
 
 app.get('/api/achievements/:userId',auth,async(req,res)=>{const {rows}=await pool.query(`SELECT id,user_id,name,icon,earned_at FROM achievements WHERE user_id=$1 ORDER BY earned_at DESC,id DESC`,[Number(req.params.userId)]);res.json({achievements:rows});});
 app.get('/api/achievements',auth,async(req,res)=>{const {rows}=await pool.query(`SELECT id,user_id,name,icon,earned_at FROM achievements WHERE user_id=$1 ORDER BY earned_at DESC,id DESC`,[Number(current(req).id)]);res.json({achievements:rows});});
@@ -6602,15 +6696,36 @@ app.put('/api/friends/:id/nickname',auth,(req,res)=>{
 });
 app.delete('/api/friends/:id/nickname',auth,(req,res)=>{const u=current(req);u.nicknames ||= {};delete u.nicknames[req.params.id];save();res.json({ok:true});});
 
-app.post('/api/users/:id/gold/share',auth,(req,res)=>{
-  const u=current(req), v=findUser(req.params.id), amount=Math.floor(Number(req.body.amount));
-  if(!featureGrantAllowed(u,'share_gold'))return res.status(403).json({error:'Gold sharing permission required.'});
-  if(!v||v.id===u.id||!Number.isFinite(amount)||amount<1)return res.status(400).json({error:'Invalid recipient or amount.'});
-  if((u.gold||0)<amount)return res.status(400).json({error:'Not enough gold.'});
-  u.gold=(u.gold||0)-amount; v.gold=(v.gold||0)+amount;
-  db.goldTransactions.push({id:id(),time:Date.now(),actor:u.username,userId:u.id,type:'SHARE',delta:-amount,to:v.id}); db.goldTransactions.push({id:id(),time:Date.now(),actor:u.username,userId:v.id,type:'RECEIVE',delta:amount,from:u.id});
-  save(); log(u,'GOLD_SHARE',v.username,{amount}); io.to('user:'+v.id).emit('gold:update',{gold:v.gold}); io.to('user:'+u.id).emit('gold:update',{gold:u.gold}); notify(v.id,'gold','Gold received',`@${u.username} sent you ${amount} gold.`); res.json({ok:true,remainingGold:u.gold});
-});
+async function walletTransferHandler(req,res){
+  const u=current(req),v=findUser(req.params.id),currency=String(req.body?.currency||'GOLD').toUpperCase(),amount=Number(req.body?.amount),note=cleanText(req.body?.note||'').trim().slice(0,160);
+  if(!v||String(v.id)===String(u.id)||!['GOLD','DIAMONDS'].includes(currency)||!Number.isSafeInteger(amount)||amount<1)return res.status(400).json({error:'Choose another member, a currency and a whole positive amount.'});
+  const dailyLimit=currency==='DIAMONDS'?100:10000,column=currency==='DIAMONDS'?'diamonds':'gold',client=await pool.connect();
+  let senderBalance,recipientBalance;
+  try{
+    await client.query('BEGIN');
+    await client.query('SELECT id FROM users WHERE id IN ($1,$2) ORDER BY id FOR UPDATE',[Number(u.id),Number(v.id)]);
+    const sent=await client.query(`SELECT COALESCE(SUM(amount),0)::text AS total FROM wallet_transactions WHERE sender_id=$1 AND type='TRANSFER' AND currency=$2 AND created_at >= (date_trunc('day',NOW() AT TIME ZONE 'UTC') AT TIME ZONE 'UTC')`,[Number(u.id),currency]);
+    const used=Number(sent.rows[0]?.total||0);
+    if(used+amount>dailyLimit){await client.query('ROLLBACK');return res.status(429).json({error:`Your daily ${currency==='DIAMONDS'?'Diamond':'Gold'} sharing limit is ${dailyLimit.toLocaleString()}. You have ${Math.max(0,dailyLimit-used).toLocaleString()} remaining today.`});}
+    const debit=await client.query(`UPDATE users SET ${column}=${column}-$1 WHERE id=$2 AND ${column}>=$1 RETURNING ${column}`,[amount,Number(u.id)]);
+    if(!debit.rowCount){await client.query('ROLLBACK');return res.status(400).json({error:`You do not have enough ${currency==='DIAMONDS'?'Diamonds':'Gold'}.`});}
+    const credit=await client.query(`UPDATE users SET ${column}=COALESCE(${column},0)+$1 WHERE id=$2 RETURNING ${column}`,[amount,Number(v.id)]);
+    if(!credit.rowCount){await client.query('ROLLBACK');return res.status(404).json({error:'Recipient account no longer exists.'});}
+    senderBalance=Number(debit.rows[0][column]);recipientBalance=Number(credit.rows[0][column]);
+    await client.query(`INSERT INTO wallet_transactions(id,sender_id,recipient_id,currency,amount,type,note) VALUES($1,$2,$3,$4,$5,'TRANSFER',$6)`,[id(),Number(u.id),Number(v.id),currency,amount,note]);
+    await client.query('COMMIT');
+  }catch(error){await client.query('ROLLBACK').catch(()=>{});console.error('Wallet transfer failed:',error);return res.status(500).json({error:'Could not transfer currency. Please try again.'});}finally{client.release();}
+  if(currency==='DIAMONDS'){u.diamonds=senderBalance;v.diamonds=recipientBalance;}else{u.gold=senderBalance;v.gold=recipientBalance;db.goldTransactions ||= [];db.goldTransactions.push({id:id(),time:Date.now(),actor:u.id,userId:u.id,type:'WALLET_TRANSFER_SENT',delta:-amount,to:v.id},{id:id(),time:Date.now(),actor:u.id,userId:v.id,type:'WALLET_TRANSFER_RECEIVED',delta:amount,from:u.id});}
+  io.to('user:'+u.id).emit('wallet:update',{userId:u.id,diamonds:u.diamonds||0,gold:u.gold||0});
+  io.to('user:'+v.id).emit('wallet:update',{userId:v.id,diamonds:v.diamonds||0,gold:v.gold||0});
+  if(currency==='GOLD'){io.to('user:'+u.id).emit('gold:update',{gold:u.gold});io.to('user:'+v.id).emit('gold:update',{gold:v.gold});}
+  const label=currency==='DIAMONDS'?'Diamonds':'Gold';
+  notify(v.id,'wallet',label+' received',`@${u.username} sent you ${amount.toLocaleString()} ${label}.${note?' Note: '+note:''}`);
+  log(u,'WALLET_TRANSFER',v.username,{currency,amount,note});
+  res.json({ok:true,from:safeUser(u),to:safeUser(v),currency,amount});
+}
+app.post('/api/users/:id/wallet/share',auth,walletTransferHandler);
+app.post('/api/users/:id/gold/share',auth,(req,res)=>{req.body={...(req.body||{}),currency:'GOLD'};return walletTransferHandler(req,res);});
 
 const DEFAULT_GIFS=[
   {url:'https://media.giphy.com/media/ICOgUNjpvO0PC/giphy.gif',preview:'https://media.giphy.com/media/ICOgUNjpvO0PC/200.gif',title:'Happy'},
