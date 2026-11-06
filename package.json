@@ -6,7 +6,7 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "check": "node scripts/check-security.js && node --check server.js && node --check db.js && node --check public/app.js"
+    "check": "node scripts/check-security.js && node --check server.js && node --check db.js && node --check entertainment.js && node --check public/app.js && node --check public/entertainment.js"
   },
   "engines": {
     "node": ">=20"
