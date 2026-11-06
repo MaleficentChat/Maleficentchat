@@ -6405,3 +6405,70 @@ html,body,#app,.app,.main,.view,#profile,#viewProfile {
 #viewRooms.chatting .msg:not(.dm-msg) .message-author{color:var(--accent-2)!important}
 #viewRooms.chatting .msg:not(.dm-msg) .msg-time-side,
 #viewRooms.chatting .msg:not(.dm-msg) .message-more-button{color:var(--muted)!important}
+
+
+/* FINAL PERSONAL-THEME OVERRIDES
+   These selectors intentionally match the specificity of legacy fixed-color
+   bubble rules. Keep this block last so personal themes replace, not tint,
+   the old lavender/charcoal/green palette. */
+html[data-theme] #viewRooms.chatting .chat-wrap,
+html[data-theme] #viewRooms.chatting .chat-card {
+  background:var(--bg)!important;
+  background-image:none!important;
+}
+html[data-theme] #viewRooms.chatting .chat-head,
+html[data-theme] #viewRooms.chatting .room-quick-nav,
+html[data-theme] #viewRooms.chatting .announcement,
+html[data-theme] #viewRooms.chatting .replybar,
+html[data-theme] #viewRooms.chatting .typing,
+html[data-theme] #viewRooms.chatting .composer {
+  background:var(--panel-2)!important;
+  background-image:none!important;
+  border-color:var(--border-strong)!important;
+}
+html[data-theme] #viewRooms.chatting .messages {
+  background:var(--bg)!important;
+  background-image:none!important;
+}
+html[data-theme] #viewRooms.chatting .composer #message,
+html[data-theme] #viewRooms.chatting .composer .chat-tools-toggle,
+html[data-theme] #viewRooms.chatting .composer .chat-tools-drawer {
+  background:var(--panel-3)!important;
+  color:var(--text)!important;
+  border-color:var(--border-strong)!important;
+}
+html[data-theme] #viewRooms.chatting .composer .send {
+  background:var(--accent)!important;
+  color:#fff!important;
+  border-color:var(--accent)!important;
+}
+html[data-theme] #viewRooms.chatting .msg:not(.dm-msg).theirs .msg-text {
+  background:var(--bubble)!important;
+  background-image:none!important;
+  border:1px solid var(--accent)!important;
+  border-left:5px solid var(--accent)!important;
+  color:var(--text)!important;
+}
+html[data-theme] #viewRooms.chatting .msg:not(.dm-msg).own-message .msg-text {
+  background:var(--mine)!important;
+  background-image:none!important;
+  border:1px solid var(--accent-2)!important;
+  border-left:1px solid var(--accent-2)!important;
+  border-right:5px solid var(--accent-2)!important;
+  color:#fff!important;
+}
+html[data-theme] #viewRooms.chatting .msg:not(.dm-msg) .quoted {
+  background:var(--panel-3)!important;
+  background-image:none!important;
+  border-color:var(--accent)!important;
+  color:var(--text)!important;
+}
+html[data-theme] #viewRooms.chatting .msg:not(.dm-msg) .quoted-text,
+html[data-theme] #viewRooms.chatting .msg:not(.dm-msg) .message-author {
+  color:var(--text)!important;
+}
+html[data-theme] #viewRooms.chatting .msg:not(.dm-msg) .message-avatar-button .avatar {
+  background:var(--panel-3)!important;
+  border-color:var(--accent)!important;
+  box-shadow:none!important;
+}
