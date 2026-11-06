@@ -1744,6 +1744,39 @@ function renderRooms() {
   renderRoomQuickNav();
 }
 
+window.__mcRoomCodeTokens=window.__mcRoomCodeTokens||{};
+let lastResolvedRoomCode="";
+async function resolveSecretRoomCode(rawValue){
+  const digits=String(rawValue||"").replace(/\D/g,"");
+  const feedback=$("roomCodeFeedback");
+  if(digits.length!==10||digits===lastResolvedRoomCode)return;
+  lastResolvedRoomCode=digits;
+  if(feedback)feedback.textContent="Checking code…";
+  try{
+    const result=await api("/api/rooms/code/resolve",{method:"POST",body:JSON.stringify({code:digits})});
+    if(!result?.room?.id||!result.inviteToken)throw new Error("The server did not return room access.");
+    const room={...result.room};
+    window.__mcRoomCodeTokens[String(room.id)]=String(result.inviteToken);
+    state.rooms=[...(state.rooms||[]).filter(item=>String(item.id)!==String(room.id)),room];
+    if($("roomSearch"))$("roomSearch").value="";
+    if(feedback)feedback.textContent="Found: "+String(room.name||"Secret room")+" · available below";
+    renderRooms();
+    toast("Secret room found. Tap it in the room list to enter.");
+  }catch(error){
+    if(feedback)feedback.textContent=error.message||"No room found for that code.";
+    toast(error.message||"No room found for that code.");
+    lastResolvedRoomCode="";
+  }
+}
+function handleRoomCodeInput(input){
+  const digits=String(input.value||"").replace(/\D/g,"").slice(0,10);
+  input.value=digits.length>5?digits.slice(0,5)+" "+digits.slice(5):digits;
+  const feedback=$("roomCodeFeedback");
+  if(feedback)feedback.textContent=digits.length===10?"Checking code…":"Enter the 10-digit code";
+  if(digits.length<10)lastResolvedRoomCode="";
+  if(digits.length===10)resolveSecretRoomCode(digits);
+}
+
 function toggleHiddenRoomsView(){
   if(!["OWNER","DEVELOPER"].includes(String(state.user?.rank||"").toUpperCase()))return;
   state.showHiddenRoomsOnly=!state.showHiddenRoomsOnly;
@@ -1784,6 +1817,7 @@ async function deleteRoomById(id){
 }
 
 $("roomSearch").oninput = renderRooms;
+$("roomCodeSearch")?.addEventListener("input",event=>handleRoomCodeInput(event.currentTarget));
 
 async function loadRoomAnnouncements(roomId){
   try{
@@ -1844,10 +1878,11 @@ async function joinRoom(id) {
     const roomInvite=roomInviteFromHash();
     const access=await api(`/api/rooms/${id}/join`, {
       method: "POST",
-      body: JSON.stringify({ password,inviteToken:roomInvite?.roomId===id?roomInvite.inviteToken:"" })
+      body: JSON.stringify({ password,inviteToken:roomInvite?.roomId===id?roomInvite.inviteToken:(window.__mcRoomCodeTokens?.[id]||"") })
     });
 
     safeStorage.setItem('mc_room_join',JSON.stringify({roomId:String(id),joinToken:access.joinToken}));
+    if(window.__mcRoomCodeTokens)delete window.__mcRoomCodeTokens[id];
     if(roomInvite?.roomId===id)history.replaceState(null,"",location.pathname+location.search);
 
     if (
@@ -2521,7 +2556,7 @@ function showStefanOptions(){
     canClear ? `<button class="stefan-option" onclick="clearRoom();closeStefanCard()">🧹 Clear room</button>` : "",
     `<button class="stefan-option" onclick="postRoomAnnouncement();closeStefanCard()">📢 Announcement</button>`,
     `<button class="stefan-option" onclick="showPinnedMessages();closeStefanCard()">📌 Pinned messages</button>`,
-    `<button class="stefan-option" onclick="showInvite();closeStefanCard()">🔗 Invite link</button>`,
+    `<button class="stefan-option" onclick="showInvite();closeStefanCard()">🔐 Room code</button>`,
     `<button class="stefan-option" onclick="openCommandGuide();closeStefanCard()">⌘ Command Guide</button>`,
     canEdit ? `<button class="stefan-option" onclick="editRoom();closeStefanCard()">✏️ Edit room</button>` : "",
     canDelete ? `<button class="stefan-option danger" onclick="deleteRoom();closeStefanCard()">🗑️ Delete room</button>` : ""
@@ -6211,7 +6246,7 @@ document.addEventListener("click", event => {
     const actions = [
       ["pinned","📌 Pinned messages"],
       ["youtube","▶️ YouTube"],
-      ["invite","🔗 Invite link"],
+      ["invite","🔐 Room code"],
       ["theme","🎨 Room Theme"]
     ];
     try { if (can("COMMISSOR")) actions.unshift(["announcement","📢 Room announcement"]); } catch (_) {}
@@ -6399,36 +6434,14 @@ async function deleteRoom() {
 }
 
 async function showInvite(roomOrId=state.currentRoom) {
-  const room = roomOrId&&typeof roomOrId==="object"
-    ? roomOrId
-    : state.rooms.find(r => String(r.id) === String(roomOrId));
-
-  if (!room) return;
-
-  let inviteToken="",expiresAt=null;
-  if(room.public===false){
-    try{const result=await api(`/api/rooms/${encodeURIComponent(room.id)}/invites`,{method:"POST",body:JSON.stringify({})});inviteToken=String(result.inviteToken||"");expiresAt=result.expiresAt||null;}
-    catch(error){toast(error.message||"Could not create this room invitation.");return;}
-    if(!inviteToken){toast("Could not create this room invitation.");return;}
-  }
-  const inviteUrl=`${location.origin}/#room=${encodeURIComponent(room.id)}${inviteToken?`&invite=${encodeURIComponent(inviteToken)}`:""}`;
-
-  modal(`
-    <h2>Room invite</h2>
-    ${expiresAt?`<p class="muted">This private-room invite expires ${esc(new Date(expiresAt).toLocaleString())}.</p>`:""}
-
-    <input id="roomInviteUrl"
-      value="${esc(inviteUrl)}"
-      readonly
-    >
-    <div class="toolbar"><button type="button" class="primary" id="copyRoomInvite">Copy invite link</button></div>
-  `);
-  $("copyRoomInvite")?.addEventListener("click",async()=>{
-    try{await navigator.clipboard.writeText(inviteUrl);toast("Invite link copied.");}
-    catch{const field=$("roomInviteUrl");field?.select();toast("Invite link selected. Copy it from the field.");}
-  });
+  const room=roomOrId&&typeof roomOrId==="object"?roomOrId:state.rooms.find(r=>String(r.id)===String(roomOrId));
+  if(!room)return;
+  if(room.public!==false){modal("<h2>Public room</h2><p class=\"muted\">This room is public and does not need an access code.</p>");return;}
+  const code=String(room.roomCode||"").trim();
+  if(!/^\\d{5} \\d{5}$/.test(code)){toast("Room code is not available yet. Refresh the room list and try again.");return;}
+  modal("<div class=\"room-code-share\"><h2>🔐 Secret room code</h2><p class=\"muted\">Share this code with people you want to invite. They can enter it in the Rooms & Community code bar.</p><div class=\"room-code-display\" id=\"roomCodeDisplay\">"+esc(code)+"</div><div class=\"toolbar\"><button type=\"button\" class=\"primary\" id=\"copyRoomCode\">Copy room code</button></div></div>");
+  $("copyRoomCode")?.addEventListener("click",async()=>{try{await navigator.clipboard.writeText(code);toast("Room code copied.");}catch{toast("Room code: "+code);}});
 }
-
 /* ---------------- CREATE ROOM ---------------- */
 
 function openRoomCreationModal() {
