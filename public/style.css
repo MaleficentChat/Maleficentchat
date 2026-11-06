@@ -6472,3 +6472,23 @@ html[data-theme] #viewRooms.chatting .msg:not(.dm-msg) .message-avatar-button .a
   border-color:var(--accent)!important;
   box-shadow:none!important;
 }
+
+
+/* Theme palette owns the current user's sender name and message bubble colors.
+   The sender markup contains inline legacy username colors, so override those
+   only for the signed-in user's own messages; other users keep their choices. */
+html[data-theme] #viewRooms.chatting .msg.own-message .message-author,
+html[data-theme] #viewRooms.chatting .msg.own-message .tag-author {
+  color:var(--accent-2)!important;
+}
+html[data-theme] #viewRooms.chatting .msg.own-message .msg-text {
+  background:var(--mine)!important;
+  background-image:none!important;
+  border-color:var(--accent-2)!important;
+  color:#fff!important;
+}
+html[data-theme] #viewRooms.chatting .msg.theirs:not(.own-message) .msg-text {
+  background:var(--bubble)!important;
+  background-image:none!important;
+  border-color:var(--accent)!important;
+}
