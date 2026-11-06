@@ -2283,26 +2283,18 @@ function messageHTML(message) {
           <div class="message-actions-menu hidden" id="message-menu-${esc(message.id)}" role="menu" aria-label="Message actions">
             <button class="message-menu-item" role="menuitem" onclick="replyMsg('${esc(message.id)}');closeMessageMenus()"><span class="menu-icon">↩</span><span><b>Quote</b><small>Reply to this message</small></span></button>
             <button class="message-menu-item" role="menuitem" onclick="hideMsg('${esc(message.id)}');closeMessageMenus()"><span class="menu-icon">◉</span><span><b>Hide</b><small>Hide from my screen</small></span></button>
-            ${canFeature("report_message")?`<button class="message-menu-item" role="menuitem" onclick="reportMsg('${esc(message.id)}');closeMessageMenus()"><span class="menu-icon">!</span><span><b>Report</b><small>Report this content</small></span></button>`:""}
-            ${canFeature("react_message")?`<button class="message-menu-item" role="menuitem" onclick="toggleReactionPicker('${esc(message.id)}');closeMessageMenus()"><span class="menu-icon">☺</span><span><b>React</b><small>Add an emoji reaction</small></span></button>`:""}
-            ${canFeature("save_message")?`<button class="message-menu-item" role="menuitem" onclick="saveMsg('${esc(message.id)}');closeMessageMenus()"><span class="menu-icon">♧</span><span><b>Save</b><small>Keep in saved messages</small></span></button>`:""}
-            ${message.text ? `<button class="message-menu-item" role="menuitem" onclick="copyMsg('${esc(message.id)}');closeMessageMenus()"><span class="menu-icon">▢</span><span><b>Copy text</b><small>Copy message to clipboard</small></span></button>` : ""}
-            ${message.text ? `<button class="message-menu-item" role="menuitem" onclick="translateMessageText(&quot;${esc(message.id)}&quot;,&quot;room&quot;);closeMessageMenus()"><span class="menu-icon">文</span><span><b>Translate</b><small>Detect language · English</small></span></button>` : ""}
-            ${
-              String(message.userId) === String(state.user.id) && canFeature("edit_message")
-              ? `<button class="message-menu-item" role="menuitem" onclick="editMsg('${esc(message.id)}');closeMessageMenus()"><span class="menu-icon">✎</span><span><b>Edit</b><small>Change your message</small></span></button>`
-              : ""
-            }
-            ${
-              (String(message.userId) === String(state.user?.id) && canFeature("delete_own_messages")) || canFeature("delete_message")
+            ${canFeature("delete_message") || (String(message.userId) === String(state.user?.id) && canFeature("delete_own_messages"))
               ? `<button class="message-menu-item danger" role="menuitem" onclick="deleteMsg('${esc(message.id)}');closeMessageMenus()"><span class="menu-icon">×</span><span><b>Delete</b><small>Remove this message</small></span></button>`
-              : ""
-            }
-            ${
-              canFeature("pin_message")
-              ? `<button class="message-menu-item" role="menuitem" onclick="pinMsg('${esc(message.id)}');closeMessageMenus()"><span class="menu-icon">⌖</span><span><b>${message.pinned ? "Unpin" : "Pin"}</b><small>${message.pinned ? "Remove from pinned messages" : "Pin for the room"}</small></span></button>`
-              : ""
-            }
+              : canFeature("report_message") ? `<button class="message-menu-item" role="menuitem" onclick="reportMsg('${esc(message.id)}');closeMessageMenus()"><span class="menu-icon">!</span><span><b>Report</b><small>Report this content</small></span></button>` : ""}
+            <div class="message-more-wrap">
+              <button class="message-menu-item message-more-trigger" type="button" aria-haspopup="true" aria-expanded="false" onclick="event.stopPropagation();toggleMessageMore('${esc(message.id)}')"><span class="menu-icon">⋯</span><span><b>More</b><small>More message options</small></span><span class="more-chevron">›</span></button>
+              <div class="message-more-submenu hidden" id="message-more-${esc(message.id)}" role="menu" aria-label="More message options">
+                ${String(message.userId) === String(state.user.id) && canFeature("edit_message") ? `<button class="message-menu-item" role="menuitem" onclick="editMsg('${esc(message.id)}');closeMessageMenus()"><span class="menu-icon">✎</span><span><b>Edit</b></span></button>` : ""}
+                ${canFeature("save_message") ? `<button class="message-menu-item" role="menuitem" onclick="saveMsg('${esc(message.id)}');closeMessageMenus()"><span class="menu-icon">♧</span><span><b>Save</b></span></button>` : ""}
+                ${message.text ? `<button class="message-menu-item" role="menuitem" onclick="translateMessageText(&quot;${esc(message.id)}&quot;,&quot;room&quot;);closeMessageMenus()"><span class="menu-icon">文</span><span><b>Translate</b></span></button>` : ""}
+                ${canFeature("pin_message") ? `<button class="message-menu-item" role="menuitem" onclick="pinMsg('${esc(message.id)}');closeMessageMenus()"><span class="menu-icon">⌖</span><span><b>${message.pinned ? "Unpin" : "Pin"}</b></span></button>` : ""}
+              </div>
+            </div>
           </div>
         </div>
 
@@ -2350,8 +2342,17 @@ async function copyMsg(id){
   }
 }
 
+function toggleMessageMore(messageId){
+  const menu=document.getElementById("message-more-"+messageId);
+  if(!menu)return;
+  const willOpen=menu.classList.contains("hidden");
+  document.querySelectorAll(".message-more-submenu").forEach(item=>item.classList.add("hidden"));
+  document.querySelectorAll(".message-more-trigger").forEach(item=>item.setAttribute("aria-expanded","false"));
+  if(willOpen){menu.classList.remove("hidden");menu.parentElement?.querySelector(".message-more-trigger")?.setAttribute("aria-expanded","true");}
+}
 function closeMessageMenus(){
-  document.querySelectorAll(".message-actions-menu").forEach(m=>m.classList.add("hidden"));
+  document.querySelectorAll(".message-actions-menu,.message-more-submenu").forEach(m=>m.classList.add("hidden"));
+  document.querySelectorAll(".message-more-trigger").forEach(b=>b.setAttribute("aria-expanded","false"));
 }
 function toggleMessageMenu(id){
   const menu=$(`message-menu-${id}`);
