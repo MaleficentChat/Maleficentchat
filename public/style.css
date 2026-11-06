@@ -6703,3 +6703,16 @@ html[data-theme] .settings-tab.active {
 #topFriendsDropdown .friend-hub-row .toolbar button{flex:1 1 auto;min-width:0}
 #topFriendsDropdown .friend-hub-search{position:sticky;top:48px;z-index:1;margin:5px 0 8px;width:100%}
 #topFriendsDropdown .friend-hub-find{width:100%;margin-top:6px}
+
+
+/* Compact private-message controls live in the header dropdown; no full inbox page. */
+#topMessagesDropdown .dm-header-filters{display:flex;align-items:center;justify-content:space-between;gap:4px;padding:3px 0 9px;border-bottom:1px solid var(--border)}
+#topMessagesDropdown .dm-header-filter{display:flex;flex:1;min-width:0;align-items:center;justify-content:center;gap:3px;flex-direction:column;padding:5px 2px;border:1px solid transparent;border-radius:8px;background:transparent;color:var(--muted);font-size:12px;cursor:pointer}
+#topMessagesDropdown .dm-header-filter>span{font-size:15px;line-height:1.2}
+#topMessagesDropdown .dm-header-filter>small{font-size:10px;line-height:1.2}
+#topMessagesDropdown .dm-header-filter.active{color:var(--accent-2);border-color:var(--accent);background:color-mix(in srgb,var(--accent) 12%,transparent)}
+#topMessagesDropdown .dm-header-conversations{display:grid;gap:5px;padding-top:7px}
+#topMessagesDropdown .dm-header-row{display:flex;align-items:center;gap:4px;min-width:0;border:1px solid var(--border);border-radius:10px;padding:3px;background:rgba(255,255,255,.02)}
+#topMessagesDropdown .dm-header-item{flex:1;min-width:0;border:0!important;background:transparent!important;margin:0!important;padding:7px!important;text-align:left}
+#topMessagesDropdown .dm-header-actions{display:flex;gap:2px;flex:0 0 auto}
+#topMessagesDropdown .dm-header-actions .mini{min-width:27px;padding:5px 4px;font-size:12px}
