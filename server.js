@@ -501,6 +501,15 @@ async function convertDiamonds(u,amount){
   return balances;
 }
 
+function ageFromBirthDate(value){
+  const raw=String(value||"").trim();
+  if(!/^\\d{4}-\\d{2}-\\d{2}$/.test(raw))return null;
+  const dob=new Date(raw+"T00:00:00Z");
+  if(Number.isNaN(dob.getTime())||dob.toISOString().slice(0,10)!==raw)return null;
+  const now=new Date();let age=now.getUTCFullYear()-dob.getUTCFullYear();
+  if(now.getUTCMonth()<dob.getUTCMonth()||(now.getUTCMonth()===dob.getUTCMonth()&&now.getUTCDate()<dob.getUTCDate()))age--;
+  return age;
+}
 function safeUser(u){
   if(!u)return null;
 
@@ -537,6 +546,7 @@ function safeUser(u){
     xp:u.xp||0,
     gold:u.gold||0,
     diamonds:Number(u.diamonds||0),
+    age:ageFromBirthDate(u.birthDate||u.dateOfBirth),
     birth_date:u.birthDate||u.dateOfBirth||"",
     birthDate:u.birthDate||u.dateOfBirth||"",
     dateOfBirth:u.dateOfBirth||u.birthDate||"",
@@ -792,7 +802,8 @@ function verifyRoomInviteToken(token,room){
 }
 function roomJoinPolicyAllowed(user,room,{inviteToken="",existingJoinToken=false}={}){
   if(!user||!room||user.banned===true||Number(user.kickedUntil)>Date.now())return false;
-  const isMain=!!room.isDefault||/^main room$/i.test(String(room.name||"").trim());
+  if(!roomAgeAllowed(user,room))return false;
+  const isMain=!!room.isDefault||/^(teenage chat|adult chat)$/i.test(String(room.name||"").trim());
   const state=roomStaffStore(),roomKey=String(room.id),userKey=String(user.id);
   if(state.room_blocks[roomKey]?.[userKey])return false;
   const roomKick=state.room_kicks[roomKey]?.[userKey];
@@ -1603,7 +1614,7 @@ app.post(
       });
     }
 
-    {const dobDate=new Date(normalizedDob+"T00:00:00Z");if(Number.isNaN(dobDate.getTime()) || dobDate>new Date()) return res.status(400).json({error:"Please enter a valid date of birth."});}
+    {const age=ageFromBirthDate(normalizedDob);if(age===null)return res.status(400).json({error:"Please enter a valid date of birth."});if(age<13||age>99)return res.status(403).json({error:"Maleficent Chat is available to users aged 13–99."});}
 
     const emailTaken=await pool.query(`SELECT id FROM users WHERE LOWER(email)=LOWER($1) LIMIT 1`,[normalizedEmail]);
     if(emailTaken.rows.length) return res.status(409).json({error:"Email is already registered."});
@@ -2176,32 +2187,30 @@ app.get('/api/users/blocked',auth,(req,res)=>{
 });
 
 app.get("/api/rooms",auth,async(req,res)=>{
-  // Ensure the canonical Main Room exists without migrating or deleting any
-  // other room during an ordinary room-list request.
-  await pool.query(`INSERT INTO rooms(name,created_by,icon,description,category,is_public,rank_required,invite_token,min_age,max_age,is_default)
-    VALUES ('Main Room',(SELECT id FROM users WHERE username='Maleficent'),'🏠','The main Maleficent Chat community room.','Community',true,'MEMBER','main-room',0,120,true)
-    ON CONFLICT(name) DO NOTHING`);
-  await pool.query(`INSERT INTO rooms(name,created_by,icon,description,category,is_public,rank_required,invite_token,min_age,max_age,is_default)
-    VALUES ('Main Room',(SELECT id FROM users WHERE username='Maleficent'),'🏠','The main Maleficent Chat community room.','Community',true,'MEMBER','main-room',0,120,true)
-    ON CONFLICT(name) DO NOTHING`);
-  await pool.query(`UPDATE rooms SET is_default=true WHERE name='Main Room'`);
-  await pool.query(`UPDATE rooms SET is_default=false WHERE name <> 'Main Room'`);
+  // Rename Main Room in place so the existing room ID, messages and settings survive.
+  await pool.query("UPDATE rooms SET name='Teenage Chat',icon='🏠',description='The community room for members aged 13–19.',min_age=13,max_age=19,is_default=true WHERE name='Main Room' AND NOT EXISTS(SELECT 1 FROM rooms WHERE name='Teenage Chat')");
+  await pool.query("INSERT INTO rooms(name,created_by,icon,description,category,is_public,rank_required,invite_token,min_age,max_age,is_default) VALUES ('Teenage Chat',(SELECT id FROM users WHERE username='Maleficent'),'🏠','The community room for members aged 13–19.','Community',true,'MEMBER','teenage-room',13,19,true) ON CONFLICT(name) DO UPDATE SET min_age=13,max_age=19,is_default=true");
+  await pool.query("INSERT INTO rooms(name,created_by,icon,description,category,is_public,rank_required,invite_token,min_age,max_age,is_default) VALUES ('Adult Chat',(SELECT id FROM users WHERE username='Maleficent'),'🌙','The community room for members aged 20–99.','Community',true,'MEMBER','adult-room',20,99,true) ON CONFLICT(name) DO UPDATE SET min_age=20,max_age=99,is_default=true");
+  await pool.query("UPDATE rooms SET is_default=true WHERE name IN ('Teenage Chat','Adult Chat')");
+  await pool.query("UPDATE rooms SET is_default=false WHERE name NOT IN ('Teenage Chat','Adult Chat')");
   await pool.query("UPDATE rooms SET room_code=LPAD(FLOOR(RANDOM()*10000000000)::BIGINT::TEXT,10,$$0$$) WHERE is_public=false AND room_code IS NULL");
-  const {rows}=await pool.query(`SELECT r.*,u.username AS creator FROM rooms r LEFT JOIN users u ON r.created_by=u.id ORDER BY r.is_default DESC,r.created_at ASC,r.id ASC`);
-  if(!rows.length) return res.status(503).json({error:'Rooms are not initialized yet. Please retry in a moment.',rooms:[]});
+  const {rows}=await pool.query("SELECT r.*,u.username AS creator FROM rooms r LEFT JOIN users u ON r.created_by=u.id ORDER BY r.is_default DESC,r.created_at ASC,r.id ASC");
+  if(!rows.length)return res.status(503).json({error:'Rooms are not initialized yet. Please retry in a moment.',rooms:[]});
   const viewer=current(req);
-  const allRooms=rows.map(r=>{const room={id:String(r.id),name:r.name,icon:r.icon||"💬",description:r.description||"",category:r.category||"Community",public:r.is_public!==false,passwordHash:r.password_hash||null,rankRequired:String(r.rank_required||"MEMBER").toUpperCase(),limit:Number(r.room_limit||100),slowMode:Number(r.slow_mode||0),announcement:r.announcement||"",ownerId:r.created_by?String(r.created_by):null,banner:r.banner||"",inviteToken:r.invite_token||"",creator:r.creator||null,isDefault:!!r.is_default,minAge:Number(r.min_age??0),maxAge:Number(r.max_age??120),friendsOnly:!!(db.settings?.room_access?.[String(r.id)]?.friendsOnly),roomTheme:String(db.settings?.room_themes?.[String(r.id)]||"obsidian"),locked:!!r.password_hash,roomCode:r.is_public===false?formatRoomCode(r.room_code):null,onlineCount:visibleRoomOnlineCount(r.id)};return room;});
+  const allRooms=rows.map(r=>({id:String(r.id),name:r.name,icon:r.icon||"💬",description:r.description||"",category:r.category||"Community",public:r.is_public!==false,passwordHash:r.password_hash||null,rankRequired:String(r.rank_required||"MEMBER").toUpperCase(),limit:Number(r.room_limit||100),slowMode:Number(r.slow_mode||0),announcement:r.announcement||"",ownerId:r.created_by?String(r.created_by):null,banner:r.banner||"",inviteToken:r.invite_token||"",creator:r.creator||null,isDefault:!!r.is_default,minAge:Number(r.min_age??13),maxAge:Number(r.max_age??99),friendsOnly:!!(db.settings?.room_access?.[String(r.id)]?.friendsOnly),roomTheme:String(db.settings?.room_themes?.[String(r.id)]||"obsidian"),locked:!!r.password_hash,roomCode:r.is_public===false?formatRoomCode(r.room_code):null,onlineCount:visibleRoomOnlineCount(r.id)}));
   db.rooms=allRooms;
   const joinToken=String(req.headers["x-room-join-token"]||"");
-  const rooms=allRooms.filter(room=>{
-    if(!roomIsPrivate(room))return true;
-    if(roomOwnerOrGlobal(viewer,room)||roomRole(room.id,viewer.id)!=="USER")return true;
-    return verifyRoomJoinToken(joinToken,viewer.id,room);
-  }).map(room=>{const safe={...room,passwordHash:undefined,inviteToken:undefined};if(room.public===false&&String(room.ownerId||"")!==String(viewer.id)&&!["OWNER","DEVELOPER"].includes(String(viewer.rank||"").toUpperCase()))delete safe.roomCode;return safe;});
+  const rooms=allRooms.filter(room=>{if(!roomIsPrivate(room))return true;if(roomOwnerOrGlobal(viewer,room)||roomRole(room.id,viewer.id)!=="USER")return true;return verifyRoomJoinToken(joinToken,viewer.id,room);}).map(room=>{const safe={...room,passwordHash:undefined,inviteToken:undefined};if(room.public===false&&String(room.ownerId||"")!==String(viewer.id)&&!["OWNER","DEVELOPER"].includes(String(viewer.rank||"").toUpperCase()))delete safe.roomCode;return safe;});
   res.json({rooms});
 });
-
-function roomAgeAllowed(_user,_room){ return true; }
+function roomAgeAllowed(user,room){
+  const name=String(room?.name||"").trim().toLowerCase(),segregated=name==="teenage chat"||name==="adult chat";
+  // Staff may bypass custom room age windows, but not the explicit teen/adult split.
+  if(!segregated&&hasRank(user,"MOD"))return true;
+  const age=ageFromBirthDate(user?.birthDate||user?.dateOfBirth||user?.birth_date);
+  const min=Number(room?.minAge??room?.min_age??13),max=Number(room?.maxAge??room?.max_age??99);
+  return age!==null&&Number.isInteger(min)&&Number.isInteger(max)&&age>=13&&age<=99&&age>=min&&age<=max;
+}
 function roomFriendsOnly(room){
   return !!(db.settings?.room_access?.[String(room.id)]?.friendsOnly ?? room.friendsOnly);
 }
@@ -2227,9 +2236,9 @@ async function createRoomHandler(req,res){
   const name=cleanText(req.body.name).trim().slice(0,50);
   const rankRequired=String(req.body.rankRequired||"MEMBER").toUpperCase();
   const limit=Number(req.body.limit??100),slowMode=Number(req.body.slowMode??0);
-  // Room age restrictions have been retired. Every room is open to all ages.
-  const minAge=0,maxAge=120;
+  const minAge=Number(req.body.minAge??13),maxAge=Number(req.body.maxAge??99);
   if(!name)return res.status(400).json({error:"Room name is required."});
+  if(!Number.isInteger(minAge)||!Number.isInteger(maxAge)||minAge<13||maxAge>99||minAge>maxAge)return res.status(400).json({error:"Room age limits must be between 13 and 99, with minimum age no greater than maximum age."});
   if(!ranks.includes(rankRequired))return res.status(400).json({error:"Choose a valid minimum rank for this room."});
   if(!Number.isInteger(limit)||limit<2||limit>500)return res.status(400).json({error:"Member limit must be between 2 and 500."});
   if(!Number.isInteger(slowMode)||slowMode<0||slowMode>3600)return res.status(400).json({error:"Slow mode must be between 0 and 3600 seconds."});
