@@ -5809,3 +5809,36 @@ html,body,#app,.app,.main,.view,#profile,#viewProfile {
 .message-more-submenu .message-menu-item{min-height:39px!important;padding:5px 7px!important}
 .message-more-submenu .menu-icon{width:27px!important;height:27px!important;flex-basis:27px!important;font-size:14px!important}
 @media(max-width:700px){.message-actions-menu{width:min(270px,calc(100vw - 30px))!important;max-height:min(72dvh,560px);overflow-y:auto;overscroll-behavior:contain}.message-actions-menu .message-menu-item{min-height:46px!important}}
+
+
+/* Final positioning override: message menus sit beside their own bubble,
+   never below the message list or clipped by the mobile viewport. */
+.message-actions-menu.is-floating{
+  z-index:1200!important;
+  display:flex!important;
+  flex-direction:column!important;
+  flex-wrap:nowrap!important;
+  align-items:stretch!important;
+  box-sizing:border-box!important;
+  border:1px solid rgba(177,125,255,.3)!important;
+  border-radius:16px!important;
+  background:linear-gradient(155deg,#171525 0%,#11121d 76%,#1a1225 100%)!important;
+  box-shadow:0 16px 42px rgba(0,0,0,.55),0 0 0 1px rgba(155,92,255,.08)!important;
+  -webkit-overflow-scrolling:touch!important;
+}
+.message-actions-menu.is-floating .message-menu-item{
+  min-height:43px!important;
+  padding:6px 8px!important;
+}
+.message-actions-menu.is-floating .message-menu-item small{font-size:10px!important}
+.message-actions-menu.is-floating .message-more-submenu{
+  max-height:180px!important;
+  overflow-y:auto!important;
+}
+@media(max-width:768px){
+  .message-actions-menu.is-floating{
+    bottom:auto!important;
+    transform:none!important;
+    border-radius:15px!important;
+  }
+}
