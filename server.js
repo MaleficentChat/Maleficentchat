@@ -2629,7 +2629,7 @@ app.get("/api/rooms/:id/messages",auth,async(req,res)=>{
   if(!verifyRoomJoinToken(req.headers['x-room-join-token'],actor.id,room))return res.status(403).json({error:"Join this room before viewing its messages."});
   const {rows}=await pool.query(`SELECT data FROM room_messages WHERE room_id=$1 ORDER BY created_at DESC,id DESC LIMIT 300`,[Number(req.params.id)]);
   const now=Date.now();
-  const messages=rows.reverse().map(r=>r.data).filter(m=>m && (!m.expiresAt||Number(m.expiresAt)>now) && !m.deleted).map(m=>({...m,roomRank:roomRole(room.id,m.userId),roomRankBadge:({USER:"✨",ROOM_MODERATOR:"🪄",ROOM_ADMIN:"💫",ROOM_OWNER:"🎩"})[roomRole(room.id,m.userId)]||"✨"}));
+  const messages=rows.reverse().map(r=>r.data).filter(m=>m && (!m.expiresAt||Number(m.expiresAt)>now) && !m.deleted).map(m=>({...m,avatar:m.avatar||(db.users.find(user=>String(user.id)===String(m.userId))?.avatar||""),roomRank:roomRole(room.id,m.userId),roomRankBadge:({USER:"✨",ROOM_MODERATOR:"🪄",ROOM_ADMIN:"💫",ROOM_OWNER:"🎩"})[roomRole(room.id,m.userId)]||"✨"}));
   db.messages=db.messages.filter(m=>String(m.roomId)!==String(req.params.id)).concat(messages);
   res.json({messages});
 });
@@ -3059,7 +3059,7 @@ app.post("/api/rooms/:id/messages",auth,featureAllowed("send_messages"),upload.s
   }
   const roomRank=roomRole(r.id,u.id);
   const anonymousMode=!!(u.hideMode||u.deadMode); // Ghost and Dead messages are sent as Aurora.
-   const m={id:id(),roomId:String(r.id),userId:anonymousMode?null:u.id,username:anonymousMode?"Aurora":u.username,displayName:anonymousMode?"Aurora":u.displayName,rank:anonymousMode?"BOT":u.rank,system:anonymousMode,isBot:anonymousMode,bot:anonymousMode?"Aurora":undefined,anonymous:anonymousMode,roomRank:anonymousMode?"USER":roomRank,roomRankBadge:({USER:"✨",ROOM_MODERATOR:"🪄",ROOM_ADMIN:"💫",ROOM_OWNER:"🎩"})[anonymousMode?"USER":roomRank]||"✨",
+   const m={id:id(),roomId:String(r.id),userId:anonymousMode?null:u.id,username:anonymousMode?"Aurora":u.username,displayName:anonymousMode?"Aurora":u.displayName,rank:anonymousMode?"BOT":u.rank,avatar:anonymousMode?"":(u.avatar||""),system:anonymousMode,isBot:anonymousMode,bot:anonymousMode?"Aurora":undefined,anonymous:anonymousMode,roomRank:anonymousMode?"USER":roomRank,roomRankBadge:({USER:"✨",ROOM_MODERATOR:"🪄",ROOM_ADMIN:"💫",ROOM_OWNER:"🎩"})[anonymousMode?"USER":roomRank]||"✨",
     usernameColor:u.settings?.usernameColor||"",chatFont:u.settings?.chatFont||"",text,
     attachment:req.file?{url:"/uploads/"+req.file.filename,type:req.file.mimetype,name:req.file.originalname}:reelAttachment,
     replyTo:req.body.replyTo||null,forwardedFrom:req.body.forwardedFrom||null,reactions:{},edited:false,deleted:false,pinned:false,time:Date.now(),delivered:true};
@@ -3521,7 +3521,7 @@ app.post(
       if(!requirePrivateRoomAccess(req,res,sourceRoom,u))return;
       const existingJoinToken=verifyRoomJoinToken(req.headers["x-room-join-token"],u.id,room);
       if(!roomJoinPolicyAllowed(u,room,{existingJoinToken})||((roomIsPrivate(room)||room.passwordHash)&&!existingJoinToken))return res.status(403).json({error:"Join this room before forwarding a message into it."});
-      const forwarded={...m,id:id(),roomId:String(room.id),userId:u.id,username:u.username,displayName:u.displayName,forwardedFrom:m.id,time:Date.now(),edited:false,deleted:false,pinned:false};
+      const forwarded={...m,id:id(),roomId:String(room.id),userId:u.id,username:u.username,displayName:u.displayName,avatar:u.avatar||"",forwardedFrom:m.id,time:Date.now(),edited:false,deleted:false,pinned:false};
       await pool.query("INSERT INTO room_messages(id,room_id,user_id,data,created_at) VALUES($1,$2,$3,$4::jsonb,NOW())",[forwarded.id,Number(room.id),Number(u.id),JSON.stringify(forwarded)]);
       db.messages.push(forwarded);
       io.to("room:"+room.id).emit("message",forwarded);
@@ -6970,7 +6970,7 @@ app.post('/api/rooms/:id/gif',auth,featureAllowed('gif_sending'),async(req,res)=
   const cost=Math.max(0,Math.min(100000,Number(db.settings.gif_cost??10)));
   if(Number(u.gold||0)<cost)return res.status(400).json({error:`You need ${cost} gold to send a GIF.`});
   u.gold=Number(u.gold||0)-cost;
-  const m={id:id(),roomId:String(r.id),userId:u.id,username:u.username,displayName:u.displayName,rank:u.rank,text:'',type:'gif',gifUrl:url,reactions:{},edited:false,deleted:false,pinned:false,time:Date.now(),delivered:true};
+  const m={id:id(),roomId:String(r.id),userId:u.id,username:u.username,displayName:u.displayName,rank:u.rank,avatar:u.avatar||'',text:'',type:'gif',gifUrl:url,reactions:{},edited:false,deleted:false,pinned:false,time:Date.now(),delivered:true};
   await pool.query(`INSERT INTO room_messages(id,room_id,user_id,data,created_at) VALUES($1,$2,$3,$4::jsonb,NOW())`,[m.id,Number(r.id),Number(u.id),JSON.stringify(m)]);
   db.messages.push(m);db.goldTransactions ||= [];db.goldTransactions.push({id:id(),userId:u.id,amount:-cost,reason:'GIF sent',time:Date.now()});save();io.to('room:'+r.id).emit('message',m);res.json({ok:true,message:m,gold:u.gold,cost});
 });
@@ -6981,7 +6981,7 @@ app.post('/api/rooms/:id/youtube',auth,featureAllowed('use_youtube'),async(req,r
   if(!verifyRoomJoinToken(req.headers['x-room-join-token'],u.id,room))return res.status(403).json({error:"Join this room before sharing a video."});
   const videoId=String(req.body.videoId||"").trim(),title=cleanText(req.body.title||(req.body.music?"YouTube Music":"YouTube video")).slice(0,200),music=req.body.music===true;
   if(!/^[A-Za-z0-9_-]{11}$/.test(videoId))return res.status(400).json({error:"Invalid YouTube video ID."});
-  const m={id:id(),roomId:String(room.id),userId:u.id,username:u.username,displayName:u.displayName,rank:u.rank,text:"",youtube:{videoId,title,platform:music?"music":"youtube"},reactions:{},edited:false,deleted:false,pinned:false,time:Date.now(),delivered:true};
+  const m={id:id(),roomId:String(room.id),userId:u.id,username:u.username,displayName:u.displayName,rank:u.rank,avatar:u.avatar||"",text:"",youtube:{videoId,title,platform:music?"music":"youtube"},reactions:{},edited:false,deleted:false,pinned:false,time:Date.now(),delivered:true};
   try{
     await pool.query('INSERT INTO room_messages(id,room_id,user_id,data,created_at) VALUES($1,$2,$3,$4::jsonb,NOW())',[m.id,Number(room.id),Number(u.id),JSON.stringify(m)]);
     db.messages.push(m);u.stats ||= {messages:0,rooms:0,friends:0};u.stats.messages=(u.stats.messages||0)+1;
