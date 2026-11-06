@@ -5754,3 +5754,26 @@ html,body,#app,.app,.main,.view,#profile,#viewProfile {
 .wallet-recipient{display:flex;align-items:center;gap:10px;padding:11px;border:1px solid var(--border);border-radius:10px;background:rgba(255,255,255,.035);color:var(--text);text-align:left}
 .wallet-recipient i{margin-left:auto;color:var(--muted);font-style:normal}
 @media(max-width:760px){.wallet-content-grid{grid-template-columns:1fr}.wallet-staff-form{grid-template-columns:1fr}.wallet-hero{padding:16px}.wallet-panel{padding:14px}.wallet-reward-day{padding:8px 1px}.wallet-reward-day small{font-size:7px}.wallet-reward-day b{font-size:10px}.wallet-actions>*{flex:1 1 auto}}
+
+
+/* Compact DM header and taller conversation viewport (mobile-first). */
+.modal-card:has(.dm-chat-header){max-height:98dvh!important}
+.dm-chat-header{min-height:58px;padding:8px 12px!important;gap:8px!important;flex-direction:row!important;align-items:center!important}
+.dm-chat-person{gap:8px!important;flex:1;min-width:0}
+.dm-chat-person>.avatar{width:34px!important;height:34px!important;flex:0 0 34px!important}
+.dm-chat-person-copy h2{font-size:14px!important;margin:0 0 2px!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dm-chat-person-copy span{font-size:10px!important;white-space:nowrap}
+.dm-chat-actions{width:auto!important;padding:0!important;flex:0 0 auto}
+.dm-chat-actions .dm-settings-toggle{width:30px!important;height:30px!important;min-height:30px!important;flex:0 0 30px!important;padding:0!important;font-size:14px!important;border-radius:8px!important}
+.dm-message-search{margin:6px 10px 4px!important;min-height:36px!important}
+.dm-message-list{height:62dvh!important;min-height:260px!important;flex:1 1 auto}
+.dm-delete-icon{width:27px!important;height:24px!important;min-width:27px!important;padding:2px!important;display:inline-grid!important;place-items:center!important;font-size:12px!important}
+.dm-quick-replies,.dm-conversation-tools{display:none!important}
+@media(max-width:700px){
+ .modal-card:has(.dm-chat-header){width:calc(100vw - 8px)!important;max-height:98dvh!important}
+ .dm-chat-header{flex-direction:row!important;align-items:center!important;padding:7px 9px!important}
+ .dm-chat-person>.avatar{width:32px!important;height:32px!important;flex-basis:32px!important}
+ .dm-chat-actions{width:auto!important;padding:0!important}
+ .dm-chat-actions .mini{flex:0 0 auto!important}
+ .dm-message-list{height:64dvh!important;min-height:260px!important;padding:8px!important}
+}
