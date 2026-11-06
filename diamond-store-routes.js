@@ -53,14 +53,63 @@ function registerDiamondStoreRoutes({app,pool,current,notify,io,log,id,db,ownerO
         return res.status(404).json({ error: 'Pending Diamond purchase request not found.' });
       }
       purchase = found.rows[0];
-      const credited = await client.query("UPDATE users SET diamonds=COALESCE(diamonds,0)+$1 WHERE id=$2 RETURNING diamonds", [Number(purchase.diamonds), Number(purchase.user_id)]);
+      // Credit the buyer as the recipient (not the approving staff member) so
+      // the wallet ledger records this as an incoming Diamond purchase.
+      const credited = await client.query(
+        "UPDATE users SET diamonds=COALESCE(diamonds,0)+$1 WHERE id=$2 RETURNING diamonds,gold",
+        [Number(purchase.diamonds), Number(purchase.user_id)]
+      );
       if (!credited.rowCount) throw new Error('The requesting account no longer exists.');
-      await client.query("INSERT INTO wallet_transactions(id,sender_id,recipient_id,currency,amount,type,note) VALUES($1,$2,$3,'DIAMONDS',$4,'DIAMOND_PURCHASE',$5)", [id(), Number(actor.id), Number(purchase.user_id), Number(purchase.diamonds), 'Diamond Store purchase - $' + Number(purchase.price)]);
-      await client.query("UPDATE diamond_purchase_requests SET status='granted',reviewed_at=NOW(),reviewed_by=$2 WHERE id=$1", [purchase.id, Number(actor.id)]);
+      await client.query(
+        "INSERT INTO wallet_transactions(id,recipient_id,currency,amount,type,note) VALUES($1,$2,'DIAMONDS',$3,'DIAMOND_PURCHASE',$4)",
+        [id(), Number(purchase.user_id), Number(purchase.diamonds), 'Diamond Store purchase - 
+      try { notify(purchase.user_id, 'wallet', 'Diamond purchase approved', 'Your purchase request was approved. ' + Number(purchase.diamonds).toLocaleString() + ' Diamonds have been added to your wallet.'); } catch (notifyError) { console.error('Diamond purchase notification failed:', notifyError); }
+      try { log(actor, 'DIAMOND_PURCHASE_GRANTED', purchase.username, { requestId: Number(purchase.id), diamonds: Number(purchase.diamonds), price: Number(purchase.price) }); } catch (logError) { console.error('Diamond purchase audit log failed:', logError); }
+      res.json({ ok: true, username: purchase.username, diamonds: Number(purchase.diamonds), wallet: { diamonds: Number(credited.rows[0].diamonds || 0), gold: Number(credited.rows[0].gold || 0) } });
+    } catch (error) {
+      await client.query('ROLLBACK').catch(() => {});
+      console.error('Diamond purchase grant failed:', error);
+      res.status(500).json({ error: 'Could not grant Diamonds for this request.' });
+    } finally {
+      client.release();
+    }
+  });
+
+  app.post('/api/owner/diamond-purchase-requests/:id/reject', ownerOnly, async (req, res) => {
+    const actor = current(req);
+    try {
+      await ensureTable();
+      const rejected = await pool.query("UPDATE diamond_purchase_requests SET status='rejected',reviewed_at=NOW(),reviewed_by=$2 WHERE id=$1 AND status='pending' RETURNING user_id,diamonds", [req.params.id, Number(actor.id)]);
+      if (!rejected.rowCount) return res.status(404).json({ error: 'Pending Diamond purchase request not found.' });
+      notify(rejected.rows[0].user_id, 'wallet', 'Diamond purchase request rejected', 'Your Diamond Store purchase request was rejected. No Diamonds were added.');
+      log(actor, 'DIAMOND_PURCHASE_REJECTED', String(rejected.rows[0].user_id), { requestId: Number(req.params.id), diamonds: Number(rejected.rows[0].diamonds) });
+      res.json({ ok: true });
+    } catch (error) {
+      console.error('Diamond purchase rejection failed:', error);
+      res.status(500).json({ error: 'Could not reject the Diamond purchase request.' });
+    }
+  });
+}
+
+module.exports = { registerDiamondStoreRoutes };
+ + Number(purchase.price)]
+      );
+      await client.query(
+        "UPDATE diamond_purchase_requests SET status='granted',reviewed_at=NOW(),reviewed_by=$2 WHERE id=$1",
+        [purchase.id, Number(actor.id)]
+      );
       await client.query('COMMIT');
-      const target = db.users.find(item => Number(item.id) === Number(purchase.user_id));
-      if (target) target.diamonds = Number(credited.rows[0].diamonds);
-      io.to('user:' + purchase.user_id).emit('wallet:update', { userId: Number(purchase.user_id), diamonds: Number(credited.rows[0].diamonds), gold: Number(target?.gold || 0) });
+      // Keep the in-memory user record in sync with the authoritative DB balance.
+      const target = (db.users || []).find(item => String(item.id) === String(purchase.user_id));
+      if (target) {
+        target.diamonds = Number(credited.rows[0].diamonds || 0);
+        target.gold = Number(credited.rows[0].gold || 0);
+      }
+      io.to('user:' + purchase.user_id).emit('wallet:update', {
+        userId: Number(purchase.user_id),
+        diamonds: Number(credited.rows[0].diamonds || 0),
+        gold: Number(credited.rows[0].gold || 0)
+      });
       try { notify(purchase.user_id, 'wallet', 'Diamond purchase approved', 'Your purchase request was approved. ' + Number(purchase.diamonds).toLocaleString() + ' Diamonds have been added to your wallet.'); } catch (notifyError) { console.error('Diamond purchase notification failed:', notifyError); }
       try { log(actor, 'DIAMOND_PURCHASE_GRANTED', purchase.username, { requestId: Number(purchase.id), diamonds: Number(purchase.diamonds), price: Number(purchase.price) }); } catch (logError) { console.error('Diamond purchase audit log failed:', logError); }
       res.json({ ok: true, username: purchase.username, diamonds: Number(purchase.diamonds) });
