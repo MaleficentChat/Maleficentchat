@@ -2184,7 +2184,7 @@ function areAcceptedFriends(userA,userB){
     ((String(f.a)===a&&String(f.b)===b)||(String(f.a)===b&&String(f.b)===a)));
 }
 
-function formatRoomCode(value){const digits=String(value||"").replace(/\\D/g,"");return digits.length===10?digits.slice(0,5)+" "+digits.slice(5):"";}
+function formatRoomCode(value){const digits=String(value||"").replace(/\D/g,"");return digits.length===10?digits.slice(0,5)+" "+digits.slice(5):"";}
 function generateRoomCode(){return String(crypto.randomInt(0,10000000000)).padStart(10,"0");}
 
 async function createRoomHandler(req,res){
@@ -2231,9 +2231,9 @@ app.post("/api/rooms/:id/invites",auth,(req,res)=>{
   res.json({inviteToken:payload+"."+roomInviteSignature(payload,room),expiresAt});
 });
 app.post("/api/rooms/code/resolve",auth,(req,res)=>{
-  const actor=current(req),digits=String(req.body?.code||"").replace(/\\D/g,"");
-  if(!/^\\d{10}$/.test(digits))return res.status(400).json({error:"Enter the complete 10-digit room code."});
-  const room=db.rooms.find(item=>roomIsPrivate(item)&&String(item.roomCode||item.room_code||"").replace(/\\D/g,"")===digits);
+  const actor=current(req),digits=String(req.body?.code||"").replace(/\D/g,"");
+  if(!/^\d{10}$/.test(digits))return res.status(400).json({error:"Enter the complete 10-digit room code."});
+  const room=db.rooms.find(item=>roomIsPrivate(item)&&String(item.roomCode||item.room_code||"").replace(/\D/g,"")===digits);
   if(!room)return res.status(404).json({error:"No private room matches that code."});
   const inviteToken=makeRoomInviteToken(room);
   if(!roomJoinPolicyAllowed(actor,room,{inviteToken}))return res.status(403).json({error:"This room exists, but your account does not meet its access requirements."});
