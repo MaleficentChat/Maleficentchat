@@ -407,7 +407,7 @@ async function loadState(defaultState) {
   }
   state.rooms = roomRows.map(r=>({
     id:String(r.id), name:r.name, icon:r.icon||"💬", description:r.description||"", category:r.category||"Community", isDefault:!!r.is_default,
-    minAge:Number(r.min_age??0), maxAge:Number(r.max_age??120),
+    minAge:Number(r.min_age??13), maxAge:Number(r.max_age??99),
     public:r.is_public!==false, passwordHash:r.password_hash||null, rankRequired:String(r.rank_required||"MEMBER").toUpperCase(),
     limit:Number(r.room_limit||100), slowMode:Number(r.slow_mode||0), announcement:r.announcement||"", announcements:announcementsByRoom.get(String(r.id))||[], ownerId:r.created_by?String(r.created_by):null,
     banner:r.banner||"", inviteToken:r.invite_token||""
