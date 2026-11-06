@@ -1069,9 +1069,10 @@ async function start() {
 
   // Staff accounts always enter Teen Chat. Other accounts retain the canonical
   // Main Room login entry; the room-refresh control routes them by verified DOB.
-  const findMainRoom=()=>state.rooms.find(room=>room.isDefault) ||
-    state.rooms.find(room=>String(room.name||"").trim().toLowerCase()==="main room");
-  let mainRoom=isMaleficentStaff()?((state.rooms||[]).find(room=>String(room.name||"").trim().toLowerCase()==="teen chat")):findMainRoom();
+  const findDefaultEntryRoom=()=>isMaleficentStaff()
+    ? (state.rooms||[]).find(room=>String(room.name||"").trim().toLowerCase()==="teen chat")
+    : (state.rooms.find(room=>room.isDefault) || state.rooms.find(room=>String(room.name||"").trim().toLowerCase()==="main room"));
+  let mainRoom=findDefaultEntryRoom();
   let joined=false;
   const invite=roomInviteFromHash();
   if(invite?.roomId&&state.rooms.some(room=>String(room.id)===invite.roomId))joined=await joinRoom(invite.roomId);
@@ -1088,7 +1089,7 @@ async function start() {
         state.rooms=sanitizeRoomList(latest.rooms);
         state.roomListMode="all";
         renderRooms();
-        mainRoom=findMainRoom();
+        mainRoom=findDefaultEntryRoom();
       }catch(e){
         if(attempt===3)toast("Could not load Main Room: "+e.message);
       }
@@ -1720,7 +1721,7 @@ function roomForAgeRouting() {
   const age=maleficentUserAge();
   if(!staff&&age===null)throw new Error("Your date of birth is unavailable. Please update your account details before choosing an age-based chat.");
   const targetName=staff||age<=19?"Teen Chat":"Adult Chat";
-  const room=(state.rooms||[]).find(item=>String(item?.name||"").trim().replace(/^🏠\\s*/,"").toLowerCase()===targetName.toLowerCase());
+  const room=(state.rooms||[]).find(item=>String(item?.name||"").replace("🏠","").trim().toLowerCase()===targetName.toLowerCase());
   if(!room)throw new Error(targetName+" could not be found. Please ask staff to check the room setup.");
   return room;
 }
