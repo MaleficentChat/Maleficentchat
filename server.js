@@ -73,7 +73,7 @@ fs.mkdirSync(UP,{recursive:true});
 // Uploaded media is stored in PostgreSQL, not only on Render's replaceable
 // application filesystem. media_key remains the public /uploads/... URL path.
 async function storeMediaBuffer(mediaKey,buffer,mimeType,originalName){
-  const key=String(mediaKey||"").replace(/\\/g,"/").replace(/^\\/+/, "");
+  const key=String(mediaKey||"").replace(/\\/g,"/").replace(/^\/+/, "");
   if(!key||key.split("/").some(part=>!part||part==="."||part===".."))throw new Error("Invalid media storage key.");
   const bytes=Buffer.isBuffer(buffer)?buffer:Buffer.from(buffer||[]);
   if(!bytes.length)throw new Error("Uploaded media is empty.");
@@ -85,7 +85,7 @@ async function storeMediaBuffer(mediaKey,buffer,mimeType,originalName){
 }
 async function persistUploadedMedia(file,mediaKey){
   if(!file)return "";
-  const key=String(mediaKey||file.filename||"");
+  const key=String(mediaKey||"").replace(/\\/g,"/").replace(/^\/+/, "");
   const bytes=await fs.promises.readFile(file.path);
   await storeMediaBuffer(key,bytes,file.mimetype,file.originalname);
   file.mediaKey=key;
@@ -1473,7 +1473,7 @@ app.use(session({
 // Serve media from PostgreSQL first. Keep byte-range support so audio can seek
 // normally; if an older upload still exists only on disk, migrate it on first read.
 app.get("/uploads/*",async(req,res,next)=>{
-  const mediaKey=String(req.params[0]||"").replace(/\\\\/g,"/");
+  const mediaKey=String(req.params[0]||"").replace(/\\/g,"/");
   if(!mediaKey||mediaKey.split("/").some(part=>!part||part==="."||part===".."))return res.sendStatus(404);
   try{
     let found=await pool.query("SELECT mime_type,original_name,content FROM stored_media WHERE media_key=$1",[mediaKey]);
@@ -1491,11 +1491,11 @@ app.get("/uploads/*",async(req,res,next)=>{
     if(!found.rowCount)return next();
     const row=found.rows[0],bytes=row.content;
     const mime=String(row.mime_type||"application/octet-stream");
-    const safeName=String(row.original_name||path.basename(mediaKey)).replace(/[\\r\\n"]/g,"_").replace(/[^\\x20-\\x7E]/g,"_");
+    const safeName=String(row.original_name||path.basename(mediaKey)).replace(/[\r\n"]/g,"_").replace(/[^\x20-\x7E]/g,"_");
     res.set({"Content-Type":mime,"Accept-Ranges":"bytes","Cache-Control":"public, max-age=31536000, immutable","X-Content-Type-Options":"nosniff","Content-Disposition":'inline; filename="'+safeName+'"'});
     const range=String(req.headers.range||"");
     if(range){
-      const match=/^bytes=(\\d*)-(\\d*)$/.exec(range);
+      const match=/^bytes=(\d*)-(\d*)$/.exec(range);
       if(!match||!bytes.length)return res.status(416).set("Content-Range","bytes */"+bytes.length).end();
       let start=match[1]?Number(match[1]):Math.max(0,bytes.length-Number(match[2]));
       let end=match[2]?Number(match[2]):bytes.length-1;
