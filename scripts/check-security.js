@@ -74,8 +74,8 @@ assert.ok(currentStart >= 0 && currentEnd > currentStart,
   "current() authentication resolver must exist");
 const currentSource = server.slice(currentStart, currentEnd);
 assert.ok(
-  currentSource.indexOf('const raw=req.headers["x-auth-token"]') >= 0 &&
-  currentSource.indexOf('const raw=req.headers["x-auth-token"]') < currentSource.indexOf("const sessionUid=req.session?.userId"),
+  currentSource.indexOf('req.headers["x-auth-token"]') >= 0 &&
+  currentSource.indexOf('req.headers["x-auth-token"]') < currentSource.indexOf("const sessionUid=req.session?.userId"),
   "a valid signed client token must be resolved before a possibly stale cookie session"
 );
 
