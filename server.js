@@ -2163,7 +2163,7 @@ app.get("/api/rooms",auth,async(req,res)=>{
   const {rows}=await pool.query(`SELECT r.*,u.username AS creator FROM rooms r LEFT JOIN users u ON r.created_by=u.id ORDER BY r.is_default DESC,r.created_at ASC,r.id ASC`);
   if(!rows.length) return res.status(503).json({error:'Rooms are not initialized yet. Please retry in a moment.',rooms:[]});
   const viewer=current(req);
-  const allRooms=rows.map(r=>{const room={id:String(r.id),name:r.name,icon:r.icon||"💬",description:r.description||"",category:r.category||"Community",public:r.is_public!==false,passwordHash:r.password_hash||null,rankRequired:String(r.rank_required||"MEMBER").toUpperCase(),limit:Number(r.room_limit||100),slowMode:Number(r.slow_mode||0),announcement:r.announcement||"",ownerId:r.created_by?String(r.created_by):null,banner:r.banner||"",inviteToken:r.invite_token||"",creator:r.creator||null,isDefault:!!r.is_default,minAge:Number(r.min_age??0),maxAge:Number(r.max_age??120),friendsOnly:!!(db.settings?.room_access?.[String(r.id)]?.friendsOnly),roomTheme:String(db.settings?.room_themes?.[String(r.id)]||"obsidian"),locked:!!r.password_hash,roomCode:r.is_public===false?formatRoomCode(r.room_code):null,onlineCount:visibleRoomOnlineCount(r.id)}));
+  const allRooms=rows.map(r=>{const room={id:String(r.id),name:r.name,icon:r.icon||"💬",description:r.description||"",category:r.category||"Community",public:r.is_public!==false,passwordHash:r.password_hash||null,rankRequired:String(r.rank_required||"MEMBER").toUpperCase(),limit:Number(r.room_limit||100),slowMode:Number(r.slow_mode||0),announcement:r.announcement||"",ownerId:r.created_by?String(r.created_by):null,banner:r.banner||"",inviteToken:r.invite_token||"",creator:r.creator||null,isDefault:!!r.is_default,minAge:Number(r.min_age??0),maxAge:Number(r.max_age??120),friendsOnly:!!(db.settings?.room_access?.[String(r.id)]?.friendsOnly),roomTheme:String(db.settings?.room_themes?.[String(r.id)]||"obsidian"),locked:!!r.password_hash,roomCode:r.is_public===false?formatRoomCode(r.room_code):null,onlineCount:visibleRoomOnlineCount(r.id)};return room;});
   db.rooms=allRooms;
   const joinToken=String(req.headers["x-room-join-token"]||"");
   const rooms=allRooms.filter(room=>{
@@ -2239,7 +2239,10 @@ app.post("/api/rooms/code/resolve",auth,(req,res)=>{
   const inviteToken=makeRoomInviteToken(room);
   if(!roomJoinPolicyAllowed(actor,room,{inviteToken}))return res.status(403).json({error:"This room exists, but your account does not meet its access requirements."});
   if(!roomCapacityAvailable(actor,room))return res.status(403).json({error:"This room has reached its member limit."});
-  res.json({room:{id:String(room.id),name:room.name,icon:room.icon||"💬",description:room.description||"",category:room.category||"Community",public:false,rankRequired:String(room.rankRequired||room.rank_required||"MEMBER").toUpperCase(),limit:Number(room.limit||room.room_limit||100),slowMode:Number(room.slowMode||room.slow_mode||0),announcement:room.announcement||"",ownerId:String(room.ownerId||room.created_by||""),creator:room.creator||null,isDefault:false,minAge:0,maxAge:120,friendsOnly:roomFriendsOnly(room),roomTheme:String(db.settings?.room_themes?.[String(room.id)]||"obsidian"),locked:!!(room.passwordHash||room.password_hash),onlineCount:visibleRoomOnlineCount(room.id)},inviteToken});
+  // A numeric room code is exchanged server-side for a user-bound join token.
+  // The code itself is never reused as a session credential or exposed in the room list.
+  const joinToken=makeRoomJoinToken(actor.id,room);
+  res.json({room:{id:String(room.id),name:room.name,icon:room.icon||"💬",description:room.description||"",category:room.category||"Community",public:false,rankRequired:String(room.rankRequired||room.rank_required||"MEMBER").toUpperCase(),limit:Number(room.limit||room.room_limit||100),slowMode:Number(room.slowMode||room.slow_mode||0),announcement:room.announcement||"",ownerId:String(room.ownerId||room.created_by||""),creator:room.creator||null,isDefault:false,minAge:0,maxAge:120,friendsOnly:roomFriendsOnly(room),roomTheme:String(db.settings?.room_themes?.[String(room.id)]||"obsidian"),locked:!!(room.passwordHash||room.password_hash),onlineCount:visibleRoomOnlineCount(room.id)},joinToken});
 });
 app.post("/api/rooms/invites/resolve",auth,(req,res)=>{
   const actor=current(req),roomId=String(req.body?.roomId||""),inviteToken=String(req.body?.inviteToken||"");
@@ -2514,7 +2517,7 @@ app.post(
       return res.status(403).json({error:"This room is for the room owner's accepted friends only."});
     }
 
-    const existingJoinToken=verifyRoomJoinToken(req.headers['x-room-join-token'],u.id,r);
+    const existingJoinToken=verifyRoomJoinToken(req.headers['x-room-join-token'],u.id,r)||verifyRoomJoinToken(req.body?.joinToken,u.id,r);
     if(!roomJoinPolicyAllowed(u,r,{inviteToken:req.body?.inviteToken,existingJoinToken})){
       return res.status(403).json({error:"This room is private or your current account does not meet its access rules."});
     }

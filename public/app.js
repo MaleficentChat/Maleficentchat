@@ -1744,24 +1744,24 @@ function renderRooms() {
   renderRoomQuickNav();
 }
 
-window.__mcRoomCodeTokens=window.__mcRoomCodeTokens||{};
+window.__mcRoomJoinTokens=window.__mcRoomJoinTokens||{};
 let lastResolvedRoomCode="";
 async function resolveSecretRoomCode(rawValue){
   const digits=String(rawValue||"").replace(/\D/g,"");
   const feedback=$("roomCodeFeedback");
   if(digits.length!==10||digits===lastResolvedRoomCode)return;
   lastResolvedRoomCode=digits;
-  if(feedback)feedback.textContent="Checking code…";
+  if(feedback)feedback.textContent="Checking room code…";
   try{
     const result=await api("/api/rooms/code/resolve",{method:"POST",body:JSON.stringify({code:digits})});
-    if(!result?.room?.id||!result.inviteToken)throw new Error("The server did not return room access.");
+    if(!result?.room?.id||!result.joinToken)throw new Error("The server did not return room access.");
     const room={...result.room};
-    window.__mcRoomCodeTokens[String(room.id)]=String(result.inviteToken);
+    window.__mcRoomJoinTokens[String(room.id)]=String(result.joinToken);
     state.rooms=[...(state.rooms||[]).filter(item=>String(item.id)!==String(room.id)),room];
     if($("roomSearch"))$("roomSearch").value="";
-    if(feedback)feedback.textContent="Found: "+String(room.name||"Secret room")+" · available below";
+    if(feedback)feedback.textContent="Found: "+String(room.name||"Secret room")+" · shown below";
     renderRooms();
-    toast("Secret room found. Tap it in the room list to enter.");
+    toast("Room found. Tap it in the room list to enter.");
   }catch(error){
     if(feedback)feedback.textContent=error.message||"No room found for that code.";
     toast(error.message||"No room found for that code.");
@@ -1772,7 +1772,7 @@ function handleRoomCodeInput(input){
   const digits=String(input.value||"").replace(/\D/g,"").slice(0,10);
   input.value=digits.length>5?digits.slice(0,5)+" "+digits.slice(5):digits;
   const feedback=$("roomCodeFeedback");
-  if(feedback)feedback.textContent=digits.length===10?"Checking code…":"Enter the 10-digit code";
+  if(feedback)feedback.textContent=digits.length===10?"Checking code…":"Enter the 10-digit room code";
   if(digits.length<10)lastResolvedRoomCode="";
   if(digits.length===10)resolveSecretRoomCode(digits);
 }
@@ -1878,11 +1878,11 @@ async function joinRoom(id) {
     const roomInvite=roomInviteFromHash();
     const access=await api(`/api/rooms/${id}/join`, {
       method: "POST",
-      body: JSON.stringify({ password,inviteToken:roomInvite?.roomId===id?roomInvite.inviteToken:(window.__mcRoomCodeTokens?.[id]||"") })
+      body: JSON.stringify({ password,joinToken:window.__mcRoomJoinTokens?.[id]||"",inviteToken:roomInvite?.roomId===id?roomInvite.inviteToken:"" })
     });
 
     safeStorage.setItem('mc_room_join',JSON.stringify({roomId:String(id),joinToken:access.joinToken}));
-    if(window.__mcRoomCodeTokens)delete window.__mcRoomCodeTokens[id];
+    if(window.__mcRoomJoinTokens)delete window.__mcRoomJoinTokens[id];
     if(roomInvite?.roomId===id)history.replaceState(null,"",location.pathname+location.search);
 
     if (
@@ -6440,7 +6440,7 @@ async function showInvite(roomOrId=state.currentRoom) {
   if(String(room.ownerId||"")!==String(state.user?.id)&&!["OWNER","DEVELOPER"].includes(String(state.user?.rank||"").toUpperCase())){toast("Only the room owner, Owner, or Developer can view this room code.");return;}
   const code=String(room.roomCode||"").trim();
   if(!/^\d{5} \d{5}$/.test(code)){toast("Room code is not available yet. Refresh the room list and try again.");return;}
-  modal("<div class=\"room-code-share\"><h2>🔐 Secret room code</h2><p class=\"muted\">Share this code with people you want to invite. They can enter it in the Rooms & Community code bar.</p><div class=\"room-code-display\" id=\"roomCodeDisplay\">"+esc(code)+"</div><div class=\"toolbar\"><button type=\"button\" class=\"primary\" id=\"copyRoomCode\">Copy room code</button></div></div>");
+  modal("<div class=\"room-code-share\"><h2>🔐 Room code</h2><p class=\"muted\">Share this 10-digit code. They can enter it in the code bar above the room list.</p><div class=\"room-code-display\" id=\"roomCodeDisplay\">"+esc(code)+"</div><div class=\"toolbar\"><button type=\"button\" class=\"primary\" id=\"copyRoomCode\">Copy room code</button></div></div>");
   $("copyRoomCode")?.addEventListener("click",async()=>{try{await navigator.clipboard.writeText(code);toast("Room code copied.");}catch{toast("Room code: "+code);}});
 }
 /* ---------------- CREATE ROOM ---------------- */
@@ -6459,7 +6459,7 @@ function openRoomCreationModal() {
           <label>Topic / category<input id="rc" maxlength="40" value="Community" placeholder="Community"></label>
         </div></section>
         <section class="room-editor-section"><h3>🔐 Who can join?</h3>
-          <label>Room visibility<select id="rVisibility"><option value="public">Public — listed for everyone</option><option value="secret">Secret — hidden, invite link required</option></select></label>
+          <label>Room visibility<select id="rVisibility"><option value="public">Public — listed for everyone</option><option value="secret">Secret — hidden, numeric room code required</option></select></label>
           <label>Minimum rank<select id="rr">${ranks.map(r=>'<option value="'+r+'" '+(r==="MEMBER"?"selected":"")+'>'+rankLabels[r]+'</option>').join("")}</select></label>
           <label>Member access<select id="rFriendsOnlyCreate"><option value="false">Anyone who meets the rank requirement</option><option value="true">Accepted friends only</option></select></label>
           <label>Room password <span class="room-editor-optional">optional</span><input id="rp" type="password" autocomplete="new-password" placeholder="Leave blank for no password"></label>

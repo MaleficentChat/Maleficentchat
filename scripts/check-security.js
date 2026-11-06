@@ -74,8 +74,8 @@ assert.ok(currentStart >= 0 && currentEnd > currentStart,
   "current() authentication resolver must exist");
 const currentSource = server.slice(currentStart, currentEnd);
 assert.ok(
-  currentSource.indexOf('const raw=req.headers["x-auth-token"]') >= 0 &&
-  currentSource.indexOf('const raw=req.headers["x-auth-token"]') < currentSource.indexOf("const sessionUid=req.session?.userId"),
+  currentSource.indexOf('req.headers["x-auth-token"]') >= 0 &&
+  currentSource.indexOf('req.headers["x-auth-token"]') < currentSource.indexOf("const sessionUid=req.session?.userId"),
   "a valid signed client token must be resolved before a possibly stale cookie session"
 );
 
@@ -125,7 +125,7 @@ assert.equal(policyContext.canAccessStaffTarget({id: "1", rank: "MOD"}, {id: "2"
 console.log("Staff note rank-access regression checks passed.");
 
 const roomListStart = server.indexOf('app.get("/api/rooms",auth,async(req,res)=>{');
-const roomListEnd = server.indexOf("function userAge(", roomListStart);
+const roomListEnd = server.indexOf("function roomAgeAllowed(", roomListStart);
 assert.ok(roomListStart >= 0 && roomListEnd > roomListStart, "room directory route must exist");
 const roomListRoute = server.slice(roomListStart, roomListEnd);
 assert.doesNotMatch(roomListRoute, /DELETE\s+FROM\s+(?:rooms|room_messages)/i,
@@ -355,12 +355,12 @@ const indexHtml=fs.readFileSync("public/index.html","utf8");
 const roomCreateStart=app.indexOf("function openRoomCreationModal()"),roomCreateEnd=app.indexOf("/* ---------------- V3 SETTINGS",roomCreateStart);
 assert.ok(roomCreateStart>=0&&roomCreateEnd>roomCreateStart,"room creation modal must exist");
 const roomCreateSource=app.slice(roomCreateStart,roomCreateEnd);
-assert.match(roomCreateSource,/id="rVisibility"[\s\S]*Secret — hidden, invite link required/,
-  "room creation must visibly offer secret rooms");
+assert.match(roomCreateSource,/id="rVisibility"[\s\S]*Secret — hidden, numeric room code required/,
+  "room creation must visibly offer numeric-code secret rooms");
 assert.match(roomCreateSource,/public:\$\("rVisibility"\)\.value!=="secret"/,
   "secret-room creation must persist private visibility through the existing room API");
 assert.match(roomCreateSource,/showInvite\(created\.room\)/,
-  "creating a secret room must show its signed invitation link from the creation response");
+  "creating a secret room must display its numeric room code");
 assert.match(app,/async function showInvite\(roomOrId=state\.currentRoom\)/,
   "room invitation UI must accept a newly created room even when the room list hides it");
 assert.match(app,/roomOrId&&typeof roomOrId==="object"[\s\S]*?roomOrId\s*:\s*state\.rooms\.find/,
