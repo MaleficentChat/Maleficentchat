@@ -6492,3 +6492,128 @@ html[data-theme] #viewRooms.chatting .msg.theirs:not(.own-message) .msg-text {
   background-image:none!important;
   border-color:var(--accent)!important;
 }
+
+
+/* Site-wide account theme: apply the same palette outside the room chat too. */
+html[data-theme] body,
+html[data-theme] #app,
+html[data-theme] .app,
+html[data-theme] .main,
+html[data-theme] .view {
+  background-color:var(--bg)!important;
+  color:var(--text)!important;
+}
+html[data-theme] .view .panel,
+html[data-theme] .view .card,
+html[data-theme] .view .settings-hero,
+html[data-theme] .view .news-card,
+html[data-theme] .view .media-card,
+html[data-theme] .view .shop-item,
+html[data-theme] .view .stat-card,
+html[data-theme] .view .game-stat,
+html[data-theme] .view .poll-card,
+html[data-theme] .view .event-card,
+html[data-theme] .view .dm-contact-card,
+html[data-theme] .view .user-card,
+html[data-theme] .view .room-list-card {
+  background:var(--panel)!important;
+  color:var(--text)!important;
+  border-color:var(--border)!important;
+}
+html[data-theme] .view .panel-head,
+html[data-theme] .view .chat-head,
+html[data-theme] .view .topbar,
+html[data-theme] .view .settings-tabs,
+html[data-theme] .view .profile-tabs {
+  background:var(--panel-2)!important;
+  color:var(--text)!important;
+  border-color:var(--border)!important;
+}
+html[data-theme] .view input,
+html[data-theme] .view textarea,
+html[data-theme] .view select,
+html[data-theme] .modal-card input,
+html[data-theme] .modal-card textarea,
+html[data-theme] .modal-card select {
+  background:var(--panel-2)!important;
+  color:var(--text)!important;
+  border-color:var(--border)!important;
+}
+html[data-theme] .view button:not(.primary):not(.send):not(.danger):not(.room-menu-action),
+html[data-theme] .modal-card button:not(.primary):not(.send):not(.danger) {
+  border-color:var(--border);
+}
+html[data-theme] .view .primary,
+html[data-theme] .modal-card .primary,
+html[data-theme] .view .send,
+html[data-theme] .modal-card .send {
+  background:linear-gradient(135deg,var(--accent),var(--accent-2))!important;
+  border-color:var(--accent)!important;
+  color:#fff!important;
+}
+html[data-theme] .view h1,
+html[data-theme] .view h2,
+html[data-theme] .view h3,
+html[data-theme] .view .section-title,
+html[data-theme] .view .eyebrow,
+html[data-theme] .view .news-count,
+html[data-theme] .view .dm-group h3 {
+  color:var(--accent-2)!important;
+}
+html[data-theme] .view .muted,
+html[data-theme] .view small {
+  color:var(--muted)!important;
+}
+/* Private-message conversations are rendered in a modal, so theme them too. */
+html[data-theme] .modal-card:has(.dm-chat-header) {
+  background:var(--panel)!important;
+  border-color:var(--accent)!important;
+  color:var(--text)!important;
+}
+html[data-theme] .dm-chat-header,
+html[data-theme] .dm-quick-replies,
+html[data-theme] .dm-composer {
+  background:var(--panel-2)!important;
+  border-color:var(--border)!important;
+}
+html[data-theme] .dm-chat-person-copy h2,
+html[data-theme] .dm-chat-person-copy span,
+html[data-theme] .dm-message-list .msg-text,
+html[data-theme] .dm-message-list .msg-top {
+  color:var(--text)!important;
+}
+html[data-theme] .dm-message-list {
+  background:var(--bg)!important;
+}
+html[data-theme] .dm-message-list .msg.mine .msg-body {
+  background:var(--mine)!important;
+  border-color:var(--accent)!important;
+}
+html[data-theme] .dm-message-list .msg.theirs .msg-body {
+  background:var(--bubble)!important;
+  border-color:var(--border)!important;
+}
+html[data-theme] .dm-composer #dmText {
+  background:var(--panel)!important;
+  border-color:var(--accent)!important;
+  color:var(--text)!important;
+}
+html[data-theme] .profile-settings-card,
+html[data-theme] .profile-info,
+html[data-theme] .profile-achievements,
+html[data-theme] .profile-tabs,
+html[data-theme] .profile-settings-head {
+  background-color:var(--panel)!important;
+  color:var(--text)!important;
+  border-color:var(--border)!important;
+}
+html[data-theme] .profile-tabs .profile-tab,
+html[data-theme] .settings-tab,
+html[data-theme] .settings-row {
+  color:var(--text)!important;
+}
+html[data-theme] .profile-tabs .profile-tab.active,
+html[data-theme] .settings-tab.active {
+  background:var(--accent-soft)!important;
+  color:var(--accent-2)!important;
+}
