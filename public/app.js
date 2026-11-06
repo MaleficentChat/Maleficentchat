@@ -838,7 +838,7 @@ async function start() {
 
   state.socket.on("presence", () => {
     // Refresh room counts after joins/leaves and logins; debounce bursts of presence events.
-    if(state.view==="rooms"){
+    if(state.view==="rooms"&&!$("viewRooms")?.classList.contains("chatting")){
       clearTimeout(window.__mcRoomPresenceTimer);
       window.__mcRoomPresenceTimer=setTimeout(()=>loadRooms().catch(()=>renderRooms()),350);
     }
@@ -1299,6 +1299,7 @@ if ($("backRooms")) {
     $("viewRooms").classList.remove("chatting");
     $("chatWrap").classList.add("hidden");
     renderRooms();
+    loadRooms().catch(()=>renderRooms());
   };
 }
 
