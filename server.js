@@ -6015,6 +6015,27 @@ app.get("/api/dm/unread-count",auth,featureAllowed("private_messages"),async(req
   }
 });
 
+app.get("/api/me/age-change",auth,async(req,res)=>{
+  const user=current(req);
+  try{const q=await pool.query("SELECT data,created_at FROM reports WHERE reporter_id=$1 AND data->>'kind'='age_change' ORDER BY created_at DESC LIMIT 1",[Number(user.id)]);const data=q.rows[0]?.data||null;res.set("Cache-Control","no-store");res.json({request:data?{id:data.id,status:data.status||"OPEN",requestedAge:Number(data.requestedAge),time:data.time||new Date(q.rows[0].created_at).getTime()}:null});}
+  catch(error){console.error("Age-change status lookup failed:",error);res.status(500).json({error:"Could not load age-change request status."});}
+});
+app.post("/api/me/age-change",auth,async(req,res)=>{
+  const user=current(req),requestedBirthDate=String(req.body?.birthDate||"").trim(),requestedAge=ageFromBirthDate(requestedBirthDate);
+  if(requestedAge===null)return res.status(400).json({error:"Enter a valid date of birth."});
+  if(requestedAge<13||requestedAge>99)return res.status(400).json({error:"The permitted account age range is 13–99."});
+  if(requestedBirthDate===(user.birthDate||user.dateOfBirth||""))return res.status(400).json({error:"That date of birth is already on your account."});
+  try{
+    const existing=await pool.query("SELECT id FROM reports WHERE reporter_id=$1 AND data->>'kind'='age_change' AND COALESCE(data->>'status','OPEN')='OPEN' LIMIT 1",[Number(user.id)]);
+    if(existing.rowCount)return res.status(409).json({error:"You already have an age-change request pending staff verification."});
+    const reportId=id(),time=Date.now(),currentAge=ageFromBirthDate(user.birthDate||user.dateOfBirth);
+    const data={id:reportId,kind:"age_change",category:"Age Change Request",reporter:String(user.id),reporterUsername:user.username,reportedUserId:String(user.id),reportedUserUsername:user.username,requestedAge,requestedBirthDate,currentAge,reason:"Age change requested",status:"OPEN",time};
+    const reason="@"+user.username+" requests an age change"+(currentAge===null?"":" from "+currentAge)+" to "+requestedAge+".";
+    await pool.query("INSERT INTO reports(id,reporter_id,reported_id,reason,data,created_at) VALUES($1,$2,$2,$3,$4::jsonb,NOW())",[reportId,Number(user.id),reason,JSON.stringify(data)]);
+    db.reports||=[];db.reports.push(data);notifyStaff("report","Age change awaiting approval","@"+user.username+" wants to change their profile age to "+requestedAge+".");
+    res.status(201).json({ok:true,request:{id:reportId,status:"OPEN",requestedAge,time},message:"Your age change is pending staff verification. Your current age remains unchanged."});
+  }catch(error){console.error("Age-change request failed:",error);res.status(500).json({error:"Could not submit your age-change request."});}
+});
 app.post('/api/reports',auth,async(req,res)=>{
   const reporter=current(req),targetId=String(req.body.target||req.body.targetId||"").trim();
   const target=findUser(targetId),reason=cleanText(req.body.reason||"").trim().slice(0,500);
