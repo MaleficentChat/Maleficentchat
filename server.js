@@ -2325,7 +2325,7 @@ function evictRoomSocketsWithoutAccess(room){
   for(const socket of io.sockets.sockets.values()){
     if(String(socket.data?.roomId||"")!==String(room.id))continue;
     const user=findUser(socket.data?.userId);
-    if(user&&verifyRoomJoinToken(socket.data?.roomJoinToken,user.id,room))continue;
+    if(user&&roomAgeAllowed(user,room)&&verifyRoomJoinToken(socket.data?.roomJoinToken,user.id,room))continue;
     socket.leave("room:"+room.id);
     socket.data.roomId=null;
     socket.data.roomJoinToken=null;
