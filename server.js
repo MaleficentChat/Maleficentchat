@@ -295,6 +295,7 @@ const FEATURE_CONTROLS=[
   {key:"view_user_history",name:"View and manage user action history",category:"Staff",defaultRank:"MOD"},
   {key:"staff_rank_assignment",name:"Assign MOD or lower",category:"Staff",defaultRank:"MOD"},
   {key:"manage_gold",name:"Manage user gold",category:"Owner",defaultRank:"OWNER"},
+  {key:"manage_diamonds",name:"Manage user Diamonds",category:"Owner",defaultRank:"OWNER"},
   {key:"manage_ranks",name:"Manage ranks",category:"Owner",defaultRank:"OWNER"},
   {key:"profile_like",name:"Like profiles",category:"Social",defaultRank:"MEMBER"},
   {key:"manage_mal_ai",name:"Manage Mal AI commands",category:"AI",defaultRank:"OWNER"},
@@ -348,7 +349,7 @@ const FEATURE_GRANT_DEFAULTS={
   delete_message:["MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],
   view_ips:["ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],
   view_emails:["OWNER"],
-  manage_ranks:["OWNER"],manage_settings:["OWNER"],manage_gold:["OWNER"],manage_bots:["OWNER"],manage_mal_ai:["OWNER"],manage_aurora:["OWNER"],manage_feature_lab:["OWNER"],
+  manage_ranks:["OWNER"],manage_settings:["OWNER"],manage_gold:["OWNER"],manage_diamonds:["OWNER"],manage_bots:["OWNER"],manage_mal_ai:["OWNER"],manage_aurora:["OWNER"],manage_feature_lab:["OWNER"],
   manage_news:["ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],delete_news:["ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],
   report_message:GRANT_RANKS,moderate_user:["MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],clear_room:["COOWNER","OWNER"],
   edit_message:GRANT_RANKS,pin_message:["MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],save_message:GRANT_RANKS,react_message:GRANT_RANKS,
@@ -2646,7 +2647,7 @@ app.post("/api/rooms/:id/messages",auth,featureAllowed("send_messages"),upload.s
         brain:{usage:"/brain [username]",description:"Show brain power for a user."},
         welcome:{usage:"/welcome username",description:"Show the Welcome Back popup for a user."},
         ship:{usage:"/ship username",description:"Check compatibility with a user."},
-        bank:{usage:"/bank",description:"Show your Diamond balance."},
+        bank:{usage:"/bank",description:"Show your Bank Balance with Diamonds, Gold and XP level."},
         convert:{usage:"/convert X",description:"Convert X Diamonds into Gold at 1 Diamond = 100 Gold."},
         steal:{usage:"/steal username",description:"Try the Gold-steal game against a user."},
         roast:{usage:"/roast username",description:"Generate a playful roast for a user."},
@@ -2718,8 +2719,8 @@ app.post("/api/rooms/:id/messages",auth,featureAllowed("send_messages"),upload.s
       const bankMessage={
         id:id(),roomId:String(r.id),userId:null,username:"Bot",displayName:"Bot",rank:"BOT",
         system:false,isBot:true,bot:"Bot",bankCommand:true,bankUsername:String(u.username||"User"),
-        bankDiamonds:Math.max(0,Number(u.diamonds)||0),
-        text:"DIAMOND BANK — "+String(u.username||"User"),reactions:{},edited:false,deleted:false,pinned:false,time:Date.now(),delivered:true
+        bankDiamonds:Math.max(0,Number(u.diamonds)||0),bankGold:Math.max(0,Number(u.gold)||0),bankLevel:Math.max(1,Number(u.level)||1),bankXp:Math.max(0,Number(u.xp)||0),
+        text:"BANK BALANCE — "+String(u.username||"User"),reactions:{},edited:false,deleted:false,pinned:false,time:Date.now(),delivered:true
       };
       await pool.query(`INSERT INTO room_messages(id,room_id,user_id,data,created_at) VALUES($1,$2,NULL,$3::jsonb,NOW())`,
         [bankMessage.id,Number(r.id),JSON.stringify(bankMessage)]);
@@ -3916,23 +3917,28 @@ app.post('/api/wallet/convert',auth,async(req,res)=>{
 });
 app.post('/api/wallet/reward',auth,async(req,res)=>{
   const actor=current(req),rank=String(actor.rank||'').toUpperCase();
-  if(!['COOWNER','OWNER','DEVELOPER'].includes(rank))return res.status(403).json({error:'Only Coowner, Owner and Developer can grant Diamond rewards.'});
+  if(!['COOWNER','OWNER','DEVELOPER'].includes(rank))return res.status(403).json({error:'Only Coowner, Owner and Developer can grant Gold or Diamond rewards.'});
+  const currency=String(req.body?.currency||'DIAMONDS').toUpperCase();
+  if(!['DIAMONDS','GOLD'].includes(currency))return res.status(400).json({error:'Choose Gold or Diamonds.'});
   const target=findUser(req.body?.userId||req.body?.username),amount=Number(req.body?.amount),reason=cleanText(req.body?.reason||'').trim().slice(0,240);
   const max=rank==='COOWNER'?10:rank==='OWNER'?100:Number.MAX_SAFE_INTEGER;
-  if(!target||!Number.isSafeInteger(amount)||amount<1||amount>max||!reason)return res.status(400).json({error:rank==='COOWNER'?'Choose a user, reason and a reward from 1 to 10 Diamonds.':rank==='OWNER'?'Choose a user, reason and a reward from 1 to 100 Diamonds.':'Choose a user, valid amount and reason.'});
-  const client=await pool.connect();let diamonds;
+  const unit=currency==='GOLD'?'gold':'Diamonds',column=currency==='GOLD'?'gold':'diamonds';
+  if(!target||!Number.isSafeInteger(amount)||amount<1||amount>max||!reason)return res.status(400).json({error:rank==='COOWNER'?'Choose a user, reason and a reward from 1 to 10.':rank==='OWNER'?'Choose a user, reason and a reward from 1 to 100.':'Choose a user, valid amount and reason.'});
+  const client=await pool.connect();let balance;
   try{
     await client.query('BEGIN');
-    const updated=await client.query('UPDATE users SET diamonds=COALESCE(diamonds,0)+$1 WHERE id=$2 RETURNING diamonds',[amount,Number(target.id)]);
+    const updated=await client.query(`UPDATE users SET ${column}=COALESCE(${column},0)+$1 WHERE id=$2 RETURNING ${column}`,[amount,Number(target.id)]);
     if(!updated.rowCount){await client.query('ROLLBACK');return res.status(404).json({error:'Recipient account not found.'});}
-    diamonds=Number(updated.rows[0].diamonds);
-    await client.query(`INSERT INTO wallet_transactions(id,sender_id,recipient_id,currency,amount,type,note) VALUES($1,$2,$3,'DIAMONDS',$4,'STAFF_REWARD',$5)`,[id(),Number(actor.id),Number(target.id),amount,reason]);
+    balance=Number(updated.rows[0][column]);
+    await client.query(`INSERT INTO wallet_transactions(id,sender_id,recipient_id,currency,amount,type,note) VALUES($1,$2,$3,$4,$5,'STAFF_REWARD',$6)`,[id(),Number(actor.id),Number(target.id),currency,amount,reason]);
     await client.query('COMMIT');
-  }catch(error){await client.query('ROLLBACK').catch(()=>{});console.error('Staff Diamond reward failed:',error);return res.status(500).json({error:'Could not grant Diamonds.'});}finally{client.release();}
-  target.diamonds=diamonds;io.to('user:'+target.id).emit('wallet:update',{userId:target.id,diamonds:target.diamonds,gold:target.gold||0});
-  notify(target.id,'wallet','Diamonds received',`The MC Staff Team awarded you ${amount} Diamonds. Reason: ${reason}`);
-  log(actor,'DIAMOND_STAFF_REWARD',target.username,{amount,reason});
-  res.json({ok:true,recipient:safeUser(target),amount,reason});
+  }catch(error){await client.query('ROLLBACK').catch(()=>{});console.error('Staff wallet reward failed:',error);return res.status(500).json({error:'Could not grant '+unit+'.'});}finally{client.release();}
+  target[column]=balance;
+  io.to('user:'+target.id).emit('wallet:update',{userId:target.id,diamonds:target.diamonds||0,gold:target.gold||0});
+  if(currency==='GOLD')io.to('user:'+target.id).emit('gold:update',{gold:balance});
+  notify(target.id,'wallet',currency==='GOLD'?'Gold received':'Diamonds received',currency==='GOLD'?`The MC Staff Team awarded you ${amount} gold. Reason: ${reason}`:`The MC Staff Team awarded you ${amount} Diamonds. Reason: ${reason}`);
+  log(actor,currency==='GOLD'?'GOLD_STAFF_REWARD':'DIAMOND_STAFF_REWARD',target.username,{currency,amount,reason});
+  res.json({ok:true,recipient:safeUser(target),amount,reason,currency,balance});
 });
 
 app.get('/api/achievements/:userId',auth,async(req,res)=>{const {rows}=await pool.query(`SELECT id,user_id,name,icon,earned_at FROM achievements WHERE user_id=$1 ORDER BY earned_at DESC,id DESC`,[Number(req.params.userId)]);res.json({achievements:rows});});
@@ -5852,6 +5858,11 @@ app.patch(
   }
 );
 
+app.patch('/api/owner/user/:id/diamonds',ownerOnly,async(req,res)=>{
+ const v=findUser(req.params.id);if(!v)return res.status(404).json({error:'User not found'});if(String(v.rank).toUpperCase()==='DEVELOPER'||v.username==='Maleficent')return res.status(403).json({error:'Developer account is protected.'});
+ const amount=Number(req.body?.amount);if(!Number.isSafeInteger(amount)||amount<0||amount>2147483647)return res.status(400).json({error:'Enter a valid non-negative Diamond balance.'});
+ try{const updated=await pool.query('UPDATE users SET diamonds=$1 WHERE id=$2 RETURNING diamonds',[amount,Number(v.id)]);if(!updated.rowCount)return res.status(404).json({error:'User not found'});v.diamonds=Number(updated.rows[0].diamonds);io.to('user:'+v.id).emit('wallet:update',{userId:v.id,diamonds:v.diamonds,gold:v.gold||0});log(current(req),'DIAMONDS_EDIT',v.username,{after:v.diamonds});save();return res.json({ok:true,user:safeUser(v)});}catch(error){console.error('Owner Diamond edit failed:',error);return res.status(500).json({error:'Could not update Diamonds.'});}
+});
 app.patch('/api/owner/user/:id/progress',ownerOnly,async(req,res)=>{
  const v=findUser(req.params.id);if(!v)return res.status(404).json({error:'User not found'});if(String(v.rank).toUpperCase()==='DEVELOPER'||v.username==='Maleficent')return res.status(403).json({error:'Developer account is protected.'});
  const xp=Number(req.body.xp),level=Number(req.body.level);if(!Number.isFinite(xp)||!Number.isFinite(level)||xp<0||level<1||xp>2147483647||level>1000000)return res.status(400).json({error:'Enter valid XP and level values.'});v.xp=Math.floor(xp);v.level=Math.floor(level);await pool.query('UPDATE users SET xp=$1 WHERE id=$2',[v.xp,Number(v.id)]);save();res.json({ok:true,user:safeUser(v)});
