@@ -136,6 +136,88 @@ const fmt = t => {
 const rank = r =>
   `<span class="rank">${rankIcon[r] || "⚡"} ${esc(r)}</span>`;
 
+
+// Upload progress UI shared by every multipart API request.
+const activeUploadCards = new Map();
+let uploadProgressRoot = null;
+function formatUploadBytes(bytes){
+  const value=Number(bytes)||0;
+  if(value<1024)return value+" B";
+  if(value<1024*1024)return (value/1024).toFixed(1)+" KB";
+  return (value/(1024*1024)).toFixed(1)+" MB";
+}
+function ensureUploadProgressRoot(){
+  if(uploadProgressRoot?.isConnected)return uploadProgressRoot;
+  uploadProgressRoot=document.createElement("section");
+  uploadProgressRoot.id="mcUploadProgress";
+  uploadProgressRoot.className="mc-upload-progress";
+  uploadProgressRoot.setAttribute("aria-live","polite");
+  uploadProgressRoot.setAttribute("aria-label","Upload progress");
+  document.body.appendChild(uploadProgressRoot);
+  return uploadProgressRoot;
+}
+function uploadProgressCard(id,fileName){
+  const root=ensureUploadProgressRoot();
+  const card=document.createElement("article");
+  card.className="mc-upload-item";
+  const heading=document.createElement("div");heading.className="mc-upload-heading";
+  const name=document.createElement("span");name.className="mc-upload-name";name.textContent=fileName||"Uploading file";
+  const percent=document.createElement("strong");percent.className="mc-upload-percent";percent.textContent="0%";
+  heading.append(name,percent);
+  const track=document.createElement("div");track.className="mc-upload-track";
+  const fill=document.createElement("div");fill.className="mc-upload-fill";track.appendChild(fill);
+  const details=document.createElement("div");details.className="mc-upload-details";
+  const status=document.createElement("span");status.textContent="Preparing upload…";
+  const size=document.createElement("span");size.textContent="0 B";
+  details.append(status,size);card.append(heading,track,details);root.appendChild(card);
+  const item={card,fill,percent,status,size};
+  activeUploadCards.set(id,item);
+  return item;
+}
+function uploadWithProgress(url,options={}){
+  return new Promise((resolve,reject)=>{
+    const id="upload-"+Date.now()+"-"+Math.random().toString(36).slice(2);
+    const file=options.body instanceof FormData?[...options.body.values()].find(value=>value instanceof File):null;
+    const item=uploadProgressCard(id,file?.name||"Uploading attachment");
+    const xhr=new XMLHttpRequest();
+    xhr.open(options.method||"POST",url,true);
+    xhr.withCredentials=true;
+    Object.entries(options.headers||{}).forEach(([key,value])=>{if(value!=null)xhr.setRequestHeader(key,String(value));});
+    const setProgress=(loaded,total)=>{
+      const percent=total>0?Math.min(100,Math.round(loaded/total*100)):0;
+      item.fill.style.width=percent+"%";item.percent.textContent=percent+"%";
+      item.status.textContent=percent>=100?"Upload sent — processing…":"Uploading…";
+      item.size.textContent=formatUploadBytes(loaded)+" / "+(total>0?formatUploadBytes(total):"size unknown");
+    };
+    xhr.upload.addEventListener("progress",event=>{if(event.lengthComputable)setProgress(event.loaded,event.total);});
+    xhr.addEventListener("load",()=>{
+      let data={};try{data=JSON.parse(xhr.responseText||"{}");}catch{}
+      if(xhr.status>=200&&xhr.status<300){
+        item.fill.style.width="100%";item.percent.textContent="100%";item.status.textContent="Completed ✓";item.status.classList.add("is-success");
+        if(file)item.size.textContent=formatUploadBytes(file.size)+" uploaded";
+        setTimeout(()=>{item.card.remove();activeUploadCards.delete(id);if(!activeUploadCards.size){uploadProgressRoot?.remove();uploadProgressRoot=null;}},1800);
+        resolve({ok:true,status:xhr.status,json:async()=>data});
+      }else{
+        item.status.textContent=data.error||"Upload failed";item.status.classList.add("is-error");
+        item.card.classList.add("has-error");
+        setTimeout(()=>{item.card.remove();activeUploadCards.delete(id);if(!activeUploadCards.size){uploadProgressRoot?.remove();uploadProgressRoot=null;}},6000);
+        resolve({ok:false,status:xhr.status,json:async()=>data});
+      }
+    });
+    xhr.addEventListener("error",()=>{
+      item.status.textContent="Network error — upload failed";item.status.classList.add("is-error");item.card.classList.add("has-error");
+      setTimeout(()=>{item.card.remove();activeUploadCards.delete(id);if(!activeUploadCards.size){uploadProgressRoot?.remove();uploadProgressRoot=null;}},6000);
+      reject(new Error("Network error while uploading. Please try again."));
+    });
+    xhr.addEventListener("abort",()=>{
+      item.status.textContent="Upload cancelled";item.status.classList.add("is-error");
+      setTimeout(()=>{item.card.remove();activeUploadCards.delete(id);if(!activeUploadCards.size){uploadProgressRoot?.remove();uploadProgressRoot=null;}},4000);
+      reject(new Error("Upload cancelled."));
+    });
+    xhr.send(options.body);
+  });
+}
+
 async function api(url, opt = {}) {
   const headers = { ...(opt.headers || {}) };
 
@@ -157,12 +239,10 @@ async function api(url, opt = {}) {
   }
   // API responses must never be read from or written to the browser HTTP cache.
   // In particular, chat history must be fetched fresh after reloads.
-  const res = await fetch(url, {
-    ...opt,
-    cache: "no-store",
-    headers,
-    credentials: "same-origin"
-  });
+  const requestOptions={...opt,cache:"no-store",headers,credentials:"same-origin"};
+  const res=opt.body instanceof FormData
+    ? await uploadWithProgress(url,requestOptions)
+    : await fetch(url,requestOptions);
 
   const body = await res.json().catch(() => ({}));
 
@@ -1446,12 +1526,12 @@ $('wallReelsToggle')?.addEventListener('click',async()=>{wallShowingReels=!wallS
 $('newWallReel')?.addEventListener('click',()=>{
   modal('<div class="new-reel-modal"><h2>🎬 Create a Shadow Reel</h2><p class="muted">Share a vertical video with the community. Your Reel will also appear in the Reels tab.</p><textarea id="wallReelCaption" maxlength="1000" placeholder="Write a caption…"></textarea><label class="stack">Choose video<input id="wallReelFile" type="file" accept="video/mp4,video/webm,video/ogg"></label><small class="muted">MP4, WebM or OGG · maximum upload size 15 MB</small><div id="wallReelPreview" class="media-preview"></div><label class="stack">Reel duration<select id="wallReelExpiry"><option value="0">Keep on Shadow Feed</option><option value="24">Disappear after 24 hours</option><option value="72">Disappear after 3 days</option><option value="168">Disappear after 7 days</option></select></label><button class="primary" id="wallReelPublish" type="button">Upload & Publish Reel</button></div>');
   $('wallReelFile')?.addEventListener('change',()=>{const file=$('wallReelFile').files?.[0],preview=$('wallReelPreview');if(!preview)return;if(!file){preview.innerHTML='';return;}if(!file.type.startsWith('video/')){preview.innerHTML='<p class="error">Choose a video file.</p>';return;}const url=URL.createObjectURL(file);preview.innerHTML='<video class="shadow-reel-video" controls playsinline src="'+esc(url)+'"></video>';});
-  $('wallReelPublish')?.addEventListener('click',async buttonEvent=>{const button=$('wallReelPublish'),file=$('wallReelFile')?.files?.[0];if(!file){toast('Choose a video before publishing.');return;}if(!file.type.startsWith('video/')){toast('Choose a supported video file.');return;}if(file.size>15*1024*1024){toast('Reels must be 15 MB or smaller.');return;}button.disabled=true;button.textContent='Uploading…';try{const form=new FormData();form.append('content',$('wallReelCaption')?.value||'');form.append('expiresInHours',$('wallReelExpiry')?.value||'0');form.append('file',file);const token=safeStorage.getItem('mc_token');const response=await fetch('/api/wall/post',{method:'POST',body:form,headers:token?{'x-auth-token':token}:{},credentials:'same-origin'});const data=await response.json().catch(()=>({}));if(!response.ok)throw Error(data.error||'Could not publish Reel.');closeModal();wallShowingReels=true;wallShowingSaved=false;wallShowingFriends=false;updateWallModeButtons();await loadWall();toast('Your Reel is live on Shadow Feed! 🎬');}catch(error){toast(error.message||'Could not publish Reel.');button.disabled=false;button.textContent='Upload & Publish Reel';}});
+  $('wallReelPublish')?.addEventListener('click',async buttonEvent=>{const button=$('wallReelPublish'),file=$('wallReelFile')?.files?.[0];if(!file){toast('Choose a video before publishing.');return;}if(!file.type.startsWith('video/')){toast('Choose a supported video file.');return;}if(file.size>15*1024*1024){toast('Reels must be 15 MB or smaller.');return;}button.disabled=true;button.textContent='Uploading…';try{const form=new FormData();form.append('content',$('wallReelCaption')?.value||'');form.append('expiresInHours',$('wallReelExpiry')?.value||'0');form.append('file',file);const data=await api('/api/wall/post',{method:'POST',body:form});closeModal();wallShowingReels=true;wallShowingSaved=false;wallShowingFriends=false;updateWallModeButtons();await loadWall();toast('Your Reel is live on Shadow Feed! 🎬');}catch(error){toast(error.message||'Could not publish Reel.');button.disabled=false;button.textContent='Upload & Publish Reel';}});
 });
 if($('newWallPost'))$('newWallPost').onclick=async()=>{
   modal(`<h2>New Shadow Feed Post</h2><textarea id="wallPostText" maxlength="5000" placeholder="Share something with the community…"></textarea><label class="stack">Post duration<select id="wallPostExpiry"><option value="0">Keep on Shadow Feed</option><option value="1">Disappear after 1 hour</option><option value="6">Disappear after 6 hours</option><option value="24">Disappear after 24 hours</option><option value="72">Disappear after 3 days</option><option value="168">Disappear after 7 days</option></select></label><input id="wallPostFile" type="file" accept="image/*,video/*"><div id="wallPreview" class="media-preview"></div><button class="primary" id="wallPostSend">Upload & Publish</button>`);
   $('wallPostFile')?.addEventListener('change',()=>{const f=$('wallPostFile').files?.[0],box=$('wallPreview');if(!f){box.innerHTML='';return}const u=URL.createObjectURL(f);box.innerHTML=f.type.startsWith('video/')?`<video controls src="${u}"></video>`:`<img src="${u}">`;});
-  $('wallPostSend').onclick=async()=>{try{const fd=new FormData();fd.append('content',$('wallPostText').value);fd.append('expiresInHours',$('wallPostExpiry')?.value||'0');const f=$('wallPostFile').files?.[0];if(f)fd.append('file',f);const token=safeStorage.getItem("mc_token"); const headers=token?{"x-auth-token":token}:{}; const r=await fetch('/api/wall/post',{method:'POST',body:fd,headers,credentials:'same-origin'});const d=await r.json().catch(()=>({}));if(!r.ok)throw Error(d.error||'Could not publish wall post.');closeModal();loadWall()}catch(e){toast(e.message)}};
+  $('wallPostSend').onclick=async()=>{try{const fd=new FormData();fd.append('content',$('wallPostText').value);fd.append('expiresInHours',$('wallPostExpiry')?.value||'0');const f=$('wallPostFile').files?.[0];if(f)fd.append('file',f);await api('/api/wall/post',{method:'POST',body:fd});closeModal();loadWall()}catch(e){toast(e.message)}};
 };
 
 async function loadRankShop(){
@@ -4082,8 +4162,7 @@ function openPublishNews(){
     try{
       const form=new FormData(); form.append('title',title); form.append('body',body);
       const photo=$('nphoto')?.files?.[0]; if(photo) form.append('file',photo);
-      const token=safeStorage.getItem("mc_token"); const headers=token?{"x-auth-token":token}:{}; const resp=await fetch('/api/news',{method:'POST',body:form,headers,credentials:'same-origin'}); const result=await resp.json().catch(()=>({}));
-      if(!resp.ok) throw Error(result.error||'Failed to publish news.');
+      await api('/api/news',{method:'POST',body:form});
       closeModal();
       await loadNews();
       toast('News published successfully.');
