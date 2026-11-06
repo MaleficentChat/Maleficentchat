@@ -6208,17 +6208,19 @@ async function toggleReportDropdown(refresh=false){
           <small>Reason: ${esc(r.reason||"No reason supplied")}${r.assignedToUsername?' · Assigned to @'+esc(r.assignedToUsername):''}</small>
           ${r.conversationUserId?'<small class="report-evidence-hint">🔒 Private-message evidence available</small>':""}</div>
           <div class="toolbar report-manager-actions">
-          ${r.conversationUserId?`<button class="mini" data-report-evidence="${esc(r.id)}">View messages</button>`:""}
-          ${r.reportedUserId?`<button class="mini" data-report-moderate="${esc(r.reportedUserId)}">Moderate</button>`:""}
-          <button class="mini" data-report-assign="${esc(r.id)}">Assign staff</button>
-          ${r.messageId?`<button class="mini danger" data-report-delete-message="${esc(r.messageId)}">Delete reported message</button>`:""}
-          ${st!=="RESOLVED"?`<button class="mini primary" data-report-resolve="${esc(r.id)}">Resolve</button>`:""}
+          ${r.kind==="age_change"&&st==="OPEN"?`<button class="mini primary" data-age-change-accept="${esc(r.id)}">Accept age change</button><button class="mini danger" data-age-change-decline="${esc(r.id)}">Decline</button>`:""}
+          ${r.kind!=="age_change"&&r.conversationUserId?`<button class="mini" data-report-evidence="${esc(r.id)}">View messages</button>`:""}
+          ${r.kind!=="age_change"&&r.reportedUserId?`<button class="mini" data-report-moderate="${esc(r.reportedUserId)}">Moderate</button>`:""}
+          ${r.kind!=="age_change"?`<button class="mini" data-report-assign="${esc(r.id)}">Assign staff</button>`:""}
+          ${r.kind!=="age_change"&&r.messageId?`<button class="mini danger" data-report-delete-message="${esc(r.messageId)}">Delete reported message</button>`:""}
+          ${r.kind!=="age_change"&&st!=="RESOLVED"?`<button class="mini primary" data-report-resolve="${esc(r.id)}">Resolve</button>`:""}
           </div></article>`;
       }).join("");
       const list=box.querySelector("#reportManagerList");
       if(list)list.innerHTML=rows||'<p class="muted notification-empty">No reports match these filters.</p>';
       const count=box.querySelector("#reportManagerCount");
       if(count)count.textContent=`Showing ${filtered.length} of ${allReports.length} reports`;
+      box.querySelectorAll("[data-age-change-accept],[data-age-change-decline]").forEach(b=>b.onclick=async()=>{const decision=b.hasAttribute("data-age-change-accept")?"ACCEPT":"DECLINE";if(!confirm(decision==="ACCEPT"?"Approve and apply this requested age change?":"Decline this age-change request? The current age will remain unchanged."))return;try{await api("/api/staff/age-change-requests/"+encodeURIComponent(b.dataset.ageChangeAccept||b.dataset.ageChangeDecline)+"/decision",{method:"POST",body:JSON.stringify({decision})});toast(decision==="ACCEPT"?"Age change approved.":"Age change declined.");await toggleReportDropdown(true);}catch(error){toast(error.message||"Could not process age-change request.");}});
       box.querySelectorAll("[data-report-moderate]").forEach(b=>b.onclick=()=>{box.classList.add("hidden");moderate(b.dataset.reportModerate);});
       box.querySelectorAll("[data-report-evidence]").forEach(b=>b.onclick=()=>{box.classList.add("hidden");viewPrivateMessageReport(b.dataset.reportEvidence);});
       box.querySelectorAll("[data-report-resolve]").forEach(b=>b.onclick=async()=>{await resolveReport(b.dataset.reportResolve);await toggleReportDropdown(true);});
