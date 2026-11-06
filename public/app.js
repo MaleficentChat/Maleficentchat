@@ -793,7 +793,7 @@ async function start() {
     const statusLabel=$("staffConstructionStatus");
     if(statusLabel){statusLabel.textContent=payload?.enabled?"ON · Maintenance enabled":"OFF · Site open";statusLabel.classList.toggle("is-on",!!payload?.enabled);}
   });
-  state.socket.on("room:theme",data=>{if(!data?.roomId||!data?.theme)return;const room=state.rooms.find(r=>String(r.id)===String(data.roomId));if(room)room.roomTheme=data.theme;if(String(state.currentRoom)===String(data.roomId))applyRoomTheme(data.theme);});
+  state.socket.on("room:theme",data=>{if(!data?.roomId||!data?.theme)return;const room=state.rooms.find(r=>String(r.id)===String(data.roomId));if(room)room.roomTheme=data.theme;});
   state.socket.on("gold:update",data=>{ if(state.user&&data?.gold!==undefined){state.user.gold=data.gold; updateNav();}});
   state.socket.on("wallet:update",data=>{if(!state.user||String(data?.userId)!==String(state.user.id))return;if(data.diamonds!==undefined)state.user.diamonds=Number(data.diamonds)||0;if(data.gold!==undefined)state.user.gold=Number(data.gold)||0;updateNav();if(state.view==="wallet")loadWallet().catch(()=>{});});
 
@@ -1899,7 +1899,7 @@ async function joinRoom(id) {
 
     const staffInfo=await api(`/api/rooms/${encodeURIComponent(id)}/staff`).catch(()=>({myRole:'USER'}));
     state.currentRoom = id;
-    const activeRoomTheme=state.rooms.find(r=>String(r.id)===String(id));applyRoomTheme(activeRoomTheme?.roomTheme||"obsidian");
+    const activeRoomTheme=state.rooms.find(r=>String(r.id)===String(id));applyRoomTheme();
     state.currentRoomRole=staffInfo.myRole||'USER';
     rememberMyRoom(id);
 
@@ -6309,17 +6309,15 @@ document.addEventListener("click", event => {
   }
 }, true);
 
-function applyRoomTheme(themeId){
- const t=ROOM_THEMES.find(x=>x.id===themeId)||ROOM_THEMES[0],root=$("viewRooms");if(!root)return;
- root.dataset.roomTheme=t.id;root.style.setProperty("--room-theme-bg",t.bg);root.style.setProperty("--room-theme-bubble",t.bubble);root.style.setProperty("--room-theme-accent",t.accent);
+function applyRoomTheme(){
+ const root=$("viewRooms");if(root){root.removeAttribute("data-room-theme");root.style.removeProperty("--room-theme-bg");root.style.removeProperty("--room-theme-bubble");root.style.removeProperty("--room-theme-accent");}
 }
 async function openRoomThemePicker(){
- const room=state.rooms.find(r=>String(r.id)===String(state.currentRoom));if(!room){toast("Join a room first.");return;}
- const selected=room.roomTheme||"obsidian";
- modal(`<div class="room-theme-picker"><h2>🎨 Room Theme</h2><p class="muted">Choose a shared look for this room. Everyone in the room will see the selected theme.</p><div class="room-theme-grid">${ROOM_THEMES.map(t=>`<article class="room-theme-card ${t.id===selected?"selected":""}"><div class="room-theme-preview" style="--preview-bg:${t.bg};--preview-bubble:${t.bubble};--preview-accent:${t.accent}"><span>${t.emoji} ${esc(t.name)}</span><i></i><i></i><b></b></div><div class="room-theme-card-footer"><strong>${esc(t.name)}</strong><button type="button" class="mini" data-apply-room-theme="${t.id}">${t.id===selected?"Selected":"Select"}</button></div></article>`).join("")}</div></div>`);
- document.querySelectorAll("[data-apply-room-theme]").forEach(button=>button.addEventListener("click",async()=>{
-  const themeId=button.dataset.applyRoomTheme;button.disabled=true;
-  try{await api(`/api/rooms/${encodeURIComponent(state.currentRoom)}/theme`,{method:"PUT",body:JSON.stringify({theme:themeId})});const current=state.rooms.find(r=>String(r.id)===String(state.currentRoom));if(current)current.roomTheme=themeId;applyRoomTheme(themeId);closeModal();toast("Room theme applied.");}
+ const selected=String(state.user?.settings?.theme||state.user?.theme||"obsidian").toLowerCase();
+ modal(`<div class="room-theme-picker"><h2>🎨 Site Theme</h2><p class="muted">Choose your personal site appearance. It applies across every section and chat room for your account only.</p><div class="room-theme-grid">${ROOM_THEMES.map(t=>`<article class="room-theme-card ${t.id===selected?"selected":""}"><div class="room-theme-preview" style="--preview-bg:${t.bg};--preview-bubble:${t.bubble};--preview-accent:${t.accent}"><span>${t.emoji} ${esc(t.name)}</span><i></i><i></i><b></b></div><div class="room-theme-card-footer"><strong>${esc(t.name)}</strong><button type="button" class="mini" data-apply-site-theme="${t.id}">${t.id===selected?"Selected":"Select"}</button></div></article>`).join("")}</div></div>`);
+ document.querySelectorAll("[data-apply-site-theme]").forEach(button=>button.addEventListener("click",async()=>{
+  const themeId=button.dataset.applySiteTheme;button.disabled=true;
+  try{const result=await api("/api/settings",{method:"PUT",body:JSON.stringify({theme:themeId})});state.user=state.user||{};state.user.settings={...(state.user.settings||{}),...(result.settings||{}),theme:themeId};state.user.theme=themeId;applyTheme(themeId);applyRoomTheme();closeModal();toast("Site theme saved for your account.");}
   catch(e){toast(e.message||"Could not apply room theme.");button.disabled=false;}
  }));
 }
