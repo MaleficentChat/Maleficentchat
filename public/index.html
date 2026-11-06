@@ -137,7 +137,7 @@
   <div id="viewRooms" class="view">
     <div class="topbar">
       <div><h2>Rooms & Community</h2><p class="muted">Main Room plus additional public/private communities.</p></div>
-      <div class="top-actions"><input id="roomSearch" placeholder="Search rooms…"><button class="mini hidden" id="hiddenRoomsToggle" type="button" onclick="toggleHiddenRoomsView()" aria-pressed="false">🔒 Hidden rooms</button><button class="icon-btn" id="refreshRoomsBtn" type="button" title="Go to Main Room" aria-label="Go to Main Room" onclick="goToMainRoomFromRoomRefresh()">↻</button><button class="primary hidden room-create-button" id="newRoom">＋ Room</button></div>
+      <div class="top-actions"><input id="roomSearch" placeholder="Search rooms…"><button class="mini hidden" id="hiddenRoomsToggle" type="button" onclick="toggleHiddenRoomsView()" aria-pressed="false">🔒 Hidden rooms</button><label class="room-code-search-wrap"><span>🔐</span><input id="roomCodeSearch" inputmode="numeric" autocomplete="off" maxlength="11" placeholder="Enter secret room code · 12345 67890" aria-label="Enter secret room code"><small id="roomCodeFeedback">Enter the 10-digit code</small></label><button class="icon-btn" id="refreshRoomsBtn" type="button" title="Go to Main Room" aria-label="Go to Main Room" onclick="goToMainRoomFromRoomRefresh()">↻</button><button class="primary hidden room-create-button" id="newRoom">＋ Room</button></div>
     </div>
     <div id="rooms" class="room-grid"></div>
     <div id="chatWrap" class="chat-wrap hidden">
@@ -316,7 +316,7 @@
       var actions=[
         ["pinned","📌 Pinned messages"],
         ["youtube","▶️ YouTube"],
-        ["invite","🔗 Invite link"],
+        ["invite","🔐 Room code"],
         ["theme","🎨 Room Theme"]
       ];
       if(typeof window.canPostRoomAnnouncement==="function"&&window.canPostRoomAnnouncement())actions.unshift(["announcement","📢 Room announcement"]);
