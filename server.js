@@ -2204,7 +2204,21 @@ app.get("/api/rooms",auth,async(req,res)=>{
   res.json({rooms});
 });
 
-function roomAgeAllowed(_user,_room){ return true; }
+function roomAgeAllowed(user,room){
+  const name=String(room?.name||"").trim().toLowerCase();
+  if(name!=="teen chat"&&name!=="adult chat")return true;
+  const staff=["MOD","MODERATOR","ADMIN","SUPER_ADMIN","SUPERADMIN","COMMISSOR","INSTRUCTOR","COOWNER","OWNER","DEVELOPER"].includes(String(user?.rank||"").toUpperCase());
+  if(staff)return name==="teen chat";
+  const raw=user?.birthDate||user?.dateOfBirth||user?.birth_date||"";
+  if(!raw)return false;
+  const birth=new Date(String(raw).slice(0,10)+"T00:00:00");
+  if(Number.isNaN(birth.getTime()))return false;
+  const today=new Date();
+  let age=today.getFullYear()-birth.getFullYear();
+  if(today.getMonth()<birth.getMonth()||(today.getMonth()===birth.getMonth()&&today.getDate()<birth.getDate()))age--;
+  if(age<0||age>120)return false;
+  return name==="teen chat"?age<=19:age>=20;
+}
 function roomFriendsOnly(room){
   return !!(db.settings?.room_access?.[String(room.id)]?.friendsOnly ?? room.friendsOnly);
 }
@@ -2517,6 +2531,9 @@ app.post(
       return res.status(404).json({
         error:"Room not found"
       });
+    }
+    if(!roomAgeAllowed(u,r)){
+      return res.status(403).json({error:"This chat is restricted to the age group assigned to your account. Staff accounts must use Teen Chat."});
     }
     const roomState=roomStaffStore(),roomKey=String(r.id),uid=String(u.id);
     const blocked=roomState.room_blocks[roomKey]?.[uid];
