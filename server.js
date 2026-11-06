@@ -5292,7 +5292,7 @@ app.post('/api/shop/premium/buy-diamonds',auth,async(req,res)=>{
 });
 app.post('/api/shop/premium/request',auth,async(req,res)=>{
   const u=current(req);
-  if(['PREMIUM','MOD','ADMIN','SUPER_ADMIN','COMMISSOR','COOWNER','OWNER','DEVELOPER'].includes(String(u.rank).toUpperCase())) return res.status(403).json({error:'Only ranks below Premium may request Premium.'});
+  if(['PREMIUM','MOD','MODERATOR','ADMIN','SUPER_ADMIN','SUPERADMIN','COMMISSOR','INSTRUCTOR','COOWNER','OWNER','DEVELOPER'].includes(String(u.rank).toUpperCase())) return res.status(403).json({error:'Only ranks below Premium may request Premium.'});
   await pool.query(`INSERT INTO premium_requests(user_id,status) VALUES($1,'pending')`,[Number(u.id)]);
   const owners=await pool.query(`SELECT id FROM users WHERE LOWER(rank) IN ('owner','developer')`); for(const x of owners.rows)notify(x.id,'staff','Premium requested',`${u.username} requested Premium.`);
   res.json({ok:true,message:'Premium request sent to owner.'});
