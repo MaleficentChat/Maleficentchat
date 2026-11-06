@@ -6087,3 +6087,7 @@ html,body,#app,.app,.main,.view,#profile,#viewProfile {
 }
 .message-actions-menu.is-floating .message-more-submenu.hidden{display:none!important}
 .message-actions-menu.is-floating .message-more-wrap{flex:0 0 auto!important}
+
+.top-friends-glyph{display:block!important;width:20px!important;height:20px!important;max-width:20px!important;max-height:20px!important;fill:none!important;stroke:currentColor!important;stroke-width:1.8!important;stroke-linecap:round!important;stroke-linejoin:round!important;pointer-events:none}
+#topFriends #topFriendDot:not(.count-badge){display:none!important}
+#topFriends #topFriendDot.count-badge{position:absolute!important;top:-3px!important;right:-3px!important;left:auto!important;bottom:auto!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;width:auto!important;min-width:17px!important;height:17px!important;padding:0 4px!important;box-sizing:border-box!important;border:2px solid var(--bg,#09090f)!important;border-radius:999px!important;background:#ff3b78!important;color:#fff!important;font-size:10px!important;font-weight:900!important;line-height:1!important;z-index:8!important;pointer-events:none!important}
