@@ -6729,3 +6729,20 @@ html[data-theme] .settings-tab.active {
 .profile-photo-remove{position:absolute;top:6px;right:6px;width:28px;height:28px;border:1px solid rgba(255,255,255,.28);border-radius:50%;background:rgba(10,7,18,.82);color:#fff;font-size:20px;line-height:1;display:grid;place-items:center}
 .profile-photos-empty{grid-column:1/-1;padding:22px 12px;text-align:center;color:var(--muted)}
 @media(max-width:480px){.profile-photo-grid{gap:6px}.profile-photo-tile{border-radius:9px}.profile-photos-heading{align-items:flex-start}}
+
+
+/* Compact, persistent upload progress cards (works across every multipart upload). */
+.mc-upload-progress{position:fixed;z-index:2147483000;right:14px;bottom:14px;width:min(370px,calc(100vw - 28px));display:grid;gap:9px;pointer-events:none}
+.mc-upload-item{padding:12px 14px;border:1px solid rgba(181,140,255,.38);border-radius:14px;background:rgba(13,9,23,.96);box-shadow:0 12px 38px rgba(0,0,0,.48);color:#f7f0ff;backdrop-filter:blur(16px);pointer-events:auto}
+.mc-upload-heading,.mc-upload-details{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.mc-upload-heading{font-size:12px;font-weight:700}
+.mc-upload-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mc-upload-percent{color:#d4b7ff;font-variant-numeric:tabular-nums}
+.mc-upload-track{height:7px;margin:9px 0 7px;overflow:hidden;border-radius:99px;background:rgba(255,255,255,.12)}
+.mc-upload-fill{width:0;height:100%;border-radius:inherit;background:linear-gradient(90deg,#9b5cff,#ff4fd8);transition:width .12s linear}
+.mc-upload-details{font-size:10px;color:rgba(239,229,255,.72)}
+.mc-upload-details span:first-child{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mc-upload-details .is-success{color:#79e8ad}
+.mc-upload-details .is-error{color:#ff8b9b}
+.mc-upload-item.has-error{border-color:rgba(255,105,130,.55)}
+@media(max-width:520px){.mc-upload-progress{right:10px;bottom:10px;width:calc(100vw - 20px)}}
