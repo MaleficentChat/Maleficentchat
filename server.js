@@ -5254,7 +5254,7 @@ app.get('/api/economy/history',auth,async(req,res)=>{
 // Rank shop: premium requests and gold-funded temporary VIP.
 app.get('/api/shop',auth,async(req,res)=>{
   res.json({
-    premium:{price:3,lifetime:true},
+    premium:{price:6,lifetime:true},
     vip:[
       {price:200,label:"7 days",interval:"7 days",days:7},
       {price:2000,label:"1 month",interval:"1 month",days:30},
@@ -5263,6 +5263,32 @@ app.get('/api/shop',auth,async(req,res)=>{
     ],
     user:safeUser(current(req))
   });
+});
+app.post('/api/shop/premium/buy-diamonds',auth,async(req,res)=>{
+  const actor=current(req),blockedRanks=['PREMIUM','MOD','MODERATOR','ADMIN','SUPER_ADMIN','SUPERADMIN','COMMISSOR','INSTRUCTOR','COOWNER','OWNER','DEVELOPER'];
+  if(blockedRanks.includes(String(actor.rank||'').toUpperCase()))return res.status(403).json({error:'Your current rank cannot purchase Premium.'});
+  const cost=50000,client=await pool.connect();let updated;
+  try{
+    await client.query('BEGIN');
+    const locked=await client.query('SELECT id,username,rank,diamonds FROM users WHERE id=$1 FOR UPDATE',[Number(actor.id)]);
+    if(!locked.rowCount){await client.query('ROLLBACK');return res.status(404).json({error:'Account not found.'});}
+    const account=locked.rows[0];
+    if(blockedRanks.includes(String(account.rank||'').toUpperCase())){await client.query('ROLLBACK');return res.status(403).json({error:'Your current rank cannot purchase Premium.'});}
+    if(Number(account.diamonds||0)<cost){await client.query('ROLLBACK');return res.status(400).json({error:'You need 50,000 Diamonds to purchase lifetime Premium.'});}
+    updated=await client.query("UPDATE users SET diamonds=COALESCE(diamonds,0)-$1,rank='Premium',is_premium=true,vip_expires_at=NULL WHERE id=$2 RETURNING diamonds",[cost,Number(actor.id)]);
+    await client.query("INSERT INTO wallet_transactions(id,sender_id,currency,amount,type,note) VALUES($1,$2,'DIAMONDS',$3,'PREMIUM_PURCHASE',$4)",[id(),Number(actor.id),cost,'Lifetime Premium purchase']);
+    await client.query("UPDATE premium_requests SET status='granted' WHERE user_id=$1 AND status='pending'",[Number(actor.id)]);
+    await client.query('COMMIT');
+    actor.rank='PREMIUM';actor.isPremium=true;actor.is_premium=true;actor.vipExpiresAt=null;actor.diamonds=Number(updated.rows[0].diamonds);
+    save();
+    try{notify(actor.id,'premium','Premium activated','Your lifetime Premium membership is active. 50,000 Diamonds were deducted from your wallet.');}catch(notificationError){console.error('Premium purchase notification failed:',notificationError);}
+    try{log(actor,'PREMIUM_PURCHASED_WITH_DIAMONDS',actor.username,{diamondsSpent:cost,lifetime:true});}catch(logError){console.error('Premium purchase audit log failed:',logError);}
+    res.json({ok:true,rank:'PREMIUM',diamonds:actor.diamonds,diamondsSpent:cost,lifetime:true});
+  }catch(error){
+    await client.query('ROLLBACK').catch(()=>{});
+    console.error('Premium Diamond purchase failed:',error);
+    res.status(500).json({error:'Could not complete the Premium purchase. Your Diamonds were not charged.'});
+  }finally{client.release();}
 });
 app.post('/api/shop/premium/request',auth,async(req,res)=>{
   const u=current(req);
