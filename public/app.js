@@ -4417,9 +4417,9 @@ async function showAchievements(user){try{const d=await api('/api/achievements/'
 
 async function openProfileActionDrawer(user,data={}){
   const isSelf=String(user.id)===String(state.user.id);
-  const actorRank=String(state.user?.rank||'').toUpperCase(),canEditStaffPoints=['OWNER','DEVELOPER'].includes(actorRank);
+  const actorRank=String(state.user?.rank||'').toUpperCase(),canEditStaffPoints=['OWNER','DEVELOPER'].includes(actorRank),actorIsStaff=(rankOrder[actorRank]??-1)>=(rankOrder.MOD??4);
   let staffPointInfo=null;
-  if(isSelf||canFeature('staff_dashboard_access')){try{staffPointInfo=await api('/api/staff-points/'+encodeURIComponent(user.id));}catch{}}
+  if(isSelf||actorIsStaff){try{staffPointInfo=await api('/api/staff-points/'+encodeURIComponent(user.id));}catch{}}
   if(isSelf){
     modal(`<div class="profile-drawer"><h2>Account actions</h2><button class="quick-user-row" id="drawerEdit">✏️ Edit profile</button><button class="quick-user-row" id="drawerBlocked">🚫 Blocked users</button><button class="quick-user-row" id="drawerStaffPoints"><span>🏅</span><b>Staff Points</b><i>${Number(staffPointInfo?.staffPoints||0).toLocaleString()}</i></button></div>`);
     $('drawerEdit')?.addEventListener('click',()=>{closeModal();state.view='profile';renderView()});$('drawerBlocked')?.addEventListener('click',showBlockedUsers);
@@ -4446,12 +4446,12 @@ async function openProfileActionDrawer(user,data={}){
      <button class="quick-user-row" id="drawerAddFriend"><span>👥</span><b>Add friend</b><i>›</i></button>
      ${canShareWallet?'<button class="quick-user-row" id="drawerWallet"><span>🏧</span><b>Share Wallet</b><i>›</i></button>':''}
      <button class="quick-user-row" id="drawerBlock"><span>🚫</span><b>Block</b><i>›</i></button>
-     ${canSeeStaffPoints?`<button class="quick-user-row" id="drawerStaffPoints"><span>🏅</span><b>Staff Points</b><i>${Number(staffPointInfo.staffPoints||0).toLocaleString()}</i></button>`:''}
-     ${canEditTargetPoints?'<button class="quick-user-row" id="drawerEditStaffPoints"><span>✏️</span><b>Edit Staff Points</b><i>›</i></button>':''}
      ${canModerate?'<button class="quick-user-row" id="drawerModerateUser"><span>🛡️</span><b>Moderate user</b><i>›</i></button>':''}
      ${canStaffAccount?'<button class="quick-user-row" id="drawerStaffAccount"><span>⚙️</span><b>Staff account</b><i>›</i></button>':''}
      ${canStaffModification?'<button class="quick-user-row" id="drawerStaffModification"><span>🛠️</span><b>Staff modification</b><i>›</i></button>':''}
      ${canRoomRank||canRoomModerate?'<button class="quick-user-row" id="drawerRoomAction"><span>✨</span><b>Room Action</b><i>›</i></button>':''}
+     ${canSeeStaffPoints?`<button class="quick-user-row" id="drawerStaffPoints"><span>🏅</span><b>Staff Points</b><i>${Number(staffPointInfo.staffPoints||0).toLocaleString()}</i></button>`:''}
+     ${canEditTargetPoints?'<button class="quick-user-row" id="drawerEditStaffPoints"><span>✏️</span><b>Edit Staff Points</b><i>›</i></button>':''}
    </div>`);
   $('drawerAddFriend')?.addEventListener('click',async()=>{try{await friend(id);closeModal();}catch(e){toast(e.message)}});
   $('drawerBlock')?.addEventListener('click',async()=>{try{await block(id);closeModal();}catch(e){toast(e.message)}});
