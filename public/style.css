@@ -5777,3 +5777,35 @@ html,body,#app,.app,.main,.view,#profile,#viewProfile {
  .dm-chat-actions .mini{flex:0 0 auto!important}
  .dm-message-list{height:64dvh!important;min-height:260px!important;padding:8px!important}
 }
+
+
+/* Midnight Cyber message action menu — compact, nested and touch-friendly. */
+.message-actions-menu{
+ display:flex!important;flex-direction:column!important;flex-wrap:nowrap!important;align-items:stretch!important;gap:4px!important;
+ width:min(278px,calc(100vw - 34px))!important;min-width:0!important;max-width:calc(100vw - 34px)!important;padding:8px!important;
+ border:1px solid rgba(177,125,255,.28)!important;border-radius:17px!important;
+ background:linear-gradient(155deg,#171525 0%,#11121d 72%,#171126 100%)!important;
+ box-shadow:0 18px 48px rgba(0,0,0,.55),0 0 0 1px rgba(155,92,255,.08)!important;backdrop-filter:blur(18px);
+}
+.message-actions-menu.hidden,.message-more-submenu.hidden{display:none!important}
+.message-actions-menu .message-menu-item,.message-more-submenu .message-menu-item{
+ width:100%!important;min-height:48px!important;display:flex!important;align-items:center!important;gap:11px!important;
+ padding:7px 9px!important;border:0!important;border-radius:11px!important;background:transparent!important;
+ color:#f2edf9!important;text-align:left!important;cursor:pointer!important;white-space:normal!important;
+}
+.message-actions-menu .message-menu-item:hover,.message-more-submenu .message-menu-item:hover{background:rgba(155,92,255,.13)!important}
+.message-actions-menu .menu-icon,.message-more-submenu .menu-icon{
+ width:32px!important;height:32px!important;flex:0 0 32px!important;display:grid!important;place-items:center!important;
+ border-radius:10px!important;background:rgba(155,92,255,.13)!important;color:#d2a9ff!important;font-size:16px!important;
+}
+.message-actions-menu .message-menu-item>span:nth-child(2){display:flex;flex:1;min-width:0;flex-direction:column;gap:1px}
+.message-actions-menu .message-menu-item b,.message-more-submenu .message-menu-item b{font-size:13px!important;font-weight:750!important;line-height:1.25}
+.message-actions-menu .message-menu-item small{font-size:10px!important;line-height:1.25;color:#aaa4ba!important}
+.message-actions-menu .message-menu-item.danger .menu-icon{background:rgba(255,76,112,.12)!important;color:#ff829d!important}
+.message-actions-menu .message-menu-item.danger b{color:#ff9bad!important}
+.message-more-wrap{position:relative;width:100%}
+.message-more-trigger .more-chevron{color:#aaa4ba;font-size:20px;margin-left:auto}
+.message-more-submenu{display:flex;flex-direction:column;gap:3px;margin:4px 0 2px 42px;padding:5px;border-left:1px solid rgba(177,125,255,.25);border-radius:0 10px 10px 0;background:rgba(155,92,255,.055)}
+.message-more-submenu .message-menu-item{min-height:39px!important;padding:5px 7px!important}
+.message-more-submenu .menu-icon{width:27px!important;height:27px!important;flex-basis:27px!important;font-size:14px!important}
+@media(max-width:700px){.message-actions-menu{width:min(270px,calc(100vw - 30px))!important;max-height:min(72dvh,560px);overflow-y:auto;overscroll-behavior:contain}.message-actions-menu .message-menu-item{min-height:46px!important}}
