@@ -2193,7 +2193,7 @@ app.get("/api/rooms",auth,async(req,res)=>{
   const {rows}=await pool.query(`SELECT r.*,u.username AS creator FROM rooms r LEFT JOIN users u ON r.created_by=u.id ORDER BY r.is_default DESC,r.created_at ASC,r.id ASC`);
   if(!rows.length) return res.status(503).json({error:'Rooms are not initialized yet. Please retry in a moment.',rooms:[]});
   const viewer=current(req);
-  const canSeeRoomPins=["COOWNER","OWNER","DEVELOPER"].includes(String(viewer.rank||"").toUpperCase());
+  const canSeeRoomPins=["COOWNER","CO-OWNER","CO_OWNER","OWNER","DEVELOPER"].includes(String(viewer.rank||"").toUpperCase().replace(/\s+/g,""));
    const allRooms=rows.map(r=>{const room={id:String(r.id),name:r.name,icon:r.icon||"💬",description:r.description||"",category:r.category||"Community",public:r.is_public!==false,passwordHash:r.password_hash||null,rankRequired:String(r.rank_required||"MEMBER").toUpperCase(),limit:Number(r.room_limit||100),slowMode:Number(r.slow_mode||0),announcement:r.announcement||"",ownerId:r.created_by?String(r.created_by):null,banner:r.banner||"",inviteToken:r.invite_token||"",creator:r.creator||null,isDefault:!!r.is_default,minAge:Number(r.min_age??0),maxAge:Number(r.max_age??120),friendsOnly:!!(db.settings?.room_access?.[String(r.id)]?.friendsOnly),roomTheme:String(db.settings?.room_themes?.[String(r.id)]||"obsidian"),locked:!!r.password_hash,roomCode:r.is_public===false?formatRoomCode(r.room_code):null,onlineCount:visibleRoomOnlineCount(r.id),...(canSeeRoomPins?{pinned:!!db.settings?.room_pins?.[String(r.id)]}:{})};return room;});
   db.rooms=allRooms;
   const joinToken=String(req.headers["x-room-join-token"]||"");
@@ -2487,7 +2487,7 @@ app.put("/api/rooms/:id",auth,async(req,res)=>{
 app.put("/api/rooms/:id/pin",auth,(req,res)=>{
   const actor=current(req),room=db.rooms.find(item=>String(item.id)===String(req.params.id));
   if(!room)return res.status(404).json({error:"Room not found"});
-  if(!["COOWNER","OWNER","DEVELOPER"].includes(String(actor.rank||"").toUpperCase()))return res.status(403).json({error:"Only Co-owner, Owner, and Developer can pin rooms."});
+  if(!["COOWNER","CO-OWNER","CO_OWNER","OWNER","DEVELOPER"].includes(String(actor.rank||"").toUpperCase().replace(/\s+/g,"")))return res.status(403).json({error:"Only Co-owner, Owner, and Developer can pin rooms."});
   const pinned=typeof req.body?.pinned==="boolean"?req.body.pinned:!db.settings?.room_pins?.[String(room.id)];
   db.settings ||= {};db.settings.room_pins ||= {};db.settings.room_pins[String(room.id)]=pinned;
   save();log(actor,pinned?"ROOM_PIN":"ROOM_UNPIN",room.name,{roomId:String(room.id)});
