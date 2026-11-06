@@ -2050,8 +2050,6 @@ function messageHTML(message) {
         <div class="bot-welcome-glow" style="color:#fcd34d;text-shadow:0 0 10px #f59e0b">💎 DIAMOND BALANCE</div>
         <div class="bot-welcome-username">@${esc(message.bankUsername||"User")}</div>
         <div style="display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-top:8px;font-size:13px">
-          <span>⭐ Level <b>${Math.max(1,Number(message.bankLevel)||1)}</b></span>
-          <span>✨ XP <b>${Math.max(0,Number(message.bankXp)||0).toLocaleString()}</b></span>
           <span>💎 Diamonds <b>${Math.max(0,Number(message.bankDiamonds)||0).toLocaleString()}</b></span>
         </div>
       </div>
