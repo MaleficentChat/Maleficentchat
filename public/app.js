@@ -6549,6 +6549,8 @@ function editRoom() {
         <label>Who can discover this room<select id="rPublic"><option value="true" ${room.public!==false?"selected":""}>Public — listed for everyone</option><option value="false" ${room.public===false?"selected":""}>Private — not publicly listed</option></select></label>
         <label>Minimum rank to join<select id="rRankRequired">${rankChoices.map(r=>'<option value="'+r+'" '+(savedRequiredRank===r?'selected':'')+'>'+(rankLabels[r]||r.replaceAll("_"," "))+'</option>').join("")}</select></label>
         <label>Member access<select id="rFriendsOnly"><option value="false" ${room.friendsOnly?'':'selected'}>Anyone who meets the rank requirement</option><option value="true" ${room.friendsOnly?'selected':''}>Accepted friends only</option></select></label>
+        <div class="room-editor-grid"><label>Minimum age<input id="rMinAge" type="number" min="13" max="99" value="${Number(room.minAge??13)}" required></label><label>Maximum age<input id="rMaxAge" type="number" min="13" max="99" value="${Number(room.maxAge??99)}" required></label></div>
+        <p class="room-editor-help">Only members in this age range can enter. Moderator and higher staff can enter any room.</p>
         <label>Change room password <span class="room-editor-optional">leave blank to remove it</span><input id="rp" type="password" autocomplete="new-password" placeholder="Enter a new password"></label>
       </section>
       <section class="room-editor-section"><h3>⚙️ Room limits</h3><div class="room-editor-grid">
@@ -6577,6 +6579,8 @@ async function saveRoom() {
           public: $("rPublic").value === "true",
           rankRequired: $("rRankRequired").value,
           friendsOnly: $("rFriendsOnly").value === "true",
+          minAge: Number($("rMinAge").value),
+          maxAge: Number($("rMaxAge").value),
           password: $("rp").value
         })
       }
