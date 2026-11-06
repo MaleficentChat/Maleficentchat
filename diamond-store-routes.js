@@ -1,4 +1,4 @@
-function registerDiamondStoreRoutes({app,pool,current,notify,io,log,id,db,ownerOnly}) {
+function registerDiamondStoreRoutes({app,pool,current,notify,io,log,id,db,ownerOnly,auth}) {
   const packages = {
     starter: { price: 1, diamonds: 5000 },
     popular: { price: 2, diamonds: 12000 },
