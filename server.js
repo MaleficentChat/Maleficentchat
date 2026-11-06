@@ -2208,7 +2208,8 @@ function roomAgeAllowed(user,room){
   const name=String(room?.name||"").trim().toLowerCase();
   if(name!=="teen chat"&&name!=="adult chat")return true;
   const staff=["MOD","MODERATOR","ADMIN","SUPER_ADMIN","SUPERADMIN","COMMISSOR","INSTRUCTOR","COOWNER","OWNER","DEVELOPER"].includes(String(user?.rank||"").toUpperCase());
-  if(staff)return name==="teen chat";
+  // Staff may manually enter either age room; the age-appropriate shortcut still routes them to Teen Chat.
+  if(staff)return true;
   const raw=user?.birthDate||user?.dateOfBirth||user?.birth_date||"";
   if(!raw)return false;
   const birth=new Date(String(raw).slice(0,10)+"T00:00:00");
@@ -2542,7 +2543,8 @@ app.post(
     if(kicked&&Number(kicked.until)>Date.now())return res.status(403).json({error:"You were removed from this room temporarily. Reason: "+String(kicked.reason||"Room rules").slice(0,240)});
     if(kicked&&Number(kicked.until)<=Date.now())delete roomState.room_kicks[roomKey][uid];
     const isPermanentMainRoom=!!r.isDefault||/^main room$/i.test(String(r.name||"").trim());
-    if(!isPermanentMainRoom&&!hasFeature(u,"join_rooms")){
+    const isStaffAccount=["MOD","MODERATOR","ADMIN","SUPER_ADMIN","SUPERADMIN","COMMISSOR","INSTRUCTOR","COOWNER","OWNER","DEVELOPER"].includes(String(u.rank||"").toUpperCase());
+    if(!isPermanentMainRoom&&!isStaffAccount&&!hasFeature(u,"join_rooms")){
       return res.status(403).json({error:"Your account does not have permission to join rooms."});
     }
 
@@ -2557,10 +2559,10 @@ app.post(
     const userRank=String(u.rank||"MEMBER").toUpperCase();
     const requiredRank=String(r.rankRequired||"MEMBER").toUpperCase();
     // Main Room is the guaranteed post-login entry point for every account.
-    if(!isPermanentMainRoom && !roomRankCanEnter(u,r)){
+    if(!isPermanentMainRoom && !isStaffAccount && !roomRankCanEnter(u,r)){
       return res.status(403).json({error:`This room requires ${requiredRank.replaceAll("_"," ")} rank or higher.`});
     }
-    if(!isPermanentMainRoom && roomFriendsOnly(r)&&!areAcceptedFriends(u,db.users.find(x=>String(x.id)===String(r.ownerId||r.created_by)))){
+    if(!isPermanentMainRoom && !isStaffAccount && roomFriendsOnly(r)&&!areAcceptedFriends(u,db.users.find(x=>String(x.id)===String(r.ownerId||r.created_by)))){
       return res.status(403).json({error:"This room is for the room owner's accepted friends only."});
     }
 
