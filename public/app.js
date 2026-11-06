@@ -6438,7 +6438,7 @@ async function showInvite(roomOrId=state.currentRoom) {
   if(!room)return;
   if(room.public!==false){modal("<h2>Public room</h2><p class=\"muted\">This room is public and does not need an access code.</p>");return;}
   const code=String(room.roomCode||"").trim();
-  if(!/^\\d{5} \\d{5}$/.test(code)){toast("Room code is not available yet. Refresh the room list and try again.");return;}
+  if(!/^\d{5} \d{5}$/.test(code)){toast("Room code is not available yet. Refresh the room list and try again.");return;}
   modal("<div class=\"room-code-share\"><h2>🔐 Secret room code</h2><p class=\"muted\">Share this code with people you want to invite. They can enter it in the Rooms & Community code bar.</p><div class=\"room-code-display\" id=\"roomCodeDisplay\">"+esc(code)+"</div><div class=\"toolbar\"><button type=\"button\" class=\"primary\" id=\"copyRoomCode\">Copy room code</button></div></div>");
   $("copyRoomCode")?.addEventListener("click",async()=>{try{await navigator.clipboard.writeText(code);toast("Room code copied.");}catch{toast("Room code: "+code);}});
 }
