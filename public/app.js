@@ -2246,9 +2246,14 @@ function messageHTML(message) {
       <div class="msg-body">
 
         <div class="msg-top">
-          <span class="msg-time-side">${fmt(message.time)}${message.edited ? " · edited" : ""}</span>
-          <button class="message-author tag-author" type="button" title="Tag @${esc(message.username)}" onclick="tagUserFromMessage('${esc(message.username)}')" style="color:${esc(message.usernameColor||state.user?.settings?.usernameColor||'var(--username-color)')}">${esc(message.displayName)}</button>
-          <span class="message-rank-floating" title="${esc(message.rank||"MEMBER")}">${rankIcon[String(message.rank||"MEMBER").toUpperCase()]||"⚡"} ${esc(String(message.rank||"MEMBER").replaceAll("_"," "))}</span>
+          <span class="msg-author-group">
+            <button class="message-author tag-author" type="button" title="Tag @${esc(message.username)}" onclick="tagUserFromMessage('${esc(message.username)}')" style="color:${esc(message.usernameColor||state.user?.settings?.usernameColor||'var(--username-color)')}">${esc(message.displayName)}</button>
+            <span class="message-rank-floating" title="${esc(message.rank||"MEMBER")}">${rankIcon[String(message.rank||"MEMBER").toUpperCase()]||"⚡"} ${esc(String(message.rank||"MEMBER").replaceAll("_"," "))}</span>
+          </span>
+          <span class="msg-header-right">
+            <span class="msg-time-side">${fmt(message.time)}${message.edited ? " · edited" : ""}</span>
+            <button class="message-more-button" type="button" aria-label="Message actions" title="Message actions" onclick="event.stopPropagation();toggleMessageMenu('${esc(message.id)}')">⋯</button>
+          </span>
         </div>
 
        ${
@@ -2270,23 +2275,14 @@ function messageHTML(message) {
         }
 
         return `
-          <div
-            class="quoted"
-            onclick="jumpToMessage('${esc(quoted.id)}')"
-          >
-            <div class="quoted-label">
-              ↪ ${esc(quoted.displayName || quoted.username || "User")}
+          <div class="quoted" onclick="jumpToMessage('${esc(quoted.id)}')">
+            <div class="quoted-header">
+              ${avatar({displayName:quoted.displayName||quoted.username||"User",username:quoted.username,avatar:quoted.avatar||""},"quoted-avatar")}
+              <span class="quoted-author">${esc(quoted.displayName || quoted.username || "User")}</span>
             </div>
-
-            <div class="quoted-text">
-              ${
-                quoted.text
-                  ? esc(quoted.text)
-                  : quoted.attachment
-                    ? "📎 Attachment"
-                    : "Message"
-              }
-            </div>
+            <div class="quoted-text">${
+              quoted.text ? esc(quoted.text) : quoted.attachment ? "📎 Attachment" : "Message"
+            }</div>
           </div>
         `;
       })()
@@ -2318,7 +2314,6 @@ function messageHTML(message) {
             : ""
         }
         <div class="msg-actions">
-          <button class="message-more-button" type="button" aria-label="Message actions" title="Message actions" onclick="event.stopPropagation();toggleMessageMenu('${esc(message.id)}')">⋯</button>
           <div class="message-actions-menu hidden" id="message-menu-${esc(message.id)}" role="menu" aria-label="Message actions">
             <button class="message-menu-item" role="menuitem" onclick="replyMsg('${esc(message.id)}');closeMessageMenus()"><span class="menu-icon">↩</span><span><b>Quote</b><small>Reply to this message</small></span></button>
             <button class="message-menu-item" role="menuitem" onclick="hideMsg('${esc(message.id)}');closeMessageMenus()"><span class="menu-icon">◉</span><span><b>Hide</b><small>Hide from my screen</small></span></button>
@@ -3353,11 +3348,11 @@ function renderUserProfileModal(user,data={}){
   modal(`<div class="profile-modal">
     <div class="profile-banner" ${bannerStyle}>
       <div class="equipped-profile-frame ${frame?esc(frame.id):''}" title="${frame?esc(frame.name):'Profile avatar'}">${avatar(user,'big-avatar')}</div>
+      ${user.profileMusicUrl?`<div class="profile-music-pill"><button type="button" class="profile-music-toggle" id="profileMusicToggle" aria-label="Play profile music">▶</button><span class="profile-music-bars" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span class="profile-music-title">${esc(user.profileMusicTitle||'Profile music')}</span><audio id="profileMusicAudio" preload="none" src="${esc(safeProfileUrl(user.profileMusicUrl))}"></audio></div>`:''}
       <div class="profile-stats"><span class="profile-stat">⭐ ${user.level||1}</span><span class="profile-stat">XP ${user.xp||0}</span><span class="profile-stat">❤️ ${user.profileLikes||data.profileLikes||0}</span><button class="mini profile-hamburger" id="profileMenuBtn" title="Profile actions">☰</button>${!isSelf && (String(state.user?.rank||"").toUpperCase()==="DEVELOPER" || (state.user?.username==="Maleficent" && String(state.user?.rank||"").toUpperCase()==="OWNER") || canFeature("staff_rank_assignment")) ? `<button class="mini profile-rank-btn" id="profileRankBtn">🏅 Rank</button>` : ""}</div>
       <div class="profile-rank">${rank(user.rank)}${user.verified?' · ✓ Verified':''}${profileBadge?` <span class="equipped-profile-badge" title="${esc(profileBadge.name)}">${esc(profileBadge.icon)} ${esc(profileBadge.name)}</span>`:''}</div>
       <div class="profile-name">${esc(user.displayName)}${user._nickname?` <span class="nickname-badge">“${esc(user._nickname)}”</span>`:''}</div>
       <div class="profile-handle">@${esc(user.username)}</div>
-      ${user.profileMusicUrl?`<div class="profile-music-pill"><button type="button" class="profile-music-toggle" id="profileMusicToggle" aria-label="Play profile music">▶</button><span class="profile-music-bars" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span class="profile-music-title">${esc(user.profileMusicTitle||'Profile music')}</span><audio id="profileMusicAudio" preload="none" src="${esc(safeProfileUrl(user.profileMusicUrl))}"></audio></div>`:''}
       <div class="profile-social-stats">
         <span class="profile-social-stat"><b>🪙 ${Number(user.gold||0).toLocaleString()}</b><small>Gold</small></span>
         <span class="profile-social-stat"><b>💎 ${Number(user.diamonds||0).toLocaleString()}</b><small>Diamonds</small></span>
