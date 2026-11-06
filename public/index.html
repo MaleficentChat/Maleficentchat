@@ -322,10 +322,45 @@
   })();
 </script>
 <script>
-// The room menu is handled by app.js. Do not install a capture-phase
-// fallback here: it would intercept #roomMenu before the permission-aware
-// handler can add Edit room and Pin room.
-</script>
-<script src="/app.js?v=room-menu-fix-20261106-4"></script>
+// Independent fallback for the room menu. It is used only if app.js failed
+// before registering its permission-aware handler.
+(function(){
+  document.addEventListener("click",function(event){
+    var trigger=event.target&&event.target.closest?event.target.closest("#roomMenu"):null;
+    if(!trigger||window.__MC_ROOM_MENU_HANDLER_READY__)return;
+    event.preventDefault();
+    event.stopPropagation();
+    if(event.stopImmediatePropagation)event.stopImmediatePropagation();
+    try{
+      var overlay=document.getElementById("modal");
+      var body=document.getElementById("modalBody");
+      if(!overlay||!body)throw new Error("Menu dialog is unavailable.");
+      var actions=[
+        ["pinned","📌 Pinned messages"],
+        ["youtube","▶️ YouTube"],
+        ["invite","🔐 Room code"],
+        ["theme","🎨 Site Theme"]
+      ];
+      body.innerHTML='<div class="room-menu-panel"><h2>Room options</h2><div class="room-menu-actions">'+
+        actions.map(function(item){return '<button type="button" class="room-menu-action" data-room-menu-fallback="'+item[0]+'">'+item[1]+'</button>';}).join("")+
+        '</div></div>';
+      overlay.classList.remove("hidden");
+      overlay.setAttribute("aria-hidden","false");
+      body.querySelectorAll("[data-room-menu-fallback]").forEach(function(button){
+        button.addEventListener("click",function(){
+          var action=button.getAttribute("data-room-menu-fallback");
+          try{
+            if(action==="pinned"&&typeof showPinnedMessages==="function")showPinnedMessages();
+            else if(action==="youtube"&&typeof openYoutubePanel==="function")openYoutubePanel();
+            else if(action==="invite"&&typeof showInvite==="function")showInvite();
+            else if(action==="theme"&&typeof openRoomThemePicker==="function")openRoomThemePicker();
+            else throw new Error("This option is unavailable while the main app script is not running.");
+          }catch(error){console.error("Room menu fallback action failed:",error);alert(error.message||"Could not open this option.");}
+        });
+      });
+    }catch(error){console.error("Room menu fallback failed:",error);alert("Room options could not open: "+(error.message||"unknown error"));}
+  },true);
+})();
+<script src="/app.js?v=room-menu-recovery-20261106-5"></script>
 </body>
 </html>
