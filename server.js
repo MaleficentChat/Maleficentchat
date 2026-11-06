@@ -7219,7 +7219,7 @@ app.get('/api/me/account',auth,async(req,res)=>{
     // Initialize the permanent Main Room during server startup, before the
     // first browser request. This prevents an empty room list after login.
     await pool.query(`INSERT INTO rooms(name,created_by,icon,description,category,is_public,rank_required,invite_token,min_age,max_age,is_default)
-      VALUES ('Main Room',(SELECT id FROM users WHERE username='Maleficent'),'🏠','The main Maleficent Chat community room.','Community',true,'MEMBER','main-room',0,120,true)
+      VALUES ('Main Room',(SELECT id FROM users WHERE username='Maleficent'),'🏠','The main Maleficent Chat community room.','Community',true,'MEMBER','main-room',13,19,true)
       ON CONFLICT(name) DO NOTHING`);
     await pool.query(`UPDATE rooms SET is_default=true WHERE name='Main Room'`);
     await pool.query(`UPDATE rooms SET is_default=false WHERE name <> 'Main Room'`);
