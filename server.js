@@ -519,6 +519,8 @@ function safeUser(u){
     theme:u.settings?.theme||u.theme||"obsidian",
     settings:{usernameColor:u.settings?.usernameColor||'',chatFont:u.settings?.chatFont||'',messageEffects:u.settings?.messageEffects||'',fontSize:u.settings?.fontSize||'medium',compactMode:!!u.settings?.compactMode},
     profileColor:u.profileColor||"",
+    profileMusicTitle:u.profileMusicTitle||"",
+    profileMusicUrl:u.profileMusicUrl||"",
     badge:u.badge||"",
     equippedCosmetics:Array.isArray(u.equippedCosmetics)?u.equippedCosmetics.map(x=>({id:x.id,name:x.name,category:x.category,icon:x.icon,description:x.description})):[],
     verified:!!u.verified,
@@ -6652,7 +6654,7 @@ app.put('/api/profile',auth,(req,res)=>{
     u.privacy={...(u.privacy||{lastSeen:true,online:true})};
     for(const key of ['lastSeen','online','country','location','website','bio','pronouns','relationship','mood','interests']) if(req.body.privacy[key]!==undefined)u.privacy[key]=!!req.body.privacy[key];
   }
-  const next={displayName:req.body.displayName,bio:req.body.bio,pronouns:req.body.pronouns,relationship:req.body.relationship,mood:req.body.mood,country:req.body.country,location:req.body.location,website:req.body.website,interests:req.body.interests,profileColor:req.body.profileColor,profileAccentColor:req.body.profileAccentColor,theme:req.body.theme,badge:req.body.badge,banner:req.body.banner};
+  const next={displayName:req.body.displayName,bio:req.body.bio,pronouns:req.body.pronouns,relationship:req.body.relationship,mood:req.body.mood,country:req.body.country,location:req.body.location,website:req.body.website,interests:req.body.interests,profileColor:req.body.profileColor,profileAccentColor:req.body.profileAccentColor,theme:req.body.theme,badge:req.body.badge,banner:req.body.banner,profileMusicTitle:req.body.profileMusicTitle,profileMusicUrl:req.body.profileMusicUrl};
   for(const [k,v] of Object.entries(next)) if(v!==undefined){
     if(k==='displayName') u[k]=String(v).trim().slice(0,40);
     else if(k==='interests') u[k]=Array.isArray(v)?v.map(x=>String(x).slice(0,40)).slice(0,20):String(v).split(',').map(x=>x.trim()).filter(Boolean).slice(0,20);
@@ -6661,6 +6663,12 @@ app.put('/api/profile',auth,(req,res)=>{
       if(color && !/^#[0-9a-f]{6}$/i.test(color)) return res.status(400).json({error:'Profile colors must be valid hex colors.'});
       u[k]=color;
     } else if(k==='banner') u[k]=String(v).trim().slice(0,500);
+    else if(k==='profileMusicTitle') u[k]=cleanText(v).slice(0,100);
+    else if(k==='profileMusicUrl'){
+      const musicUrl=String(v||'').trim();
+      if(musicUrl){try{const parsed=new URL(musicUrl);if(!['http:','https:'].includes(parsed.protocol))throw new Error();}catch{return res.status(400).json({error:'Enter a valid direct audio URL.'});}}
+      u[k]=musicUrl.slice(0,500);
+    }
     else if(k==='country') u[k]=cleanText(v).slice(0,80);
     else if(k==='socials') { const s=v&&typeof v==='object'?v:{}; u.socials={instagram:cleanText(s.instagram||'').slice(0,180),discord:cleanText(s.discord||'').slice(0,180),tiktok:cleanText(s.tiktok||'').slice(0,180),youtube:cleanText(s.youtube||'').slice(0,180)}; }
     else u[k]=cleanText(v).slice(0,500);
@@ -6725,6 +6733,13 @@ app.patch('/api/users/me/gift-visibility',auth,(req,res)=>{
   u.privacy={...(u.privacy||{}),showGifts:req.body.showGifts};
   save();
   res.json({ok:true,showGifts:u.privacy.showGifts});
+});
+
+app.get('/api/users/:id/friends',auth,(req,res)=>{
+  const viewer=current(req),target=findUser(req.params.id);
+  if(!target||(target.hideMode&&String(target.id)!==String(viewer.id)))return res.status(404).json({error:'User not found'});
+  const ids=db.friends.filter(f=>f.status==='ACCEPTED'&&(String(f.a)===String(target.id)||String(f.b)===String(target.id))).map(f=>String(f.a)===String(target.id)?f.b:f.a);
+  res.json({users:ids.map(findUser).filter(friend=>friend&&!friend.hideMode).map(safeUser)});
 });
 
 app.get('/api/users/:id/profile',auth,(req,res)=>{
