@@ -316,7 +316,7 @@ async function initDB() {
   // Ensure Main Room exists without deleting existing rooms or message history.
   // The legacy room_structure marker is retained for compatibility with older deploys.
   await pool.query(`INSERT INTO rooms(name,created_by,icon,description,category,is_public,rank_required,invite_token,min_age,max_age,is_default)
-    VALUES ('Main Room',(SELECT id FROM users WHERE username='Maleficent'),'🏠','The main community chat room.','Community',true,'MEMBER','main-room',0,120,true)
+    VALUES ('Main Room',(SELECT id FROM users WHERE username='Maleficent'),'🏠','The main community chat room.','Community',true,'MEMBER','main-room',13,19,true)
     ON CONFLICT(name) DO NOTHING`);
   await pool.query(`INSERT INTO settings(key,value) VALUES('room_structure_v1','true'::jsonb) ON CONFLICT(key) DO NOTHING`);
 
