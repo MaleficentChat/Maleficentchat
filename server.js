@@ -547,9 +547,6 @@ function safeUser(u){
     gold:u.gold||0,
     diamonds:Number(u.diamonds||0),
     age:ageFromBirthDate(u.birthDate||u.dateOfBirth),
-    birth_date:u.birthDate||u.dateOfBirth||"",
-    birthDate:u.birthDate||u.dateOfBirth||"",
-    dateOfBirth:u.dateOfBirth||u.birthDate||"",
     gender:u.gender||"",
     is_premium:!!(u.isPremium||u.is_premium),
     vip_expires_at:u.vipExpiresAt||u.vip_expires_at||null,
@@ -6040,7 +6037,7 @@ app.get("/api/dm/unread-count",auth,featureAllowed("private_messages"),async(req
 
 app.get("/api/me/age-change",auth,async(req,res)=>{
   const user=current(req);
-  try{const q=await pool.query("SELECT data,created_at FROM reports WHERE reporter_id=$1 AND data->>'kind'='age_change' ORDER BY created_at DESC LIMIT 1",[Number(user.id)]);const data=q.rows[0]?.data||null;res.set("Cache-Control","no-store");res.json({request:data?{id:data.id,status:data.status||"OPEN",requestedAge:Number(data.requestedAge),time:data.time||new Date(q.rows[0].created_at).getTime()}:null});}
+  try{const q=await pool.query("SELECT data,created_at FROM reports WHERE reporter_id=$1 AND data->>'kind'='age_change' ORDER BY created_at DESC LIMIT 1",[Number(user.id)]);const data=q.rows[0]?.data||null;res.set("Cache-Control","no-store");res.json({birthDate:user.birthDate||user.dateOfBirth||"",request:data?{id:data.id,status:data.status||"OPEN",requestedAge:Number(data.requestedAge),time:data.time||new Date(q.rows[0].created_at).getTime()}:null});}
   catch(error){console.error("Age-change status lookup failed:",error);res.status(500).json({error:"Could not load age-change request status."});}
 });
 app.post("/api/me/age-change",auth,async(req,res)=>{
