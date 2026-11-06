@@ -6169,9 +6169,8 @@ html,body,#app,.app,.main,.view,#profile,#viewProfile {
   position:relative!important;display:flex!important;flex-direction:column!important;align-items:center!important;
 }
 #modal:has(.profile-modal) .profile-stats{
-  position:absolute!important;top:12px!important;left:12px!important;right:54px!important;
-  inset-block-start:12px!important;inset-inline-start:12px!important;inset-inline-end:54px!important;
-  width:auto!important;margin:0!important;justify-content:flex-start!important;order:0!important;z-index:3!important;
+  position:relative!important;inset:auto!important;
+  width:100%!important;margin:0 0 4px!important;justify-content:center!important;order:0!important;z-index:3!important;
 }
 #modal:has(.profile-modal) .equipped-profile-frame{
   order:1!important;width:auto!important;height:auto!important;min-width:0!important;min-height:0!important;
