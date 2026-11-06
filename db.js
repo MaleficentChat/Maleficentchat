@@ -78,6 +78,9 @@ async function initDB() {
     ALTER TABLE rooms ADD COLUMN IF NOT EXISTS min_age INT DEFAULT 0;
     ALTER TABLE rooms ADD COLUMN IF NOT EXISTS max_age INT DEFAULT 120;
     ALTER TABLE rooms ADD COLUMN IF NOT EXISTS is_default BOOLEAN DEFAULT false;
+    ALTER TABLE rooms ADD COLUMN IF NOT EXISTS room_code TEXT;
+    CREATE UNIQUE INDEX IF NOT EXISTS rooms_room_code_unique_idx ON rooms(room_code) WHERE room_code IS NOT NULL;
+    UPDATE rooms SET room_code=LPAD(FLOOR(RANDOM()*10000000000)::BIGINT::TEXT,10,'0') WHERE is_public=false AND room_code IS NULL;
     -- Age gates are no longer supported: normalize existing rooms to unrestricted.
     UPDATE rooms SET min_age=0,max_age=120;
 
