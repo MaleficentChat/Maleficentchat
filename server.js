@@ -7260,12 +7260,14 @@ app.patch('/api/suggestions/:id',auth,async(req,res)=>{
 });
 app.get('/api/staff-points/:id',auth,async(req,res)=>{
   const actor=current(req),target=findUser(req.params.id);if(!target)return res.status(404).json({error:'User not found.'});
-  if(String(actor.id)!==String(target.id)&&!hasRank(actor,'MOD'))return res.status(403).json({error:'Staff points are visible only to the account owner and staff.'});
+  const targetIsStaff=hasRank(target,'MOD')||String(target.username||'').toLowerCase()==='maleficent';
+  if(String(actor.id)!==String(target.id)&&(!hasRank(actor,'MOD')||!targetIsStaff))return res.status(403).json({error:'Staff points are visible only to the account owner and staff members.'});
   res.json({staffPoints:Math.max(0,Math.floor(Number(target.staffPoints)||0)),canEdit:['OWNER','DEVELOPER'].includes(String(actor.rank||'').toUpperCase())});
 });
 app.patch('/api/staff-points/:id',auth,async(req,res)=>{
   const actor=current(req),target=findUser(req.params.id);if(!target)return res.status(404).json({error:'User not found.'});
   if(!['OWNER','DEVELOPER'].includes(String(actor.rank||'').toUpperCase()))return res.status(403).json({error:'Only Owner and Developer can edit staff points.'});
+  if(!hasRank(target,'MOD')&&String(target.username||'').toLowerCase()!=='maleficent')return res.status(400).json({error:'Staff points can only be assigned to staff accounts.'});
   const value=Number(req.body.points);if(!Number.isSafeInteger(value)||value<0||value>1000000)return res.status(400).json({error:'Enter a whole number from 0 to 1,000,000.'});
   try{const q=await pool.query("UPDATE users SET profile_data=jsonb_set(COALESCE(profile_data,'{}'::jsonb),'{staffPoints}',to_jsonb($1::int),true) WHERE id=$2 RETURNING id",[value,Number(target.id)]);if(!q.rowCount)return res.status(404).json({error:'User not found.'});target.staffPoints=value;save();res.json({ok:true,staffPoints:value});}
   catch(e){console.error('[STAFF POINTS] update:',e?.message||e);res.status(500).json({error:'Could not update staff points.'});}
