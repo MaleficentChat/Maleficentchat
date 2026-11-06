@@ -1814,7 +1814,7 @@ function renderRooms() {
           <span class="room-count"><strong>${count}</strong><span>♟</span></span>
         </button>
         ${(canManage && room.id!=="main") || canPinRooms ? `<div class="room-list-actions" aria-label="Room actions">
-          <button class="mini room-action-icon" type="button" title="Edit room" aria-label="Edit room" onclick="event.stopPropagation();editRoomById('${esc(room.id)}')">✎</button>
+          <button class="mini room-action-icon ${canManage?'':'hidden'}" type="button" title="Edit room" aria-label="Edit room" onclick="event.stopPropagation();editRoomById('${esc(room.id)}')">✎</button>
           ${canPinRooms ? `<button class="mini room-action-icon room-pin-toggle" type="button" title="Pin / unpin room" aria-label="Pin / unpin room" onclick="event.stopPropagation();toggleRoomPinById(&quot;${esc(room.id)}&quot;)">📌</button>` : ""}
           ${canFeature("delete_room")?`<button class="mini danger room-action-icon" type="button" title="Delete room" aria-label="Delete room" onclick="event.stopPropagation();deleteRoomById('${esc(room.id)}')">⌫</button>`:""}
         </div>` : ""}
@@ -1929,7 +1929,7 @@ function roomInviteFromHash(){
   }catch{return null;}
 }
 function postRoomAnnouncement(){
-  const announcementRank=String(state.user?.rank||"").toUpperCase().replace(/[\\s_-]/g,"");
+  const announcementRank=String(state.user?.rank||"").toUpperCase().replace(/[\s_-]/g,"");
   if((rankOrder[announcementRank]??-1)<(rankOrder.COMMISSOR??7)){toast("Posting room announcements requires Commissor or higher.");return;}
   if(!state.currentRoom){toast("Join a room before posting an announcement.");return;}
   const text=prompt("Share an announcement in this room:","");
@@ -6458,7 +6458,7 @@ document.addEventListener("click", async event => {
       ["invite","🔐 Room code"],
       ["theme","🎨 Site Theme"]
     ];
-    try { const announcementRank=String(state.user?.rank||"").toUpperCase().replace(/[\\s_-]/g,""); if ((rankOrder[announcementRank]??-1)>=(rankOrder.COMMISSOR??7)) actions.unshift(["announcement","📢 Room announcement"]); } catch (_) {}
+    try { const announcementRank=String(state.user?.rank||"").toUpperCase().replace(/[\s_-]/g,""); if ((rankOrder[announcementRank]??-1)>=(rankOrder.COMMISSOR??7)) actions.unshift(["announcement","📢 Room announcement"]); } catch (_) {}
     try { if (canFeature("clear_room")) actions.unshift(["clear","🧹 Clear messages"]); } catch (_) {}
     try { if (canEditRoomFromMenu(room)) actions.unshift(["edit","✏️ Edit room"]); } catch (_) {}
     try { if (canFeature("delete_room")) actions.unshift(["delete","🗑 Delete room"]); } catch (_) {}
@@ -6549,7 +6549,7 @@ function canEditRoomFromMenu(room){
     canFeature("edit_room");
 }
 async function toggleRoomPinById(roomId){
-  const rank=String(state.user?.rank||"").toUpperCase().replace(/[\\s_-]/g,"");
+  const rank=String(state.user?.rank||"").toUpperCase().replace(/[\s_-]/g,"");
   if(!["COOWNER","OWNER","DEVELOPER"].includes(rank)){toast("Only Co-owner, Owner, or Developer can pin rooms.");return;}
   const room=(state.rooms||[]).find(r=>String(r.id)===String(roomId));
   if(!room){toast("Room not found. Refresh the room list and try again.");return;}
