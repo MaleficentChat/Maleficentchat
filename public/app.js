@@ -239,8 +239,9 @@ async function api(url, opt = {}) {
   }
   // API responses must never be read from or written to the browser HTTP cache.
   // In particular, chat history must be fetched fresh after reloads.
-  const requestOptions={...opt,cache:"no-store",headers,credentials:"same-origin"};
-  const res=opt.body instanceof FormData
+  const {uploadProgress=false,...cleanOpt}=opt;
+  const requestOptions={...cleanOpt,cache:"no-store",headers,credentials:"same-origin"};
+  const res=uploadProgress && opt.body instanceof FormData
     ? await uploadWithProgress(url,requestOptions)
     : await fetch(url,requestOptions);
 
@@ -1526,12 +1527,12 @@ $('wallReelsToggle')?.addEventListener('click',async()=>{wallShowingReels=!wallS
 $('newWallReel')?.addEventListener('click',()=>{
   modal('<div class="new-reel-modal"><h2>🎬 Create a Shadow Reel</h2><p class="muted">Share a vertical video with the community. Your Reel will also appear in the Reels tab.</p><textarea id="wallReelCaption" maxlength="1000" placeholder="Write a caption…"></textarea><label class="stack">Choose video<input id="wallReelFile" type="file" accept="video/mp4,video/webm,video/ogg"></label><small class="muted">MP4, WebM or OGG · maximum upload size 15 MB</small><div id="wallReelPreview" class="media-preview"></div><label class="stack">Reel duration<select id="wallReelExpiry"><option value="0">Keep on Shadow Feed</option><option value="24">Disappear after 24 hours</option><option value="72">Disappear after 3 days</option><option value="168">Disappear after 7 days</option></select></label><button class="primary" id="wallReelPublish" type="button">Upload & Publish Reel</button></div>');
   $('wallReelFile')?.addEventListener('change',()=>{const file=$('wallReelFile').files?.[0],preview=$('wallReelPreview');if(!preview)return;if(!file){preview.innerHTML='';return;}if(!file.type.startsWith('video/')){preview.innerHTML='<p class="error">Choose a video file.</p>';return;}const url=URL.createObjectURL(file);preview.innerHTML='<video class="shadow-reel-video" controls playsinline src="'+esc(url)+'"></video>';});
-  $('wallReelPublish')?.addEventListener('click',async buttonEvent=>{const button=$('wallReelPublish'),file=$('wallReelFile')?.files?.[0];if(!file){toast('Choose a video before publishing.');return;}if(!file.type.startsWith('video/')){toast('Choose a supported video file.');return;}if(file.size>15*1024*1024){toast('Reels must be 15 MB or smaller.');return;}button.disabled=true;button.textContent='Uploading…';try{const form=new FormData();form.append('content',$('wallReelCaption')?.value||'');form.append('expiresInHours',$('wallReelExpiry')?.value||'0');form.append('file',file);const data=await api('/api/wall/post',{method:'POST',body:form});closeModal();wallShowingReels=true;wallShowingSaved=false;wallShowingFriends=false;updateWallModeButtons();await loadWall();toast('Your Reel is live on Shadow Feed! 🎬');}catch(error){toast(error.message||'Could not publish Reel.');button.disabled=false;button.textContent='Upload & Publish Reel';}});
+  $('wallReelPublish')?.addEventListener('click',async buttonEvent=>{const button=$('wallReelPublish'),file=$('wallReelFile')?.files?.[0];if(!file){toast('Choose a video before publishing.');return;}if(!file.type.startsWith('video/')){toast('Choose a supported video file.');return;}if(file.size>15*1024*1024){toast('Reels must be 15 MB or smaller.');return;}button.disabled=true;button.textContent='Uploading…';try{const form=new FormData();form.append('content',$('wallReelCaption')?.value||'');form.append('expiresInHours',$('wallReelExpiry')?.value||'0');form.append('file',file);const data=await api('/api/wall/post',{method:'POST',body:form,uploadProgress:true});closeModal();wallShowingReels=true;wallShowingSaved=false;wallShowingFriends=false;updateWallModeButtons();await loadWall();toast('Your Reel is live on Shadow Feed! 🎬');}catch(error){toast(error.message||'Could not publish Reel.');button.disabled=false;button.textContent='Upload & Publish Reel';}});
 });
 if($('newWallPost'))$('newWallPost').onclick=async()=>{
   modal(`<h2>New Shadow Feed Post</h2><textarea id="wallPostText" maxlength="5000" placeholder="Share something with the community…"></textarea><label class="stack">Post duration<select id="wallPostExpiry"><option value="0">Keep on Shadow Feed</option><option value="1">Disappear after 1 hour</option><option value="6">Disappear after 6 hours</option><option value="24">Disappear after 24 hours</option><option value="72">Disappear after 3 days</option><option value="168">Disappear after 7 days</option></select></label><input id="wallPostFile" type="file" accept="image/*,video/*"><div id="wallPreview" class="media-preview"></div><button class="primary" id="wallPostSend">Upload & Publish</button>`);
   $('wallPostFile')?.addEventListener('change',()=>{const f=$('wallPostFile').files?.[0],box=$('wallPreview');if(!f){box.innerHTML='';return}const u=URL.createObjectURL(f);box.innerHTML=f.type.startsWith('video/')?`<video controls src="${u}"></video>`:`<img src="${u}">`;});
-  $('wallPostSend').onclick=async()=>{try{const fd=new FormData();fd.append('content',$('wallPostText').value);fd.append('expiresInHours',$('wallPostExpiry')?.value||'0');const f=$('wallPostFile').files?.[0];if(f)fd.append('file',f);await api('/api/wall/post',{method:'POST',body:fd});closeModal();loadWall()}catch(e){toast(e.message)}};
+  $('wallPostSend').onclick=async()=>{try{const fd=new FormData();fd.append('content',$('wallPostText').value);fd.append('expiresInHours',$('wallPostExpiry')?.value||'0');const f=$('wallPostFile').files?.[0];if(f)fd.append('file',f);await api('/api/wall/post',{method:'POST',body:fd,uploadProgress:true});closeModal();loadWall()}catch(e){toast(e.message)}};
 };
 
 async function loadRankShop(){
@@ -3518,7 +3519,7 @@ function renderUserProfileModal(user,data={}){
       const file=picker.files?.[0];if(!file)return;
       const form=new FormData();form.append('file',file);
       try{
-        const result=await api('/api/users/me/profile-photos',{method:'POST',body:form});
+        const result=await api('/api/users/me/profile-photos',{method:'POST',body:form,uploadProgress:true});
         user.profilePhotos=result.photos||user.profilePhotos||[];
         if(state.user&&String(state.user.id)===String(user.id))state.user.profilePhotos=user.profilePhotos;
         picker.value='';await load();toast('Photo added to your profile.');
@@ -4162,7 +4163,7 @@ function openPublishNews(){
     try{
       const form=new FormData(); form.append('title',title); form.append('body',body);
       const photo=$('nphoto')?.files?.[0]; if(photo) form.append('file',photo);
-      await api('/api/news',{method:'POST',body:form});
+      await api('/api/news',{method:'POST',body:form,uploadProgress:true});
       closeModal();
       await loadNews();
       toast('News published successfully.');
@@ -4342,7 +4343,7 @@ async function staffAccountModificationModal(user){
     e.preventDefault();
     try{
       const file=$('staffProfileAvatar').files?.[0];
-      if(file){const fd=new FormData();fd.append('file',file);const d=await api(`/api/staff/user/${encodeURIComponent(user.id)}/avatar`,{method:'POST',body:fd});user.avatar=d.user?.avatar||'';}
+      if(file){const fd=new FormData();fd.append('file',file);const d=await api(`/api/staff/user/${encodeURIComponent(user.id)}/avatar`,{method:'POST',body:fd,uploadProgress:true});user.avatar=d.user?.avatar||'';}
       const changes={displayName:$('staffDisplayName').value.trim(),birthDate:$('staffBirthDate').value,gender:$('staffGender').value.trim(),mood:$('staffMood').value.trim(),bio:$('staffBio').value.trim(),pronouns:$('staffPronouns').value.trim(),birthday:$('staffBirthday').value.trim(),location:$('staffLocation').value.trim(),website:$('staffWebsite').value.trim(),banner:$('staffBanner').value.trim()};
       if(emailData)changes.email=$('staffProfileEmail').value.trim();
       const d=await api(`/api/staff/user/${encodeURIComponent(user.id)}/profile`,{method:'PATCH',body:JSON.stringify(changes)});
@@ -4644,7 +4645,7 @@ async function sendUpload(url, id) {
   form.append("file", file);
 
   try {
-    const data=await api(url,{method:"POST",body:form});
+    const data=await api(url,{method:"POST",body:form,uploadProgress:true});
 
     state.user = data.user;
 
