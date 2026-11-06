@@ -1780,7 +1780,7 @@ function rememberMyRoom(id){
 function renderRooms() {
   const search=(($('roomSearch')?.value)||'').trim().toLowerCase();
   const visited=joinedRoomIds();
-  const canSeeRoomPins=["COOWNER","CO-OWNER","CO_OWNER","OWNER","DEVELOPER"].includes(String(state.user?.rank||"").toUpperCase().replace(/\s+/g,""));
+  const canSeeRoomPins=["COOWNER","OWNER","DEVELOPER"].includes(String(state.user?.rank||"").toUpperCase().replace(/[\s_-]/g,""));
   const allRooms=(Array.isArray(state.rooms)?state.rooms:[]).slice().sort((a,b)=>canSeeRoomPins?(Number(!!b.pinned)-Number(!!a.pinned)):0);
   const canViewHiddenRooms=["OWNER","DEVELOPER"].includes(String(state.user?.rank||"").toUpperCase());
   const hiddenRooms=allRooms.filter(room=>room.public===false);
