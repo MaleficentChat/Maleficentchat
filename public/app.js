@@ -774,6 +774,7 @@ async function start() {
   });
   state.socket.on("room:theme",data=>{if(!data?.roomId||!data?.theme)return;const room=state.rooms.find(r=>String(r.id)===String(data.roomId));if(room)room.roomTheme=data.theme;if(String(state.currentRoom)===String(data.roomId))applyRoomTheme(data.theme);});
   state.socket.on("gold:update",data=>{ if(state.user&&data?.gold!==undefined){state.user.gold=data.gold; updateNav();}});
+  state.socket.on("wallet:update",data=>{if(!state.user||String(data?.userId)!==String(state.user.id))return;if(data.diamonds!==undefined)state.user.diamonds=Number(data.diamonds)||0;if(data.gold!==undefined)state.user.gold=Number(data.gold)||0;updateNav();if(state.view==="wallet")loadWallet().catch(()=>{});});
 
   state.socket.on("connect", () => {
     loadNotifications();
@@ -1211,6 +1212,9 @@ async function renderView() {
       }
       return;
     }
+
+    case "wallet":
+      return loadWallet();
 
     case "settings":
       return loadSettings();
@@ -2043,12 +2047,12 @@ function messageHTML(message) {
     return `<div class="message bot-welcome-message bot-bank-message" data-mid="${esc(message.id)}">
       <div class="bot-welcome-bubble" style="border-color:#fbbf24;box-shadow:0 0 16px #fbbf2433">
         <div class="bot-welcome-byline">🤖 Bot · BANK</div>
-        <div class="bot-welcome-glow" style="color:#fcd34d;text-shadow:0 0 10px #f59e0b">🏦 ACCOUNT DETAILS</div>
+        <div class="bot-welcome-glow" style="color:#fcd34d;text-shadow:0 0 10px #f59e0b">💎 DIAMOND BALANCE</div>
         <div class="bot-welcome-username">@${esc(message.bankUsername||"User")}</div>
         <div style="display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-top:8px;font-size:13px">
           <span>⭐ Level <b>${Math.max(1,Number(message.bankLevel)||1)}</b></span>
           <span>✨ XP <b>${Math.max(0,Number(message.bankXp)||0).toLocaleString()}</b></span>
-          <span>🪙 Gold <b>${Math.max(0,Number(message.bankGold)||0).toLocaleString()}</b></span>
+          <span>💎 Diamonds <b>${Math.max(0,Number(message.bankDiamonds)||0).toLocaleString()}</b></span>
         </div>
       </div>
     </div>`;
@@ -3235,7 +3239,7 @@ function renderUserProfileModal(user,data={}){
     $('profileMessageBtn')?.addEventListener('click',()=>{closeModal();openDM(user.id);});
     $('profileFriendBtn')?.addEventListener('click',async()=>{if(data.friendship==='ACCEPTED'){toast('Already friends.');return;}try{await friend(user.id);data.friendship='PENDING';renderTab('info');}catch(e){}});
     $('profileBlockBtn')?.addEventListener('click',async()=>{await block(user.id);closeModal();});
-    $('profileGoldBtn')?.addEventListener('click',()=>shareGoldModal(user));
+    $('profileGoldBtn')?.addEventListener('click',()=>shareWalletModal(user));
     $('profileNicknameBtn')?.addEventListener('click',()=>nicknameModal(user));
     $('profileModerateBtn')?.addEventListener('click',()=>moderate(user.id));
     $('profileStaffAccountBtn')?.addEventListener('click',()=>staffAccountModal(user));
@@ -4030,7 +4034,7 @@ async function openProfileActionDrawer(user,data={}){
   const targetIsDeveloper=String(user.rank||"").toUpperCase()==="DEVELOPER"||String(user.username||"").toLowerCase()==="maleficent";
   const canActOnTarget=!targetIsDeveloper||actorIsDeveloper;
   const canStaffModification=canActOnTarget&&canFeature("account_modifications")&&canAccessStaffTarget(user);
-  const canShareWallet=canActOnTarget&&canFeature("share_gold")&&canAccessStaffTarget(user);
+  const canShareWallet=!blocked;
   const roomRole=String(state.currentRoomRole||"USER").toUpperCase();
   const targetIsStaff=(rankOrder[String(user.rank||"MEMBER").toUpperCase()]??-1)>=(rankOrder.MOD??4)||String(user.username||"").toLowerCase()==="maleficent";
   const hierarchyAllowsRoomActions=canActOnTarget&&(!targetIsStaff||canAccessStaffTarget(user));
@@ -4046,7 +4050,7 @@ async function openProfileActionDrawer(user,data={}){
      <button class="quick-user-row" id="drawerAddFriend"><span>👥</span><b>Add friend</b><i>›</i></button>
      <button class="quick-user-row" id="drawerBlock"><span>🚫</span><b>Block</b><i>›</i></button>
      ${canStaffModification?'<button class="quick-user-row" id="drawerStaffModification"><span>🛠️</span><b>Staff modification</b><i>›</i></button>':''}
-     ${canShareWallet?'<button class="quick-user-row" id="drawerWallet"><span>🪙</span><b>Share wallet</b><i>›</i></button>':''}
+     ${canShareWallet?'<button class="quick-user-row" id="drawerWallet"><span>💝</span><b>Share Wallet</b><i>›</i></button>':''}
      ${canGiveRank?'<button class="quick-user-row" id="drawerGiveRank"><span>🏅</span><b>Give rank</b><i>›</i></button>':''}
      ${canRoomRank?'<button class="quick-user-row" id="drawerRoomRank"><span>✨</span><b>Room rank</b><i>›</i></button>':''}
      ${canRoomModerate?'<button class="quick-user-row" id="drawerRoomModerate"><span>🛡️</span><b>Room moderation</b><i>›</i></button>':''}
@@ -4121,7 +4125,7 @@ async function loadProfile(user){
     <div id="myProfileSettings"></div>
   </div></div>`;
   const content=$('myProfileSettings');
-  api('/api/daily/status').then(d=>{const b=document.querySelector('[data-daily-reward]');if(b){b.disabled=!!d.claimed;b.querySelector('small').textContent=d.claimed?'Already claimed today':`Claim ${25} gold + ${15} XP once per day`;}}).catch(()=>{});
+  api('/api/daily/status').then(d=>{const b=document.querySelector('[data-daily-reward]');if(b){b.disabled=!!d.claimed;b.querySelector('small').textContent=d.claimed?'Already claimed today':`Claim ${d.nextDiamonds||2} Diamonds + daily Gold and XP`;}}).catch(()=>{});
   const render=(tab)=>{
     document.querySelectorAll('.settings-tab').forEach(b=>b.classList.toggle('active',b.dataset.st===tab));
     if(tab==='account'){content.innerHTML=`<div class="settings-list">
