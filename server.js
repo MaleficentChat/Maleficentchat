@@ -6720,7 +6720,7 @@ app.put('/api/profile',auth,(req,res)=>{
   }
   if(req.body.privacy && typeof req.body.privacy==='object'){
     u.privacy={...(u.privacy||{lastSeen:true,online:true})};
-    for(const key of ['lastSeen','online','country','location','website','bio','pronouns','relationship','mood','interests']) if(req.body.privacy[key]!==undefined)u.privacy[key]=!!req.body.privacy[key];
+    for(const key of ['lastSeen','online','country','location','website','bio','pronouns','relationship','mood','interests','showGuestbook']) if(req.body.privacy[key]!==undefined)u.privacy[key]=!!req.body.privacy[key];
   }
   const next={displayName:req.body.displayName,bio:req.body.bio,pronouns:req.body.pronouns,relationship:req.body.relationship,mood:req.body.mood,country:req.body.country,location:req.body.location,website:req.body.website,interests:req.body.interests,profileColor:req.body.profileColor,profileAccentColor:req.body.profileAccentColor,theme:req.body.theme,badge:req.body.badge,banner:req.body.banner};
   for(const [k,v] of Object.entries(next)) if(v!==undefined){
@@ -6862,6 +6862,63 @@ app.get('/api/users/:id/profile',auth,(req,res)=>{
     if(p.online===false)profile.online=false;
   }
   res.json({user:profile,email:(hasRank(u,'MOD')&&v.id!==u.id&&rankOrder[v.rank]<rankOrder[u.rank])?(v.email||''):'',likedByMe:liked,friendship:friendship?friendship.status:null,profileLikes:v.profileLikes||0});
+});
+
+app.get('/api/users/:id/guestbook',auth,async(req,res)=>{
+  try{
+    const viewer=current(req),target=findUser(req.params.id);
+    if(!target||(target.hideMode&&String(target.id)!==String(viewer.id)))return res.status(404).json({error:'User not found'});
+    const isOwner=String(viewer.id)===String(target.id);
+    const hidden=target.privacy?.showGuestbook===false;
+    if(hidden&&!isOwner)return res.json({hidden:true,entries:[],isOwner:false,canPost:false});
+    const friendship=db.friends.find(f=>f.status==='ACCEPTED'&&((String(f.a)===String(viewer.id)&&String(f.b)===String(target.id))||(String(f.a)===String(target.id)&&String(f.b)===String(viewer.id))));
+    const result=await pool.query(
+      `SELECT g.id,g.author_id,g.message,g.status,g.created_at,author.username AS author_username,author.avatar AS author_avatar,COALESCE(NULLIF(author.profile_data->>'displayName',''),author.username,'Former member') AS author_display_name
+       FROM profile_guestbook g LEFT JOIN users author ON author.id=g.author_id
+       WHERE g.target_user_id=$1 ${isOwner?'':'AND g.status=\'APPROVED\''}
+       ORDER BY g.created_at DESC LIMIT 100`,
+      [Number(target.id)]
+    );
+    res.json({hidden:false,isOwner,canPost:!isOwner&&friendship?.status==='ACCEPTED',entries:result.rows.map(row=>({id:String(row.id),authorId:row.author_id===null?null:String(row.author_id),authorUsername:row.author_username||'Former member',authorDisplayName:row.author_display_name||'Former member',authorAvatar:row.author_avatar||'',message:row.message,status:row.status,createdAt:row.created_at}))});
+  }catch(error){console.error('Guestbook load failed:',error);res.status(500).json({error:'Could not load this guestbook.'});}
+});
+
+app.post('/api/users/:id/guestbook',auth,async(req,res)=>{
+  try{
+    const author=current(req),target=findUser(req.params.id);
+    if(!target||(target.hideMode&&String(target.id)!==String(author.id)))return res.status(404).json({error:'User not found'});
+    if(String(target.id)===String(author.id))return res.status(400).json({error:'You cannot leave a message on your own guestbook.'});
+    const friendship=db.friends.find(f=>f.status==='ACCEPTED'&&((String(f.a)===String(author.id)&&String(f.b)===String(target.id))||(String(f.a)===String(target.id)&&String(f.b)===String(author.id))));
+    if(!friendship)return res.status(403).json({error:'Only accepted friends can leave guestbook messages.'});
+    const message=cleanText(String(req.body?.message||'')).trim().slice(0,500);
+    if(!message)return res.status(400).json({error:'Write a message first.'});
+    const recent=await pool.query("SELECT COUNT(*)::int AS count FROM profile_guestbook WHERE author_id=$1 AND created_at>NOW()-INTERVAL '1 hour'",[Number(author.id)]);
+    if(Number(recent.rows[0]?.count||0)>=8)return res.status(429).json({error:'You have reached the guestbook posting limit. Try again later.'});
+    const result=await pool.query("INSERT INTO profile_guestbook(target_user_id,author_id,message,status) VALUES($1,$2,$3,'PENDING') RETURNING id,created_at",[Number(target.id),Number(author.id),message]);
+    try{notify(target.id,'guestbook','Guestbook message',`@${author.username} left a guestbook message. Approve it on your profile.`);}catch{}
+    res.json({ok:true,id:String(result.rows[0].id),status:'PENDING',createdAt:result.rows[0].created_at});
+  }catch(error){console.error('Guestbook post failed:',error);res.status(500).json({error:'Could not save your guestbook message.'});}
+});
+
+app.patch('/api/users/:id/guestbook/:entryId',auth,async(req,res)=>{
+  try{
+    const owner=current(req),target=findUser(req.params.id),status=String(req.body?.status||'').toUpperCase();
+    if(!target||String(target.id)!==String(owner.id))return res.status(403).json({error:'Only the profile owner can manage guestbook messages.'});
+    if(!['APPROVED','HIDDEN'].includes(status))return res.status(400).json({error:'Choose approve or hide.'});
+    const result=await pool.query("UPDATE profile_guestbook SET status=$1,updated_at=NOW() WHERE id=$2 AND target_user_id=$3 RETURNING id",[status,req.params.entryId,Number(target.id)]);
+    if(!result.rowCount)return res.status(404).json({error:'Guestbook message not found.'});
+    res.json({ok:true,status});
+  }catch(error){console.error('Guestbook moderation failed:',error);res.status(500).json({error:'Could not update this guestbook message.'});}
+});
+
+app.delete('/api/users/:id/guestbook/:entryId',auth,async(req,res)=>{
+  try{
+    const viewer=current(req),target=findUser(req.params.id);
+    if(!target)return res.status(404).json({error:'User not found'});
+    const result=await pool.query("DELETE FROM profile_guestbook WHERE id=$1 AND target_user_id=$2 AND (author_id=$3 OR $4::boolean) RETURNING id",[req.params.entryId,Number(target.id),Number(viewer.id),String(target.id)===String(viewer.id)]);
+    if(!result.rowCount)return res.status(404).json({error:'Guestbook message not found or you cannot delete it.'});
+    res.json({ok:true});
+  }catch(error){console.error('Guestbook delete failed:',error);res.status(500).json({error:'Could not delete this guestbook message.'});}
 });
 
 app.post('/api/users/:id/like',auth,featureAllowed('profile_like'),(req,res)=>{

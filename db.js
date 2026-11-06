@@ -43,6 +43,9 @@ async function initDB() {
     CREATE TABLE IF NOT EXISTS private_nicknames(id SERIAL PRIMARY KEY,owner_id INT REFERENCES users(id) ON DELETE CASCADE,target_user_id INT REFERENCES users(id) ON DELETE CASCADE,nickname VARCHAR(50) NOT NULL,UNIQUE(owner_id,target_user_id));
     CREATE TABLE IF NOT EXISTS admin_logs(id SERIAL PRIMARY KEY,action_type VARCHAR(100),performed_by INT REFERENCES users(id) ON DELETE SET NULL,target_user_id INT REFERENCES users(id) ON DELETE SET NULL,details TEXT,created_at TIMESTAMP DEFAULT NOW());
     CREATE TABLE IF NOT EXISTS profile_notes(id SERIAL PRIMARY KEY,user_id INT REFERENCES users(id) ON DELETE CASCADE,added_by INT REFERENCES users(id) ON DELETE SET NULL,note TEXT,created_at TIMESTAMP DEFAULT NOW());
+    CREATE TABLE IF NOT EXISTS profile_guestbook(id BIGSERIAL PRIMARY KEY,target_user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,author_id INT REFERENCES users(id) ON DELETE SET NULL,message TEXT NOT NULL,status TEXT NOT NULL DEFAULT 'PENDING' CHECK(status IN ('PENDING','APPROVED','HIDDEN')),created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW());
+    CREATE INDEX IF NOT EXISTS profile_guestbook_target_status_time_idx ON profile_guestbook(target_user_id,status,created_at DESC);
+    CREATE INDEX IF NOT EXISTS profile_guestbook_author_time_idx ON profile_guestbook(author_id,created_at DESC);
     CREATE TABLE IF NOT EXISTS feature_grants(id SERIAL PRIMARY KEY,user_id INT REFERENCES users(id) ON DELETE CASCADE,feature_name VARCHAR(100),granted BOOLEAN DEFAULT false,granted_by INT REFERENCES users(id) ON DELETE SET NULL,UNIQUE(user_id,feature_name));
 
     CREATE TABLE IF NOT EXISTS rooms(
