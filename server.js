@@ -6324,18 +6324,19 @@ io.on(
       }
     );
 
-    socket.on("join-room", async joinRequest=>{
+    socket.on("join-room", async (joinRequest, acknowledge)=>{
+      const ack=typeof acknowledge==="function"?acknowledge:()=>{};
       const roomId=typeof joinRequest==="string"?joinRequest:joinRequest?.roomId;
       const u=findUser(socket.data.userId);
       const r=db.rooms.find(x=>String(x.id)===String(roomId));
-      if(!u||!r) return;
+      if(!u||!r){ack({ok:false,error:"Please log in and select a valid room."});return;}
       const networkDecision=await networkAccessDecision(socket.request,u);
-      if(!networkDecision.allowed){socket.emit("room-error",{error:networkDecision.reason});socket.disconnect(true);return;}
-      if(!verifyRoomJoinToken(joinRequest?.joinToken,u.id,r)){socket.emit("room-error",{error:"Join this room through the room access flow first."});return;}
-      if(!roomRankCanEnter(u,r)){socket.emit("room-error",{error:"Your rank cannot enter this room."});return;}
-      if(!roomCapacityAvailable(u,r)){socket.emit("room-error",{roomId:String(roomId),error:"This room has reached its member limit."});return;}
-      if(u.banned===true) return;
-      if(u.kickedUntil&&u.kickedUntil>Date.now()) return;
+      if(!networkDecision.allowed){ack({ok:false,error:networkDecision.reason});socket.emit("room-error",{error:networkDecision.reason});socket.disconnect(true);return;}
+      if(!verifyRoomJoinToken(joinRequest?.joinToken,u.id,r)){ack({ok:false,error:"Join this room through the room access flow first."});socket.emit("room-error",{error:"Join this room through the room access flow first."});return;}
+      if(!roomRankCanEnter(u,r)){ack({ok:false,error:"Your rank cannot enter this room."});socket.emit("room-error",{error:"Your rank cannot enter this room."});return;}
+      if(!roomCapacityAvailable(u,r)){ack({ok:false,error:"This room has reached its member limit."});socket.emit("room-error",{roomId:String(roomId),error:"This room has reached its member limit."});return;}
+      if(u.banned===true){ack({ok:false,error:"This account cannot join rooms."});return;}
+      if(u.kickedUntil&&u.kickedUntil>Date.now()){ack({ok:false,error:"You are temporarily blocked from joining rooms."});return;}
       for(const room of socket.rooms){
         if(room.startsWith("room:") && room!=="room:"+roomId) socket.leave(room);
       }
@@ -6362,6 +6363,8 @@ io.on(
           time:Date.now()
         });
       }
+      // Confirm only after socket.join has completed.
+      ack({ok:true,roomId:String(roomId)});
     });
 
     socket.on("leave-room", roomId=>{
