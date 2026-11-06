@@ -3413,8 +3413,10 @@ function renderUserProfileModal(user,data={}){
     wireProfileTabActions();
   };
   async function renderProfilePhotos(){
+    const box=$('profileTabContent');
+    if(!box)return;
     const canStaffRemove=!isSelf&&can('MOD')&&canAccessStaffTarget(user);
-    box.innerHTML='<div class="about-card profile-photos-card"><div class="profile-photos-heading"><div><h3>📷 Photos</h3><p class="muted">Up to 10 square photos on this profile.</p></div>'+(isSelf?'<label class="mini primary profile-photo-add" for="profilePhotoUpload">＋ Add photo</label>':'')+'</div>'+(isSelf?'<input id="profilePhotoUpload" class="profile-photo-file" type="file" accept="image/jpeg,image/png,image/webp,image/gif" aria-label="Choose a profile photo">':'')+'<div class="profile-photo-grid" id="profilePhotoGrid"><p class="muted">Loading photos…</p></div></div>';
+    box.innerHTML='<div class="about-card profile-photos-card"><div class="profile-photos-heading"><div><h3>📷 Photos</h3><p class="muted">Up to 10 square photos on this profile.</p></div>'+(isSelf?'<button type="button" class="mini primary profile-photo-add" id="profilePhotoAddBtn">＋ Add photo</button>':'')+'</div>'+(isSelf?'<input id="profilePhotoUpload" class="profile-photo-file" type="file" accept="image/jpeg,image/png,image/webp,image/gif" aria-label="Choose a profile photo">':'')+'<div class="profile-photo-grid" id="profilePhotoGrid"><p class="muted">Loading photos…</p></div></div>';
     const grid=$('profilePhotoGrid');
     const load=async()=>{
       try{
@@ -3431,6 +3433,7 @@ function renderUserProfileModal(user,data={}){
     };
     await load();
     const picker=$('profilePhotoUpload');
+    $('profilePhotoAddBtn')?.addEventListener('click',()=>picker?.click());
     picker?.addEventListener('change',async()=>{
       const file=picker.files?.[0];if(!file)return;
       const form=new FormData();form.append('file',file);
