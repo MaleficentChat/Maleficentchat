@@ -7214,9 +7214,11 @@ async function ensureSuggestionsTable(){
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     reviewer_user_id TEXT,
+    awarded_user_id TEXT,
     awarded_points INTEGER NOT NULL DEFAULT 0
   )`);
   await pool.query('ALTER TABLE feature_suggestions ADD COLUMN IF NOT EXISTS reviewer_user_id TEXT');
+  await pool.query('ALTER TABLE feature_suggestions ADD COLUMN IF NOT EXISTS awarded_user_id TEXT');
   await pool.query('ALTER TABLE feature_suggestions ADD COLUMN IF NOT EXISTS awarded_points INTEGER NOT NULL DEFAULT 0');
 }
 function isSuggestionsDeveloper(u){return String(u?.username||'').toLowerCase()==='maleficent'||String(u?.rank||'').toUpperCase()==='DEVELOPER';}
@@ -7242,32 +7244,30 @@ app.patch('/api/suggestions/:id',auth,async(req,res)=>{
   const pointsByStatus={Rejected:0,'Feature added':5,Approved:10},newPoints=pointsByStatus[status],client=await pool.connect();
   try{
     await ensureSuggestionsTable();await client.query('BEGIN');
-    const prior=await client.query('SELECT id,user_id,username,category,description,status,reviewer_user_id,awarded_points FROM feature_suggestions WHERE id=$1 FOR UPDATE',[req.params.id]);
+    const prior=await client.query('SELECT id,user_id,username,category,description,status,reviewer_user_id,awarded_user_id,awarded_points FROM feature_suggestions WHERE id=$1 FOR UPDATE',[req.params.id]);
     if(!prior.rowCount){await client.query('ROLLBACK');return res.status(404).json({error:'Suggestion not found.'});}
-    const previous=prior.rows[0],oldReviewer=previous.reviewer_user_id,oldPoints=Math.max(0,Number(previous.awarded_points)||0);
-    const changed=String(previous.status)!==status||String(oldReviewer||'')!==String(actor.id);
-    if(changed&&oldReviewer&&oldPoints>0)await client.query("UPDATE users SET profile_data=jsonb_set(COALESCE(profile_data,'{}'::jsonb),'{staffPoints}',to_jsonb(GREATEST(0,COALESCE(NULLIF(profile_data->>'staffPoints','')::int,0)-$1)),true) WHERE id=$2",[oldPoints,Number(oldReviewer)]);
-    if(changed&&newPoints>0)await client.query("UPDATE users SET profile_data=jsonb_set(COALESCE(profile_data,'{}'::jsonb),'{staffPoints}',to_jsonb(GREATEST(0,COALESCE(NULLIF(profile_data->>'staffPoints','')::int,0)+$1)),true) WHERE id=$2",[newPoints,Number(actor.id)]);
-    const q=await client.query('UPDATE feature_suggestions SET status=$1,reviewer_user_id=$2,awarded_points=$3,updated_at=NOW() WHERE id=$4 RETURNING id,user_id,username,category,description,status,created_at,updated_at',[status,String(actor.id),newPoints,req.params.id]);
+    const previous=prior.rows[0],oldRecipient=previous.awarded_user_id||previous.reviewer_user_id,oldPoints=Math.max(0,Number(previous.awarded_points)||0),recipient=String(previous.user_id);
+    const changed=String(previous.status)!==status||String(oldRecipient||'')!==recipient;
+    if(changed&&oldRecipient&&oldPoints>0)await client.query("UPDATE users SET profile_data=jsonb_set(COALESCE(profile_data,'{}'::jsonb),'{staffPoints}',to_jsonb(GREATEST(0,COALESCE(NULLIF(profile_data->>'staffPoints','')::int,0)-$1)),true) WHERE id=$2",[oldPoints,Number(oldRecipient)]);
+    if(changed&&newPoints>0)await client.query("UPDATE users SET profile_data=jsonb_set(COALESCE(profile_data,'{}'::jsonb),'{staffPoints}',to_jsonb(GREATEST(0,COALESCE(NULLIF(profile_data->>'staffPoints','')::int,0)+$1)),true) WHERE id=$2",[newPoints,Number(recipient)]);
+    const q=await client.query('UPDATE feature_suggestions SET status=$1,reviewer_user_id=$2,awarded_user_id=$3,awarded_points=$4,updated_at=NOW() WHERE id=$5 RETURNING id,user_id,username,category,description,status,created_at,updated_at',[status,String(actor.id),recipient,newPoints,req.params.id]);
     await client.query('COMMIT');
-    const item=q.rows[0],reviewer=db.users.find(x=>String(x.id)===String(actor.id)),former=db.users.find(x=>String(x.id)===String(oldReviewer));
-    if(changed&&reviewer)reviewer.staffPoints=Math.max(0,Number(reviewer.staffPoints)||0)+(String(oldReviewer||'')===String(actor.id)?newPoints-oldPoints:newPoints);
-    if(changed&&former&&String(oldReviewer)!==String(actor.id))former.staffPoints=Math.max(0,Number(former.staffPoints)||0)-oldPoints;
+    const item=q.rows[0],oldUser=db.users.find(x=>String(x.id)===String(oldRecipient)),recipientUser=db.users.find(x=>String(x.id)===recipient);
+    if(changed&&oldUser&&String(oldRecipient)!==recipient)oldUser.staffPoints=Math.max(0,Number(oldUser.staffPoints)||0)-oldPoints;
+    if(changed&&recipientUser)recipientUser.staffPoints=Math.max(0,Number(recipientUser.staffPoints)||0)+(String(oldRecipient||'')===recipient?newPoints-oldPoints:newPoints);
     save();await notify(item.user_id,'suggestion_status','Suggestion update: '+status,'Your suggestion "'+item.category+'" has been marked '+status+'.');
-    res.json({ok:true,suggestion:item,staffPoints:Math.max(0,Number(reviewer?.staffPoints)||0),awardedPoints:newPoints});
+    res.json({ok:true,suggestion:item,staffPoints:Math.max(0,Number(recipientUser?.staffPoints)||0),awardedPoints:newPoints,recipientUserId:recipient});
   }catch(e){await client.query('ROLLBACK').catch(()=>{});console.error('[SUGGESTIONS] update:',e?.message||e);res.status(500).json({error:'Could not update suggestion status.'});}
   finally{client.release();}
 });
 app.get('/api/staff-points/:id',auth,async(req,res)=>{
   const actor=current(req),target=findUser(req.params.id);if(!target)return res.status(404).json({error:'User not found.'});
-  const targetIsStaff=hasRank(target,'MOD')||String(target.username||'').toLowerCase()==='maleficent';
-  if(String(actor.id)!==String(target.id)&&(!hasRank(actor,'MOD')||!targetIsStaff))return res.status(403).json({error:'Staff points are visible only to the account owner and staff members.'});
+  if(String(actor.id)!==String(target.id)&&!hasRank(actor,'MOD'))return res.status(403).json({error:'Staff points are visible only to the account owner and staff.'});
   res.json({staffPoints:Math.max(0,Math.floor(Number(target.staffPoints)||0)),canEdit:['OWNER','DEVELOPER'].includes(String(actor.rank||'').toUpperCase())});
 });
 app.patch('/api/staff-points/:id',auth,async(req,res)=>{
   const actor=current(req),target=findUser(req.params.id);if(!target)return res.status(404).json({error:'User not found.'});
   if(!['OWNER','DEVELOPER'].includes(String(actor.rank||'').toUpperCase()))return res.status(403).json({error:'Only Owner and Developer can edit staff points.'});
-  if(!hasRank(target,'MOD')&&String(target.username||'').toLowerCase()!=='maleficent')return res.status(400).json({error:'Staff points can only be assigned to staff accounts.'});
   const value=Number(req.body.points);if(!Number.isSafeInteger(value)||value<0||value>1000000)return res.status(400).json({error:'Enter a whole number from 0 to 1,000,000.'});
   try{const q=await pool.query("UPDATE users SET profile_data=jsonb_set(COALESCE(profile_data,'{}'::jsonb),'{staffPoints}',to_jsonb($1::int),true) WHERE id=$2 RETURNING id",[value,Number(target.id)]);if(!q.rowCount)return res.status(404).json({error:'User not found.'});target.staffPoints=value;save();res.json({ok:true,staffPoints:value});}
   catch(e){console.error('[STAFF POINTS] update:',e?.message||e);res.status(500).json({error:'Could not update staff points.'});}
