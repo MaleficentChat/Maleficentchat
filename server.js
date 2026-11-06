@@ -2159,6 +2159,7 @@ app.get("/api/rooms",auth,async(req,res)=>{
     ON CONFLICT(name) DO NOTHING`);
   await pool.query(`UPDATE rooms SET is_default=true WHERE name='Main Room'`);
   await pool.query(`UPDATE rooms SET is_default=false WHERE name <> 'Main Room'`);
+  await pool.query("UPDATE rooms SET room_code=LPAD(FLOOR(RANDOM()*10000000000)::BIGINT::TEXT,10,$$0$$) WHERE is_public=false AND room_code IS NULL");
   const {rows}=await pool.query(`SELECT r.*,u.username AS creator FROM rooms r LEFT JOIN users u ON r.created_by=u.id ORDER BY r.is_default DESC,r.created_at ASC,r.id ASC`);
   if(!rows.length) return res.status(503).json({error:'Rooms are not initialized yet. Please retry in a moment.',rooms:[]});
   const viewer=current(req);
@@ -2169,7 +2170,7 @@ app.get("/api/rooms",auth,async(req,res)=>{
     if(!roomIsPrivate(room))return true;
     if(roomOwnerOrGlobal(viewer,room)||roomRole(room.id,viewer.id)!=="USER")return true;
     return verifyRoomJoinToken(joinToken,viewer.id,room);
-  }).map(room=>{const safe={...room,passwordHash:undefined,inviteToken:undefined};if(room.public===false&&!roomOwnerOrGlobal(viewer,room))delete safe.roomCode;return safe;});
+  }).map(room=>{const safe={...room,passwordHash:undefined,inviteToken:undefined};if(room.public===false&&String(room.ownerId||"")!==String(viewer.id)&&!["OWNER","DEVELOPER"].includes(String(viewer.rank||"").toUpperCase()))delete safe.roomCode;return safe;});
   res.json({rooms});
 });
 
