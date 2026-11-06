@@ -4421,9 +4421,10 @@ async function openProfileActionDrawer(user,data={}){
   let staffPointInfo=null;
   if(isSelf||actorIsStaff){try{staffPointInfo=await api('/api/staff-points/'+encodeURIComponent(user.id));}catch{}}
   if(isSelf){
-    modal(`<div class="profile-drawer"><h2>Account actions</h2><button class="quick-user-row" id="drawerEdit">✏️ Edit profile</button><button class="quick-user-row" id="drawerBlocked">🚫 Blocked users</button><button class="quick-user-row" id="drawerStaffPoints"><span>🏅</span><b>Staff Points</b><i>${Number(staffPointInfo?.staffPoints||0).toLocaleString()}</i></button></div>`);
+    modal(\`<div class="profile-drawer"><h2>Account actions</h2><button class="quick-user-row" id="drawerEdit">✏️ Edit profile</button><button class="quick-user-row" id="drawerBlocked">🚫 Blocked users</button><div class="staff-points-action-row" style="display:flex;gap:8px;align-items:center"><button class="quick-user-row" id="drawerStaffPoints" style="flex:1"><span>🏅</span><b>Staff Points</b><i>›</i></button>\${canEditStaffPoints?'<button class="mini" id="drawerEditStaffPoints" type="button" aria-label="Edit staff points" title="Edit staff points">✏️</button>':''}</div></div>\`);
     $('drawerEdit')?.addEventListener('click',()=>{closeModal();state.view='profile';renderView()});$('drawerBlocked')?.addEventListener('click',showBlockedUsers);
-    $('drawerStaffPoints')?.addEventListener('click',()=>modal(`<div class="profile-drawer"><h2>🏅 Staff Points</h2><div class="profile-info-row"><b>Your points</b><strong>${Number(staffPointInfo?.staffPoints||0).toLocaleString()}</strong></div><p class="muted">Points are earned when your suggestions are accepted or approved.</p></div>`));return;
+    $('drawerStaffPoints')?.addEventListener('click',()=>modal(\`<div class="profile-drawer"><h2>🏅 Staff Points</h2><div class="profile-info-row"><b>Your points</b><strong>\${Number(staffPointInfo?.staffPoints||0).toLocaleString()}</strong></div><p class="muted">Points are earned when your suggestions are accepted or approved.</p></div>\`));
+    $('drawerEditStaffPoints')?.addEventListener('click',()=>openStaffPointsEditor(user,staffPointInfo?.staffPoints||0));return;
   }
   const prefs=dmPrefs(),id=String(user.id),muted=!!prefs.muted?.[id],archived=!!prefs.archived?.[id],blocked=(state.user.blocked||[]).map(String).includes(id);
   const isOwner=String(state.user?.rank||'').toUpperCase()==='DEVELOPER' || (state.user?.username==='Maleficent' && String(state.user?.rank||'').toUpperCase()==='OWNER');
@@ -4450,8 +4451,7 @@ async function openProfileActionDrawer(user,data={}){
      ${canStaffAccount?'<button class="quick-user-row" id="drawerStaffAccount"><span>⚙️</span><b>Staff account</b><i>›</i></button>':''}
      ${canStaffModification?'<button class="quick-user-row" id="drawerStaffModification"><span>🛠️</span><b>Staff modification</b><i>›</i></button>':''}
      ${canRoomRank||canRoomModerate?'<button class="quick-user-row" id="drawerRoomAction"><span>✨</span><b>Room Action</b><i>›</i></button>':''}
-     ${canSeeStaffPoints?`<button class="quick-user-row" id="drawerStaffPoints"><span>🏅</span><b>Staff Points</b><i>${Number(staffPointInfo.staffPoints||0).toLocaleString()}</i></button>`:''}
-     ${canEditTargetPoints?'<button class="quick-user-row" id="drawerEditStaffPoints"><span>✏️</span><b>Edit Staff Points</b><i>›</i></button>':''}
+      \${canSeeStaffPoints?\`<div class="staff-points-action-row" style="display:flex;gap:8px;align-items:center"><button class="quick-user-row" id="drawerStaffPoints" style="flex:1"><span>🏅</span><b>Staff Points</b><i>›</i></button>\${canEditTargetPoints?'<button class="mini" id="drawerEditStaffPoints" type="button" aria-label="Edit staff points" title="Edit staff points">✏️</button>':''}</div>\`:''}
    </div>`);
   $('drawerAddFriend')?.addEventListener('click',async()=>{try{await friend(id);closeModal();}catch(e){toast(e.message)}});
   $('drawerBlock')?.addEventListener('click',async()=>{try{await block(id);closeModal();}catch(e){toast(e.message)}});
@@ -4461,7 +4461,12 @@ async function openProfileActionDrawer(user,data={}){
   $('drawerModerateUser')?.addEventListener('click',()=>moderate(id));
   $('drawerStaffAccount')?.addEventListener('click',()=>staffAccountModal(user));
   $('drawerStaffPoints')?.addEventListener('click',()=>modal(`<div class="profile-drawer"><h2>🏅 Staff Points · @${esc(user.username)}</h2><div class="profile-info-row"><b>Total points</b><strong>${Number(staffPointInfo?.staffPoints||0).toLocaleString()}</strong></div></div>`));
-  $('drawerEditStaffPoints')?.addEventListener('click',()=>{modal(`<h2>✏️ Edit Staff Points</h2><p class="muted">Set @${esc(user.username)}'s total staff points.</p><label>Points<input id="staffPointsValue" type="number" min="0" max="1000000" step="1" value="${Number(staffPointInfo?.staffPoints||0)}"></label><button class="primary" id="saveStaffPoints">Save points</button>`);$('saveStaffPoints').onclick=async()=>{const points=Number($('staffPointsValue')?.value);try{const result=await api('/api/staff-points/'+encodeURIComponent(user.id),{method:'PATCH',body:JSON.stringify({points})});staffPointInfo.staffPoints=result.staffPoints;toast('Staff points updated.');closeModal();}catch(e){toast(e.message||'Could not update points.');}};});
+   $('drawerEditStaffPoints')?.addEventListener('click',()=>openStaffPointsEditor(user,staffPointInfo?.staffPoints||0));
+}
+
+function openStaffPointsEditor(user,currentPoints=0){
+  modal(\`<h2>✏️ Edit Staff Points</h2><p class="muted">Set the total staff points for @\${esc(user.username||'user')}.</p><label>Points<input id="staffPointsValue" type="number" min="0" max="1000000" step="1" value="\${Number(currentPoints)||0}"></label><button class="primary" id="saveStaffPoints">Save points</button>\`);
+  $('saveStaffPoints')?.addEventListener('click',async()=>{const points=Number($('staffPointsValue')?.value);if(!Number.isInteger(points)||points<0||points>1000000){toast('Enter a whole number from 0 to 1,000,000.');return;}try{await api('/api/staff-points/'+encodeURIComponent(user.id),{method:'PATCH',body:JSON.stringify({points})});toast('Staff points updated.');closeModal();}catch(e){toast(e.message||'Could not update points.');}});
 }
 function roomActionModal(user,permissions){
   const actions=[];
