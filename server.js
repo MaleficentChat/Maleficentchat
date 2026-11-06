@@ -2204,9 +2204,8 @@ app.get("/api/rooms",auth,async(req,res)=>{
   res.json({rooms});
 });
 function roomAgeAllowed(user,room){
-  const name=String(room?.name||"").trim().toLowerCase(),segregated=name==="teenage chat"||name==="adult chat";
-  // Staff may bypass custom room age windows, but not the explicit teen/adult split.
-  if(!segregated&&hasRank(user,"MOD"))return true;
+  // Moderator and every higher staff rank are exempt from all room age windows.
+  if(hasRank(user,"MOD"))return true;
   const age=ageFromBirthDate(user?.birthDate||user?.dateOfBirth||user?.birth_date);
   const min=Number(room?.minAge??room?.min_age??13),max=Number(room?.maxAge??room?.max_age??99);
   return age!==null&&Number.isInteger(min)&&Number.isInteger(max)&&age>=13&&age<=99&&age>=min&&age<=max;
