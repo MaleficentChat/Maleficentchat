@@ -495,7 +495,7 @@ async function convertDiamonds(u,amount){
     await client.query(`INSERT INTO wallet_transactions(id,sender_id,currency,amount,type,note) VALUES($1,$2,'DIAMONDS',$3,'CONVERT',$4)`,[id(),Number(u.id),amount,'Converted to '+goldAmount+' Gold']);
     await client.query('COMMIT');
   }catch(error){await client.query('ROLLBACK').catch(()=>{});throw error;}finally{client.release();}
-  u.diamonds=balances.diamonds;u.gold=balances.gold;db.goldTransactions ||= [];db.goldTransactions.push({id:id(),time:Date.now(),actor:u.id,userId:u.id,type:'DIAMOND_CONVERSION',delta:goldAmount,diamonds:-amount});
+  u.diamonds=balances.diamonds;u.gold=balances.gold;db.goldTransactions ||= [];db.goldTransactions.push({id:id(),time:Date.now(),actor:u.id,userId:u.id,type:'DIAMOND_CONVERSION',delta:goldAmount,diamonds:-amount});save();
   io.to('user:'+u.id).emit('wallet:update',{userId:u.id,diamonds:u.diamonds,gold:u.gold});io.to('user:'+u.id).emit('gold:update',{gold:u.gold});
   return balances;
 }
