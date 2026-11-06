@@ -6436,6 +6436,7 @@ async function deleteRoom() {
 async function showInvite(roomOrId=state.currentRoom) {
   const room=roomOrId&&typeof roomOrId==="object"?roomOrId:state.rooms.find(r=>String(r.id)===String(roomOrId));
   if(!room)return;
+  if(String(room.ownerId||"")!==String(state.user?.id)&&!["OWNER","DEVELOPER"].includes(String(state.user?.rank||"").toUpperCase())){toast("Only the room owner, Owner, or Developer can view this room code.");return;}
   if(room.public!==false){modal("<h2>Public room</h2><p class=\"muted\">This room is public and does not need an access code.</p>");return;}
   const code=String(room.roomCode||"").trim();
   if(!/^\d{5} \d{5}$/.test(code)){toast("Room code is not available yet. Refresh the room list and try again.");return;}
