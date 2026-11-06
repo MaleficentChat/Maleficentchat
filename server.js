@@ -2175,17 +2175,20 @@ app.get('/api/users/blocked',auth,(req,res)=>{
   res.json({users:db.users.filter(x=>ids.has(x.id)).map(safeUser)});
 });
 
+async function ensureSystemRooms(){
+  const systemRooms=[
+    ["Main Room","🏠","The legacy main room is retained for data compatibility.",0,120,"main-room",true],
+    ["Teen Chat","🌙","Age-appropriate community chat for members aged 19 and under.",0,19,"teen-chat",false],
+    ["Adult Chat","🌒","Age-appropriate community chat for members aged 20 and above.",20,120,"adult-chat",false]
+  ];
+  for(const [name,icon,description,minAge,maxAge,inviteToken,isDefault] of systemRooms){
+    await pool.query("INSERT INTO rooms(name,created_by,icon,description,category,is_public,rank_required,invite_token,min_age,max_age,is_default) VALUES($1,(SELECT id FROM users WHERE username='Maleficent'),$2,$3,'Community',true,'MEMBER',$4,$5,$6,$7) ON CONFLICT(name) DO NOTHING",[name,icon,description,inviteToken,minAge,maxAge,isDefault]);
+  }
+  await pool.query("UPDATE rooms SET is_default=(name='Main Room') WHERE name IN ('Main Room','Teen Chat','Adult Chat')");
+}
 app.get("/api/rooms",auth,async(req,res)=>{
-  // Ensure the canonical Main Room exists without migrating or deleting any
-  // other room during an ordinary room-list request.
-  await pool.query(`INSERT INTO rooms(name,created_by,icon,description,category,is_public,rank_required,invite_token,min_age,max_age,is_default)
-    VALUES ('Main Room',(SELECT id FROM users WHERE username='Maleficent'),'🏠','The main Maleficent Chat community room.','Community',true,'MEMBER','main-room',0,120,true)
-    ON CONFLICT(name) DO NOTHING`);
-  await pool.query(`INSERT INTO rooms(name,created_by,icon,description,category,is_public,rank_required,invite_token,min_age,max_age,is_default)
-    VALUES ('Main Room',(SELECT id FROM users WHERE username='Maleficent'),'🏠','The main Maleficent Chat community room.','Community',true,'MEMBER','main-room',0,120,true)
-    ON CONFLICT(name) DO NOTHING`);
-  await pool.query(`UPDATE rooms SET is_default=true WHERE name='Main Room'`);
-  await pool.query(`UPDATE rooms SET is_default=false WHERE name <> 'Main Room'`);
+  // Ensure all system rooms exist without changing existing room data.
+  await ensureSystemRooms();
   await pool.query("UPDATE rooms SET room_code=LPAD(FLOOR(RANDOM()*10000000000)::BIGINT::TEXT,10,$$0$$) WHERE is_public=false AND room_code IS NULL");
   const {rows}=await pool.query(`SELECT r.*,u.username AS creator FROM rooms r LEFT JOIN users u ON r.created_by=u.id ORDER BY r.is_default DESC,r.created_at ASC,r.id ASC`);
   if(!rows.length) return res.status(503).json({error:'Rooms are not initialized yet. Please retry in a moment.',rooms:[]});
@@ -7163,13 +7166,8 @@ app.get('/api/me/account',auth,async(req,res)=>{
     await pool.query('CREATE TABLE IF NOT EXISTS push_subscriptions(id BIGSERIAL PRIMARY KEY,user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,endpoint TEXT NOT NULL UNIQUE,p256dh TEXT NOT NULL,auth TEXT NOT NULL,created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),last_used_at TIMESTAMPTZ)');
     await pool.query('CREATE INDEX IF NOT EXISTS push_subscriptions_user_idx ON push_subscriptions(user_id)');
 
-    // Initialize the permanent Main Room during server startup, before the
-    // first browser request. This prevents an empty room list after login.
-    await pool.query(`INSERT INTO rooms(name,created_by,icon,description,category,is_public,rank_required,invite_token,min_age,max_age,is_default)
-      VALUES ('Main Room',(SELECT id FROM users WHERE username='Maleficent'),'🏠','The main Maleficent Chat community room.','Community',true,'MEMBER','main-room',0,120,true)
-      ON CONFLICT(name) DO NOTHING`);
-    await pool.query(`UPDATE rooms SET is_default=true WHERE name='Main Room'`);
-    await pool.query(`UPDATE rooms SET is_default=false WHERE name <> 'Main Room'`);
+    // Initialize system rooms before accepting traffic; preserve existing room data.
+    await ensureSystemRooms();
 
     db = await loadState(load());
     await ensureDeveloper();
