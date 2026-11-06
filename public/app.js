@@ -3440,7 +3440,7 @@ function renderUserProfileModal(user,data={}){
   const profileBadge=cosmetics.find(x=>x.category==='badge');
   const memberSince=user.createdAt?new Date(user.createdAt).toLocaleDateString():'Unknown';
   const lastSeen=user.privacy?.lastSeen!==false&&user.lastSeen?new Date(user.lastSeen).toLocaleString():'Hidden';
-  const bannerStyle=user.banner?`style="background-image:linear-gradient(180deg,rgba(0,0,0,.05),rgba(0,0,0,.78)),url('${esc(user.banner)}')"`:'';
+  const bannerStyle=user.banner?`style="--profile-cover:url('${esc(user.banner)}')"`:'';
   const isSelf=user.id===state.user.id;
   const liked=!!data.likedByMe;
   modal(`<div class="profile-modal">
