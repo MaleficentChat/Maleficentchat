@@ -9,6 +9,22 @@ document.addEventListener("click", event => {
   openRoomCreationModal();
 }, true);
 
+// Handle the composer YouTube control in the capture phase, just like the
+// room-menu action. This prevents drawer-level handlers from swallowing taps.
+document.addEventListener("click", event => {
+  const button = event.target instanceof Element ? event.target.closest("#youtubeComposerBtn") : null;
+  if (!button || button.disabled) return;
+  event.preventDefault();
+  event.stopPropagation();
+  event.stopImmediatePropagation();
+  try {
+    openYoutubePanel();
+  } catch (error) {
+    console.error("Composer YouTube action failed:", error);
+    toast(error?.message || "Could not open YouTube.");
+  }
+}, true);
+
 // Room theme data must exist before early socket events or room rendering can apply it.
 const ROOM_THEMES = [
 {id:"obsidian",name:"Obsidian",emoji:"🌑",bg:"#0b0b14",bubble:"#302342",accent:"#b58cff"},
@@ -6427,13 +6443,6 @@ async function sendYoutube(videoId,title){
     closeModal();toast("YouTube video shared in chat.");
   }catch(error){toast(error.message||"Could not share this video.");}
 }
-// Use the exact same YouTube panel action as the working three-dot room menu.
-// Bind directly to the composer toggle button instead of relying on delegation.
-const youtubeComposerButton=$("youtubeComposerBtn");
-if(youtubeComposerButton){
-  youtubeComposerButton.onclick=()=>openYoutubePanel();
-}
-
 /* ---------------- ROOM MENU ---------------- */
 
 // Use capture-phase delegation so taps still work if the chat header is
