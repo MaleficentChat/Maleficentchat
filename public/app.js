@@ -474,7 +474,7 @@ function canFeature(key){
   if(!state.user) return false;
   const roomRole=String(state.currentRoomRole||'USER').toUpperCase();
   const roomOwnedFeature={
-    edit_room:roomRole==='ROOM_OWNER'&&Array.isArray(state.featureGrants?.room_edit_own)&&state.featureGrants.room_edit_own.length>0,
+    edit_room:['ROOM_OWNER','ROOM_ADMIN'].includes(roomRole),
     edit_rooms:roomRole==='ROOM_OWNER'&&Array.isArray(state.featureGrants?.room_edit_own)&&state.featureGrants.room_edit_own.length>0,
     delete_room:roomRole==='ROOM_OWNER'&&Array.isArray(state.featureGrants?.room_edit_own)&&state.featureGrants.room_edit_own.length>0,
     delete_rooms:roomRole==='ROOM_OWNER'&&Array.isArray(state.featureGrants?.room_edit_own)&&state.featureGrants.room_edit_own.length>0,
@@ -1780,7 +1780,8 @@ function rememberMyRoom(id){
 function renderRooms() {
   const search=(($('roomSearch')?.value)||'').trim().toLowerCase();
   const visited=joinedRoomIds();
-  const allRooms=Array.isArray(state.rooms)?state.rooms:[];
+  const canSeeRoomPins=["COOWNER","OWNER","DEVELOPER"].includes(String(state.user?.rank||"").toUpperCase());
+  const allRooms=(Array.isArray(state.rooms)?state.rooms:[]).slice().sort((a,b)=>canSeeRoomPins?(Number(!!b.pinned)-Number(!!a.pinned)):0);
   const canViewHiddenRooms=["OWNER","DEVELOPER"].includes(String(state.user?.rank||"").toUpperCase());
   const hiddenRooms=allRooms.filter(room=>room.public===false);
   const hiddenToggle=$("hiddenRoomsToggle");
@@ -1804,7 +1805,7 @@ function renderRooms() {
         <button class="room-open" onclick="joinRoom('${esc(room.id)}')">
           <span class="room-icon-wrap">${esc(room.icon||'💬')}</span>
           <span class="room-main">
-          <span class="room-title-row"><strong>${esc(room.name)}</strong>${room.public===false?'<span class="room-lock" title="Secret room">🔒 Secret</span>':''}${locked?'<span class="room-lock">🔒</span>':''}</span>
+          <span class="room-title-row"><strong>${esc(room.name)}</strong>${canSeeRoomPins&&room.pinned?'<span class="room-pinned-badge" title="Pinned for senior staff">📌</span>':''}${room.public===false?'<span class="room-lock" title="Secret room">🔒 Secret</span>':''}${locked?'<span class="room-lock">🔒</span>':''}</span>
             <span class="room-desc">${esc(room.description||'No description has been written for this room')}</span>
             <span class="room-subrow"><span>${esc(room.category||'Community')}</span><span>•</span><span>${esc(room.rankRequired||'MEMBER')}+</span>${room.announcement?'<span>• 📌 announcement</span>':''}</span>
           </span>
@@ -6449,8 +6450,9 @@ document.addEventListener("click", event => {
     ];
     try { if (can("COMMISSOR")) actions.unshift(["announcement","📢 Room announcement"]); } catch (_) {}
     try { if (canFeature("clear_room")) actions.unshift(["clear","🧹 Clear messages"]); } catch (_) {}
-    try { if (canFeature("edit_room")) actions.unshift(["edit","✏️ Edit room"]); } catch (_) {}
+    try { if (canEditRoomFromMenu(room)) actions.unshift(["edit","✏️ Edit room"]); } catch (_) {}
     try { if (canFeature("delete_room")) actions.unshift(["delete","🗑 Delete room"]); } catch (_) {}
+    try { if (["COOWNER","OWNER","DEVELOPER"].includes(String(state.user?.rank||"").toUpperCase())) actions.unshift(["pin",room?.pinned?"📌 Unpin room":"📌 Pin room"]); } catch (_) {}
     try {
       if (["ghost","dead","invisible"].some(mode => canUsePresenceMode(mode))) {
         actions.push(["presence-settings","⚙️ Presence mode settings"]);
@@ -6472,6 +6474,7 @@ document.addEventListener("click", event => {
         try {
           if (action==="clear") clearRoom();
           else if (action==="edit") editRoom();
+          else if (action==="pin") toggleCurrentRoomPin();
           else if (action==="delete") deleteRoom();
           else if (action==="announcement") postRoomAnnouncement();
           else if (action==="pinned") showPinnedMessages();
@@ -6526,14 +6529,34 @@ async function clearRoom() {
   }
 }
 
+function canEditRoomFromMenu(room){
+  if(!room||!state.user)return false;
+  const role=String(state.currentRoomRole||"USER").toUpperCase();
+  return ["ROOM_OWNER","ROOM_ADMIN"].includes(role)||
+    String(room.ownerId||"")===String(state.user.id)||
+    canFeature("edit_room");
+}
+async function toggleCurrentRoomPin(){
+  const room=state.rooms.find(r=>String(r.id)===String(state.currentRoom));
+  if(!room||!["COOWNER","OWNER","DEVELOPER"].includes(String(state.user?.rank||"").toUpperCase()))return;
+  try{
+    const result=await api("/api/rooms/"+encodeURIComponent(room.id)+"/pin",{method:"PUT",body:JSON.stringify({pinned:!room.pinned})});
+    room.pinned=!!result.pinned;
+    await loadRooms();
+    closeModal();
+    toast(room.pinned?"Room pinned for senior staff.":"Room unpinned.");
+  }catch(error){toast(error.message||"Could not update room pin.");}
+}
 function editRoom() {
   const room=state.rooms.find(r=>String(r.id)===String(state.currentRoom));
   if(!room)return;
+  if(!canEditRoomFromMenu(room)){toast("You do not have permission to edit this room.");return;}
   if(room.isDefault || /^main room$/i.test(String(room.name||"").trim())){toast("Main Room is protected.");return;}
   const ranks=["MEMBER","VIP","PREMIUM","ROYAL","MOD","ADMIN","SUPER_ADMIN","COMMISSOR","INSTRUCTOR","COOWNER","OWNER","DEVELOPER"];
   const rankLabels={MEMBER:"Member",VIP:"VIP",PREMIUM:"Premium",MOD:"Moderator",ADMIN:"Admin",SUPER_ADMIN:"Super Admin",COMMISSOR:"Commissor",COOWNER:"Co-owner",OWNER:"Owner",ROYAL:"Legacy rank — Royal",INSTRUCTOR:"Legacy rank — Instructor"};
   const savedRequiredRank=String(room.rankRequired||"MEMBER").toUpperCase();
   const rankChoices=ranks.includes(savedRequiredRank)?ranks:[savedRequiredRank,...ranks];
+  const savedAgeCriteria=Number(room.minAge??0)>=20?"adult":Number(room.maxAge??120)<=19?"teen":"global";
   modal(`
     <div class="room-editor room-editor-edit">
       <header class="room-editor-hero"><span class="room-editor-hero-icon">✏️</span><div><p class="room-editor-eyebrow">ROOM CONTROL</p><h2>Edit room</h2><p>Update this room’s look, access and limits.</p></div></header>
@@ -6546,6 +6569,8 @@ function editRoom() {
       </div></section>
       <section class="room-editor-section"><h3>🔐 Access & privacy</h3>
         <label>Who can discover this room<select id="rPublic"><option value="true" ${room.public!==false?"selected":""}>Public — listed for everyone</option><option value="false" ${room.public===false?"selected":""}>Private — not publicly listed</option></select></label>
+        <label>Allowed age criteria<select id="rAgeCriteria"><option value="teen" ${savedAgeCriteria==="teen"?"selected":""}>Teen — 19 and younger</option><option value="adult" ${savedAgeCriteria==="adult"?"selected":""}>Adult — 20 and older</option><option value="global" ${savedAgeCriteria==="global"?"selected":""}>Global — all ages</option></select></label>
+        <p class="room-editor-help">Age access is checked when someone joins. Staff can still enter any room.</p>
         <label>Minimum rank to join<select id="rRankRequired">${rankChoices.map(r=>'<option value="'+r+'" '+(savedRequiredRank===r?'selected':'')+'>'+(rankLabels[r]||r.replaceAll("_"," "))+'</option>').join("")}</select></label>
         <label>Member access<select id="rFriendsOnly"><option value="false" ${room.friendsOnly?'':'selected'}>Anyone who meets the rank requirement</option><option value="true" ${room.friendsOnly?'selected':''}>Accepted friends only</option></select></label>
         <label>Change room password <span class="room-editor-optional">leave blank to remove it</span><input id="rp" type="password" autocomplete="new-password" placeholder="Enter a new password"></label>
@@ -6575,6 +6600,7 @@ async function saveRoom() {
           banner: $("rBanner").value.trim(),
           public: $("rPublic").value === "true",
           rankRequired: $("rRankRequired").value,
+          ageCriteria: $("rAgeCriteria").value,
           friendsOnly: $("rFriendsOnly").value === "true",
           password: $("rp").value
         })
