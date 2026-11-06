@@ -4644,22 +4644,7 @@ async function sendUpload(url, id) {
   form.append("file", file);
 
   try {
-    const response =
-      await fetch(url, {
-        method: "POST",
-        body: form,
-        credentials: "same-origin"
-      });
-
-    const data =
-      await response.json()
-        .catch(() => ({}));
-
-    if (!response.ok) {
-      throw Error(
-        data.error || "Upload failed."
-      );
-    }
+    const data=await api(url,{method:"POST",body:form});
 
     state.user = data.user;
 
