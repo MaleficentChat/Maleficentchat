@@ -3463,7 +3463,7 @@ function renderUserProfileModal(user,data={}){
       <button class="profile-tab active" data-tab="info">Account</button>
       ${user.privacy?.bio!==false?'<button class="profile-tab" data-tab="about">About Me</button>':''}
       <button class="profile-tab" data-tab="friends">Friends</button>
-      <button class="profile-tab" data-tab="guestbook">📝 Guestbook</button>
+      <button class="profile-tab" data-tab="guestbook">📖 Guestbook</button>
       <button class="profile-tab" data-tab="gifts">🎁 Gifts</button>
       <button class="profile-tab" data-tab="photos">📷 Photos</button>
       <button class="profile-tab" data-tab="more">More</button>
@@ -3502,15 +3502,15 @@ function renderUserProfileModal(user,data={}){
       }).catch(error=>{const grid=$('profileFriendsGrid');if(grid)grid.innerHTML='<p class="muted">'+esc(error.message||'Could not load friends.')+'</p>';});
     }
     else if(tab==='guestbook'){
-      box.innerHTML='<div class="about-card"><h3>📝 Guestbook</h3><p class="muted">Loading messages…</p></div>';
+      box.innerHTML='<div class="about-card"><h3>📖 Guestbook</h3><p class="muted">Loading messages…</p></div>';
       api('/api/users/'+encodeURIComponent(user.id)+'/guestbook').then(result=>{
         if(!box.isConnected)return;
-        if(result.hidden){box.innerHTML='<div class="about-card"><h3>📝 Guestbook</h3><p class="muted">This user has hidden their guestbook.</p></div>';return;}
+        if(result.hidden){box.innerHTML='<div class="about-card"><h3>📖 Guestbook</h3><p class="muted">This user has hidden their guestbook.</p></div>';return;}
         const entries=result.entries||[];
         const ownerControls=result.isOwner;
         const dateLabel=value=>{try{return new Date(value).toLocaleString();}catch{return '';}};
         const statusLabel=status=>status==='APPROVED'?'Visible':status==='HIDDEN'?'Hidden':'Awaiting approval';
-        box.innerHTML='<div class="about-card guestbook-card"><div class="guestbook-heading"><div><h3>📝 Guestbook</h3><p class="muted">'+(ownerControls?'Approve messages before they appear on your profile.':'Leave a little note for @'+esc(user.username)+'.')+'</p></div></div>'+
+        box.innerHTML='<div class="about-card guestbook-card"><div class="guestbook-heading"><div><h3>📖 Guestbook</h3><p class="muted">'+(ownerControls?'Approve messages before they appear on your profile.':'Leave a little note for @'+esc(user.username)+'.')+'</p></div></div>'+
           (ownerControls?'<label class="guestbook-visibility"><input type="checkbox" id="guestbookVisibilityToggle" '+(user.privacy?.showGuestbook===false?'':'checked')+'> Show my guestbook on my profile</label>':'')+
           (result.canPost?'<form id="guestbookPostForm" class="guestbook-compose"><textarea id="guestbookMessage" maxlength="500" rows="3" placeholder="Write a kind message…"></textarea><div class="guestbook-compose-footer"><small>Up to 500 characters · visible after approval</small><button class="primary" type="submit">Leave message</button></div></form>':(!ownerControls?'<p class="guestbook-note">Only accepted friends can leave messages here.</p>':''))+
           '<div class="guestbook-list">'+(entries.length?entries.map(entry=>'<article class="guestbook-entry"><div class="guestbook-entry-head"><div class="guestbook-author">'+avatar({username:entry.authorUsername,avatar:entry.authorAvatar})+'<span><b>'+esc(entry.authorDisplayName||entry.authorUsername)+'</b><small>@'+esc(entry.authorUsername)+' · '+esc(dateLabel(entry.createdAt))+'</small></span></div>'+(ownerControls?'<span class="guestbook-status">'+esc(statusLabel(entry.status))+'</span>':'')+'</div><p class="guestbook-message">'+esc(entry.message)+'</p>'+(ownerControls?'<div class="guestbook-actions">'+(entry.status!=='APPROVED'?'<button type="button" class="mini" data-guestbook-action="APPROVED" data-entry-id="'+esc(entry.id)+'">✓ Approve</button>':'')+(entry.status!=='HIDDEN'?'<button type="button" class="mini" data-guestbook-action="HIDDEN" data-entry-id="'+esc(entry.id)+'">Hide</button>':'')+'<button type="button" class="mini danger" data-guestbook-delete="'+esc(entry.id)+'">Delete</button></div>':'')+'</article>').join(''):'<p class="guestbook-empty">'+(ownerControls?'No guestbook messages yet. Share your profile with friends!':'No approved messages yet. Be the first friend to leave a note!')+'</p>')+'</div></div>';
@@ -3534,7 +3534,7 @@ function renderUserProfileModal(user,data={}){
           try{await api('/api/users/'+encodeURIComponent(user.id)+'/guestbook/'+encodeURIComponent(button.dataset.guestbookDelete),{method:'DELETE'});toast('Guestbook message deleted.');renderTab('guestbook');}
           catch(error){toast(error.message||'Could not delete message.');}
         }));
-      }).catch(error=>{if(box.isConnected)box.innerHTML='<div class="about-card"><h3>📝 Guestbook</h3><p class="muted">'+esc(error.message||'Could not load guestbook.')+'</p></div>';});
+      }).catch(error=>{if(box.isConnected)box.innerHTML='<div class="about-card"><h3>📖 Guestbook</h3><p class="muted">'+esc(error.message||'Could not load guestbook.')+'</p></div>';});
     }
     else if(tab==='gifts'){
       box.innerHTML='<div class="about-card"><h3>🎁 Gifts</h3><p class="muted">Gold gifts received by this user.</p><div class="gift-profile-list">Loading gifts…</div></div>';
