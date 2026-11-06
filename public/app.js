@@ -1418,7 +1418,7 @@ async function loadSuggestions(){
     list.innerHTML=items.length?items.map(s=>{
       const status=String(s.status||'Pending');
       const statusClass=status==='Rejected'?'suggestion-status-rejected':status==='Feature added'?'suggestion-status-added':status==='Approved'?'suggestion-status-approved':'suggestion-status-pending';
-      return '<article class="card suggestion-card"><div class="news-card-top"><div><h3>'+esc(s.category||'Suggestion')+'</h3><div class="muted">'+(developer?'@'+esc(s.username||'Unknown')+' · ':'')+esc(fmt(s.created_at||s.createdAt))+'</div></div><span class="pill '+statusClass+'">'+esc(status)+'</span></div><p class="suggestion-description">'+esc(s.description||'')+'</p>'+(s.review_note?'<p class="muted">Developer note: '+esc(s.review_note)+'</p>':'')+(developer?'<div class="toolbar suggestion-actions"><button type="button" data-suggestion-status="Rejected" data-suggestion-id="'+esc(s.id)+'">Rejected</button><button type="button" data-suggestion-status="Feature added" data-suggestion-id="'+esc(s.id)+'">Feature added</button><button type="button" data-suggestion-status="Approved" data-suggestion-id="'+esc(s.id)+'">Approved</button></div>':'')+'</article>';
+      return '<article class="card suggestion-card"><div class="news-card-top"><div><h3>'+esc(s.category||'Suggestion')+'</h3><div class="muted">'+(developer?'@'+esc(s.username||'Unknown')+' · ':'')+esc(fmt(s.created_at||s.createdAt))+'</div></div><span class="pill '+statusClass+'">'+esc(status)+'</span></div><p class="suggestion-description">'+esc(s.description||'')+'</p>'+(s.review_note?'<p class="muted">Developer note: '+esc(s.review_note)+'</p>':'')+(developer?'<div class="toolbar suggestion-actions"><button type="button" data-suggestion-status="Rejected" data-suggestion-id="'+esc(s.id)+'">Reject · 0 points</button><button type="button" data-suggestion-status="Feature added" data-suggestion-id="'+esc(s.id)+'">Feature added · +5 points</button><button type="button" data-suggestion-status="Approved" data-suggestion-id="'+esc(s.id)+'">Approve · +10 points</button></div>':'')+'</article>';
     }).join(''):'<div class="card"><p class="muted">'+(developer?'No suggestions have been submitted yet.':'You have not submitted any suggestions yet.')+'</p></div>';
     form.classList.toggle('hidden',developer);
     form.onsubmit=async e=>{
@@ -4417,27 +4417,37 @@ async function showAchievements(user){try{const d=await api('/api/achievements/'
 
 async function openProfileActionDrawer(user,data={}){
   const isSelf=String(user.id)===String(state.user.id);
-  if(isSelf){modal(`<div class="profile-drawer"><h2>Account actions</h2><button class="quick-user-row" id="drawerEdit">✏️ Edit profile</button><button class="quick-user-row" id="drawerBlocked">🚫 Blocked users</button></div>`);$('drawerEdit')?.addEventListener('click',()=>{closeModal();state.view='profile';renderView()});$('drawerBlocked')?.addEventListener('click',showBlockedUsers);return;}
+  const actorRank=String(state.user?.rank||'').toUpperCase(),canEditStaffPoints=['OWNER','DEVELOPER'].includes(actorRank);
+  let staffPointInfo=null;
+  if(isSelf||canFeature('staff_dashboard_access')){try{staffPointInfo=await api('/api/staff-points/'+encodeURIComponent(user.id));}catch{}}
+  if(isSelf){
+    modal(`<div class="profile-drawer"><h2>Account actions</h2><button class="quick-user-row" id="drawerEdit">✏️ Edit profile</button><button class="quick-user-row" id="drawerBlocked">🚫 Blocked users</button><button class="quick-user-row" id="drawerStaffPoints"><span>🏅</span><b>Staff Points</b><i>${Number(staffPointInfo?.staffPoints||0).toLocaleString()}</i></button></div>`);
+    $('drawerEdit')?.addEventListener('click',()=>{closeModal();state.view='profile';renderView()});$('drawerBlocked')?.addEventListener('click',showBlockedUsers);
+    $('drawerStaffPoints')?.addEventListener('click',()=>modal(`<div class="profile-drawer"><h2>🏅 Staff Points</h2><div class="profile-info-row"><b>Your points</b><strong>${Number(staffPointInfo?.staffPoints||0).toLocaleString()}</strong></div><p class="muted">Points are earned by reviewing suggestions.</p></div>`));return;
+  }
   const prefs=dmPrefs(),id=String(user.id),muted=!!prefs.muted?.[id],archived=!!prefs.archived?.[id],blocked=(state.user.blocked||[]).map(String).includes(id);
-  const isOwner=String(state.user?.rank||"").toUpperCase()==="DEVELOPER" || (state.user?.username==="Maleficent" && String(state.user?.rank||"").toUpperCase()==="OWNER");
-  const actorIsDeveloper=String(state.user?.rank||"").toUpperCase()==="DEVELOPER"||String(state.user?.username||"").toLowerCase()==="maleficent";
-  const targetIsDeveloper=String(user.rank||"").toUpperCase()==="DEVELOPER"||String(user.username||"").toLowerCase()==="maleficent";
+  const isOwner=String(state.user?.rank||'').toUpperCase()==='DEVELOPER' || (state.user?.username==='Maleficent' && String(state.user?.rank||'').toUpperCase()==='OWNER');
+  const actorIsDeveloper=String(state.user?.rank||'').toUpperCase()==='DEVELOPER'||String(state.user?.username||'').toLowerCase()==='maleficent';
+  const targetIsDeveloper=String(user.rank||'').toUpperCase()==='DEVELOPER'||String(user.username||'').toLowerCase()==='maleficent';
   const canActOnTarget=!targetIsDeveloper||actorIsDeveloper;
-  const canStaffModification=canActOnTarget&&canFeature("account_modifications")&&canAccessStaffTarget(user);
+  const canStaffModification=canActOnTarget&&canFeature('account_modifications')&&canAccessStaffTarget(user);
   const canShareWallet=!blocked;
-  const roomRole=String(state.currentRoomRole||"USER").toUpperCase();
-  const targetIsStaff=(rankOrder[String(user.rank||"MEMBER").toUpperCase()]??-1)>=(rankOrder.MOD??4)||String(user.username||"").toLowerCase()==="maleficent";
+  const roomRole=String(state.currentRoomRole||'USER').toUpperCase();
+  const targetIsStaff=(rankOrder[String(user.rank||'MEMBER').toUpperCase()]??-1)>=(rankOrder.MOD??4)||String(user.username||'').toLowerCase()==='maleficent';
   const hierarchyAllowsRoomActions=canActOnTarget&&(!targetIsStaff||canAccessStaffTarget(user));
-  const canGiveRank=hierarchyAllowsRoomActions&&(isOwner||canFeature("staff_rank_assignment"));
-  const canRoomRank=hierarchyAllowsRoomActions&&(canFeature("room_rank_assign")||["ROOM_OWNER","ROOM_ADMIN"].includes(roomRole));
-  const canRoomModerate=hierarchyAllowsRoomActions&&(canFeature("room_moderate")||["ROOM_OWNER","ROOM_ADMIN","ROOM_MODERATOR"].includes(roomRole));
-  const canModerate=canActOnTarget&&(canFeature("moderate_user")||canFeature("moderate_users"))&&canAccessStaffTarget(user);
-  const canStaffAccount=canActOnTarget&&canFeature("manage_staff_accounts")&&canAccessStaffTarget(user);
-  const canHistory=canActOnTarget&&canFeature("view_user_history")&&canAccessStaffTarget(user);
+  const canGiveRank=hierarchyAllowsRoomActions&&(isOwner||canFeature('staff_rank_assignment'));
+  const canRoomRank=hierarchyAllowsRoomActions&&(canFeature('room_rank_assign')||['ROOM_OWNER','ROOM_ADMIN'].includes(roomRole));
+  const canRoomModerate=hierarchyAllowsRoomActions&&(canFeature('room_moderate')||['ROOM_OWNER','ROOM_ADMIN','ROOM_MODERATOR'].includes(roomRole));
+  const canModerate=canActOnTarget&&(canFeature('moderate_user')||canFeature('moderate_users'))&&canAccessStaffTarget(user);
+  const canStaffAccount=canActOnTarget&&canFeature('manage_staff_accounts')&&canAccessStaffTarget(user);
+  const canHistory=canActOnTarget&&canFeature('view_user_history')&&canAccessStaffTarget(user);
+  const canSeeStaffPoints=!!staffPointInfo,canEditTargetPoints=canEditStaffPoints&&canSeeStaffPoints;
   modal(`<div class="profile-drawer quick-action-menu"><h2>Actions · @${esc(user.username||'user')}</h2>
      <button class="quick-user-row" id="drawerAddFriend"><span>👥</span><b>Add friend</b><i>›</i></button>
      ${canShareWallet?'<button class="quick-user-row" id="drawerWallet"><span>🏧</span><b>Share Wallet</b><i>›</i></button>':''}
      <button class="quick-user-row" id="drawerBlock"><span>🚫</span><b>Block</b><i>›</i></button>
+     ${canSeeStaffPoints?`<button class="quick-user-row" id="drawerStaffPoints"><span>🏅</span><b>Staff Points</b><i>${Number(staffPointInfo.staffPoints||0).toLocaleString()}</i></button>`:''}
+     ${canEditTargetPoints?'<button class="quick-user-row" id="drawerEditStaffPoints"><span>✏️</span><b>Edit Staff Points</b><i>›</i></button>':''}
      ${canModerate?'<button class="quick-user-row" id="drawerModerateUser"><span>🛡️</span><b>Moderate user</b><i>›</i></button>':''}
      ${canStaffAccount?'<button class="quick-user-row" id="drawerStaffAccount"><span>⚙️</span><b>Staff account</b><i>›</i></button>':''}
      ${canStaffModification?'<button class="quick-user-row" id="drawerStaffModification"><span>🛠️</span><b>Staff modification</b><i>›</i></button>':''}
@@ -4450,6 +4460,8 @@ async function openProfileActionDrawer(user,data={}){
   $('drawerRoomAction')?.addEventListener('click',()=>roomActionModal(user,{canRoomRank,canRoomModerate}));
   $('drawerModerateUser')?.addEventListener('click',()=>moderate(id));
   $('drawerStaffAccount')?.addEventListener('click',()=>staffAccountModal(user));
+  $('drawerStaffPoints')?.addEventListener('click',()=>modal(`<div class="profile-drawer"><h2>🏅 Staff Points · @${esc(user.username)}</h2><div class="profile-info-row"><b>Total points</b><strong>${Number(staffPointInfo?.staffPoints||0).toLocaleString()}</strong></div></div>`));
+  $('drawerEditStaffPoints')?.addEventListener('click',()=>{modal(`<h2>✏️ Edit Staff Points</h2><p class="muted">Set @${esc(user.username)}'s total staff points.</p><label>Points<input id="staffPointsValue" type="number" min="0" max="1000000" step="1" value="${Number(staffPointInfo?.staffPoints||0)}"></label><button class="primary" id="saveStaffPoints">Save points</button>`);$('saveStaffPoints').onclick=async()=>{const points=Number($('staffPointsValue')?.value);try{const result=await api('/api/staff-points/'+encodeURIComponent(user.id),{method:'PATCH',body:JSON.stringify({points})});staffPointInfo.staffPoints=result.staffPoints;toast('Staff points updated.');closeModal();}catch(e){toast(e.message||'Could not update points.');}};});
 }
 function roomActionModal(user,permissions){
   const actions=[];
