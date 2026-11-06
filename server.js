@@ -2439,9 +2439,9 @@ app.post("/api/rooms/:id/staff-action",auth,async(req,res)=>{
 });
 app.put("/api/rooms/:id",auth,async(req,res)=>{
   const u=current(req),r=db.rooms.find(x=>String(x.id)===String(req.params.id)); if(!r)return res.status(404).json({error:"Room not found"});
-  if(r.isDefault || /^main room$/i.test(String(r.name||"").trim()))return res.status(403).json({error:"The permanent Main Room cannot be modified."});
+  if(r.isDefault || /^(teenage chat|adult chat|main room)$/i.test(String(r.name||"").trim()))return res.status(403).json({error:"Default age-group rooms cannot be modified."});
   if(!featureGrantAllowed(u,"edit_rooms")&&!(roomOwnerOrGlobal(u,r)&&Array.isArray(db.settings?.feature_grants?.room_edit_own)&&db.settings.feature_grants.room_edit_own.length))return res.status(403).json({error:"Room editing is disabled in Feature Granting or you do not own this room."});
-  const fields={}; for(const k of ["name","icon","description","category","rankRequired","limit","slowMode","banner","public"]) if(req.body[k]!==undefined) fields[k]=req.body[k];
+  const fields={}; for(const k of ["name","icon","description","category","rankRequired","limit","slowMode","banner","public","minAge","maxAge"]) if(req.body[k]!==undefined) fields[k]=req.body[k];
   if(fields.name!==undefined){fields.name=cleanText(fields.name).trim().slice(0,50);if(!fields.name)return res.status(400).json({error:"Room name is required."});}
   if(fields.rankRequired!==undefined){
     fields.rankRequired=String(fields.rankRequired||"").toUpperCase();
@@ -2449,6 +2449,7 @@ app.put("/api/rooms/:id",auth,async(req,res)=>{
   }
   if(fields.limit!==undefined){fields.limit=Number(fields.limit);if(!Number.isInteger(fields.limit)||fields.limit<2||fields.limit>500)return res.status(400).json({error:"Member limit must be between 2 and 500."});}
   if(fields.slowMode!==undefined){fields.slowMode=Number(fields.slowMode);if(!Number.isInteger(fields.slowMode)||fields.slowMode<0||fields.slowMode>3600)return res.status(400).json({error:"Slow mode must be between 0 and 3600 seconds."});}
+  if(fields.minAge!==undefined||fields.maxAge!==undefined){fields.minAge=Number(fields.minAge??r.minAge??13);fields.maxAge=Number(fields.maxAge??r.maxAge??99);if(!Number.isInteger(fields.minAge)||!Number.isInteger(fields.maxAge)||fields.minAge<13||fields.maxAge>99||fields.minAge>fields.maxAge)return res.status(400).json({error:"Room age limits must be between 13 and 99, with minimum age no greater than maximum age."});}
   if(fields.public!==undefined&&typeof fields.public!=="boolean")return res.status(400).json({error:"Room visibility must be public or private."});
   if(req.body.friendsOnly!==undefined&&typeof req.body.friendsOnly!=="boolean")return res.status(400).json({error:"Friends-only access must be true or false."});
   if(req.body.friendsOnly!==undefined){
@@ -2457,9 +2458,9 @@ app.put("/api/rooms/:id",auth,async(req,res)=>{
     r.friendsOnly=req.body.friendsOnly===true;save();
   }
   if(req.body.password!==undefined){const roomPassword=String(req.body.password||"");if(Buffer.byteLength(roomPassword,"utf8")>72)return res.status(400).json({error:"Room passwords must be no more than 72 bytes."});fields.passwordHash=roomPassword?await bcrypt.hash(roomPassword,10):null;}
-  const sets=[],vals=[]; const map={name:"name",icon:"icon",description:"description",category:"category",rankRequired:"rank_required",limit:"room_limit",slowMode:"slow_mode",banner:"banner",public:"is_public",passwordHash:"password_hash"};
+  const sets=[],vals=[]; const map={name:"name",icon:"icon",description:"description",category:"category",rankRequired:"rank_required",limit:"room_limit",slowMode:"slow_mode",banner:"banner",public:"is_public",passwordHash:"password_hash",minAge:"min_age",maxAge:"max_age"};
   for(const [k,v] of Object.entries(fields)){sets.push(`${map[k]}=$${vals.length+1}`);vals.push(k==="rankRequired"?String(v).toUpperCase():v);}
-  if(sets.length){vals.push(Number(r.id));const q=await pool.query(`UPDATE rooms SET ${sets.join(",")} WHERE id=$${vals.length} RETURNING *`,vals);if(!q.rowCount)return res.status(404).json({error:"Room was not found while saving changes."});const x=q.rows[0];Object.assign(r,{name:x.name,icon:x.icon,description:x.description,category:x.category,rankRequired:x.rank_required,limit:x.room_limit,slowMode:x.slow_mode,banner:x.banner,public:x.is_public,passwordHash:x.password_hash,minAge:0,maxAge:120});}
+  if(sets.length){vals.push(Number(r.id));const q=await pool.query(`UPDATE rooms SET ${sets.join(",")} WHERE id=$${vals.length} RETURNING *`,vals);if(!q.rowCount)return res.status(404).json({error:"Room was not found while saving changes."});const x=q.rows[0];Object.assign(r,{name:x.name,icon:x.icon,description:x.description,category:x.category,rankRequired:x.rank_required,limit:x.room_limit,slowMode:x.slow_mode,banner:x.banner,public:x.is_public,passwordHash:x.password_hash,minAge:Number(x.min_age??13),maxAge:Number(x.max_age??99)});}
   save();
   // Revalidate signed access after privacy, password, rank, or friend rules change.
   evictRoomSocketsWithoutAccess(r);
