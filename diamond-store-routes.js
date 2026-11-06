@@ -20,7 +20,9 @@ function registerDiamondStoreRoutes({app,pool,current,notify,io,log,id,db,ownerO
       await ensureTable();
       const inserted = await pool.query("INSERT INTO diamond_purchase_requests(user_id,package_id,price,diamonds,status) VALUES($1,$2,$3,$4,'pending') RETURNING id", [Number(user.id), packageId, plan.price, plan.diamonds]);
       const owners = await pool.query("SELECT id FROM users WHERE LOWER(rank) IN ('owner','developer')");
-      for (const owner of owners.rows) notify(owner.id, 'staff', 'Diamond purchase request', '@' + user.username + ' requested ' + plan.diamonds.toLocaleString() + ' Diamonds for $' + plan.price + '. Review it in Owner Space.');
+      for (const owner of owners.rows) {
+        try { notify(owner.id, 'staff', 'Diamond purchase request', '@' + user.username + ' requested ' + plan.diamonds.toLocaleString() + ' Diamonds for $' + plan.price + '. Review it in Owner Space.'); } catch (e) { console.error('Diamond request notification failed:', e); }
+      }
       res.status(201).json({ ok: true, requestId: inserted.rows[0].id, message: 'Checkout request sent. Owner/Developer will review it after payment verification.' });
     } catch (error) {
       if (error.code === '23505') return res.status(409).json({ error: 'You already have a pending request for this Diamond package.' });
@@ -43,76 +45,63 @@ function registerDiamondStoreRoutes({app,pool,current,notify,io,log,id,db,ownerO
   app.post('/api/owner/diamond-purchase-requests/:id/grant', ownerOnly, async (req, res) => {
     const actor = current(req);
     const client = await pool.connect();
-    let purchase;
     try {
       await ensureTable();
       await client.query('BEGIN');
-      const found = await client.query("SELECT r.*,u.username FROM diamond_purchase_requests r JOIN users u ON u.id=r.user_id WHERE r.id=$1 AND r.status='pending' FOR UPDATE OF r", [req.params.id]);
+      const found = await client.query(
+        "SELECT r.*,u.username FROM diamond_purchase_requests r JOIN users u ON u.id=r.user_id WHERE r.id=$1 AND r.status='pending' FOR UPDATE OF r",
+        [req.params.id]
+      );
       if (!found.rowCount) {
         await client.query('ROLLBACK');
         return res.status(404).json({ error: 'Pending Diamond purchase request not found.' });
       }
-      purchase = found.rows[0];
-      // Credit the buyer as the recipient (not the approving staff member) so
-      // the wallet ledger records this as an incoming Diamond purchase.
+
+      const purchase = found.rows[0];
+      const amount = Number(purchase.diamonds);
+      if (!Number.isSafeInteger(amount) || amount <= 0) throw new Error('Invalid Diamond amount on purchase request.');
+
+      // The balance update, ledger entry and request status are one atomic transaction.
       const credited = await client.query(
-        "UPDATE users SET diamonds=COALESCE(diamonds,0)+$1 WHERE id=$2 RETURNING diamonds,gold",
-        [Number(purchase.diamonds), Number(purchase.user_id)]
+        "UPDATE users SET diamonds=COALESCE(diamonds,0)+$1 WHERE id=$2 RETURNING id,diamonds,gold",
+        [amount, Number(purchase.user_id)]
       );
       if (!credited.rowCount) throw new Error('The requesting account no longer exists.');
+
       await client.query(
         "INSERT INTO wallet_transactions(id,recipient_id,currency,amount,type,note) VALUES($1,$2,'DIAMONDS',$3,'DIAMOND_PURCHASE',$4)",
-        [id(), Number(purchase.user_id), Number(purchase.diamonds), 'Diamond Store purchase - 
-      try { notify(purchase.user_id, 'wallet', 'Diamond purchase approved', 'Your purchase request was approved. ' + Number(purchase.diamonds).toLocaleString() + ' Diamonds have been added to your wallet.'); } catch (notifyError) { console.error('Diamond purchase notification failed:', notifyError); }
-      try { log(actor, 'DIAMOND_PURCHASE_GRANTED', purchase.username, { requestId: Number(purchase.id), diamonds: Number(purchase.diamonds), price: Number(purchase.price) }); } catch (logError) { console.error('Diamond purchase audit log failed:', logError); }
-      res.json({ ok: true, username: purchase.username, diamonds: Number(purchase.diamonds), wallet: { diamonds: Number(credited.rows[0].diamonds || 0), gold: Number(credited.rows[0].gold || 0) } });
-    } catch (error) {
-      await client.query('ROLLBACK').catch(() => {});
-      console.error('Diamond purchase grant failed:', error);
-      res.status(500).json({ error: 'Could not grant Diamonds for this request.' });
-    } finally {
-      client.release();
-    }
-  });
-
-  app.post('/api/owner/diamond-purchase-requests/:id/reject', ownerOnly, async (req, res) => {
-    const actor = current(req);
-    try {
-      await ensureTable();
-      const rejected = await pool.query("UPDATE diamond_purchase_requests SET status='rejected',reviewed_at=NOW(),reviewed_by=$2 WHERE id=$1 AND status='pending' RETURNING user_id,diamonds", [req.params.id, Number(actor.id)]);
-      if (!rejected.rowCount) return res.status(404).json({ error: 'Pending Diamond purchase request not found.' });
-      notify(rejected.rows[0].user_id, 'wallet', 'Diamond purchase request rejected', 'Your Diamond Store purchase request was rejected. No Diamonds were added.');
-      log(actor, 'DIAMOND_PURCHASE_REJECTED', String(rejected.rows[0].user_id), { requestId: Number(req.params.id), diamonds: Number(rejected.rows[0].diamonds) });
-      res.json({ ok: true });
-    } catch (error) {
-      console.error('Diamond purchase rejection failed:', error);
-      res.status(500).json({ error: 'Could not reject the Diamond purchase request.' });
-    }
-  });
-}
-
-module.exports = { registerDiamondStoreRoutes };
- + Number(purchase.price)]
+        [id(), Number(purchase.user_id), amount, 'Diamond Store purchase - $' + Number(purchase.price)]
       );
       await client.query(
         "UPDATE diamond_purchase_requests SET status='granted',reviewed_at=NOW(),reviewed_by=$2 WHERE id=$1",
         [purchase.id, Number(actor.id)]
       );
       await client.query('COMMIT');
-      // Keep the in-memory user record in sync with the authoritative DB balance.
-      const target = (db.users || []).find(item => String(item.id) === String(purchase.user_id));
-      if (target) {
-        target.diamonds = Number(credited.rows[0].diamonds || 0);
-        target.gold = Number(credited.rows[0].gold || 0);
-      }
-      io.to('user:' + purchase.user_id).emit('wallet:update', {
-        userId: Number(purchase.user_id),
+
+      const wallet = {
         diamonds: Number(credited.rows[0].diamonds || 0),
         gold: Number(credited.rows[0].gold || 0)
-      });
-      try { notify(purchase.user_id, 'wallet', 'Diamond purchase approved', 'Your purchase request was approved. ' + Number(purchase.diamonds).toLocaleString() + ' Diamonds have been added to your wallet.'); } catch (notifyError) { console.error('Diamond purchase notification failed:', notifyError); }
-      try { log(actor, 'DIAMOND_PURCHASE_GRANTED', purchase.username, { requestId: Number(purchase.id), diamonds: Number(purchase.diamonds), price: Number(purchase.price) }); } catch (logError) { console.error('Diamond purchase audit log failed:', logError); }
-      res.json({ ok: true, username: purchase.username, diamonds: Number(purchase.diamonds) });
+      };
+      const target = (db.users || []).find(item => String(item.id) === String(purchase.user_id));
+      if (target) {
+        target.diamonds = wallet.diamonds;
+        target.gold = wallet.gold;
+      }
+      try {
+        io.to('user:' + purchase.user_id).emit('wallet:update', {
+          userId: Number(purchase.user_id),
+          diamonds: wallet.diamonds,
+          gold: wallet.gold
+        });
+      } catch (e) { console.error('Diamond wallet socket update failed:', e); }
+      try {
+        notify(purchase.user_id, 'wallet', 'Diamond purchase approved', 'Your purchase request was approved. ' + amount.toLocaleString() + ' Diamonds have been added to your wallet.');
+      } catch (e) { console.error('Diamond purchase notification failed:', e); }
+      try {
+        log(actor, 'DIAMOND_PURCHASE_GRANTED', purchase.username, { requestId: Number(purchase.id), diamonds: amount, price: Number(purchase.price) });
+      } catch (e) { console.error('Diamond purchase audit log failed:', e); }
+
+      res.json({ ok: true, username: purchase.username, diamonds: amount, wallet });
     } catch (error) {
       await client.query('ROLLBACK').catch(() => {});
       console.error('Diamond purchase grant failed:', error);
@@ -126,10 +115,13 @@ module.exports = { registerDiamondStoreRoutes };
     const actor = current(req);
     try {
       await ensureTable();
-      const rejected = await pool.query("UPDATE diamond_purchase_requests SET status='rejected',reviewed_at=NOW(),reviewed_by=$2 WHERE id=$1 AND status='pending' RETURNING user_id,diamonds", [req.params.id, Number(actor.id)]);
+      const rejected = await pool.query(
+        "UPDATE diamond_purchase_requests SET status='rejected',reviewed_at=NOW(),reviewed_by=$2 WHERE id=$1 AND status='pending' RETURNING user_id,diamonds",
+        [req.params.id, Number(actor.id)]
+      );
       if (!rejected.rowCount) return res.status(404).json({ error: 'Pending Diamond purchase request not found.' });
-      notify(rejected.rows[0].user_id, 'wallet', 'Diamond purchase request rejected', 'Your Diamond Store purchase request was rejected. No Diamonds were added.');
-      log(actor, 'DIAMOND_PURCHASE_REJECTED', String(rejected.rows[0].user_id), { requestId: Number(req.params.id), diamonds: Number(rejected.rows[0].diamonds) });
+      try { notify(rejected.rows[0].user_id, 'wallet', 'Diamond purchase request rejected', 'Your Diamond Store purchase request was rejected. No Diamonds were added.'); } catch (e) { console.error('Diamond rejection notification failed:', e); }
+      try { log(actor, 'DIAMOND_PURCHASE_REJECTED', String(rejected.rows[0].user_id), { requestId: Number(req.params.id), diamonds: Number(rejected.rows[0].diamonds) }); } catch (e) { console.error('Diamond rejection audit log failed:', e); }
       res.json({ ok: true });
     } catch (error) {
       console.error('Diamond purchase rejection failed:', error);
