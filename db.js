@@ -35,6 +35,15 @@ async function initDB() {
     ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_data JSONB NOT NULL DEFAULT '{}'::jsonb;
 
     CREATE TABLE IF NOT EXISTS settings(key TEXT PRIMARY KEY, value JSONB);
+    CREATE TABLE IF NOT EXISTS stored_media(
+      media_key TEXT PRIMARY KEY,
+      mime_type TEXT NOT NULL DEFAULT 'application/octet-stream',
+      original_name TEXT NOT NULL DEFAULT '',
+      byte_size BIGINT NOT NULL DEFAULT 0,
+      content BYTEA NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+    CREATE INDEX IF NOT EXISTS stored_media_created_idx ON stored_media(created_at);
     CREATE TABLE IF NOT EXISTS device_fingerprints(id SERIAL PRIMARY KEY,fingerprint_hash VARCHAR(255) UNIQUE,ip_hash VARCHAR(255),user_id INT REFERENCES users(id) ON DELETE CASCADE,created_at TIMESTAMP DEFAULT NOW());
     CREATE TABLE IF NOT EXISTS user_ip_history(id BIGSERIAL PRIMARY KEY,user_id INT REFERENCES users(id) ON DELETE CASCADE,ip_address INET NOT NULL,event_type TEXT NOT NULL DEFAULT 'login',user_agent TEXT,recorded_at TIMESTAMPTZ NOT NULL DEFAULT NOW());
     CREATE INDEX IF NOT EXISTS user_ip_history_user_time_idx ON user_ip_history(user_id,recorded_at DESC);

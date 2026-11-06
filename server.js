@@ -70,6 +70,52 @@ const PORT=process.env.PORT||3000;
 const UP=path.resolve(process.env.UPLOAD_DIR || path.join(process.env.PERSISTENT_DATA_DIR || path.join(__dirname,"uploads"),"uploads"));
 fs.mkdirSync(UP,{recursive:true});
 
+// Uploaded media is stored in PostgreSQL, not only on Render's replaceable
+// application filesystem. media_key remains the public /uploads/... URL path.
+async function storeMediaBuffer(mediaKey,buffer,mimeType,originalName){
+  const key=String(mediaKey||"").replace(/\\/g,"/").replace(/^\/+/, "");
+  if(!key||key.split("/").some(part=>!part||part==="."||part===".."))throw new Error("Invalid media storage key.");
+  const bytes=Buffer.isBuffer(buffer)?buffer:Buffer.from(buffer||[]);
+  if(!bytes.length)throw new Error("Uploaded media is empty.");
+  await pool.query(
+    "INSERT INTO stored_media(media_key,mime_type,original_name,byte_size,content) VALUES($1,$2,$3,$4,$5) ON CONFLICT(media_key) DO NOTHING",
+    [key,String(mimeType||"application/octet-stream").slice(0,160),String(originalName||path.basename(key)).slice(0,255),bytes.length,bytes]
+  );
+  return key;
+}
+async function persistUploadedMedia(file,mediaKey){
+  if(!file)return "";
+  const key=String(mediaKey||file.filename||"").replace(/\\/g,"/").replace(/^\/+/, "");
+  const bytes=await fs.promises.readFile(file.path);
+  await storeMediaBuffer(key,bytes,file.mimetype,file.originalname);
+  file.mediaKey=key;
+  return key;
+}
+async function migrateExistingUploads(){
+  let migrated=0,failed=0;
+  async function walk(dir){
+    let entries=[];
+    try{entries=await fs.promises.readdir(dir,{withFileTypes:true});}catch(error){if(error.code==="ENOENT")return;throw error;}
+    for(const entry of entries){
+      const full=path.join(dir,entry.name);
+      if(entry.isDirectory()){await walk(full);continue;}
+      if(!entry.isFile())continue;
+      const key=path.relative(UP,full).split(path.sep).join("/");
+      try{
+        const found=await pool.query("SELECT 1 FROM stored_media WHERE media_key=$1",[key]);
+        if(found.rowCount)continue;
+        const bytes=await fs.promises.readFile(full);
+        const ext=path.extname(key).toLowerCase();
+        const types={".png":"image/png",".jpg":"image/jpeg",".jpeg":"image/jpeg",".gif":"image/gif",".webp":"image/webp",".avif":"image/avif",".mp4":"video/mp4",".webm":"video/webm",".mp3":"audio/mpeg",".m4a":"audio/mp4",".aac":"audio/aac",".ogg":"audio/ogg",".oga":"audio/ogg",".wav":"audio/wav",".opus":"audio/opus",".flac":"audio/flac"};
+        await storeMediaBuffer(key,bytes,types[ext]||"application/octet-stream",path.basename(key));
+        migrated++;
+      }catch(error){failed++;console.warn("[MEDIA MIGRATION] Could not copy",key,error?.message||error);}
+    }
+  }
+  await walk(UP);
+  console.log("[MEDIA MIGRATION] Existing uploads copied to PostgreSQL:",{migrated,failed});
+}
+
 const DEFAULT_OWNER=process.env.OWNER_USERNAME||"Maleficent";
 const OWNER_DISPLAY=process.env.OWNER_DISPLAY_NAME||"Maleficent";
 
@@ -1005,7 +1051,7 @@ async function auth(req,res,next){
   next();
 }
 
-require("./entertainment").registerEntertainmentRoutes({app,auth,current,pool,uploadRoot:UP});
+require("./entertainment").registerEntertainmentRoutes({app,auth,current,pool,uploadRoot:UP,persistUploadedMedia});
 
 async function persistUnderConstructionSetting(setting){
   // Persist independently of the legacy whole-state snapshot so Render restarts
@@ -1424,6 +1470,44 @@ app.use(session({
 }));
 
 // Audit middleware must run after JSON parsing and session authentication are available.
+// Serve media from PostgreSQL first. Keep byte-range support so audio can seek
+// normally; if an older upload still exists only on disk, migrate it on first read.
+app.get("/uploads/*",async(req,res,next)=>{
+  const mediaKey=String(req.params[0]||"").replace(/\\/g,"/");
+  if(!mediaKey||mediaKey.split("/").some(part=>!part||part==="."||part===".."))return res.sendStatus(404);
+  try{
+    let found=await pool.query("SELECT mime_type,original_name,content FROM stored_media WHERE media_key=$1",[mediaKey]);
+    if(!found.rowCount){
+      const localPath=path.resolve(UP,...mediaKey.split("/"));
+      if(localPath!==UP&&!localPath.startsWith(UP+path.sep))return res.sendStatus(404);
+      try{
+        const bytes=await fs.promises.readFile(localPath);
+        const ext=path.extname(mediaKey).toLowerCase();
+        const types={".png":"image/png",".jpg":"image/jpeg",".jpeg":"image/jpeg",".gif":"image/gif",".webp":"image/webp",".avif":"image/avif",".mp4":"video/mp4",".webm":"video/webm",".mp3":"audio/mpeg",".m4a":"audio/mp4",".aac":"audio/aac",".ogg":"audio/ogg",".oga":"audio/ogg",".wav":"audio/wav",".opus":"audio/opus",".flac":"audio/flac"};
+        await storeMediaBuffer(mediaKey,bytes,types[ext]||"application/octet-stream",path.basename(mediaKey));
+        found=await pool.query("SELECT mime_type,original_name,content FROM stored_media WHERE media_key=$1",[mediaKey]);
+      }catch(error){if(error.code==="ENOENT")return next();throw error;}
+    }
+    if(!found.rowCount)return next();
+    const row=found.rows[0],bytes=row.content;
+    const mime=String(row.mime_type||"application/octet-stream");
+    const safeName=String(row.original_name||path.basename(mediaKey)).replace(/[\r\n"]/g,"_").replace(/[^\x20-\x7E]/g,"_");
+    res.set({"Content-Type":mime,"Accept-Ranges":"bytes","Cache-Control":"public, max-age=31536000, immutable","X-Content-Type-Options":"nosniff","Content-Disposition":'inline; filename="'+safeName+'"'});
+    const range=String(req.headers.range||"");
+    if(range){
+      const match=/^bytes=(\d*)-(\d*)$/.exec(range);
+      if(!match||!bytes.length)return res.status(416).set("Content-Range","bytes */"+bytes.length).end();
+      let start=match[1]?Number(match[1]):Math.max(0,bytes.length-Number(match[2]));
+      let end=match[2]?Number(match[2]):bytes.length-1;
+      if(!Number.isSafeInteger(start)||!Number.isSafeInteger(end)||start<0||end<start||start>=bytes.length)return res.status(416).set("Content-Range","bytes */"+bytes.length).end();
+      end=Math.min(end,bytes.length-1);
+      const part=bytes.subarray(start,end+1);
+      return res.status(206).set({"Content-Length":String(part.length),"Content-Range":'bytes '+start+'-'+end+'/'+bytes.length}).send(part);
+    }
+    return res.set("Content-Length",String(bytes.length)).send(bytes);
+  }catch(error){next(error);}
+});
+
 app.use(
   "/uploads",
   express.static(UP)
@@ -1453,6 +1537,15 @@ const upload=multer({
     fileSize:15*1024*1024
   }
 });
+
+// Persist every ordinary file upload immediately after Multer writes it.
+const parseSingleUpload=upload.single.bind(upload);
+upload.single=(field)=>{const parse=parseSingleUpload(field);return (req,res,next)=>parse(req,res,async error=>{
+  if(error)return next(error);
+  if(!req.file)return next();
+  try{await persistUploadedMedia(req.file,req.file.filename);next();}
+  catch(storageError){await fs.promises.unlink(req.file.path).catch(()=>{});next(storageError);}
+});};
 
 function visibleRoomOnlineCount(roomId){
   const members=io.sockets.adapter.rooms.get("room:"+String(roomId));
@@ -7259,6 +7352,7 @@ app.get('/api/me/account',auth,async(req,res)=>{
 (async function bootstrap(){
   try {
     await initDB();
+    await migrateExistingUploads();
     await pool.query('CREATE TABLE IF NOT EXISTS push_subscriptions(id BIGSERIAL PRIMARY KEY,user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,endpoint TEXT NOT NULL UNIQUE,p256dh TEXT NOT NULL,auth TEXT NOT NULL,created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),last_used_at TIMESTAMPTZ)');
     await pool.query('CREATE INDEX IF NOT EXISTS push_subscriptions_user_idx ON push_subscriptions(user_id)');
 
