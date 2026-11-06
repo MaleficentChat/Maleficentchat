@@ -731,19 +731,23 @@ async function authenticateSocketAndJoinRoom(socket=state.socket, syncHistory=tr
       let access=null;
       try{access=JSON.parse(safeStorage.getItem("mc_room_join")||"null");}catch{}
       if(!state.currentRoom || String(access?.roomId??"")!==String(state.currentRoom) || !access?.joinToken){resolve(true);return;}
-      socket.emit("join-room",access);
-      if(!syncHistory){resolve(true);return;}
-      const roomId=String(state.currentRoom);
-      try{
-        const data=await api("/api/rooms/"+encodeURIComponent(roomId)+"/messages");
-        if(socket!==state.socket || !socket.connected || String(state.currentRoom)!==roomId){resolve(false);return;}
-        state.messages=Array.isArray(data.messages)?data.messages:[];
-        const list=$("messages");
-        if(list){list.innerHTML=state.messages.map(messageHTML).join("");list.scrollTop=list.scrollHeight;}
-      }catch(error){
-        console.warn("Room message resync failed:",error?.message||error);
-      }
-      resolve(true);
+      // Wait until the server confirms this socket has joined the room.
+      // Otherwise a message sent immediately after joining can race the subscription.
+      socket.emit("join-room",access,async joinAck=>{
+        if(!joinAck?.ok || socket!==state.socket || !socket.connected){resolve(false);return;}
+        if(!syncHistory){resolve(true);return;}
+        const roomId=String(state.currentRoom);
+        try{
+          const data=await api("/api/rooms/"+encodeURIComponent(roomId)+"/messages");
+          if(socket!==state.socket || !socket.connected || String(state.currentRoom)!==roomId){resolve(false);return;}
+          state.messages=Array.isArray(data.messages)?data.messages:[];
+          const list=$("messages");
+          if(list){list.innerHTML=state.messages.map(messageHTML).join("");list.scrollTop=list.scrollHeight;}
+        }catch(error){
+          console.warn("Room message resync failed:",error?.message||error);
+        }
+        resolve(true);
+      });
     });
   });
 }
@@ -1862,7 +1866,11 @@ async function joinRoom(id) {
 
     // Joining over HTTP can finish before socket authentication; authenticate
     // again here so the room join cannot be silently ignored during login.
-    if(state.socket?.connected) authenticateSocketAndJoinRoom(state.socket,false).catch(error=>console.warn("Room socket join failed:",error?.message||error));
+    if(state.socket?.connected){
+      const roomSocket=state.socket;
+      const socketJoined=await authenticateSocketAndJoinRoom(roomSocket,false).catch(error=>{console.warn("Room socket join failed:",error?.message||error);return false;});
+      if(!socketJoined)console.warn("Room socket subscription was not confirmed; reconnect recovery will retry.");
+    }
 
     $("chatWrap").classList.remove("hidden");
     $("viewRooms").classList.add("chatting");
