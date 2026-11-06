@@ -322,47 +322,9 @@
   })();
 </script>
 <script>
-// Independent room-menu fallback: this is installed before app.js so the
-// three-dot control remains usable even if the main bundle's handler fails.
-(function(){
-  document.addEventListener("click",function(event){
-    var trigger=event.target&&event.target.closest?event.target.closest("#roomMenu"):null;
-    if(!trigger)return;
-    event.preventDefault();
-    event.stopPropagation();
-    if(event.stopImmediatePropagation)event.stopImmediatePropagation();
-    try{
-      var overlay=document.getElementById("modal");
-      var body=document.getElementById("modalBody");
-      if(!overlay||!body)throw new Error("Menu dialog is unavailable.");
-      var actions=[
-        ["pinned","📌 Pinned messages"],
-        ["youtube","▶️ YouTube"],
-        ["invite","🔐 Room code"],
-        ["theme","🎨 Site Theme"]
-      ];
-      if(typeof window.canPostRoomAnnouncement==="function"&&window.canPostRoomAnnouncement())actions.unshift(["announcement","📢 Room announcement"]);
-      body.innerHTML='<div class="room-menu-panel"><h2>Room options</h2><div class="room-menu-actions">'+
-        actions.map(function(item){return '<button type="button" class="room-menu-action" data-room-menu-fallback="'+item[0]+'">'+item[1]+'</button>';}).join("")+
-        '</div></div>';
-      overlay.classList.remove("hidden");
-      overlay.setAttribute("aria-hidden","false");
-      body.querySelectorAll("[data-room-menu-fallback]").forEach(function(button){
-        button.addEventListener("click",function(){
-          var action=button.getAttribute("data-room-menu-fallback");
-          try{
-            if(action==="announcement"&&typeof postRoomAnnouncement==="function")postRoomAnnouncement();
-            else if(action==="pinned"&&typeof showPinnedMessages==="function")showPinnedMessages();
-            else if(action==="youtube"&&typeof openYoutubePanel==="function")openYoutubePanel();
-            else if(action==="invite"&&typeof showInvite==="function")showInvite();
-            else if(action==="theme"&&typeof openRoomThemePicker==="function")openRoomThemePicker();
-            else throw new Error("This option is still loading.");
-          }catch(error){console.error("Room menu option failed:",error);var toast=document.getElementById("toast");if(toast){toast.textContent=error.message||"Could not open this option.";toast.style.display="block";}}
-        });
-      });
-    }catch(error){console.error("Room menu fallback failed:",error);alert("Room options could not open: "+(error.message||"unknown error"));}
-  },true);
-})();
+// The room menu is handled by app.js. Do not install a capture-phase
+// fallback here: it would intercept #roomMenu before the permission-aware
+// handler can add Edit room and Pin room.
 </script>
 <script src="/app.js?v=room-controls-20261106-3"></script>
 </body>
