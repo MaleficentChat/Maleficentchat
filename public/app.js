@@ -1506,7 +1506,7 @@ async function loadWall(){
     feed.querySelectorAll('[data-wall-options]').forEach(b=>b.onclick=()=>{const box=$('wallOptions-'+b.dataset.wallOptions);if(!box)return;const opening=box.classList.contains('hidden');box.classList.toggle('hidden');b.setAttribute('aria-expanded',String(opening));});
     document.querySelectorAll('[data-wall-save]').forEach(b=>b.onclick=async()=>{try{const r=await api('/api/wall/'+encodeURIComponent(b.dataset.wallSave)+'/save',{method:'POST',body:JSON.stringify({})});toast(r.saved?'Post saved.':'Post removed from saved posts.');await loadWall()}catch(e){toast(e.message||'Could not save post.')}});
     document.querySelectorAll('[data-wall-reaction]').forEach(b=>b.onclick=async()=>{try{await api('/api/wall/'+encodeURIComponent(b.dataset.wallId)+'/reaction',{method:'POST',body:JSON.stringify({emoji:b.dataset.wallReaction})});await loadWall()}catch(e){toast(e.message||'Could not send reaction.')}});
-    document.querySelectorAll('[data-wall-share]').forEach(b=>b.onclick=async()=>{const id=b.dataset.wallShare;if(wallShowingReels){await sendReelToMainChat(id);return;}const url=location.origin+'/#shadow-post='+encodeURIComponent(id);const title='Shadow Feed · Maleficent Chat';try{if(navigator.share){await navigator.share({title,text:'Check out this post on Maleficent Chat',url});}else if(navigator.clipboard?.writeText){await navigator.clipboard.writeText(url);toast('Post link copied.');}else{const field=document.createElement('textarea');field.value=url;document.body.appendChild(field);field.select();document.execCommand('copy');field.remove();toast('Post link copied.');}}catch(e){if(e?.name!=='AbortError')toast('Could not share this post.');}});
+    document.querySelectorAll('[data-wall-share]').forEach(b=>b.onclick=async()=>{const id=b.dataset.wallShare;if(wallShowingReels){await sendReelToCurrentRoom(id);return;}const url=location.origin+'/#shadow-post='+encodeURIComponent(id);const title='Shadow Feed · Maleficent Chat';try{if(navigator.share){await navigator.share({title,text:'Check out this post on Maleficent Chat',url});}else if(navigator.clipboard?.writeText){await navigator.clipboard.writeText(url);toast('Post link copied.');}else{const field=document.createElement('textarea');field.value=url;document.body.appendChild(field);field.select();document.execCommand('copy');field.remove();toast('Post link copied.');}}catch(e){if(e?.name!=='AbortError')toast('Could not share this post.');}});
     const wallDoubleTapTimers=new WeakMap();
     feed.querySelectorAll('.wall-media:not(video)').forEach(media=>{media.addEventListener('click',()=>{const previous=wallDoubleTapTimers.get(media);if(previous){clearTimeout(previous);wallDoubleTapTimers.delete(media);const post=media.closest('[data-wall-id]');if(post){const like=post.querySelector('[data-wall-reaction="❤️"]');if(like&&!like.classList.contains('reacted'))like.click();}}else{wallDoubleTapTimers.set(media,setTimeout(()=>wallDoubleTapTimers.delete(media),320));}});});
     document.querySelectorAll('[data-wall-feature]').forEach(b=>b.onclick=async()=>{try{const featured=b.dataset.featured!=='true';await api('/api/wall/'+encodeURIComponent(b.dataset.wallFeature)+'/feature',{method:'POST',body:JSON.stringify({featured})});toast(featured?'Post featured.':'Post unfeatured.');await loadWall()}catch(e){toast(e.message||'Could not feature post.')}});
@@ -1516,19 +1516,17 @@ async function loadWall(){
     document.querySelectorAll('[data-wall-comments]').forEach(b=>b.onclick=async()=>{const id=b.dataset.wallComments,box=$('wallComments-'+id);if(!box)return;box.classList.toggle('hidden');if(!box.classList.contains('hidden'))try{const d=await api('/api/wall/'+encodeURIComponent(id)+'/comments');box.innerHTML=`<div class="wall-comments-header"><strong>Comments</strong><button type="button" class="wall-comments-close" aria-label="Close comments">×</button></div>`+(d.comments||[]).map(v=>{const canDelete=String(v.user_id)===String(state.user?.id)||String(feed.querySelector('[data-wall-id="'+CSS.escape(id)+'"]')?.dataset.wallAuthor||'')===String(state.user?.id);return `<div class="news-comment wall-comment-item" data-wall-comment-id="${esc(v.id)}"><div class="wall-comment-avatar">${v.avatar?`<img src="${esc(v.avatar)}" alt="">`:'👤'}</div><div class="news-comment-main"><div class="news-comment-head"><b>@${esc(v.username||'Member')}</b><small>${esc(v.rank||'Member')}</small></div><div class="news-comment-text">${esc(v.content)}</div><div class="wall-comment-meta">${fmt(v.created_at)}</div></div>${canDelete?`<button type="button" class="wall-comment-delete" data-wall-comment-delete="${esc(v.id)}" aria-label="Delete comment" title="Delete comment">⌫</button>`:''}</div>`}).join('')+`<form class="wall-comment-form news-comment-form"><input placeholder="Add a comment…" maxlength="1000" required><button class="mini">Post</button></form>`;box.querySelector('.wall-comments-close')?.addEventListener('click',()=>box.classList.add('hidden'));box.querySelectorAll('[data-wall-comment-delete]').forEach(del=>del.addEventListener('click',async()=>{if(!confirm('Delete this comment?'))return;del.disabled=true;try{await api('/api/wall/'+encodeURIComponent(id)+'/comments/'+encodeURIComponent(del.dataset.wallCommentDelete),{method:'DELETE'});await loadWall();const post=feed.querySelector('[data-wall-id="'+CSS.escape(id)+'"]');post?.querySelector('[data-wall-comments]')?.click();}catch(err){toast(err.message||'Could not delete comment.');del.disabled=false}}));box.querySelector('form').onsubmit=async e=>{e.preventDefault();const input=e.currentTarget.querySelector('input');try{await api('/api/wall/'+encodeURIComponent(id)+'/comments',{method:'POST',body:JSON.stringify({content:input.value})});await loadWall();$('wallComments-'+id)?.classList.remove('hidden')}catch(err){toast(err.message)}}}catch(e){toast(e.message)}});
   } catch(e){toast(e.message||'Could not load Shadow Feed.')}
 }
-async function sendReelToMainChat(postId){
+async function sendReelToCurrentRoom(postId){
   try{
-    const mainRoom=(state.rooms||[]).find(r=>r.isDefault||/^main room$/i.test(String(r.name||"")));
-    if(!mainRoom){toast("Main Room could not be found.");return;}
-    if(String(state.currentRoom)!==String(mainRoom.id)){
-      const joined=await joinRoom(mainRoom.id);
-      if(!joined){toast("Could not open Main Room.");return;}
-    }
+    const roomId=String(state.currentRoom||"");
+    const room=(state.rooms||[]).find(r=>String(r.id)===roomId);
+    if(!roomId||!room){toast("Open the room where you want to send this Reel first.");return;}
+    const roomName=String(room.name||"this room");
     const form=new FormData();form.append("reelId",String(postId));form.append("text","🎬 Shadow Reel");
-    const result=await api("/api/rooms/"+encodeURIComponent(mainRoom.id)+"/messages",{method:"POST",body:form});
-    if(result.message)appendMessage(result.message);
-    toast("Reel shared to Main Room! 🎬");
-  }catch(error){toast(error.message||"Could not share this Reel to Main Room.");}
+    const result=await api("/api/rooms/"+encodeURIComponent(roomId)+"/messages",{method:"POST",body:form});
+    if(result.message&&String(result.message.roomId||roomId)===String(state.currentRoom))appendMessage(result.message);
+    toast("Reel sent to "+roomName+"! 🎬");
+  }catch(error){toast(error.message||"Could not send this Reel to the current room.");}
 }
 function updateWallModeButtons(){
   const saved=$('wallSavedToggle'),friends=$('wallFriendsToggle'),reels=$('wallReelsToggle');
@@ -2942,8 +2940,10 @@ async function openReelSharePicker(){
     const data=await api("/api/wall");
     const videos=(data.posts||[]).filter(p=>/\.(mp4|webm|ogg)(\?|$)/i.test(String(p.media_url||"")));
     if(!videos.length){toast("No published Reels yet. Upload a video post in Shadow Feed first.");return;}
-    modal('<div class="reel-picker"><h2>🎬 Share a Reel to Main Room</h2><p class="muted">Choose a video from Shadow Feed.</p><div class="reel-picker-list">'+videos.map(p=>'<button type="button" class="reel-picker-item" data-share-reel="'+esc(p.id)+'"><video muted playsinline preload="metadata" src="'+esc(p.media_url)+'"></video><span><b>@'+esc(p.username||"Member")+'</b><small>'+esc(p.content||"Shadow Reel")+'</small></span><strong>Send ↗</strong></button>').join('')+'</div></div>');
-    document.querySelectorAll('[data-share-reel]').forEach(button=>button.addEventListener('click',async()=>{button.disabled=true;const postId=button.dataset.shareReel;closeModal();await sendReelToMainChat(postId);}));
+    const currentRoom=(state.rooms||[]).find(r=>String(r.id)===String(state.currentRoom||""));
+    const targetLabel=currentRoom?.name||"current room";
+    modal('<div class="reel-picker"><h2>🎬 Share a Reel to '+esc(targetLabel)+'</h2><p class="muted">Choose a video from Shadow Feed. It will be sent to the room you currently have open.</p><div class="reel-picker-list">'+videos.map(p=>'<button type="button" class="reel-picker-item" data-share-reel="'+esc(p.id)+'"><video muted playsinline preload="metadata" src="'+esc(p.media_url)+'"></video><span><b>@'+esc(p.username||"Member")+'</b><small>'+esc(p.content||"Shadow Reel")+'</small></span><strong>Send ↗</strong></button>').join('')+'</div></div>');
+    document.querySelectorAll('[data-share-reel]').forEach(button=>button.addEventListener('click',async()=>{button.disabled=true;const postId=button.dataset.shareReel;closeModal();await sendReelToCurrentRoom(postId);}));
   }catch(error){toast(error.message||"Could not load Reels.");}
 }
 $('reelComposerBtn')?.addEventListener('click',openReelSharePicker);
