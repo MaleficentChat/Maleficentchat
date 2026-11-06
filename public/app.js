@@ -6427,7 +6427,18 @@ async function sendYoutube(videoId,title){
     closeModal();toast("YouTube video shared in chat.");
   }catch(error){toast(error.message||"Could not share this video.");}
 }
-$("youtubeComposerBtn")?.addEventListener("click",()=>openYoutubePanel("youtube"));
+// Capture the composer YouTube action at document level so it still works if the
+// attachment drawer or its buttons are re-rendered, and cannot be swallowed by
+// another drawer click handler.
+document.addEventListener("click",event=>{
+  const button=event.target instanceof Element?event.target.closest("#youtubeComposerBtn"):null;
+  if(!button)return;
+  event.preventDefault();
+  event.stopPropagation();
+  event.stopImmediatePropagation();
+  try{openYoutubePanel();}
+  catch(error){console.error("Composer YouTube panel failed:",error);toast(error?.message||"YouTube could not be opened.");}
+},true);
 
 /* ---------------- ROOM MENU ---------------- */
 
