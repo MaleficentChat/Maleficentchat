@@ -2567,13 +2567,13 @@ app.post(
     }
 
     const existingJoinToken=verifyRoomJoinToken(req.headers['x-room-join-token'],u.id,r)||verifyRoomJoinToken(req.body?.joinToken,u.id,r);
-    if(!roomJoinPolicyAllowed(u,r,{inviteToken:req.body?.inviteToken,existingJoinToken})){
+    if(!isStaffAccount&&!roomJoinPolicyAllowed(u,r,{inviteToken:req.body?.inviteToken,existingJoinToken})){
       return res.status(403).json({error:"This room is private or your current account does not meet its access rules."});
     }
-    if(!existingJoinToken&&!roomCapacityAvailable(u,r))return res.status(403).json({error:"This room has reached its member limit."});
+    if(!isStaffAccount&&!existingJoinToken&&!roomCapacityAvailable(u,r))return res.status(403).json({error:"This room has reached its member limit."});
 
     if(
-      r.passwordHash&&
+      !isStaffAccount&&r.passwordHash&&
       !(await bcrypt.compare(
         req.body.password||"",
         r.passwordHash
