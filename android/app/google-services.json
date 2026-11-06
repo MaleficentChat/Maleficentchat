@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "951136538417",
+    "project_id": "maleficentchat-48732",
+    "storage_bucket": "maleficentchat-48732.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:951136538417:android:58ac6455bec8bbe99b2a10",
+        "android_client_info": {
+          "package_name": "com.maleficentchat.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC31nu5coSRyGm0TVfKR0KTjlmkrVdaGiM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

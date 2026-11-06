@@ -17,6 +17,7 @@ async function initDB() {
       password TEXT,
       rank TEXT DEFAULT 'member',
       gold INT DEFAULT 0,
+      diamonds BIGINT NOT NULL DEFAULT 0,
       xp INT DEFAULT 0,
       avatar TEXT,
       birth_date DATE,
@@ -29,6 +30,7 @@ async function initDB() {
       created_at TIMESTAMP DEFAULT NOW()
     );
     ALTER TABLE users ADD COLUMN IF NOT EXISTS xp INT DEFAULT 0;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS diamonds BIGINT NOT NULL DEFAULT 0;
     ALTER TABLE users ADD COLUMN IF NOT EXISTS device_fingerprint VARCHAR(255);
     ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_data JSONB NOT NULL DEFAULT '{}'::jsonb;
 
@@ -60,10 +62,33 @@ async function initDB() {
       banner TEXT DEFAULT '',
       invite_token TEXT
     );
+    -- Upgrade older room tables too: CREATE TABLE IF NOT EXISTS does not add columns.
+    -- Keep every column used by room creation/editing available on older databases.
+    ALTER TABLE rooms ADD COLUMN IF NOT EXISTS icon TEXT DEFAULT '💬';
+    ALTER TABLE rooms ADD COLUMN IF NOT EXISTS description TEXT DEFAULT '';
+    ALTER TABLE rooms ADD COLUMN IF NOT EXISTS category TEXT DEFAULT 'Community';
+    ALTER TABLE rooms ADD COLUMN IF NOT EXISTS is_public BOOLEAN DEFAULT true;
+    ALTER TABLE rooms ADD COLUMN IF NOT EXISTS password_hash TEXT;
+    ALTER TABLE rooms ADD COLUMN IF NOT EXISTS rank_required TEXT DEFAULT 'MEMBER';
+    ALTER TABLE rooms ADD COLUMN IF NOT EXISTS room_limit INT DEFAULT 100;
+    ALTER TABLE rooms ADD COLUMN IF NOT EXISTS slow_mode INT DEFAULT 0;
+    ALTER TABLE rooms ADD COLUMN IF NOT EXISTS announcement TEXT DEFAULT '';
+    ALTER TABLE rooms ADD COLUMN IF NOT EXISTS banner TEXT DEFAULT '';
+    ALTER TABLE rooms ADD COLUMN IF NOT EXISTS invite_token TEXT;
     ALTER TABLE rooms ADD COLUMN IF NOT EXISTS min_age INT DEFAULT 0;
     ALTER TABLE rooms ADD COLUMN IF NOT EXISTS max_age INT DEFAULT 120;
     ALTER TABLE rooms ADD COLUMN IF NOT EXISTS is_default BOOLEAN DEFAULT false;
-    UPDATE rooms SET max_age=120 WHERE is_default=false AND min_age=0 AND max_age=99;
+    -- Age gates are no longer supported: normalize existing rooms to unrestricted.
+    UPDATE rooms SET min_age=0,max_age=120;
+
+    CREATE TABLE IF NOT EXISTS room_announcements(
+      id TEXT PRIMARY KEY,
+      room_id INT NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
+      user_id INT REFERENCES users(id) ON DELETE SET NULL,
+      text TEXT NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+    CREATE INDEX IF NOT EXISTS room_announcements_room_time_idx ON room_announcements(room_id,created_at DESC);
 
     CREATE TABLE IF NOT EXISTS room_messages(
       id TEXT PRIMARY KEY,
@@ -99,6 +124,16 @@ async function initDB() {
     );
     CREATE INDEX IF NOT EXISTS private_messages_pair_idx ON private_messages(sender_id,receiver_id,created_at DESC);
     CREATE INDEX IF NOT EXISTS private_messages_reverse_pair_idx ON private_messages(receiver_id,sender_id,created_at DESC);
+
+    CREATE TABLE IF NOT EXISTS native_device_tokens(
+      id BIGSERIAL PRIMARY KEY,
+      user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      fcm_token TEXT NOT NULL UNIQUE,
+      credential_hash TEXT NOT NULL UNIQUE,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      last_used_at TIMESTAMPTZ
+    );
+    CREATE INDEX IF NOT EXISTS native_device_tokens_user_idx ON native_device_tokens(user_id);
 
     CREATE TABLE IF NOT EXISTS reports(
       id TEXT PRIMARY KEY,
@@ -146,6 +181,24 @@ async function initDB() {
       likes INT DEFAULT 0,
       created_at TIMESTAMP DEFAULT NOW()
     );
+    -- Shadow Feed fields and saves are additive; existing posts remain visible.
+    ALTER TABLE wall_posts ADD COLUMN IF NOT EXISTS expires_at TIMESTAMPTZ;
+    ALTER TABLE wall_posts ADD COLUMN IF NOT EXISTS featured BOOLEAN NOT NULL DEFAULT false;
+    CREATE TABLE IF NOT EXISTS wall_post_reactions(
+      post_id BIGINT NOT NULL,
+      user_id BIGINT NOT NULL,
+      emoji TEXT NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      PRIMARY KEY(post_id,user_id,emoji)
+    );
+    CREATE TABLE IF NOT EXISTS wall_post_saves(
+      post_id BIGINT NOT NULL REFERENCES wall_posts(id) ON DELETE CASCADE,
+      user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      PRIMARY KEY(post_id,user_id)
+    );
+    CREATE INDEX IF NOT EXISTS wall_posts_feed_idx ON wall_posts(status,featured DESC,created_at DESC);
+    CREATE INDEX IF NOT EXISTS wall_post_saves_user_created_idx ON wall_post_saves(user_id,created_at DESC);
     CREATE TABLE IF NOT EXISTS doodles(
       id BIGSERIAL PRIMARY KEY,
       user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -223,6 +276,18 @@ async function initDB() {
       user_id INT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
       last_claim TIMESTAMP, streak INT DEFAULT 0
     );
+    CREATE TABLE IF NOT EXISTS wallet_transactions(
+      id TEXT PRIMARY KEY,
+      sender_id INT REFERENCES users(id) ON DELETE SET NULL,
+      recipient_id INT REFERENCES users(id) ON DELETE SET NULL,
+      currency TEXT NOT NULL CHECK(currency IN ('DIAMONDS','GOLD')),
+      amount BIGINT NOT NULL CHECK(amount > 0),
+      type TEXT NOT NULL,
+      note TEXT NOT NULL DEFAULT '',
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+    CREATE INDEX IF NOT EXISTS wallet_transactions_sender_idx ON wallet_transactions(sender_id,created_at DESC);
+    CREATE INDEX IF NOT EXISTS wallet_transactions_recipient_idx ON wallet_transactions(recipient_id,created_at DESC);
     CREATE TABLE IF NOT EXISTS premium_requests(
       id SERIAL PRIMARY KEY, user_id INT REFERENCES users(id) ON DELETE CASCADE,
       status TEXT DEFAULT 'pending', created_at TIMESTAMP DEFAULT NOW()
@@ -252,21 +317,9 @@ async function initDB() {
     ON CONFLICT(name) DO NOTHING`);
   await pool.query(`INSERT INTO settings(key,value) VALUES('room_structure_v1','true'::jsonb) ON CONFLICT(key) DO NOTHING`);
 
-  // Some older versions created duplicate/case-variant Main Rooms. Preserve
-  // their messages by moving those rows into the canonical Main Room before
-  // removing only the obsolete room records.
-  const obsoleteRooms = await pool.query(`SELECT id FROM rooms
-    WHERE LOWER(TRIM(name)) IN ('main room 1','main room 2')
-       OR (LOWER(TRIM(name))='main room' AND name <> 'Main Room')`);
-  if (obsoleteRooms.rowCount) {
-    const obsoleteIds = obsoleteRooms.rows.map(row => Number(row.id));
-    const mainRoom = await pool.query(`SELECT id FROM rooms WHERE name='Main Room' LIMIT 1`);
-    if (mainRoom.rowCount) {
-      await pool.query(`UPDATE room_messages SET room_id=$1 WHERE room_id = ANY($2::int[])`, [Number(mainRoom.rows[0].id), obsoleteIds]);
-    }
-    await pool.query(`DELETE FROM rooms WHERE id = ANY($1::int[])`, [obsoleteIds]);
-  }
-  await pool.query(`UPDATE rooms SET is_default=(name='Main Room'), min_age=0, max_age=120 WHERE name='Main Room'`);
+  // Mark the canonical room without deleting legacy room records or changing
+  // their message associations during startup.
+  await pool.query(`UPDATE rooms SET is_default=(name='Main Room') WHERE name='Main Room'`);
   await pool.query(`UPDATE rooms SET is_default=false WHERE name <> 'Main Room'`);
 
   const giftValues = `VALUES
@@ -308,6 +361,7 @@ async function loadState(defaultState) {
     passwordHash: row.password && row.password.startsWith("$2") ? row.password : undefined,
     rank: (String(row.rank || "member").toUpperCase()==="USER"?"MEMBER":String(row.rank || "member").toUpperCase()),
     gold: Number(row.gold || 0),
+    diamonds: Number(row.diamonds || 0),
     xp: Number(row.xp || 0),
     avatar: row.avatar || "",
     birthDate: row.birth_date ? new Date(row.birth_date).toISOString().slice(0,10) : "",
@@ -341,11 +395,18 @@ async function loadState(defaultState) {
 
   // PostgreSQL is the source of truth for rooms; do not re-import stale legacy room lists.
   const { rows: roomRows } = await pool.query(`SELECT * FROM rooms ORDER BY created_at,id`);
+  const { rows: roomAnnouncementRows } = await pool.query(`SELECT id,room_id,user_id,text,created_at FROM room_announcements ORDER BY created_at DESC,id DESC`);
+  const announcementsByRoom=new Map();
+  for(const item of roomAnnouncementRows){
+    const key=String(item.room_id);
+    if(!announcementsByRoom.has(key))announcementsByRoom.set(key,[]);
+    announcementsByRoom.get(key).push({id:String(item.id),roomId:key,userId:item.user_id?String(item.user_id):null,text:String(item.text||""),time:item.created_at?new Date(item.created_at).getTime():0});
+  }
   state.rooms = roomRows.map(r=>({
     id:String(r.id), name:r.name, icon:r.icon||"💬", description:r.description||"", category:r.category||"Community", isDefault:!!r.is_default,
     minAge:Number(r.min_age??0), maxAge:Number(r.max_age??120),
     public:r.is_public!==false, passwordHash:r.password_hash||null, rankRequired:String(r.rank_required||"MEMBER").toUpperCase(),
-    limit:Number(r.room_limit||100), slowMode:Number(r.slow_mode||0), announcement:r.announcement||"", ownerId:r.created_by?String(r.created_by):null,
+    limit:Number(r.room_limit||100), slowMode:Number(r.slow_mode||0), announcement:r.announcement||"", announcements:announcementsByRoom.get(String(r.id))||[], ownerId:r.created_by?String(r.created_by):null,
     banner:r.banner||"", inviteToken:r.invite_token||""
   }));
 
@@ -449,12 +510,12 @@ async function persistState(state) {
   for (const u of state.users || []) {
     if(!Number.isFinite(Number(u.id))) continue;
     const profileData={...u};
-    for (const key of ['id','username','password','passwordHash','rank','gold','xp','avatar','birthDate','dateOfBirth','gender','bio','email','vipExpiresAt','vip_expires_at','isPremium','is_premium','giftsReceived']) delete profileData[key];
+    for (const key of ['id','username','password','passwordHash','rank','gold','diamonds','xp','avatar','birthDate','dateOfBirth','gender','bio','email','vipExpiresAt','vip_expires_at','isPremium','is_premium','giftsReceived']) delete profileData[key];
     await pool.query(
-      `UPDATE users SET username=$2,password=$3,rank=$4,gold=$5,xp=$6,avatar=$7,birth_date=$8,gender=$9,bio=$10,email=$11,vip_expires_at=$12,is_premium=$13,profile_data=$14::jsonb WHERE id=$1`,
+      `UPDATE users SET username=$2,password=$3,rank=$4,gold=$5,xp=$6,avatar=$7,birth_date=$8,gender=$9,bio=$10,email=$11,vip_expires_at=$12,is_premium=$13,profile_data=$14::jsonb,diamonds=$15 WHERE id=$1`,
       [Number(u.id),u.username,u.passwordHash||u.password||"",String(u.rank||"MEMBER"),Number(u.gold||0),Number(u.xp||0),u.avatar||null,
        u.birthDate||u.dateOfBirth||null,u.gender||null,u.bio||null,u.email||null,
-       (u.vipExpiresAt||u.vip_expires_at)?new Date(u.vipExpiresAt||u.vip_expires_at):null,!!(u.isPremium||u.is_premium),JSON.stringify(profileData)]
+       (u.vipExpiresAt||u.vip_expires_at)?new Date(u.vipExpiresAt||u.vip_expires_at):null,!!(u.isPremium||u.is_premium),JSON.stringify(profileData),Math.max(0,Math.floor(Number(u.diamonds)||0))]
     );
   }
 

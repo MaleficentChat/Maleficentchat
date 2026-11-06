@@ -6,7 +6,7 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "check": "node scripts/check-security.js && node --check server.js && node --check db.js"
+    "check": "node scripts/check-security.js && node --check server.js && node --check db.js && node --check public/app.js"
   },
   "engines": {
     "node": ">=20"
@@ -20,6 +20,7 @@
     "socket.io": "^4.8.1",
     "pg": "^8.16.3",
     "web-push": "^3.6.7",
-    "tesseract.js": "^6.0.1"
+    "tesseract.js": "^6.0.1",
+    "firebase-admin": "^13.0.2"
   }
 }

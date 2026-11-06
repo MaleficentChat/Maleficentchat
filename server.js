@@ -15,6 +15,38 @@ const multer=require("multer");
 const {createWorker}=require("tesseract.js");
 const {Server}=require("socket.io");
 const {initDB,loadState,persistState,pool}=require("./db");
+let firebaseAdminApp=null;
+function getFirebaseAdmin(){
+  if(firebaseAdminApp)return firebaseAdminApp;
+  const raw=String(process.env.FIREBASE_SERVICE_ACCOUNT||"").trim();
+  if(!raw)return null;
+  try{
+    const admin=require("firebase-admin");
+    const serviceAccount=JSON.parse(raw);
+    firebaseAdminApp=admin.apps.length?admin.app():admin.initializeApp({credential:admin.credential.cert(serviceAccount)});
+    return firebaseAdminApp;
+  }catch(error){console.error("Firebase Admin initialization failed:",error?.message||error);return null;}
+}
+async function sendNativePushToUser(userId,payload){
+  const app=getFirebaseAdmin();if(!app)return;
+  try{
+    const result=await pool.query("SELECT fcm_token FROM native_device_tokens WHERE user_id=$1",[Number(userId)]);
+    if(!result.rowCount)return;
+    const admin=require("firebase-admin");
+    const response=await admin.messaging(app).sendEachForMulticast({
+      tokens:result.rows.map(row=>row.fcm_token),
+      data:Object.fromEntries(Object.entries(payload).map(([k,v])=>[k,String(v??"")])),
+      android:{priority:"high"}
+    });
+    for(let i=0;i<response.responses.length;i++){
+      const item=response.responses[i];
+      if(!item.success && /registration-token-not-registered|invalid-registration-token/i.test(String(item.error?.code||""))){
+        await pool.query("DELETE FROM native_device_tokens WHERE fcm_token=$1",[result.rows[i].fcm_token]);
+      }
+    }
+  }catch(error){console.error("Native FCM delivery failed:",error?.message||error);}
+}
+
 
 const app=express(), server=http.createServer(app), io=new Server(server);
 // Express 4 does not automatically forward rejected async route handlers to
@@ -58,6 +90,7 @@ let db=load();
 // Short-window in-memory signals support flood protection; durable actions remain in db.
 const systemModerationWindows = new Map();
 const systemNetworkWindows = new Map();
+const roomMessageLastSent = new Map();
 function systemAudit(entry){
   db.moderationHistory ||= [];
   db.moderationHistory.push({id:id(),target:String(entry.target||""),actor:String(entry.actor||"SYSTEM"),actorUsername:String(entry.actorUsername||"System Moderation"),action:String(entry.action||"EVENT"),reason:String(entry.reason||""),time:Date.now(),source:String(entry.source||"system"),durationMinutes:Number(entry.durationMinutes)||0});
@@ -327,7 +360,7 @@ const FEATURE_GRANT_DEFAULTS={
   search_rooms:GRANT_RANKS,leave_rooms:GRANT_RANKS,room_passwords:GRANT_RANKS,room_member_limits:GRANT_RANKS,room_rank_restrictions:GRANT_RANKS,room_friends_only:GRANT_RANKS,room_topics:GRANT_RANKS,room_rules:GRANT_RANKS,room_staff_list:GRANT_RANKS,room_mute_users:["MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],room_kick_users:["MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],room_block_users:["ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],room_edit_rules:["MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],room_persistence:GRANT_RANKS,room_themes:GRANT_RANKS,room_message_search:GRANT_RANKS,
   reply_messages:GRANT_RANKS,quote_messages:GRANT_RANKS,delete_own_messages:GRANT_RANKS,copy_messages:GRANT_RANKS,hide_messages:GRANT_RANKS,mention_users:GRANT_RANKS,chat_unread_counts:GRANT_RANKS,chat_attachments:GRANT_RANKS,chat_image_upload:GRANT_RANKS,chat_video_upload:GRANT_RANKS,chat_audio_upload:GRANT_RANKS,chat_youtube_music:GRANT_RANKS,chat_message_search:GRANT_RANKS,chat_message_expiry:GRANT_RANKS,chat_scheduled_messages:GRANT_RANKS,chat_doodle_share:GRANT_RANKS,chat_doodle_save:GRANT_RANKS,chat_aurora_announcements:["MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],
   dm_search:GRANT_RANKS,dm_unread_counts:GRANT_RANKS,dm_previews:GRANT_RANKS,dm_reply:GRANT_RANKS,dm_pin:GRANT_RANKS,dm_mute:GRANT_RANKS,dm_archive:GRANT_RANKS,dm_filters:GRANT_RANKS,dm_nicknames:GRANT_RANKS,dm_preferences:GRANT_RANKS,dm_report:GRANT_RANKS,inspect_private_messages:["OWNER"],manage_dm_reports:["MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],
-  news_read:GRANT_RANKS,news_comment:GRANT_RANKS,news_react:GRANT_RANKS,news_report:GRANT_RANKS,news_pin:["MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],wall_read:GRANT_RANKS,wall_search:GRANT_RANKS,wall_comment:GRANT_RANKS,wall_react:GRANT_RANKS,wall_report:GRANT_RANKS,wall_pin:["MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],suggestions_submit:GRANT_RANKS,suggestions_review:["OWNER"],suggestions_set_status:["OWNER"],suggestions_notify_submitter:["OWNER"],
+  news_read:GRANT_RANKS,news_comment:GRANT_RANKS,news_react:GRANT_RANKS,news_report:GRANT_RANKS,news_pin:["MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],wall_read:GRANT_RANKS,wall_search:GRANT_RANKS,wall_comment:GRANT_RANKS,wall_react:GRANT_RANKS,wall_report:GRANT_RANKS,wall_pin:["MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],suggestions_submit:GRANT_RANKS,suggestions_review:["DEVELOPER"],suggestions_set_status:["DEVELOPER"],suggestions_notify_submitter:["DEVELOPER"],
   games_access:GRANT_RANKS,gravity_run:GRANT_RANKS,doodle_studio_save:GRANT_RANKS,doodle_studio_share:GRANT_RANKS,gif_search:GRANT_RANKS,media_embeds:GRANT_RANKS,
   premium_access:GRANT_RANKS,vip_access:GRANT_RANKS,gold_wallet:GRANT_RANKS,gold_catalogue:GRANT_RANKS,gold_purchase:GRANT_RANKS,gold_equip:GRANT_RANKS,gold_transaction_history:GRANT_RANKS,daily_rewards:GRANT_RANKS,achievement_access:GRANT_RANKS,premium_requests:GRANT_RANKS,grant_premium:["OWNER"],
   view_rules:GRANT_RANKS,submit_reports:GRANT_RANKS,manage_reports:["MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],report_assign:["MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],report_resolve:["MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],edit_site_rules:["INSTRUCTOR","COMMISSOR","COOWNER","OWNER","DEVELOPER"],edit_room_rules:["MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"],
@@ -344,7 +377,7 @@ join_rooms:RANK_TIERS.all,view_pinned:RANK_TIERS.all,search_rooms:RANK_TIERS.all
 friend_wall_posting:RANK_TIERS.all,wall_post:RANK_TIERS.all,wall_commenting:RANK_TIERS.all,wall_comment:RANK_TIERS.all,wall_liking:RANK_TIERS.all,wall_react:RANK_TIERS.all,wall_read:RANK_TIERS.all,wall_search:RANK_TIERS.all,wall_report:RANK_TIERS.all,wall_pin:RANK_TIERS.premium,wall_upload:RANK_TIERS.vip,nickname_users:RANK_TIERS.vip,room_clear_own:RANK_TIERS.admin,clear_room:RANK_TIERS.admin,room_member_limits:RANK_TIERS.admin,room_rank_restrictions:RANK_TIERS.admin,room_topics:RANK_TIERS.admin,room_friends_only:RANK_TIERS.admin,
 change_avatar:RANK_TIERS.all,change_bio:RANK_TIERS.all,account_register:RANK_TIERS.all,account_login:RANK_TIERS.all,account_settings:RANK_TIERS.all,change_own_password:RANK_TIERS.all,change_own_email:RANK_TIERS.all,account_modifications:RANK_TIERS.mod,profile_note:RANK_TIERS.mod,manage_profile_notes:RANK_TIERS.mod,change_password:RANK_TIERS.instructor,edit_email:RANK_TIERS.commissor,view_emails:RANK_TIERS.commissor,
 dm_search:RANK_TIERS.vip,dm_unread_counts:RANK_TIERS.vip,dm_previews:RANK_TIERS.vip,dm_reply:RANK_TIERS.vip,dm_pin:RANK_TIERS.vip,dm_mute:RANK_TIERS.vip,dm_archive:RANK_TIERS.vip,dm_filters:RANK_TIERS.vip,dm_nicknames:RANK_TIERS.vip,dm_preferences:RANK_TIERS.vip,dm_report:RANK_TIERS.vip,inspect_private_messages:RANK_TIERS.owner,manage_dm_reports:RANK_TIERS.mod,
-suggestions_submit:RANK_TIERS.all,view_rules:RANK_TIERS.all,submit_reports:RANK_TIERS.all,suggestions_review:RANK_TIERS.coowner,suggestions_set_status:RANK_TIERS.coowner,suggestions_notify_submitter:RANK_TIERS.coowner,manage_reports:RANK_TIERS.mod,reports_management:RANK_TIERS.mod,report_resolve:RANK_TIERS.mod,edit_room_rules:RANK_TIERS.mod,room_edit_rules:RANK_TIERS.mod,report_assign:RANK_TIERS.superAdmin,edit_site_rules:RANK_TIERS.commissor,
+suggestions_submit:RANK_TIERS.all,view_rules:RANK_TIERS.all,submit_reports:RANK_TIERS.all,suggestions_review:["DEVELOPER"],suggestions_set_status:["DEVELOPER"],suggestions_notify_submitter:["DEVELOPER"],manage_reports:RANK_TIERS.mod,reports_management:RANK_TIERS.mod,report_resolve:RANK_TIERS.mod,edit_room_rules:RANK_TIERS.mod,room_edit_rules:RANK_TIERS.mod,report_assign:RANK_TIERS.superAdmin,edit_site_rules:RANK_TIERS.commissor,
 news_posting:RANK_TIERS.admin,manage_news:RANK_TIERS.admin,delete_news:RANK_TIERS.admin,news_pin:RANK_TIERS.admin,news_read:RANK_TIERS.all,news_comment:RANK_TIERS.all,news_react:RANK_TIERS.all,news_report:RANK_TIERS.all,
 view_online_users:RANK_TIERS.all,manage_push_notifications:RANK_TIERS.all,moderate_users:RANK_TIERS.mod,moderate_user:RANK_TIERS.mod,delete_message:RANK_TIERS.mod,bypass_filter_words:RANK_TIERS.mod,bypass_mute:RANK_TIERS.mod,staff_rank_assignment:RANK_TIERS.mod,staff_dashboard_access:RANK_TIERS.mod,staff_application_review:RANK_TIERS.commissor,view_user_history:RANK_TIERS.mod,view_username_history:RANK_TIERS.mod,manage_mutes:RANK_TIERS.mod,manage_kicks:RANK_TIERS.mod,manage_warnings:RANK_TIERS.mod,staff_notifications:RANK_TIERS.mod,manage_bans:RANK_TIERS.admin,manage_account_locks:RANK_TIERS.admin,audit_log_access:RANK_TIERS.admin,inspect_ip_details:RANK_TIERS.instructor,inspect_similar_ips:RANK_TIERS.instructor,view_ips:RANK_TIERS.instructor,site_hard_refresh:RANK_TIERS.instructor,manage_site_refresh:RANK_TIERS.instructor,invisible_mode:RANK_TIERS.commissor,presence_modes:RANK_TIERS.commissor,manage_filter_words:RANK_TIERS.commissor,manage_automated_filters:RANK_TIERS.commissor,manage_spam_flood_rules:RANK_TIERS.commissor,grant_premium:RANK_TIERS.owner,premium_granting:RANK_TIERS.owner,manage_multi_account_rules:RANK_TIERS.owner,system_notifications:RANK_TIERS.coowner,ghost_mode:RANK_TIERS.owner,dead_mode:RANK_TIERS.instructor
 };const REQUESTED_FEATURE_GRANTS={
@@ -354,7 +387,7 @@ view_online_users:RANK_TIERS.all,manage_push_notifications:RANK_TIERS.all,modera
     .map(([key,ranks])=>[key,[...ranks]]))
 };
 
-const REQUESTED_COMMAND_RANKS={clear:RANK_TIERS.admin,abrakadabra:RANK_TIERS.all,aura:RANK_TIERS.all,roast:RANK_TIERS.all,anonymous:RANK_TIERS.superAdmin,bank:RANK_TIERS.vip,ship:RANK_TIERS.vip,welcome:RANK_TIERS.vip,steal:RANK_TIERS.premium,bread:RANK_TIERS.premium,rose:RANK_TIERS.premium,brain:RANK_TIERS.premium};
+const REQUESTED_COMMAND_RANKS={clear:RANK_TIERS.admin,abrakadabra:RANK_TIERS.all,aura:RANK_TIERS.all,roast:RANK_TIERS.all,anonymous:RANK_TIERS.superAdmin,bank:RANK_TIERS.all,convert:RANK_TIERS.all,ship:RANK_TIERS.vip,welcome:RANK_TIERS.vip,steal:RANK_TIERS.premium,bread:RANK_TIERS.premium,rose:RANK_TIERS.premium,brain:RANK_TIERS.premium};
 const REQUESTED_MODE_RANKS={invisible:["COMMISSOR","INSTRUCTOR","COOWNER","OWNER","DEVELOPER"],dead:["INSTRUCTOR","COOWNER","OWNER","DEVELOPER"],ghost:["OWNER","DEVELOPER"]};
 function modeRankAllowed(mode,rank){
   const normalized=String(rank||"").toUpperCase();
@@ -451,6 +484,22 @@ app.use('/api',(req,res,next)=>{
   next();
 });
 
+async function convertDiamonds(u,amount){
+  if(!u||!Number.isSafeInteger(amount)||amount<1||!Number.isSafeInteger(amount*100))return null;
+  const goldAmount=amount*100,client=await pool.connect();let balances;
+  try{
+    await client.query('BEGIN');
+    const updated=await client.query('UPDATE users SET diamonds=diamonds-$1,gold=COALESCE(gold,0)+$2 WHERE id=$3 AND diamonds >= $1 RETURNING diamonds,gold',[amount,goldAmount,Number(u.id)]);
+    if(!updated.rowCount){await client.query('ROLLBACK');return null;}
+    balances={diamonds:Number(updated.rows[0].diamonds||0),gold:Number(updated.rows[0].gold||0)};
+    await client.query(`INSERT INTO wallet_transactions(id,sender_id,currency,amount,type,note) VALUES($1,$2,'DIAMONDS',$3,'CONVERT',$4)`,[id(),Number(u.id),amount,'Converted to '+goldAmount+' Gold']);
+    await client.query('COMMIT');
+  }catch(error){await client.query('ROLLBACK').catch(()=>{});throw error;}finally{client.release();}
+  u.diamonds=balances.diamonds;u.gold=balances.gold;db.goldTransactions ||= [];db.goldTransactions.push({id:id(),time:Date.now(),actor:u.id,userId:u.id,type:'DIAMOND_CONVERSION',delta:goldAmount,diamonds:-amount});save();
+  io.to('user:'+u.id).emit('wallet:update',{userId:u.id,diamonds:u.diamonds,gold:u.gold});io.to('user:'+u.id).emit('gold:update',{gold:u.gold});
+  return balances;
+}
+
 function safeUser(u){
   if(!u)return null;
 
@@ -483,6 +532,7 @@ function safeUser(u){
     level:u.level||1,
     xp:u.xp||0,
     gold:u.gold||0,
+    diamonds:Number(u.diamonds||0),
     birth_date:u.birthDate||u.dateOfBirth||"",
     birthDate:u.birthDate||u.dateOfBirth||"",
     dateOfBirth:u.dateOfBirth||u.birthDate||"",
@@ -554,16 +604,19 @@ function notificationPreferenceKey(type){
   if(["gold","achievement","level"].includes(type)) return "gamification";
   return "other";
 }
-async function notify(userId,type,title,text){
+async function notify(userId,type,title,text,url="/"){
   const target=findUser(userId), key=notificationPreferenceKey(type), prefs=target?.settings?.notificationPrefs||{};
-  if(prefs[key]===false)return;
+  // Moderation warnings are mandatory and cannot be hidden by notification preferences.
+  if(prefs[key]===false&&String(type)!=="warning")return;
   try{
-    await pool.query(
-      `INSERT INTO notifications(user_id,type,title,message,is_read) VALUES($1,$2,$3,$4,false)`,
+    const inserted=await pool.query(
+      `INSERT INTO notifications(user_id,type,title,message,is_read) VALUES($1,$2,$3,$4,false) RETURNING id`,
       [Number(userId),String(type),String(title||type),String(text)]
     );
-    io.to("user:"+userId).emit("notification");
-    await sendWebPushToUser(userId,{title:String(title||type||"Maleficent Chat"),body:String(text||"You have a new notification").slice(0,180),url:"/",tag:"mc-alert-"+String(type||"notification"),kind:"site-notification"});
+    const notificationId=inserted.rows?.[0]?.id;
+    io.to("user:"+userId).emit("notification",{id:notificationId,type:String(type),title:String(title||type),message:String(text)});
+    return notificationId;
+    await sendWebPushToUser(userId,{title:String(title||type||"Maleficent Chat"),body:String(text||"You have a new notification").slice(0,180),url:String(url||"/"),tag:"mc-alert-"+String(type||"notification"),kind:type==="private-message"?"private-message":"site-notification"});
   }catch(err){console.error("Notification insert failed:",err);}
 }
 
@@ -644,8 +697,26 @@ function getSessionSecret() {
     return configured;
   }
 
-  // Production fallback: persist a cryptographically random secret on the
-  // mounted data disk so restarts do not invalidate sessions and signed tokens.
+  // Render instances may have ephemeral local filesystems and may run more
+  // than one instance. A secret generated into a local file can therefore differ
+  // between instances or change after a restart, invalidating freshly issued
+  // login tokens and sending users back to the login screen.
+  //
+  // Prefer a stable secret derived from the private DATABASE_URL whenever it
+  // is available, regardless of NODE_ENV. Hosting platforms do not always set
+  // NODE_ENV consistently; gating this on "production" can otherwise create a
+  // new token secret after a restart and send users back to the login screen.
+  // DATABASE_URL is shared by all app instances. Explicit SESSION_SECRET takes
+  // precedence and remains the recommended configuration.
+  if (process.env.DATABASE_URL) {
+    return crypto
+      .createHmac("sha256", process.env.DATABASE_URL)
+      .update("MaleficentChat/session-secret/v1")
+      .digest("hex");
+  }
+
+  // Last-resort production fallback for deployments without DATABASE_URL:
+  // persist a cryptographically random secret on a mounted data disk.
   if (process.env.NODE_ENV === "production") {
     const dataDir = process.env.PERSISTENT_DATA_DIR || path.join(__dirname, "data");
     const secretFile = path.join(dataDir, ".session-secret");
@@ -691,8 +762,56 @@ function roomRankCanEnter(user,room){
   // Unknown or stale rank values must never accidentally grant access.
   return Number.isInteger(userLevel)&&Number.isInteger(requiredLevel)&&userLevel>=requiredLevel;
 }
+function roomIsPrivate(room){return room?.public===false||room?.is_public===false;}
+function secureRoomTokenMatches(candidate,stored){
+  const a=Buffer.from(String(candidate||"")),b=Buffer.from(String(stored||""));
+  return a.length>0&&a.length===b.length&&crypto.timingSafeEqual(a,b);
+}
+function roomInviteSignature(payload,room){
+  const key=String(TOKEN_SECRET)+":"+String(room?.inviteToken||room?.invite_token||"");
+  return crypto.createHmac("sha256",key).update(payload).digest("base64url");
+}
+function makeRoomInviteToken(room){
+  const payload=Buffer.from(JSON.stringify({room:String(room.id),exp:Math.floor(Date.now()/1000)+7*86400})).toString("base64url");
+  return payload+"."+roomInviteSignature(payload,room);
+}
+function verifyRoomInviteToken(token,room){
+  try{
+    const [payload,signature]=String(token||"").split(".");
+    if(!payload||!signature)return false;
+    const expected=roomInviteSignature(payload,room);
+    if(!secureRoomTokenMatches(signature,expected))return false;
+    const data=JSON.parse(Buffer.from(payload,"base64url").toString("utf8"));
+    const now=Math.floor(Date.now()/1000);
+    return data.room===String(room.id)&&Number.isInteger(data.exp)&&data.exp>now&&data.exp<=now+7*86400+60;
+  }catch{return false;}
+}
+function roomJoinPolicyAllowed(user,room,{inviteToken="",existingJoinToken=false}={}){
+  if(!user||!room||user.banned===true||Number(user.kickedUntil)>Date.now())return false;
+  const isMain=!!room.isDefault||/^main room$/i.test(String(room.name||"").trim());
+  const state=roomStaffStore(),roomKey=String(room.id),userKey=String(user.id);
+  if(state.room_blocks[roomKey]?.[userKey])return false;
+  const roomKick=state.room_kicks[roomKey]?.[userKey];
+  if(roomKick&&Number(roomKick.until)>Date.now())return false;
+  if(!isMain&&!hasFeature(user,"join_rooms"))return false;
+  if(!roomRankCanEnter(user,room))return false;
+  if(!isMain&&roomFriendsOnly(room)&&!areAcceptedFriends(user,db.users.find(x=>String(x.id)===String(room.ownerId||room.created_by||room.createdBy))))return false;
+  if(!roomIsPrivate(room))return true;
+  if(roomOwnerOrGlobal(user,room)||roomRole(room.id,user.id)!=="USER")return true;
+  return existingJoinToken||verifyRoomInviteToken(inviteToken,room);
+}
+function roomAccessFingerprint(room){
+  return crypto.createHash("sha256").update(JSON.stringify([
+    String(room.passwordHash||room.password_hash||"public"),
+    roomIsPrivate(room),
+    String(room.inviteToken||room.invite_token||"")
+  ])).digest("hex");
+}
+function legacyRoomAccessFingerprint(room){
+  return crypto.createHash("sha256").update(String(room.passwordHash||room.password_hash||"public")).digest("hex");
+}
 function makeRoomJoinToken(userId,room){
-  const payload=Buffer.from(JSON.stringify({sub:String(userId),room:String(room.id),access:crypto.createHash("sha256").update(String(room.passwordHash||"public")).digest("hex"),exp:Math.floor(Date.now()/1000)+7*86400})).toString("base64url");
+  const payload=Buffer.from(JSON.stringify({sub:String(userId),room:String(room.id),access:roomAccessFingerprint(room),exp:Math.floor(Date.now()/1000)+7*86400})).toString("base64url");
   const signature=crypto.createHmac("sha256",TOKEN_SECRET).update(payload).digest("base64url");return payload+"."+signature;
 }
 function verifyRoomJoinToken(token,userId,room){
@@ -702,27 +821,36 @@ function verifyRoomJoinToken(token,userId,room){
     const expected=crypto.createHmac("sha256",TOKEN_SECRET).update(payload).digest("base64url");
     if(signature.length!==expected.length||!crypto.timingSafeEqual(Buffer.from(signature),Buffer.from(expected)))return false;
     const data=JSON.parse(Buffer.from(payload,"base64url").toString("utf8"));
-    if(data.sub!==String(userId)||data.room!==String(room.id)||data.exp<Math.floor(Date.now()/1000)||data.access!==crypto.createHash("sha256").update(String(room.passwordHash||"public")).digest("hex"))return false;
+    const currentAccess=roomAccessFingerprint(room),legacyAccess=legacyRoomAccessFingerprint(room);
+    const accessMatches=data.access===currentAccess||(!roomIsPrivate(room)&&data.access===legacyAccess);
+    if(data.sub!==String(userId)||data.room!==String(room.id)||data.exp<Math.floor(Date.now()/1000)||!accessMatches)return false;
     const user=db.users.find(x=>String(x.id)===String(userId));
-    if(!user||!roomRankCanEnter(user,room))return false;
-    const isMain=!!room.isDefault||/^main room$/i.test(String(room.name||"").trim());
-    if(!isMain&&roomFriendsOnly(room)&&!areAcceptedFriends(user,db.users.find(x=>String(x.id)===String(room.ownerId||room.created_by))))return false;
-    return true;
+    return roomJoinPolicyAllowed(user,room,{existingJoinToken:true});
   }catch{return false;}
 }
 function current(req){
-  // Prefer the live session when it resolves to an existing account. A stale
-  // session cookie must not shadow a still-valid signed client token after a
-  // session restore or account-state reload.
-  const sessionUid=req.session?.userId;
-  const sessionUser=sessionUid?db.users.find(u=>String(u.id)===String(sessionUid)):null;
-  if(sessionUser) return sessionUser;
+  // Accept the signed token from the app header, a Bearer header, or the
+  // HttpOnly first-party cookie. The cookie is a durable fallback when mobile
+  // browsers or embedded webviews fail to retain localStorage.
+  const authorization=String(req.headers.authorization||"");
+  const cookieToken=String(req.headers.cookie||"").split(";").map(part=>part.trim()).find(part=>part.startsWith("mc_auth="));
+  let cookieValue="";
+  if(cookieToken){try{cookieValue=decodeURIComponent(cookieToken.slice("mc_auth=".length));}catch{}}
+  const candidates=[
+    req.headers["x-auth-token"],
+    authorization.startsWith("Bearer ")?authorization.slice(7):"",
+    cookieValue
+  ];
+  for(const raw of candidates){
+    const tokenPayload=verifyToken(raw);
+    if(!tokenPayload)continue;
+    const tokenUser=db.users.find(u=>String(u.id)===String(tokenPayload.sub));
+    if(tokenUser)return tokenUser;
+  }
 
-  const raw=req.headers["x-auth-token"] ||
-    (String(req.headers.authorization||"").startsWith("Bearer ")?String(req.headers.authorization).slice(7):"");
-  const tokenPayload=verifyToken(raw);
-  if(!tokenPayload) return null;
-  return db.users.find(u=>String(u.id)===String(tokenPayload.sub))||null;
+  // Keep cookie-session authentication as a final fallback for existing clients.
+  const sessionUid=req.session?.userId;
+  return sessionUid?db.users.find(u=>String(u.id)===String(sessionUid))||null:null;
 }
 
 function clientIp(req){
@@ -1052,16 +1180,68 @@ function filtered(text){
 }
 
 let restrictedMediaOcrWorkerPromise=null;
+function normalizeRestrictedOcrText(value){
+  return String(value||"").normalize("NFKC").toLowerCase()
+    .replace(/[^\p{L}\p{N}\s]+/gu," ")
+    .replace(/\s+/g," ").trim();
+}
 async function recognizeRestrictedMediaText(imageInput){
   if(!restrictedMediaOcrWorkerPromise){
     restrictedMediaOcrWorkerPromise=createWorker("eng").catch(err=>{restrictedMediaOcrWorkerPromise=null;throw err;});
   }
   const worker=await restrictedMediaOcrWorkerPromise;
   const result=await worker.recognize(imageInput);
-  return String(result?.data?.text||"").toLowerCase();
+  return normalizeRestrictedOcrText(result?.data?.text||"");
 }
-function restrictedMediaPhrases(){
-  return [...new Set((db.bannedWords||[]).map(raw=>String(raw||"").trim()).filter(raw=>/^p\s*:\s*/i.test(raw)).map(raw=>raw.replace(/^p\s*:\s*/i,"").trim().toLowerCase()).filter(Boolean))];
+async function restrictedMediaPhrases(){
+  // The current Filter Management screen stores words in PostgreSQL's
+  // filter_words table. Read that source directly so a restart or stale
+  // in-memory db.bannedWords array cannot silently disable p: image checks.
+  let storedWords=[];
+  try{
+    const {rows}=await pool.query("SELECT word FROM filter_words");
+    storedWords=rows.map(row=>row.word);
+  }catch(err){
+    console.error("Could not load PostgreSQL media filter words:",err?.message||err);
+  }
+  const allWords=[...(db.bannedWords||[]),...storedWords];
+  return [...new Set(allWords
+    .map(raw=>String(raw||"").trim())
+    .filter(raw=>/^p\s*:\s*/i.test(raw))
+    .map(raw=>normalizeRestrictedOcrText(raw.replace(/^p\s*:\s*/i,"")))
+    .filter(Boolean))];
+}
+function restrictedMediaMatches(ocrText,phrases){
+  const normalized=normalizeRestrictedOcrText(ocrText);
+  if(!normalized)return false;
+  const ocrWords=normalized.split(" ").filter(Boolean);
+  const distance=(a,b)=>{
+    if(Math.abs(a.length-b.length)>1)return 2;
+    let prev=Array.from({length:b.length+1},(_,i)=>i);
+    for(let i=1;i<=a.length;i++){
+      const next=[i];let rowMin=i;
+      for(let j=1;j<=b.length;j++){
+        const value=Math.min(next[j-1]+1,prev[j]+1,prev[j-1]+(a[i-1]===b[j-1]?0:1));
+        next[j]=value;rowMin=Math.min(rowMin,value);
+      }
+      if(rowMin>1)return 2;
+      prev=next;
+    }
+    return prev[b.length];
+  };
+  return phrases.some(raw=>{
+    const phrase=normalizeRestrictedOcrText(raw);
+    if(!phrase)return false;
+    if(normalized.includes(phrase))return true;
+    // OCR commonly confuses one character (e.g. 0/O, 1/I). Match the
+    // complete phrase word-by-word with at most one edit per word.
+    const wanted=phrase.split(" ").filter(Boolean);
+    if(!wanted.length||wanted.some(word=>word.length<5))return false;
+    for(let start=0;start<=ocrWords.length-wanted.length;start++){
+      if(wanted.every((word,index)=>distance(word,ocrWords[start+index])<=1))return true;
+    }
+    return false;
+  });
 }
 async function sendRestrictedMediaBotMessage(user){
   const text="The File Contains Restricted Content. Try Different One";
@@ -1072,13 +1252,21 @@ async function sendRestrictedMediaBotMessage(user){
   io.to("user:"+user.id).emit("dm",message);
 }
 async function checkRestrictedMediaUpload(req,res,user,file){
-  if(!file||!String(file.mimetype||"").toLowerCase().startsWith("image/"))return false;
+  if(!file)return false;
+  const mime=String(file.mimetype||"").toLowerCase();
+  const ext=path.extname(String(file.originalname||file.filename||"")).toLowerCase();
+  const imageExtensions=new Set([".png",".jpg",".jpeg",".gif",".webp",".avif",".bmp",".tif",".tiff",".heic",".heif"]);
+  // Some Android/browser upload paths label real photos as
+  // application/octet-stream. Detect them by extension as well as MIME.
+  if(!mime.startsWith("image/")&&!imageExtensions.has(ext))return false;
   if(!user||hasRank(user,"SUPER_ADMIN"))return false;
-  const phrases=restrictedMediaPhrases();
+  const phrases=await restrictedMediaPhrases();
   if(!phrases.length)return false;
   try{
     const text=await recognizeRestrictedMediaText(file.path);
-    if(!phrases.some(phrase=>text.includes(phrase)))return false;
+    const matched=restrictedMediaMatches(text,phrases);
+    console.info("Restricted media OCR scan:",{userId:String(user.id),phraseCount:phrases.length,recognizedCharacters:text.length,matched});
+    if(!matched)return false;
     await fs.promises.unlink(file.path).catch(()=>{});
     await sendRestrictedMediaBotMessage(user);
     res.status(400).json({error:"The File Contains Restricted Content. Try Different One",restrictedMedia:true});
@@ -1092,11 +1280,13 @@ async function checkRestrictedMediaUpload(req,res,user,file){
 }
 async function checkRestrictedMediaBuffer(res,user,buffer){
   if(!user||hasRank(user,"SUPER_ADMIN"))return false;
-  const phrases=restrictedMediaPhrases();
+  const phrases=await restrictedMediaPhrases();
   if(!phrases.length)return false;
   try{
     const text=await recognizeRestrictedMediaText(buffer);
-    if(!phrases.some(phrase=>text.includes(phrase)))return false;
+    const matched=restrictedMediaMatches(text,phrases);
+    console.info("Restricted media OCR buffer scan:",{userId:String(user.id),phraseCount:phrases.length,recognizedCharacters:text.length,matched});
+    if(!matched)return false;
     await sendRestrictedMediaBotMessage(user);
     res.status(400).json({error:"The File Contains Restricted Content. Try Different One",restrictedMedia:true});
     return true;
@@ -1269,6 +1459,31 @@ function visibleRoomOnlineCount(roomId){
   }
   return count;
 }
+function roomCapacityAvailable(user,room){
+  if(!user||!room)return false;
+  if(room.isDefault||/^main room$/i.test(String(room.name||"").trim())||roomOwnerOrGlobal(user,room)||roomRoleLevel(roomRole(room.id,user.id))>0)return true;
+  const limit=Number(room.limit??room.room_limit??100);
+  if(!Number.isInteger(limit)||limit<1)return false;
+  const members=new Set();
+  for(const member of db.users||[])if(member.online&&String(member.roomId||"")===String(room.id)&&member.id!=null)members.add(String(member.id));
+  for(const socket of io.sockets.sockets.values())if(String(socket.data?.roomId||"")===String(room.id)&&socket.data?.userId!=null)members.add(String(socket.data.userId));
+  if(members.has(String(user.id)))return true;
+  return members.size<limit;
+}
+function reserveRoomSlowMode(user,room){
+  const seconds=Math.max(0,Number(room?.slowMode??room?.slow_mode??0));
+  if(!Number.isFinite(seconds)||seconds<=0||hasRank(user,"MOD")||roomOwnerOrGlobal(user,room)||roomRoleLevel(room.id,user.id)>0)return {ok:true};
+  const key=String(room.id)+":"+String(user.id),now=Date.now(),last=roomMessageLastSent.get(key)||0;
+  if(now-last<seconds*1000)return {ok:false,retryAfterSeconds:Math.max(1,Math.ceil((seconds*1000-(now-last))/1000))};
+  const reservation={ok:true,key,now,previous:last||null};
+  roomMessageLastSent.set(key,now);
+  if(roomMessageLastSent.size>10000){for(const [item,time] of roomMessageLastSent)if(now-time>3600000)roomMessageLastSent.delete(item);}
+  return reservation;
+}
+function releaseRoomSlowMode(reservation){
+  if(!reservation?.key||roomMessageLastSent.get(reservation.key)!==reservation.now)return;
+  if(reservation.previous)roomMessageLastSent.set(reservation.key,reservation.previous);else roomMessageLastSent.delete(reservation.key);
+}
 app.get(
   "/api/bootstrap",
   (req,res)=>
@@ -1281,17 +1496,32 @@ app.get(
         icon:rankIcons[r]
       })),
 
-      rooms:db.rooms.map(r=>({
+      rooms:db.rooms.filter(r=>!roomIsPrivate(r)).map(r=>({
         ...r,
         passwordHash:undefined,
+        inviteToken:undefined,
+        invite_token:undefined,
+        password_hash:undefined,
         onlineCount:visibleRoomOnlineCount(r.id)
       })),
 
-      settings:db.settings,
+      settings:clientBootstrapSettings(current(req)),
       featurePermissions:db.featurePermissions,
       userPermissions:db.userFeatureGrants?.[String(current(req)?.id)]||{}
     })
 );
+
+function clientBootstrapSettings(actor){
+  if(!actor)return {};
+  const settings=db.settings||{};
+  // Bootstrap is available before and after login. Never serialize internal
+  // room moderation state, staff logs, mutes, blocks, kicks, or private notes.
+  return {
+    feature_grants:settings.feature_grants||{},
+    mode_management:settings.mode_management||{},
+    linkFilter:!!settings.linkFilter
+  };
+}
 
 app.post("/api/auth/register",(req,res)=>res.redirect(307,"/api/register"));
 app.post("/api/auth/login",(req,res)=>res.redirect(307,"/api/login"));
@@ -1446,18 +1676,27 @@ app.post(
 app.post(
   "/api/login",
   async(req,res)=>{
-    const loginUsername=String(req.body.username||"").trim();
+    const loginUsername=String(req.body?.username||"").trim();
+    const passwordInput=String(req.body?.password||"");
+    if(!loginUsername||!passwordInput){
+      return res.status(400).json({error:"Enter both your username and password."});
+    }
     const u=findUser(loginUsername);
+    let passwordValid=!!(u?.password && passwordInput===String(u.password));
 
-    if(
-      !u||
-      !((u.password && String(req.body.password||"")===String(u.password)) ||
-        (u.passwordHash && await bcrypt.compare(req.body.password||"",u.passwordHash)))
-    ){
-      return res.status(401).json({
-        error:
-          "Invalid username or password."
-      });
+    // Some older accounts may contain a malformed legacy hash. A bad stored
+    // hash must be treated as a failed login, not an uncaught exception/500
+    // that the client reports as a generic login error.
+    if(!passwordValid&&u?.passwordHash){
+      try{
+        passwordValid=await bcrypt.compare(passwordInput,String(u.passwordHash));
+      }catch(error){
+        console.error("Login password-hash verification failed:",error?.message||error);
+        passwordValid=false;
+      }
+    }
+    if(!u||!passwordValid){
+      return res.status(401).json({error:"Invalid username or password."});
     }
 
     if(String(u.rank).toUpperCase()==="VIP" && u.vipExpiresAt && Number(u.vipExpiresAt)<Date.now()){
@@ -1487,9 +1726,19 @@ app.post(
 
     io.emit("presence");
 
+    const authToken=makeToken(u.id);
+    // Keep an HttpOnly first-party auth cookie as well as the app's local token.
+    // This survives reloads in mobile webviews that intermittently block storage.
+    res.cookie("mc_auth",authToken,{
+      httpOnly:true,
+      secure:!!req.secure,
+      sameSite:"lax",
+      path:"/",
+      maxAge:7*24*60*60*1000
+    });
     const loginResponse={
       user:safeUser(u),
-      token:makeToken(u.id)
+      token:authToken
     };
 
     // The client supports signed-token authentication as well as cookie sessions.
@@ -1521,6 +1770,7 @@ app.post(
     );
 
     req.session.destroy(()=>{});
+    res.clearCookie("mc_auth",{httpOnly:true,secure:!!req.secure,sameSite:"lax",path:"/"});
 
     save();
 
@@ -1670,51 +1920,67 @@ app.post(
   }
 );
 
+async function permanentlyDeleteAccountRecord(userId){
+  const numericId=Number(userId);
+  if(!Number.isSafeInteger(numericId)||numericId<=0)throw new Error("Invalid account id.");
+  const client=await pool.connect();
+  try{
+    await client.query("BEGIN");
+    // Remove private conversations and account-owned feed interactions.
+    // Public room messages and gifts received by other members are retained.
+    await client.query("DELETE FROM private_messages WHERE sender_id=$1 OR receiver_id=$1",[numericId]);
+    await client.query("DELETE FROM push_subscriptions WHERE user_id=$1",[numericId]);
+    await client.query("DELETE FROM wall_post_reactions WHERE user_id=$1",[numericId]);
+    await client.query("DELETE FROM history WHERE user_id=$1",[numericId]);
+    // wall_posts.user_id has no ON DELETE action in older databases.
+    await client.query("UPDATE wall_posts SET user_id=NULL WHERE user_id=$1",[numericId]);
+    const deleted=await client.query("DELETE FROM users WHERE id=$1 RETURNING id",[numericId]);
+    if(!deleted.rowCount){
+      await client.query("ROLLBACK");
+      return false;
+    }
+    await client.query("COMMIT");
+    return true;
+  }catch(error){
+    try{await client.query("ROLLBACK");}catch{}
+    throw error;
+  }finally{
+    client.release();
+  }
+}
+function removeDeletedAccountFromMemory(user){
+  const id=String(user.id);
+  db.users=(db.users||[]).filter(x=>String(x.id)!==id);
+  db.friends=(db.friends||[]).filter(x=>String(x.a)!==id&&String(x.b)!==id);
+  db.privateMessages=(db.privateMessages||[]).filter(m=>String(m.from)!==id&&String(m.to)!==id);
+  if(Array.isArray(db.friendRequests))db.friendRequests=db.friendRequests.filter(x=>String(x.from)!==id&&String(x.to)!==id&&String(x.userId)!==id);
+  if(Array.isArray(db.notifications))db.notifications=db.notifications.filter(x=>String(x.userId)!==id&&String(x.fromUserId)!==id&&String(x.actorId)!==id);
+  if(db.userFeatureGrants)delete db.userFeatureGrants[id];
+}
+
 app.delete(
   "/api/me",
   auth,
-  (req,res)=>{
+  async(req,res)=>{
     const u=current(req);
-
-    if(u.rank==="OWNER"){
-      return res.status(400).json({
-        error:
-          "The permanent owner cannot be deleted."
-      });
+    if(!u)return res.status(401).json({error:"Login required"});
+    if(u.username===DEFAULT_OWNER||String(u.rank||"").toUpperCase()==="OWNER"||String(u.rank||"").toUpperCase()==="DEVELOPER"){
+      return res.status(400).json({error:"The permanent Owner/Developer account cannot be deleted."});
     }
-
-    db.users=
-      db.users.filter(
-        x=>x.id!==u.id
-      );
-
-    db.friends=
-      db.friends.filter(
-        f=>f.a!==u.id&&f.b!==u.id
-      );
-
-    db.privateMessages=
-      db.privateMessages.filter(
-        m=>
-          m.from!==u.id&&
-          m.to!==u.id
-      );
-
-    log(
-      u,
-      "ACCOUNT_DELETE",
-      u.username
-    );
-
-    req.session.destroy(
-      ()=>{}
-    );
-
-    save();
-
-    res.json({
-      ok:true
-    });
+    try{
+      log(u,"ACCOUNT_DELETE",u.username,{userId:String(u.id)});
+      const deleted=await permanentlyDeleteAccountRecord(u.id);
+      if(!deleted)return res.status(404).json({error:"Your account was not found in the database; nothing was changed."});
+      removeDeletedAccountFromMemory(u);
+      await flushSave();
+      req.session.destroy(()=>{});
+      res.clearCookie("mc_auth",{httpOnly:true,secure:!!req.secure,sameSite:"lax",path:"/"});
+      io.emit("presence");
+      return res.json({ok:true});
+    }catch(error){
+      console.error("Self-service account deletion failed:",error);
+      return res.status(500).json({error:"Your account could not be permanently deleted. No account-list changes were made."});
+    }
   }
 );
 
@@ -1736,15 +2002,18 @@ app.delete("/api/staff/users/:id",auth,async(req,res)=>{
   const targetId=String(target.id);
   const targetUsername=String(target.username||"");
   const targetRank=String(target.rank||"MEMBER");
-  db.users=db.users.filter(x=>String(x.id)!==targetId);
-  db.friends=(db.friends||[]).filter(f=>String(f.a)!==targetId&&String(f.b)!==targetId);
-  db.privateMessages=(db.privateMessages||[]).filter(m=>String(m.from)!==targetId&&String(m.to)!==targetId);
-  if(Array.isArray(db.friendRequests))db.friendRequests=db.friendRequests.filter(f=>String(f.from)!==targetId&&String(f.to)!==targetId&&String(f.userId)!==targetId);
-  if(Array.isArray(db.notifications))db.notifications=db.notifications.filter(n=>String(n.userId)!==targetId&&String(n.fromUserId)!==targetId&&String(n.actorId)!==targetId);
-  log(actor,"STAFF_ACCOUNT_DELETE",targetUsername,{targetId,targetRank});
-  save();
-  await flushSave();
-  res.json({ok:true,deletedUser:{id:targetId,username:targetUsername}});
+  try{
+    const deleted=await permanentlyDeleteAccountRecord(targetId);
+    if(!deleted)return res.status(404).json({error:"Account was not found in the database; nothing was changed."});
+    removeDeletedAccountFromMemory(target);
+    log(actor,"STAFF_ACCOUNT_DELETE",targetUsername,{targetId,targetRank});
+    await flushSave();
+    io.emit("presence");
+    res.json({ok:true,deletedUser:{id:targetId,username:targetUsername}});
+  }catch(error){
+    console.error("Staff account deletion failed:",error);
+    res.status(500).json({error:"The account could not be permanently deleted. No account-list changes were made."});
+  }
 });
 
 app.get(
@@ -1874,53 +2143,30 @@ app.get('/api/users/blocked',auth,(req,res)=>{
 });
 
 app.get("/api/rooms",auth,async(req,res)=>{
-  // Remove Chill Zone permanently, including any messages left in it.
-  const unwantedRoom = await pool.query(`SELECT id FROM rooms WHERE LOWER(TRIM(name))='chill zone'`);
-  if (unwantedRoom.rowCount) {
-    const unwantedIds = unwantedRoom.rows.map(row => Number(row.id));
-    await pool.query(`DELETE FROM room_messages WHERE room_id = ANY($1::int[])`, [unwantedIds]);
-    await pool.query(`DELETE FROM rooms WHERE id = ANY($1::int[])`, [unwantedIds]);
-  }
-  // Normalize legacy Main Room duplicates without discarding their history.
+  // Ensure the canonical Main Room exists without migrating or deleting any
+  // other room during an ordinary room-list request.
   await pool.query(`INSERT INTO rooms(name,created_by,icon,description,category,is_public,rank_required,invite_token,min_age,max_age,is_default)
     VALUES ('Main Room',(SELECT id FROM users WHERE username='Maleficent'),'🏠','The main Maleficent Chat community room.','Community',true,'MEMBER','main-room',0,120,true)
     ON CONFLICT(name) DO NOTHING`);
-  const legacy = await pool.query(`SELECT id FROM rooms
-    WHERE LOWER(TRIM(name)) IN ('main room 1','main room 2')
-       OR (LOWER(TRIM(name))='main room' AND name <> 'Main Room')`);
-  if (legacy.rowCount) {
-    const legacyIds = legacy.rows.map(row => Number(row.id));
-    const mainRoom = await pool.query(`SELECT id FROM rooms WHERE name='Main Room' LIMIT 1`);
-    if (mainRoom.rowCount) {
-      await pool.query(`UPDATE room_messages SET room_id=$1 WHERE room_id = ANY($2::int[])`, [Number(mainRoom.rows[0].id), legacyIds]);
-    }
-    await pool.query(`DELETE FROM rooms WHERE id = ANY($1::int[])`, [legacyIds]);
-  }
   await pool.query(`INSERT INTO rooms(name,created_by,icon,description,category,is_public,rank_required,invite_token,min_age,max_age,is_default)
     VALUES ('Main Room',(SELECT id FROM users WHERE username='Maleficent'),'🏠','The main Maleficent Chat community room.','Community',true,'MEMBER','main-room',0,120,true)
     ON CONFLICT(name) DO NOTHING`);
-  await pool.query(`UPDATE rooms SET description='The main Maleficent Chat community room.',icon='🏠',category='Community',is_public=true,is_default=true,min_age=0,max_age=120 WHERE name='Main Room'`);
+  await pool.query(`UPDATE rooms SET is_default=true WHERE name='Main Room'`);
   await pool.query(`UPDATE rooms SET is_default=false WHERE name <> 'Main Room'`);
   const {rows}=await pool.query(`SELECT r.*,u.username AS creator FROM rooms r LEFT JOIN users u ON r.created_by=u.id ORDER BY r.is_default DESC,r.created_at ASC,r.id ASC`);
   if(!rows.length) return res.status(503).json({error:'Rooms are not initialized yet. Please retry in a moment.',rooms:[]});
-  const rooms=rows.map(r=>({id:String(r.id),name:r.name,icon:r.icon||"💬",description:r.description||"",category:r.category||"Community",public:r.is_public!==false,passwordHash:r.password_hash||null,rankRequired:String(r.rank_required||"MEMBER").toUpperCase(),limit:Number(r.room_limit||100),slowMode:Number(r.slow_mode||0),announcement:r.announcement||"",ownerId:r.created_by?String(r.created_by):null,banner:r.banner||"",inviteToken:r.invite_token||"",creator:r.creator||null,isDefault:!!r.is_default,minAge:Number(r.min_age??0),maxAge:Number(r.max_age??120),friendsOnly:!!(db.settings?.room_access?.[String(r.id)]?.friendsOnly),roomTheme:String(db.settings?.room_themes?.[String(r.id)]||"obsidian"),locked:!!r.password_hash,onlineCount:visibleRoomOnlineCount(r.id)}));
-  db.rooms=rooms;
-  res.json({rooms:rooms.map(r=>({...r,passwordHash:undefined}))});
+  const allRooms=rows.map(r=>({id:String(r.id),name:r.name,icon:r.icon||"💬",description:r.description||"",category:r.category||"Community",public:r.is_public!==false,passwordHash:r.password_hash||null,rankRequired:String(r.rank_required||"MEMBER").toUpperCase(),limit:Number(r.room_limit||100),slowMode:Number(r.slow_mode||0),announcement:r.announcement||"",ownerId:r.created_by?String(r.created_by):null,banner:r.banner||"",inviteToken:r.invite_token||"",creator:r.creator||null,isDefault:!!r.is_default,minAge:Number(r.min_age??0),maxAge:Number(r.max_age??120),friendsOnly:!!(db.settings?.room_access?.[String(r.id)]?.friendsOnly),roomTheme:String(db.settings?.room_themes?.[String(r.id)]||"obsidian"),locked:!!r.password_hash,onlineCount:visibleRoomOnlineCount(r.id)}));
+  db.rooms=allRooms;
+  const viewer=current(req),joinToken=String(req.headers["x-room-join-token"]||"");
+  const rooms=allRooms.filter(room=>{
+    if(!roomIsPrivate(room))return true;
+    if(roomOwnerOrGlobal(viewer,room)||roomRole(room.id,viewer.id)!=="USER")return true;
+    return verifyRoomJoinToken(joinToken,viewer.id,room);
+  }).map(room=>({...room,passwordHash:undefined,inviteToken:undefined}));
+  res.json({rooms});
 });
 
-function userAge(user){
-  const raw=user?.birthDate||user?.dateOfBirth;
-  if(!raw)return null;
-  const dob=new Date(String(raw).slice(0,10)+"T00:00:00Z");
-  if(Number.isNaN(dob.getTime()))return null;
-  const now=new Date();let age=now.getUTCFullYear()-dob.getUTCFullYear();
-  if(now.getUTCMonth()<dob.getUTCMonth()||(now.getUTCMonth()===dob.getUTCMonth()&&now.getUTCDate()<dob.getUTCDate()))age--;
-  return age>=0?age:null;
-}
-function roomAgeAllowed(_user,_room){
-  // Maleficent Chat rooms are not age-gated; all users may enter any room.
-  return true;
-}
+function roomAgeAllowed(_user,_room){ return true; }
 function roomFriendsOnly(room){
   return !!(db.settings?.room_access?.[String(room.id)]?.friendsOnly ?? room.friendsOnly);
 }
@@ -1933,18 +2179,53 @@ function areAcceptedFriends(userA,userB){
 
 async function createRoomHandler(req,res){
   const u=current(req); if(!u)return res.status(401).json({error:"Login required"});
-  if(!(featureGrantAllowed(u,"create_rooms")||hasFeature(u,"create_room"))) return res.status(403).json({error:`Create room requires ${featureRank("create_room")} or higher.`});
-  const name=cleanText(req.body.name).trim().slice(0,50)||"New Room";
-  const password=req.body.password?await bcrypt.hash(String(req.body.password),10):null;
+  // Keep server authorization aligned with the room-creation UI.
+  // Premium/Royal and designated staff ranks may create rooms; explicit feature grants
+  // remain available for other accounts configured by the Owner/Developer.
+  const roomCreatorRanks=["PREMIUM","ROYAL","MOD","MODERATOR","ADMIN","SUPER_ADMIN","SUPERADMIN","COMMISSOR","INSTRUCTOR","COOWNER","OWNER","DEVELOPER"];
+  if(!roomCreatorRanks.includes(String(u.rank||"").toUpperCase()) && !(featureGrantAllowed(u,"create_rooms")||hasFeature(u,"create_room"))) {
+    return res.status(403).json({error:`Create room requires ${featureRank("create_room")} or an explicit create-room permission.`});
+  }
+  const name=cleanText(req.body.name).trim().slice(0,50);
+  const rankRequired=String(req.body.rankRequired||"MEMBER").toUpperCase();
+  const limit=Number(req.body.limit??100),slowMode=Number(req.body.slowMode??0);
+  // Room age restrictions have been retired. Every room is open to all ages.
+  const minAge=0,maxAge=120;
+  if(!name)return res.status(400).json({error:"Room name is required."});
+  if(!ranks.includes(rankRequired))return res.status(400).json({error:"Choose a valid minimum rank for this room."});
+  if(!Number.isInteger(limit)||limit<2||limit>500)return res.status(400).json({error:"Member limit must be between 2 and 500."});
+  if(!Number.isInteger(slowMode)||slowMode<0||slowMode>3600)return res.status(400).json({error:"Slow mode must be between 0 and 3600 seconds."});
+  if(req.body.public!==undefined&&typeof req.body.public!=="boolean")return res.status(400).json({error:"Room visibility must be public or private."});
+  if(req.body.friendsOnly!==undefined&&typeof req.body.friendsOnly!=="boolean")return res.status(400).json({error:"Friends-only access must be true or false."});
+  const roomPassword=String(req.body.password||"");
+  if(Buffer.byteLength(roomPassword,"utf8")>72)return res.status(400).json({error:"Room passwords must be no more than 72 bytes."});
+  const password=roomPassword?await bcrypt.hash(roomPassword,10):null;
   try{
-    const q=await pool.query(`INSERT INTO rooms(name,created_by,icon,description,category,is_public,password_hash,rank_required,room_limit,slow_mode,banner,invite_token,is_default,min_age,max_age) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,false,$13,$14) RETURNING *, (SELECT username FROM users WHERE id=created_by) AS creator`,[name,Number(u.id),req.body.icon||"💬",cleanText(req.body.description).slice(0,300),cleanText(req.body.category).slice(0,40)||"Community",req.body.public!==false,password,String(req.body.rankRequired||"MEMBER").toUpperCase(),Number(req.body.limit)||100,Number(req.body.slowMode)||0,req.body.banner||"",crypto.randomBytes(12).toString("hex"),Math.max(0,Math.min(120,Number(req.body.minAge)||0)),Math.max(0,Math.min(120,Number(req.body.maxAge??120)||120))]);
+    const q=await pool.query(`INSERT INTO rooms(name,created_by,icon,description,category,is_public,password_hash,rank_required,room_limit,slow_mode,banner,invite_token,is_default,min_age,max_age) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,false,$13,$14) RETURNING *, (SELECT username FROM users WHERE id=created_by) AS creator`,[name,Number(u.id),req.body.icon||"💬",cleanText(req.body.description).slice(0,300),cleanText(req.body.category).slice(0,40)||"Community",req.body.public!==false,password,rankRequired,limit,slowMode,req.body.banner||"",crypto.randomBytes(12).toString("hex"),minAge,maxAge]);
     const r=q.rows[0]; const room={id:String(r.id),name:r.name,icon:r.icon||"💬",description:r.description||"",category:r.category||"Community",public:r.is_public!==false,passwordHash:r.password_hash||null,rankRequired:String(r.rank_required||"MEMBER").toUpperCase(),limit:Number(r.room_limit||100),slowMode:Number(r.slow_mode||0),announcement:r.announcement||"",ownerId:String(r.created_by),banner:r.banner||"",inviteToken:r.invite_token||"",creator:r.creator||u.username,isDefault:false,minAge:Number(r.min_age??0),maxAge:Number(r.max_age??120),friendsOnly:req.body.friendsOnly===true};
     db.settings ||= {};db.settings.room_access ||= {};db.settings.room_access[String(room.id)]={friendsOnly:room.friendsOnly};
-    db.rooms.push(room); db.settings ||= {}; db.settings.room_staff ||= {}; db.settings.room_staff[String(room.id)] ||= {}; db.settings.room_staff[String(room.id)][String(u.id)]="ROOM_OWNER"; save(); log(u,"ROOM_CREATE",room.name); io.emit('rooms_updated'); res.status(201).json({room:{...room,passwordHash:undefined}});
+    db.rooms.push(room); db.settings ||= {}; db.settings.room_staff ||= {}; db.settings.room_staff[String(room.id)] ||= {}; db.settings.room_staff[String(room.id)][String(u.id)]="ROOM_OWNER"; save(); log(u,"ROOM_CREATE",room.name); io.emit('rooms_updated'); res.status(201).json({room:{...room,passwordHash:undefined,inviteToken:undefined}});
   }catch(e){if(e.code==='23505')return res.status(409).json({error:'A room with that name already exists.'});console.error(e);res.status(500).json({error:'Could not create room.'});}
 }
 app.post("/api/rooms",auth,createRoomHandler);
 app.post("/api/rooms/create",auth,createRoomHandler);
+app.post("/api/rooms/:id/invites",auth,(req,res)=>{
+  const actor=current(req),room=db.rooms.find(item=>String(item.id)===String(req.params.id));
+  if(!room)return res.status(404).json({error:"Room not found"});
+  if(room.public!==false)return res.status(400).json({error:"Invitation links are only needed for private rooms."});
+  if(!roomOwnerOrGlobal(actor,room))return res.status(403).json({error:"Only the room owner or global staff can create private-room invitations."});
+  if(!requirePrivateRoomAccess(req,res,room,actor))return;
+  const expiresAt=Date.now()+7*86400000;
+  const payload=Buffer.from(JSON.stringify({room:String(room.id),exp:Math.floor(expiresAt/1000)})).toString("base64url");
+  res.json({inviteToken:payload+"."+roomInviteSignature(payload,room),expiresAt});
+});
+app.post("/api/rooms/invites/resolve",auth,(req,res)=>{
+  const actor=current(req),roomId=String(req.body?.roomId||""),inviteToken=String(req.body?.inviteToken||"");
+  const room=db.rooms.find(item=>String(item.id)===roomId&&roomIsPrivate(item));
+  if(!room||!verifyRoomInviteToken(inviteToken,room))return res.status(404).json({error:"That room invitation is invalid or expired."});
+  if(!roomJoinPolicyAllowed(actor,room,{inviteToken}))return res.status(403).json({error:"Your account does not meet this room's access requirements."});
+  res.json({room:{id:String(room.id),name:room.name,icon:room.icon||"💬",description:room.description||"",category:room.category||"Community",public:false,rankRequired:String(room.rankRequired||room.rank_required||"MEMBER").toUpperCase(),limit:Number(room.limit||room.room_limit||100),slowMode:Number(room.slowMode||room.slow_mode||0),announcement:room.announcement||"",ownerId:String(room.ownerId||room.created_by||""),creator:room.creator||null,isDefault:false,minAge:Number(room.minAge??room.min_age??0),maxAge:Number(room.maxAge??room.max_age??120),friendsOnly:roomFriendsOnly(room),roomTheme:String(room.roomTheme||"obsidian"),locked:!!(room.passwordHash||room.password_hash),onlineCount:visibleRoomOnlineCount(room.id)}});
+});
 
 function roomStaffStore(){ db.settings ||= {}; db.settings.room_staff ||= {}; db.settings.room_mutes ||= {}; db.settings.room_blocks ||= {}; db.settings.room_kicks ||= {}; return db.settings; }
 function roomRole(roomId,userId){return roomStaffStore().room_staff[String(roomId)]?.[String(userId)]||"USER";}
@@ -1962,6 +2243,27 @@ function roomRoleCan(roomId,userId,permission){
   return typeof configured?.[permission]==="boolean"?configured[permission]:!!ROOM_ROLE_PERMISSION_DEFAULTS[role][permission];
 }
 function roomOwnerOrGlobal(u,room){return roomRole(room.id,u.id)==="ROOM_OWNER"||["OWNER","COOWNER","COMMISSOR","DEVELOPER"].includes(String(u.rank||"").toUpperCase())||String(room.ownerId||room.owner_id||room.createdBy||room.created_by||"")===String(u.id);}
+function requirePrivateRoomAccess(req,res,room,actor=current(req)){
+  if(!roomIsPrivate(room)||verifyRoomJoinToken(req.headers["x-room-join-token"],actor?.id,room))return true;
+  res.status(403).json({error:"Join this private room before viewing its details."});
+  return false;
+}
+function evictRoomSocketsWithoutAccess(room){
+  let changed=false;
+  for(const socket of io.sockets.sockets.values()){
+    if(String(socket.data?.roomId||"")!==String(room.id))continue;
+    const user=findUser(socket.data?.userId);
+    if(user&&verifyRoomJoinToken(socket.data?.roomJoinToken,user.id,room))continue;
+    socket.leave("room:"+room.id);
+    socket.data.roomId=null;
+    socket.data.roomJoinToken=null;
+    if(user&&String(user.roomId||"")===String(room.id))user.roomId=null;
+    socket.emit("room-error",{roomId:String(room.id),error:"Room access changed. Join the room again if you still have access."});
+    changed=true;
+  }
+  if(changed){save();io.emit("presence");}
+  return changed;
+}
 app.get("/api/owner/room-role-permissions",ownerOnly,(req,res)=>{
   db.settings ||= {};db.settings.room_role_permissions ||= {};
   const permissions={};
@@ -1991,18 +2293,21 @@ app.put("/api/owner/room-role-permissions",ownerOnly,async(req,res)=>{
   }catch(error){console.error("Room role permission save failed:",error);res.status(500).json({error:"Could not save room-role permissions."});}
 });
 app.get("/api/rooms/:id/staff",auth,(req,res)=>{
-  const room=db.rooms.find(x=>String(x.id)===String(req.params.id));if(!room)return res.status(404).json({error:"Room not found"});
+  const actor=current(req),room=db.rooms.find(x=>String(x.id)===String(req.params.id));if(!room)return res.status(404).json({error:"Room not found"});
+  if(!requirePrivateRoomAccess(req,res,room,actor))return;
   const store=roomStaffStore().room_staff[String(room.id)]||{};
   const staff=Object.entries(store).filter(([,role])=>role!=="USER").map(([userId,role])=>({user:safeUser(db.users.find(u=>String(u.id)===String(userId))||{}),role,badge:role==="ROOM_OWNER"?"🎩":role==="ROOM_ADMIN"?"💫":"🪄"})).filter(x=>x.user?.id);
   res.json({roomId:String(room.id),myRole:roomRole(room.id,current(req).id),staff});
 });
 app.get("/api/rooms/:id/rules",auth,(req,res)=>{
-  const room=db.rooms.find(x=>String(x.id)===String(req.params.id));if(!room)return res.status(404).json({error:"Room not found"});
+  const actor=current(req),room=db.rooms.find(x=>String(x.id)===String(req.params.id));if(!room)return res.status(404).json({error:"Room not found"});
+  if(!requirePrivateRoomAccess(req,res,room,actor))return;
   const rules=String(db.settings?.room_rules?.[String(room.id)]||room.rules||"");
   res.json({roomId:String(room.id),roomName:room.name,rules});
 });
 app.put("/api/rooms/:id/rules",auth,(req,res)=>{
   const actor=current(req),room=db.rooms.find(x=>String(x.id)===String(req.params.id));if(!room)return res.status(404).json({error:"Room not found"});
+  if(!requirePrivateRoomAccess(req,res,room,actor))return;
   if(!roomOwnerOrGlobal(actor,room)&&!roomRoleCan(room.id,actor.id,"edit_rules"))return res.status(403).json({error:"Room-rules permission is not granted to your room role."});
   const rules=cleanText(req.body?.rules||"").trim().slice(0,4000);
   db.settings ||= {};db.settings.room_rules ||= {};db.settings.room_rules[String(room.id)]=rules;
@@ -2011,6 +2316,7 @@ app.put("/api/rooms/:id/rules",auth,(req,res)=>{
 });
 app.get("/api/rooms/:id/moderation-log",auth,(req,res)=>{
   const actor=current(req),room=db.rooms.find(x=>String(x.id)===String(req.params.id));if(!room)return res.status(404).json({error:"Room not found"});
+  if(!requirePrivateRoomAccess(req,res,room,actor))return;
   if(!roomOwnerOrGlobal(actor,room)&&roomRoleLevel(roomRole(room.id,actor.id))<1&&!hasRank(actor,"MOD"))return res.status(403).json({error:"Room staff access required."});
   const logs=(db.settings?.room_moderation_logs?.[String(room.id)]||[]).slice(-100).reverse();
   res.json({roomId:String(room.id),roomName:room.name,logs});
@@ -2023,6 +2329,7 @@ function recordRoomModeration(roomId,entry){
 app.put("/api/rooms/:id/staff/:userId",auth,(req,res)=>{
   const actor=current(req),room=db.rooms.find(x=>String(x.id)===String(req.params.id)),target=db.users.find(x=>String(x.id)===String(req.params.userId));
   if(!room||!target)return res.status(404).json({error:"Room or user not found"});
+  if(!requirePrivateRoomAccess(req,res,room,actor))return;
   const role=String(req.body.role||"USER").toUpperCase();
   if(!["USER","ROOM_MODERATOR","ROOM_ADMIN"].includes(role))return res.status(400).json({error:"Invalid room rank. Choose User, Room Moderator, or Room Admin."});
   const permissionNeeded=role==="USER"?"manage_staff":"assign_ranks";
@@ -2040,6 +2347,7 @@ app.put("/api/rooms/:id/staff/:userId",auth,(req,res)=>{
 app.post("/api/rooms/:id/staff-action",auth,async(req,res)=>{
   const actor=current(req),room=db.rooms.find(x=>String(x.id)===String(req.params.id)),target=db.users.find(x=>String(x.id)===String(req.body.userId));
   if(!room||!target)return res.status(404).json({error:"Room or user not found"});
+  if(!requirePrivateRoomAccess(req,res,room,actor))return;
   const role=roomRole(room.id,actor.id),level=roomRoleLevel(role),global=["OWNER","COOWNER","COMMISSOR","DEVELOPER"].includes(String(actor.rank||"").toUpperCase());
   const action=String(req.body.action||"").toUpperCase(),reason=cleanText(req.body.reason||"Room rule violation").slice(0,240);
   if(target.id===actor.id)return res.status(400).json({error:"You cannot moderate yourself."});
@@ -2056,46 +2364,45 @@ app.post("/api/rooms/:id/staff-action",auth,async(req,res)=>{
   else if(action==="UNBLOCK"){delete settings.room_blocks[key]?.[targetId];}
   else return res.status(400).json({error:"Unsupported room action."});
   save();log(actor,"ROOM_STAFF_ACTION",target.username,{roomId:key,action,reason});recordRoomModeration(room.id,{actorId:String(actor.id),actorUsername:actor.username,targetId:String(target.id),targetUsername:target.username,action,reason,minutes:action==="MUTE"?Math.max(1,Math.min(60,Number(req.body.minutes)||5)):undefined});
-  if(action==="KICK"||action==="BLOCK"){for(const sock of io.sockets.sockets.values()){if(String(sock.data?.userId||sock.userId||sock.user?.id||"")===targetId&&String(sock.data?.roomId||"")===key){sock.leave("room:"+room.id);sock.emit("room:kicked",{roomId:key,reason,blocked:action==="BLOCK",until:action==="KICK"?settings.room_kicks[key][targetId].until:null});}}}
+  if(action==="KICK"||action==="BLOCK"){
+    for(const sock of io.sockets.sockets.values()){
+      if(String(sock.data?.userId||sock.userId||sock.user?.id||"")!==targetId||String(sock.data?.roomId||"")!==key)continue;
+      sock.leave("room:"+room.id);sock.data.roomId=null;sock.data.roomJoinToken=null;
+      sock.emit("room:kicked",{roomId:key,reason,blocked:action==="BLOCK",until:action==="KICK"?settings.room_kicks[key][targetId].until:null});
+    }
+    if(String(target.roomId||"")===key)target.roomId=null;
+    io.emit("presence");
+  }
   res.json({ok:true,action,reason});
 });
 app.put("/api/rooms/:id",auth,async(req,res)=>{
   const u=current(req),r=db.rooms.find(x=>String(x.id)===String(req.params.id)); if(!r)return res.status(404).json({error:"Room not found"});
-  const previousRankRequired=String(r.rankRequired||"MEMBER").toUpperCase();
   if(r.isDefault || /^main room$/i.test(String(r.name||"").trim()))return res.status(403).json({error:"The permanent Main Room cannot be modified."});
   if(!featureGrantAllowed(u,"edit_rooms")&&!(roomOwnerOrGlobal(u,r)&&Array.isArray(db.settings?.feature_grants?.room_edit_own)&&db.settings.feature_grants.room_edit_own.length))return res.status(403).json({error:"Room editing is disabled in Feature Granting or you do not own this room."});
-  const fields={}; for(const k of ["name","icon","description","category","rankRequired","limit","slowMode","banner","public","minAge","maxAge"]) if(req.body[k]!==undefined) fields[k]=req.body[k];
+  const fields={}; for(const k of ["name","icon","description","category","rankRequired","limit","slowMode","banner","public"]) if(req.body[k]!==undefined) fields[k]=req.body[k];
+  if(fields.name!==undefined){fields.name=cleanText(fields.name).trim().slice(0,50);if(!fields.name)return res.status(400).json({error:"Room name is required."});}
   if(fields.rankRequired!==undefined){
     fields.rankRequired=String(fields.rankRequired||"").toUpperCase();
-    const allowedRoomRanks=["MEMBER","VIP","PREMIUM","MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"];
-    if(!allowedRoomRanks.includes(fields.rankRequired))return res.status(400).json({error:"Choose a valid current rank for this room."});
+    if(!ranks.includes(fields.rankRequired))return res.status(400).json({error:"Choose a valid current rank for this room."});
   }
+  if(fields.limit!==undefined){fields.limit=Number(fields.limit);if(!Number.isInteger(fields.limit)||fields.limit<2||fields.limit>500)return res.status(400).json({error:"Member limit must be between 2 and 500."});}
+  if(fields.slowMode!==undefined){fields.slowMode=Number(fields.slowMode);if(!Number.isInteger(fields.slowMode)||fields.slowMode<0||fields.slowMode>3600)return res.status(400).json({error:"Slow mode must be between 0 and 3600 seconds."});}
+  if(fields.public!==undefined&&typeof fields.public!=="boolean")return res.status(400).json({error:"Room visibility must be public or private."});
+  if(req.body.friendsOnly!==undefined&&typeof req.body.friendsOnly!=="boolean")return res.status(400).json({error:"Friends-only access must be true or false."});
   if(req.body.friendsOnly!==undefined){
     db.settings ||= {};db.settings.room_access ||= {};
     db.settings.room_access[String(r.id)]={...(db.settings.room_access[String(r.id)]||{}),friendsOnly:req.body.friendsOnly===true};
     r.friendsOnly=req.body.friendsOnly===true;save();
   }
-  if(req.body.password!==undefined) fields.passwordHash=req.body.password?await bcrypt.hash(String(req.body.password),10):null;
-  const sets=[],vals=[]; const map={name:"name",icon:"icon",description:"description",category:"category",rankRequired:"rank_required",limit:"room_limit",slowMode:"slow_mode",banner:"banner",public:"is_public",passwordHash:"password_hash",minAge:"min_age",maxAge:"max_age"};
+  if(req.body.password!==undefined){const roomPassword=String(req.body.password||"");if(Buffer.byteLength(roomPassword,"utf8")>72)return res.status(400).json({error:"Room passwords must be no more than 72 bytes."});fields.passwordHash=roomPassword?await bcrypt.hash(roomPassword,10):null;}
+  const sets=[],vals=[]; const map={name:"name",icon:"icon",description:"description",category:"category",rankRequired:"rank_required",limit:"room_limit",slowMode:"slow_mode",banner:"banner",public:"is_public",passwordHash:"password_hash"};
   for(const [k,v] of Object.entries(fields)){sets.push(`${map[k]}=$${vals.length+1}`);vals.push(k==="rankRequired"?String(v).toUpperCase():v);}
-  if(sets.length){vals.push(Number(r.id));const q=await pool.query(`UPDATE rooms SET ${sets.join(",")} WHERE id=${vals.length} RETURNING *`,vals);const x=q.rows[0];Object.assign(r,{name:x.name,icon:x.icon,description:x.description,category:x.category,rankRequired:x.rank_required,limit:x.room_limit,slowMode:x.slow_mode,banner:x.banner,public:x.is_public,passwordHash:x.password_hash,minAge:Number(x.min_age??0),maxAge:Number(x.max_age??99)});}
+  if(sets.length){vals.push(Number(r.id));const q=await pool.query(`UPDATE rooms SET ${sets.join(",")} WHERE id=$${vals.length} RETURNING *`,vals);if(!q.rowCount)return res.status(404).json({error:"Room was not found while saving changes."});const x=q.rows[0];Object.assign(r,{name:x.name,icon:x.icon,description:x.description,category:x.category,rankRequired:x.rank_required,limit:x.room_limit,slowMode:x.slow_mode,banner:x.banner,public:x.is_public,passwordHash:x.password_hash,minAge:0,maxAge:120});}
   save();
-  const nextRankRequired=String(r.rankRequired||"MEMBER").toUpperCase();
-  if(nextRankRequired!==previousRankRequired){
-    // Apply newly tightened room access immediately, including to members already connected.
-    for(const sock of io.sockets.sockets.values()){
-      const socketRoomId=String(sock.data?.roomId||"");
-      if(socketRoomId!==String(r.id))continue;
-      const connectedUser=findUser(sock.data?.userId);
-      if(!roomRankCanEnter(connectedUser,r)){
-        sock.leave("room:"+r.id);
-        sock.data.roomId=null;
-        sock.emit("room-error",{error:`This room now requires ${nextRankRequired.replaceAll("_"," ")} rank or higher.`});
-      }
-    }
-    io.emit("presence");
-  }
-  log(u,"ROOM_EDIT",r.name);res.json({room:{...r,passwordHash:undefined}});
+  // Revalidate signed access after privacy, password, rank, or friend rules change.
+  evictRoomSocketsWithoutAccess(r);
+  log(u,"ROOM_EDIT",r.name);io.emit("rooms_updated");
+  res.json({room:{...r,passwordHash:undefined,inviteToken:undefined}});
 });
 
 app.put("/api/rooms/:id/theme",auth,(req,res)=>{
@@ -2113,9 +2420,32 @@ app.delete("/api/rooms/:id",auth,async(req,res)=>{
   if(!r)return res.status(404).json({error:"Room not found"});
   if(r.isDefault || /^main room$/i.test(String(r.name||"").trim())) return res.status(400).json({error:"Cannot delete the permanent Main Room."});
   if(!featureGrantAllowed(u,"delete_rooms")&&!(roomOwnerOrGlobal(u,r)&&Array.isArray(db.settings?.feature_grants?.room_edit_own)&&db.settings.feature_grants.room_edit_own.length)) return res.status(403).json({error:"Room deletion permission required or disabled in Feature Granting."});
-  await pool.query(`DELETE FROM rooms WHERE id=$1`,[Number(req.params.id)]);
+  const client=await pool.connect();let evidenceId=null;
+  try{
+    await client.query("BEGIN");
+    const lockedRoom=await client.query("SELECT id FROM rooms WHERE id=$1 FOR UPDATE",[Number(r.id)]);
+    if(!lockedRoom.rowCount){await client.query("ROLLBACK");return res.status(404).json({error:"Room not found"});}
+    const stored=await client.query("SELECT id,data,created_at FROM room_messages WHERE room_id=$1 ORDER BY created_at ASC FOR UPDATE",[Number(r.id)]);
+    if(stored.rowCount){
+      const archivedMessages=stored.rows.map(row=>({...(row.data&&typeof row.data==="object"?row.data:{text:String(row.data||"")}),_evidenceMessageId:String(row.id),_evidenceCreatedAt:row.created_at}));
+      const archived=await client.query("INSERT INTO room_clear_evidence(room_id,room_name,cleared_by,cleared_by_username,message_count,messages,cleared_at) VALUES($1,$2,$3,$4,$5,$6::jsonb,NOW()) RETURNING id",[Number(r.id),String(r.name||"Deleted room"),Number(u.id)||null,String(u.username||"Unknown")+" (room deletion)",archivedMessages.length,JSON.stringify(archivedMessages)]);
+      evidenceId=String(archived.rows[0].id);
+    }
+    await client.query("DELETE FROM rooms WHERE id=$1",[Number(r.id)]);
+    await client.query("COMMIT");
+  }catch(error){
+    try{await client.query("ROLLBACK")}catch{}
+    console.error("Room deletion failed:",error);
+    return res.status(500).json({error:"Room was not deleted because its message history could not be archived safely."});
+  }finally{client.release();}
+  for(const socket of io.sockets.sockets.values()){
+    if(String(socket.data?.roomId||"")!==String(r.id))continue;
+    socket.leave("room:"+r.id);socket.data.roomId=null;socket.data.roomJoinToken=null;
+    const user=findUser(socket.data?.userId);if(user&&String(user.roomId||"")===String(r.id))user.roomId=null;
+    socket.emit("room-error",{roomId:String(r.id),error:"This room was deleted. Its saved message history is available in staff evidence."});
+  }
   db.rooms=db.rooms.filter(x=>String(x.id)!==String(req.params.id)); db.messages=db.messages.filter(m=>String(m.roomId)!==String(req.params.id));
-  log(u,"ROOM_DELETE",r.name); res.json({ok:true});
+  save();io.emit("presence");log(u,"ROOM_DELETE",r.name,{roomId:String(r.id),evidenceId}); io.emit("rooms_updated"); res.json({ok:true,evidenceId});
 });
 
 app.post(
@@ -2125,7 +2455,7 @@ app.post(
     const u=current(req);
 
     const r=db.rooms.find(
-      x=>x.id===req.params.id
+      x=>String(x.id)===String(req.params.id)
     );
 
     if(!r){
@@ -2162,6 +2492,12 @@ app.post(
       return res.status(403).json({error:"This room is for the room owner's accepted friends only."});
     }
 
+    const existingJoinToken=verifyRoomJoinToken(req.headers['x-room-join-token'],u.id,r);
+    if(!roomJoinPolicyAllowed(u,r,{inviteToken:req.body?.inviteToken,existingJoinToken})){
+      return res.status(403).json({error:"This room is private or your current account does not meet its access rules."});
+    }
+    if(!existingJoinToken&&!roomCapacityAvailable(u,r))return res.status(403).json({error:"This room has reached its member limit."});
+
     if(
       r.passwordHash&&
       !(await bcrypt.compare(
@@ -2180,23 +2516,24 @@ app.post(
       joinToken:makeRoomJoinToken(u.id,r),
       room:{
         ...r,
-        passwordHash:undefined
+        passwordHash:undefined,
+        inviteToken:undefined
       }
     });
   }
 );
 
 app.get('/api/rooms/:id/pinned',auth,(req,res)=>{
-  const room=db.rooms.find(x=>x.id===req.params.id),actor=current(req); if(!room)return res.status(404).json({error:'Room not found'});
+  const room=db.rooms.find(x=>String(x.id)===String(req.params.id)),actor=current(req); if(!room)return res.status(404).json({error:'Room not found'});
   if(!verifyRoomJoinToken(req.headers['x-room-join-token'],actor.id,room))return res.status(403).json({error:'Join this room before viewing pinned messages.'});
-  res.json({messages:db.messages.filter(m=>m.roomId===room.id&&m.pinned&&!m.deleted).sort((a,b)=>b.time-a.time)});
+  res.json({messages:db.messages.filter(m=>String(m.roomId)===String(room.id)&&m.pinned&&!m.deleted).sort((a,b)=>b.time-a.time)});
 });
 
 app.get("/api/rooms/:id/messages",auth,async(req,res)=>{
   const actor=current(req),room=db.rooms.find(x=>String(x.id)===String(req.params.id));
   if(!room)return res.status(404).json({error:"Room not found"});
   if(!verifyRoomJoinToken(req.headers['x-room-join-token'],actor.id,room))return res.status(403).json({error:"Join this room before viewing its messages."});
-  const {rows}=await pool.query(`SELECT data FROM room_messages WHERE room_id=$1 ORDER BY created_at DESC LIMIT 300`,[Number(req.params.id)]);
+  const {rows}=await pool.query(`SELECT data FROM room_messages WHERE room_id=$1 ORDER BY created_at DESC,id DESC LIMIT 300`,[Number(req.params.id)]);
   const now=Date.now();
   const messages=rows.reverse().map(r=>r.data).filter(m=>m && (!m.expiresAt||Number(m.expiresAt)>now) && !m.deleted).map(m=>({...m,roomRank:roomRole(room.id,m.userId),roomRankBadge:({USER:"✨",ROOM_MODERATOR:"🪄",ROOM_ADMIN:"💫",ROOM_OWNER:"🎩"})[roomRole(room.id,m.userId)]||"✨"}));
   db.messages=db.messages.filter(m=>String(m.roomId)!==String(req.params.id)).concat(messages);
@@ -2251,7 +2588,18 @@ app.post("/api/rooms/:id/messages",auth,featureAllowed("send_messages"),upload.s
     if(!allowedType)return res.status(400).json({error:"Only image and audio files are allowed in chat."});
   }
   let text=cleanText(req.body.text);
-  if(!text&&!req.file)return res.status(400).json({error:"Message is empty."});
+  let reelAttachment=null;
+  const reelId=String(req.body.reelId||"").trim();
+  if(reelId){
+    const reelResult=await pool.query("SELECT id,user_id,content,media_url FROM wall_posts WHERE id=$1 AND status IN ('approved','pinned') AND (expires_at IS NULL OR expires_at>NOW())",[reelId]);
+    const reel=reelResult.rows[0];
+    if(!reel||!reel.media_url||! /\.(mp4|webm|ogg)(\?|$)/i.test(String(reel.media_url))){
+      return res.status(404).json({error:"That Reel is no longer available."});
+    }
+    reelAttachment={url:String(reel.media_url),type:"video/mp4",name:"Shadow Reel"};
+    if(!text)text=String(reel.content||"").trim().slice(0,1000);
+  }
+  if(!text&&!req.file&&!reelAttachment)return res.status(400).json({error:"Message is empty."});
   // Network-level burst guard: protect the message endpoint without treating shared IPs as proof of ban evasion.
   if(!req.file){
     const networkKey=String(clientIp(req)||"unknown"), now=Date.now();
@@ -2287,7 +2635,7 @@ app.post("/api/rooms/:id/messages",auth,featureAllowed("send_messages"),upload.s
   const commandMatch=!req.file&&text.match(/^\/([a-z0-9]+)(?:\s+([\s\S]*))?$/i);
   if(commandMatch){
     const typedCommand=commandMatch[1].toLowerCase(),args=String(commandMatch[2]||"").trim();
-    const commandDefs=["rose","bread","brain","welcome","ship","bank","steal","roast","aura","anonymous","abrakadabra","clear"];
+    const commandDefs=["rose","bread","brain","welcome","ship","bank","convert","steal","roast","aura","anonymous","abrakadabra","clear"];
     if(typedCommand==="guide"){
       if(args)return res.status(400).json({error:"Use /guide without extra text."});
       const rank=String(u.rank||"MEMBER").toUpperCase();
@@ -2298,7 +2646,8 @@ app.post("/api/rooms/:id/messages",auth,featureAllowed("send_messages"),upload.s
         brain:{usage:"/brain [username]",description:"Show brain power for a user."},
         welcome:{usage:"/welcome username",description:"Show the Welcome Back popup for a user."},
         ship:{usage:"/ship username",description:"Check compatibility with a user."},
-        bank:{usage:"/bank [username]",description:"Show a user's level, XP and Gold account."},
+        bank:{usage:"/bank",description:"Show your Diamond balance."},
+        convert:{usage:"/convert X",description:"Convert X Diamonds into Gold at 1 Diamond = 100 Gold."},
         steal:{usage:"/steal username",description:"Try the Gold-steal game against a user."},
         roast:{usage:"/roast username",description:"Generate a playful roast for a user."},
         aura:{usage:"/aura username",description:"Generate an aura reading for a user."},
@@ -2311,7 +2660,7 @@ app.post("/api/rooms/:id/messages",auth,featureAllowed("send_messages"),upload.s
       const visible=[];
       for(const key of commandDefs){
         const config=commandSettings[key]||{};
-        const allowedRanks=Array.isArray(config.ranks)?config.ranks:(REQUESTED_COMMAND_RANKS[key]||RANK_TIERS.all);
+        const allowedRanks=(key==="bank"||key==="convert")?RANK_TIERS.all:(Array.isArray(config.ranks)?config.ranks:(REQUESTED_COMMAND_RANKS[key]||RANK_TIERS.all));
         if(rank!=="DEVELOPER"&&!allowedRanks.map(x=>String(x||"").toUpperCase()).includes(rank))continue;
         const item=descriptions[key];if(!item)continue;
         visible.push({name:String(config.name||key),usage:"/"+String(config.name||key)+(item.usage||("/"+key)).slice(("/"+key).length),description:item.description});
@@ -2326,7 +2675,7 @@ app.post("/api/rooms/:id/messages",auth,featureAllowed("send_messages"),upload.s
     const commandSettings=db.settings?.command_management||{};
     const commandKey=commandDefs.find(key=>String(commandSettings[key]?.name||key).toLowerCase()===typedCommand)||typedCommand;
     if(commandDefs.includes(commandKey)){
-      const config=commandSettings[commandKey],allowedRanks=Array.isArray(config?.ranks)?config.ranks:(REQUESTED_COMMAND_RANKS[commandKey]||RANK_TIERS.all);
+      const config=commandSettings[commandKey],allowedRanks=(commandKey==="bank"||commandKey==="convert")?RANK_TIERS.all:(Array.isArray(config?.ranks)?config.ranks:(REQUESTED_COMMAND_RANKS[commandKey]||RANK_TIERS.all));
       const actorRank=String(u.rank||"MEMBER").toUpperCase();
       if(actorRank!=="DEVELOPER"&&!allowedRanks.includes(actorRank))return res.status(403).json({error:"Your rank cannot use this command."});
     }
@@ -2365,24 +2714,37 @@ app.post("/api/rooms/:id/messages",auth,featureAllowed("send_messages"),upload.s
       return res.json({message:notice,command:true,gold:after,delta:outcome});
     }
     if(canonicalCommand==="bank"){
-      let target=u;
-      if(args){
-        const requested=args.replace(/^@/,"").trim().split(/\s+/)[0];
-        target=db.users.find(x=>String(x.username||"").toLowerCase()===requested.toLowerCase());
-        if(!target)return res.status(404).json({error:"That username was not found."});
-      }
+      if(args)return res.status(400).json({error:"Use /bank without a username or extra text."});
       const bankMessage={
         id:id(),roomId:String(r.id),userId:null,username:"Bot",displayName:"Bot",rank:"BOT",
-        system:false,isBot:true,bot:"Bot",bankCommand:true,bankUsername:String(target.username||"User"),
-        bankLevel:Math.max(1,Number(target.level)||1),bankXp:Math.max(0,Number(target.xp)||0),
-        bankGold:Math.max(0,Number(target.gold)||0),
-        text:"BANK ACCOUNT — "+String(target.username||"User"),reactions:{},edited:false,deleted:false,pinned:false,time:Date.now(),delivered:true
+        system:false,isBot:true,bot:"Bot",bankCommand:true,bankUsername:String(u.username||"User"),
+        bankDiamonds:Math.max(0,Number(u.diamonds)||0),
+        text:"DIAMOND BANK — "+String(u.username||"User"),reactions:{},edited:false,deleted:false,pinned:false,time:Date.now(),delivered:true
       };
       await pool.query(`INSERT INTO room_messages(id,room_id,user_id,data,created_at) VALUES($1,$2,NULL,$3::jsonb,NOW())`,
         [bankMessage.id,Number(r.id),JSON.stringify(bankMessage)]);
       db.messages.push(bankMessage);
       io.to("room:"+r.id).emit("message",bankMessage);
       return res.json({message:bankMessage,command:true});
+    }
+    if(canonicalCommand==="convert"){
+      if(!/^\d+$/.test(args))return res.status(400).json({error:"Use /convert X with a whole number of Diamonds."});
+      const amount=Number(args);
+      if(!Number.isSafeInteger(amount)||amount<1)return res.status(400).json({error:"Enter a valid whole number of Diamonds."});
+      const converted=await convertDiamonds(u,amount);
+      if(!converted)return res.status(400).json({error:"You do not have enough Diamonds."});
+      const walletMessage={
+        id:id(),roomId:String(r.id),userId:null,username:"Bot",displayName:"Bot",rank:"BOT",
+        system:false,isBot:true,bot:"Bot",walletCommand:true,walletCommandTitle:"CONVERSION SUCCESSFUL",
+        walletCommandDiamonds:amount,walletCommandGold:amount*100,
+        text:"Converted "+amount.toLocaleString()+" Diamonds into "+(amount*100).toLocaleString()+" Gold.",
+        reactions:{},edited:false,deleted:false,pinned:false,time:Date.now(),delivered:true
+      };
+      await pool.query(`INSERT INTO room_messages(id,room_id,user_id,data,created_at) VALUES($1,$2,NULL,$3::jsonb,NOW())`,
+        [walletMessage.id,Number(r.id),JSON.stringify(walletMessage)]);
+      db.messages.push(walletMessage);
+      io.to("room:"+r.id).emit("message",walletMessage);
+      return res.json({message:walletMessage,command:true,diamonds:converted.diamonds,gold:converted.gold});
     }
     if(canonicalCommand==="steal"){
       if(!args)return res.status(400).json({error:"Use /steal username."});
@@ -2605,7 +2967,7 @@ app.post("/api/rooms/:id/messages",auth,featureAllowed("send_messages"),upload.s
   const anonymousMode=!!(u.hideMode||u.deadMode); // Ghost and Dead messages are sent as Aurora.
    const m={id:id(),roomId:String(r.id),userId:anonymousMode?null:u.id,username:anonymousMode?"Aurora":u.username,displayName:anonymousMode?"Aurora":u.displayName,rank:anonymousMode?"BOT":u.rank,system:anonymousMode,isBot:anonymousMode,bot:anonymousMode?"Aurora":undefined,anonymous:anonymousMode,roomRank:anonymousMode?"USER":roomRank,roomRankBadge:({USER:"✨",ROOM_MODERATOR:"🪄",ROOM_ADMIN:"💫",ROOM_OWNER:"🎩"})[anonymousMode?"USER":roomRank]||"✨",
     usernameColor:u.settings?.usernameColor||"",chatFont:u.settings?.chatFont||"",text,
-    attachment:req.file?{url:"/uploads/"+req.file.filename,type:req.file.mimetype,name:req.file.originalname}:null,
+    attachment:req.file?{url:"/uploads/"+req.file.filename,type:req.file.mimetype,name:req.file.originalname}:reelAttachment,
     replyTo:req.body.replyTo||null,forwardedFrom:req.body.forwardedFrom||null,reactions:{},edited:false,deleted:false,pinned:false,time:Date.now(),delivered:true};
   const expiresIn=Number(req.body.expiresIn||0); if(expiresIn>0)m.expiresAt=Date.now()+Math.min(expiresIn,7*86400000);
 
@@ -2613,8 +2975,12 @@ app.post("/api/rooms/:id/messages",auth,featureAllowed("send_messages"),upload.s
   // broadcast immediately, then acknowledge the sender before optional work.
   // Achievements, XP, activity logging, push, and bot lookups must not make a
   // successfully stored message look stuck in the composer.
-  await pool.query(`INSERT INTO room_messages(id,room_id,user_id,data,created_at) VALUES($1,$2,$3,$4::jsonb,NOW())`,
-    [m.id,Number(r.id),Number(u.id),JSON.stringify(m)]);
+  const slowModeReservation=reserveRoomSlowMode(u,r);
+  if(!slowModeReservation.ok)return res.status(429).json({error:`Slow mode is on. Try again in ${slowModeReservation.retryAfterSeconds} seconds.`,retryAfterSeconds:slowModeReservation.retryAfterSeconds});
+  try{
+    await pool.query(`INSERT INTO room_messages(id,room_id,user_id,data,created_at) VALUES($1,$2,$3,$4::jsonb,NOW())`,
+      [m.id,Number(r.id),Number(u.id),JSON.stringify(m)]);
+  }catch(error){releaseRoomSlowMode(slowModeReservation);throw error;}
   db.messages.push(m);
   // Fan out to the room subscription AND to each participant's authenticated
   // user room. Socket.IO unions targets, so subscribed clients receive one copy.
@@ -2680,127 +3046,101 @@ app.post("/api/rooms/:id/messages",auth,featureAllowed("send_messages"),upload.s
   });
 });
 
-app.patch(
-  "/api/messages/:id",
-  auth,
-  (req,res)=>{
-    const u=current(req);
+async function getStoredRoomMessage(messageId){
+  const result=await pool.query("SELECT data FROM room_messages WHERE id=$1 LIMIT 1",[String(messageId)]);
+  let message=result.rows[0]?.data;
+  if(typeof message==="string"){try{message=JSON.parse(message)}catch{return null}}
+  if(!message||typeof message!=="object")return null;
+  const index=db.messages.findIndex(item=>String(item.id)===String(message.id));
+  if(index>=0)db.messages[index]=message;else db.messages.push(message);
+  return message;
+}
+async function saveStoredRoomMessage(message){
+  const result=await pool.query("UPDATE room_messages SET data=$2::jsonb WHERE id=$1 RETURNING data",[String(message.id),JSON.stringify(message)]);
+  if(!result.rowCount)return null;
+  let saved=result.rows[0]?.data;
+  if(typeof saved==="string"){try{saved=JSON.parse(saved)}catch{return null}}
+  if(!saved||typeof saved!=="object")return null;
+  const index=db.messages.findIndex(item=>String(item.id)===String(saved.id));
+  if(index>=0)db.messages[index]=saved;else db.messages.push(saved);
+  return saved;
+}
 
-    const m=db.messages.find(
-      x=>x.id===req.params.id
-    );
-
-    if(!m){
-      return res.status(404).json({
-        error:"Message not found"
-      });
-    }
-
-    const room=db.rooms.find(r=>String(r.id)===String(m.roomId));
-    if(m.userId!==u.id&&!hasRank(u,"MOD")){
-      return res.status(403).json({error:"No permission"});
-    }
-
-    m.text=
-      cleanText(req.body.text);
-
-    m.edited=true;
-    m.editedAt=Date.now();
-
-    save();
-
-    io.to(
-      "room:"+m.roomId
-    ).emit(
-      "message:update",
-      m
-    );
-
-    res.json({
-      message:m
-    });
-  }
-);
+app.patch("/api/messages/:id",auth,featureAllowed("edit_message"),async(req,res)=>{
+  const u=current(req);
+  try{
+    const m=await getStoredRoomMessage(req.params.id);
+    if(!m)return res.status(404).json({error:"Message not found"});
+    const room=db.rooms.find(item=>String(item.id)===String(m.roomId));
+    if(!room)return res.status(404).json({error:"Room not found"});
+    if(!requirePrivateRoomAccess(req,res,room,u))return;
+      if(String(m.userId)!==String(u.id)&&!hasRank(u,"MOD"))return res.status(403).json({error:"No permission"});
+    const text=cleanText(req.body.text).slice(0,5000);
+    if(!text.trim()&&!m.attachment)return res.status(400).json({error:"Message text cannot be empty."});
+    const updated={...m,text,edited:true,editedAt:Date.now()};
+    const saved=await saveStoredRoomMessage(updated);
+    if(!saved)return res.status(404).json({error:"Message could not be saved."});
+    io.to("room:"+saved.roomId).emit("message:update",saved);
+    res.json({message:saved});
+  }catch(error){console.error("Room message edit failed:",error);res.status(500).json({error:"Could not save the message edit."});}
+});
 
 app.delete(
   "/api/messages/:id",
   auth,
-  (req,res)=>{
+  async(req,res)=>{
     const u=current(req);
-
-    const m=db.messages.find(
-      x=>x.id===req.params.id
-    );
-
-    if(!m){
-      return res.status(404).json({
-        error:"Message not found"
-      });
-    }
-
-    const room=db.rooms.find(r=>String(r.id)===String(m.roomId));
-    const roomRoleValue=room?roomRole(room.id,u.id):"USER";
-    const roomDeleteEnabled=Array.isArray(db.settings?.feature_grants?.room_delete_messages)&&db.settings.feature_grants.room_delete_messages.length>0;
-    const roomStaffCanDelete=!!room&&roomDeleteEnabled&&roomRoleCan(room.id,u.id,"delete_messages");
-    if(m.userId!==u.id&&!hasRank(u,"MOD")&&!roomStaffCanDelete){
-      return res.status(403).json({error:"No permission"});
-    }
-
-    const deletedSnapshot={
-      id:m.id, roomId:m.roomId, userId:m.userId, username:m.username,
-      displayName:m.displayName, rank:m.rank, text:m.text||"", time:m.time,
-      attachment:m.attachment||null, deletedBy:u.username, deletedAt:Date.now()
-    };
-    m.deleted=true;
-    m.deletedSnapshot=deletedSnapshot;
-    m.text="This message was deleted.";
-
-    save();
-
-    log(u,"MESSAGE_DELETE",m.username||m.id,{...deletedSnapshot,room:db.rooms.find(r=>String(r.id)===String(m.roomId))?.name||m.roomId,reason:"MESSAGE_DELETE"});
-
-    io.to(
-      "room:"+m.roomId
-    ).emit(
-      "message:update",
-      m
-    );
-
-    res.json({
-      ok:true
-    });
+    try{
+      const m=await getStoredRoomMessage(req.params.id);
+      if(!m)return res.status(404).json({error:"Message not found"});
+      const room=db.rooms.find(item=>String(item.id)===String(m.roomId));
+      if(!room)return res.status(404).json({error:"Room not found"});
+      if(!requirePrivateRoomAccess(req,res,room,u))return;
+      const roomDeleteEnabled=Array.isArray(db.settings?.feature_grants?.room_delete_messages)&&db.settings.feature_grants.room_delete_messages.length>0;
+      const roomStaffCanDelete=roomDeleteEnabled&&roomRoleCan(room.id,u.id,"delete_messages");
+      const ownMessage=String(m.userId)===String(u.id);
+      if(ownMessage&&!featureGrantAllowed(u,"delete_own_messages"))return res.status(403).json({error:"Your account does not have permission to delete its own messages."});
+      if(!ownMessage&&!hasRank(u,"MOD")&&!roomStaffCanDelete)return res.status(403).json({error:"No permission"});
+      const deletedSnapshot={
+        id:m.id,roomId:m.roomId,userId:m.userId,username:m.username,
+        displayName:m.displayName,rank:m.rank,text:m.text||"",time:m.time,
+        attachment:m.attachment||null,deletedBy:u.username,deletedAt:Date.now()
+      };
+      const updated={...m,deleted:true,deletedSnapshot,text:"This message was deleted."};
+      const saved=await saveStoredRoomMessage(updated);
+      if(!saved)return res.status(404).json({error:"Message could not be saved."});
+      await log(u,"MESSAGE_DELETE",m.username||m.id,{...deletedSnapshot,room:room.name||m.roomId,reason:"MESSAGE_DELETE"});
+      io.to("room:"+saved.roomId).emit("message:update",saved);
+      res.json({ok:true});
+    }catch(error){console.error("Room message deletion failed:",error);res.status(500).json({error:"Could not save the message deletion."});}
   }
 );
 
 app.post(
   "/api/messages/:id/reaction",
   auth,
+  featureAllowed("react_message"),
   async(req,res)=>{
     const u=current(req);
     const emoji=String(req.body?.emoji||"👍");
     const allowed=["❤️","😂","😭","😮","🔥","👏","👍","👎","🥰","🎉"];
     if(!allowed.includes(emoji))return res.status(400).json({error:"Unsupported reaction."});
-    let m=db.messages.find(x=>String(x.id)===String(req.params.id));
-    // PostgreSQL is authoritative: a message may not be cached after a restart.
-    if(!m){
-      const found=await pool.query("SELECT data FROM room_messages WHERE id=$1 LIMIT 1",[String(req.params.id)]);
-      if(!found.rowCount)return res.status(404).json({error:"Message not found"});
-      m=found.rows[0].data;
-      if(!m||typeof m!=="object")return res.status(404).json({error:"Message not found"});
-      db.messages.push(m);
-    }
-    if(m.deleted)return res.status(400).json({error:"This message has been deleted."});
-    m.reactions=m.reactions&&typeof m.reactions==="object"?m.reactions:{};
-    const users=Array.isArray(m.reactions[emoji])?m.reactions[emoji].map(String):[];
-    const userId=String(u.id);
-    m.reactions[emoji]=users.includes(userId)?users.filter(x=>x!==userId):[...users,userId];
-    const saved=await pool.query("UPDATE room_messages SET data=jsonb_set(COALESCE(data,'{}'::jsonb),'{reactions}',$2::jsonb,true) WHERE id=$1 RETURNING data",[String(m.id),JSON.stringify(m.reactions)]);
-    if(!saved.rowCount)return res.status(404).json({error:"Message could not be saved."});
-    m=saved.rows[0].data;
-    const index=db.messages.findIndex(x=>String(x.id)===String(m.id));
-    if(index>=0)db.messages[index]=m;else db.messages.push(m);
-    io.to("room:"+m.roomId).emit("message:update",m);
-    res.json({message:m});
+    try{
+      const m=await getStoredRoomMessage(req.params.id);
+      if(!m)return res.status(404).json({error:"Message not found"});
+      const room=db.rooms.find(item=>String(item.id)===String(m.roomId));
+      if(!room)return res.status(404).json({error:"Room not found"});
+      if(!requirePrivateRoomAccess(req,res,room,u))return;
+      if(m.deleted)return res.status(400).json({error:"This message has been deleted."});
+      const reactions=m.reactions&&typeof m.reactions==="object"?{...m.reactions}:{};
+      const users=Array.isArray(reactions[emoji])?reactions[emoji].map(String):[];
+      const userId=String(u.id);
+      reactions[emoji]=users.includes(userId)?users.filter(x=>x!==userId):[...users,userId];
+      const saved=await saveStoredRoomMessage({...m,reactions});
+      if(!saved)return res.status(404).json({error:"Message could not be saved."});
+      io.to("room:"+saved.roomId).emit("message:update",saved);
+      res.json({message:saved});
+    }catch(error){console.error("Room message reaction failed:",error);res.status(500).json({error:"Could not save the reaction."});}
   }
 );
 
@@ -2808,36 +3148,20 @@ app.post(
   "/api/messages/:id/pin",
   auth,
   featureAllowed("pin_message"),
-  (req,res)=>{
+  async(req,res)=>{
     const u=current(req);
-
-    const m=db.messages.find(
-      x=>x.id===req.params.id
-    );
-
-    if(
-      !m||
-      !hasRank(u,"MOD")
-    ){
-      return res.status(403).json({
-        error:"Moderator required"
-      });
-    }
-
-    m.pinned=!m.pinned;
-
-    save();
-
-    io.to(
-      "room:"+m.roomId
-    ).emit(
-      "message:update",
-      m
-    );
-
-    res.json({
-      message:m
-    });
+    try{
+      const m=await getStoredRoomMessage(req.params.id);
+      if(!m)return res.status(404).json({error:"Message not found"});
+      const room=db.rooms.find(item=>String(item.id)===String(m.roomId));
+      if(!room)return res.status(404).json({error:"Room not found"});
+      if(!requirePrivateRoomAccess(req,res,room,u))return;
+      if(!hasRank(u,"MOD"))return res.status(403).json({error:"Moderator required"});
+      const saved=await saveStoredRoomMessage({...m,pinned:!m.pinned});
+      if(!saved)return res.status(404).json({error:"Message could not be saved."});
+      io.to("room:"+saved.roomId).emit("message:update",saved);
+      res.json({message:saved});
+    }catch(error){console.error("Room message pin failed:",error);res.status(500).json({error:"Could not save the pin change."});}
   }
 );
 
@@ -2847,16 +3171,12 @@ app.post(
   featureAllowed("report_message"),
   async(req,res)=>{
     const u=current(req);
-
-    const m=db.messages.find(
-      x=>x.id===req.params.id
-    );
-
-    if(!m){
-      return res.status(404).json({
-        error:"Message not found"
-      });
-    }
+    let m;
+    try{m=await getStoredRoomMessage(req.params.id)}catch(error){console.error("Room message report lookup failed:",error);return res.status(500).json({error:"Could not load this message."});}
+    if(!m)return res.status(404).json({error:"Message not found"});
+    const room=db.rooms.find(item=>String(item.id)===String(m.roomId));
+    if(!room)return res.status(404).json({error:"Room not found"});
+    if(!requirePrivateRoomAccess(req,res,room,u))return;
 
     const report={
       id:id(),
@@ -2890,7 +3210,8 @@ app.post(
     };
 
     try{
-      await pool.query("INSERT INTO reports(id,reporter_id,reported_id,conversation_user_id,reason,data,created_at) VALUES($1,$2,$3,NULL,$4,$5::jsonb,NOW())",[report.id,Number(u.id),Number(report.reportedUserId),report.reason||"Message report",JSON.stringify(report)]);
+      const reportedId=Number(report.reportedUserId);
+      await pool.query("INSERT INTO reports(id,reporter_id,reported_id,conversation_user_id,reason,data,created_at) VALUES($1,$2,$3,NULL,$4,$5::jsonb,NOW())",[report.id,Number(u.id),Number.isFinite(reportedId)?reportedId:null,report.reason||"Message report",JSON.stringify(report)]);
     }catch(e){
       console.error("Message report persistence failed:",e);
       return res.status(500).json({error:"Could not save this report. Please try again."});
@@ -2938,6 +3259,7 @@ app.post(
     const u=current(req);
     const room=db.rooms.find(r=>String(r.id)===String(req.params.id));
     if(!room)return res.status(404).json({error:"Room not found"});
+    if(!requirePrivateRoomAccess(req,res,room,u))return;
     const roomOwnerCanClear=roomRoleCan(room.id,u.id,"clear_room")&&Array.isArray(db.settings?.feature_grants?.room_clear_own)&&db.settings.feature_grants.room_clear_own.length>0;
     if(!commandAllowed(u,"clear")&&!roomOwnerCanClear){
       return res.status(403).json({
@@ -3092,59 +3414,25 @@ app.post(
 app.post(
   "/api/messages/:id/forward",
   auth,
-  (req,res)=>{
+  featureAllowed("send_messages"),
+  async(req,res)=>{
     const u=current(req);
-
-    const m=db.messages.find(
-      x=>x.id===req.params.id
-    );
-
-    if(!m){
-      return res.status(404).json({
-        error:"Not found"
-      });
-    }
-
-    const r=db.rooms.find(
-      x=>x.id===req.body.roomId
-    );
-
-    if(!r){
-      return res.status(404).json({
-        error:"Room not found"
-      });
-    }
-
-    const f={
-      ...m,
-
-      id:id(),
-      roomId:r.id,
-      userId:u.id,
-      username:u.username,
-      displayName:u.displayName,
-
-      forwardedFrom:m.id,
-
-      time:Date.now(),
-      edited:false,
-      deleted:false
-    };
-
-    db.messages.push(f);
-
-    save();
-
-    io.to(
-      "room:"+r.id
-    ).emit(
-      "message",
-      f
-    );
-
-    res.json({
-      message:f
-    });
+    try{
+      const m=await getStoredRoomMessage(req.params.id);
+      if(!m)return res.status(404).json({error:"Message not found"});
+      if(m.deleted)return res.status(400).json({error:"Deleted messages cannot be forwarded."});
+      const sourceRoom=db.rooms.find(item=>String(item.id)===String(m.roomId));
+      const room=db.rooms.find(item=>String(item.id)===String(req.body.roomId));
+      if(!sourceRoom||!room)return res.status(404).json({error:"Room not found"});
+      if(!requirePrivateRoomAccess(req,res,sourceRoom,u))return;
+      const existingJoinToken=verifyRoomJoinToken(req.headers["x-room-join-token"],u.id,room);
+      if(!roomJoinPolicyAllowed(u,room,{existingJoinToken})||((roomIsPrivate(room)||room.passwordHash)&&!existingJoinToken))return res.status(403).json({error:"Join this room before forwarding a message into it."});
+      const forwarded={...m,id:id(),roomId:String(room.id),userId:u.id,username:u.username,displayName:u.displayName,forwardedFrom:m.id,time:Date.now(),edited:false,deleted:false,pinned:false};
+      await pool.query("INSERT INTO room_messages(id,room_id,user_id,data,created_at) VALUES($1,$2,$3,$4::jsonb,NOW())",[forwarded.id,Number(room.id),Number(u.id),JSON.stringify(forwarded)]);
+      db.messages.push(forwarded);
+      io.to("room:"+room.id).emit("message",forwarded);
+      res.json({message:forwarded});
+    }catch(error){console.error("Message forward failed:",error);res.status(500).json({error:"Could not forward this message."});}
   }
 );
 
@@ -3318,16 +3606,21 @@ app.get(
   }
 );
 
+function privateMessagesBlocked(userA,userB){
+  const a=String(userA?.id??""),b=String(userB?.id??"");
+  if(!a||!b)return true;
+  return (userA.blocked||[]).some(id=>String(id)===b)||(userB.blocked||[]).some(id=>String(id)===a);
+}
 app.get("/api/dm/conversations",auth,featureAllowed("private_messages"),async(req,res)=>{
   const u=current(req);
-  const {rows}=await pool.query(`SELECT DISTINCT ON (other_id) other_id,data,created_at,
-    (SELECT COUNT(*)::int FROM private_messages unread WHERE unread.sender_id=other_id AND unread.receiver_id=$1 AND COALESCE((unread.data->>'read')::boolean,false)=false) AS unread_count
+  const {rows}=await pool.query(`SELECT DISTINCT ON (other_id) other_id,data,created_at,id,
+    (SELECT COUNT(*)::int FROM private_messages unread WHERE unread.sender_id=other_id AND unread.receiver_id=$1 AND unread.data->>'read' IS DISTINCT FROM 'true') AS unread_count
     FROM (
-      SELECT CASE WHEN sender_id=$1 THEN receiver_id ELSE sender_id END AS other_id,data,created_at
+      SELECT id,CASE WHEN sender_id=$1 THEN receiver_id ELSE sender_id END AS other_id,data,created_at
       FROM private_messages WHERE sender_id=$1 OR receiver_id=$1
-    ) q ORDER BY other_id,created_at DESC`,[Number(u.id)]);
+    ) q ORDER BY other_id,created_at DESC,id DESC`,[Number(u.id)]);
   const conversations=rows.map(r=>({user:safeUser(findUser(String(r.other_id))),lastMessage:r.data,unreadCount:Number(r.unread_count||0)})).filter(x=>x.user);
-  const anonymous=await pool.query(`SELECT data,created_at,(SELECT COUNT(*)::int FROM private_messages unread WHERE unread.sender_id IS NULL AND unread.receiver_id=$1 AND COALESCE((unread.data->>'read')::boolean,false)=false) AS unread_count FROM private_messages WHERE sender_id IS NULL AND receiver_id=$1 ORDER BY created_at DESC LIMIT 1`,[Number(u.id)]);
+  const anonymous=await pool.query(`SELECT data,created_at,(SELECT COUNT(*)::int FROM private_messages unread WHERE unread.sender_id IS NULL AND unread.receiver_id=$1 AND unread.data->>'read' IS DISTINCT FROM 'true') AS unread_count FROM private_messages WHERE sender_id IS NULL AND receiver_id=$1 ORDER BY created_at DESC LIMIT 1`,[Number(u.id)]);
   if(anonymous.rowCount)conversations.push({user:{id:"system-bot",username:"System",displayName:"System Bot",rank:"BOT",online:false,settings:{}},lastMessage:anonymous.rows[0].data,unreadCount:Number(anonymous.rows[0].unread_count||0)});
   res.json({conversations});
 });
@@ -3335,19 +3628,113 @@ app.get("/api/dm/conversations",auth,featureAllowed("private_messages"),async(re
 app.get("/api/dm/:id",auth,featureAllowed("private_messages"),async(req,res)=>{
   const u=current(req);
   if(String(req.params.id)==="system-bot"){
-    const {rows}=await pool.query("SELECT data FROM private_messages WHERE sender_id IS NULL AND receiver_id=$1 ORDER BY created_at DESC LIMIT 300",[Number(u.id)]);
+    const {rows}=await pool.query("SELECT data FROM private_messages WHERE sender_id IS NULL AND receiver_id=$1 ORDER BY created_at DESC,id DESC LIMIT 300",[Number(u.id)]);
     return res.json({messages:rows.reverse().map(r=>r.data)});
   }
   const v=findUser(req.params.id); if(!v)return res.status(404).json({error:"User not found"});
-  if((u.blocked||[]).includes(v.id)||(v.blocked||[]).includes(u.id))return res.status(403).json({error:"Messaging blocked"});
-  const {rows}=await pool.query(`SELECT data FROM private_messages WHERE (sender_id=$1 AND receiver_id=$2) OR (sender_id=$2 AND receiver_id=$1) ORDER BY created_at DESC LIMIT 300`,[Number(u.id),Number(v.id)]);
+  if(privateMessagesBlocked(u,v))return res.status(403).json({error:"Messaging blocked"});
+  const {rows}=await pool.query(`SELECT data FROM private_messages WHERE (sender_id=$1 AND receiver_id=$2) OR (sender_id=$2 AND receiver_id=$1) ORDER BY created_at DESC,id DESC LIMIT 300`,[Number(u.id),Number(v.id)]);
   res.json({messages:rows.reverse().map(r=>r.data)});
+});
+
+app.post("/api/translate",auth,async(req,res)=>{
+  const text=String(req.body?.text||"").trim().slice(0,4000);
+  if(!text)return res.status(400).json({error:"There is no text to translate."});
+  const providers=[
+    async()=>{
+      const apiKey=String(process.env.OPENAI_API_KEY||"").trim();
+      if(!apiKey)throw new Error("OpenAI translation key is not configured");
+      const response=await fetch("https://api.openai.com/v1/chat/completions",{
+        method:"POST",headers:{authorization:"Bearer "+apiKey,"content-type":"application/json"},
+        body:JSON.stringify({model:String(process.env.OPENAI_MODEL||"gpt-4o-mini"),temperature:0,response_format:{type:"json_object"},messages:[
+          {role:"system",content:'You are a translation engine. Detect the source language and translate the user text into natural English. If it is already English, keep it unchanged. Return only a JSON object with keys "translated" and "detectedLanguage".'},
+          {role:"user",content:text}
+        ]}),signal:AbortSignal.timeout(15000)
+      });
+      if(!response.ok)throw new Error("OpenAI translation returned "+response.status);
+      const data=await response.json(),parsed=JSON.parse(String(data?.choices?.[0]?.message?.content||"{}"));
+      const translated=String(parsed.translated||"").trim();
+      if(!translated)throw new Error("OpenAI returned an empty translation");
+      return {translated,detectedLanguage:String(parsed.detectedLanguage||"").slice(0,24),provider:"OpenAI"};
+    },
+    async()=>{
+      const endpoint="https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=en&dt=t&q="+encodeURIComponent(text);
+      const response=await fetch(endpoint,{headers:{"accept":"application/json","user-agent":"Mozilla/5.0 MaleficentChat/1.0"},signal:AbortSignal.timeout(10000)});
+      if(!response.ok)throw new Error("Google Translate returned "+response.status);
+      const data=await response.json();
+      const translated=Array.isArray(data?.[0])?data[0].map(part=>String(part?.[0]||"")).join(""):"";
+      if(!translated)throw new Error("Google Translate returned an empty result");
+      return {translated,detectedLanguage:String(data?.[2]||"").slice(0,24),provider:"Google"};
+    },
+    async()=>{
+      const endpoint="https://api.mymemory.translated.net/get?q="+encodeURIComponent(text)+"&langpair=autodetect%7Cen";
+      const response=await fetch(endpoint,{headers:{"accept":"application/json","user-agent":"Mozilla/5.0 MaleficentChat/1.0"},signal:AbortSignal.timeout(10000)});
+      if(!response.ok)throw new Error("MyMemory returned "+response.status);
+      const data=await response.json();
+      const translated=String(data?.responseData?.translatedText||"").trim();
+      if(!translated||Number(data?.responseStatus)>=400)throw new Error("MyMemory returned no translation");
+      return {translated,detectedLanguage:String(data?.responseData?.detectedLanguage||"").slice(0,24),provider:"MyMemory"};
+    }
+  ];
+  let lastError=null;
+  for(const translate of providers){
+    try{return res.json({...await translate(),targetLanguage:"en"});}
+    catch(error){lastError=error;console.warn("Message translation provider failed:",error?.message||error);}
+  }
+  console.error("All message translation providers failed:",lastError?.message||lastError);
+  return res.status(502).json({error:"Translation services are temporarily unavailable. Please try again shortly."});
+});
+
+
+app.post("/api/native/device/register",auth,featureAllowed("private_messages"),async(req,res)=>{
+  const u=current(req),fcmToken=String(req.body?.fcmToken||"").trim();
+  if(!fcmToken||fcmToken.length>4096)return res.status(400).json({error:"Invalid Firebase device token."});
+  const credential=crypto.randomBytes(32).toString("base64url");
+  const credentialHash=crypto.createHash("sha256").update(credential).digest("hex");
+  try{
+    await pool.query(
+      `INSERT INTO native_device_tokens(user_id,fcm_token,credential_hash,last_used_at)
+       VALUES($1,$2,$3,NOW())
+       ON CONFLICT(fcm_token) DO UPDATE SET user_id=EXCLUDED.user_id,credential_hash=EXCLUDED.credential_hash,last_used_at=NOW()`,
+      [Number(u.id),fcmToken,credentialHash]
+    );
+    res.json({ok:true,deviceCredential:credential});
+  }catch(error){console.error("Native device registration failed:",error?.message||error);res.status(500).json({error:"Could not register this device."});}
+});
+
+app.post("/api/native/dm/reply",async(req,res)=>{
+  const credential=String(req.headers["x-device-credential"]||"").trim();
+  const peerId=String(req.body?.peerId||"").trim();
+  const message=cleanText(req.body?.text).trim();
+  if(!credential||credential.length>256)return res.status(401).json({error:"Device authorization required."});
+  if(!peerId||!message)return res.status(400).json({error:"A recipient and reply are required."});
+  try{
+    const hash=crypto.createHash("sha256").update(credential).digest("hex");
+    const stored=await pool.query("SELECT user_id FROM native_device_tokens WHERE credential_hash=$1 LIMIT 1",[hash]);
+    if(!stored.rowCount)return res.status(401).json({error:"Device authorization expired. Open Maleficent Chat to reconnect."});
+    const u=findUser(String(stored.rows[0].user_id)),v=findUser(peerId);
+    if(!u||!v)return res.status(404).json({error:"Conversation user not found."});
+    if(u.banned===true||(u.kickedUntil&&Number(u.kickedUntil)>Date.now()))return res.status(403).json({error:"Account is restricted."});
+    const networkDecision=await networkAccessDecision(req,u);
+    if(!networkDecision.allowed)return res.status(403).json({error:networkDecision.reason||"Network access is restricted."});
+    const construction=db.settings?.under_construction||{};
+    if(construction.enabled===true&&!["DEVELOPER","OWNER"].includes(String(u.rank||"").toUpperCase()))return res.status(503).json({error:"The site is under construction."});
+    if(isUserFeatureBlocked(u,"private_messages")||!hasFeature(u,"private_messages"))return res.status(403).json({error:"Private messaging is not available for this account."});
+    if(privateMessagesBlocked(u,v))return res.status(403).json({error:"Messaging blocked."});
+    const m={id:id(),from:u.id,to:v.id,text:message.slice(0,4000),attachment:null,replyTo:null,time:Date.now(),read:false,delivered:true};
+    await pool.query("INSERT INTO private_messages(id,sender_id,receiver_id,message,data,created_at) VALUES($1,$2,$3,$4,$5::jsonb,NOW())",[m.id,Number(u.id),Number(v.id),m.text,JSON.stringify(m)]);
+    db.privateMessages.push(m);
+    notify(v.id,"private-message",`💌 @${u.username}`,m.text.slice(0,180),`/?dm=${encodeURIComponent(u.id)}`);
+    io.to("user:"+u.id).emit("dm",m);io.to("user:"+v.id).emit("dm",m);
+    await pool.query("UPDATE native_device_tokens SET last_used_at=NOW() WHERE credential_hash=$1",[hash]);
+    res.json({ok:true,messageId:m.id});
+  }catch(error){console.error("Native inline reply failed:",error?.message||error);res.status(500).json({error:"Could not send reply."});}
 });
 
 app.post("/api/dm/:id",auth,featureAllowed("private_messages"),upload.single("file"),async(req,res)=>{
   const u=current(req),v=findUser(req.params.id); if(!v)return res.status(404).json({error:"User not found"});
   if(await checkRestrictedMediaUpload(req,res,u,req.file))return;
-  if((u.blocked||[]).includes(v.id)||(v.blocked||[]).includes(u.id))return res.status(403).json({error:"Messaging blocked"});
+  if(privateMessagesBlocked(u,v))return res.status(403).json({error:"Messaging blocked"});
   const m={id:id(),from:u.id,to:v.id,text:cleanText(req.body.text),attachment:req.file?{url:"/uploads/"+req.file.filename,type:req.file.mimetype,name:req.file.originalname}:null,replyTo:req.body.replyTo||null,time:Date.now(),read:false,delivered:true};
   if(!m.text&&!m.attachment)return res.status(400).json({error:"Empty message"});
   await pool.query(`INSERT INTO private_messages(id,sender_id,receiver_id,message,data,created_at) VALUES($1,$2,$3,$4,$5::jsonb,NOW())`,
@@ -3355,7 +3742,8 @@ app.post("/api/dm/:id",auth,featureAllowed("private_messages"),upload.single("fi
   // private_messages is already the durable source; avoid save(), which rewrites
   // every user row and filter-word entry for each private message.
   db.privateMessages.push(m);
-  notify(v.id,"private-message","New private message",`@${u.username} sent you a private message.`);
+  const dmPreview=m.text?String(m.text).trim().slice(0,180):(m.attachment?"📎 Attachment":"New private message");
+  notify(v.id,"private-message",`💌 @${u.username}`,dmPreview,`/?dm=${encodeURIComponent(u.id)}`);
   // Notify every active device for both participants. The client deduplicates
   // by message ID, so the sender can safely reconcile the optimistic/API copy.
   // Send separately to both authenticated user rooms so every active device
@@ -3363,6 +3751,38 @@ app.post("/api/dm/:id",auth,featureAllowed("private_messages"),upload.single("fi
   io.to("user:"+u.id).emit("dm",m);
   io.to("user:"+v.id).emit("dm",m);
   res.json({message:m});
+});
+
+app.delete("/api/dm/messages/:messageId",auth,featureAllowed("private_messages"),async(req,res)=>{
+  const u=current(req),messageId=String(req.params.messageId||"");
+  if(!messageId||messageId.length>160)return res.status(400).json({error:"Invalid message id."});
+  try{
+    const stored=await pool.query(`SELECT data->'attachment' AS attachment FROM private_messages WHERE id=$1 AND sender_id=$2`,[messageId,Number(u.id)]);
+    if(!stored.rowCount)return res.status(404).json({error:"Message not found or it was not sent by you."});
+    const {rows}=await pool.query(`UPDATE private_messages
+      SET message='',data=COALESCE(data,'{}'::jsonb)||jsonb_build_object('text','','attachment',NULL,'deleted',true,'deletedAt',$3::bigint)
+      WHERE id=$1 AND sender_id=$2 AND data->'deleted' IS DISTINCT FROM 'true'::jsonb
+      RETURNING sender_id,receiver_id,data`,[messageId,Number(u.id),Date.now()]);
+    if(!rows.length)return res.status(404).json({error:"Message not found or it was not sent by you."});
+    const message=rows[0].data;
+    const attachmentUrl=String(stored.rows[0].attachment?.url||"");
+    if(attachmentUrl.startsWith("/uploads/")){
+      const fileName=attachmentUrl.slice("/uploads/".length),filePath=path.resolve(UP,fileName);
+      if(fileName&&path.basename(fileName)===fileName&&path.dirname(filePath)===UP){
+        await fs.promises.unlink(filePath).catch(error=>{if(error.code!=="ENOENT")console.warn("Deleted private-message attachment could not be removed:",error.message);});
+      }
+    }
+    const index=(db.privateMessages||[]).findIndex(item=>String(item.id)===messageId);
+    if(index>=0)db.privateMessages[index]=message;
+    const payload={message};
+    io.to("user:"+rows[0].sender_id).emit("dm-updated",payload);
+    io.to("user:"+rows[0].receiver_id).emit("dm-updated",payload);
+    res.set("Cache-Control","no-store");
+    res.json({ok:true,message});
+  }catch(error){
+    console.error("Private message deletion failed:",error.message);
+    res.status(500).json({error:"Could not delete that message. Please try again."});
+  }
 });
 
 app.post(
@@ -3374,13 +3794,13 @@ app.post(
     const senderId=String(req.params.id);
     if(senderId==="system-bot"){
       await pool.query("UPDATE private_messages SET data=jsonb_set(COALESCE(data,'{}'::jsonb),'{read}','true'::jsonb,true) WHERE sender_id IS NULL AND receiver_id=$1",[Number(u.id)]);
-      db.privateMessages.filter(m=>m.anonymous===true&&String(m.to)===String(u.id)).forEach(m=>m.read=true);
+      db.privateMessages.filter(m=>(m.anonymous===true||m.from==null)&&String(m.to??m.receiverId)===String(u.id)).forEach(m=>m.read=true);
       return res.json({ok:true});
     }
     const sender=findUser(senderId);
     if(!sender) return res.status(404).json({error:"User not found"});
     if(senderId===String(u.id)) return res.status(400).json({error:"Cannot mark your own messages as received."});
-    if((u.blocked||[]).includes(sender.id)||(sender.blocked||[]).includes(u.id))
+    if(privateMessagesBlocked(u,sender))
       return res.status(403).json({error:"Messaging blocked"});
     try {
       // Persist first: never tell the client a receipt was saved if PostgreSQL failed.
@@ -3390,10 +3810,12 @@ app.post(
          WHERE sender_id=$1 AND receiver_id=$2`,
         [Number(senderId),Number(u.id)]
       );
+      // Update the compatibility cache without rewriting the entire legacy
+      // application snapshot. PostgreSQL already committed the authoritative read state.
       db.privateMessages
-        .filter(m=>String(m.from)===senderId&&String(m.to)===String(u.id))
+        .filter(m=>String(m.from??m.sender_id)===senderId&&String(m.to??m.receiverId)===String(u.id))
         .forEach(m=>m.read=true);
-      save();
+      res.set("Cache-Control","no-store");
       res.json({ok:true});
     } catch(err) {
       console.error("Could not persist private-message read receipts:",err.message);
@@ -3413,25 +3835,105 @@ function systemNotice(text, roomId=null){
   else {const notice={id:id(),system:true,username:'Aurora',displayName:'Aurora',rank:'BOT',text:String(text),roomId:null,time:Date.now(),reactions:{},pinned:false,deleted:false};io.emit('system-message',notice);}
 }
 
-app.get('/api/daily/status',auth,async(req,res)=>{const q=await pool.query(`SELECT last_claim,streak,(last_claim AT TIME ZONE 'UTC')::date AS claim_day FROM daily_rewards WHERE user_id=$1`,[Number(current(req).id)]);const today=new Date().toISOString().slice(0,10);res.json({claimed:!!(q.rowCount&&q.rows[0].claim_day===today),streak:Number(q.rows[0]?.streak||0)});});
+async function sendRankChangeBotDM(target,newRank){
+  if(!target?.id)return;
+  const rank=String(newRank||'MEMBER').toUpperCase();
+  const message={
+    id:id(),from:"system-bot",to:target.id,
+    text:"Your Rank Has Been Changed To "+rank,
+    time:Date.now(),read:false,delivered:true,anonymous:true,systemBot:true
+  };
+  await pool.query(
+    "INSERT INTO private_messages(id,sender_id,receiver_id,message,data,created_at) VALUES($1,NULL,$2,$3,$4::jsonb,NOW())",
+    [message.id,Number(target.id),message.text,JSON.stringify(message)]
+  );
+  db.privateMessages.push(message);
+  notify(target.id,"private-message","Your rank has been changed","Your Rank Has Been Changed To "+rank);
+  io.to("user:"+target.id).emit("dm",message);
+}
+
+const DAILY_DIAMOND_REWARDS=[2,3,4,5,6,8,15];
+app.get('/api/daily/status',auth,async(req,res)=>{
+  const q=await pool.query(`SELECT last_claim,streak,TO_CHAR(last_claim,'YYYY-MM-DD') AS claim_day FROM daily_rewards WHERE user_id=$1`,[Number(current(req).id)]);
+  const days=await pool.query(`SELECT TO_CHAR((NOW() AT TIME ZONE 'UTC')::date,'YYYY-MM-DD') AS today,TO_CHAR((NOW() AT TIME ZONE 'UTC')::date-1,'YYYY-MM-DD') AS yesterday`);
+  const row=q.rows[0],today=days.rows[0].today,yesterday=days.rows[0].yesterday,claimed=!!(row&&row.claim_day===today);
+  const nextStreak=row&&row.claim_day===yesterday?Number(row.streak||0)+1:claimed?Number(row.streak||0)+1:1;
+  res.json({claimed,streak:Number(row?.streak||0),nextDiamonds:DAILY_DIAMOND_REWARDS[(nextStreak-1)%7],schedule:DAILY_DIAMOND_REWARDS});
+});
 app.post('/api/daily/claim',auth,async(req,res)=>{
-  const u=current(req); if(!u)return res.status(401).json({error:'Login required'});
-  const gold=Number(db.settings?.daily_reward_gold??25), xp=Number(db.settings?.daily_reward_xp??15);
-  const today=new Date().toISOString().slice(0,10);
-  const q=await pool.query(`SELECT last_claim,streak,(last_claim AT TIME ZONE 'UTC')::date AS claim_day FROM daily_rewards WHERE user_id=$1`,[Number(u.id)]);
-  if(q.rowCount && q.rows[0].claim_day===today) return res.status(409).json({error:'Already claimed',claimed:true,streak:Number(q.rows[0].streak||0),gold:u.gold||0,xp:u.xp||0});
-  const previous=q.rows[0]; const streak=previous ? Number(previous.streak||0)+1 : 1;
-  const client=await pool.connect();
+  const u=current(req);if(!u)return res.status(401).json({error:'Login required'});
+  const gold=Math.max(0,Number(db.settings?.daily_reward_gold??25)),xp=Math.max(0,Number(db.settings?.daily_reward_xp??15));
+  const client=await pool.connect();let streak=1,diamonds=DAILY_DIAMOND_REWARDS[0],balances;
   try{
     await client.query('BEGIN');
-    await client.query(`INSERT INTO daily_rewards(user_id,last_claim,streak) VALUES($1,NOW(),$2) ON CONFLICT(user_id) DO UPDATE SET last_claim=NOW(),streak=$2`,[Number(u.id),streak]);
-    await client.query(`UPDATE users SET gold=gold+$1,xp=xp+$2 WHERE id=$3`,[gold,xp,Number(u.id)]);
+    await client.query(`INSERT INTO daily_rewards(user_id,last_claim,streak) VALUES($1,NULL,0) ON CONFLICT(user_id) DO NOTHING`,[Number(u.id)]);
+    const previous=await client.query(`SELECT last_claim,streak,TO_CHAR(last_claim,'YYYY-MM-DD') AS claim_day FROM daily_rewards WHERE user_id=$1 FOR UPDATE`,[Number(u.id)]);
+    const days=await client.query(`SELECT TO_CHAR((NOW() AT TIME ZONE 'UTC')::date,'YYYY-MM-DD') AS today,TO_CHAR((NOW() AT TIME ZONE 'UTC')::date-1,'YYYY-MM-DD') AS yesterday`);
+    const row=previous.rows[0],today=days.rows[0].today,yesterday=days.rows[0].yesterday;
+    if(row?.claim_day===today){await client.query('ROLLBACK');return res.status(409).json({error:'Already claimed today.',claimed:true,streak:Number(row.streak||0),diamonds:Number(u.diamonds||0),gold:Number(u.gold||0),xp:Number(u.xp||0)});}
+    streak=row?.claim_day===yesterday?Number(row.streak||0)+1:1;
+    diamonds=DAILY_DIAMOND_REWARDS[(streak-1)%7];
+    await client.query(`UPDATE daily_rewards SET last_claim=NOW() AT TIME ZONE 'UTC',streak=$2 WHERE user_id=$1`,[Number(u.id),streak]);
+    const updated=await client.query(`UPDATE users SET gold=COALESCE(gold,0)+$1,xp=COALESCE(xp,0)+$2,diamonds=COALESCE(diamonds,0)+$3 WHERE id=$4 RETURNING gold,xp,diamonds`,[gold,xp,diamonds,Number(u.id)]);
+    if(!updated.rowCount)throw new Error('Account not found while claiming daily reward.');
+    balances=updated.rows[0];
+    await client.query(`INSERT INTO wallet_transactions(id,recipient_id,currency,amount,type,note) VALUES($1,$2,'DIAMONDS',$3,'DAILY_REWARD',$4)`,[id(),Number(u.id),diamonds,'Daily login reward · Day '+(((streak-1)%7)+1)]);
     await client.query('COMMIT');
-  }catch(e){await client.query('ROLLBACK');throw e;}finally{client.release();}
-  u.gold=(u.gold||0)+gold; u.xp=(u.xp||0)+xp; u.level=Math.floor(u.xp/(db.settings.xpPerLevel||100))+1; notify(u.id,'gold','Daily reward',`You received ${gold} gold and ${xp} XP.`); save();
-  res.json({ok:true,gold:u.gold,xp:u.xp,amount:gold,xpAmount:xp,streak});
+  }catch(e){await client.query('ROLLBACK').catch(()=>{});console.error('Daily reward claim failed:',e);return res.status(500).json({error:'Could not claim your daily reward. Please try again.'});}finally{client.release();}
+  u.gold=Number(balances.gold||0);u.xp=Number(balances.xp||0);u.diamonds=Number(balances.diamonds||0);u.level=Math.floor(u.xp/(db.settings.xpPerLevel||100))+1;
+  db.goldTransactions ||= [];if(gold)db.goldTransactions.push({id:id(),time:Date.now(),actor:'SYSTEM',userId:u.id,type:'DAILY_REWARD_GOLD',delta:gold});
+  notify(u.id,'wallet','Daily Diamond reward',`You received ${diamonds} Diamonds, ${gold} Gold and ${xp} XP.`);
+  io.to('user:'+u.id).emit('wallet:update',{userId:u.id,diamonds:u.diamonds,gold:u.gold});
+  io.to('user:'+u.id).emit('gold:update',{gold:u.gold});save();
+  res.json({ok:true,diamonds:u.diamonds,diamondAmount:diamonds,gold:u.gold,xp:u.xp,amount:gold,xpAmount:xp,streak,day:((streak-1)%7)+1});
 });
 app.post('/api/rewards/daily',auth,(req,res)=>res.redirect(307,'/api/daily/claim'));
+
+app.get('/api/wallet',auth,async(req,res)=>{
+  const u=current(req);
+  const account=await pool.query('SELECT diamonds,gold FROM users WHERE id=$1',[Number(u.id)]);
+  if(!account.rowCount)return res.status(404).json({error:'Wallet account not found.'});
+  u.diamonds=Number(account.rows[0].diamonds||0);u.gold=Number(account.rows[0].gold||0);
+  const history=await pool.query(`SELECT wt.id,wt.currency,wt.amount::text AS amount,wt.type,wt.note,wt.created_at,wt.sender_id,send.username AS sender_username,wt.recipient_id,receive.username AS recipient_username
+    FROM wallet_transactions wt LEFT JOIN users send ON send.id=wt.sender_id LEFT JOIN users receive ON receive.id=wt.recipient_id
+    WHERE wt.sender_id=$1 OR wt.recipient_id=$1 ORDER BY wt.created_at DESC LIMIT 100`,[Number(u.id)]);
+  res.json({wallet:{diamonds:u.diamonds,gold:u.gold,conversionRate:100},transactions:history.rows.map(row=>({...row,amount:Number(row.amount),created_at:row.created_at})),packages:[{id:'starter',price:1,diamonds:50},{id:'popular',price:2,diamonds:120},{id:'royal',price:3,diamonds:200},{id:'legendary',price:5,diamonds:400}],dailyDiamondRewards:DAILY_DIAMOND_REWARDS});
+});
+app.get('/api/wallet/recipients',auth,(req,res)=>{
+  const q=String(req.query.q||'').trim().replace(/^@/,'').toLowerCase();
+  if(q.length<2)return res.json({users:[]});
+  const users=db.users.filter(v=>String(v.id)!==String(current(req).id)&&String(v.username||'').toLowerCase().includes(q)).slice(0,10).map(safeUser);
+  res.json({users});
+});
+app.post('/api/wallet/convert',auth,async(req,res)=>{
+  const amount=Number(req.body?.amount);
+  if(!Number.isSafeInteger(amount)||amount<1)return res.status(400).json({error:'Enter a whole number of Diamonds to convert.'});
+  try{
+    const result=await convertDiamonds(current(req),amount);
+    if(!result)return res.status(400).json({error:'You do not have enough Diamonds.'});
+    res.json({ok:true,converted:amount,receivedGold:amount*100,wallet:{diamonds:result.diamonds,gold:result.gold}});
+  }catch(error){console.error('Wallet conversion failed:',error);res.status(500).json({error:'Could not convert Diamonds right now.'});}
+});
+app.post('/api/wallet/reward',auth,async(req,res)=>{
+  const actor=current(req),rank=String(actor.rank||'').toUpperCase();
+  if(!['COOWNER','OWNER','DEVELOPER'].includes(rank))return res.status(403).json({error:'Only Coowner, Owner and Developer can grant Diamond rewards.'});
+  const target=findUser(req.body?.userId||req.body?.username),amount=Number(req.body?.amount),reason=cleanText(req.body?.reason||'').trim().slice(0,240);
+  const max=rank==='COOWNER'?10:rank==='OWNER'?100:Number.MAX_SAFE_INTEGER;
+  if(!target||!Number.isSafeInteger(amount)||amount<1||amount>max||!reason)return res.status(400).json({error:rank==='COOWNER'?'Choose a user, reason and a reward from 1 to 10 Diamonds.':rank==='OWNER'?'Choose a user, reason and a reward from 1 to 100 Diamonds.':'Choose a user, valid amount and reason.'});
+  const client=await pool.connect();let diamonds;
+  try{
+    await client.query('BEGIN');
+    const updated=await client.query('UPDATE users SET diamonds=COALESCE(diamonds,0)+$1 WHERE id=$2 RETURNING diamonds',[amount,Number(target.id)]);
+    if(!updated.rowCount){await client.query('ROLLBACK');return res.status(404).json({error:'Recipient account not found.'});}
+    diamonds=Number(updated.rows[0].diamonds);
+    await client.query(`INSERT INTO wallet_transactions(id,sender_id,recipient_id,currency,amount,type,note) VALUES($1,$2,$3,'DIAMONDS',$4,'STAFF_REWARD',$5)`,[id(),Number(actor.id),Number(target.id),amount,reason]);
+    await client.query('COMMIT');
+  }catch(error){await client.query('ROLLBACK').catch(()=>{});console.error('Staff Diamond reward failed:',error);return res.status(500).json({error:'Could not grant Diamonds.'});}finally{client.release();}
+  target.diamonds=diamonds;io.to('user:'+target.id).emit('wallet:update',{userId:target.id,diamonds:target.diamonds,gold:target.gold||0});
+  notify(target.id,'wallet','Diamonds received',`The MC Staff Team awarded you ${amount} Diamonds. Reason: ${reason}`);
+  log(actor,'DIAMOND_STAFF_REWARD',target.username,{amount,reason});
+  res.json({ok:true,recipient:safeUser(target),amount,reason});
+});
 
 app.get('/api/achievements/:userId',auth,async(req,res)=>{const {rows}=await pool.query(`SELECT id,user_id,name,icon,earned_at FROM achievements WHERE user_id=$1 ORDER BY earned_at DESC,id DESC`,[Number(req.params.userId)]);res.json({achievements:rows});});
 app.get('/api/achievements',auth,async(req,res)=>{const {rows}=await pool.query(`SELECT id,user_id,name,icon,earned_at FROM achievements WHERE user_id=$1 ORDER BY earned_at DESC,id DESC`,[Number(current(req).id)]);res.json({achievements:rows});});
@@ -3522,10 +4024,15 @@ app.delete('/api/push/subscribe',auth,async(req,res)=>{
 });
 app.get('/api/notifications',auth,async(req,res)=>{const {rows}=await pool.query(`SELECT id,type,title,message,is_read,created_at FROM notifications WHERE user_id=$1 ORDER BY created_at DESC LIMIT 20`,[Number(current(req).id)]);res.json({notifications:rows.map(n=>({id:String(n.id),type:n.type,title:n.title||n.type,text:n.message,message:n.message,time:n.created_at,read:n.is_read}))});});
 app.get('/api/notifications/unread',auth,async(req,res)=>{const {rows}=await pool.query(`SELECT id,type,title,message,is_read,created_at FROM notifications WHERE user_id=$1 AND is_read=false ORDER BY created_at DESC LIMIT 100`,[Number(current(req).id)]);res.json({notifications:rows.map(n=>({id:String(n.id),type:n.type,title:n.title||n.type,text:n.message,message:n.message,time:n.created_at,read:n.is_read}))});});
-app.patch('/api/notifications/:id/read',auth,async(req,res)=>{const r=await pool.query(`UPDATE notifications SET is_read=true WHERE id=$1 AND user_id=$2 RETURNING id`,[req.params.id,Number(current(req).id)]);if(!r.rowCount)return res.status(404).json({error:'Notification not found'});res.json({ok:true});});
-app.post('/api/notifications/read',auth,async(req,res)=>{await pool.query(`UPDATE notifications SET is_read=true WHERE user_id=$1`,[Number(current(req).id)]);res.json({ok:true});});
-app.delete('/api/notifications/:id',auth,async(req,res)=>{await pool.query(`DELETE FROM notifications WHERE id=$1 AND user_id=$2`,[req.params.id,Number(current(req).id)]);res.json({ok:true});});
-app.delete('/api/notifications',auth,async(req,res)=>{await pool.query(`DELETE FROM notifications WHERE user_id=$1`,[Number(current(req).id)]);res.json({ok:true});});
+app.get('/api/warnings/pending',auth,async(req,res)=>{
+  const {rows}=await pool.query(`SELECT id,message,created_at FROM notifications WHERE user_id=$1 AND type='warning' AND is_read=false ORDER BY created_at ASC LIMIT 20`,[Number(current(req).id)]);
+  res.json({warnings:rows.map(n=>({id:String(n.id),type:"warning",text:n.message,message:n.message,time:n.created_at}))});
+});
+app.patch('/api/notifications/:id/read',auth,async(req,res)=>{const r=await pool.query(`UPDATE notifications SET is_read=true WHERE id=$1 AND user_id=$2 AND type<>'warning' RETURNING id`,[req.params.id,Number(current(req).id)]);if(!r.rowCount)return res.status(404).json({error:'Notification not found or requires warning acknowledgement.'});res.json({ok:true});});
+app.post('/api/notifications/:id/acknowledge-warning',auth,async(req,res)=>{const r=await pool.query(`UPDATE notifications SET is_read=true WHERE id=$1 AND user_id=$2 AND type='warning' RETURNING id`,[req.params.id,Number(current(req).id)]);if(!r.rowCount)return res.status(404).json({error:'Warning not found or already acknowledged.'});res.json({ok:true});});
+app.post('/api/notifications/read',auth,async(req,res)=>{await pool.query(`UPDATE notifications SET is_read=true WHERE user_id=$1 AND type<>'warning'`,[Number(current(req).id)]);res.json({ok:true});});
+app.delete('/api/notifications/:id',auth,async(req,res)=>{await pool.query(`DELETE FROM notifications WHERE id=$1 AND user_id=$2 AND type<>'warning'`,[req.params.id,Number(current(req).id)]);res.json({ok:true});});
+app.delete('/api/notifications',auth,async(req,res)=>{await pool.query(`DELETE FROM notifications WHERE user_id=$1 AND type<>'warning'`,[Number(current(req).id)]);res.json({ok:true});});
 
 app.post(
   "/api/moderation/:action",
@@ -3682,12 +4189,17 @@ app.post(
 
     systemAudit({target:target.id,actor:actor.id,actorUsername:actor.username,action,reason:cleanText(req.body.reason)||action,source:"staff",durationMinutes:(action==="MUTE"||action==="KICK")?Math.max(1,Number(req.body.minutes)||10):0});
     save();
-    const actionText={MUTE:'muted',KICK:'kicked',BAN:'banned',UNMUTE:'unmuted',REVOKE_MUTE:'unmuted',REVOKE_BAN:'unbanned',REVOKE_KICK:'unkicked',WARN:'warned'}[action]||action.toLowerCase(); const mainRoom=db.rooms.find(x=>/^main room 1$/i.test(String(x.name||'')))||db.rooms.find(x=>x.id==='main'||String(x.name).toLowerCase()==='main room')||db.rooms[0]; systemNotice(`@${target.username} has been ${actionText}.`,mainRoom?.id||null);
+    // Warnings are private account-level notices, never public Main Room announcements.
+    if(action!=="WARN"){
+      const actionText={MUTE:'muted',KICK:'kicked',BAN:'banned',UNMUTE:'unmuted',REVOKE_MUTE:'unmuted',REVOKE_BAN:'unbanned',REVOKE_KICK:'unkicked'}[action]||action.toLowerCase();
+      const mainRoom=db.rooms.find(x=>/^main room 1$/i.test(String(x.name||'')))||db.rooms.find(x=>x.id==='main'||String(x.name).toLowerCase()==='main room')||db.rooms[0];
+      systemNotice(`@${target.username} has been ${actionText}.`,mainRoom?.id||null);
+    }
 
     const moderationReason=cleanText(req.body.reason)||"Community rules";
     if(action==="WARN"){
-      notify(target.id,"warning","Warning ⚠️",moderationReason);
-      io.to("user:"+target.id).emit("warning-popup",{reason:moderationReason});
+      const warningId=await notify(target.id,"warning","Warning ⚠️",moderationReason);
+      io.to("user:"+target.id).emit("warning-popup",{id:String(warningId||""),reason:moderationReason});
     }else if(action==="MUTE"){
       const minutes=Math.max(1,Number(req.body.minutes)||10);
       const muteMessage="You have been muted for "+minutes+" minutes";
@@ -4221,7 +4733,7 @@ function auditVisibilityKey(row){
 }
 function filterAuditRowsForRank(rows,user){
   const settings=db.settings?.audit_log_visibility||{};
-  const rankNames=["MEMBER","VIP","PREMIUM","MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER","DEVELOPER"];
+  const rankNames=["MEMBER","VIP","PREMIUM","ROYAL","MOD","ADMIN","SUPER_ADMIN","COMMISSOR","INSTRUCTOR","COOWNER","OWNER","DEVELOPER"];
   const viewerRank=String(user?.rank||"MEMBER").toUpperCase(), viewerLevel=rankNames.indexOf(viewerRank);
   return (rows||[]).filter(row=>{
     const key=auditVisibilityKey(row), rule=settings[key]||{enabled:true,minimumRank:"ADMIN"};
@@ -4294,10 +4806,21 @@ app.post('/api/staff/applications/:id/reject',auth,featureAllowed('view_staff_da
   try{await ensureStaffApplicationsTable();const q=await pool.query("UPDATE staff_applications SET status='REJECTED',reviewed_by=$2,reviewed_at=NOW() WHERE id=$1 AND status='PENDING' RETURNING username",[req.params.id,Number(actor.id)]);if(!q.rowCount)return res.status(404).json({error:'Pending application not found.'});await log(actor,'STAFF_APPLICATION_REJECT',q.rows[0].username,{applicationId:req.params.id});res.json({ok:true});}
   catch(e){console.error('Staff application rejection failed:',e);res.status(500).json({error:'Could not reject this application.'});}
 });
+app.delete('/api/staff/applications/:id',auth,async(req,res)=>{
+  const actor=current(req);
+  if(String(actor.rank||'').toUpperCase()!=='DEVELOPER')return res.status(403).json({error:'Developer rank required to delete staff applications.'});
+  try{
+    await ensureStaffApplicationsTable();
+    const q=await pool.query('DELETE FROM staff_applications WHERE id=$1 RETURNING username',[req.params.id]);
+    if(!q.rowCount)return res.status(404).json({error:'Staff application not found.'});
+    await log(actor,'STAFF_APPLICATION_DELETE',q.rows[0].username,{applicationId:String(req.params.id)});
+    res.json({ok:true});
+  }catch(e){console.error('Staff application deletion failed:',e);res.status(500).json({error:'Could not delete this staff application.'});}
+});
 app.post('/api/staff/applications/:id/grant',auth,featureAllowed('view_staff_dashboard'),async(req,res)=>{
   const actor=current(req);if(!['COMMISSOR','INSTRUCTOR','COOWNER','OWNER','DEVELOPER'].includes(String(actor.rank||'').toUpperCase()))return res.status(403).json({error:'Commissor rank or higher required to review staff applications.'});
   const requested=String(req.body.rank||'').toUpperCase();
-  if(!['MOD','ADMIN','SUPER_ADMIN','COMMISSOR','COOWNER'].includes(requested))return res.status(400).json({error:'Choose a rank from Moderator to Co-owner.'});
+  if(!['MOD','ADMIN','SUPER_ADMIN','COMMISSOR','INSTRUCTOR','COOWNER'].includes(requested))return res.status(400).json({error:'Choose a valid staff rank.'});
   try{
     await ensureStaffApplicationsTable();
     const client=await pool.connect();
@@ -4314,10 +4837,12 @@ app.post('/api/staff/applications/:id/grant',auth,featureAllowed('view_staff_das
 
       if(!ownerPower&&!hasFeature(actor,'staff_rank_assignment')){await client.query('ROLLBACK');return res.status(403).json({error:'You do not have rank-assignment permission.'});}
       const assignableRanks=Array.isArray(db.settings?.staff_application_grant_ranks)?db.settings.staff_application_grant_ranks:["MOD"];
-      if(!ownerPower&&!assignableRanks.includes(requested)){await client.query('ROLLBACK');return res.status(403).json({error:'Your current rank permissions do not allow granting '+requested+'.'});}
+      const coownerPower=actorRankNow==="COOWNER";
+      if(!ownerPower&&!coownerPower&&!assignableRanks.includes(requested)){await client.query('ROLLBACK');return res.status(403).json({error:'Your current rank permissions do not allow granting '+requested+'.'});}
       const hierarchy=["MEMBER","VIP","PREMIUM","ROYAL","MOD","ADMIN","SUPER_ADMIN","COMMISSOR","INSTRUCTOR","COOWNER","OWNER","DEVELOPER"];
       const hierarchyIndex=rank=>{const normalized=String(rank||"MEMBER").toUpperCase();return hierarchy.indexOf(normalized)<0?0:hierarchy.indexOf(normalized);};
-      if(!ownerPower&&hierarchyIndex(requested)>hierarchyIndex("MOD")){await client.query('ROLLBACK');return res.status(403).json({error:'Your permissions allow granting Moderator or below only.'});}
+      const grantCeiling=coownerPower?"INSTRUCTOR":"MOD";
+      if(!ownerPower&&hierarchyIndex(requested)>hierarchyIndex(grantCeiling)){await client.query('ROLLBACK');return res.status(403).json({error:'Your permissions allow granting '+(coownerPower?'Instructor':'Moderator')+' or below only.'});}
       if(!ownerPower&&hierarchyIndex(target.rank)>=hierarchyIndex(actor.rank)){await client.query('ROLLBACK');return res.status(403).json({error:'You cannot change an equal or higher rank.'});}
       await client.query("UPDATE users SET rank=$1 WHERE id=$2",[requested.toLowerCase(),Number(target.id)]);
       await client.query("UPDATE staff_applications SET status='APPROVED',reviewed_by=$2,reviewed_at=NOW() WHERE id=$1",[req.params.id,Number(actor.id)]);
@@ -4491,7 +5016,7 @@ app.get('/api/doodles/:id/image',auth,async(req,res)=>{
   if(!rows.length)return res.status(404).json({error:'Doodle not found.'});
   res.json({image:rows[0].image_data,title:rows[0].title});
 });
-app.post('/api/doodles',auth,featureAllowed('doodle_studio'),async(req,res)=>{
+app.post('/api/doodles',auth,featureAllowed('doodle_studio_save'),async(req,res)=>{
   const u=current(req),title=cleanText(req.body?.title||'Untitled doodle').trim().slice(0,80)||'Untitled doodle';
   const image=String(req.body?.image||'');
   if(!/^data:image\/png;base64,[A-Za-z0-9+/=]+$/.test(image))return res.status(400).json({error:'Upload a valid PNG doodle.'});
@@ -4509,16 +5034,56 @@ app.delete('/api/doodles/:id',auth,async(req,res)=>{
 });
 
 // Friend Wall
+const wallFeedFields = "SELECT w.*,u.username,u.avatar,u.rank,"+
+  "COALESCE((SELECT jsonb_object_agg(r.emoji,r.users) FROM (SELECT emoji,jsonb_agg(user_id::text) AS users FROM wall_post_reactions WHERE post_id=w.id GROUP BY emoji) r),'{}'::jsonb) AS reactions,"+
+  "(SELECT COUNT(*)::int FROM wall_comments wc WHERE wc.post_id=w.id) AS comment_count,";
+const wallFeedFrom = " FROM wall_posts w LEFT JOIN users u ON u.id=w.user_id ";
+const wallFeedOrder = " ORDER BY CASE WHEN w.status='pinned' THEN 0 ELSE 1 END,w.featured DESC,w.created_at DESC LIMIT 100";
 app.get('/api/wall',auth,async(req,res)=>{
-  await pool.query(`CREATE TABLE IF NOT EXISTS wall_post_reactions(post_id BIGINT NOT NULL,user_id BIGINT NOT NULL,emoji TEXT NOT NULL,created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),PRIMARY KEY(post_id,user_id,emoji))`);
-  const {rows}=await pool.query(`
-    SELECT w.*,u.username,u.avatar,u.rank,
-      COALESCE((SELECT jsonb_object_agg(r.emoji,r.users) FROM (SELECT emoji,jsonb_agg(user_id::text) AS users FROM wall_post_reactions WHERE post_id=w.id GROUP BY emoji) r),'{}'::jsonb) AS reactions,
-      (SELECT COUNT(*)::int FROM wall_comments wc WHERE wc.post_id=w.id) AS comment_count
-    FROM wall_posts w LEFT JOIN users u ON u.id=w.user_id
-    WHERE w.status IN ('approved','pinned')
-    ORDER BY CASE WHEN w.status='pinned' THEN 0 ELSE 1 END,w.created_at DESC LIMIT 100`);
+  const u=current(req);
+  const sql=wallFeedFields+"EXISTS(SELECT 1 FROM wall_post_saves s WHERE s.post_id=w.id AND s.user_id=$1) AS saved"+wallFeedFrom+
+    "WHERE w.status IN ('approved','pinned') AND (w.expires_at IS NULL OR w.expires_at>NOW())"+wallFeedOrder;
+  const {rows}=await pool.query(sql,[Number(u.id)]);
   res.json({posts:rows});
+});
+app.get('/api/wall/saved',auth,async(req,res)=>{
+  const u=current(req);
+  const sql=wallFeedFields+"true AS saved FROM wall_post_saves s JOIN wall_posts w ON w.id=s.post_id LEFT JOIN users u ON u.id=w.user_id "+
+    "WHERE s.user_id=$1 AND w.status IN ('approved','pinned') AND (w.expires_at IS NULL OR w.expires_at>NOW()) ORDER BY s.created_at DESC LIMIT 100";
+  const {rows}=await pool.query(sql,[Number(u.id)]);
+  res.json({posts:rows});
+});
+app.get('/api/wall/friends',auth,async(req,res)=>{
+  const u=current(req),userId=Number(u.id);
+  const friendIds=[...new Set((db.friends||[])
+    .filter(f=>String(f.status||'').toUpperCase()==='ACCEPTED'&&(String(f.a)===String(u.id)||String(f.b)===String(u.id)))
+    .map(f=>Number(String(f.a)===String(u.id)?f.b:f.a))
+    .filter(id=>Number.isSafeInteger(id)&&id>0&&id!==userId))];
+  if(!friendIds.length)return res.json({posts:[]});
+  const sql=wallFeedFields+"EXISTS(SELECT 1 FROM wall_post_saves s WHERE s.post_id=w.id AND s.user_id=$2) AS saved"+wallFeedFrom+
+    "WHERE w.user_id=ANY($1::int[]) AND w.status IN ('approved','pinned') AND (w.expires_at IS NULL OR w.expires_at>NOW())"+wallFeedOrder;
+  const {rows}=await pool.query(sql,[friendIds,userId]);
+  res.json({posts:rows});
+});
+app.post('/api/wall/:id/save',auth,async(req,res)=>{
+  const userId=Number(current(req).id),postId=Number(req.params.id);
+  if(!Number.isSafeInteger(postId)||postId<1)return res.status(400).json({error:'Invalid post id.'});
+  const post=await pool.query('SELECT 1 FROM wall_posts WHERE id=$1 AND status IN (\'approved\',\'pinned\') AND (expires_at IS NULL OR expires_at>NOW())',[postId]);
+  if(!post.rowCount)return res.status(404).json({error:'Post not found or expired.'});
+  const existing=await pool.query('SELECT 1 FROM wall_post_saves WHERE post_id=$1 AND user_id=$2',[postId,userId]);
+  if(existing.rowCount)await pool.query('DELETE FROM wall_post_saves WHERE post_id=$1 AND user_id=$2',[postId,userId]);
+  else await pool.query('INSERT INTO wall_post_saves(post_id,user_id) VALUES($1,$2) ON CONFLICT DO NOTHING',[postId,userId]);
+  res.json({ok:true,saved:!existing.rowCount});
+});
+app.post('/api/wall/:id/feature',auth,async(req,res)=>{
+  const u=current(req),rank=String(u.rank||'').toUpperCase();
+  if(!hasFeature(u,'pin_news')&&!['OWNER','DEVELOPER'].includes(rank))return res.status(403).json({error:'Only authorized staff can feature community posts.'});
+  const postId=Number(req.params.id),featured=req.body?.featured===true;
+  if(!Number.isSafeInteger(postId)||postId<1)return res.status(400).json({error:'Invalid post id.'});
+  const result=await pool.query('UPDATE wall_posts SET featured=$2 WHERE id=$1 RETURNING id,featured',[postId,featured]);
+  if(!result.rowCount)return res.status(404).json({error:'Post not found.'});
+  log(u,'WALL_POST_FEATURE',String(postId),{featured});
+  res.json({ok:true,featured});
 });
 app.post('/api/wall/:id/reaction',auth,async(req,res)=>{
   const emoji=String(req.body?.emoji||'👍'),allowed=['👍','❤️','😂','😮','🔥','👏'];
@@ -4540,7 +5105,10 @@ async function wallPostHandler(req,res){
   if(media&&!/^(image\/(png|jpe?g|gif|webp|avif)|video\/)/i.test(media.mimetype))return res.status(400).json({error:"Only image or video files are allowed."});
   if(!content&&!media)return res.status(400).json({error:"Post cannot be empty."});
   const mediaUrl=media?`/uploads/${media.filename}`:null;
-  const {rows}=await pool.query(`INSERT INTO wall_posts(user_id,content,media_url) VALUES($1,$2,$3) RETURNING *`,[Number(u.id),content,mediaUrl]);
+  const expiresInHours=Number(req.body.expiresInHours??0),allowedExpiries=[0,1,6,24,72,168];
+  if(!allowedExpiries.includes(expiresInHours))return res.status(400).json({error:"Choose a supported post duration."});
+  const expiresAt=expiresInHours?new Date(Date.now()+expiresInHours*3600000):null;
+  const {rows}=await pool.query(`INSERT INTO wall_posts(user_id,content,media_url,expires_at) VALUES($1,$2,$3,$4) RETURNING *`,[Number(u.id),content,mediaUrl,expiresAt]);
   res.json({post:{...rows[0],username:u.username,avatar:u.avatar||"",rank:u.rank}});
 }
 app.post('/api/wall/post',auth,upload.single('file'),wallPostHandler);
@@ -4561,6 +5129,23 @@ app.post('/api/wall/:id/comments',auth,async(req,res)=>{
   const {rows}=await pool.query(`INSERT INTO wall_comments(post_id,user_id,content) VALUES($1,$2,$3) RETURNING *`,[req.params.id,Number(u.id),text]);
   res.json({comment:{...rows[0],username:u.username,avatar:u.avatar||"",rank:u.rank}});
 });
+app.delete('/api/wall/:id/comments/:commentId',auth,async(req,res)=>{
+  const u=current(req),postId=String(req.params.id),commentId=String(req.params.commentId);
+  const {rows}=await pool.query(
+    `SELECT c.id,c.user_id,c.content,w.user_id AS post_user_id
+     FROM wall_comments c JOIN wall_posts w ON w.id=c.post_id
+     WHERE c.id=$1 AND c.post_id=$2 LIMIT 1`,
+    [commentId,postId]
+  );
+  if(!rows.length)return res.status(404).json({error:"Comment not found."});
+  const comment=rows[0];
+  const isCommentAuthor=Number(comment.user_id)===Number(u.id);
+  const isPostAuthor=Number(comment.post_user_id)===Number(u.id);
+  if(!isCommentAuthor&&!isPostAuthor)return res.status(403).json({error:"Only the comment author or post author can delete this comment."});
+  await pool.query('DELETE FROM wall_comments WHERE id=$1 AND post_id=$2',[commentId,postId]);
+  log(u,'WALL_COMMENT_DELETE',comment.id,{contentType:'wall_comment',postId:String(postId),commentId:String(comment.id),commentAuthorId:comment.user_id,postAuthorId:comment.post_user_id,content:String(comment.content||''),reason:'WALL_COMMENT_DELETE'});
+  res.json({ok:true});
+});
 app.delete('/api/wall/:id',auth,async(req,res)=>{
   const u=current(req),postId=req.params.id;
   const {rows}=await pool.query('SELECT id,user_id,content,media_url FROM wall_posts WHERE id=$1',[postId]);
@@ -4570,7 +5155,7 @@ app.delete('/api/wall/:id',auth,async(req,res)=>{
   await pool.query('DELETE FROM wall_comments WHERE post_id=$1',[postId]);
   await pool.query('DELETE FROM wall_post_reactions WHERE post_id=$1',[postId]);
   await pool.query('DELETE FROM wall_posts WHERE id=$1',[postId]);
-  log(u,'WALL_POST_DELETE',post.id,{authorId:post.user_id,content:String(post.content||'').slice(0,500),mediaUrl:post.media_url});
+  log(u,'WALL_POST_DELETE',post.id,{contentType:'wall_post',postId:String(post.id),authorId:post.user_id,content:String(post.content||''),mediaUrl:post.media_url||'',mediaType:post.media_url?(new RegExp('\\.(mp4|webm|mov)(?:[?#]|$)','i').test(String(post.media_url))?'video':new RegExp('\\.(mp3|wav|ogg|m4a)(?:[?#]|$)','i').test(String(post.media_url))?'audio':'image'):'',reason:'WALL_POST_DELETE'});
   res.json({ok:true});
 });
 app.post('/api/wall/:id/report',auth,async(req,res)=>{
@@ -5110,12 +5695,12 @@ app.put('/api/staff/user/:id/feature-blocks',auth,async(req,res)=>{
   log(actor,'USER_FEATURE_BLOCKS_UPDATE',target.username,{blocked:Object.keys(cleaned)});
   res.json({ok:true,blocked:cleaned});
 });
-app.get('/api/staff/user/:id/note',auth,async(req,res)=>{const actor=current(req),target=findUser(req.params.id);if(!target)return res.status(404).json({error:'User not found'});if(!featureGrantAllowed(actor,'profile_note')||rankOrder[target.rank]>=rankOrder[actor.rank])return res.status(403).json({error:'You cannot view this staff note.'});const q=await pool.query(`SELECT n.note,n.created_at,u.username AS author FROM profile_notes n LEFT JOIN users u ON u.id=n.added_by WHERE n.user_id=$1 ORDER BY n.created_at DESC,n.id DESC LIMIT 1`,[Number(target.id)]);const row=q.rows[0];res.json({note:row?.note||'',updatedAt:row?.created_at||null,updatedBy:row?.author||null,hasNote:!!row});});
+app.get('/api/staff/user/:id/note',auth,async(req,res)=>{const actor=current(req),target=findUser(req.params.id);if(!target)return res.status(404).json({error:'User not found'});if(!featureGrantAllowed(actor,'profile_note')||!canAccessStaffTarget(actor,target))return res.status(403).json({error:'You cannot view this staff note.'});const q=await pool.query(`SELECT n.note,n.created_at,u.username AS author FROM profile_notes n LEFT JOIN users u ON u.id=n.added_by WHERE n.user_id=$1 ORDER BY n.created_at DESC,n.id DESC LIMIT 1`,[Number(target.id)]);const row=q.rows[0];res.json({note:row?.note||'',updatedAt:row?.created_at||null,updatedBy:row?.author||null,hasNote:!!row});});
 app.patch('/api/staff/user/:id/note',auth,async(req,res)=>{
   const actor=current(req),target=findUser(req.params.id);if(!target)return res.status(404).json({error:'User not found'});
   if(String(target.rank).toUpperCase()==='DEVELOPER'||target.username==='Maleficent')return res.status(403).json({error:'Developer account is protected.'});
   if(!featureGrantAllowed(actor,'profile_note'))return res.status(403).json({error:'Profile notes require the granted staff rank.'});
-  if(rankOrder[target.rank]>=rankOrder[actor.rank])return res.status(403).json({error:'You cannot modify an equal or higher rank.'});
+  if(!canAccessStaffTarget(actor,target))return res.status(403).json({error:'You cannot modify an equal or higher rank.'});
   const note=String(req.body.note||'').trim().slice(0,4000);if(!note)return res.status(400).json({error:'A note is required.'});
   await pool.query(`INSERT INTO profile_notes(user_id,added_by,note) VALUES($1,$2,$3)`,[Number(target.id),Number(actor.id),note]);
   log(actor,'PROFILE_NOTE_ADD',target.username,{note});res.json({ok:true,note});
@@ -5138,23 +5723,28 @@ app.patch('/api/staff/user/:id/email',auth,async(req,res)=>{
   target.emailHistory ||= [];target.emailHistory.push({email:target.email||'',changedAt:Date.now(),changedBy:actor.username});target.email=email;await pool.query('UPDATE users SET email=$1 WHERE id=$2',[email,Number(target.id)]);save();res.json({ok:true,email:target.email,emailHistory:target.emailHistory});
 });
 
-app.patch('/api/staff/user/:id/rank',auth,(req,res)=>{
+app.patch('/api/staff/user/:id/rank',auth,async(req,res)=>{
   const actor=current(req), target=findUser(req.params.id), nr=String(req.body.rank||'');
   if(!target) return res.status(404).json({error:'User not found'});
   if(!hasFeature(actor,'staff_rank_assignment')) return res.status(403).json({error:`Rank assignment requires ${featureRank('staff_rank_assignment')} or higher.`});
   if(String(target.rank).toUpperCase()==='DEVELOPER' || target.username==='Maleficent') return res.status(403).json({error:'Developer account is protected.'});
   if(!ranks.includes(nr)) return res.status(400).json({error:'Invalid rank.'});
-  if(rankOrder[nr]>rankOrder['MOD']) return res.status(403).json({error:'Staff can only assign MOD or below.'});
-  if(rankOrder[target.rank]>=rankOrder[actor.rank]) return res.status(403).json({error:'You cannot change an equal or higher rank.'});
-  target.rank=nr; save(); log(actor,'RANK_CHANGE',target.username,{rank:nr,via:'STAFF'});
-  systemNotice(`@${actor.username} changed @${target.username}'s rank to ${nr}.`);
+  const actorRank=String(actor.rank||'MEMBER').toUpperCase();
+  const coownerPower=actorRank==='COOWNER';
+  const ownerPower=actorRank==='OWNER'&&actor.username===DEFAULT_OWNER;
+  const grantCeiling=ownerPower?'COOWNER':(coownerPower?'INSTRUCTOR':'MOD');
+  if(!ownerPower&&rankOrder[String(nr).toUpperCase()]>rankOrder[grantCeiling]) return res.status(403).json({error:'Your rank can assign '+grantCeiling+' or below only.'});
+  if(rankOrder[String(target.rank||'MEMBER').toUpperCase()]>=rankOrder[actorRank]) return res.status(403).json({error:'You cannot change an equal or higher rank.'});
+  const previousRank=String(target.rank||'MEMBER').toUpperCase();
+  target.rank=nr; save(); log(actor,'RANK_CHANGE',target.username,{rank:nr,previousRank,via:'STAFF'});
+  try{await sendRankChangeBotDM(target,nr);}catch(err){console.error("Rank-change private message failed:",err.message);}
   res.json({user:safeUser(target)});
 });
 
 app.patch(
   "/api/owner/user/:id/rank",
   ownerOnly,
-  (req,res)=>{
+  async(req,res)=>{
     const v=findUser(
       req.params.id
     );
@@ -5178,6 +5768,7 @@ app.patch(
       });
     }
 
+    const previousRank=String(v.rank||'MEMBER').toUpperCase();
     v.rank=req.body.rank;
 
     save();
@@ -5187,9 +5778,11 @@ app.patch(
       "RANK_CHANGE",
       v.username,
       {
-        rank:v.rank
+        rank:v.rank,
+        previousRank
       }
     );
+    try{await sendRankChangeBotDM(v,v.rank);}catch(err){console.error("Rank-change private message failed:",err.message);}
 
     res.json({
       user:safeUser(v)
@@ -5274,34 +5867,18 @@ app.delete(
       return res.status(400).json({error:"Cannot delete permanent owner"});
     }
 
-    // Remove the PostgreSQL account as well as the app's JSON-backed user entry.
-    // Do the database operation first so a failed deletion never reports success
-    // or hides the account only in memory.
-    const client=await pool.connect();
     try{
-      await client.query("BEGIN");
-      await client.query("DELETE FROM push_subscriptions WHERE user_id=$1",[Number(v.id)]);
-      const deleted=await client.query("DELETE FROM users WHERE id=$1 RETURNING id",[Number(v.id)]);
-      if(!deleted.rowCount){
-        await client.query("ROLLBACK");
-        return res.status(404).json({error:"Account not found in the database; no local changes were made."});
-      }
-      await client.query("COMMIT");
+      const deleted=await permanentlyDeleteAccountRecord(v.id);
+      if(!deleted)return res.status(404).json({error:"Account not found in the database; no changes were made."});
+      removeDeletedAccountFromMemory(v);
+      log(current(req),"ACCOUNT_DELETE",v.username,{userId:String(v.id)});
+      await flushSave();
+      io.emit("presence");
+      res.json({ok:true});
     }catch(error){
-      try{await client.query("ROLLBACK");}catch{}
       console.error("Owner account deletion failed:",error);
-      return res.status(500).json({error:"The account could not be fully deleted from the database. No local account-list changes were made."});
-    }finally{
-      client.release();
+      res.status(500).json({error:"The account could not be permanently deleted. No account-list changes were made."});
     }
-
-    db.users=db.users.filter(x=>String(x.id)!==String(v.id));
-    db.friends=(db.friends||[]).filter(f=>String(f.a)!==String(v.id)&&String(f.b)!==String(v.id));
-    db.privateMessages=(db.privateMessages||[]).filter(m=>String(m.from)!==String(v.id)&&String(m.to)!==String(v.id));
-    save();
-    log(current(req),"ACCOUNT_DELETE",v.username,{userId:String(v.id)});
-    io.emit("presence");
-    res.json({ok:true});
   }
 );
 
@@ -5318,10 +5895,21 @@ app.get("/api/owner/dms",ownerOnly,async(req,res)=>{
   res.json({privateMessages:q.rows.map(r=>{const m=r.data||{};const fu=usersById.get(String(m.from)),tu=usersById.get(String(m.to));return {...m,fromUsername:fu?.username||m.from,toUsername:tu?.username||m.to,fromDisplayName:fu?.displayName||'',toDisplayName:tu?.displayName||''};})});
 });
 
-app.get("/api/dm/unread-count",auth,(req,res)=>{
+app.get("/api/dm/unread-count",auth,featureAllowed("private_messages"),async(req,res)=>{
   const u=current(req);
-  const count=db.privateMessages.filter(m=>m.to===u.id&&!m.read).length;
-  res.json({count});
+  try{
+    // PostgreSQL is authoritative. The in-memory legacy cache can be stale
+    // across restarts and does not reliably contain read-receipt updates.
+    const result=await pool.query(
+      "SELECT COUNT(*)::int AS count FROM private_messages WHERE receiver_id=$1 AND data->>'read' IS DISTINCT FROM 'true'",
+      [Number(u.id)]
+    );
+    res.set("Cache-Control","no-store");
+    res.json({count:Number(result.rows[0]?.count||0)});
+  }catch(error){
+    console.error("Private-message unread count failed:",error?.message||error);
+    res.status(500).json({error:"Could not load unread private-message count."});
+  }
 });
 
 app.post('/api/reports',auth,async(req,res)=>{
@@ -5446,7 +6034,7 @@ app.delete(
     const removed=db.news[index];
     db.news.splice(index,1);
     save();
-    log(u,"NEWS_DELETE",removed.id,{title:removed.title,body:removed.body,author:removed.author,time:removed.time});
+    log(u,"NEWS_DELETE",removed.id,{contentType:"news",newsId:String(removed.id),title:removed.title||"",body:removed.body||"",author:removed.author||"",time:removed.time||null,comments:Array.isArray(removed.comments)?removed.comments:[],attachment:removed.attachment||null,reason:"NEWS_DELETE"});
     io.emit("news");
     res.json({ok:true,news:removed});
   }
@@ -5677,6 +6265,17 @@ io.on(
         const u=findUser(userId);
         if(!u){ack({ok:false,error:"User not found"});return;}
 
+        const previousUserId=String(socket.data.userId||"");
+        if(previousUserId&&previousUserId!==userId){
+          for(const channel of socket.rooms){
+            if(channel!==socket.id&&(channel.startsWith("user:")||channel.startsWith("room:")||channel.startsWith("gravity:")))socket.leave(channel);
+          }
+          socket.data.roomId=null;
+          socket.data.roomJoinToken=null;
+          const previousUser=findUser(previousUserId);
+          if(previousUser&&!io.sockets.adapter.rooms.get("user:"+previousUserId)?.size){previousUser.online=false;previousUser.roomId=null;previousUser.lastSeen=Date.now();}
+        }
+
         socket.data.userId=u.id;
         socket.join("user:"+u.id);
         u.online=true;
@@ -5696,6 +6295,7 @@ io.on(
       if(!networkDecision.allowed){socket.emit("room-error",{error:networkDecision.reason});socket.disconnect(true);return;}
       if(!verifyRoomJoinToken(joinRequest?.joinToken,u.id,r)){socket.emit("room-error",{error:"Join this room through the room access flow first."});return;}
       if(!roomRankCanEnter(u,r)){socket.emit("room-error",{error:"Your rank cannot enter this room."});return;}
+      if(!roomCapacityAvailable(u,r)){socket.emit("room-error",{roomId:String(roomId),error:"This room has reached its member limit."});return;}
       if(u.banned===true) return;
       if(u.kickedUntil&&u.kickedUntil>Date.now()) return;
       for(const room of socket.rooms){
@@ -5704,6 +6304,7 @@ io.on(
       const previousRoomId = socket.data.roomId || null;
       socket.join("room:"+roomId);
       socket.data.roomId=roomId;
+      socket.data.roomJoinToken=String(joinRequest?.joinToken||"");
       u.roomId=roomId;
       u.lastSeen=Date.now();
       save();
@@ -5727,38 +6328,29 @@ io.on(
 
     socket.on("leave-room", roomId=>{
       socket.leave("room:"+roomId);
-      if(socket.data.roomId===roomId) socket.data.roomId=null;
+      if(String(socket.data.roomId||"")===String(roomId)){socket.data.roomId=null;socket.data.roomJoinToken=null;}
       io.emit("presence");
     });
 
-    socket.on(
-      "typing",
-      d=>
-        socket
-          .to("room:"+d.roomId)
-          .emit(
-            "typing",
-            {
-              user:d.user,
-              userId:socket.data.userId,
-              typing:!!d.typing
-            }
-          )
-    );
+    socket.on("typing", d=>{
+      const u=findUser(socket.data.userId);
+      const roomId=String(socket.data.roomId||"");
+      const room=db.rooms.find(item=>String(item.id)===roomId);
+      if(!u||!room||!roomId||!socket.rooms.has("room:"+roomId)||String(d?.roomId||"")!==roomId||!verifyRoomJoinToken(socket.data.roomJoinToken,u.id,room))return;
+      socket.to("room:"+roomId).emit("typing",{
+        roomId,user:u.displayName||u.username,userId:String(u.id),typing:!!d.typing
+      });
+    });
 
-    socket.on(
-      "dm-typing",
-      d=>
-        socket
-          .to("user:"+d.userId)
-          .emit(
-            "dm-typing",
-            {
-              user:d.user,
-              typing:!!d.typing
-            }
-          )
-    );
+    socket.on("dm-typing", d=>{
+      const u=findUser(socket.data.userId);
+      const recipientId=String(d?.userId||"");
+      const recipient=findUser(recipientId);
+      if(!u||!recipientId||recipientId===String(u.id)||!recipient||privateMessagesBlocked(u,recipient))return;
+      socket.to("user:"+recipientId).emit("dm-typing",{
+        userId:String(u.id),recipientId,user:u.displayName||u.username,typing:!!d.typing
+      });
+    });
 
     socket.on(
       "disconnect",
@@ -6009,6 +6601,62 @@ app.put('/api/profile',auth,(req,res)=>{
   if(!u.hideMode&&!u.deadMode)io.emit('profile:update',safeUser(u)); res.json({user:safeUser(u)});
 });
 
+
+// Gold-funded profile gifts. The sender pays once; received gifts remain visible on the recipient profile.
+app.get('/api/gifts/catalog',auth,async(req,res)=>{
+  try{
+    let {rows}=await pool.query('SELECT id,name,image,price FROM gifts ORDER BY price,id');
+    if(!rows.length){
+      const starter=[['Rose','🌹',100],['Chocolate','🍫',250],['Crystal Heart','💜',500],['Crown','👑',1500],['Dragon','🐉',3000]];
+      for(const [name,image,price] of starter) await pool.query('INSERT INTO gifts(name,image,price,is_predefined) VALUES($1,$2,$3,true) ON CONFLICT DO NOTHING',[name,image,price]);
+      ({rows}=await pool.query('SELECT id,name,image,price FROM gifts ORDER BY price,id'));
+    }
+    res.json({gifts:rows.map(g=>({id:String(g.id),name:g.name,icon:g.image||'🎁',price:Number(g.price||0)}))});
+  }catch(e){res.status(500).json({error:'Could not load gifts.'});}
+});
+app.get('/api/users/:id/gifts',auth,async(req,res)=>{
+  const viewer=current(req),target=findUser(req.params.id);
+  if(!target||(target.hideMode&&String(target.id)!==String(viewer.id)))return res.status(404).json({error:'User not found'});
+  if(String(target.id)!==String(viewer.id)&&target.privacy?.showGifts===false)return res.json({hidden:true,gifts:[]});
+  try{
+    const {rows}=await pool.query('SELECT id,sender_user_id,sender_username,sender_display_name,gift_name,gift_icon,gold_cost,message,created_at FROM user_gifts WHERE receiver_user_id=$1 ORDER BY created_at DESC LIMIT 100',[Number(target.id)]);
+    res.json({hidden:false,gifts:rows.map(g=>({...g,id:String(g.id),goldCost:Number(g.gold_cost||0),senderId:g.sender_user_id?String(g.sender_user_id):null,createdAt:g.created_at}))});
+  }catch(e){res.status(500).json({error:'Could not load profile gifts.'});}
+});
+app.post('/api/users/:id/gifts',auth,async(req,res)=>{
+  const sender=current(req),target=findUser(req.params.id);
+  if(!target||String(target.id)===String(sender.id))return res.status(400).json({error:'Choose another user to send a gift to.'});
+  const giftId=Number(req.body?.giftId),message=String(req.body?.message||'').trim().slice(0,180);
+  if(!Number.isSafeInteger(giftId)||giftId<1)return res.status(400).json({error:'Choose a valid gift.'});
+  const client=await pool.connect();
+  try{
+    await client.query('BEGIN');
+    const found=await client.query('SELECT id,name,image,price FROM gifts WHERE id=$1',[giftId]);
+    if(!found.rowCount){await client.query('ROLLBACK');return res.status(404).json({error:'Gift not found.'});}
+    const gift=found.rows[0],cost=Math.max(0,Number(gift.price)||0);
+    const locked=await client.query('SELECT gold FROM users WHERE id=$1 FOR UPDATE',[Number(sender.id)]);
+    if(!locked.rowCount){await client.query('ROLLBACK');return res.status(401).json({error:'Please log in again.'});}
+    const balance=Number(locked.rows[0].gold||0);
+    if(balance<cost){await client.query('ROLLBACK');return res.status(400).json({error:'Not enough gold for this gift.'});}
+    await client.query('UPDATE users SET gold=$2 WHERE id=$1',[Number(sender.id),balance-cost]);
+    const inserted=await client.query('INSERT INTO user_gifts(sender_user_id,receiver_user_id,sender_username,sender_display_name,gift_id,gift_name,gift_icon,gold_cost,message) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id,created_at',[Number(sender.id),Number(target.id),String(sender.username),String(sender.displayName||sender.username),gift.id,String(gift.name),String(gift.image||'🎁'),cost,message]);
+    await client.query('COMMIT');
+    sender.gold=balance-cost;
+    save();
+    notify(target.id,'profile-gift','You received a gift',`@${sender.username} sent you ${gift.image||'🎁'} ${gift.name}!`);
+    io.to("user:"+String(sender.id)).emit('gold:update',{userId:String(sender.id),gold:sender.gold});
+    res.json({ok:true,gold:sender.gold,gift:{id:String(inserted.rows[0].id),name:gift.name,icon:gift.image||'🎁',goldCost:cost,message,createdAt:inserted.rows[0].created_at}});
+  }catch(e){try{await client.query('ROLLBACK')}catch{};res.status(500).json({error:'Could not send gift.'});}
+  finally{client.release();}
+});
+app.patch('/api/users/me/gift-visibility',auth,(req,res)=>{
+  const u=current(req);
+  if(typeof req.body?.showGifts!=='boolean')return res.status(400).json({error:'Choose whether profile gifts should be visible.'});
+  u.privacy={...(u.privacy||{}),showGifts:req.body.showGifts};
+  save();
+  res.json({ok:true,showGifts:u.privacy.showGifts});
+});
+
 app.get('/api/users/:id/profile',auth,(req,res)=>{
   const u=current(req), v=findUser(req.params.id);
   if(!v || (v.hideMode && String(v.id)!==String(u.id))) return res.status(404).json({error:"User not found"});
@@ -6048,15 +6696,36 @@ app.put('/api/friends/:id/nickname',auth,(req,res)=>{
 });
 app.delete('/api/friends/:id/nickname',auth,(req,res)=>{const u=current(req);u.nicknames ||= {};delete u.nicknames[req.params.id];save();res.json({ok:true});});
 
-app.post('/api/users/:id/gold/share',auth,(req,res)=>{
-  const u=current(req), v=findUser(req.params.id), amount=Math.floor(Number(req.body.amount));
-  if(!featureGrantAllowed(u,'share_gold'))return res.status(403).json({error:'Gold sharing permission required.'});
-  if(!v||v.id===u.id||!Number.isFinite(amount)||amount<1)return res.status(400).json({error:'Invalid recipient or amount.'});
-  if((u.gold||0)<amount)return res.status(400).json({error:'Not enough gold.'});
-  u.gold=(u.gold||0)-amount; v.gold=(v.gold||0)+amount;
-  db.goldTransactions.push({id:id(),time:Date.now(),actor:u.username,userId:u.id,type:'SHARE',delta:-amount,to:v.id}); db.goldTransactions.push({id:id(),time:Date.now(),actor:u.username,userId:v.id,type:'RECEIVE',delta:amount,from:u.id});
-  save(); log(u,'GOLD_SHARE',v.username,{amount}); io.to('user:'+v.id).emit('gold:update',{gold:v.gold}); io.to('user:'+u.id).emit('gold:update',{gold:u.gold}); notify(v.id,'gold','Gold received',`@${u.username} sent you ${amount} gold.`); res.json({ok:true,remainingGold:u.gold});
-});
+async function walletTransferHandler(req,res){
+  const u=current(req),v=findUser(req.params.id),currency=String(req.body?.currency||'GOLD').toUpperCase(),amount=Number(req.body?.amount),note=cleanText(req.body?.note||'').trim().slice(0,160);
+  if(!v||String(v.id)===String(u.id)||!['GOLD','DIAMONDS'].includes(currency)||!Number.isSafeInteger(amount)||amount<1)return res.status(400).json({error:'Choose another member, a currency and a whole positive amount.'});
+  const dailyLimit=currency==='DIAMONDS'?100:10000,column=currency==='DIAMONDS'?'diamonds':'gold',client=await pool.connect();
+  let senderBalance,recipientBalance;
+  try{
+    await client.query('BEGIN');
+    await client.query('SELECT id FROM users WHERE id IN ($1,$2) ORDER BY id FOR UPDATE',[Number(u.id),Number(v.id)]);
+    const sent=await client.query(`SELECT COALESCE(SUM(amount),0)::text AS total FROM wallet_transactions WHERE sender_id=$1 AND type='TRANSFER' AND currency=$2 AND created_at >= (date_trunc('day',NOW() AT TIME ZONE 'UTC') AT TIME ZONE 'UTC')`,[Number(u.id),currency]);
+    const used=Number(sent.rows[0]?.total||0);
+    if(used+amount>dailyLimit){await client.query('ROLLBACK');return res.status(429).json({error:`Your daily ${currency==='DIAMONDS'?'Diamond':'Gold'} sharing limit is ${dailyLimit.toLocaleString()}. You have ${Math.max(0,dailyLimit-used).toLocaleString()} remaining today.`});}
+    const debit=await client.query(`UPDATE users SET ${column}=${column}-$1 WHERE id=$2 AND ${column}>=$1 RETURNING ${column}`,[amount,Number(u.id)]);
+    if(!debit.rowCount){await client.query('ROLLBACK');return res.status(400).json({error:`You do not have enough ${currency==='DIAMONDS'?'Diamonds':'Gold'}.`});}
+    const credit=await client.query(`UPDATE users SET ${column}=COALESCE(${column},0)+$1 WHERE id=$2 RETURNING ${column}`,[amount,Number(v.id)]);
+    if(!credit.rowCount){await client.query('ROLLBACK');return res.status(404).json({error:'Recipient account no longer exists.'});}
+    senderBalance=Number(debit.rows[0][column]);recipientBalance=Number(credit.rows[0][column]);
+    await client.query(`INSERT INTO wallet_transactions(id,sender_id,recipient_id,currency,amount,type,note) VALUES($1,$2,$3,$4,$5,'TRANSFER',$6)`,[id(),Number(u.id),Number(v.id),currency,amount,note]);
+    await client.query('COMMIT');
+  }catch(error){await client.query('ROLLBACK').catch(()=>{});console.error('Wallet transfer failed:',error);return res.status(500).json({error:'Could not transfer currency. Please try again.'});}finally{client.release();}
+  if(currency==='DIAMONDS'){u.diamonds=senderBalance;v.diamonds=recipientBalance;}else{u.gold=senderBalance;v.gold=recipientBalance;db.goldTransactions ||= [];db.goldTransactions.push({id:id(),time:Date.now(),actor:u.id,userId:u.id,type:'WALLET_TRANSFER_SENT',delta:-amount,to:v.id},{id:id(),time:Date.now(),actor:u.id,userId:v.id,type:'WALLET_TRANSFER_RECEIVED',delta:amount,from:u.id});}
+  io.to('user:'+u.id).emit('wallet:update',{userId:u.id,diamonds:u.diamonds||0,gold:u.gold||0});
+  io.to('user:'+v.id).emit('wallet:update',{userId:v.id,diamonds:v.diamonds||0,gold:v.gold||0});
+  if(currency==='GOLD'){io.to('user:'+u.id).emit('gold:update',{gold:u.gold});io.to('user:'+v.id).emit('gold:update',{gold:v.gold});}
+  const label=currency==='DIAMONDS'?'Diamonds':'Gold';
+  notify(v.id,'wallet',label+' received',`@${u.username} sent you ${amount.toLocaleString()} ${label}.${note?' Note: '+note:''}`);
+  log(u,'WALLET_TRANSFER',v.username,{currency,amount,note});
+  res.json({ok:true,from:safeUser(u),to:safeUser(v),currency,amount});
+}
+app.post('/api/users/:id/wallet/share',auth,walletTransferHandler);
+app.post('/api/users/:id/gold/share',auth,(req,res)=>{req.body={...(req.body||{}),currency:'GOLD'};return walletTransferHandler(req,res);});
 
 const DEFAULT_GIFS=[
   {url:'https://media.giphy.com/media/ICOgUNjpvO0PC/giphy.gif',preview:'https://media.giphy.com/media/ICOgUNjpvO0PC/200.gif',title:'Happy'},
@@ -6143,28 +6812,63 @@ app.get('/api/youtube/search',auth,async(req,res)=>{
   res.json({results:[],notice:'YouTube search is unavailable right now. Add YOUTUBE_API_KEY for a stable YouTube Data API connection.'});
 });
 
-app.get('/api/rooms/:id/announcements',auth,(req,res)=>{
-  const r=db.rooms.find(x=>x.id===req.params.id); if(!r)return res.status(404).json({error:'Room not found'});
-  res.json({announcements:(r.announcements||[]).slice(-50).reverse()});
+function roomAnnouncementForViewer(announcement){
+  // Announcements are always anonymous. Never expose the author's identity,
+  // including to staff members who can create or delete announcements.
+  if(!announcement)return announcement;
+  return {
+    id:String(announcement.id||""),
+    roomId:String(announcement.roomId||""),
+    text:String(announcement.text||""),
+    time:Number(announcement.time)||0
+  };
+}
+function requireRoomAnnouncementStaff(req,res,next){
+  const u=current(req);
+  if(!u)return res.status(401).json({error:"Login required"});
+  if(isUserFeatureBlocked(u,"room_announcement"))return res.status(403).json({error:"Room announcements are disabled for your account by staff."});
+  if(!hasRank(u,"COMMISSOR"))return res.status(403).json({error:"Posting and deleting room announcements requires Commissor or higher."});
+  next();
+}
+app.get('/api/rooms/:id/announcements',auth,async(req,res)=>{
+  const u=current(req),r=db.rooms.find(x=>String(x.id)===String(req.params.id)); if(!r)return res.status(404).json({error:'Room not found'});
+  if(!requirePrivateRoomAccess(req,res,r,u))return;
+  try{
+    const {rows}=await pool.query('SELECT id,room_id,user_id,text,created_at FROM room_announcements WHERE room_id=$1 ORDER BY created_at DESC,id DESC',[Number(r.id)]);
+    const announcements=rows.map(row=>roomAnnouncementForViewer({id:row.id,roomId:row.room_id,text:row.text,time:row.created_at?new Date(row.created_at).getTime():0}));
+    // Backward compatibility: show the old single room announcement if no durable rows exist.
+    if(!announcements.length&&String(r.announcement||"").trim())announcements.push(roomAnnouncementForViewer({id:"legacy-"+String(r.id),roomId:r.id,text:r.announcement,time:0}));
+    r.announcements=announcements;
+    res.json({announcements});
+  }catch(error){console.error("Room announcement read failed:",error);res.status(500).json({error:"Could not load room announcements."});}
 });
-app.post('/api/rooms/:id/announcements',auth,featureAllowed('room_announcement'),(req,res)=>{
-  const u=current(req),r=db.rooms.find(x=>x.id===req.params.id); if(!r)return res.status(404).json({error:'Room not found'});
+app.post('/api/rooms/:id/announcements',auth,requireRoomAnnouncementStaff,async(req,res)=>{
+  const u=current(req),r=db.rooms.find(x=>String(x.id)===String(req.params.id)); if(!r)return res.status(404).json({error:'Room not found'});
+  if(!requirePrivateRoomAccess(req,res,r,u))return;
   const text=cleanText(req.body.text||'').slice(0,1000); if(!text)return res.status(400).json({error:'Announcement cannot be empty.'});
-  r.announcements ||= []; const n={id:id(),roomId:r.id,userId:u.id,username:u.username,displayName:u.displayName,text,time:Date.now()}; r.announcements.push(n); r.announcement=text; save(); io.to('room:'+r.id).emit('room:announcement',n); res.json({announcement:n});
+  const announcementId=id();
+  try{
+    const inserted=await pool.query('INSERT INTO room_announcements(id,room_id,user_id,text) VALUES($1,$2,$3,$4) RETURNING created_at',[announcementId,Number(r.id),Number(u.id),text]);
+    const n={id:announcementId,roomId:String(r.id),userId:String(u.id),text,time:inserted.rows[0]?.created_at?new Date(inserted.rows[0].created_at).getTime():Date.now()};
+    r.announcements||=[];r.announcements.unshift(n);r.announcement=text;
+    io.to('room:'+r.id).emit('room:announcement',{roomId:String(r.id)});
+    res.json({announcement:roomAnnouncementForViewer(n)});
+  }catch(error){console.error("Room announcement insert failed:",error);res.status(500).json({error:"Could not save the announcement. Please try again."});}
 });
-
-app.delete('/api/rooms/:id/announcements/:announcementId',auth,(req,res)=>{
-  const u=current(req), r=db.rooms.find(x=>x.id===req.params.id);
-  if(!r) return res.status(404).json({error:'Room not found'});
-  if(!hasFeature(u,'edit_room')) return res.status(403).json({error:`Deleting announcements requires ${featureRank('edit_room')} or higher.`});
-  r.announcements ||= [];
-  const index=r.announcements.findIndex(a=>a.id===req.params.announcementId);
-  if(index<0) return res.status(404).json({error:'Announcement not found'});
-  const removed=r.announcements.splice(index,1)[0];
-  r.announcement=r.announcements.length ? r.announcements[r.announcements.length-1].text : '';
-  save();
-  io.to('room:'+r.id).emit('room:announcement-delete',{id:removed.id,roomId:r.id});
-  res.json({ok:true,announcement:removed});
+app.delete('/api/rooms/:id/announcements/:announcementId',auth,async(req,res)=>{
+  const u=current(req),r=db.rooms.find(x=>String(x.id)===String(req.params.id));
+  if(!r)return res.status(404).json({error:'Room not found'});
+  if(!requirePrivateRoomAccess(req,res,r,u))return;
+  if(isUserFeatureBlocked(u,"room_announcement"))return res.status(403).json({error:"Room announcements are disabled for your account by staff."});
+  if(!hasRank(u,"COMMISSOR"))return res.status(403).json({error:"Deleting announcements requires Commissor or higher."});
+  try{
+    const removed=await pool.query('DELETE FROM room_announcements WHERE id=$1 AND room_id=$2 RETURNING id',[String(req.params.announcementId),Number(r.id)]);
+    if(!removed.rowCount)return res.status(404).json({error:'Announcement not found'});
+    r.announcements=(r.announcements||[]).filter(item=>String(item.id)!==String(req.params.announcementId));
+    r.announcement=r.announcements[0]?.text||'';
+    io.to('room:'+r.id).emit('room:announcement-delete',{id:String(req.params.announcementId),roomId:String(r.id)});
+    res.json({ok:true});
+  }catch(error){console.error("Room announcement delete failed:",error);res.status(500).json({error:"Could not delete the announcement."});}
 });
 
 app.post('/api/games/quick',auth,(req,res)=>{
@@ -6309,31 +7013,12 @@ app.get('/api/me/account',auth,async(req,res)=>{
     await pool.query('CREATE TABLE IF NOT EXISTS push_subscriptions(id BIGSERIAL PRIMARY KEY,user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,endpoint TEXT NOT NULL UNIQUE,p256dh TEXT NOT NULL,auth TEXT NOT NULL,created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),last_used_at TIMESTAMPTZ)');
     await pool.query('CREATE INDEX IF NOT EXISTS push_subscriptions_user_idx ON push_subscriptions(user_id)');
 
-    // Remove Chill Zone permanently on startup so it cannot reappear after a deploy.
-    const unwantedRoom = await pool.query(`SELECT id FROM rooms WHERE LOWER(TRIM(name))='chill zone'`);
-    if (unwantedRoom.rowCount) {
-      const unwantedIds = unwantedRoom.rows.map(row => Number(row.id));
-      await pool.query(`DELETE FROM room_messages WHERE room_id = ANY($1::int[])`, [unwantedIds]);
-      await pool.query(`DELETE FROM rooms WHERE id = ANY($1::int[])`, [unwantedIds]);
-    }
-
     // Initialize the permanent Main Room during server startup, before the
     // first browser request. This prevents an empty room list after login.
     await pool.query(`INSERT INTO rooms(name,created_by,icon,description,category,is_public,rank_required,invite_token,min_age,max_age,is_default)
       VALUES ('Main Room',(SELECT id FROM users WHERE username='Maleficent'),'🏠','The main Maleficent Chat community room.','Community',true,'MEMBER','main-room',0,120,true)
       ON CONFLICT(name) DO NOTHING`);
-    const legacyDefaults = await pool.query(`SELECT id FROM rooms
-      WHERE LOWER(TRIM(name)) IN ('main room 1','main room 2')
-         OR (LOWER(TRIM(name))='main room' AND name <> 'Main Room')`);
-    if (legacyDefaults.rowCount) {
-      const legacyIds = legacyDefaults.rows.map(row => Number(row.id));
-      const mainRoom = await pool.query(`SELECT id FROM rooms WHERE name='Main Room' LIMIT 1`);
-      if (mainRoom.rowCount) {
-        await pool.query(`UPDATE room_messages SET room_id=$1 WHERE room_id = ANY($2::int[])`, [Number(mainRoom.rows[0].id), legacyIds]);
-      }
-      await pool.query(`DELETE FROM rooms WHERE id = ANY($1::int[])`, [legacyIds]);
-    }
-    await pool.query(`UPDATE rooms SET description='The main Maleficent Chat community room.',icon='🏠',category='Community',is_public=true,is_default=true,min_age=0,max_age=120 WHERE name='Main Room'`);
+    await pool.query(`UPDATE rooms SET is_default=true WHERE name='Main Room'`);
     await pool.query(`UPDATE rooms SET is_default=false WHERE name <> 'Main Room'`);
 
     db = await loadState(load());
@@ -6409,14 +7094,23 @@ app.patch('/api/suggestions/:id',auth,async(req,res)=>{
 });
 
 app.post('/api/admin/private-search',auth,ownerOnly,async(req,res)=>{
-  const username1=String(req.body.user1||'').trim().replace(/^@/,'').slice(0,80),username2=String(req.body.user2||'').trim().replace(/^@/,'').slice(0,80);
+  const actor=current(req);
+  const username1=String(req.body.user1||'').trim().replace(/^@/,'').slice(0,80),username2=String(req.body.user2||'').trim().replace(/^@/,'').slice(0,80),keyword=String(req.body.keyword||'').trim().slice(0,120);
   if(!username1)return res.status(400).json({error:'Enter at least one username'});
   try{
-    const resolveInspectionUser=async username=>{try{const q=await pool.query('SELECT id,username FROM users WHERE LOWER(username)=LOWER($1) LIMIT 1',[username]);if(q.rowCount)return q.rows[0];}catch(error){console.error('Private-message inspection account SQL lookup failed:',error?.message||error);}const legacy=(db.users||[]).find(u=>String(u.username||'').toLowerCase()===username.toLowerCase());return legacy?{id:legacy.id,username:legacy.username}:null;};
+    const resolveInspectionUser=async username=>{try{const q=await pool.query('SELECT id,username,rank FROM users WHERE LOWER(username)=LOWER($1) LIMIT 1',[username]);if(q.rowCount)return q.rows[0];}catch(error){console.error('Private-message inspection account SQL lookup failed:',error?.message||error);}const legacy=(db.users||[]).find(u=>String(u.username||'').toLowerCase()===username.toLowerCase());return legacy?{id:legacy.id,username:legacy.username,rank:legacy.rank}:null;};
     const first=await resolveInspectionUser(username1);if(!first)return res.status(404).json({error:'User not found: '+username1});
     const users=[first];let sql='',params=[];
-    if(username2){const second=await resolveInspectionUser(username2);if(!second)return res.status(404).json({error:'User not found: '+username2});users.push(second);sql='SELECT m.id,m.sender_id,m.receiver_id,m.message,m.data,m.created_at,s.username AS sender_username,r.username AS receiver_username FROM private_messages m LEFT JOIN users s ON s.id=m.sender_id LEFT JOIN users r ON r.id=m.receiver_id WHERE (m.sender_id=$1 AND m.receiver_id=$2) OR (m.sender_id=$2 AND m.receiver_id=$1) ORDER BY m.created_at DESC LIMIT 200';params=[first.id,second.id];}
-    else{sql='SELECT m.id,m.sender_id,m.receiver_id,m.message,m.data,m.created_at,s.username AS sender_username,r.username AS receiver_username FROM private_messages m LEFT JOIN users s ON s.id=m.sender_id LEFT JOIN users r ON r.id=m.receiver_id WHERE m.sender_id=$1 OR m.receiver_id=$1 ORDER BY m.created_at DESC LIMIT 200';params=[first.id];}
+    const canInspectTarget=target=>String(actor.id)===String(target.id)||((rankOrder[String(target.rank||'').toUpperCase()]??999)<(rankOrder[String(actor.rank||'').toUpperCase()]??-1));
+    if(!canInspectTarget(first))return res.status(403).json({error:'You can only inspect your own messages or messages belonging to users strictly below your rank.'});
+    if(username2){const second=await resolveInspectionUser(username2);if(!second)return res.status(404).json({error:'User not found: '+username2});if(!canInspectTarget(second))return res.status(403).json({error:'You cannot inspect messages involving an equal-rank or higher-rank staff member.'});users.push(second);sql='SELECT m.id,m.sender_id,m.receiver_id,m.message,m.data,m.created_at,s.username AS sender_username,r.username AS receiver_username FROM private_messages m LEFT JOIN users s ON s.id=m.sender_id LEFT JOIN users r ON r.id=m.receiver_id WHERE ((m.sender_id=$1 AND m.receiver_id=$2) OR (m.sender_id=$2 AND m.receiver_id=$1))';params=[first.id,second.id];}
+    else{sql='SELECT m.id,m.sender_id,m.receiver_id,m.message,m.data,m.created_at,s.username AS sender_username,r.username AS receiver_username FROM private_messages m LEFT JOIN users s ON s.id=m.sender_id LEFT JOIN users r ON r.id=m.receiver_id WHERE (m.sender_id=$1 OR m.receiver_id=$1)';params=[first.id];}
+    if(keyword){
+      params.push(keyword);
+      const keywordParam='$'+params.length;
+      sql+=' AND POSITION(LOWER('+keywordParam+') IN LOWER(CONCAT_WS(\' \',m.message,m.data->>\'text\',m.data->>\'message\',m.data->>\'content\'))) > 0';
+    }
+    sql+=' ORDER BY m.created_at DESC LIMIT 200';
     let q={rows:[]};try{q=await pool.query(sql,params);}catch(error){console.error('Private-message SQL inspection failed; using persisted message store:',error?.message||error);}
     const norm=value=>String(value??'').replace(/^@/,'').trim().toLowerCase(),legacyMessages=Array.isArray(db.privateMessages)?db.privateMessages:[];
     const firstId=String(first.id),firstName=norm(first.username),secondId=username2?String(users[1].id):'',secondName=username2?norm(users[1].username):'';
@@ -6425,17 +7119,40 @@ app.post('/api/admin/private-search',auth,ownerOnly,async(req,res)=>{
       const fromUser=(db.users||[]).find(u=>String(u.id)===String(from)||norm(u.username)===fromName),toUser=(db.users||[]).find(u=>String(u.id)===String(to)||norm(u.username)===toName),fromId=String(fromUser?.id??from),toId=String(toUser?.id??to);
       const matchesFirst=fromId===firstId||toId===firstId||fromName===firstName||toName===firstName;
       const matchesPair=(fromId===firstId&&toId===secondId)||(fromId===secondId&&toId===firstId)||(fromName===firstName&&toName===secondName)||(fromName===secondName&&toName===firstName);
+      const content=String(m.text??m.message??m.data?.text??m.data?.message??m.data?.content??'');
+      const matchesKeyword=!keyword||content.toLowerCase().includes(keyword.toLowerCase());
+      return (username2?matchesPair:matchesFirst)&&matchesKeyword;
+    }).map(m=>{const from=m.from??m.senderId??m.sender_id??m.fromUsername??m.senderUsername??m.sender_username,to=m.to??m.receiverId??m.receiver_id??m.toUsername??m.receiverUsername??m.receiver_username,sender=(db.users||[]).find(u=>String(u.id)===String(from)||norm(u.username)===norm(from)),receiver=(db.users||[]).find(u=>String(u.id)===String(to)||norm(u.username)===norm(to));return {...m,sender_id:sender?.id??from,receiver_id:receiver?.id??to,message:m.text??m.message??m.data?.text??m.data?.message??m.data?.content??'',created_at:m.created_at??m.time,sender_username:sender?.username||m.fromUsername||m.senderUsername||m.sender_username,receiver_username:receiver?.username||m.toUsername||m.receiverUsername||m.receiver_username};});
+    // Apply the keyword again to normalized row content in JavaScript. This is
+    // intentional defense-in-depth: older rows can store their text in JSON data
+    // rather than the message column, and SQL-only filtering may miss those rows.
+    const rowMatchesKeyword=row=>{
+      if(!keyword)return true;
+      const data=row.data&&typeof row.data==='object'?row.data:{};
+      const content=[row.message,row.text,data.text,data.message,data.content].filter(value=>value!==null&&value!==undefined).map(String).join(' ');
+      return content.toLocaleLowerCase().includes(keyword.toLocaleLowerCase());
+    };
+    const filteredSqlRows=q.rows.filter(rowMatchesKeyword);
+    const sqlIds=new Set(filteredSqlRows.filter(row=>row.id!==undefined&&row.id!==null).map(row=>String(row.id)));
+    const filteredLegacyRows=legacyRows.filter(row=>{
+      if(!rowMatchesKeyword(row))return false;
+      const from=row.from??row.senderId??row.sender_id??row.fromUsername??row.senderUsername??row.sender_username;
+      const to=row.to??row.receiverId??row.receiver_id??row.toUsername??row.receiverUsername??row.receiver_username;
+      const fromName=norm(from),toName=norm(to);
+      const fromUser=(db.users||[]).find(u=>String(u.id)===String(from)||norm(u.username)===fromName),toUser=(db.users||[]).find(u=>String(u.id)===String(to)||norm(u.username)===toName);
+      const fromId=String(fromUser?.id??from),toId=String(toUser?.id??to);
+      const matchesFirst=fromId===firstId||toId===firstId||fromName===firstName||toName===firstName;
+      const matchesPair=(fromId===firstId&&toId===secondId)||(fromId===secondId&&toId===firstId)||(fromName===firstName&&toName===secondName)||(fromName===secondName&&toName===firstName);
       return username2?matchesPair:matchesFirst;
     }).map(m=>{const from=m.from??m.senderId??m.sender_id??m.fromUsername??m.senderUsername??m.sender_username,to=m.to??m.receiverId??m.receiver_id??m.toUsername??m.receiverUsername??m.receiver_username,sender=(db.users||[]).find(u=>String(u.id)===String(from)||norm(u.username)===norm(from)),receiver=(db.users||[]).find(u=>String(u.id)===String(to)||norm(u.username)===norm(to));return {...m,sender_id:sender?.id??from,receiver_id:receiver?.id??to,message:m.text??m.message??m.data?.text??m.data?.message??m.data?.content??'',created_at:m.created_at??m.time,sender_username:sender?.username||m.fromUsername||m.senderUsername||m.sender_username,receiver_username:receiver?.username||m.toUsername||m.receiverUsername||m.receiver_username};});
-    const sqlIds=new Set(q.rows.filter(row=>row.id!==undefined&&row.id!==null).map(row=>String(row.id)));
-    const sourceRows=[...q.rows,...legacyRows.filter(row=>row.id===undefined||row.id===null||!sqlIds.has(String(row.id)))].sort((x,y)=>new Date(y.created_at||y.time||0).getTime()-new Date(x.created_at||x.time||0).getTime()).slice(0,200);
+    const sourceRows=[...filteredSqlRows,...filteredLegacyRows.filter(row=>row.id===undefined||row.id===null||!sqlIds.has(String(row.id)))].sort((x,y)=>new Date(y.created_at||y.time||0).getTime()-new Date(x.created_at||x.time||0).getTime()).slice(0,200);
     const messages=sourceRows.map(row=>{const data=row.data&&typeof row.data==='object'?row.data:{},attachment=row.attachment??data.attachment??data.attachments??null;return {...data,id:row.id,from:row.sender_id??data.from,to:row.receiver_id??data.to,sender_id:row.sender_id,receiver_id:row.receiver_id,sender_username:row.sender_username||data.fromUsername||data.senderUsername||data.sender_username||'Unknown',receiver_username:row.receiver_username||data.toUsername||data.receiverUsername||data.receiver_username||'Unknown',message:row.message??data.text??data.message??data.content??'',text:data.text??row.message??data.message??data.content??'',attachment,created_at:row.created_at??data.created_at,time:data.time??(row.created_at?new Date(row.created_at).getTime():Date.now())};});
     res.json({messages,users});
   }catch(error){console.error('Owner private-message inspection failed:',error);res.status(500).json({error:'Could not inspect private messages. Please retry.'});}
 });
 app.put('/api/admin/edit-email',auth,async(req,res)=>{const actor=current(req);const target=findUser(req.body.userId);if(!target)return res.status(404).json({error:'User not found'});if(target.username===DEFAULT_OWNER||String(target.rank).toUpperCase()==='DEVELOPER')return res.status(403).json({error:'The permanent owner account is protected.'});if(actor.username!==DEFAULT_OWNER&&String(actor.rank).toUpperCase()!=='DEVELOPER'&&rankOrder[target.rank]>=rankOrder[actor.rank])return res.status(403).json({error:'You cannot edit an equal or higher rank.'});if(!(hasFeature(actor,'edit_email')||actor?.username===DEFAULT_OWNER||String(actor?.rank).toUpperCase()==='DEVELOPER'))return res.status(403).json({error:'Email editing permission required.'});const id=Number(req.body.userId),email=String(req.body.newEmail||'').trim().toLowerCase();if(!Number.isInteger(id)||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))return res.status(400).json({error:'Enter a valid email address.'});try{const q=await pool.query('UPDATE users SET email=$1 WHERE id=$2 RETURNING id,email',[email,id]);if(!q.rowCount)return res.status(404).json({error:'User not found'});res.json({ok:true,user:q.rows[0]});}catch(e){if(e.code==='23505')return res.status(409).json({error:'Email already in use'});throw e;}});
-app.post('/api/admin/profile-note',auth,async(req,res)=>{const actor=current(req);if(!featureGrantAllowed(actor,'profile_note'))return res.status(403).json({error:'Staff profile-note permission required.'});const userId=Number(req.body.userId),note=cleanText(req.body.note||'').trim().slice(0,2000);const target=findUser(String(userId));if(!userId||!target||!note)return res.status(400).json({error:'User and note are required'});if(target.id===actor.id||rankOrder[target.rank]>=rankOrder[actor.rank])return res.status(403).json({error:'You cannot add a note to an equal or higher rank.'});await pool.query('INSERT INTO profile_notes(user_id,added_by,note) VALUES($1,$2,$3)',[userId,actor.id,note]);log(actor,'PROFILE_NOTE_ADD',String(userId),{note});res.json({ok:true});});
-app.get('/api/admin/profile-note/:userId',auth,async(req,res)=>{if(!featureGrantAllowed(current(req),'profile_note'))return res.status(403).json({error:'Staff profile-note permission required.'});const q=await pool.query('SELECT n.*,u.username AS added_by_username FROM profile_notes n LEFT JOIN users u ON u.id=n.added_by WHERE n.user_id=$1 ORDER BY n.created_at DESC LIMIT 20',[req.params.userId]);res.json({notes:q.rows});});
+app.post('/api/admin/profile-note',auth,async(req,res)=>{const actor=current(req);if(!featureGrantAllowed(actor,'profile_note'))return res.status(403).json({error:'Staff profile-note permission required.'});const userId=Number(req.body.userId),note=cleanText(req.body.note||'').trim().slice(0,2000);const target=findUser(String(userId));if(!userId||!target||!note)return res.status(400).json({error:'User and note are required'});if(!canAccessStaffTarget(actor,target))return res.status(403).json({error:'You cannot add a note to an equal or higher rank.'});await pool.query('INSERT INTO profile_notes(user_id,added_by,note) VALUES($1,$2,$3)',[userId,actor.id,note]);log(actor,'PROFILE_NOTE_ADD',String(userId),{note});res.json({ok:true});});
+app.get('/api/admin/profile-note/:userId',auth,async(req,res)=>{const actor=current(req),target=findUser(req.params.userId);if(!target)return res.status(404).json({error:'User not found'});if(!featureGrantAllowed(actor,'profile_note')||!canAccessStaffTarget(actor,target))return res.status(403).json({error:'You cannot view this staff note.'});const q=await pool.query('SELECT n.*,u.username AS added_by_username FROM profile_notes n LEFT JOIN users u ON u.id=n.added_by WHERE n.user_id=$1 ORDER BY n.created_at DESC LIMIT 20',[Number(target.id)]);res.json({notes:q.rows});});
 app.delete('/api/admin/history/:historyId',auth,ownerOnly,async(req,res)=>{const q=await pool.query('DELETE FROM history WHERE id=$1 RETURNING id',[req.params.historyId]);if(!q.rowCount)return res.status(404).json({error:'History entry not found'});res.json({ok:true});});
 
 // Consistent diagnostics for missing endpoints and unexpected route failures.

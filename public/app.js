@@ -1,5 +1,14 @@
 const $ = id => document.getElementById(id);
 
+// Register room creation before the rest of the app initializes. Event delegation also
+// survives room-list rerenders and does not depend on the button retaining its onclick.
+document.addEventListener("click", event => {
+  const button = event.target instanceof Element ? event.target.closest("#newRoom, .room-create-button") : null;
+  if (!button || button.classList.contains("hidden") || button.disabled) return;
+  event.preventDefault();
+  openRoomCreationModal();
+}, true);
+
 // Room theme data must exist before early socket events or room rendering can apply it.
 const ROOM_THEMES = [
 {id:"obsidian",name:"Obsidian",emoji:"🌑",bg:"#0b0b14",bubble:"#302342",accent:"#b58cff"},
@@ -58,6 +67,7 @@ dmReplyText: null,
   featureGrants: {},
   modeManagement: {},
   roomListMode: "all",
+  showHiddenRoomsOnly: false,
   userPermissions: {}
 };
 
@@ -102,6 +112,20 @@ const esc = s =>
     "'": "&#039;"
   }[c]));
 
+// Validate profile links before rendering them. Keep this helper available before
+// loadProfile() so a profile refresh cannot fail with a ReferenceError.
+function safeProfileUrl(value) {
+  const raw = String(value ?? "").trim();
+  if (!raw) return "";
+  try {
+    const parsed = new URL(/^https?:\/\//i.test(raw) ? raw : "https://" + raw);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return "";
+    return parsed.href;
+  } catch {
+    return "";
+  }
+}
+
 const fmt = t => {
   const d = new Date(t);
   return Number.isNaN(d.getTime()) ? "" : d.toLocaleString();
@@ -124,6 +148,11 @@ async function api(url, opt = {}) {
   // and pinned messages, so the YouTube endpoint always rejected the request.
   const roomMatch=String(url).match(/\/api\/rooms\/([^/?#]+)(?:\/|$)/);
   if(roomMatch){try{const roomAccess=JSON.parse(safeStorage.getItem('mc_room_join')||'null');if(roomAccess?.roomId!=null&&String(roomAccess.roomId)===String(roomMatch[1])&&roomAccess.joinToken)headers['x-room-join-token']=roomAccess.joinToken;}catch{}}
+  const messageMatch=String(url).match(/\/api\/messages\/[^/?#]+(?:\/|$)/);
+  if(!roomMatch&&messageMatch){try{const roomAccess=JSON.parse(safeStorage.getItem("mc_room_join")||"null");if(roomAccess?.roomId!=null&&String(roomAccess.roomId)===String(state.currentRoom)&&roomAccess.joinToken)headers["x-room-join-token"]=roomAccess.joinToken;}catch{}}
+  if(!roomMatch&&/\/api\/messages\/[^/?#]+\/forward(?:[?#]|$)/.test(String(url))){
+    try{const body=typeof opt.body==="string"?JSON.parse(opt.body):opt.body;const roomAccess=JSON.parse(safeStorage.getItem("mc_room_join")||"null");if(body?.roomId!=null&&String(roomAccess?.roomId)===String(body.roomId)&&roomAccess?.joinToken)headers["x-room-join-token"]=roomAccess.joinToken;}catch{}
+  }
   // API responses must never be read from or written to the browser HTTP cache.
   // In particular, chat history must be fetched fresh after reloads.
   const res = await fetch(url, {
@@ -173,9 +202,9 @@ async function registerSiteNotificationWorker(){
     return null;
   }
 }
-async function showSiteNotification(title,body,targetView){
+async function showSiteNotification(title,body,targetView,targetUrl){
   if(!("Notification" in window)||Notification.permission!=="granted")return;
-  const options={body,icon:"/favicon.svg",badge:"/favicon.svg",tag:"mc-"+String(title).slice(0,32),data:{url:"/"+(targetView==="messages"?"#messages":"#rooms")}};
+  const options={body,icon:"/favicon.svg",badge:"/favicon.svg",tag:"mc-"+String(title).slice(0,32),data:{url:targetUrl||("/"+(targetView==="messages"?"#messages":"#rooms"))},actions:targetView==="messages"?[{action:"reply",title:"Reply"},{action:"open",title:"Open chat"}]:[]};
   try{const registration=siteNotificationRegistration||await registerSiteNotificationWorker();if(registration?.showNotification)await registration.showNotification(title,options);else new Notification(title,options);}catch(e){console.warn("Could not show notification",e);}
 }
 function decodePushKey(value){
@@ -249,37 +278,83 @@ if("Notification" in window && Notification.permission==="granted") registerSite
 
 function toast(text) {
   const el = $("toast");
-  // Some dashboard views do not include the global toast element.
-  // Never let a missing notification node break the action that triggered it.
   if (!el) { console.warn("[Maleficent Chat]", String(text)); return; }
-  el.textContent = String(text ?? "");
-  el.style.display = "block";
+  el.textContent = String(text ?? "");el.style.display = "block";el.onclick=null;el.style.cursor="";
   clearTimeout(toast.timer);
-  toast.timer = setTimeout(() => {
-    const current = $("toast");
-    if (current) current.style.display = "none";
-  }, 2800);
+  toast.timer=setTimeout(()=>{const current=$("toast");if(current)current.style.display="none";},3200);
+}
+function showPrivateMessagePopup(message){
+  const senderId=String(message?.from??message?.senderId??message?.fromId??"");
+  const sender=senderId==="system-bot"?"System Bot":(message?.displayName||message?.username||message?.senderUsername||"New message");
+  const body=String(message?.text||message?.message||"📷 Attachment").trim();
+  const preview=body.length>110?body.slice(0,107)+"…":body;
+  toast("💌  @"+sender+"  ·  "+preview+"  ·  Tap to open");
+  const el=$("toast");if(!el)return;
+  el.style.cursor="pointer";el.onclick=()=>{openDM(senderId||"system-bot");el.style.display="none";};
+  clearTimeout(toast.timer);toast.timer=setTimeout(()=>{el.style.display="none";},6500);
 }
 
+let activeWarningNotificationId=null;
+function showPersistentWarning(notification){
+  if(!notification||!notification.id)return;
+  const id=String(notification.id);
+  if(activeWarningNotificationId===id&&$("persistentWarningOverlay"))return;
+  activeWarningNotificationId=id;
+  const reason=String(notification.text||notification.message||notification.reason||"Please review the community rules.");
+  // Use a dedicated body-level overlay instead of the shared dialog system:
+  // profile/settings dialogs and their close handlers must never suppress a warning.
+  $("persistentWarningOverlay")?.remove();
+  const overlay=document.createElement("div");
+  overlay.id="persistentWarningOverlay";
+  overlay.setAttribute("role","alertdialog");
+  overlay.setAttribute("aria-modal","true");
+  overlay.setAttribute("aria-labelledby","persistentWarningTitle");
+  overlay.style.cssText="position:fixed;inset:0;z-index:2147483647;display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;background:rgba(5,3,12,.97);backdrop-filter:blur(14px);";
+  overlay.innerHTML=`<div style="width:min(620px,94vw);max-height:calc(100dvh - 40px);overflow:auto;box-sizing:border-box;padding:clamp(24px,6vw,44px);border:1px solid rgba(255,79,216,.6);border-radius:26px;background:linear-gradient(155deg,#21112b,#100b19 68%);box-shadow:0 24px 100px rgba(0,0,0,.8);text-align:center;color:#fff"><div aria-hidden="true" style="font-size:clamp(68px,18vw,112px);line-height:1.1">⚠️</div><h1 id="persistentWarningTitle" style="font-size:clamp(46px,13vw,76px);font-weight:900;letter-spacing:.04em;color:#ffcf65;margin:12px 0 24px">WARNING</h1><div style="overflow-wrap:anywhere;white-space:pre-wrap;font-size:clamp(18px,4.8vw,24px);line-height:1.5;padding:22px 18px;border:1px solid rgba(255,79,216,.25);border-radius:18px;background:rgba(255,79,216,.1);margin:0 0 26px">${esc(reason)}</div><button class="primary" id="warningUnderstand" type="button" style="width:min(340px,100%);min-height:56px;font-size:18px;font-weight:800;border-radius:15px">I understand</button></div>`;
+  document.body.appendChild(overlay);
+  $("warningUnderstand")?.addEventListener("click",acknowledgePersistentWarning);
+}
+async function acknowledgePersistentWarning(){
+  const id=activeWarningNotificationId;
+  if(!id)return;
+  const button=$("warningUnderstand");
+  if(button){button.disabled=true;button.textContent="Saving…";}
+  try{
+    await api("/api/notifications/"+encodeURIComponent(id)+"/acknowledge-warning",{method:"POST"});
+    activeWarningNotificationId=null;
+    $("persistentWarningOverlay")?.remove();
+    await loadNotifications();
+  }catch(error){
+    if(button){button.disabled=false;button.textContent="I understand";}
+    toast(error.message||"Could not acknowledge this warning. It will remain on screen.");
+  }
+}
 function closeModal() {
-  $("modal").classList.add("hidden");
+  if(activeWarningNotificationId)return;
+  const overlay = $("modal");
+  overlay.classList.remove("warning-modal");
+  overlay.classList.add("hidden");
+  // Tear down file inputs, image previews and temporary controls when a dialog
+  // closes so an upload/crop preview cannot linger over the chat viewport.
+  const body = $("modalBody");
+  if (body) body.replaceChildren();
 }
 
 function modal(html) {
+  if(activeWarningNotificationId&&!renderingPersistentWarning)return;
   $("modalBody").innerHTML = html;
   $("modal").classList.remove("hidden");
 }
 
 function avatar(u, cls = "avatar") {
   const name = u?.displayName || u?.username || "?";
-
+  const initial = esc(name.slice(0, 1).toUpperCase());
+  const src = String(u?.avatar || "").trim();
   return `
     <div class="${cls}">
-      ${
-        u?.avatar
-          ? `<img src="${esc(u.avatar)}" alt="">`
-          : esc(name.slice(0, 1).toUpperCase())
-      }
+      ${src
+        ? `<img src="${esc(src)}" alt="" loading="lazy" onerror="this.onerror=null;this.remove();this.parentElement.classList.add('avatar-image-failed');this.parentElement.textContent='${initial}'">`
+        : initial}
     </div>
   `;
 }
@@ -408,6 +483,9 @@ $("authForm").onsubmit = async e => {
     else if(/you have been kicked/i.test(String(error.message||"")) && error.kickedUntil){showKickLock(error.kickedUntil,error.reason||"Community rules");}
   }
 };
+
+// Mark the bundle ready only after the login handler has been registered.
+window.__MC_APP_READY__ = true;
 
 $("logout").onclick = async () => {
   try {
@@ -579,7 +657,7 @@ async function syncLiveMessages(){
           // incoming message. Posting this on every history poll created needless
           // database writes while the conversation was idle.
           if(peerId!=="system-bot"&&incoming.some(m=>String(m?.from??"")===peerId&&!m?.read)){
-            api("/api/dm/"+encodeURIComponent(peerId)+"/read",{method:"POST"}).catch(()=>{});
+            api("/api/dm/"+encodeURIComponent(peerId)+"/read",{method:"POST"}).then(()=>{refreshTopDMUnreadBadge();loadDMList().catch(()=>{});}).catch(error=>console.warn("Could not mark active conversation read:",error?.message||error));
           }
         }
       }catch(error){console.warn("Live private-message sync failed:",error?.message||error);}
@@ -604,6 +682,8 @@ function startLiveSync(){
   if(liveRoomPollTimer)clearInterval(liveRoomPollTimer);
   if(liveDMPollTimer)clearInterval(liveDMPollTimer);
   syncLiveMessages();
+  // Keep checking server-side outstanding warnings; reloads never acknowledge them.
+  setInterval(()=>{if(state.user&&!activeWarningNotificationId)loadPendingWarning().catch(()=>{});},5000);
   liveRoomPollTimer=setInterval(()=>{
     const now=Date.now(), connected=!!state.socket?.connected;
     const interval=connected?4000:1000;
@@ -664,6 +744,8 @@ async function start() {
   $("auth").classList.add("hidden");
   $("app").classList.remove("hidden");
 
+  // Restore any outstanding warning immediately on login, independent of socket state.
+  loadPendingWarning().catch(error=>console.warn("Pending warning restore failed:",error?.message||error));
   updateNav();
   applyTheme(state.user?.settings?.theme||'obsidian');
   applyUserAppearance();
@@ -692,6 +774,7 @@ async function start() {
   });
   state.socket.on("room:theme",data=>{if(!data?.roomId||!data?.theme)return;const room=state.rooms.find(r=>String(r.id)===String(data.roomId));if(room)room.roomTheme=data.theme;if(String(state.currentRoom)===String(data.roomId))applyRoomTheme(data.theme);});
   state.socket.on("gold:update",data=>{ if(state.user&&data?.gold!==undefined){state.user.gold=data.gold; updateNav();}});
+  state.socket.on("wallet:update",data=>{if(!state.user||String(data?.userId)!==String(state.user.id))return;if(data.diamonds!==undefined)state.user.diamonds=Number(data.diamonds)||0;if(data.gold!==undefined)state.user.gold=Number(data.gold)||0;updateNav();if(state.view==="wallet")loadWallet().catch(()=>{});});
 
   state.socket.on("connect", () => {
     loadNotifications();
@@ -712,12 +795,23 @@ async function start() {
     authenticateSocketAndJoinRoom(state.socket,true).catch(error=>console.warn("Initial socket recovery failed:",error?.message||error));
     syncLiveMessages();
   }
-  state.socket.on("room-error",d=>toast(d?.error||"Could not join room."));
+  state.socket.on("room-error",d=>{
+    toast(d?.error||"Could not join room.");
+    if(d?.roomId&&String(d.roomId)===String(state.currentRoom)){
+      try{const access=JSON.parse(safeStorage.getItem("mc_room_join")||"null");if(String(access?.roomId)===String(d.roomId))safeStorage.removeItem("mc_room_join");}catch{}
+      state.currentRoom=null;state.currentRoomRole="USER";state.messages=[];
+      if($("messages"))$("messages").innerHTML="";
+      const main=state.rooms.find(room=>room.isDefault)||state.rooms.find(room=>/^main room$/i.test(String(room.name||"")));
+      if(main)joinRoom(main.id).catch(()=>{});
+    }
+  });
   state.socket.on("dm-typing",d=>{
-    if(String(d?.userId||"")!==String(state.dmUserId))return;
+    if(String(d?.recipientId||"")!==String(state.user?.id)||String(d?.userId||"")!==String(state.dmUserId))return;
     const status=$("dmTypingStatus");
     if(!status||!state.dmUserId)return;
+    clearTimeout(state.dmTypingResetTimer);
     status.textContent=d?.typing?((typeof d.user==="string"?d.user:"Someone")+" is typing…"):"Quote a message to reply · Attach photos or files";
+    if(d?.typing)state.dmTypingResetTimer=setTimeout(()=>{if(status.isConnected)status.textContent="Quote a message to reply · Attach photos or files";},3500);
   });
 
   state.socket.on('rooms_updated', async()=>{try{await loadRooms();renderRooms();}catch{}});
@@ -765,6 +859,8 @@ async function start() {
 
   state.socket.on("room:kicked", data => {
     if(String(data?.roomId)!==String(state.currentRoom))return;
+    try{const access=JSON.parse(safeStorage.getItem("mc_room_join")||"null");if(String(access?.roomId)===String(data.roomId))safeStorage.removeItem("mc_room_join");}catch{}
+    state.currentRoom=null;state.currentRoomRole="USER";
     state.messages=[];
     if($("messages"))$("messages").innerHTML="";
     toast("You were removed from this room. Reason: "+String(data?.reason||"Room rules"));
@@ -781,10 +877,12 @@ async function start() {
   state.socket.on("site:messages-cleared",()=>{state.messages=[];if($("messages"))$("messages").innerHTML="";if(state.dmUserId)openDM(state.dmUserId);if(state.currentRoom)toast("Owner cleared all site chat messages.");});
 
   state.socket.on("typing", data => {
-    $("typing").textContent =
-      data.typing
-        ? `${esc(data.user)} is typing…`
-        : "";
+    if(String(data?.roomId||"")!==String(state.currentRoom||""))return;
+    const indicator=$("typing");
+    if(!indicator)return;
+    clearTimeout(state.roomTypingResetTimer);
+    indicator.textContent=data?.typing? `${esc(data.user)} is typing…`:"";
+    if(data?.typing)state.roomTypingResetTimer=setTimeout(()=>{if(indicator.isConnected)indicator.textContent="";},3500);
   });
 
   state.socket.on("notification", data => {
@@ -811,19 +909,35 @@ async function start() {
     loadNotifications();
   });
   state.socket.on("warning-popup", data => {
-    modal(`<div class="warning-popup"><div class="warning-title">Warning ⚠️</div><div class="warning-reason">${esc(data?.reason||"Please review the community rules.")}</div><button class="primary" onclick="closeModal()">I understand</button></div>`);
+    // Show immediately from the live event, then reconcile with the durable
+    // unread notification record so the same warning survives offline periods.
+    if(data?.id)showPersistentWarning({id:String(data.id),type:"warning",text:data.reason||"Please review the community rules."});
     loadNotifications();
   });
   state.socket.on("news", () => {
     if(state.view==="news") loadNews();
   });
 
+  state.socket.on("dm-updated", payload => {
+    const updated=payload?.message;
+    if(!updated?.id)return;
+    state.dmMessages=(state.dmMessages||[]).map(message=>String(message.id)===String(updated.id)?{...message,...updated}:message);
+    const peer=String(state.dmUserId||""),from=String(updated.from??""),to=String(updated.to??"");
+    if(peer&&(from===peer||to===peer)){
+      const list=$("dmMessages");
+      if(list&&state.dmPeerUser){
+        list.innerHTML=state.dmMessages.map(message=>dmMessageHTML(message,state.dmMessages,state.dmPeerUser)).join("")||'<p class="muted">No private messages yet.</p>';
+        list.scrollTop=list.scrollHeight;
+      }
+    }
+    loadDMList().catch(()=>{});
+  });
   state.socket.on("dm", message => {
     refreshTopDMUnreadBadge();
     const from=String(message?.from??message?.senderId??message?.fromId??"");
     const to=String(message?.to??message?.receiverId??message?.toId??"");
     const myId=String(state.user?.id??"");
-    if(document.hidden && from!==myId) showSiteNotification("New private message", String(message?.text||message?.message||"You received a private message").slice(0,180), "messages");
+    if(from!==myId){const sender=from==="system-bot"?"System Bot":(message?.displayName||message?.username||"New private message");const preview=String(message?.text||message?.message||(message?.attachment?"📎 Attachment":"You received a private message")).slice(0,180);if(document.hidden)showSiteNotification("💌 @"+sender,preview,"messages",`/?dm=${encodeURIComponent(from)}`);else showPrivateMessagePopup(message);}
     const peer=state.dmPeerUser;
     const activePeerId=String(state.dmUserId??"");
     if(message && peer && activePeerId && (from===activePeerId||to===activePeerId) && (from===myId||to===myId)){
@@ -856,6 +970,8 @@ async function start() {
     state.rooms.find(room=>String(room.name||"").trim().toLowerCase()==="main room");
   let mainRoom=findMainRoom();
   let joined=false;
+  const invite=roomInviteFromHash();
+  if(invite?.roomId&&state.rooms.some(room=>String(room.id)===invite.roomId))joined=await joinRoom(invite.roomId);
   // Every authenticated visit should land directly in Main Room, not the room directory.
   // Avoid renderView() here because it re-fetches the room list and briefly returns to the directory.
   state.view = "rooms";
@@ -879,6 +995,13 @@ async function start() {
   }
   if(!joined)toast("Main Room could not open automatically. Please open Rooms and try again.");
   await loadNotifications();
+  // Notification Reply/Open actions deep-link directly into the sender conversation.
+  const notificationPeer=new URL(window.location.href).searchParams.get("dm");
+  if(notificationPeer){
+    await openDM(notificationPeer);
+    window.history.replaceState({},document.title,window.location.pathname+window.location.hash);
+    requestAnimationFrame(()=>{$("dmText")?.focus();});
+  }
 }
 
 async function bootstrap() {
@@ -966,6 +1089,10 @@ document
     button.onclick = async () => {
       state.view = button.dataset.view;
 
+      // Close the mobile navigation immediately so it cannot cover the selected view
+      // while profile/settings data is loading.
+      $("sidebar")?.classList.remove("open");
+
       document
         .querySelectorAll(".nav[data-view]")
         .forEach(x =>
@@ -976,6 +1103,26 @@ document
         );
 
       await renderView();
+
+      // Defensive mobile recovery: ensure My Profile never opens as an empty black view.
+      if (state.view === "profile") {
+        const profileRoot = $("profile");
+        if (profileRoot && !profileRoot.children.length) {
+          try {
+            if (state.user) loadProfile(state.user);
+            else {
+              const fresh = await api("/api/bootstrap");
+              if (fresh?.user) {
+                state.user = fresh.user;
+                loadProfile(state.user);
+              }
+            }
+          } catch (error) {
+            console.error("My Profile navigation recovery failed", error);
+            if (profileRoot) profileRoot.innerHTML = '<section class="card profile-load-message" style="display:block!important;padding:20px;color:#f5edf9;background:#171126"><h2>My Profile could not load</h2><p>Please refresh the page and try again. If this message remains, the browser console has the loading error.</p><button class="primary" type="button" onclick="location.reload()">Refresh profile</button></section>';
+          }
+        }
+      }
 
       $("sidebar").classList.remove("open");
     };
@@ -1017,9 +1164,6 @@ async function renderView() {
 
     case "suggestions":
       return loadSuggestions();
-
-    case "suggestions":
-      return loadSuggestions();
     case "games":
       return renderArcade();
     case "shop":
@@ -1040,8 +1184,37 @@ async function renderView() {
     case "search":
       return loadSearchRooms();
 
-    case "profile":
-      return loadProfile(state.user);
+    case "profile": {
+      // Recover the account object if a stale/partial session left the profile view empty.
+      if (!state.user) {
+        try {
+          const fresh = await api("/api/bootstrap");
+          if (fresh?.user) {
+            state.user = fresh.user;
+            state.featurePermissions = fresh.featurePermissions || state.featurePermissions || {};
+            state.userPermissions = fresh.userPermissions || state.userPermissions || {};
+          }
+        } catch (error) {
+          console.error("Could not reload account for My Profile", error);
+        }
+      }
+      if (!state.user) {
+        const root = $("profile");
+        if (root) root.innerHTML = '<section class="card profile-load-message"><h2>My Profile</h2><p>Your account details could not be loaded. Please refresh the page and try again.</p><button class="primary" type="button" onclick="location.reload()">Refresh profile</button></section>';
+        return;
+      }
+      try {
+        return loadProfile(state.user);
+      } catch (error) {
+        console.error("My Profile failed to render", error);
+        const root = $("profile");
+        if (root) root.innerHTML = '<section class="card profile-load-message"><h2>My Profile</h2><p>The profile editor hit an error while loading. Your account has not been changed. Please refresh and try again.</p><button class="primary" type="button" onclick="location.reload()">Refresh profile</button></section>';
+      }
+      return;
+    }
+
+    case "wallet":
+      return loadWallet();
 
     case "settings":
       return loadSettings();
@@ -1082,24 +1255,14 @@ $("mobileMenu").onclick = () => {
 const chatToolsToggle=$("chatToolsToggle");
 if(chatToolsToggle) chatToolsToggle.onclick=()=>$("chatToolsDrawer")?.classList.toggle("open");
 
-// Main-room attachment controls: explicitly wire both buttons to the hidden picker.
+// Main-room attachment control: keep ordinary file uploads separate from YouTube sharing.
 const roomFileInput=$("file");
 const roomAttachButton=$("attach");
-const roomMusicButton=$("youtubeMusicComposerBtn");
 const roomFileLabel=$("fileName");
 if(roomAttachButton && roomFileInput && !roomAttachButton.dataset.bound){
   roomAttachButton.dataset.bound="true";
   roomAttachButton.addEventListener("click",()=>{
-    roomFileInput.accept="image/*,audio/*,.mp3,.m4a,.wav,.ogg,.aac,.flac,.opus";
-    roomFileInput.click();
-  });
-}
-if(roomMusicButton && roomFileInput && !roomMusicButton.dataset.bound){
-  roomMusicButton.dataset.bound="true";
-  roomMusicButton.title="Choose an MP3 or audio file to send in chat";
-  roomMusicButton.setAttribute("aria-label","Choose MP3 or audio file");
-  roomMusicButton.addEventListener("click",()=>{
-    roomFileInput.accept="audio/*,.mp3,.m4a,.wav,.ogg,.aac,.flac,.opus";
+    roomFileInput.accept="image/*,video/*,audio/*";
     roomFileInput.click();
   });
 }
@@ -1178,47 +1341,100 @@ async function loadSuggestions(){
   }catch(e){list.innerHTML='<div class="card"><p class="error">'+esc(e.message||'Could not load suggestions.')+'</p></div>';}
 }
 
-async function loadSuggestions(){
-  const list=$('suggestionsList'),form=$('suggestionForm');
-  if(!list||!form)return;
-  const developer=String(state.user?.username||'').toLowerCase()==='maleficent'||String(state.user?.rank||'').toUpperCase()==='DEVELOPER';
-  try{
-    const data=await api('/api/suggestions');
-    const items=data.suggestions||[];
-    list.innerHTML=items.length?items.map(x=>'<article class="card"><div class="news-card-top"><div><h3>'+esc(x.category)+'</h3><div class="muted">'+(developer?'@'+esc(x.username||'Unknown')+' · ':'')+esc(fmt(x.created_at))+'</div></div><span class="pill">'+esc(x.status||'Pending')+'</span></div><p>'+esc(x.description||'')+'</p>'+(developer?'<div class="toolbar"><button data-suggestion-status="Rejected" data-suggestion-id="'+esc(x.id)+'">Rejected</button><button data-suggestion-status="Feature added" data-suggestion-id="'+esc(x.id)+'">Feature added</button><button data-suggestion-status="Approved" data-suggestion-id="'+esc(x.id)+'">Approved</button></div>':'')+'</article>').join(''):'<div class="card"><p class="muted">No suggestions yet.</p></div>';
-    form.classList.toggle('hidden',developer);
-    form.onsubmit=async e=>{e.preventDefault();const description=$('suggestionDescription').value.trim(),category=$('suggestionCategory').value;if(!description){toast('Please describe your suggestion.');return;}try{await api('/api/suggestions',{method:'POST',body:JSON.stringify({category,description})});$('suggestionDescription').value='';toast('Suggestion submitted to the Developer.');await loadSuggestions();}catch(err){toast(err.message||'Could not submit suggestion.');}};
-    list.querySelectorAll('[data-suggestion-status]').forEach(b=>b.onclick=async()=>{try{await api('/api/suggestions/'+encodeURIComponent(b.dataset.suggestionId),{method:'PATCH',body:JSON.stringify({status:b.dataset.suggestionStatus})});toast('Status updated; the user has been notified.');await loadSuggestions();}catch(err){toast(err.message||'Could not update status.');}});
-  }catch(e){list.innerHTML='<div class="card"><p class="error">'+esc(e.message||'Could not load suggestions.')+'</p></div>';}
-}
 
+
+let wallShowingSaved=false,wallShowingFriends=false,wallShowingReels=false;
 async function loadWall(){
   try {
-    const d=await api('/api/wall'),feed=$('wallFeed'); if(!feed)return;
+    const endpoint=wallShowingSaved?'/api/wall/saved':(wallShowingFriends?'/api/wall/friends':'/api/wall');
+    const d=await api(endpoint),feed=$('wallFeed'); if(!feed)return;
     const emojis=['👍','❤️','😂','😮','🔥','👏'];
-    feed.innerHTML=(d.posts||[]).map(p=>{
+    const allWallPosts=d.posts||[];
+    const isVideoPost=p=>/\.(mp4|webm|ogg)(\?|$)/i.test(String(p.media_url||""));
+    const wallPosts=wallShowingReels?allWallPosts.filter(isVideoPost):allWallPosts;
+    const storyUsers=[];
+    const storySeen=new Set();
+    wallPosts.forEach(p=>{const key=String(p.user_id||p.username||'');if(key&&!storySeen.has(key)){storySeen.add(key);storyUsers.push(p);}});
+    const myAvatar=state.user?.avatar||state.user?.avatar_url||'';
+    const storiesHtml=`<section class="shadow-stories" aria-label="Shadow Feed stories">
+      <button class="shadow-story shadow-your-story" type="button" id="shadowYourStory">
+        <span class="shadow-story-ring"><span class="shadow-story-avatar">${myAvatar?`<img src="${esc(myAvatar)}" alt="">`:'✦'}</span><i>＋</i></span><span>Your story</span>
+      </button>
+      ${storyUsers.slice(0,12).map(p=>`<button class="shadow-story" type="button" data-shadow-story="${esc(p.id)}">
+        <span class="shadow-story-ring"><span class="shadow-story-avatar">${p.avatar?`<img src="${esc(p.avatar)}" alt="">`:'✦'}</span></span>
+        <span>${esc(p.username||'Member')}</span>
+      </button>`).join('')}
+    </section>`;
+    feed.innerHTML=storiesHtml+wallPosts.map(p=>{
       const rx=p.reactions&&typeof p.reactions==='object'?p.reactions:{};
-      return `<article class="card wall-post social-feed-card" data-wall-id="${esc(p.id)}">
+      return `<article class="card wall-post social-feed-card" data-wall-id="${esc(p.id)}" data-wall-author="${esc(p.user_id)}">
         <div class="news-card-top"><div class="social-author"><div class="social-author-avatar">${p.avatar?`<img src="${esc(p.avatar)}" alt="">`:'👤'}</div><div><h3>@${esc(p.username||'Unknown')}</h3><div class="muted">${esc(p.rank||'Member')} · ${fmt(p.created_at)}</div></div></div><button class="social-more" data-wall-more="${esc(p.id)}" aria-label="Post options">•••</button></div>
-        <div class="news-body wall-content">${esc(p.content||'')}${p.media_url?(String(p.media_url).match(/\.(mp4|webm|ogg)(\?|$)/i)?`<video class="wall-media" controls src="${esc(p.media_url)}"></video>`:`<img class="wall-media" src="${esc(p.media_url)}" alt="Wall upload">`):''}</div>
-        <div class="social-reaction-summary">${emojis.map(e=>`<span>${e} <b>${(Array.isArray(rx[e])?rx[e]:[]).length}</b></span>`).join('')}<button class="social-comments-shortcut" data-wall-comments="${esc(p.id)}">${Number(p.comment_count||0)} 💬</button></div>
-        <div class="news-actions social-reaction-actions">${emojis.map(e=>{const us=Array.isArray(rx[e])?rx[e].map(String):[];return `<button class="mini ${us.includes(String(state.user?.id))?'reacted':''}" type="button" data-wall-reaction="${esc(e)}" data-wall-id="${esc(p.id)}">${e} <b>${us.length}</b></button>`}).join('')}<button class="mini" data-wall-comments="${esc(p.id)}">💬 Comments</button>${(String(p.user_id)===String(state.user?.id)||canFeature('delete_news'))?`<button class="mini danger" type="button" data-wall-delete="${esc(p.id)}">🗑 Delete</button>`:''}</div>
-        <div class="social-post-options hidden" id="wallOptions-${esc(p.id)}"><button type="button" data-wall-report="${esc(p.id)}">⚑ Report</button>${state.user?.username==='Maleficent'?`<button type="button" data-wall-pin="${esc(p.id)}">📌 Pin post</button>`:''}</div>
+        <div class="news-body wall-content">${esc(p.content||'')}${p.media_url?(String(p.media_url).match(/\.(mp4|webm|ogg)(\?|$)/i)?`<video class="wall-media ${wallShowingReels?'shadow-reel-video':''}" controls playsinline preload="metadata" src="${esc(p.media_url)}"></video>`:`<img class="wall-media" src="${esc(p.media_url)}" alt="Wall upload">`):''}</div>
+        <div class="news-actions social-reaction-actions">
+          <button class="mini wall-like-action ${(Array.isArray(rx['❤️'])?rx['❤️'].map(String):[]).includes(String(state.user?.id))?'reacted':''}" type="button" data-wall-reaction="❤️" data-wall-id="${esc(p.id)}">♡ Like <b class="wall-action-count">${(Array.isArray(rx['❤️'])?rx['❤️'].length:0).toLocaleString()}</b></button>
+          <button class="mini wall-comment-action" type="button" data-wall-comments="${esc(p.id)}">◯ Comment <b class="wall-action-count">${Math.max(0,Number(p.comment_count)||0).toLocaleString()}</b></button>
+          <button class="mini wall-share-action" type="button" data-wall-share="${esc(p.id)}">${wallShowingReels?'▶ Main Chat':'↗ Share'}</button>
+          <button class="mini" type="button" data-wall-save="${esc(p.id)}">${p.saved?'▣ Saved':'▢ Save'}</button>
+          <button class="mini wall-options-action" type="button" data-wall-options="${esc(p.id)}" aria-expanded="false">••• More</button>
+        </div>
+        <div class="social-post-options hidden" id="wallOptions-${esc(p.id)}">
+          <div class="wall-extra-reactions">${emojis.filter(e=>e!=='❤️').map(e=>{const us=Array.isArray(rx[e])?rx[e].map(String):[];return `<button type="button" class="${us.includes(String(state.user?.id))?'reacted':''}" data-wall-reaction="${esc(e)}" data-wall-id="${esc(p.id)}">${e} <b>${us.length}</b></button>`}).join('')}</div>
+          ${(canFeature('pin_news')||['OWNER','DEVELOPER'].includes(String(state.user?.rank||'').toUpperCase()))?`<button type="button" data-wall-feature="${esc(p.id)}" data-featured="${p.featured?'true':'false'}">${p.featured?'Unfeature':'📌 Feature post'}</button>`:''}
+          ${(String(p.user_id)===String(state.user?.id)||canFeature('delete_news'))?`<button class="danger" type="button" data-wall-delete="${esc(p.id)}">🗑 Delete post</button>`:''}
+          <button type="button" data-wall-report="${esc(p.id)}">⚑ Report post</button>
+          ${state.user?.username==='Maleficent'? `<button type="button" data-wall-pin="${esc(p.id)}">📌 Pin post</button>`:''}
+        </div>
         <div class="wall-comments hidden" id="wallComments-${esc(p.id)}"></div>
       </article>`;
     }).join('')||'<p class="muted">No wall posts yet.</p>';
+    $('shadowYourStory')?.addEventListener('click',()=> $('newWallPost')?.click());
+    feed.querySelectorAll('[data-shadow-story]').forEach(b=>b.addEventListener('click',()=>{const card=feed.querySelector('[data-wall-id="'+CSS.escape(b.dataset.shadowStory)+'"]');card?.scrollIntoView({behavior:'smooth',block:'start'});card?.classList.add('shadow-story-highlight');setTimeout(()=>card?.classList.remove('shadow-story-highlight'),1200);}));
     document.querySelectorAll('[data-wall-more]').forEach(b=>b.onclick=()=> $('wallOptions-'+b.dataset.wallMore)?.classList.toggle('hidden'));
+    feed.querySelectorAll('[data-wall-options]').forEach(b=>b.onclick=()=>{const box=$('wallOptions-'+b.dataset.wallOptions);if(!box)return;const opening=box.classList.contains('hidden');box.classList.toggle('hidden');b.setAttribute('aria-expanded',String(opening));});
+    document.querySelectorAll('[data-wall-save]').forEach(b=>b.onclick=async()=>{try{const r=await api('/api/wall/'+encodeURIComponent(b.dataset.wallSave)+'/save',{method:'POST',body:JSON.stringify({})});toast(r.saved?'Post saved.':'Post removed from saved posts.');await loadWall()}catch(e){toast(e.message||'Could not save post.')}});
     document.querySelectorAll('[data-wall-reaction]').forEach(b=>b.onclick=async()=>{try{await api('/api/wall/'+encodeURIComponent(b.dataset.wallId)+'/reaction',{method:'POST',body:JSON.stringify({emoji:b.dataset.wallReaction})});await loadWall()}catch(e){toast(e.message||'Could not send reaction.')}});
+    document.querySelectorAll('[data-wall-share]').forEach(b=>b.onclick=async()=>{const id=b.dataset.wallShare;if(wallShowingReels){await sendReelToMainChat(id);return;}const url=location.origin+'/#shadow-post='+encodeURIComponent(id);const title='Shadow Feed · Maleficent Chat';try{if(navigator.share){await navigator.share({title,text:'Check out this post on Maleficent Chat',url});}else if(navigator.clipboard?.writeText){await navigator.clipboard.writeText(url);toast('Post link copied.');}else{const field=document.createElement('textarea');field.value=url;document.body.appendChild(field);field.select();document.execCommand('copy');field.remove();toast('Post link copied.');}}catch(e){if(e?.name!=='AbortError')toast('Could not share this post.');}});
+    const wallDoubleTapTimers=new WeakMap();
+    feed.querySelectorAll('.wall-media:not(video)').forEach(media=>{media.addEventListener('click',()=>{const previous=wallDoubleTapTimers.get(media);if(previous){clearTimeout(previous);wallDoubleTapTimers.delete(media);const post=media.closest('[data-wall-id]');if(post){const like=post.querySelector('[data-wall-reaction="❤️"]');if(like&&!like.classList.contains('reacted'))like.click();}}else{wallDoubleTapTimers.set(media,setTimeout(()=>wallDoubleTapTimers.delete(media),320));}});});
+    document.querySelectorAll('[data-wall-feature]').forEach(b=>b.onclick=async()=>{try{const featured=b.dataset.featured!=='true';await api('/api/wall/'+encodeURIComponent(b.dataset.wallFeature)+'/feature',{method:'POST',body:JSON.stringify({featured})});toast(featured?'Post featured.':'Post unfeatured.');await loadWall()}catch(e){toast(e.message||'Could not feature post.')}});
     document.querySelectorAll('[data-wall-report]').forEach(b=>b.onclick=async()=>{try{await api('/api/wall/'+encodeURIComponent(b.dataset.wallReport)+'/report',{method:'POST',body:JSON.stringify({reason:'Reported by community member'})});toast('Wall post reported.')}catch(e){toast(e.message)}});
-    document.querySelectorAll('[data-wall-delete]').forEach(b=>b.onclick=async()=>{const id=b.dataset.wallDelete;if(!confirm('Delete this Friends Wall post?'))return;b.disabled=true;try{await api('/api/wall/'+encodeURIComponent(id),{method:'DELETE'});toast('Friends Wall post deleted.');await loadWall()}catch(e){toast(e.message||'Could not delete wall post.');b.disabled=false}});
+    document.querySelectorAll('[data-wall-delete]').forEach(b=>b.onclick=async()=>{const id=b.dataset.wallDelete;if(!confirm('Delete this Shadow Feed post?'))return;b.disabled=true;try{await api('/api/wall/'+encodeURIComponent(id),{method:'DELETE'});toast('Shadow Feed post deleted.');await loadWall()}catch(e){toast(e.message||'Could not delete Shadow Feed post.');b.disabled=false}});
     document.querySelectorAll('[data-wall-pin]').forEach(b=>b.onclick=async()=>{try{await api('/api/wall/'+encodeURIComponent(b.dataset.wallPin)+'/pin',{method:'POST'});toast('Post pinned.');await loadWall()}catch(e){toast(e.message)}});
-    document.querySelectorAll('[data-wall-comments]').forEach(b=>b.onclick=async()=>{const id=b.dataset.wallComments,box=$('wallComments-'+id);if(!box)return;box.classList.toggle('hidden');if(!box.classList.contains('hidden'))try{const d=await api('/api/wall/'+encodeURIComponent(id)+'/comments');box.innerHTML=(d.comments||[]).map(v=>`<div class="news-comment"><div class="news-comment-main"><div class="news-comment-head"><b>@${esc(v.username)}</b><small>${esc(v.rank||'Member')}</small></div><div class="news-comment-text">${esc(v.content)}</div></div></div>`).join('')+`<form class="wall-comment-form news-comment-form"><input placeholder="Write a comment…" maxlength="1000" required><button class="mini">Send</button></form>`;box.querySelector('form').onsubmit=async e=>{e.preventDefault();const input=e.currentTarget.querySelector('input');try{await api('/api/wall/'+encodeURIComponent(id)+'/comments',{method:'POST',body:JSON.stringify({content:input.value})});await loadWall();$('wallComments-'+id)?.classList.remove('hidden')}catch(err){toast(err.message)}}}catch(e){toast(e.message)}});
-  } catch(e){toast(e.message||'Could not load Friends Wall.')}
+    document.querySelectorAll('[data-wall-comments]').forEach(b=>b.onclick=async()=>{const id=b.dataset.wallComments,box=$('wallComments-'+id);if(!box)return;box.classList.toggle('hidden');if(!box.classList.contains('hidden'))try{const d=await api('/api/wall/'+encodeURIComponent(id)+'/comments');box.innerHTML=`<div class="wall-comments-header"><strong>Comments</strong><button type="button" class="wall-comments-close" aria-label="Close comments">×</button></div>`+(d.comments||[]).map(v=>{const canDelete=String(v.user_id)===String(state.user?.id)||String(feed.querySelector('[data-wall-id="'+CSS.escape(id)+'"]')?.dataset.wallAuthor||'')===String(state.user?.id);return `<div class="news-comment wall-comment-item" data-wall-comment-id="${esc(v.id)}"><div class="wall-comment-avatar">${v.avatar?`<img src="${esc(v.avatar)}" alt="">`:'👤'}</div><div class="news-comment-main"><div class="news-comment-head"><b>@${esc(v.username||'Member')}</b><small>${esc(v.rank||'Member')}</small></div><div class="news-comment-text">${esc(v.content)}</div><div class="wall-comment-meta">${fmt(v.created_at)}</div></div>${canDelete?`<button type="button" class="wall-comment-delete" data-wall-comment-delete="${esc(v.id)}" aria-label="Delete comment" title="Delete comment">⌫</button>`:''}</div>`}).join('')+`<form class="wall-comment-form news-comment-form"><input placeholder="Add a comment…" maxlength="1000" required><button class="mini">Post</button></form>`;box.querySelector('.wall-comments-close')?.addEventListener('click',()=>box.classList.add('hidden'));box.querySelectorAll('[data-wall-comment-delete]').forEach(del=>del.addEventListener('click',async()=>{if(!confirm('Delete this comment?'))return;del.disabled=true;try{await api('/api/wall/'+encodeURIComponent(id)+'/comments/'+encodeURIComponent(del.dataset.wallCommentDelete),{method:'DELETE'});await loadWall();const post=feed.querySelector('[data-wall-id="'+CSS.escape(id)+'"]');post?.querySelector('[data-wall-comments]')?.click();}catch(err){toast(err.message||'Could not delete comment.');del.disabled=false}}));box.querySelector('form').onsubmit=async e=>{e.preventDefault();const input=e.currentTarget.querySelector('input');try{await api('/api/wall/'+encodeURIComponent(id)+'/comments',{method:'POST',body:JSON.stringify({content:input.value})});await loadWall();$('wallComments-'+id)?.classList.remove('hidden')}catch(err){toast(err.message)}}}catch(e){toast(e.message)}});
+  } catch(e){toast(e.message||'Could not load Shadow Feed.')}
 }
+async function sendReelToMainChat(postId){
+  try{
+    const mainRoom=(state.rooms||[]).find(r=>r.isDefault||/^main room$/i.test(String(r.name||"")));
+    if(!mainRoom){toast("Main Room could not be found.");return;}
+    if(String(state.currentRoom)!==String(mainRoom.id)){
+      const joined=await joinRoom(mainRoom.id);
+      if(!joined){toast("Could not open Main Room.");return;}
+    }
+    const form=new FormData();form.append("reelId",String(postId));form.append("text","🎬 Shadow Reel");
+    const result=await api("/api/rooms/"+encodeURIComponent(mainRoom.id)+"/messages",{method:"POST",body:form});
+    if(result.message)appendMessage(result.message);
+    toast("Reel shared to Main Room! 🎬");
+  }catch(error){toast(error.message||"Could not share this Reel to Main Room.");}
+}
+function updateWallModeButtons(){
+  const saved=$('wallSavedToggle'),friends=$('wallFriendsToggle'),reels=$('wallReelsToggle');
+  if(saved){saved.textContent=wallShowingSaved?'← Community feed':'🔖 Saved posts';saved.setAttribute('aria-pressed',String(wallShowingSaved));}
+  if(friends){friends.textContent=wallShowingFriends?'✓ Friends activity':'💜 Friends activity';friends.setAttribute('aria-pressed',String(wallShowingFriends));}
+  if(reels){reels.textContent=wallShowingReels?'✓ Reels':'🎬 Reels';reels.setAttribute('aria-pressed',String(wallShowingReels));}
+}
+$('wallSavedToggle')?.addEventListener('click',async()=>{wallShowingSaved=!wallShowingSaved;if(wallShowingSaved){wallShowingFriends=false;wallShowingReels=false;}updateWallModeButtons();await loadWall();});
+$('wallFriendsToggle')?.addEventListener('click',async()=>{wallShowingFriends=!wallShowingFriends;if(wallShowingFriends){wallShowingSaved=false;wallShowingReels=false;}updateWallModeButtons();await loadWall();});
+$('wallReelsToggle')?.addEventListener('click',async()=>{wallShowingReels=!wallShowingReels;if(wallShowingReels){wallShowingSaved=false;wallShowingFriends=false;}updateWallModeButtons();await loadWall();});
+$('newWallReel')?.addEventListener('click',()=>{
+  modal('<div class="new-reel-modal"><h2>🎬 Create a Shadow Reel</h2><p class="muted">Share a vertical video with the community. Your Reel will also appear in the Reels tab.</p><textarea id="wallReelCaption" maxlength="1000" placeholder="Write a caption…"></textarea><label class="stack">Choose video<input id="wallReelFile" type="file" accept="video/mp4,video/webm,video/ogg"></label><small class="muted">MP4, WebM or OGG · maximum upload size 15 MB</small><div id="wallReelPreview" class="media-preview"></div><label class="stack">Reel duration<select id="wallReelExpiry"><option value="0">Keep on Shadow Feed</option><option value="24">Disappear after 24 hours</option><option value="72">Disappear after 3 days</option><option value="168">Disappear after 7 days</option></select></label><button class="primary" id="wallReelPublish" type="button">Upload & Publish Reel</button></div>');
+  $('wallReelFile')?.addEventListener('change',()=>{const file=$('wallReelFile').files?.[0],preview=$('wallReelPreview');if(!preview)return;if(!file){preview.innerHTML='';return;}if(!file.type.startsWith('video/')){preview.innerHTML='<p class="error">Choose a video file.</p>';return;}const url=URL.createObjectURL(file);preview.innerHTML='<video class="shadow-reel-video" controls playsinline src="'+esc(url)+'"></video>';});
+  $('wallReelPublish')?.addEventListener('click',async buttonEvent=>{const button=$('wallReelPublish'),file=$('wallReelFile')?.files?.[0];if(!file){toast('Choose a video before publishing.');return;}if(!file.type.startsWith('video/')){toast('Choose a supported video file.');return;}if(file.size>15*1024*1024){toast('Reels must be 15 MB or smaller.');return;}button.disabled=true;button.textContent='Uploading…';try{const form=new FormData();form.append('content',$('wallReelCaption')?.value||'');form.append('expiresInHours',$('wallReelExpiry')?.value||'0');form.append('file',file);const token=safeStorage.getItem('mc_token');const response=await fetch('/api/wall/post',{method:'POST',body:form,headers:token?{'x-auth-token':token}:{},credentials:'same-origin'});const data=await response.json().catch(()=>({}));if(!response.ok)throw Error(data.error||'Could not publish Reel.');closeModal();wallShowingReels=true;wallShowingSaved=false;wallShowingFriends=false;updateWallModeButtons();await loadWall();toast('Your Reel is live on Shadow Feed! 🎬');}catch(error){toast(error.message||'Could not publish Reel.');button.disabled=false;button.textContent='Upload & Publish Reel';}});
+});
 if($('newWallPost'))$('newWallPost').onclick=async()=>{
-  modal(`<h2>New Wall Post</h2><textarea id="wallPostText" maxlength="5000" placeholder="Write something for your friends…"></textarea><input id="wallPostFile" type="file" accept="image/*,video/*"><div id="wallPreview" class="media-preview"></div><button class="primary" id="wallPostSend">Upload & Publish</button>`);
+  modal(`<h2>New Shadow Feed Post</h2><textarea id="wallPostText" maxlength="5000" placeholder="Share something with the community…"></textarea><label class="stack">Post duration<select id="wallPostExpiry"><option value="0">Keep on Shadow Feed</option><option value="1">Disappear after 1 hour</option><option value="6">Disappear after 6 hours</option><option value="24">Disappear after 24 hours</option><option value="72">Disappear after 3 days</option><option value="168">Disappear after 7 days</option></select></label><input id="wallPostFile" type="file" accept="image/*,video/*"><div id="wallPreview" class="media-preview"></div><button class="primary" id="wallPostSend">Upload & Publish</button>`);
   $('wallPostFile')?.addEventListener('change',()=>{const f=$('wallPostFile').files?.[0],box=$('wallPreview');if(!f){box.innerHTML='';return}const u=URL.createObjectURL(f);box.innerHTML=f.type.startsWith('video/')?`<video controls src="${u}"></video>`:`<img src="${u}">`;});
-  $('wallPostSend').onclick=async()=>{try{const fd=new FormData();fd.append('content',$('wallPostText').value);const f=$('wallPostFile').files?.[0];if(f)fd.append('file',f);const token=safeStorage.getItem("mc_token"); const headers=token?{"x-auth-token":token}:{}; const r=await fetch('/api/wall/post',{method:'POST',body:fd,headers,credentials:'same-origin'});const d=await r.json().catch(()=>({}));if(!r.ok)throw Error(d.error||'Could not publish wall post.');closeModal();loadWall()}catch(e){toast(e.message)}};
+  $('wallPostSend').onclick=async()=>{try{const fd=new FormData();fd.append('content',$('wallPostText').value);fd.append('expiresInHours',$('wallPostExpiry')?.value||'0');const f=$('wallPostFile').files?.[0];if(f)fd.append('file',f);const token=safeStorage.getItem("mc_token"); const headers=token?{"x-auth-token":token}:{}; const r=await fetch('/api/wall/post',{method:'POST',body:fd,headers,credentials:'same-origin'});const d=await r.json().catch(()=>({}));if(!r.ok)throw Error(d.error||'Could not publish wall post.');closeModal();loadWall()}catch(e){toast(e.message)}};
 };
 
 async function loadRankShop(){
@@ -1257,7 +1473,7 @@ async function loadGoldEconomy(){
   }catch(error){root.innerHTML=`<p class="muted">Could not load the Gold Boutique: ${esc(error.message)}</p><button class="mini" id="retryGoldEconomy">Retry</button>`;$('retryGoldEconomy')?.addEventListener('click',loadGoldEconomy);}
 }
 
-async function claimDailyReward(){try{const r=await api('/api/daily/claim',{method:'POST'});state.user.gold=r.gold;state.user.xp=r.xp;updateNav();const b=document.querySelector('[data-daily-reward]');if(b){b.disabled=true;b.querySelector('small').textContent='Already claimed today';}toast(`🎁 Daily reward: +${r.amount} gold, +${r.xpAmount} XP · Streak ${r.streak}`);return r;}catch(e){toast(e.message)}}
+async function claimDailyReward(){try{const r=await api("/api/daily/claim",{method:"POST"});state.user.gold=r.gold;state.user.xp=r.xp;state.user.diamonds=r.diamonds;updateNav();const b=document.querySelector("[data-daily-reward]");if(b){b.disabled=true;b.querySelector("small").textContent="Already claimed today";}toast("🎁 Daily reward: +"+r.diamondAmount+" Diamonds, +"+r.amount+" Gold, +"+r.xpAmount+" XP · Streak "+r.streak);return r;}catch(e){toast(e.message);return null;}}
 
 async function getRecentGifSearches(){
   try{
@@ -1271,7 +1487,7 @@ function saveRecentGifSearch(query){
   const items=[q,...getRecentGifSearches().filter(x=>x.toLowerCase()!==q.toLowerCase())].slice(0,6);
   safeStorage.setItem("mc_gif_recent_searches",JSON.stringify(items));
 }
-function openGifPicker(){
+async function openGifPicker(){
   const roomIdAtOpen=String(state.currentRoom||"");
   if(!roomIdAtOpen){toast("Join a room before sending a GIF.");return;}
   let searchVersion=0;
@@ -1412,8 +1628,17 @@ async function loadRooms() {
   let lastError = null;
   for (let attempt = 0; attempt < 2; attempt++) {
     try {
-      const data = await api("/api/rooms");
+      let roomAccess=null;
+      try{roomAccess=JSON.parse(safeStorage.getItem("mc_room_join")||"null");}catch{}
+      const data = await api("/api/rooms",{headers:roomAccess?.joinToken?{"x-room-join-token":roomAccess.joinToken}:{}});
       state.rooms = sanitizeRoomList(data.rooms);
+      const invite=roomInviteFromHash();
+      if(invite?.roomId&&invite.inviteToken){
+        try{
+          const resolved=await api("/api/rooms/invites/resolve",{method:"POST",body:JSON.stringify({roomId:invite.roomId,inviteToken:invite.inviteToken})});
+          if(resolved.room)state.rooms=sanitizeRoomList([...state.rooms.filter(room=>String(room.id)!==String(resolved.room.id)),resolved.room]);
+        }catch(error){lastError=error;}
+      }
       // The room endpoint is the source of truth; always display all available rooms on initial load.
       if (state.rooms.length) {
         state.roomListMode = "all";
@@ -1453,7 +1678,16 @@ function renderRooms() {
   const search=(($('roomSearch')?.value)||'').trim().toLowerCase();
   const visited=joinedRoomIds();
   const allRooms=Array.isArray(state.rooms)?state.rooms:[];
+  const canViewHiddenRooms=["OWNER","DEVELOPER"].includes(String(state.user?.rank||"").toUpperCase());
+  const hiddenRooms=allRooms.filter(room=>room.public===false);
+  const hiddenToggle=$("hiddenRoomsToggle");
+  if(hiddenToggle){
+    hiddenToggle.classList.toggle("hidden",!canViewHiddenRooms);
+    hiddenToggle.textContent=state.showHiddenRoomsOnly?"← All rooms  ·  "+hiddenRooms.length+" hidden":"🔒 Hidden rooms  ·  "+hiddenRooms.length;
+    hiddenToggle.setAttribute("aria-pressed",state.showHiddenRoomsOnly?"true":"false");
+  }
   const rooms=allRooms.filter(room=>{
+    if(canViewHiddenRooms&&state.showHiddenRoomsOnly&&room.public!==false)return false;
     const hay=[room.name,room.description,room.category].join(' ').toLowerCase();
     return !search || hay.includes(search);
   });
@@ -1467,9 +1701,9 @@ function renderRooms() {
         <button class="room-open" onclick="joinRoom('${esc(room.id)}')">
           <span class="room-icon-wrap">${esc(room.icon||'💬')}</span>
           <span class="room-main">
-            <span class="room-title-row"><strong>${esc(room.name)}</strong>${locked?'<span class="room-lock">🔒</span>':''}</span>
+          <span class="room-title-row"><strong>${esc(room.name)}</strong>${room.public===false?'<span class="room-lock" title="Secret room">🔒 Secret</span>':''}${locked?'<span class="room-lock">🔒</span>':''}</span>
             <span class="room-desc">${esc(room.description||'No description has been written for this room')}</span>
-            <span class="room-subrow"><span>${esc(room.category||'Community')}</span><span>•</span><span>${esc(room.rankRequired||'MEMBER')}+</span>${room.announcement?'<span>• 📌 announcement</span>':''}<span>• Ages ${Number(room.minAge??0)}–${Number(room.maxAge??99)}</span></span>
+            <span class="room-subrow"><span>${esc(room.category||'Community')}</span><span>•</span><span>${esc(room.rankRequired||'MEMBER')}+</span>${room.announcement?'<span>• 📌 announcement</span>':''}</span>
           </span>
           <span class="room-count"><strong>${count}</strong><span>♟</span></span>
         </button>
@@ -1486,6 +1720,14 @@ function renderRooms() {
   renderRoomQuickNav();
 }
 
+function toggleHiddenRoomsView(){
+  if(!["OWNER","DEVELOPER"].includes(String(state.user?.rank||"").toUpperCase()))return;
+  state.showHiddenRoomsOnly=!state.showHiddenRoomsOnly;
+  if($("roomSearch"))$("roomSearch").value="";
+  renderRooms();
+}
+window.toggleHiddenRoomsView=toggleHiddenRoomsView;
+
 function renderRoomQuickNav() {
   const nav = $('roomQuickNav');
   if (!nav) return;
@@ -1497,7 +1739,7 @@ function renderRoomQuickNav() {
   nav.innerHTML = rooms.map(room => {
     const id = String(room.id);
     const selected = String(state.currentRoom || '') === id;
-    return `<button type="button" class="room-quick-chip ${selected ? 'active' : ''}" data-quick-room-id="${esc(id)}" aria-current="${selected ? 'page' : 'false'}"><span>${esc(room.icon || '💬')}</span><span>${esc(room.name || 'Room')}</span>${room.locked || room.passwordHash ? '<span class="room-quick-lock">🔒</span>' : ''}</button>`;
+    return `<button type="button" class="room-quick-chip ${selected ? 'active' : ''}" data-quick-room-id="${esc(id)}" aria-current="${selected ? 'page' : 'false'}"><span>${esc(room.icon || '💬')}</span><span>${esc(room.name || 'Room')}</span>${room.public===false || room.locked || room.passwordHash ? '<span class="room-quick-lock">🔒</span>' : ''}</button>`;
   }).join('');
   nav.querySelectorAll('[data-quick-room-id]').forEach(button => {
     button.addEventListener('click', () => joinRoom(String(button.dataset.quickRoomId)));
@@ -1520,12 +1762,41 @@ async function deleteRoomById(id){
 $("roomSearch").oninput = renderRooms;
 
 async function loadRoomAnnouncements(roomId){
-  try{const r=await api(`/api/rooms/${encodeURIComponent(roomId)}/announcements`); const items=r.announcements||[]; const el=$("announcement"); if(!items.length){el.classList.toggle('hidden',true);return;} el.classList.remove('hidden'); el.innerHTML=`<div class="room-announcement-feed"><b>📢 Room announcements</b>${items.slice(0,3).map(n=>`<div class="room-announcement-item"><div><b>@${esc(n.username)}</b> · ${fmt(n.time)} ${canFeature('edit_room')?`<button class="mini danger announcement-delete" data-announcement="${esc(n.id)}">🗑 Delete</button>`:''}</div><div>${formatMentions(n.text)}</div></div>`).join('')}</div>`; el.querySelectorAll('.announcement-delete').forEach(b=>b.onclick=async()=>{if(!confirm('Delete this announcement?'))return;try{await api(`/api/rooms/${encodeURIComponent(roomId)}/announcements/${encodeURIComponent(b.dataset.announcement)}`,{method:'DELETE'});toast('Announcement deleted.');loadRoomAnnouncements(roomId)}catch(e){toast(e.message)}});}catch(e){console.warn(e)}
+  try{
+    const r=await api(`/api/rooms/${encodeURIComponent(roomId)}/announcements`);
+    const items=r.announcements||[];
+    const el=$("announcement");
+    if(!items.length){el.classList.add("hidden");el.replaceChildren();return;}
+    el.classList.remove("hidden");
+    const canDelete=can("COMMISSOR");
+    el.innerHTML=`<div class="room-announcement-feed"><b>📢 Room announcements</b>${items.map(n=>`<div class="room-announcement-item"><div class="room-announcement-message">${formatMentions(n.text)}</div>${canDelete?`<button type="button" class="mini danger announcement-delete" data-announcement="${esc(n.id)}">🗑 Delete</button>`:''}</div>`).join('')}</div>`;
+    el.querySelectorAll(".announcement-delete").forEach(button=>button.onclick=async()=>{
+      if(!confirm("Delete this announcement?"))return;
+      try{
+        await api(`/api/rooms/${encodeURIComponent(roomId)}/announcements/${encodeURIComponent(button.dataset.announcement)}`,{method:"DELETE"});
+        toast("Announcement deleted.");
+        await loadRoomAnnouncements(roomId);
+      }catch(error){toast(error.message||"Could not delete announcement.");}
+    });
+  }catch(error){console.warn("Room announcements could not be loaded:",error);}
+}
+function roomInviteFromHash(){
+  try{
+    const params=new URLSearchParams(String(location.hash||"").replace(/^#/,""));
+    const roomId=String(params.get("room")||"").trim();
+    return roomId?{roomId,inviteToken:String(params.get("invite")||"")}:null;
+  }catch{return null;}
 }
 function postRoomAnnouncement(){
-  const text=prompt('Share an announcement in this room:',''); if(!text?.trim()) return;
-  api(`/api/rooms/${encodeURIComponent(state.currentRoom)}/announcements`,{method:'POST',body:JSON.stringify({text:text.trim()})}).then(()=>{toast('Room announcement shared.');loadRoomAnnouncements(state.currentRoom)}).catch(e=>toast(e.message));
+  if(!can("COMMISSOR")){toast("Posting room announcements requires Commissor or higher.");return;}
+  if(!state.currentRoom){toast("Join a room before posting an announcement.");return;}
+  const text=prompt("Share an announcement in this room:","");
+  if(!text?.trim())return;
+  api(`/api/rooms/${encodeURIComponent(state.currentRoom)}/announcements`,{method:"POST",body:JSON.stringify({text:text.trim()})})
+    .then(()=>{toast("Room announcement shared.");loadRoomAnnouncements(state.currentRoom);})
+    .catch(error=>toast(error.message||"Could not post announcement."));
 }
+window.canPostRoomAnnouncement=()=>can("COMMISSOR");
 
 async function joinRoom(id) {
   const room =
@@ -1546,10 +1817,14 @@ async function joinRoom(id) {
         prompt("Room password:") || "";
     }
 
+    const roomInvite=roomInviteFromHash();
     const access=await api(`/api/rooms/${id}/join`, {
       method: "POST",
-      body: JSON.stringify({ password })
+      body: JSON.stringify({ password,inviteToken:roomInvite?.roomId===id?roomInvite.inviteToken:"" })
     });
+
+    safeStorage.setItem('mc_room_join',JSON.stringify({roomId:String(id),joinToken:access.joinToken}));
+    if(roomInvite?.roomId===id)history.replaceState(null,"",location.pathname+location.search);
 
     if (
       state.currentRoom &&
@@ -1567,7 +1842,6 @@ async function joinRoom(id) {
     state.currentRoomRole=staffInfo.myRole||'USER';
     rememberMyRoom(id);
 
-    safeStorage.setItem('mc_room_join',JSON.stringify({roomId:String(id),joinToken:access.joinToken}));
     // Joining over HTTP can finish before socket authentication; authenticate
     // again here so the room join cannot be silently ignored during login.
     if(state.socket?.connected) authenticateSocketAndJoinRoom(state.socket,false).catch(error=>console.warn("Room socket join failed:",error?.message||error));
@@ -1727,6 +2001,20 @@ function playYouTubeMessage(button) {
   frame.allowFullscreen=true;
   wrapper.replaceChildren(frame);
 }
+async function translateMessageText(messageId,scope){
+  const isDM=scope==="dm", safeId=String(messageId);
+  const allMessages=Array.from(document.querySelectorAll(isDM?".msg.dm-msg":".msg"));
+  const messageEl=allMessages.find(el=>String(isDM?el.dataset.dmid:el.dataset.mid)===safeId);
+  if(!messageEl)return;
+  let target=messageEl.querySelector(".message-translation");
+  if(!target){target=document.createElement("div");target.className="message-translation hidden";messageEl.querySelector(".msg-body")?.appendChild(target);}
+  if(target.dataset.translated==="true"){target.classList.toggle("hidden");return;}
+  const source=(isDM?(state.dmMessages||[]):(state.messages||[])).find(m=>String(m.id)===safeId);
+  const original=String(source?.text||"").trim(); if(!original){toast("This message has no text to translate.");return;}
+  target.textContent="Translating…";target.classList.remove("hidden");
+  try{const result=await api("/api/translate",{method:"POST",body:JSON.stringify({text:original})});target.textContent="🇬🇧 "+result.translated;target.dataset.translated="true";target.title="Automatically detected language: "+(result.detectedLanguage||"unknown")+" · English";}
+  catch(error){target.textContent=error.message||"Translation failed."; }
+}
 function messageHTML(message) {
   if(message?.breadCommand && String(message.bot||message.username)==="Bot"){
     return `<div class="message bot-welcome-message bot-bread-message" data-mid="${esc(message.id)}">
@@ -1759,12 +2047,10 @@ function messageHTML(message) {
     return `<div class="message bot-welcome-message bot-bank-message" data-mid="${esc(message.id)}">
       <div class="bot-welcome-bubble" style="border-color:#fbbf24;box-shadow:0 0 16px #fbbf2433">
         <div class="bot-welcome-byline">🤖 Bot · BANK</div>
-        <div class="bot-welcome-glow" style="color:#fcd34d;text-shadow:0 0 10px #f59e0b">🏦 ACCOUNT DETAILS</div>
+        <div class="bot-welcome-glow" style="color:#fcd34d;text-shadow:0 0 10px #f59e0b">💎 DIAMOND BALANCE</div>
         <div class="bot-welcome-username">@${esc(message.bankUsername||"User")}</div>
         <div style="display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-top:8px;font-size:13px">
-          <span>⭐ Level <b>${Math.max(1,Number(message.bankLevel)||1)}</b></span>
-          <span>✨ XP <b>${Math.max(0,Number(message.bankXp)||0).toLocaleString()}</b></span>
-          <span>🪙 Gold <b>${Math.max(0,Number(message.bankGold)||0).toLocaleString()}</b></span>
+          <span>💎 Diamonds <b>${Math.max(0,Number(message.bankDiamonds)||0).toLocaleString()}</b></span>
         </div>
       </div>
     </div>`;
@@ -1850,6 +2136,8 @@ function messageHTML(message) {
   if (message.attachment) {
     if(message.attachment.type==='video/youtube' && message.attachment.videoId){
       attachment=youtubePreviewHTML(message.attachment.videoId,message.attachment.name||"YouTube video");
+    } else if(message.attachment.type && message.attachment.type.startsWith("video/")){
+      attachment = `<video class="message-video-attachment" controls playsinline preload="metadata" src="${esc(message.attachment.url)}"></video>`;
     } else if (
       message.attachment.type &&
       message.attachment.type.startsWith("image/")
@@ -1967,17 +2255,18 @@ function messageHTML(message) {
           <div class="message-actions-menu hidden" id="message-menu-${esc(message.id)}" role="menu" aria-label="Message actions">
             <button class="message-menu-item" role="menuitem" onclick="replyMsg('${esc(message.id)}');closeMessageMenus()"><span class="menu-icon">↩</span><span><b>Quote</b><small>Reply to this message</small></span></button>
             <button class="message-menu-item" role="menuitem" onclick="hideMsg('${esc(message.id)}');closeMessageMenus()"><span class="menu-icon">◉</span><span><b>Hide</b><small>Hide from my screen</small></span></button>
-            <button class="message-menu-item" role="menuitem" onclick="reportMsg('${esc(message.id)}');closeMessageMenus()"><span class="menu-icon">!</span><span><b>Report</b><small>Report this content</small></span></button>
-            <button class="message-menu-item" role="menuitem" onclick="toggleReactionPicker('${esc(message.id)}');closeMessageMenus()"><span class="menu-icon">☺</span><span><b>React</b><small>Add an emoji reaction</small></span></button>
-            <button class="message-menu-item" role="menuitem" onclick="saveMsg('${esc(message.id)}');closeMessageMenus()"><span class="menu-icon">♧</span><span><b>Save</b><small>Keep in saved messages</small></span></button>
+            ${canFeature("report_message")?`<button class="message-menu-item" role="menuitem" onclick="reportMsg('${esc(message.id)}');closeMessageMenus()"><span class="menu-icon">!</span><span><b>Report</b><small>Report this content</small></span></button>`:""}
+            ${canFeature("react_message")?`<button class="message-menu-item" role="menuitem" onclick="toggleReactionPicker('${esc(message.id)}');closeMessageMenus()"><span class="menu-icon">☺</span><span><b>React</b><small>Add an emoji reaction</small></span></button>`:""}
+            ${canFeature("save_message")?`<button class="message-menu-item" role="menuitem" onclick="saveMsg('${esc(message.id)}');closeMessageMenus()"><span class="menu-icon">♧</span><span><b>Save</b><small>Keep in saved messages</small></span></button>`:""}
             ${message.text ? `<button class="message-menu-item" role="menuitem" onclick="copyMsg('${esc(message.id)}');closeMessageMenus()"><span class="menu-icon">▢</span><span><b>Copy text</b><small>Copy message to clipboard</small></span></button>` : ""}
+            ${message.text ? `<button class="message-menu-item" role="menuitem" onclick="translateMessageText(&quot;${esc(message.id)}&quot;,&quot;room&quot;);closeMessageMenus()"><span class="menu-icon">文</span><span><b>Translate</b><small>Detect language · English</small></span></button>` : ""}
             ${
-              message.userId === state.user.id
+              String(message.userId) === String(state.user.id) && canFeature("edit_message")
               ? `<button class="message-menu-item" role="menuitem" onclick="editMsg('${esc(message.id)}');closeMessageMenus()"><span class="menu-icon">✎</span><span><b>Edit</b><small>Change your message</small></span></button>`
               : ""
             }
             ${
-              (String(message.userId) === String(state.user?.id) || canFeature("delete_message"))
+              (String(message.userId) === String(state.user?.id) && canFeature("delete_own_messages")) || canFeature("delete_message")
               ? `<button class="message-menu-item danger" role="menuitem" onclick="deleteMsg('${esc(message.id)}');closeMessageMenus()"><span class="menu-icon">×</span><span><b>Delete</b><small>Remove this message</small></span></button>`
               : ""
             }
@@ -2247,6 +2536,8 @@ function renderArcade(){
   root.innerHTML=`
     <section class="arcade-home">
       <div class="arcade-welcome"><div><span class="arcade-kicker">MALEFICENT ARCADE</span><h2>Choose your next obsession.</h2><p>Quick games, friendly rivalries, and tiny victories. No drawing tools or old Gravity Run mode.</p></div><div class="arcade-orb">✦</div></div>
+      <section class="arcade-studio-card"><div><span class="arcade-kicker">CREATIVE STUDIO</span><h3>🖌️ Doodle Studio</h3><p>Draw something, save it to your personal library, or share it in the current room.</p></div><button type="button" class="primary" data-open-doodle-studio>Open Doodle Studio ↗</button></section>
+      <section class="arcade-library"><div class="news-card-top"><h3>Saved drawings</h3><button type="button" class="mini" data-refresh-doodle-library>Refresh</button></div><div id="doodleLibrary" class="doodle-library-list"><p class="muted">Loading your drawings…</p></div></section>
       <div class="arcade-game-grid">
         <button class="arcade-game-card" data-arcade-game="memory"><span class="arcade-card-icon arcade-violet">🧠</span><span class="arcade-card-copy"><b>Memory Match</b><small>Flip cards, find pairs, beat your best.</small><em>Solo · Focus</em></span><span class="arcade-play">Play ↗</span></button>
         <button class="arcade-game-card" data-arcade-game="tic"><span class="arcade-card-icon arcade-pink">⭕</span><span class="arcade-card-copy"><b>Tic-Tac-Toe</b><small>A classic head-to-head challenge.</small><em>2 players · Same device</em></span><span class="arcade-play">Play ↗</span></button>
@@ -2256,6 +2547,33 @@ function renderArcade(){
       <div class="arcade-footnote">✧ Your game progress stays in this session. Multiplayer matchmaking and cross-device scores aren’t enabled in this arcade yet.</div>
     </section>`;
   root.querySelectorAll("[data-arcade-game]").forEach(btn=>btn.onclick=()=>launchArcadeGame(btn.dataset.arcadeGame));
+  root.querySelector("[data-open-doodle-studio]")?.addEventListener("click",()=>openDoodleComposer());
+  root.querySelector("[data-refresh-doodle-library]")?.addEventListener("click",()=>loadDoodleLibrary()); 
+  loadDoodleLibrary();
+}
+async function loadDoodleLibrary(){
+  const list=$("doodleLibrary");if(!list)return;
+  try{
+    const data=await api("/api/doodles");
+    const drawings=Array.isArray(data.doodles)?data.doodles:[];
+    list.innerHTML=drawings.length?drawings.map(d=>`<article class="card doodle-library-item"><div><b>${esc(d.title||"Untitled doodle")}</b><p class="muted">${esc(fmt(d.createdAt||d.created_at))}</p></div><div class="toolbar"><button type="button" data-doodle-view="${esc(d.id)}">View</button><button type="button" data-doodle-delete="${esc(d.id)}">Delete</button></div></article>`).join(""):'<p class="muted">No saved drawings yet. Open Doodle Studio and save your first drawing.</p>';
+    list.querySelectorAll("[data-doodle-view]").forEach(btn=>btn.onclick=async()=>{
+      btn.disabled=true;
+      try{
+        const result=await api("/api/doodles/"+encodeURIComponent(btn.dataset.doodleView)+"/image");
+        if(!/^data:image\/png;base64,/.test(String(result.image||"")))throw Error("Saved drawing image is invalid.");
+        modal(`<div class="doodle-preview"><div class="news-card-top"><h3>${esc(result.title||"Saved doodle")}</h3><button type="button" class="mini" id="doodlePreviewClose">×</button></div><img src="${esc(result.image)}" alt="Saved doodle preview"></div>`);
+        $("doodlePreviewClose")?.addEventListener("click",closeModal);
+      }catch(e){toast(e.message||"Could not open drawing.");}
+      finally{btn.disabled=false;}
+    });
+    list.querySelectorAll("[data-doodle-delete]").forEach(btn=>btn.onclick=async()=>{
+      if(!confirm("Delete this saved drawing?"))return;
+      btn.disabled=true;
+      try{await api("/api/doodles/"+encodeURIComponent(btn.dataset.doodleDelete),{method:"DELETE"});toast("Saved drawing deleted.");await loadDoodleLibrary();}
+      catch(e){toast(e.message||"Could not delete drawing.");btn.disabled=false;}
+    });
+  }catch(e){list.innerHTML='<p class="error">'+esc(e.message||"Could not load saved drawings.")+'</p>';}
 }
 function launchArcadeGame(game){
   const root=$("gamesRoot");if(!root)return;
@@ -2293,11 +2611,12 @@ function launchArcadeGame(game){
 }
 function bindBack(){const b=$("gamesRoot")?.querySelector("[data-arcade-back]");if(b)b.onclick=renderArcade;}
 function openDoodleComposer(){
-  if(!state.currentRoom){toast('Join the Main Room before sending a doodle.');return;}
-  modal(`<div class="doodle-modal"><div class="doodle-head"><h2>🖌️ Doodle</h2><button type="button" class="mini" id="doodleClose">×</button></div>
-    <div class="doodle-tools"><button type="button" id="doodlePen">🖌️ Pen</button><button type="button" id="doodleEraser">🧽 Eraser</button><label>Color <input type="color" id="doodleColor" value="#111111"></label><label>Size <input type="range" id="doodleSize" min="2" max="24" value="5"></label><button type="button" id="doodleUndo">↶ Undo</button><button type="button" id="doodleClear">🗑 Clear</button></div>
+  const canSave=canFeature('doodle_studio_save'),canShare=!!state.currentRoom&&canFeature('doodle_studio_share');
+  if(!canSave&&!canShare){toast('Doodle Studio is not available for your account.');return;}
+  modal(`<div class="doodle-modal"><div class="doodle-head"><h2>🖌️ Doodle Studio</h2><button type="button" class="mini" id="doodleClose">×</button></div>
+    <div class="doodle-tools"><label class="doodle-title-field">Title <input id="doodleTitle" type="text" maxlength="80" value="Untitled doodle" placeholder="Name your drawing"></label><button type="button" id="doodlePen">🖌️ Pen</button><button type="button" id="doodleEraser">🧽 Eraser</button><label>Color <input type="color" id="doodleColor" value="#111111"></label><label>Size <input type="range" id="doodleSize" min="2" max="24" value="5"></label><button type="button" id="doodleUndo">↶ Undo</button><button type="button" id="doodleClear">🗑 Clear</button></div>
     <canvas id="doodleCanvas" width="900" height="620" aria-label="Draw your doodle here"></canvas>
-    <div class="doodle-footer"><span class="muted">Your drawing will be sent to the current room.</span><button type="button" class="primary" id="doodleSend">➤ Send to Main Chat</button></div></div>`);
+    <div class="doodle-footer"><span class="muted">Save a private copy or share it with your current room.</span>${canSave?'<button type="button" id="doodleSave">💾 Save drawing</button>':''}${canShare?'<button type="button" class="primary" id="doodleSend">➤ Send to Room</button>':''}</div></div>`);
   const canvas=$('doodleCanvas'),ctx=canvas.getContext('2d');ctx.fillStyle='#ffffff';ctx.fillRect(0,0,canvas.width,canvas.height);
   let drawing=false,erase=false,color='#111111',size=5,history=[];
   const snapshot=()=>{try{history.push(ctx.getImageData(0,0,canvas.width,canvas.height));if(history.length>20)history.shift()}catch{}};
@@ -2310,16 +2629,33 @@ function openDoodleComposer(){
   $('doodleUndo').onclick=()=>{if(history.length>1){history.pop();ctx.putImageData(history[history.length-1],0,0)}};
   $('doodleClear').onclick=()=>{ctx.fillStyle='#ffffff';ctx.fillRect(0,0,canvas.width,canvas.height);snapshot()};
   $('doodleClose').onclick=closeModal;
-  $('doodleSend').onclick=async()=>{const btn=$('doodleSend');btn.disabled=true;btn.textContent='Sending…';try{
+  $('doodleSave')?.addEventListener('click',async()=>{const btn=$('doodleSave');btn.disabled=true;btn.textContent='Saving…';try{
+    const image=canvas.toDataURL('image/png');
+    const title=($('doodleTitle')?.value||'Untitled doodle').trim().slice(0,80)||'Untitled doodle';
+    await api('/api/doodles',{method:'POST',body:JSON.stringify({title,image})});
+    toast('Doodle saved to your personal library.');await loadDoodleLibrary();btn.textContent='✓ Saved';
+  }catch(e){toast(e.message||'Could not save doodle.');btn.disabled=false;btn.textContent='💾 Save drawing';}});
+  $('doodleSend')?.addEventListener('click',async()=>{const btn=$('doodleSend');btn.disabled=true;btn.textContent='Sending…';try{
     const blob=await new Promise((resolve,reject)=>canvas.toBlob(b=>b?resolve(b):reject(Error('Could not export the doodle.')),'image/png'));
     const file=new File([blob],'maleficent-doodle.png',{type:'image/png'}),form=new FormData();form.append('text','');form.append('file',file);
     const data=await api('/api/rooms/'+encodeURIComponent(state.currentRoom)+'/messages',{method:'POST',body:form});
     if(data.message&&String(data.message.roomId)===String(state.currentRoom))appendMessage(data.message);
     closeModal();toast('Doodle sent to the room!');
-  }catch(e){btn.disabled=false;btn.textContent='➤ Send to Main Chat';toast(e.message||'Could not send doodle.')}};
+  }catch(e){btn.disabled=false;btn.textContent='➤ Send to Main Chat';toast(e.message||'Could not send doodle.')}});
 }
 $('doodleBtn')?.addEventListener('click',openDoodleComposer);
 
+
+async function openReelSharePicker(){
+  try{
+    const data=await api("/api/wall");
+    const videos=(data.posts||[]).filter(p=>/\.(mp4|webm|ogg)(\?|$)/i.test(String(p.media_url||"")));
+    if(!videos.length){toast("No published Reels yet. Upload a video post in Shadow Feed first.");return;}
+    modal('<div class="reel-picker"><h2>🎬 Share a Reel to Main Room</h2><p class="muted">Choose a video from Shadow Feed.</p><div class="reel-picker-list">'+videos.map(p=>'<button type="button" class="reel-picker-item" data-share-reel="'+esc(p.id)+'"><video muted playsinline preload="metadata" src="'+esc(p.media_url)+'"></video><span><b>@'+esc(p.username||"Member")+'</b><small>'+esc(p.content||"Shadow Reel")+'</small></span><strong>Send ↗</strong></button>').join('')+'</div></div>');
+    document.querySelectorAll('[data-share-reel]').forEach(button=>button.addEventListener('click',async()=>{button.disabled=true;const postId=button.dataset.shareReel;closeModal();await sendReelToMainChat(postId);}));
+  }catch(error){toast(error.message||"Could not load Reels.");}
+}
+$('reelComposerBtn')?.addEventListener('click',openReelSharePicker);
 
 const composer=$("composer");
 if(composer && !composer.dataset.submitBound){
@@ -2819,11 +3155,18 @@ function renderUserProfileModal(user,data={}){
       <div class="profile-rank">${rank(user.rank)}${user.verified?' · ✓ Verified':''}${profileBadge?` <span class="equipped-profile-badge" title="${esc(profileBadge.name)}">${esc(profileBadge.icon)} ${esc(profileBadge.name)}</span>`:''}</div>
       <div class="profile-name">${esc(user.displayName)}${user._nickname?` <span class="nickname-badge">“${esc(user._nickname)}”</span>`:''}</div>
       <div class="profile-handle">@${esc(user.username)}</div>
+      <div class="profile-social-stats">
+        <span class="profile-social-stat"><b>🪙 ${Number(user.gold||0).toLocaleString()}</b><small>Gold</small></span>
+        <span class="profile-social-stat"><b>👥 ${Number(user.friendsCount||user.friendCount||0).toLocaleString()}</b><small>Friends</small></span>
+        <span class="profile-social-stat"><b>🏅 ${esc(String(user.rank||"MEMBER").replace(/_/g," "))}</b><small>Rank</small></span>
+      </div>
+      ${!isSelf?`<div class="profile-primary-actions"><button class="profile-social-button profile-message-button" id="profileSendPM"><span>✉</span> Send PM</button><button class="profile-social-button profile-friend-button" id="profileAddFriend"><span>＋</span> Add Friend</button></div>`:""}
     </div>
     <div class="profile-tabs">
       <button class="profile-tab active" data-tab="info">Account</button>
       <button class="profile-tab" data-tab="about">About Me</button>
       <button class="profile-tab" data-tab="friends">Friends</button>
+      <button class="profile-tab" data-tab="gifts">🎁 Gifts</button>
       <button class="profile-tab" data-tab="more">More</button>
     </div>
     <div id="profileTabContent" class="profile-info"></div>
@@ -2841,12 +3184,39 @@ function renderUserProfileModal(user,data={}){
       <div class="profile-actions"><button class="mini" id="profileAchievementsBtn">🏆 Achievements</button>${!isSelf&&canFeature('profile_note')?`<button class="mini" id="profileNoteBtn">📝 Add Note <span id="profileNoteDot" style="display:none">●</span></button>${canFeature('profile_note')?'<button class="mini" id="profileFeatureBlockBtn">🚫 Feature Block</button>':''}`:''}<div class="profile-action-hint">Tap ☰ above for profile actions.</div></div>`;
     else if(tab==='about') box.innerHTML=`<div class="about-card"><h3>About Me</h3><p>${esc(user.bio||'This user has not written an About Me yet.')}</p>${user.country?`<div class="profile-info-row"><b>🌍 Country</b><span>${esc(countryFlagFor(user.country))} ${esc(user.country)}</span></div>`:''}${user.pronouns?`<div class="profile-info-row"><b>Pronouns</b><span>${esc(user.pronouns)}</span></div>`:''}${user.interests?.length?`<div class="tag-list">${user.interests.map(x=>`<span class="tag">${esc(x)}</span>`).join('')}</div>`:''}${isSelf?`<button class="primary" id="editAboutBtn">✏️ Edit About Me</button>`:''}</div>`;
     else if(tab==='friends') box.innerHTML=`<div class="about-card"><h3>Friends</h3><p class="muted">Friends and social connections for @${esc(user.username)}.</p><div class="profile-info-row"><b>👥 Friends</b><span>${user.friendsCount||0}</span></div><button class="mini" id="viewFriendsBtn">Open Friends</button></div>`;
+    else if(tab==='gifts'){
+      box.innerHTML='<div class="about-card"><h3>🎁 Gifts</h3><p class="muted">Gold gifts received by this user.</p><div class="gift-profile-list">Loading gifts…</div></div>';
+      Promise.all([api('/api/users/'+encodeURIComponent(user.id)+'/gifts'),api('/api/gifts/catalog')]).then(([giftData,catalogData])=>{
+        if(!box.isConnected)return;
+        if(giftData.hidden){box.innerHTML='<div class="about-card"><h3>🎁 Gifts</h3><p class="muted">This user has hidden their gifts.</p></div>';return;}
+        const gifts=giftData.gifts||[],catalog=catalogData.gifts||[];
+        box.innerHTML='<div class="about-card"><h3>🎁 Gifts</h3><p class="muted">Gifts received by @'+esc(user.username)+'.</p>'+
+          (isSelf?'<label class="gift-visibility-toggle"><input type="checkbox" id="giftVisibilityToggle" '+(user.privacy?.showGifts===false?'':'checked')+'> Show my gifts on my public profile</label>':'')+
+          (!isSelf?'<button class="primary gift-open-send" id="sendGiftFromProfile">🎁 Send a gift · Use gold</button>':'')+
+          '<div class="gift-profile-list">'+(gifts.length?gifts.map(g=>'<article class="gift-profile-item"><span class="gift-profile-icon">'+esc(g.gift_icon||'🎁')+'</span><div class="gift-profile-copy"><b>'+esc(g.gift_name)+'</b><small>From @'+esc(g.sender_username||'deleted')+' · 🪙 '+Number(g.goldCost||0).toLocaleString()+'</small>'+(g.message?'<p>'+esc(g.message)+'</p>':'')+'</div></article>').join(''):'<p class="muted">No gifts yet. Send the first one! 💜</p>')+'</div></div>';
+        $('giftVisibilityToggle')?.addEventListener('change',async e=>{try{await api('/api/users/me/gift-visibility',{method:'PATCH',body:JSON.stringify({showGifts:e.target.checked})});user.privacy={...(user.privacy||{}),showGifts:e.target.checked};if(state.user&&String(state.user.id)===String(user.id))state.user.privacy={...(state.user.privacy||{}),showGifts:e.target.checked};toast(e.target.checked?'Gifts are visible on your profile.':'Gifts are now hidden from your profile.');}catch(err){e.target.checked=!e.target.checked;toast(err.message)}});
+        $('sendGiftFromProfile')?.addEventListener('click',()=>openGiftPicker(user,catalog));
+      }).catch(e=>{if(box.isConnected)box.innerHTML='<div class="about-card"><h3>🎁 Gifts</h3><p class="muted">'+esc(e.message||'Could not load gifts.')+'</p></div>';});
+    }
     else box.innerHTML=`<div class="about-card"><div class="profile-info-row"><b>📝 About</b><span>${esc(user.bio||'No About Me')}</span></div><div class="profile-info-row"><b>📜 Username history</b><span>${(user.usernameHistory||[]).length} changes</span></div><div class="profile-info-row"><b>🔗 Profile ID</b><span>${esc(user.id)}</span></div>${can('MOD')&&canAccessStaffTarget(user)?`<div class="toolbar"><button class="mini" id="profileHistoryBtn">📜 Staff action history</button><button class="mini" id="profileIpInsightsBtn">🔎 View insights</button></div><div id="profileHistoryBox"></div>`:''}<div class="profile-actions">${can('COOWNER')&&canAccessStaffTarget(user)?'<button class="mini danger" id="profileDeleteAccountBtn">🗑️ Delete account</button>':''}${!isSelf?'<button class="mini danger" id="profileReportBtn">⚑ Report user</button>':''}</div></div>`;
     if(tab==='more' && can('MOD')) $('profileHistoryBtn')?.addEventListener('click',()=>showUserActionHistory(user.id));
     if(tab==='more' && can('MOD') && !isSelf) $('profileIpInsightsBtn')?.addEventListener('click',()=>showIpInsights(user));
     if(tab==='info'&&!isSelf&&canFeature('profile_note'))api(`/api/staff/user/${encodeURIComponent(user.id)}/note`).then(n=>{if($('profileNoteDot'))$('profileNoteDot').style.display=n.hasNote?'inline-block':'none';}).catch(()=>{});
     wireProfileTabActions();
   };
+  function openGiftPicker(target,catalog){
+    if(!Array.isArray(catalog)||!catalog.length){toast('No gifts are available right now.');return;}
+    modal('<div class="gift-picker"><h2>🎁 Send a gift</h2><p class="muted">Choose a gift for @'+esc(target.username)+'. Your gold balance: 🪙 '+Number(state.user?.gold||0).toLocaleString()+'</p><div class="gift-picker-grid">'+catalog.map(g=>'<button type="button" class="gift-choice" data-gift-id="'+esc(g.id)+'"><span>'+esc(g.icon||'🎁')+'</span><b>'+esc(g.name)+'</b><small>🪙 '+Number(g.price||0).toLocaleString()+'</small></button>').join('')+'</div><label for="giftMessage">Add a note (optional)</label><textarea id="giftMessage" maxlength="180" rows="2" placeholder="A little something for you…"></textarea><div class="toolbar"><button class="primary" id="giftSendConfirm" disabled>Send gift</button><button class="mini" id="giftSendCancel">Cancel</button></div><p id="giftPickerStatus" class="muted"></p></div>');
+    let selected=null;
+    document.querySelectorAll('.gift-choice').forEach(btn=>btn.addEventListener('click',()=>{selected=btn.dataset.giftId;document.querySelectorAll('.gift-choice').forEach(x=>x.classList.toggle('selected',x===btn));$('giftSendConfirm').disabled=false;}));
+    $('giftSendCancel').onclick=closeModal;
+    $('giftSendConfirm').onclick=async()=>{
+      if(!selected)return;
+      const btn=$('giftSendConfirm');btn.disabled=true;btn.textContent='Sending…';
+      try{const result=await api('/api/users/'+encodeURIComponent(target.id)+'/gifts',{method:'POST',body:JSON.stringify({giftId:selected,message:$('giftMessage')?.value||''})});state.user.gold=result.gold;updateNav();closeModal();toast('Gift sent! 🎁');}
+      catch(e){$('giftPickerStatus').textContent=e.message||'Could not send gift.';btn.disabled=false;btn.textContent='Send gift';}
+    };
+  }
   function wireProfileTabActions(){
     $('profileDeleteAccountBtn')?.addEventListener('click',async()=>{
       const expected=String(user.username||'');
@@ -2867,10 +3237,12 @@ function renderUserProfileModal(user,data={}){
     $('profileMessageBtn')?.addEventListener('click',()=>{closeModal();openDM(user.id);});
     $('profileFriendBtn')?.addEventListener('click',async()=>{if(data.friendship==='ACCEPTED'){toast('Already friends.');return;}try{await friend(user.id);data.friendship='PENDING';renderTab('info');}catch(e){}});
     $('profileBlockBtn')?.addEventListener('click',async()=>{await block(user.id);closeModal();});
-    $('profileGoldBtn')?.addEventListener('click',()=>shareGoldModal(user));
+    $('profileGoldBtn')?.addEventListener('click',()=>shareWalletModal(user));
     $('profileNicknameBtn')?.addEventListener('click',()=>nicknameModal(user));
     $('profileModerateBtn')?.addEventListener('click',()=>moderate(user.id));
     $('profileStaffAccountBtn')?.addEventListener('click',()=>staffAccountModal(user));
+    $('profileSendPM')?.addEventListener('click',()=>{closeModal();openDM(user.id);});
+    $('profileAddFriend')?.addEventListener('click',async()=>{try{await friend(user.id);toast('Friend request sent.');}catch(e){toast(e.message)}});
     $('profileMenuBtn')?.addEventListener('click',()=>openProfileActionDrawer(user,data));
     $('profileRankBtn')?.addEventListener('click',()=>rankFromProfile(user));
     $('editProfileFromModal')?.addEventListener('click',()=>{closeModal();state.view='profile';renderView();});
@@ -2970,7 +3342,15 @@ async function loadDMList() {
         if(activeTab==="unread"&&!unread)return false;if(activeTab==="pinned"&&!pinned)return false;if(activeTab==="archived"&&!archived)return false;if(activeTab!=="archived"&&activeTab!=="all"&&archived)return false;
         return name.toLowerCase().includes(q)||(c.lastMessage?.text||"").toLowerCase().includes(q);
       });
-      rows.sort((a,b)=>Number(!!p.pinned?.[String(b.user.id)])-Number(!!p.pinned?.[String(a.user.id)]));
+      const lastOpenedId=safeStorage.getItem("mc_dm_last_opened_"+String(state.user?.id||""))||"";
+      const messageTime=c=>Number(c.lastMessage?.time||c.lastMessage?.createdAt||c.lastMessage?.created_at||0);
+      // Inbox priority: unread first, then the conversation opened most recently,
+      // then every other conversation by newest message. Pinning never pushes an
+      // unread or recently opened conversation down the list.
+      rows.sort((a,b)=>{
+        const priority=c=>Number(Number(c.unreadCount||0)>0)?2:(String(c.user?.id)===lastOpenedId?1:0);
+        return priority(b)-priority(a) || messageTime(b)-messageTime(a);
+      });
       const list=rows.map(card).join('');
       $("dmList").innerHTML=searchBox+'<div class="dm-inbox-list">'+(list||'<p class="muted dm-empty">No conversations here yet.</p>')+'</div>';
       $("dmInboxSearch").value=q;
@@ -2986,6 +3366,9 @@ async function loadDMList() {
 }
 
 function dmMessageHTML(message, messages, user) {
+  const deleteAction=String(message.from)===String(state.user?.id)&&!message.deleted
+    ? '<button type="button" class="mini danger" data-dm-delete="'+esc(message.id)+'">🗑 Delete</button>'
+    : "";
   const quoted = message.replyTo
     ? messages.find(m => String(m.id) === String(message.replyTo))
     : null;
@@ -2995,7 +3378,7 @@ function dmMessageHTML(message, messages, user) {
     : null;
 
   const quoteText = quoted
-    ? (quoted.text || (quoted.attachment ? "📎 Attachment" : "Message"))
+    ? (quoted.deleted ? "Deleted message" : (quoted.text || (quoted.attachment ? "📎 Attachment" : "Message")))
     : null;
 
   return `
@@ -3032,13 +3415,15 @@ function dmMessageHTML(message, messages, user) {
         }
 
         ${
-          message.text && !message.youtube?.videoId
+          !message.deleted && message.text && !message.youtube?.videoId
             ? `<div class="msg-text">${esc(message.text)}</div>`
             : ""
         }
 
+        ${message.deleted ? '<div class="msg-text muted">This message was deleted.</div>' : ""}
+
         ${
-          message.attachment
+          !message.deleted && message.attachment
             ? `
               <a
                 href="${esc(message.attachment.url)}"
@@ -3052,6 +3437,7 @@ function dmMessageHTML(message, messages, user) {
         }
 
         <div class="msg-actions">
+          ${message.text && !message.deleted ? `<button type="button" class="mini" onclick="translateMessageText(&quot;${esc(message.id)}&quot;,&quot;dm&quot;)">文 Translate</button>` : ""}
           <button
             type="button"
             class="mini"
@@ -3059,6 +3445,7 @@ function dmMessageHTML(message, messages, user) {
           >
             Quote
           </button>
+          ${deleteAction}
         </div>
       </div>
     </div>
@@ -3081,6 +3468,8 @@ async function openDM(id) {
 
     state.dmUserId = String(id);
     state.dmPeerUser = user;
+    // Remember the most recently opened conversation for inbox ordering.
+    if(state.user?.id)safeStorage.setItem("mc_dm_last_opened_"+String(state.user.id),String(id));
 
     const data = await api(`/api/dm/${id}`);
     const messages = data.messages || [];
@@ -3153,6 +3542,24 @@ async function openDM(id) {
 
     const dmTargetId=String(user.id),dmSettings=$('dmChatSettingsMenu'),dmSettingsBtn=$('dmChatSettingsBtn');
     dmSettingsBtn?.addEventListener('click',()=>{dmSettings?.classList.toggle('hidden');dmSettingsBtn.setAttribute('aria-expanded',String(!dmSettings?.classList.contains('hidden')));});
+    $('dmMessages')?.addEventListener("click",async event=>{
+      const button=event.target?.closest?.("[data-dm-delete]");
+      if(!button)return;
+      const messageId=String(button.dataset.dmDelete||"");
+      const message=(state.dmMessages||[]).find(item=>String(item.id)===messageId);
+      if(!message||message.deleted||String(message.from)!==String(state.user?.id))return;
+      if(!confirm("Delete this private message for both participants? This cannot be undone."))return;
+      button.disabled=true;
+      try{
+        const result=await api("/api/dm/messages/"+encodeURIComponent(messageId),{method:"DELETE"});
+        const updated=result.message||{...message,text:"",attachment:null,deleted:true,deletedAt:Date.now()};
+        state.dmMessages=(state.dmMessages||[]).map(item=>String(item.id)===messageId?{...item,...updated}:item);
+        const list=$("dmMessages");
+        if(list&&state.dmPeerUser){list.innerHTML=state.dmMessages.map(item=>dmMessageHTML(item,state.dmMessages,state.dmPeerUser)).join("");list.scrollTop=list.scrollHeight;}
+        toast("Private message deleted.");
+        loadDMList().catch(()=>{});
+      }catch(error){toast(error.message||"Could not delete the message.");button.disabled=false;}
+    });
     $('dmCloseBtn')?.addEventListener('click',closeModal);
     dmSettings?.querySelectorAll('[data-dm-action]').forEach(btn=>btn.addEventListener('click',async()=>{
       const action=btn.dataset.dmAction;dmSettings.classList.add('hidden');
@@ -3187,7 +3594,12 @@ async function openDM(id) {
 
     try {
       await api(`/api/dm/${id}/read`, { method: "POST" });
-    } catch {}
+      // Refresh badges/inbox only after the server confirms read receipts.
+      refreshTopDMUnreadBadge().catch(()=>{});
+      loadDMList().catch(()=>{});
+    } catch (error) {
+      console.warn("Could not mark opened conversation as read:",error?.message||error);
+    }
 
     $("dmFile")?.addEventListener("change",()=>{
       const f=$("dmFile").files?.[0];
@@ -3578,12 +3990,15 @@ async function staffAccountModificationModal(user){
 }
 
 function rankFromProfile(user){
-  const isOwner=String(state.user?.rank||"").toUpperCase()==="DEVELOPER" || (state.user?.username==="Maleficent" && state.user?.rank==="OWNER");
+  const actorRank=String(state.user?.rank||"MEMBER").toUpperCase();
+  const isOwner=actorRank==="DEVELOPER" || (state.user?.username==="Maleficent" && actorRank==="OWNER");
+  const isCoowner=actorRank==="COOWNER";
   const isStaff=canFeature("staff_rank_assignment");
   if(!isOwner && !isStaff){toast("You do not have permission to change ranks.");return;}
   if(user.username==="Maleficent" && !isOwner){toast("The permanent owner is protected.");return;}
-  const allowed=isOwner ? ranks : ranks.filter(r=>rankOrder[r]<=rankOrder.MOD && rankOrder[r]<rankOrder[state.user.rank]);
-  modal(`<h2>🏅 Change rank for @${esc(user.username)}</h2><p class="muted">${isOwner?"Owner control: you may assign any rank, including OWNER.":"Staff control: you may assign MOD or below only."}</p><select id="profileRankSelect">${allowed.map(r=>`<option value="${r}" ${r===user.rank?'selected':''}>${rankIcon[r]||''} ${r}</option>`).join('')}</select><div class="toolbar"><button class="primary" id="saveProfileRank">Save rank</button></div>`);
+  const ceiling=isOwner?rankOrder.DEVELOPER:(isCoowner?rankOrder.INSTRUCTOR:rankOrder.MOD);
+  const allowed=isOwner ? ranks : ranks.filter(r=>rankOrder[r]<=ceiling && rankOrder[r]<rankOrder[actorRank]);
+  modal(`<h2>🏅 Change rank for @${esc(user.username)}</h2><p class="muted">${isOwner?"Owner control: you may assign any rank, including OWNER.":(isCoowner?"Co-owner control: you may assign Instructor or below.":"Staff control: you may assign MOD or below.")}</p><select id="profileRankSelect">${allowed.map(r=>`<option value="${r}" ${r===user.rank?'selected':''}>${rankIcon[r]||''} ${r}</option>`).join('')}</select><div class="toolbar"><button class="primary" id="saveProfileRank">Save rank</button></div>`);
   $('saveProfileRank').onclick=async()=>{
     try{
       const endpoint=isOwner?`/api/owner/user/${encodeURIComponent(user.id)}/rank`:`/api/staff/user/${encodeURIComponent(user.id)}/rank`;
@@ -3599,9 +4014,39 @@ function nicknameModal(user){
   $('saveNickname').onclick=async()=>{try{await api('/api/friends/'+encodeURIComponent(user.id)+'/nickname',{method:'PUT',body:JSON.stringify({nickname:$('nicknameInput').value.trim()})});closeModal();toast('Nickname saved.');}catch(e){toast(e.message)}};
   $('removeNickname').onclick=async()=>{try{await api('/api/friends/'+encodeURIComponent(user.id)+'/nickname',{method:'DELETE'});closeModal();toast('Nickname removed.');}catch(e){toast(e.message)}};
 }
-function shareGoldModal(user){
-  modal(`<h2>🪙 Share gold</h2><p class="muted">Your gold: ${state.user.gold||0}</p><input id="goldAmount" type="number" min="1" max="${Math.max(1,state.user.gold||1)}" placeholder="Amount"><button class="primary" id="sendGoldBtn">Send gold</button>`);
-  $('sendGoldBtn').onclick=async()=>{try{const r=await api('/api/users/'+encodeURIComponent(user.id)+'/gold/share',{method:'POST',body:JSON.stringify({amount:Number($('goldAmount').value)})});state.user.gold=r.remainingGold;updateNav();closeModal();toast('Gold sent.');}catch(e){toast(e.message)}};
+function shareWalletModal(user){
+  const balances={DIAMONDS:Number(state.user?.diamonds||0),GOLD:Number(state.user?.gold||0)};
+  modal("<div class='wallet-transfer-modal'><h2>💝 Share Wallet</h2><p class='muted'>Send currency to @"+esc(user.username||"member")+".</p><label>Currency<select id='walletShareCurrency'><option value='DIAMONDS'>💎 Diamonds</option><option value='GOLD'>🪙 Gold</option></select></label><div class='wallet-share-balance' id='walletShareBalance'></div><label>Amount<input id='walletShareAmount' type='number' min='1' step='1' placeholder='Enter amount'></label><label>Message (optional)<input id='walletShareNote' maxlength='160' placeholder='A little gift for you…'></label><p class='wallet-transfer-limit'>Daily limit: 100 Diamonds or 10,000 Gold.</p><button class='primary' id='sendWalletBtn'>Send</button></div>");
+  const currency=$("walletShareCurrency"),amount=$("walletShareAmount"),balance=$("walletShareBalance");
+  const sync=()=>{const key=currency.value,unit=key==="DIAMONDS"?"Diamonds":"Gold",available=balances[key];balance.textContent="Available: "+available.toLocaleString()+" "+unit;amount.max=String(available);amount.placeholder="Up to "+available.toLocaleString();};
+  currency.onchange=sync;sync();
+  $("sendWalletBtn").onclick=async()=>{const selected=currency.value,value=Number(amount.value);if(!Number.isSafeInteger(value)||value<1){toast("Enter a whole positive amount.");return;}try{const result=await api("/api/users/"+encodeURIComponent(user.id)+"/wallet/share",{method:"POST",body:JSON.stringify({currency:selected,amount:value,note:$("walletShareNote").value.trim()})});if(result.from){state.user.diamonds=Number(result.from.diamonds||0);state.user.gold=Number(result.from.gold||0);}updateNav();closeModal();toast(value.toLocaleString()+" "+(selected==="DIAMONDS"?"Diamonds":"Gold")+" sent to @"+user.username+".");if(state.view==="wallet")loadWallet();}catch(error){toast(error.message)}};
+}
+function openWalletShareByUsername(){
+  modal("<div class='wallet-transfer-modal'><h2>💝 Share Wallet</h2><p class='muted'>Find a member to send Diamonds or Gold.</p><input id='walletRecipientSearch' maxlength='26' placeholder='Search username…'><div id='walletRecipientResults' class='wallet-recipient-results'></div></div>");
+  const input=$("walletRecipientSearch"),results=$("walletRecipientResults");let version=0;
+  input.oninput=async()=>{const q=input.value.trim(),request=++version;if(q.length<2){results.innerHTML="<p class='muted'>Enter at least 2 characters.</p>";return;}results.innerHTML="<p class='muted'>Searching…</p>";try{const data=await api("/api/wallet/recipients?q="+encodeURIComponent(q));if(request!==version)return;results.innerHTML=(data.users||[]).map(user=>"<button type='button' class='wallet-recipient' data-wallet-recipient='"+esc(user.id)+"'><span>👤</span><b>@"+esc(user.username)+"</b><i>›</i></button>").join("")||"<p class='muted'>No members found.</p>";results.querySelectorAll("[data-wallet-recipient]").forEach(button=>button.onclick=()=>{const user=(data.users||[]).find(item=>String(item.id)===button.dataset.walletRecipient);if(user)shareWalletModal(user);});}catch(error){results.innerHTML="<p class='error'>"+esc(error.message)+"</p>";}};
+}
+function openWalletConvertModal(){
+  modal("<div class='wallet-transfer-modal'><h2>🔄 Convert Diamonds</h2><p class='muted'>1 Diamond = 100 Gold.</p><div class='wallet-share-balance'>Available: "+Number(state.user?.diamonds||0).toLocaleString()+" 💎</div><label>Diamonds to convert<input id='walletConvertAmount' type='number' min='1' step='1' placeholder='Enter whole Diamonds'></label><div class='wallet-convert-preview' id='walletConvertPreview'>You will receive 0 Gold.</div><button class='primary' id='walletConvertSubmit'>Convert</button></div>");
+  const amount=$("walletConvertAmount"),preview=$("walletConvertPreview");amount.max=String(Math.max(1,Number(state.user?.diamonds||0)));amount.oninput=()=>{const value=Number(amount.value);preview.textContent="You will receive "+(Number.isSafeInteger(value)&&value>0?(value*100).toLocaleString():"0")+" Gold.";};
+  $("walletConvertSubmit").onclick=async()=>{const value=Number(amount.value);if(!Number.isSafeInteger(value)||value<1){toast("Enter a whole positive Diamond amount.");return;}try{const result=await api("/api/wallet/convert",{method:"POST",body:JSON.stringify({amount:value})});state.user.diamonds=result.wallet.diamonds;state.user.gold=result.wallet.gold;updateNav();closeModal();toast("Converted "+value+" Diamonds into "+(value*100).toLocaleString()+" Gold.");if(state.view==="wallet")loadWallet();}catch(error){toast(error.message)}};
+}
+async function loadWallet(){
+  const root=$("walletRoot");if(!root)return;root.innerHTML="<div class='wallet-loading'>Opening your MC Bank…</div>";
+  try{
+    const pair=await Promise.all([api("/api/wallet"),api("/api/daily/status")]),data=pair[0],daily=pair[1];
+    state.user.diamonds=Number(data.wallet?.diamonds||0);state.user.gold=Number(data.wallet?.gold||0);updateNav();
+    const packages=data.packages||[],transactions=data.transactions||[],schedule=data.dailyDiamondRewards||[2,3,4,5,6,8,15],rank=String(state.user?.rank||"MEMBER").toUpperCase(),canReward=["COOWNER","OWNER","DEVELOPER"].includes(rank);
+    const txHtml=transactions.map(tx=>{const outgoing=String(tx.sender_id)===String(state.user.id),currency=tx.currency==="DIAMONDS"?"💎":"🪙",unit=tx.currency==="DIAMONDS"?"Diamonds":"Gold";let title=tx.type==="TRANSFER"?(outgoing?"Sent to @"+(tx.recipient_username||"member"):"Received from @"+(tx.sender_username||"member")):tx.type==="DAILY_REWARD"?"Daily login reward":tx.type==="STAFF_REWARD"?"Staff reward":tx.type==="CONVERT"?"Diamond conversion":String(tx.type||"Transaction").replaceAll("_"," ").toLowerCase();let sign=(tx.type==="TRANSFER"&&outgoing)||tx.type==="CONVERT"?"−":"+";return "<div class='wallet-transaction'><span class='wallet-transaction-icon'>"+currency+"</span><div class='wallet-transaction-copy'><b>"+esc(title)+"</b>"+(tx.note?"<small>"+esc(tx.note)+"</small>":"")+"<small>"+fmt(tx.created_at)+"</small></div><strong class='"+(sign==="−"?"wallet-negative":"wallet-positive")+"'>"+sign+Number(tx.amount||0).toLocaleString()+" "+unit+"</strong></div>";}).join("")||"<p class='muted'>Your wallet activity will appear here.</p>";
+    const rewardDays=schedule.map((value,index)=>"<div class='wallet-reward-day'><small>DAY "+(index+1)+"</small><b>💎 "+value+"</b></div>").join("");
+    const packageCards=packages.map(item=>"<article class='wallet-package'><span>💎</span><b>"+item.diamonds+" Diamonds</b><strong>$"+item.price+"</strong><small>Secure checkout not connected yet</small></article>").join("");
+    const staffPanel=canReward?"<section class='wallet-panel wallet-staff-panel'><div class='wallet-panel-heading'><div><span>🛡️ STAFF TOOLS</span><h3>Grant Diamonds</h3></div></div><form id='walletStaffRewardForm' class='wallet-staff-form'><label>Member username<input id='walletRewardUser' maxlength='26' placeholder='@username' required></label><label>Diamond amount<input id='walletRewardAmount' type='number' min='1' max='"+(rank==="COOWNER"?10:rank==="OWNER"?100:Number.MAX_SAFE_INTEGER)+"' step='1' required></label><label>Reason<input id='walletRewardReason' maxlength='240' placeholder='Reason for reward' required></label><button class='primary' type='submit'>Grant Diamonds</button></form><small class='muted'>"+(rank==="COOWNER"?"Coowner limit: 10 Diamonds per reward.":rank==="OWNER"?"Owner limit: 100 Diamonds per reward.":"Developer reward authority.")+"</small></section>":"";
+    root.innerHTML="<section class='wallet-hero'><div class='wallet-hero-copy'><span class='wallet-eyebrow'>MALEFICENT CHAT · PRIVATE BANK</span><h3>Your Wallet</h3><p>Collect Diamonds, convert them into Gold, and share either currency with your friends.</p></div><div class='wallet-balance-grid'><article class='wallet-balance-card wallet-diamond-card'><span>💎</span><small>DIAMONDS</small><strong>"+state.user.diamonds.toLocaleString()+"</strong></article><article class='wallet-balance-card wallet-gold-card'><span>🪙</span><small>GOLD</small><strong>"+state.user.gold.toLocaleString()+"</strong></article></div><div class='wallet-actions'><button type='button' class='primary' id='walletShareOpen'>💝 Share Wallet</button><button type='button' class='mini' id='walletConvertOpen'>🔄 Convert Diamonds</button><button type='button' class='mini' id='walletRefresh'>↻ Refresh</button></div></section><div class='wallet-content-grid'><section class='wallet-panel'><div class='wallet-panel-heading'><div><span>🎁 DAILY LOGIN</span><h3>Diamond Rewards</h3></div><b>7-day cycle</b></div><div class='wallet-reward-days'>"+rewardDays+"</div><p class='muted'>Claim once every day. Miss a day and your streak starts again.</p><button type='button' class='primary' id='walletDailyClaim' "+(daily.claimed?"disabled":"")+">"+(daily.claimed?"✓ Already claimed today":"Claim +"+(daily.nextDiamonds||2)+" Diamonds")+"</button></section><section class='wallet-panel'><div class='wallet-panel-heading'><div><span>💎 PREMIUM CURRENCY</span><h3>Diamond Store</h3></div></div><div class='wallet-package-grid'>"+packageCards+"</div><p class='wallet-payment-note'>Packages are configured. Purchases will activate after a verified payment provider is connected; MC will not credit unverified payments.</p></section></div>"+staffPanel+"<section class='wallet-panel wallet-history-panel'><div class='wallet-panel-heading'><div><span>📜 WALLET ACTIVITY</span><h3>Transaction History</h3></div></div><div class='wallet-transactions'>"+txHtml+"</div></section>";
+    $("walletShareOpen").onclick=openWalletShareByUsername;$("walletConvertOpen").onclick=openWalletConvertModal;$("walletRefresh").onclick=loadWallet;
+    $("walletDailyClaim")?.addEventListener("click",async()=>{const result=await claimDailyReward();if(result)await loadWallet();});
+    $("walletStaffRewardForm")?.addEventListener("submit",async event=>{event.preventDefault();const button=event.currentTarget.querySelector("button[type='submit']");if(button){button.disabled=true;button.textContent="Granting…";}try{const result=await api("/api/wallet/reward",{method:"POST",body:JSON.stringify({username:$("walletRewardUser").value.trim().replace(/^@/,""),amount:Number($("walletRewardAmount").value),reason:$("walletRewardReason").value.trim()})});toast("Granted "+result.amount+" Diamonds to @"+result.recipient.username+".");await loadWallet();}catch(error){toast(error.message);if(button){button.disabled=false;button.textContent="Grant Diamonds";}}});
+  }catch(error){root.innerHTML="<section class='wallet-panel'><p class='error'>Could not load your wallet: "+esc(error.message)+"</p><button class='mini' id='walletRetry'>Retry</button></section>";$("walletRetry")?.addEventListener("click",loadWallet);}
 }
 
 
@@ -3617,7 +4062,7 @@ async function openProfileActionDrawer(user,data={}){
   const targetIsDeveloper=String(user.rank||"").toUpperCase()==="DEVELOPER"||String(user.username||"").toLowerCase()==="maleficent";
   const canActOnTarget=!targetIsDeveloper||actorIsDeveloper;
   const canStaffModification=canActOnTarget&&canFeature("account_modifications")&&canAccessStaffTarget(user);
-  const canShareWallet=canActOnTarget&&canFeature("share_gold")&&canAccessStaffTarget(user);
+  const canShareWallet=!blocked;
   const roomRole=String(state.currentRoomRole||"USER").toUpperCase();
   const targetIsStaff=(rankOrder[String(user.rank||"MEMBER").toUpperCase()]??-1)>=(rankOrder.MOD??4)||String(user.username||"").toLowerCase()==="maleficent";
   const hierarchyAllowsRoomActions=canActOnTarget&&(!targetIsStaff||canAccessStaffTarget(user));
@@ -3633,7 +4078,7 @@ async function openProfileActionDrawer(user,data={}){
      <button class="quick-user-row" id="drawerAddFriend"><span>👥</span><b>Add friend</b><i>›</i></button>
      <button class="quick-user-row" id="drawerBlock"><span>🚫</span><b>Block</b><i>›</i></button>
      ${canStaffModification?'<button class="quick-user-row" id="drawerStaffModification"><span>🛠️</span><b>Staff modification</b><i>›</i></button>':''}
-     ${canShareWallet?'<button class="quick-user-row" id="drawerWallet"><span>🪙</span><b>Share wallet</b><i>›</i></button>':''}
+     ${canShareWallet?'<button class="quick-user-row" id="drawerWallet"><span>💝</span><b>Share Wallet</b><i>›</i></button>':''}
      ${canGiveRank?'<button class="quick-user-row" id="drawerGiveRank"><span>🏅</span><b>Give rank</b><i>›</i></button>':''}
      ${canRoomRank?'<button class="quick-user-row" id="drawerRoomRank"><span>✨</span><b>Room rank</b><i>›</i></button>':''}
      ${canRoomModerate?'<button class="quick-user-row" id="drawerRoomModerate"><span>🛡️</span><b>Room moderation</b><i>›</i></button>':''}
@@ -3695,20 +4140,20 @@ async function loadProfile(user){
   const profileTheme=cosmetics.find(x=>x.category==='theme');
   const profileBadge=cosmetics.find(x=>x.category==='badge');
   const banner=user.banner?`style="background-image:linear-gradient(180deg,rgba(0,0,0,.05),rgba(0,0,0,.72)),url('${esc(user.banner)}')"`:'';
-  $('profile').innerHTML=`<div class="my-profile-wrap"><div class="profile-settings-card ${profileTheme?esc(profileTheme.id):''}">
+  $('profile').innerHTML=`<div class="my-profile-wrap"><div class="profile-settings-card ${profileTheme?esc(profileTheme.id):''} profile-theme-${['obsidian','midnight','rose','emerald'].includes(user.theme)?esc(user.theme):'obsidian'}">
     <div class="profile-settings-head" ${banner}>
       <div class="profile-settings-top"><span>⭐ ${user.level||1}</span><span>❤️ ${user.profileLikes||0}</span><button class="mini" onclick="uploadAvatar()">📷</button><button class="mini" onclick="editProfileInfo()" title="Edit profile">✏️</button><button class="mini" id="myProfileMenuBtn" title="More">☰</button></div>
       ${avatar(user,'big-avatar')}
       <div class="profile-rank">${rank(user.rank)}${user.verified?' · ✓ Verified':''}</div>
       <div class="profile-name" style="color:${esc(user.profileColor||user.settings?.usernameColor||'')}" >${esc(user.displayName)}</div><div class="profile-handle">@${esc(user.username)}${user.privacy?.pronouns!==false&&user.pronouns?` · ${esc(user.pronouns)}`:''}</div><div class="profile-extra">${user.privacy?.country!==false&&user.country?`<span class="profile-country">${esc(countryFlagFor(user.country))} ${esc(user.country)}</span>`:''}${user.privacy?.mood!==false&&user.mood?`<span>☻ ${esc(user.mood)}</span>`:''}${user.privacy?.relationship!==false&&user.relationship?`<span>♥ ${esc(user.relationship)}</span>`:''}${user.privacy?.location!==false&&user.location?`<span>📍 ${esc(user.location)}</span>`:''}${user.privacy?.website!==false&&user.website?`<span>🔗 <a href="${esc(safeProfileUrl(user.website))}" target="_blank" rel="noopener noreferrer">Website</a></span>`:''}</div>
-      <button class="mini" onclick="uploadBanner()">🎵 Add music / banner</button>
+      <div class="profile-media-actions"><button class="mini profile-media-action" type="button" onclick="uploadAvatar()" title="Add or change profile picture" aria-label="Add or change profile picture">📷 Profile picture</button><button class="mini profile-media-action" type="button" onclick="uploadBanner()" title="Add or change profile banner" aria-label="Add or change profile banner">🖼️ Profile banner</button></div>
     </div>
     <button class="mini" id="selfAchievementsBtn">🏆 Achievements</button>
     <div class="settings-tabs"><button class="settings-tab active" data-st="account">Account</button><button class="settings-tab" data-st="more">More</button></div>
     <div id="myProfileSettings"></div>
   </div></div>`;
   const content=$('myProfileSettings');
-  api('/api/daily/status').then(d=>{const b=document.querySelector('[data-daily-reward]');if(b){b.disabled=!!d.claimed;b.querySelector('small').textContent=d.claimed?'Already claimed today':`Claim ${25} gold + ${15} XP once per day`;}}).catch(()=>{});
+  api('/api/daily/status').then(d=>{const b=document.querySelector('[data-daily-reward]');if(b){b.disabled=!!d.claimed;b.querySelector('small').textContent=d.claimed?'Already claimed today':`Claim ${d.nextDiamonds||2} Diamonds + daily Gold and XP`;}}).catch(()=>{});
   const render=(tab)=>{
     document.querySelectorAll('.settings-tab').forEach(b=>b.classList.toggle('active',b.dataset.st===tab));
     if(tab==='account'){content.innerHTML=`<div class="settings-list">
@@ -3718,10 +4163,11 @@ async function loadProfile(user){
       <button class="settings-row" onclick="editAboutMe()"><span>?</span><b>Edit about me</b><small>${esc(user.bio||'Not set')}</small><strong>›</strong></button>
       <button class="settings-row" onclick="editMood()"><span>☻</span><b>Edit mood</b><small>${esc(user.mood||'Not set')}</small><strong>›</strong></button>
       <button class="settings-row" onclick="editEmail()"><span>✉</span><b>Edit email</b><small>Email is optional</small><strong>›</strong></button><button class="settings-row" onclick="showBlockedUsers()"><span>🚫</span><b>Blocked users</b><small>View and unblock people you blocked</small><strong>›</strong></button>
-      <button class="settings-row" onclick="changePasswordModal()"><span>🔑</span><b>Change password</b><small>Update your login password</small><strong>›</strong></button><button class="settings-row" data-daily-reward onclick="claimDailyReward()"><span>🎁</span><b>Daily Gold and XP Reward</b><small>Claim once per day</small><strong>›</strong></button>
+      <button class="settings-row" onclick="changePasswordModal()"><span>🔑</span><b>Change password</b><small>Update your login password</small><strong>›</strong></button><button class="settings-row" data-daily-reward onclick="claimDailyReward()"><span>💎</span><b>Daily Diamond Reward</b><small>Claim Diamonds, Gold and XP once per day</small><strong>›</strong></button>
     </div>`;}else{content.innerHTML=`<div class="settings-list">
       <button class="settings-row" onclick="privacyModal()"><span>🔒</span><b>Privacy Control</b><small>Choose which profile details other members can see</small><strong>›</strong></button>
       <button class="settings-row" onclick="uploadAvatar()"><span>🖼️</span><b>Edit photos</b><small>Profile photo and banner</small><strong>›</strong></button>
+      <button class="settings-row" onclick="editProfileStyle()"><span>✨</span><b>Profile styles</b><small>Change profile colors and background — preview before saving</small><strong>›</strong></button>
       <button class="settings-row" onclick="usernameHistory()"><span>📜</span><b>Username history</b><small>${(user.usernameHistory||[]).length} recorded changes</small><strong>›</strong></button>
       <button class="settings-row danger-row" onclick="deleteAccount()"><span>⊘</span><b>Delete account</b><small>This action is permanent</small><strong>›</strong></button>
     </div>`;}
@@ -3737,16 +4183,41 @@ function editAboutMe(){modal(`<h2>Edit about me</h2><textarea id="aboutMeEdit" r
 function editMood(){modal(`<h2>Edit mood</h2><input id="moodEdit" maxlength="120" value="${esc(state.user.mood||'')}" placeholder="How are you feeling?"><button class="primary" id="saveMood">Save</button>`);$('saveMood').onclick=()=>saveMyProfile({mood:$('moodEdit').value.trim()},'Mood saved.');}
 function editProfileStyle(){
   const u=state.user||{};
-  modal(`<h2>✨ Profile appearance</h2>
-    <p class="muted">Personalize your profile card. Changes are saved to your account.</p>
-    <label>Display name color<input id="profileColorEdit" type="color" value="${/^#[0-9a-f]{6}$/i.test(u.profileColor||'')?u.profileColor:'#00bfae'}"></label>
-    <label>Profile theme<select id="profileThemeEdit"><option value="obsidian">Obsidian</option><option value="midnight">Midnight</option><option value="rose">Rose</option><option value="emerald">Emerald</option></select></label>
+  const themes={
+    obsidian:{bg:'#171126',panel:'#0b0912',accent:'#b69aff',text:'#f6f0ff'},
+    midnight:{bg:'#101b2b',panel:'#080f1a',accent:'#63d8ff',text:'#eaf7ff'},
+    rose:{bg:'#351725',panel:'#1c0c16',accent:'#ff8eb7',text:'#fff0f6'},
+    emerald:{bg:'#123128',panel:'#081d17',accent:'#73efbb',text:'#eafff5'}
+  };
+  modal(`<h2>✨ Profile styles</h2>
+    <p class="muted">Choose a style and see the preview update before saving. This changes the appearance of your profile card.</p>
+    <div id="profileStylePreview" style="border:1px solid #7d58aa;border-radius:16px;overflow:hidden;margin:12px 0 16px;background:#171126;color:#f6f0ff">
+      <div id="profileStyleBannerPreview" style="height:74px;background:linear-gradient(135deg,#38245c,#120d20);"></div>
+      <div style="padding:0 14px 16px;text-align:center">
+        <div id="profileStyleAvatarPreview" style="width:64px;height:64px;margin:-32px auto 8px;border:3px solid #171126;border-radius:50%;background:#34224b;display:flex;align-items:center;justify-content:center;font-size:28px;position:relative">🖤</div>
+        <div id="profileStyleNamePreview" style="font-size:18px;font-weight:800;color:#b69aff">${esc(u.displayName||u.username||'Your profile')}</div>
+        <div style="opacity:.8;font-size:12px">@${esc(u.username||'username')} · ${esc(u.rank||'MEMBER')}</div>
+        <div id="profileStyleBadgePreview" style="display:inline-block;margin-top:8px;padding:4px 10px;border-radius:999px;background:#302044;color:#b69aff;font-size:12px">${esc(u.badge||'Profile badge')}</div>
+      </div>
+    </div>
+    <label>Profile theme<select id="profileThemeEdit"><option value="obsidian">Obsidian</option><option value="midnight">Midnight Cyber</option><option value="rose">Rose</option><option value="emerald">Emerald</option></select></label>
+    <label>Display name color<input id="profileColorEdit" type="color" value="${/^#[0-9a-f]{6}$/i.test(u.profileColor||'')?u.profileColor:'#b69aff'}"></label>
     <label>Profile badge text<input id="profileBadgeEdit" maxlength="32" value="${esc(u.badge||'')}" placeholder="e.g. Artist, Gamer"></label>
-    <label>Pronouns / status<input id="profilePronounsEdit" maxlength="40" value="${esc(u.pronouns||'')}" placeholder="Pronouns (optional)"></label>
-    <label>Profile background image URL<input id="profileBannerEdit" maxlength="500" value="${esc(u.banner||'')}" placeholder="https://…"></label>
-    <button class="primary" id="saveProfileStyle">Save appearance</button>`);
-  $('profileThemeEdit').value=['obsidian','midnight','rose','emerald'].includes(u.theme)?u.theme:'obsidian';
-  $('saveProfileStyle').onclick=()=>saveMyProfile({profileColor:$('profileColorEdit').value,theme:$('profileThemeEdit').value,badge:$('profileBadgeEdit').value.trim(),pronouns:$('profilePronounsEdit').value.trim(),banner:$('profileBannerEdit').value.trim()},'Profile appearance saved.');
+    <label>Profile banner image URL<input id="profileBannerEdit" maxlength="500" value="${esc(u.banner||'')}" placeholder="https://… (optional)"></label>
+    <div class="toolbar"><button class="mini" type="button" id="previewProfileStyle">Preview profile</button><button class="primary" id="saveProfileStyle">Save appearance</button></div>`);
+  const themeInput=$('profileThemeEdit'), colorInput=$('profileColorEdit'), badgeInput=$('profileBadgeEdit'), bannerInput=$('profileBannerEdit');
+  themeInput.value=themes[u.theme]?u.theme:'obsidian';
+  const preview=()=>{const t=themes[themeInput.value]||themes.obsidian;const card=$('profileStylePreview');card.style.background=t.bg;card.style.color=t.text;card.style.borderColor=t.accent;$('profileStyleBannerPreview').style.background=bannerInput.value.trim()? `linear-gradient(180deg,rgba(0,0,0,.1),rgba(0,0,0,.5)),url("${bannerInput.value.trim().replace(/["\\\\]/g,'')}") center/cover`:`linear-gradient(135deg,${t.accent},${t.panel})`;$('profileStyleAvatarPreview').style.borderColor=t.bg;$('profileStyleNamePreview').style.color=colorInput.value;$('profileStyleBadgePreview').style.color=t.accent;$('profileStyleBadgePreview').style.background=t.panel;$('profileStyleBadgePreview').textContent=badgeInput.value.trim()||'Profile badge';};
+  [themeInput,colorInput,badgeInput,bannerInput].forEach(el=>el.addEventListener('input',preview));
+  preview();
+  $('previewProfileStyle').onclick=()=>{
+    const card=$('profileStylePreview');
+    const previewHtml=card.outerHTML;
+    modal('<h2>✨ Profile preview</h2><p class="muted">This is how your profile card will look with the current selections. Nothing has been saved yet.</p>'+previewHtml+'<div class="toolbar"><button class="mini" type="button" id="backToProfileStyle">Back to settings</button><button class="primary" type="button" id="savePreviewedProfileStyle">Save appearance</button></div>');
+    $('backToProfileStyle').onclick=editProfileStyle;
+    $('savePreviewedProfileStyle').onclick=()=>saveMyProfile({profileColor:colorInput.value,theme:themeInput.value,badge:badgeInput.value.trim(),banner:bannerInput.value.trim()},'Profile appearance saved.');
+  };
+  $('saveProfileStyle').onclick=()=>saveMyProfile({profileColor:colorInput.value,theme:themeInput.value,badge:badgeInput.value.trim(),banner:bannerInput.value.trim()},'Profile appearance saved.');
 }
 
 async function editEmail(){try{const r=await api('/api/me/email');modal(`<h2>Edit email</h2><p class="muted">Email is optional. It is not required on the registration screen.</p><input id="emailEdit" type="email" value="${esc(r.email||'')}" placeholder="Email address"><div class="toolbar"><button class="primary" id="saveEmail">Save</button></div>`);$('saveEmail').onclick=async()=>{try{await api('/api/me/email',{method:'PUT',body:JSON.stringify({email:$('emailEdit').value.trim()})});closeModal();toast('Email saved.');}catch(e){toast(e.message)}}}catch(e){toast(e.message)}}
@@ -3926,6 +4397,24 @@ function auditActionLabel(action) {
   const key = String(action || "EVENT").toUpperCase();
   return labels[key] || key.toLowerCase().replace(/[_-]+/g, " ").replace(/\b\w/g, c => c.toUpperCase());
 }
+function auditMediaPreview(media, label="Deleted media") {
+  if (!media) return "";
+  const item = typeof media === "string" ? {url:media} : media;
+  const url = String(item.url || item.mediaUrl || "");
+  if (!url || !(url.startsWith("/uploads/") || url.startsWith("https://"))) return '<div class="audit-detail-empty">Media reference unavailable</div>';
+  const type = String(item.type || item.mimeType || "").toLowerCase();
+  const name = String(item.name || item.filename || label);
+  const safeUrl = esc(url);
+  let preview = "";
+  if (type.startsWith("image/") || /\.(png|jpe?g|gif|webp|avif)(?:[?#]|$)/i.test(url)) {
+    preview = '<img src="' + safeUrl + '" alt="' + esc(name) + '" loading="lazy" style="display:block;max-width:min(100%,420px);max-height:320px;object-fit:contain;border-radius:12px;margin:8px 0">';
+  } else if (type.startsWith("video/") || /\.(mp4|webm|mov|m4v)(?:[?#]|$)/i.test(url)) {
+    preview = '<video controls preload="metadata" style="display:block;max-width:min(100%,420px);max-height:320px;border-radius:12px;margin:8px 0"><source src="' + safeUrl + '" type="' + esc(type) + '"></video>';
+  } else if (type.startsWith("audio/") || /\.(mp3|wav|ogg|m4a|aac|opus)(?:[?#]|$)/i.test(url)) {
+    preview = '<audio controls preload="metadata" style="display:block;max-width:100%;margin:8px 0"><source src="' + safeUrl + '" type="' + esc(type) + '"></audio>';
+  }
+  return '<div class="audit-media-evidence"><b>' + esc(label) + ': ' + esc(name) + '</b>' + preview + '<a href="' + safeUrl + '" target="_blank" rel="noopener noreferrer">Open original media</a></div>';
+}
 function formatAuditDetail(value) {
   if (value == null || value === "") return '<span class="audit-detail-empty">No extra details recorded</span>';
   let parsed = value;
@@ -3939,6 +4428,8 @@ function formatAuditDetail(value) {
   const pretty = key => String(key).replace(/([A-Z])/g, " $1").replace(/[_-]+/g, " ").replace(/^./, c => c.toUpperCase());
   return '<div class="audit-detail-list">' + entries.map(([key, val]) => {
     const label = pretty(key);
+    if (key === "attachment" && val) return '<div class="audit-detail-item">' + auditMediaPreview(val, "Attachment") + '</div>';
+    if (key === "mediaUrl" && val) return '<div class="audit-detail-item">' + auditMediaPreview({url:val,type:parsed.mediaType||""}, "Deleted media") + '</div>';
     if (Array.isArray(val)) {
       if (key.toLowerCase() === "features" || val.some(item => item && typeof item === "object" && (item.key || item.minimumRank || item.minimum_rank))) {
         const items = val.map(item => {
@@ -3949,6 +4440,7 @@ function formatAuditDetail(value) {
         }).join("");
         return '<div class="audit-detail-item audit-feature-group"><b>' + esc(label) + ' (' + val.length + ')</b><ul class="audit-feature-list">' + items + '</ul></div>';
       }
+      if (key === "comments") return '<div class="audit-detail-item"><b>' + esc(label) + ' (' + val.length + ')</b><div class="audit-detail-nested">' + val.map(item => '<div><b>@' + esc(item.username || item.author || "Unknown") + '</b><p>' + esc(item.text || item.content || "") + '</p></div>').join("") + '</div></div>';
       return '<div class="audit-detail-item"><b>' + esc(label) + ':</b> ' + esc(val.map(item => typeof item === "object" ? JSON.stringify(item) : String(item)).join(", ")) + '</div>';
     }
     if (val && typeof val === "object") return '<div class="audit-detail-item"><b>' + esc(label) + ':</b><div class="audit-detail-nested">' + Object.entries(val).map(([k,v]) => '<div><span>' + esc(pretty(k)) + '</span><b>' + esc(v == null || v === "" ? "—" : typeof v === "boolean" ? (v ? "Enabled" : "Disabled") : String(v)) + '</b></div>').join("") + '</div></div>';
@@ -3957,13 +4449,13 @@ function formatAuditDetail(value) {
   }).join("") + '</div>';
 }
 function renderAuditRow(x) {
-  const raw = x.reason == null || x.reason === "" ? null : x.reason;
+  const evidence = x.meta && typeof x.meta === "object" && Object.keys(x.meta).length ? x.meta : (x.reason == null || x.reason === "" ? null : x.reason);
   const actor = x.actorUsername || x.actor || "System", target = x.target || "Site", when = x.time ? fmt(x.time) : "Time unavailable";
-  const details = raw == null ? '<span class="audit-detail-empty">No extra details recorded</span>' : formatAuditDetail(raw);
+  const details = evidence == null ? '<span class="audit-detail-empty">No extra details recorded</span>' : formatAuditDetail(evidence);
   return '<article class="system-audit-row"><div class="system-audit-heading"><b>' + esc(auditActionLabel(x.action)) + '</b><span class="audit-source">' + esc(String(x.source || "system").replace(/[_-]+/g, " ")) + '</span></div>' +
     '<div class="system-audit-meta"><span><small>ACTOR</small><b>' + esc(actor) + '</b></span><span><small>TARGET</small><b>' + esc(target) + '</b></span><span><small>DATE & TIME</small><b>' + esc(when) + '</b></span></div>' +
-    '<details class="audit-evidence-details"><summary>View details</summary><div class="audit-evidence-content">' + details +
-    (raw != null ? '<details class="audit-raw-details"><summary>View raw evidence</summary><pre>' + esc(typeof raw === "string" ? raw : JSON.stringify(raw, null, 2)) + '</pre></details>' : '') + '</div></details></article>';
+    '<details class="audit-evidence-details" open><summary>View deleted content & evidence</summary><div class="audit-evidence-content">' + details +
+    (evidence != null ? '<details class="audit-raw-details"><summary>View raw evidence</summary><pre>' + esc(typeof evidence === "string" ? evidence : JSON.stringify(evidence, null, 2)) + '</pre></details>' : '') + '</div></details></article>';
 }
 
 
@@ -4016,7 +4508,17 @@ async function renderStaffApplications(){
   const appRows=staffApps.applications||[];
   const appList=$('staffApplicationsList'),appCount=$('staffApplicationCount');
   if(appCount)appCount.textContent=String(appRows.filter(x=>x.status==='PENDING').length)+' pending · '+appRows.length+' total';
-  if(appList)appList.innerHTML=appRows.map(x=>`<div class="staff-application-row"><div class="staff-application-user"><div class="staff-application-avatar">${esc((x.displayName||x.username||'?').slice(0,1).toUpperCase())}</div><div><b>${esc(x.displayName||x.username)}</b><div class="muted">@${esc(x.username)} · ${esc(x.requestedRank.replace(/_/g,' '))}</div><small class="staff-application-status-text">${esc(x.status)} · ${fmt(x.createdAt)}</small></div></div><button class="mini primary" type="button" data-staff-app-form="${esc(x.id)}">Form</button></div>`).join('')||'<p class="muted">No staff applications yet.</p>';
+  const developerCanDelete=String(state.user?.rank||"").toUpperCase()==="DEVELOPER";
+  if(appList)appList.innerHTML=appRows.map(x=>`<div class="staff-application-row"><div class="staff-application-user"><div class="staff-application-avatar">${esc((x.displayName||x.username||'?').slice(0,1).toUpperCase())}</div><div><b>${esc(x.displayName||x.username)}</b><div class="muted">@${esc(x.username)} · ${esc(x.requestedRank.replace(/_/g,' '))}</div><small class="staff-application-status-text">${esc(x.status)} · ${fmt(x.createdAt)}</small></div></div><div class="toolbar"><button class="mini primary" type="button" data-staff-app-form="${esc(x.id)}">Form</button>${developerCanDelete?`<button class="mini danger" type="button" data-staff-app-delete="${esc(x.id)}" title="Permanently delete this application">Delete</button>`:""}</div></div>`).join('')||'<p class="muted">No staff applications yet.</p>';
+  appList?.querySelectorAll('[data-staff-app-delete]').forEach(btn=>btn.onclick=async()=>{
+    if(String(state.user?.rank||"").toUpperCase()!=="DEVELOPER"){toast("Developer rank required.");return;}
+    const id=btn.dataset.staffAppDelete;
+    const application=appRows.find(v=>String(v.id)===String(id));
+    if(!application||!confirm("Permanently delete the staff application from @"+application.username+"? This cannot be undone."))return;
+    btn.disabled=true;
+    try{await api('/api/staff/applications/'+encodeURIComponent(id),{method:'DELETE'});toast("Staff application deleted.");await loadStaff();}
+    catch(e){toast(e.message||"Could not delete this application.");btn.disabled=false;}
+  });
   appList?.querySelectorAll('[data-staff-app-form]').forEach(btn=>btn.onclick=()=>{
     const x=appRows.find(v=>String(v.id)===String(btn.dataset.staffAppForm));if(!x)return;
     modal(`<div class="staff-application-review"><h2>📝 Staff Application</h2><p class="muted">@${esc(x.username)} · Submitted ${fmt(x.createdAt)} · Status: ${esc(x.status)}</p>
@@ -4024,7 +4526,7 @@ async function renderStaffApplications(){
     <div class="staff-application-answer"><small>DAILY ACTIVE TIME</small><p>${esc(x.activity)}</p></div>
     <div class="staff-application-answer"><small>WHY SHOULD WE HIRE YOU?</small><p>${esc(x.reason)}</p></div>
     <div class="staff-application-answer"><small>PAST MODERATION EXPERIENCE</small><p>${esc(x.experience)}</p></div>
-    ${x.status==='PENDING'?'<label>Rank to grant<select id="staffAppGrantRank"><option value="MOD">Moderator</option><option value="ADMIN">Admin</option><option value="SUPER_ADMIN">Super Admin</option><option value="COMMISSOR">Commissor</option><option value="COOWNER">Co-owner</option></select></label><div class="toolbar staff-application-review-actions"><button class="mini danger" id="staffAppReject">Reject</button><button class="primary" id="staffAppGrant">Grant Rank</button></div><p id="staffAppReviewMessage" class="muted"></p>':'<p class="muted">This application has already been reviewed.</p>'}
+    ${x.status==='PENDING'?'<label>Rank to grant<select id="staffAppGrantRank"><option value="MOD">Moderator</option><option value="ADMIN">Admin</option><option value="SUPER_ADMIN">Super Admin</option><option value="COMMISSOR">Commissor</option>'+(String(state.user?.rank||"").toUpperCase()==="COOWNER"?'<option value="INSTRUCTOR">Instructor</option>':'')+'<option value="COOWNER">Co-owner</option></select></label><div class="toolbar staff-application-review-actions"><button class="mini danger" id="staffAppReject">Reject</button><button class="primary" id="staffAppGrant">Grant Rank</button></div><p id="staffAppReviewMessage" class="muted"></p>':'<p class="muted">This application has already been reviewed.</p>'}
     </div>`);
     $('staffAppReject')?.addEventListener('click',async()=>{const b=$('staffAppReject');b.disabled=true;try{await api('/api/staff/applications/'+encodeURIComponent(x.id)+'/reject',{method:'POST'});closeModal();toast('Application rejected.');await loadStaff();}catch(e){$('staffAppReviewMessage').textContent=e.message;b.disabled=false;}});
     $('staffAppGrant')?.addEventListener('click',async()=>{const b=$('staffAppGrant');b.disabled=true;try{await api('/api/staff/applications/'+encodeURIComponent(x.id)+'/grant',{method:'POST',body:JSON.stringify({rank:$('staffAppGrantRank').value})});closeModal();toast('Rank granted and application approved.');await loadStaff();}catch(e){$('staffAppReviewMessage').textContent=e.message;b.disabled=false;}});
@@ -4163,6 +4665,19 @@ async function loadStaff() {
       <div class="grid2">
         <div class="card"><h3>Statistics</h3><p>Users: ${data.stats.users}<br>Online: ${data.stats.online}<br>Messages: ${data.stats.messages}<br>Open reports: ${data.stats.reportsOpen}</p></div>
         <div class="card"><h3>Filtered words</h3><p class="muted">Use <code>p: phrase</code> for OCR-based restricted image text. SUPER_ADMIN and above bypass the media restriction.</p><button class="mini" onclick="addFilterWord()">＋ Add word</button><details class="filter-words-details"><summary>Filter words (${(filterWords.words||[]).length})</summary><div class="filter-word-list">${(filterWords.words||[]).map(w=>`<div class="filter-word-row"><span class="muted">${/^p\s*:/i.test(w)?'Restricted Media':(/^r\s*:/i.test(w)?'Auto Report':(/^u\s*:/i.test(w)?'Restricted Username':'Filter'))}</span> <code>${esc(w)}</code><button class="mini danger" onclick="deleteFilterWord(decodeURIComponent('${encodeURIComponent(w)}'))">×</button></div>`).join('')||'<span class="muted">No filter words configured.</span>'}</div></details><p class="muted">Link filter: ${bootstrapData.settings?.linkFilter?'ON':'OFF'}</p></div>
+      ${canUseAdminPanel ? `<details class="staff-compact-dropdown admin-activity-logs" id="adminActivityLogsDropdown">
+        <summary>📜 Admin Activity Logs <span class="muted">— Admin and above</span></summary>
+        <section class="card admin-activity-logs-card">
+          <p class="muted">Review recorded staff and administrative actions. Visibility follows the saved audit-log rank settings.</p>
+          <form id="systemAuditSearchForm" class="toolbar">
+            <input id="systemAuditSearch" type="search" maxlength="100" placeholder="Search staff, action, target or details">
+            <button class="mini primary" type="submit">Search</button>
+            <button class="mini" type="button" id="showAllAuditRows">↻ Refresh all</button>
+          </form>
+          <div id="systemAuditRows" class="stack"><p class="muted">Loading admin activity logs…</p></div>
+        </section>
+      </details>` : ''}
+
       </div>
 
       
@@ -4305,6 +4820,18 @@ async function loadStaff() {
       $('devIpLookupForm')?.addEventListener('submit',e=>{e.preventDefault();lookupDeveloperIp(($('devIpLookupAddress').value||'').trim());});
     }
 
+    if(canUseAdminPanel){
+      const auditTarget=$('systemAuditRows');
+      const loadAdminActivityLogs=async(query='')=>{
+        if(!auditTarget)return;
+        auditTarget.innerHTML='<p class="muted">Loading admin activity logs…</p>';
+        try{
+          const d=await api('/api/staff/system-center/audit'+(query?'?q='+encodeURIComponent(query):''));
+          auditTarget.innerHTML=(d.audit||[]).map(renderAuditRow).join('')||'<p class="muted">No audit events are visible for your rank or search.</p>';
+        }catch(error){auditTarget.innerHTML='<p class="error">'+esc(error.message||'Could not load admin activity logs.')+'</p>';}
+      };
+      loadAdminActivityLogs();
+    }
     $('refreshSystemCenter')?.addEventListener('click',()=>loadStaff());
     $('showAllAuditRows')?.addEventListener('click',async()=>{try{const d=await api('/api/staff/system-center/audit');const target=$('systemAuditRows');target.innerHTML=(d.audit||[]).map(renderAuditRow).join('')||'<p class="muted">No audit events recorded.</p>';if($('systemAuditSearch'))$('systemAuditSearch').value='';}catch(err){toast(err.message);}});
     $('staffAdminSearchForm')?.addEventListener('submit',async e=>{
@@ -5042,7 +5569,7 @@ async function ownerDelete(id) {
 
 async function inspectDMs(){
   try{
-    modal(`<h2>Private-message inspection</h2><p class="muted">Choose an account from the suggestions, or type a username beginning with @. Select a second account to inspect only their conversation.</p><div class="dm-inspection-fields"><div class="dm-inspection-picker"><label for="dmSearch1">Account 1</label><input id="dmSearch1" placeholder="Type @ or username" autocomplete="off"><div id="dmSuggestions1" class="ip-inspection-suggestions" hidden></div></div><div class="dm-inspection-picker"><label for="dmSearch2">Account 2 (optional)</label><input id="dmSearch2" placeholder="Optional: second user" autocomplete="off"><div id="dmSuggestions2" class="ip-inspection-suggestions" hidden></div></div><button class="primary" id="dmSearchBtn">Inspect messages</button></div><div id="ownerDmResults" class="stack"><p class="muted">Select an account and press Inspect messages.</p></div>`);
+    modal(`<h2>Private-message inspection</h2><p class="muted">Restricted to Owner and Developer. Owner can inspect their own conversations and users below Owner. Developer can inspect their own conversations and users below Developer. Equal- and higher-rank accounts are protected.</p><div class="dm-inspection-fields"><div class="dm-inspection-picker"><label for="dmSearch1">Account 1</label><input id="dmSearch1" value="${esc(state.user?.username||'')}" placeholder="Type @ or username" autocomplete="off"><div id="dmSuggestions1" class="ip-inspection-suggestions" hidden></div></div><div class="dm-inspection-picker"><label for="dmSearch2">Account 2 (optional)</label><input id="dmSearch2" placeholder="Optional: second user" autocomplete="off"><div id="dmSuggestions2" class="ip-inspection-suggestions" hidden></div></div><div class="dm-inspection-picker"><label for="dmKeyword">Search message text</label><input id="dmKeyword" type="search" placeholder="Search for a particular word or phrase…" autocomplete="off"></div><button class="primary" id="dmSearchBtn" type="button">Inspect messages</button></div><div id="ownerDmResults" class="stack" aria-live="polite"><p class="muted">Loading your conversations…</p></div>`);
     const wirePicker=(inputId,suggestId)=>{
       const input=$(inputId),suggestions=$(suggestId);let timer;
       input?.addEventListener('input',()=>{
@@ -5060,24 +5587,34 @@ async function inspectDMs(){
     };
     wirePicker('dmSearch1','dmSuggestions1');wirePicker('dmSearch2','dmSuggestions2');
     const load=async()=>{
-      const user1=($('dmSearch1').value||'').trim().replace(/^@/,'');
-      const user2=($('dmSearch2').value||'').trim().replace(/^@/,'');
-      const target=$('ownerDmResults');if(!user1){target.innerHTML='<p class="error">Select or enter the first username.</p>';return;}
+      const user1=($('dmSearch1')?.value||'').trim().replace(/^@/,'');
+      const user2=($('dmSearch2')?.value||'').trim().replace(/^@/,'');
+      const keyword=($('dmKeyword')?.value||'').trim();
+      const target=$('ownerDmResults'),button=$('dmSearchBtn');if(!target)return;
+      if(!user1){target.innerHTML='<p class="error">Select or enter the first username.</p>';return;}
+      if(button){button.disabled=true;button.textContent='Inspecting…';}
       target.innerHTML='<p class="muted">Loading private messages…</p>';
       try{
-        const d=await api('/api/admin/private-search',{method:'POST',body:JSON.stringify({user1,user2})});
-        const messages=d.messages||[];
+        const d=await api('/api/admin/private-search',{method:'POST',body:JSON.stringify({user1,user2,keyword})});
+        const messages=Array.isArray(d.messages)?d.messages:[];
         target.innerHTML='<p class="muted">'+messages.length+' message(s) found'+(user2?' between @'+esc(user1)+' and @'+esc(user2):' involving @'+esc(user1))+'.</p>'+
           (messages.map(m=>{
             const body=m.text??m.message??m.data?.text??m.data?.message??m.data?.content??'';
             const attachment=m.attachment||m.data?.attachment;
-            return '<div class="card dm-inspection-message"><b>@'+esc(m.sender_username||m.senderUsername||'Unknown')+' → @'+esc(m.receiver_username||m.receiverUsername||'Unknown')+'</b><div class="dm-inspection-body">'+(String(body).trim()?esc(body).replace(/\n/g,'<br>'):'<span class="muted">'+(attachment?'Attachment message (text is empty).':'Message has no text content.')+'</span>')+'</div>'+(attachment?'<div class="muted">📎 '+esc(attachment.name||attachment.type||'Attachment')+'</div>':'')+'<small class="muted">'+esc(fmt(m.created_at||m.time||m.data?.time))+'</small></div>';
-          }).join('')||'<p class="muted">No private messages were returned for this account. Confirm the username and try again.</p>');
-      }catch(e){target.innerHTML='<p class="error">'+esc(e.message||'Could not inspect private messages.')+'</p>';}
+            const sender=m.sender_username||m.senderUsername||(String(m.from)==='system-bot'?'System Bot':'Unknown');
+            const receiver=m.receiver_username||m.receiverUsername||'Unknown';
+            return '<div class="card dm-inspection-message"><b>'+esc(sender==='System Bot'?'System Bot':'@'+sender)+' → '+esc(receiver==='Unknown'?receiver:'@'+receiver)+'</b><div class="dm-inspection-body">'+(String(body).trim()?esc(body).replace(/\n/g,'<br>'):'<span class="muted">'+(attachment?'Attachment message (text is empty).':'Message has no text content.')+'</span>')+'</div>'+(attachment?'<div class="muted">📎 '+esc(attachment.name||attachment.type||'Attachment')+(attachment.url?' · <a href="'+esc(attachment.url)+'" target="_blank" rel="noopener">Open attachment</a>':'')+'</div>':'')+'<small class="muted">'+esc(fmt(m.created_at||m.time||m.data?.time))+'</small></div>';
+          }).join('')||'<p class="muted">No private messages were found for this account. Check the username or choose a second account to inspect a specific conversation.</p>');
+      }catch(e){target.innerHTML='<p class="error">Inspection failed: '+esc(e.message||'Could not inspect private messages.')+'</p>';}
+      finally{if(button){button.disabled=false;button.textContent='Inspect messages';}}
     };
-    $('dmSearchBtn').onclick=load;
+    $('dmSearchBtn')?.addEventListener('click',load);
     $('dmSearch1')?.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();load();}});
     $('dmSearch2')?.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();load();}});
+    $('dmKeyword')?.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();load();}});
+    // Show the signed-in Owner/Developer's own conversation history immediately.
+    // The user no longer has to discover that a prefilled username still needs a click.
+    load();
   }catch(e){toast(e.message)}
 }
 
@@ -5227,7 +5764,12 @@ async function toggleMessagesDropdown(refresh=false){
   $("topFriendsDropdown")?.classList.add("hidden");$("notificationDropdown")?.classList.add("hidden");$("reportDropdown")?.classList.add("hidden");
   try{
     const d=await api("/api/dm/conversations");
-    const conversations=(d.conversations||[]).sort((a,b)=>Number(b.unreadCount||0)-Number(a.unreadCount||0)).slice(0,10);
+    const lastOpenedId=safeStorage.getItem("mc_dm_last_opened_"+String(state.user?.id||""))||"";
+    const messageTime=c=>Number(c.lastMessage?.time||c.lastMessage?.createdAt||c.lastMessage?.created_at||0);
+    const conversations=(d.conversations||[]).sort((a,b)=>{
+      const priority=c=>Number(Number(c.unreadCount||0)>0)?2:(String(c.user?.id)===lastOpenedId?1:0);
+      return priority(b)-priority(a) || messageTime(b)-messageTime(a);
+    }).slice(0,10);
     const nicknames=(await api('/api/private-nicknames').catch(()=>({nicknames:{}}))).nicknames||{};
     box.innerHTML=`<div class="notification-dropdown-head"><div><b>✉ Private messages</b><small class="notification-unread-summary">${conversations.reduce((n,x)=>n+Number(x.unreadCount||0),0)} unread</small></div></div>${conversations.map(c=>{const u=c.user||{},id=String(u.id),last=c.lastMessage||{},preview=last.attachment?'📎 Attachment':(last.text||'Start a conversation');return `<button class="notification-dropdown-item dm-header-item ${Number(c.unreadCount||0)?'unread':''}" data-header-dm="${esc(id)}"><b>${esc(nicknames[id]||u.displayName||u.username||'User')} ${Number(c.unreadCount||0)?'<span class="dm-unread-badge">'+Number(c.unreadCount)+'</span>':''}</b><span>@${esc(u.username||'')} · ${esc(preview).slice(0,100)}</span><small>${last.time?fmt(last.time):''}</small></button>`}).join("")||'<p class="muted notification-empty">No private conversations yet.</p>'}`;
     box.classList.remove("hidden");
@@ -5330,6 +5872,27 @@ async function refreshTopDMUnreadBadge(){
   finally{topDMUnreadRefreshBusy=false;}
 }
 let notificationRefreshPromise=null;
+let pendingWarningFetch=null;
+async function loadPendingWarning(){
+  if(!state.user||activeWarningNotificationId)return;
+  if(pendingWarningFetch)return pendingWarningFetch;
+  pendingWarningFetch=(async()=>{
+    try{
+      const data=await api("/api/warnings/pending");
+      const warnings=Array.isArray(data.warnings)?data.warnings:[];
+      if(!activeWarningNotificationId&&warnings.length)showPersistentWarning(warnings[0]);
+    }finally{pendingWarningFetch=null;}
+  })();
+  return pendingWarningFetch;
+}
+// Re-check after browser restores the page from cache/background and periodically
+// while signed in. The server's unread warning row is the source of truth.
+if(!window.__mcWarningPersistenceBound){
+  window.__mcWarningPersistenceBound=true;
+  window.addEventListener("pageshow",()=>{if(state.user)loadPendingWarning().catch(()=>{});});
+  document.addEventListener("visibilitychange",()=>{if(!document.hidden&&state.user)loadPendingWarning().catch(()=>{});});
+}
+
 async function loadNotifications() {
   // This runs on a timer and socket reconnects. Do not hit authenticated APIs
   // while the login screen is active, or start duplicate sets of requests.
@@ -5346,6 +5909,8 @@ async function loadNotifications() {
     ]);
     // Fall back to the main notification response if the unread-only endpoint is unavailable.
     const unread=unreadData?.notifications || (data.notifications||[]).filter(n=>!n.read);
+    const pendingWarnings=unread.filter(n=>String(n.type||"").toLowerCase()==="warning").sort((x,y)=>new Date(x.time||0)-new Date(y.time||0));
+    if(!activeWarningNotificationId&&pendingWarnings.length)showPersistentWarning(pendingWarnings[0]);
     const notificationStaffCount=unread.filter(n=>["report","moderation","staff"].includes(n.type)).length;
     const reportCount=Math.max(Number(staffCounts.reports||0),notificationStaffCount);
     const counts={dm:Number(dm.count||0),report:reportCount,all:unread.length,friends:(friendsData.incoming||[]).length};
@@ -5385,7 +5950,7 @@ $("notifications").onclick=async()=>{
     const data=await api("/api/notifications");
     const rows=data.notifications||[];
     modal(`<div class="notification-center"><div class="notification-head"><div><h2>🔔 Notifications</h2><p class="muted">${rows.filter(n=>!n.read).length} unread</p></div><div class="toolbar"><button class="mini" id="markAllNotifications">Mark all read</button><button class="mini danger" id="clearNotifications">Clear all</button></div></div><div class="stack">${rows.map(n=>`<div class="card notification-card ${n.read?'':'unread'}"><div><b>${esc(n.title)}</b><p>${esc(n.text)}</p><small>${fmt(n.time)}</small></div><div class="toolbar"><button class="mini" data-notif-read="${esc(n.id)}">${n.read?'Read':'Mark read'}</button><button class="mini danger" data-notif-delete="${esc(n.id)}">×</button></div></div>`).join("")||'<p class="muted">No notifications.</p>'}</div></div>`);
-    document.querySelectorAll('[data-notif-read]').forEach(b=>b.onclick=async()=>{await api('/api/notifications/'+encodeURIComponent(b.dataset.notifRead)+'/read',{method:'PATCH'});b.textContent='Read';b.closest('.notification-card')?.classList.remove('unread');loadNotifications();});
+    document.querySelectorAll('[data-notif-read]').forEach(b=>b.onclick=async()=>{const row=b.closest('.notification-card');if(row?.querySelector('b')?.textContent==='Warning ⚠️'){closeModal();await loadNotifications();return;}await api('/api/notifications/'+encodeURIComponent(b.dataset.notifRead)+'/read',{method:'PATCH'});b.textContent='Read';row?.classList.remove('unread');loadNotifications();});
     document.querySelectorAll('[data-notif-delete]').forEach(b=>b.onclick=async()=>{await api('/api/notifications/'+encodeURIComponent(b.dataset.notifDelete),{method:'DELETE'});b.closest('.notification-card')?.remove();loadNotifications();});
     $('markAllNotifications').onclick=async()=>{await api('/api/notifications/read',{method:'POST'});closeModal();loadNotifications();toast('Notifications marked as read.');};
     $('clearNotifications').onclick=async()=>{if(!confirm('Clear all notifications?'))return;await api('/api/notifications',{method:'DELETE'});closeModal();loadNotifications();toast('Notifications cleared.');};
@@ -5395,83 +5960,132 @@ $("notifications").onclick=async()=>{
 async function showPinnedMessages(){
   try{ const data=await api(`/api/rooms/${encodeURIComponent(state.currentRoom)}/pinned`); const pinned=data.messages||[]; modal(`<h2>📌 Pinned messages</h2><p class="muted">Pinned messages in ${esc(state.rooms.find(r=>String(r.id)===String(state.currentRoom))?.name||'this room')}.</p><div class="pinned-list">${pinned.map(m=>`<button class="pinned-result" onclick="closeModal();jumpToMessage('${esc(m.id)}')"><b>${esc(m.displayName||m.username)}</b><small>${fmt(m.time)}</small><span>${esc(m.text||'📎 Attachment')}</span></button>`).join('')||'<p class="muted">No pinned messages in this room.</p>'}</div>`); }catch(e){toast(e.message)}
 }
-async function openYoutubePanel(mode='youtube'){
-  modal(`<div class="youtube-panel"><h2>${mode==="music"?"🎵 YouTube Music":"▶️ YouTube"}</h2><p class="muted">Search for a ${mode==="music"?"song or music video":"video"} or paste a YouTube link.</p><div class="toolbar"><input id="ytQuery" placeholder="Search or paste YouTube URL…"><button class="primary" id="ytSearch">Search</button></div><div id="ytResults" class="youtube-results"><p class="muted">Search for a video to share it in this room.</p></div></div>`);
-  $('ytSearch').onclick=async()=>{
-    const q=$('ytQuery').value.trim();
-    if(!q)return;
-    // Direct links work even when YouTube search is temporarily unavailable
-    // or the deployment has no YouTube Data API key.
-    const match=q.match(/(?:youtu\.be\/|youtube(?:-nocookie)?\.com\/(?:watch\?(?:[^#]*&)?v=|embed\/|shorts\/|live\/))([A-Za-z0-9_-]{11})/i);
-    if(match){
-      const videoId=match[1];
-      const title="YouTube video";
-      $('ytResults').innerHTML=`<button class="youtube-result" onclick="sendYoutube('${videoId}','${title}',${mode==='music'})"><img src="https://i.ytimg.com/vi/${videoId}/mqdefault.jpg" alt=""><span><b>YouTube video</b><small>Share this video in chat</small></span></button>`;
-      return;
-    }
-    const button=$('ytSearch');button.disabled=true;button.textContent='Searching…';
-    try{
-      const r=await api('/api/youtube/search?q='+encodeURIComponent(q));
-      const results=(r.results||[]).filter(v=>/^[A-Za-z0-9_-]{11}$/.test(String(v.id||'')));
-      $('ytResults').innerHTML=results.map(v=>`<button class="youtube-result" onclick="sendYoutube('${esc(v.id)}','${esc(v.title)}',${mode==='music'})"><img src="${esc(v.thumbnail||('https://i.ytimg.com/vi/'+v.id+'/mqdefault.jpg'))}" alt=""><span><b>${esc(v.title)}</b><small>${esc(v.channel||'YouTube')}</small></span></button>`).join('')||`<p class="muted">${esc(r.notice||'No results. Try pasting a YouTube video link instead.')}</p>`;
-    }catch(e){toast(e.message||'YouTube search failed. Paste a YouTube video link instead.');}
-    finally{button.disabled=false;button.textContent='Search';}
-  };
-}
-async function sendYoutube(videoId,title,music=false){
+function extractYoutubeVideoId(value){
+  const raw=String(value||"").trim();
+  if(/^[A-Za-z0-9_-]{11}$/.test(raw))return raw;
   try{
-    if(!state.currentRoom)throw new Error('Join Main Room before sharing a video.');
-    const result=await api(`/api/rooms/${encodeURIComponent(state.currentRoom)}/youtube`,{method:'POST',body:JSON.stringify({videoId,title,music})});
-    if(result.message && !document.querySelector(`[data-mid="${CSS.escape(String(result.message.id))}"]`))appendMessage(result.message);
-    closeModal();toast('YouTube video shared in chat.');
-  }catch(e){toast(e.message||'Could not share this video.')}
+    const url=new URL(/^https?:\/\//i.test(raw)?raw:"https://"+raw);
+    const host=url.hostname.toLowerCase().replace(/^www\./,"");
+    if(!["youtu.be","m.youtube.com","music.youtube.com","youtube.com","youtube-nocookie.com"].includes(host))return "";
+    const id=host==="youtu.be"?url.pathname.split("/").filter(Boolean)[0]:
+      (url.searchParams.get("v")||url.pathname.match(/\/(?:embed|shorts|live|v)\/([^/?]+)/i)?.[1]);
+    return /^[A-Za-z0-9_-]{11}$/.test(String(id||""))?String(id):"";
+  }catch{return "";}
+}
+function openYoutubePanel(){
+  modal(`<div class="youtube-panel"><h2>▶️ YouTube</h2><p class="muted">Search for a video or paste a YouTube video, Shorts or live link.</p><div class="toolbar"><input id="ytQuery" placeholder="Search or paste YouTube URL…" autocomplete="off"><button class="primary" id="ytSearch" type="button">Search</button></div><div id="ytResults" class="youtube-results"><p class="muted">Choose a video to preview it before sharing.</p></div><div id="ytSelected" class="youtube-selected" aria-live="polite"></div></div>`);
+  const query=$("ytQuery"),searchButton=$("ytSearch"),results=$("ytResults"),selected=$("ytSelected");
+  let chosen=null;
+  const selectVideo=(video)=>{
+    if(!video||! /^[A-Za-z0-9_-]{11}$/.test(String(video.id||"")))return;
+    chosen={id:String(video.id),title:String(video.title||"YouTube video").slice(0,200)};
+    selected.innerHTML=`<div class="youtube-selection-preview"><img src="https://i.ytimg.com/vi/${chosen.id}/hqdefault.jpg" alt=""><div><b>${esc(chosen.title)}</b><small>Ready to share in this room</small></div><button type="button" class="primary" id="ytShare">Share video</button></div>`;
+    selected.querySelector("#ytShare")?.addEventListener("click",()=>sendYoutube(chosen.id,chosen.title));
+  };
+  const addResult=(video)=>{
+    const button=document.createElement("button");
+    button.type="button";button.className="youtube-result";
+    const img=document.createElement("img");img.src=video.thumbnail||("https://i.ytimg.com/vi/"+video.id+"/mqdefault.jpg");img.alt="";
+    const span=document.createElement("span"),title=document.createElement("b"),channel=document.createElement("small");
+    title.textContent=video.title||"YouTube video";channel.textContent=video.channel||"YouTube";
+    span.append(title,channel);button.append(img,span);button.addEventListener("click",()=>selectVideo(video));results.append(button);
+  };
+  const search=async()=>{
+    const q=query.value.trim();if(!q)return;
+    chosen=null;selected.replaceChildren();results.innerHTML='<p class="muted">Looking for your video…</p>';
+    const directId=extractYoutubeVideoId(q);
+    if(directId){results.replaceChildren();selectVideo({id:directId,title:"YouTube video"});return;}
+    searchButton.disabled=true;searchButton.textContent="Searching…";
+    try{
+      const response=await api("/api/youtube/search?q="+encodeURIComponent(q));
+      results.replaceChildren();
+      const videos=(response.results||[]).filter(v=>/^[A-Za-z0-9_-]{11}$/.test(String(v.id||"")));
+      videos.forEach(addResult);
+      if(!videos.length){const note=document.createElement("p");note.className="muted";note.textContent=response.notice||"No videos found. Try pasting a YouTube link.";results.append(note);}
+    }catch(error){results.textContent=error.message||"YouTube search failed. Try a video link instead.";}
+    finally{searchButton.disabled=false;searchButton.textContent="Search";}
+  };
+  searchButton.addEventListener("click",search);
+  query.addEventListener("keydown",event=>{if(event.key==="Enter"){event.preventDefault();search();}});
+  query.focus();
+}
+async function sendYoutube(videoId,title){
+  try{
+    if(!state.currentRoom)throw new Error("Join a room before sharing a video.");
+    const result=await api(`/api/rooms/${encodeURIComponent(state.currentRoom)}/youtube`,{method:"POST",body:JSON.stringify({videoId,title,music:false})});
+    if(result.message&&!document.querySelector(`[data-mid="${CSS.escape(String(result.message.id))}"]`))appendMessage(result.message);
+    closeModal();toast("YouTube video shared in chat.");
+  }catch(error){toast(error.message||"Could not share this video.");}
 }
 $("youtubeComposerBtn")?.addEventListener("click",()=>openYoutubePanel("youtube"));
 
 /* ---------------- ROOM MENU ---------------- */
 
-$("roomMenu").onclick = () => {
-  const room =
-    state.rooms.find(
-      r => String(r.id) === String(state.currentRoom)
-    );
+// Use capture-phase delegation so taps still work if the chat header is
+// re-rendered, or another component stops bubbling before the button handler.
+document.addEventListener("click", event => {
+  const trigger = event.target instanceof Element ? event.target.closest("#roomMenu") : null;
+  if (!trigger) return;
+  event.preventDefault();
+  event.stopPropagation();
+  event.stopImmediatePropagation();
 
-  if (!room) return;
-
-  modal(`
-    <h2>
-      ${esc(room.name)}
-    </h2>
-
-    <div class="toolbar">
-
-      ${
-        canFeature("clear_room") || canFeature("edit_room") || canFeature("delete_room")
-          ? `
-            ${canFeature("clear_room")?`<button class="mini" onclick="clearRoom()">Clear</button>`:""}
-
-            ${canFeature("edit_room")?`<button class="mini" onclick="editRoom()">Edit room</button>`:""}
-
-            ${canFeature("delete_room")?`<button class="mini danger" onclick="deleteRoom()">Delete room</button>`:""}
-          `
-          : ""
+  try {
+    const rooms = Array.isArray(state?.rooms) ? state.rooms : [];
+    const room = rooms.find(r => String(r.id) === String(state?.currentRoom));
+    const roomName = esc(room?.name || "Current room");
+    // Core options must always render; optional actions are added only when
+    // their permission checks complete successfully.
+    const actions = [
+      ["pinned","📌 Pinned messages"],
+      ["youtube","▶️ YouTube"],
+      ["invite","🔗 Invite link"],
+      ["theme","🎨 Room Theme"]
+    ];
+    try { if (can("COMMISSOR")) actions.unshift(["announcement","📢 Room announcement"]); } catch (_) {}
+    try { if (canFeature("clear_room")) actions.unshift(["clear","🧹 Clear messages"]); } catch (_) {}
+    try { if (canFeature("edit_room")) actions.unshift(["edit","✏️ Edit room"]); } catch (_) {}
+    try { if (canFeature("delete_room")) actions.unshift(["delete","🗑 Delete room"]); } catch (_) {}
+    try {
+      if (["ghost","dead","invisible"].some(mode => canUsePresenceMode(mode))) {
+        actions.push(["presence-settings","⚙️ Presence mode settings"]);
       }
+    } catch (_) {}
+    try { if (canUsePartyMode()) actions.push(["party","🎉 Party Mode"]); } catch (_) {}
 
-      <button class="mini" onclick="postRoomAnnouncement()">📢 Room announcement</button>
-      <button class="mini" onclick="showPinnedMessages()">📌 Pinned messages</button>
-      <button class="mini" onclick="openYoutubePanel()">▶️ YouTube</button>
-      <button class="mini" onclick="showInvite()">Invite link</button>
-      <button class="mini" onclick="openRoomThemePicker()">🎨 Room Theme</button>
-      ${["ghost","dead","invisible"].some(canUsePresenceMode)?`
-        <div style="flex-basis:100%;border-top:1px solid var(--border-color,#393244);padding-top:8px;margin-top:4px"><b style="display:block;margin-bottom:7px">🕶️ Presence modes</b><div class="toolbar" style="display:flex;flex-wrap:wrap;gap:6px">${canUsePresenceMode("ghost")?'<button type="button" class="mini" onclick="togglePresenceMode(&quot;ghost&quot;)">👻 Ghost Mode</button>':""}${canUsePresenceMode("dead")?'<button type="button" class="mini" onclick="togglePresenceMode(&quot;dead&quot;)">💀 Dead Mode</button>':""}${canUsePresenceMode("invisible")?'<button type="button" class="mini" onclick="togglePresenceMode(&quot;invisible&quot;)">😈 Invisible Mode</button>':""}</div><button type="button" class="mini" style="margin-top:7px" onclick="openPresenceModes()">⚙️ Open mode settings</button></div>
-      `:""}
-      ${canUsePartyMode()?'<div style="flex-basis:100%;border-top:1px solid var(--border-color,#393244);padding-top:8px;margin-top:4px"><b style="display:block;margin-bottom:7px">🎉 Party Mode</b><button type="button" class="mini" onclick="setPartyMode(!isPartyModeActive())">'+(isPartyModeActive()?"🎉 Turn Party Mode Off":"🎉 Turn Party Mode On")+"</button></div>":""}
-
-    </div>
-  `);
-};
-
-
+    const panel = document.getElementById("modal");
+    const body = document.getElementById("modalBody");
+    if (!panel || !body) throw new Error("The menu dialog elements are missing.");
+    body.innerHTML = '<div class="room-menu-panel"><h2>'+roomName+' · Room options</h2><div class="room-menu-actions">'+
+      actions.map(([key,label]) => '<button type="button" class="room-menu-action" data-room-menu-action="'+key+'">'+label+'</button>').join("")+
+      '</div></div>';
+    panel.classList.remove("hidden");
+    panel.setAttribute("aria-hidden","false");
+    body.querySelectorAll("[data-room-menu-action]").forEach(button => {
+      button.addEventListener("click", () => {
+        const action = button.dataset.roomMenuAction;
+        try {
+          if (action==="clear") clearRoom();
+          else if (action==="edit") editRoom();
+          else if (action==="delete") deleteRoom();
+          else if (action==="announcement") postRoomAnnouncement();
+          else if (action==="pinned") showPinnedMessages();
+          else if (action==="youtube") openYoutubePanel();
+          else if (action==="invite") showInvite();
+          else if (action==="theme") openRoomThemePicker();
+          else if (action==="presence-settings") openPresenceModes();
+          else if (action==="party") setPartyMode(!isPartyModeActive());
+        } catch (error) {
+          console.error("Room menu action failed:", error);
+          toast("That room option could not be opened. Please try again.");
+        }
+      });
+    });
+  } catch (error) {
+    console.error("Room menu failed to open:", error);
+    toast("Room options could not open: "+(error?.message || "unknown error"));
+  }
+}, true);
 
 function applyRoomTheme(themeId){
  const t=ROOM_THEMES.find(x=>x.id===themeId)||ROOM_THEMES[0],root=$("viewRooms");if(!root)return;
@@ -5513,7 +6127,7 @@ function editRoom() {
   const room=state.rooms.find(r=>String(r.id)===String(state.currentRoom));
   if(!room)return;
   if(room.isDefault || /^main room$/i.test(String(room.name||"").trim())){toast("Main Room is protected.");return;}
-  const ranks=["MEMBER","VIP","PREMIUM","MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"];
+  const ranks=["MEMBER","VIP","PREMIUM","ROYAL","MOD","ADMIN","SUPER_ADMIN","COMMISSOR","INSTRUCTOR","COOWNER","OWNER","DEVELOPER"];
   const rankLabels={MEMBER:"Member",VIP:"VIP",PREMIUM:"Premium",MOD:"Moderator",ADMIN:"Admin",SUPER_ADMIN:"Super Admin",COMMISSOR:"Commissor",COOWNER:"Co-owner",OWNER:"Owner",ROYAL:"Legacy rank — Royal",INSTRUCTOR:"Legacy rank — Instructor"};
   const savedRequiredRank=String(room.rankRequired||"MEMBER").toUpperCase();
   const rankChoices=ranks.includes(savedRequiredRank)?ranks:[savedRequiredRank,...ranks];
@@ -5612,29 +6226,42 @@ async function deleteRoom() {
   }
 }
 
-function showInvite() {
-  const room =
-    state.rooms.find(
-      r => String(r.id) === String(state.currentRoom)
-    );
+async function showInvite(roomOrId=state.currentRoom) {
+  const room = roomOrId&&typeof roomOrId==="object"
+    ? roomOrId
+    : state.rooms.find(r => String(r.id) === String(roomOrId));
 
   if (!room) return;
 
+  let inviteToken="",expiresAt=null;
+  if(room.public===false){
+    try{const result=await api(`/api/rooms/${encodeURIComponent(room.id)}/invites`,{method:"POST",body:JSON.stringify({})});inviteToken=String(result.inviteToken||"");expiresAt=result.expiresAt||null;}
+    catch(error){toast(error.message||"Could not create this room invitation.");return;}
+    if(!inviteToken){toast("Could not create this room invitation.");return;}
+  }
+  const inviteUrl=`${location.origin}/#room=${encodeURIComponent(room.id)}${inviteToken?`&invite=${encodeURIComponent(inviteToken)}`:""}`;
+
   modal(`
     <h2>Room invite</h2>
+    ${expiresAt?`<p class="muted">This private-room invite expires ${esc(new Date(expiresAt).toLocaleString())}.</p>`:""}
 
-    <input
-      value="${location.origin}/?room=${encodeURIComponent(room.id)}"
+    <input id="roomInviteUrl"
+      value="${esc(inviteUrl)}"
       readonly
     >
+    <div class="toolbar"><button type="button" class="primary" id="copyRoomInvite">Copy invite link</button></div>
   `);
+  $("copyRoomInvite")?.addEventListener("click",async()=>{
+    try{await navigator.clipboard.writeText(inviteUrl);toast("Invite link copied.");}
+    catch{const field=$("roomInviteUrl");field?.select();toast("Invite link selected. Copy it from the field.");}
+  });
 }
 
 /* ---------------- CREATE ROOM ---------------- */
 
-$("newRoom").onclick = () => {
-  const ranks=["MEMBER","VIP","PREMIUM","MOD","ADMIN","SUPER_ADMIN","COMMISSOR","COOWNER","OWNER"];
-  const rankLabels={MEMBER:"Member",VIP:"VIP",PREMIUM:"Premium",MOD:"Moderator",ADMIN:"Admin",SUPER_ADMIN:"Super Admin",COMMISSOR:"Commissor",COOWNER:"Co-owner",OWNER:"Owner"};
+function openRoomCreationModal() {
+  const ranks=["MEMBER","VIP","PREMIUM","ROYAL","MOD","ADMIN","SUPER_ADMIN","COMMISSOR","INSTRUCTOR","COOWNER","OWNER","DEVELOPER"];
+  const rankLabels={MEMBER:"Member",VIP:"VIP",PREMIUM:"Premium",ROYAL:"Royal",MOD:"Moderator",ADMIN:"Admin",SUPER_ADMIN:"Super Admin",COMMISSOR:"Commissor",INSTRUCTOR:"Instructor",COOWNER:"Co-owner",OWNER:"Owner",DEVELOPER:"Developer"};
   modal(`
     <div class="room-editor room-editor-create">
       <header class="room-editor-hero"><span class="room-editor-hero-icon">🌙</span><div><p class="room-editor-eyebrow">MAKE YOUR SPACE</p><h2>Create a room</h2><p>Set up a new corner of Maleficent Chat.</p></div></header>
@@ -5646,6 +6273,7 @@ $("newRoom").onclick = () => {
           <label>Topic / category<input id="rc" maxlength="40" value="Community" placeholder="Community"></label>
         </div></section>
         <section class="room-editor-section"><h3>🔐 Who can join?</h3>
+          <label>Room visibility<select id="rVisibility"><option value="public">Public — listed for everyone</option><option value="secret">Secret — hidden, invite link required</option></select></label>
           <label>Minimum rank<select id="rr">${ranks.map(r=>'<option value="'+r+'" '+(r==="MEMBER"?"selected":"")+'>'+rankLabels[r]+'</option>').join("")}</select></label>
           <label>Member access<select id="rFriendsOnlyCreate"><option value="false">Anyone who meets the rank requirement</option><option value="true">Accepted friends only</option></select></label>
           <label>Room password <span class="room-editor-optional">optional</span><input id="rp" type="password" autocomplete="new-password" placeholder="Leave blank for no password"></label>
@@ -5662,18 +6290,18 @@ $("newRoom").onclick = () => {
     const submit=e.currentTarget.querySelector('[type="submit"]');
     if(submit){submit.disabled=true;submit.textContent="Creating…";}
     try{
-      await api("/api/rooms",{method:"POST",body:JSON.stringify({
+      const created=await api("/api/rooms",{method:"POST",body:JSON.stringify({
         name:$("rn").value.trim(),icon:$("ri").value.trim()||"💬",description:$("rd").value.trim(),
-        category:$("rc").value.trim()||"Community",password:$("rp").value,
+        category:$("rc").value.trim()||"Community",password:$("rp").value,public:$("rVisibility").value!=="secret",
         rankRequired:$("rr").value,friendsOnly:$("rFriendsOnlyCreate").value==="true",
         limit:Math.max(2,Math.min(500,Number($("rl").value)||100)),
         slowMode:Math.max(0,Math.min(3600,Number($("rs").value)||0))
       })});
       await loadRooms();closeModal();renderRooms();toast("Room created.");
+      if(created.room?.public===false&&created.room?.id)await showInvite(created.room);
     }catch(error){toast(error.message);if(submit){submit.disabled=false;submit.textContent="＋ Create room";}}
   };
-};
-
+}
 
 /* ---------------- V3 SETTINGS / FEATURE CENTER ---------------- */
 

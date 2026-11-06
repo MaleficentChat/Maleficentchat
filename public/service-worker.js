@@ -1,4 +1,4 @@
-const CACHE="maleficent-chat-v20-no-api-cache";
+const CACHE="maleficent-chat-v26-dm-notification-reply";
 const ASSETS=["/","/style.css","/app.js","/manifest.json","/favicon.svg","/robots.txt","/sitemap.xml","/doodle-studio.js"];
 
 self.addEventListener("install",event=>{
@@ -67,6 +67,7 @@ self.addEventListener("push",event=>{
     // Always display server push notifications, including when the site is open.
     // The in-page socket and push channels are independent; suppressing push here
     // made the explicit test appear successful while showing nothing in the tray.
+    const isPrivateMessage=payload.kind==="private-message";
     await self.registration.showNotification(String(payload.title||"Maleficent Chat").slice(0,100),{
       body:String(payload.body||"You have a new notification").slice(0,200),
       icon:"/favicon.svg",
@@ -74,6 +75,7 @@ self.addEventListener("push",event=>{
       tag:String(payload.tag||"maleficent-chat-notification").slice(0,100),
       renotify:false,
       data:{url:payload.url||"/",kind:payload.kind||"notification",roomId:payload.roomId||null},
+      actions:isPrivateMessage?[{action:"reply",title:"Reply"},{action:"open",title:"Open chat"}]:[],
       timestamp:Date.now()
     });
   })());
