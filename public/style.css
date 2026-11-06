@@ -6333,3 +6333,75 @@ html,body,#app,.app,.main,.view,#profile,#viewProfile {
   margin:0!important;padding:0!important;font-size:13px!important;line-height:1.35!important;
   white-space:pre-wrap!important;overflow-wrap:anywhere!important;
 }
+
+/* Personal profile theme now colors the complete Main Room chat surface.
+   Uses the selected account theme variables, independently of the shared Room Theme. */
+#viewRooms.chatting .chat-wrap,
+#viewRooms.chatting .chat-card{
+  background:var(--bg)!important;
+}
+#viewRooms.chatting .chat-card{
+  border-color:var(--border-strong)!important;
+}
+#viewRooms.chatting .chat-head,
+#viewRooms.chatting .room-quick-nav,
+#viewRooms.chatting .announcement{
+  background:var(--panel-2)!important;
+  border-color:var(--border)!important;
+}
+#viewRooms.chatting .messages{
+  background:var(--bg)!important;
+  background-image:radial-gradient(ellipse at 15% 0%,var(--accent-soft),transparent 55%)!important;
+}
+#viewRooms.chatting .replybar,
+#viewRooms.chatting .typing{
+  background:var(--panel)!important;
+  border-color:var(--border)!important;
+  color:var(--muted)!important;
+}
+#viewRooms.chatting .composer{
+  background:var(--panel-2)!important;
+  border-color:var(--border-strong)!important;
+}
+#viewRooms.chatting .composer #message{
+  background:var(--panel-3)!important;
+  color:var(--text)!important;
+  border-color:var(--border-strong)!important;
+}
+#viewRooms.chatting .composer #message::placeholder{color:var(--muted)!important}
+#viewRooms.chatting .composer .chat-tools-toggle,
+#viewRooms.chatting .composer .chat-tools-drawer{
+  background:var(--panel-3)!important;
+  color:var(--text)!important;
+  border-color:var(--border-strong)!important;
+}
+#viewRooms.chatting .composer .send{
+  background:linear-gradient(135deg,var(--accent),var(--accent-2))!important;
+  color:#fff!important;
+  border-color:transparent!important;
+}
+#viewRooms.chatting .msg:not(.dm-msg) .msg-text{
+  background:var(--bubble)!important;
+  border-left:5px solid var(--accent)!important;
+  color:var(--text)!important;
+}
+#viewRooms.chatting .msg:not(.dm-msg).own-message .msg-text{
+  background:var(--mine)!important;
+  border-left:0!important;
+  border-right:5px solid var(--accent-2)!important;
+  color:#fff!important;
+}
+#viewRooms.chatting .msg:not(.dm-msg) .quoted{
+  background:var(--panel-3)!important;
+  border-left-color:var(--accent)!important;
+  color:var(--text)!important;
+}
+#viewRooms.chatting .msg:not(.dm-msg) .quoted-text{color:var(--text)!important}
+#viewRooms.chatting .msg:not(.dm-msg) .message-avatar-button .avatar{
+  background:var(--panel-3)!important;
+  border:1px solid var(--accent)!important;
+  box-shadow:0 0 0 2px var(--accent-soft)!important;
+}
+#viewRooms.chatting .msg:not(.dm-msg) .message-author{color:var(--accent-2)!important}
+#viewRooms.chatting .msg:not(.dm-msg) .msg-time-side,
+#viewRooms.chatting .msg:not(.dm-msg) .message-more-button{color:var(--muted)!important}
