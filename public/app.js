@@ -6500,6 +6500,7 @@ document.addEventListener("click", async event => {
     toast("Room options could not open: "+(error?.message || "unknown error"));
   }
 }, true);
+window.__MC_ROOM_MENU_HANDLER_READY__ = true;
 
 function applyRoomTheme(){
  const root=$("viewRooms");if(root){root.removeAttribute("data-room-theme");root.style.removeProperty("--room-theme-bg");root.style.removeProperty("--room-theme-bubble");root.style.removeProperty("--room-theme-accent");}
