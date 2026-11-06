@@ -5703,3 +5703,54 @@ html,body,#app,.app,.main,.view,#profile,#viewProfile {
  #modal .modal-card:has(.room-menu-panel)>#modalBody{max-height:calc(100dvh - 90px)!important;overflow-y:auto!important;padding:6px 2px 12px!important}
  .room-menu-action{min-height:48px;font-size:14px;padding:12px!important}
 }
+
+
+/* MC WALLET · Diamond and Gold economy */
+.wallet-hero,.wallet-panel{border:1px solid var(--border-strong);border-radius:18px;background:linear-gradient(145deg,rgba(31,22,49,.96),rgba(10,12,22,.98));box-shadow:0 16px 45px rgba(0,0,0,.18)}
+.wallet-hero{padding:22px;margin-bottom:16px;position:relative;overflow:hidden}
+.wallet-hero:before{content:"";position:absolute;width:250px;height:250px;right:-90px;top:-130px;border-radius:50%;background:radial-gradient(circle,rgba(155,92,255,.22),transparent 68%);pointer-events:none}
+.wallet-hero-copy,.wallet-balance-grid,.wallet-actions{position:relative;z-index:1}
+.wallet-eyebrow,.wallet-panel-heading>div>span{font-size:10px;letter-spacing:.16em;font-weight:800;color:#b99aff}
+.wallet-hero-copy h3{font-size:25px;margin:6px 0}
+.wallet-hero-copy p,.wallet-panel p{color:var(--muted);margin:5px 0 14px}
+.wallet-balance-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:18px 0}
+.wallet-balance-card{display:flex;flex-direction:column;gap:5px;padding:16px;border-radius:14px;border:1px solid rgba(160,175,220,.16);background:rgba(255,255,255,.035)}
+.wallet-balance-card>span{font-size:25px}
+.wallet-balance-card small{font-size:10px;letter-spacing:.14em;font-weight:800;color:var(--muted)}
+.wallet-balance-card strong{font-size:clamp(24px,4vw,34px);font-variant-numeric:tabular-nums}
+.wallet-diamond-card strong{color:#b8d7ff}.wallet-gold-card strong{color:#f0cf80}
+.wallet-actions{display:flex;gap:8px;flex-wrap:wrap}
+.wallet-content-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-bottom:14px}
+.wallet-panel{padding:18px;margin-bottom:14px;min-width:0}
+.wallet-panel-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
+.wallet-panel-heading h3{font-size:17px;margin:4px 0 0}
+.wallet-panel-heading>b{font-size:11px;color:var(--muted)}
+.wallet-reward-days{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px;margin:14px 0}
+.wallet-reward-day{display:flex;flex-direction:column;align-items:center;gap:6px;padding:9px 2px;border-radius:9px;background:rgba(255,255,255,.045);border:1px solid var(--border);min-width:0}
+.wallet-reward-day small{font-size:8px;color:var(--muted);font-weight:800}
+.wallet-reward-day b{font-size:11px;color:#b8d7ff;white-space:nowrap}
+.wallet-package-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.wallet-package{display:flex;flex-direction:column;align-items:center;gap:5px;padding:13px 8px;text-align:center;border:1px solid var(--border);border-radius:12px;background:rgba(255,255,255,.035)}
+.wallet-package>span{font-size:22px}.wallet-package>b{font-size:12px}.wallet-package>strong{font-size:20px;color:#f0cf80}.wallet-package>small{font-size:9px;color:var(--muted)}
+.wallet-payment-note{font-size:11px!important;margin:12px 0 0!important}
+.wallet-staff-form{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;align-items:end;margin-bottom:10px}
+.wallet-staff-form label,.wallet-transfer-modal label{display:flex;flex-direction:column;gap:6px;font-size:12px;color:var(--muted)}
+.wallet-staff-form input,.wallet-transfer-modal input,.wallet-transfer-modal select{width:100%;min-width:0}
+.wallet-transactions{display:flex;flex-direction:column;gap:0}
+.wallet-transaction{display:flex;align-items:center;gap:11px;padding:12px 0;border-bottom:1px solid var(--border);min-width:0}
+.wallet-transaction:last-child{border-bottom:0}
+.wallet-transaction-icon{width:36px;height:36px;flex:0 0 36px;display:grid;place-items:center;border-radius:11px;background:rgba(155,92,255,.1);font-size:18px}
+.wallet-transaction-copy{display:flex;flex:1;min-width:0;flex-direction:column;gap:3px}
+.wallet-transaction-copy b{font-size:12px;overflow-wrap:anywhere}
+.wallet-transaction-copy small{font-size:10px;color:var(--muted);overflow-wrap:anywhere}
+.wallet-transaction>strong{font-size:12px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.wallet-positive{color:#65d6a5}.wallet-negative{color:#ff8b9b}
+.wallet-loading{padding:24px;text-align:center;color:var(--muted)}
+.wallet-transfer-modal{display:flex;flex-direction:column;gap:12px}
+.wallet-transfer-modal h2{margin:0}
+.wallet-share-balance,.wallet-convert-preview{padding:11px 13px;border-radius:10px;background:rgba(155,92,255,.09);border:1px solid rgba(155,92,255,.18);color:#d9c8ff;font-size:13px}
+.wallet-transfer-limit{font-size:11px;color:var(--muted);margin:0}
+.wallet-recipient-results{display:flex;flex-direction:column;gap:6px;max-height:45vh;overflow:auto}
+.wallet-recipient{display:flex;align-items:center;gap:10px;padding:11px;border:1px solid var(--border);border-radius:10px;background:rgba(255,255,255,.035);color:var(--text);text-align:left}
+.wallet-recipient i{margin-left:auto;color:var(--muted);font-style:normal}
+@media(max-width:760px){.wallet-content-grid{grid-template-columns:1fr}.wallet-staff-form{grid-template-columns:1fr}.wallet-hero{padding:16px}.wallet-panel{padding:14px}.wallet-reward-day{padding:8px 1px}.wallet-reward-day small{font-size:7px}.wallet-reward-day b{font-size:10px}.wallet-actions>*{flex:1 1 auto}}
