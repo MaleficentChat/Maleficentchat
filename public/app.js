@@ -2350,17 +2350,29 @@ function toggleMessageMore(messageId){
   const willOpen=submenu.classList.contains("hidden");
   document.querySelectorAll(".message-more-submenu").forEach(item=>item.classList.add("hidden"));
   document.querySelectorAll(".message-more-trigger").forEach(item=>item.setAttribute("aria-expanded","false"));
-  if(willOpen){
-    submenu.classList.remove("hidden");
-    submenu.parentElement?.querySelector(".message-more-trigger")?.setAttribute("aria-expanded","true");
+  if(!willOpen)return;
+  submenu.classList.remove("hidden");
+  const trigger=submenu.parentElement?.querySelector(".message-more-trigger");
+  trigger?.setAttribute("aria-expanded","true");
+  requestAnimationFrame(()=>{
+    const panel=submenu.closest(".message-actions-menu");
+    if(!panel)return;
+    // The panel is a fixed, scrollable layer portaled to <body>. Scroll its
+    // own content (not the chat) until the entire More submenu is visible.
+    const panelRect=panel.getBoundingClientRect();
+    const subRect=submenu.getBoundingClientRect();
+    const bottomOverflow=subRect.bottom-(panelRect.bottom-10);
+    const topOverflow=(panelRect.top+10)-subRect.top;
+    if(bottomOverflow>0)panel.scrollTop+=bottomOverflow;
+    else if(topOverflow>0)panel.scrollTop-=topOverflow;
+    // Re-check after the scroll has been applied; this avoids the submenu
+    // being left below the mobile viewport on short Android screens.
     requestAnimationFrame(()=>{
-      const panel=submenu.closest(".message-actions-menu");
-      if(!panel)return;
-      const panelRect=panel.getBoundingClientRect(),subRect=submenu.getBoundingClientRect();
-      if(subRect.bottom>panelRect.bottom)panel.scrollTop+=subRect.bottom-panelRect.bottom+12;
-      if(subRect.top<panelRect.top)panel.scrollTop-=panelRect.top-subRect.top+8;
+      const p=panel.getBoundingClientRect(),r=submenu.getBoundingClientRect();
+      if(r.bottom>p.bottom-8)panel.scrollTop+=r.bottom-p.bottom+12;
+      if(r.top<p.top+8)panel.scrollTop-=p.top-r.top+10;
     });
-  }
+  });
 }
 function closeMessageMenus(){
   document.querySelectorAll(".message-actions-menu,.message-more-submenu").forEach(m=>{
