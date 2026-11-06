@@ -1450,15 +1450,20 @@ const upload=multer({
 });
 
 function visibleRoomOnlineCount(roomId){
-  const members=io.sockets.adapter.rooms.get("room:"+roomId);
-  if(!members)return 0;
-  let count=0;
+  const members=io.sockets.adapter.rooms.get("room:"+String(roomId));
+  if(!members||!members.size)return 0;
+  const visibleUsers=new Set();
   for(const socketId of members){
     const socket=io.sockets.sockets.get(socketId);
-    const user=findUser(socket?.data?.userId);
-    if(user&&user.online&&!user.invisible&&!user.hideMode)count++;
+    const userId=String(socket?.data?.userId||"");
+    if(!userId||visibleUsers.has(userId))continue;
+    const user=findUser(userId);
+    // An active socket joined to this room is the live source of truth;
+    // do not suppress it because a persisted online flag is stale.
+    if(!user||user.invisible||user.hideMode)continue;
+    visibleUsers.add(userId);
   }
-  return count;
+  return visibleUsers.size;
 }
 function roomCapacityAvailable(user,room){
   if(!user||!room)return false;
