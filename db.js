@@ -17,6 +17,7 @@ async function initDB() {
       password TEXT,
       rank TEXT DEFAULT 'member',
       gold INT DEFAULT 0,
+      diamonds BIGINT NOT NULL DEFAULT 0,
       xp INT DEFAULT 0,
       avatar TEXT,
       birth_date DATE,
@@ -29,6 +30,7 @@ async function initDB() {
       created_at TIMESTAMP DEFAULT NOW()
     );
     ALTER TABLE users ADD COLUMN IF NOT EXISTS xp INT DEFAULT 0;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS diamonds BIGINT NOT NULL DEFAULT 0;
     ALTER TABLE users ADD COLUMN IF NOT EXISTS device_fingerprint VARCHAR(255);
     ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_data JSONB NOT NULL DEFAULT '{}'::jsonb;
 
@@ -274,6 +276,18 @@ async function initDB() {
       user_id INT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
       last_claim TIMESTAMP, streak INT DEFAULT 0
     );
+    CREATE TABLE IF NOT EXISTS wallet_transactions(
+      id TEXT PRIMARY KEY,
+      sender_id INT REFERENCES users(id) ON DELETE SET NULL,
+      recipient_id INT REFERENCES users(id) ON DELETE SET NULL,
+      currency TEXT NOT NULL CHECK(currency IN ('DIAMONDS','GOLD')),
+      amount BIGINT NOT NULL CHECK(amount > 0),
+      type TEXT NOT NULL,
+      note TEXT NOT NULL DEFAULT '',
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+    CREATE INDEX IF NOT EXISTS wallet_transactions_sender_idx ON wallet_transactions(sender_id,created_at DESC);
+    CREATE INDEX IF NOT EXISTS wallet_transactions_recipient_idx ON wallet_transactions(recipient_id,created_at DESC);
     CREATE TABLE IF NOT EXISTS premium_requests(
       id SERIAL PRIMARY KEY, user_id INT REFERENCES users(id) ON DELETE CASCADE,
       status TEXT DEFAULT 'pending', created_at TIMESTAMP DEFAULT NOW()
@@ -347,6 +361,7 @@ async function loadState(defaultState) {
     passwordHash: row.password && row.password.startsWith("$2") ? row.password : undefined,
     rank: (String(row.rank || "member").toUpperCase()==="USER"?"MEMBER":String(row.rank || "member").toUpperCase()),
     gold: Number(row.gold || 0),
+    diamonds: Number(row.diamonds || 0),
     xp: Number(row.xp || 0),
     avatar: row.avatar || "",
     birthDate: row.birth_date ? new Date(row.birth_date).toISOString().slice(0,10) : "",
@@ -495,12 +510,12 @@ async function persistState(state) {
   for (const u of state.users || []) {
     if(!Number.isFinite(Number(u.id))) continue;
     const profileData={...u};
-    for (const key of ['id','username','password','passwordHash','rank','gold','xp','avatar','birthDate','dateOfBirth','gender','bio','email','vipExpiresAt','vip_expires_at','isPremium','is_premium','giftsReceived']) delete profileData[key];
+    for (const key of ['id','username','password','passwordHash','rank','gold','diamonds','xp','avatar','birthDate','dateOfBirth','gender','bio','email','vipExpiresAt','vip_expires_at','isPremium','is_premium','giftsReceived']) delete profileData[key];
     await pool.query(
-      `UPDATE users SET username=$2,password=$3,rank=$4,gold=$5,xp=$6,avatar=$7,birth_date=$8,gender=$9,bio=$10,email=$11,vip_expires_at=$12,is_premium=$13,profile_data=$14::jsonb WHERE id=$1`,
+      `UPDATE users SET username=$2,password=$3,rank=$4,gold=$5,xp=$6,avatar=$7,birth_date=$8,gender=$9,bio=$10,email=$11,vip_expires_at=$12,is_premium=$13,profile_data=$14::jsonb,diamonds=$15 WHERE id=$1`,
       [Number(u.id),u.username,u.passwordHash||u.password||"",String(u.rank||"MEMBER"),Number(u.gold||0),Number(u.xp||0),u.avatar||null,
        u.birthDate||u.dateOfBirth||null,u.gender||null,u.bio||null,u.email||null,
-       (u.vipExpiresAt||u.vip_expires_at)?new Date(u.vipExpiresAt||u.vip_expires_at):null,!!(u.isPremium||u.is_premium),JSON.stringify(profileData)]
+       (u.vipExpiresAt||u.vip_expires_at)?new Date(u.vipExpiresAt||u.vip_expires_at):null,!!(u.isPremium||u.is_premium),JSON.stringify(profileData),Math.max(0,Math.floor(Number(u.diamonds)||0))]
     );
   }
 
