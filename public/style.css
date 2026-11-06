@@ -6091,3 +6091,20 @@ html,body,#app,.app,.main,.view,#profile,#viewProfile {
 .top-friends-glyph{display:block!important;width:20px!important;height:20px!important;max-width:20px!important;max-height:20px!important;fill:none!important;stroke:currentColor!important;stroke-width:1.8!important;stroke-linecap:round!important;stroke-linejoin:round!important;pointer-events:none}
 #topFriends #topFriendDot:not(.count-badge){display:none!important}
 #topFriends #topFriendDot.count-badge{position:absolute!important;top:-3px!important;right:-3px!important;left:auto!important;bottom:auto!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;width:auto!important;min-width:17px!important;height:17px!important;padding:0 4px!important;box-sizing:border-box!important;border:2px solid var(--bg,#09090f)!important;border-radius:999px!important;background:#ff3b78!important;color:#fff!important;font-size:10px!important;font-weight:900!important;line-height:1!important;z-index:8!important;pointer-events:none!important}
+
+/* Secret room code entry and owner-only sharing UI */
+.room-code-search-wrap{grid-column:1/-1;grid-row:3;display:flex;align-items:center;gap:10px;width:100%;min-width:0;padding:0 13px;height:50px;border:1px solid rgba(181,130,255,.3);border-radius:14px;background:rgba(21,15,34,.92);box-sizing:border-box}
+.room-code-search-wrap>span{font-size:18px;flex:none}
+.room-code-search-wrap input{flex:1;min-width:0;width:100%;height:100%;padding:0;border:0!important;outline:0!important;background:transparent!important;color:var(--text)!important;font:inherit!important;box-shadow:none!important}
+.room-code-search-wrap small{display:none}
+.room-code-display{margin:18px 0;padding:18px 12px;border:1px solid rgba(181,130,255,.4);border-radius:15px;background:rgba(150,80,220,.12);text-align:center;font-size:clamp(24px,7vw,34px);font-weight:900;letter-spacing:.1em;font-variant-numeric:tabular-nums}
+.room-code-share .toolbar{display:flex;justify-content:center}
+@media(max-width:700px){
+ #viewRooms:not(.chatting) .top-actions{grid-template-columns:minmax(0,1fr) 38px auto!important;grid-template-rows:auto auto auto auto!important}
+ #viewRooms:not(.chatting) .top-actions #roomSearch{grid-row:1!important}
+ #viewRooms:not(.chatting) .top-actions #hiddenRoomsToggle{grid-row:2!important}
+ #viewRooms:not(.chatting) .top-actions .room-code-search-wrap{grid-column:1/-1!important;grid-row:3!important;width:100%!important}
+ #viewRooms:not(.chatting) .top-actions #refreshRoomsBtn{grid-column:2!important;grid-row:4!important}
+ #viewRooms:not(.chatting) .top-actions #newRoom{grid-column:3!important;grid-row:4!important}
+ .room-code-search-wrap{height:48px!important}
+}
