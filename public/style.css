@@ -6617,3 +6617,74 @@ html[data-theme] .settings-tab.active {
   background:var(--accent-soft)!important;
   color:var(--accent-2)!important;
 }
+
+
+/* Keep the Games view inside the app viewport and scroll its content internally. */
+#viewGames {
+  display:flex;
+  flex-direction:column;
+  min-width:0;
+  min-height:0;
+  max-width:100%;
+  overflow:hidden;
+}
+#viewGames > .topbar {
+  flex:0 0 auto;
+  min-width:0;
+  max-width:100%;
+}
+#viewGames > .games-root {
+  flex:1 1 auto;
+  width:100%;
+  max-width:100%!important;
+  min-width:0;
+  min-height:0;
+  height:auto;
+  margin:0;
+  padding:12px clamp(10px,2vw,22px) calc(24px + env(safe-area-inset-bottom,0px))!important;
+  overflow-x:hidden;
+  overflow-y:auto;
+  overscroll-behavior:contain;
+  -webkit-overflow-scrolling:touch;
+}
+#viewGames .arcade-home,
+#viewGames .arcade-play-view,
+#viewGames .gravity-card,
+#viewGames .gravity-arena-card,
+#viewGames .gravity-result,
+#viewGames .doodle-studio {
+  width:100%;
+  max-width:100%;
+  min-width:0;
+  box-sizing:border-box;
+}
+#viewGames .arcade-welcome,
+#viewGames .arcade-game-card,
+#viewGames .arcade-game-heading,
+#viewGames .gravity-arena-head {
+  min-width:0;
+  max-width:100%;
+  box-sizing:border-box;
+}
+#viewGames .arcade-card-copy,
+#viewGames .arcade-game-heading > div,
+#viewGames .gravity-invite-copy {
+  min-width:0;
+  overflow-wrap:anywhere;
+}
+#viewGames img,
+#viewGames canvas,
+#viewGames video,
+#viewGames iframe {
+  max-width:100%;
+}
+@media(max-width:640px) {
+  #viewGames > .topbar {height:auto;min-height:62px;padding:12px 14px;align-items:flex-start}
+  #viewGames > .games-root {padding:10px 10px calc(18px + env(safe-area-inset-bottom,0px))!important}
+  #viewGames .arcade-welcome {flex-wrap:wrap;gap:12px}
+  #viewGames .arcade-game-heading {flex-wrap:wrap}
+  #viewGames .arcade-game-heading > b {margin-left:0;white-space:normal}
+  #viewGames .gravity-card {grid-template-columns:minmax(0,1fr)}
+  #viewGames .gravity-setup {min-width:0}
+  #viewGames .gravity-room-invite {min-width:0}
+}
