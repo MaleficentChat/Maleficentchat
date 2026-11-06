@@ -134,6 +134,7 @@
     <button class="nav" data-view="suggestions">💡 <span>Suggestions</span></button>
   </details>
   <details class="nav-group"><summary>✧ <span>Explore</span><i>⌄</i></summary>
+    <button class="nav" data-view="entertainment">🎬 <span>Entertainment</span></button>
     <button class="nav" data-view="games">🎮 <span>Games</span></button>
     <button class="nav" data-view="shop">🛍️ <span>Premium / VIP</span></button>
     <button class="nav" data-view="rules">📜 <span>Rules</span></button>
@@ -204,6 +205,7 @@
     </div>
   </div>
 
+    <div id="viewEntertainment" class="view hidden"><div class="topbar"><div><h2>🎬 Entertainment</h2><p class="muted">Two public rooms. Everyone can join — no age or rank restrictions.</p></div></div><div id="entertainmentRoot" class="entertainment-root"><div class="et-empty">Loading entertainment rooms…</div></div></div>
     <div id="viewGames" class="view hidden"><div class="topbar"><div><h2>🎮 Maleficent Arcade</h2><p class="muted">Pick a mini-game and chase a new high score.</p></div></div><div id="gamesRoot" class="games-root"></div></div>
   <div id="viewNews" class="view hidden"><div class="topbar"><div><h2>📰 News</h2><p class="muted">Community announcements.</p></div><button class="primary admin-only hidden" id="publishNews">Publish</button></div><div id="news" class="stack"></div></div>
   <div id="viewLeaderboard" class="view hidden"><div class="topbar"><h2>🏆 XP, Gold & Diamonds Leaderboards</h2></div><div id="leaderboard" class="grid2"></div></div>
@@ -368,6 +370,8 @@
   },true);
 })();
 </script>
-<script src="/app.js?v=reels-current-room-20261106-1"></script>
+<link rel="stylesheet" href="/entertainment.css?v=20261106-1">
+<script src="/app.js?v=entertainment-rooms-20261106-1"></script>
+<script src="/entertainment.js?v=20261106-1"></script>
 </body>
 </html>
