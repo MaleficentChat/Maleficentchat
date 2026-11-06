@@ -5842,3 +5842,90 @@ html,body,#app,.app,.main,.view,#profile,#viewProfile {
     border-radius:15px!important;
   }
 }
+
+
+/* Screenshot fixes — anchored message menus, balanced room search and profile controls. */
+.message-actions-menu.is-floating{
+  position:fixed!important;
+  display:flex!important;
+  flex-direction:column!important;
+  flex-wrap:nowrap!important;
+  align-items:stretch!important;
+  box-sizing:border-box!important;
+  width:min(250px,calc(100vw - 24px))!important;
+  min-width:0!important;
+  max-width:calc(100vw - 24px)!important;
+  max-height:min(72dvh,calc(100dvh - 24px))!important;
+  overflow-x:hidden!important;
+  overflow-y:auto!important;
+  overscroll-behavior:contain!important;
+  -webkit-overflow-scrolling:touch!important;
+  z-index:1200!important;
+  padding:8px!important;
+  border:1px solid rgba(190,145,255,.3)!important;
+  border-radius:16px!important;
+  background:linear-gradient(155deg,#171525 0%,#11121d 76%,#1a1225 100%)!important;
+  box-shadow:0 16px 42px rgba(0,0,0,.58),0 0 0 1px rgba(155,92,255,.08)!important;
+}
+.message-actions-menu.is-floating .message-menu-item{
+  display:flex!important;
+  align-items:center!important;
+  gap:10px!important;
+  width:100%!important;
+  min-height:44px!important;
+  flex:0 0 auto!important;
+  box-sizing:border-box!important;
+}
+.message-actions-menu.is-floating .message-menu-item>span:nth-child(2){
+  display:flex!important;
+  flex:1 1 auto!important;
+  min-width:0!important;
+  flex-direction:column!important;
+  gap:2px!important;
+}
+.message-actions-menu.is-floating .message-more-trigger{gap:10px!important}
+.message-actions-menu.is-floating .message-more-trigger .more-chevron{margin-left:auto!important}
+.message-actions-menu.is-floating .message-more-submenu{
+  position:static!important;
+  display:flex;
+  flex-direction:column;
+  max-height:none!important;
+  overflow:visible!important;
+  margin:5px 0 3px 40px!important;
+  padding:5px!important;
+}
+.message-actions-menu.is-floating .message-more-submenu.hidden{display:none!important}
+.message-actions-menu.is-floating .message-more-submenu .message-menu-item{min-height:39px!important}
+.top-profile .top-avatar{border-radius:50%!important;overflow:hidden!important;display:grid!important}
+.top-profile{border-radius:50%!important;overflow:hidden!important}
+.room-list-actions{align-items:center!important;gap:8px!important}
+.room-list-actions .room-action-icon{
+  width:36px!important;height:36px!important;min-width:36px!important;
+  display:inline-grid!important;place-items:center!important;
+  padding:0!important;border-radius:11px!important;font-size:17px!important;
+  line-height:1!important;
+}
+@media(max-width:768px){
+  #viewRooms:not(.chatting) .top-actions{
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr) auto auto!important;
+    align-items:center!important;
+    gap:8px!important;
+    width:100%!important;
+    box-sizing:border-box!important;
+  }
+  #viewRooms:not(.chatting) .top-actions #roomSearch{
+    grid-column:1/-1!important;
+    justify-self:stretch!important;
+    width:100%!important;
+    max-width:none!important;
+    min-width:0!important;
+    flex:none!important;
+    margin:0!important;
+    box-sizing:border-box!important;
+  }
+  #viewRooms:not(.chatting) .top-actions #hiddenRoomsToggle{grid-column:1/-1;justify-self:stretch}
+  #viewRooms:not(.chatting) .top-actions #refreshRoomsBtn{justify-self:end}
+  #viewRooms:not(.chatting) .top-actions #newRoom{justify-self:end}
+  .message-actions-menu.is-floating{width:min(246px,calc(100vw - 20px))!important;max-height:min(72dvh,calc(100dvh - 20px))!important}
+}
