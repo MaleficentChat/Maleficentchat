@@ -1173,9 +1173,6 @@ async function renderView() {
     case "users":
       return loadUsers();
 
-    case "friends":
-      return loadFriends();
-
     case "dms":
       return loadDMList();
 
@@ -3517,11 +3514,11 @@ async function loadFriends() {
 }
 
 async function acceptFriend(id){
-  try{await api(`/api/friends/${encodeURIComponent(id)}/accept`,{method:"POST"});toast("Friend request accepted.");await loadFriends();if(state.currentRoom)renderOnline("friends");}catch(e){toast(e.message)}
+  try{await api(`/api/friends/${encodeURIComponent(id)}/accept`,{method:"POST"});toast("Friend request accepted.");if(!$("topFriendsDropdown")?.classList.contains("hidden"))await toggleFriendsDropdown(true);await loadNotifications();if(state.currentRoom)renderOnline("friends");}catch(e){toast(e.message)}
 }
 async function removeFriend(id){
   if(!confirm("Remove this friendship/request?")) return;
-  try{await api(`/api/friends/${encodeURIComponent(id)}`,{method:"DELETE"});toast("Updated.");await loadFriends();if(state.currentRoom)renderOnline("friends");}catch(e){toast(e.message)}
+  try{await api(`/api/friends/${encodeURIComponent(id)}`,{method:"DELETE"});toast("Updated.");if(!$("topFriendsDropdown")?.classList.contains("hidden"))await toggleFriendsDropdown(true);await loadNotifications();if(state.currentRoom)renderOnline("friends");}catch(e){toast(e.message)}
 }
 
 /* ---------------- PRIVATE MESSAGES ---------------- */
@@ -5973,12 +5970,28 @@ async function toggleFriendsDropdown(refresh=false){
   $("topMessagesDropdown")?.classList.add("hidden");$("notificationDropdown")?.classList.add("hidden");$("reportDropdown")?.classList.add("hidden");
   try{
     const d=await api("/api/friends");
-    const incoming=d.incoming||[];
-    box.innerHTML=`<div class="notification-dropdown-head"><div><b>💜 Friend requests</b><small class="notification-unread-summary">${incoming.length} pending</small></div></div>${incoming.map(u=>`<div class="report-dropdown-item friend-request-panel-row"><div class="report-dropdown-copy"><b>${esc(u.displayName||u.username)}</b><span>@${esc(u.username)}</span></div><div class="toolbar"><button class="mini primary" data-friend-accept="${esc(u.id)}">Accept</button><button class="mini danger" data-friend-decline="${esc(u.id)}">Decline</button></div></div>`).join("")||'<p class="muted notification-empty">No new friend requests. 💜</p>'}`;
+    const friends=d.users||[],incoming=d.incoming||[],outgoing=d.outgoing||[];
+    const row=(u,kind)=>`<article class="report-dropdown-item friend-hub-row" data-friend-hub-row data-search="${esc([u.displayName,u.username].join(" ").toLowerCase())}">
+      <div class="friend-hub-person">${avatar(u)}<div class="report-dropdown-copy"><b>${esc(u.displayName||u.username)}</b><span>@${esc(u.username)} · ${kind==="friend"?(u.online?"Online":"Offline"):kind==="outgoing"?"Request pending":rank(u.rank)}</span></div></div>
+      <div class="toolbar">
+      ${kind==="incoming"?`<button class="mini primary" data-friend-accept="${esc(u.id)}">Accept</button><button class="mini danger" data-friend-decline="${esc(u.id)}">Decline</button>`:kind==="outgoing"?`<button class="mini danger" data-friend-decline="${esc(u.id)}">Cancel</button>`:`<button class="mini" data-friend-profile="${esc(u.id)}">Profile</button><button class="mini" data-friend-message="${esc(u.id)}">Message</button><button class="mini danger" data-friend-remove="${esc(u.id)}">Remove</button>`}
+      </div></article>`;
+    box.innerHTML=`<div class="notification-dropdown-head"><div><b>💜 Friends</b><small class="notification-unread-summary">${friends.length} friends · ${incoming.length} requests · ${outgoing.length} pending</small></div><button class="mini" id="refreshFriendsHub" type="button">↻</button></div>
+      <input class="friend-hub-search" id="friendHubSearch" type="search" placeholder="Search friends and requests…" aria-label="Search friends and requests">
+      ${incoming.length?`<section class="friend-hub-section"><b>Incoming requests</b>${incoming.map(u=>row(u,"incoming")).join("")}</section>`:""}
+      ${outgoing.length?`<section class="friend-hub-section"><b>Pending requests</b>${outgoing.map(u=>row(u,"outgoing")).join("")}</section>`:""}
+      <section class="friend-hub-section"><b>Your friends</b>${friends.map(u=>row(u,"friend")).join("")||'<p class="muted notification-empty">No friends yet. Find people from the Users panel.</p>'}</section>
+      <button type="button" class="mini friend-hub-find" id="friendHubFindPeople">＋ Find people</button>`;
     box.classList.remove("hidden");
-    box.querySelectorAll("[data-friend-accept]").forEach(b=>b.onclick=async()=>{b.disabled=true;try{await acceptFriend(b.dataset.friendAccept);await toggleFriendsDropdown(true);await loadNotifications()}catch(e){b.disabled=false;toast(e.message)}});
-    box.querySelectorAll("[data-friend-decline]").forEach(b=>b.onclick=async()=>{b.disabled=true;try{await api('/api/friends/'+encodeURIComponent(b.dataset.friendDecline),{method:'DELETE'});toast('Friend request declined.');await toggleFriendsDropdown(true);await loadNotifications()}catch(e){b.disabled=false;toast(e.message)}});
-  }catch(e){box.innerHTML=`<div class="notification-dropdown-head"><b>💜 Friend requests</b></div><p class="muted">${esc(e.message||"Could not load friend requests.")}</p>`;box.classList.remove("hidden");}
+    box.querySelector("#friendHubSearch")?.addEventListener("input",e=>{const q=e.target.value.trim().toLowerCase();box.querySelectorAll("[data-friend-hub-row]").forEach(el=>el.classList.toggle("hidden",!el.dataset.search.includes(q)));});
+    box.querySelector("#refreshFriendsHub")?.addEventListener("click",()=>toggleFriendsDropdown(true));
+    box.querySelector("#friendHubFindPeople")?.addEventListener("click",()=>{box.classList.add("hidden");state.view="users";document.querySelectorAll(".nav[data-view]").forEach(x=>x.classList.toggle("active",x.dataset.view==="users"));renderView();});
+    box.querySelectorAll("[data-friend-accept]").forEach(b=>b.onclick=async()=>{b.disabled=true;try{await api("/api/friends/"+encodeURIComponent(b.dataset.friendAccept)+"/accept",{method:"POST"});toast("Friend request accepted.");await toggleFriendsDropdown(true);await loadNotifications();}catch(e){b.disabled=false;toast(e.message)}});
+    box.querySelectorAll("[data-friend-decline]").forEach(b=>b.onclick=async()=>{b.disabled=true;try{await api("/api/friends/"+encodeURIComponent(b.dataset.friendDecline),{method:"DELETE"});toast("Request updated.");await toggleFriendsDropdown(true);await loadNotifications();}catch(e){b.disabled=false;toast(e.message)}});
+    box.querySelectorAll("[data-friend-remove]").forEach(b=>b.onclick=async()=>{if(!confirm("Remove this friendship?"))return;b.disabled=true;try{await api("/api/friends/"+encodeURIComponent(b.dataset.friendRemove),{method:"DELETE"});toast("Friend removed.");await toggleFriendsDropdown(true);await loadNotifications();}catch(e){b.disabled=false;toast(e.message)}});
+    box.querySelectorAll("[data-friend-profile]").forEach(b=>b.onclick=()=>{box.classList.add("hidden");openUser(b.dataset.friendProfile);});
+    box.querySelectorAll("[data-friend-message]").forEach(b=>b.onclick=()=>{box.classList.add("hidden");openDM(b.dataset.friendMessage);});
+  }catch(e){box.innerHTML=`<div class="notification-dropdown-head"><b>💜 Friends</b></div><p class="muted">${esc(e.message||"Could not load friends.")}</p>`;box.classList.remove("hidden");}
 }
 async function toggleMessagesDropdown(refresh=false){
   const box=$("topMessagesDropdown");if(!box)return;
