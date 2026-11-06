@@ -6746,3 +6746,31 @@ html[data-theme] .settings-tab.active {
 .mc-upload-details .is-error{color:#ff8b9b}
 .mc-upload-item.has-error{border-color:rgba(255,105,130,.55)}
 @media(max-width:520px){.mc-upload-progress{right:10px;bottom:10px;width:calc(100vw - 20px)}}
+
+
+/* Keep the age-room shortcut button spacious, with its full label contained. */
+#refreshRoomsBtn.age-chat-open-button{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width:260px;
+  min-width:260px;
+  max-width:100%;
+  min-height:54px;
+  flex:0 1 260px;
+  box-sizing:border-box;
+  padding:10px 16px;
+  font-size:15px;
+  font-weight:750;
+  line-height:1.2;
+  text-align:center;
+  white-space:normal!important;
+  overflow-wrap:anywhere;
+  word-break:normal;
+}
+#refreshRoomsBtn.age-chat-open-button:disabled{opacity:.7;cursor:wait}
+.room-pinned-badge{display:inline-flex;align-items:center;justify-content:center;flex:none;font-size:13px;margin-left:2px}
+@media(max-width:700px){
+  #viewRooms:not(.chatting) .topbar .top-actions{flex-wrap:wrap;align-items:stretch}
+  #refreshRoomsBtn.age-chat-open-button{width:100%;min-width:0;max-width:100%;flex:1 1 100%}
+}
