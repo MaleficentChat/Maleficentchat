@@ -6716,3 +6716,16 @@ html[data-theme] .settings-tab.active {
 #topMessagesDropdown .dm-header-item{flex:1;min-width:0;border:0!important;background:transparent!important;margin:0!important;padding:7px!important;text-align:left}
 #topMessagesDropdown .dm-header-actions{display:flex;gap:2px;flex:0 0 auto}
 #topMessagesDropdown .dm-header-actions .mini{min-width:27px;padding:5px 4px;font-size:12px}
+
+
+/* Profile photo gallery */
+.profile-photos-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+.profile-photos-heading h3{margin:0 0 4px}
+.profile-photo-add{display:inline-flex;align-items:center;justify-content:center;white-space:nowrap;cursor:pointer}
+.profile-photo-file{position:absolute!important;width:1px!important;height:1px!important;opacity:0!important;pointer-events:none!important}
+.profile-photo-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}
+.profile-photo-tile{position:relative;aspect-ratio:1/1;margin:0;overflow:hidden;border-radius:12px;background:rgba(130,120,160,.12);border:1px solid var(--border-strong,rgba(255,255,255,.12))}
+.profile-photo-tile img{display:block;width:100%;height:100%;object-fit:cover}
+.profile-photo-remove{position:absolute;top:6px;right:6px;width:28px;height:28px;border:1px solid rgba(255,255,255,.28);border-radius:50%;background:rgba(10,7,18,.82);color:#fff;font-size:20px;line-height:1;display:grid;place-items:center}
+.profile-photos-empty{grid-column:1/-1;padding:22px 12px;text-align:center;color:var(--muted)}
+@media(max-width:480px){.profile-photo-grid{gap:6px}.profile-photo-tile{border-radius:9px}.profile-photos-heading{align-items:flex-start}}
