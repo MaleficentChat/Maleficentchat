@@ -768,7 +768,7 @@ async function start() {
   // Restore any outstanding warning immediately on login, independent of socket state.
   loadPendingWarning().catch(error=>console.warn("Pending warning restore failed:",error?.message||error));
   updateNav();
-  applyTheme(state.user?.settings?.theme||'obsidian');
+  applyTheme(state.user?.settings?.theme||state.user?.theme||'obsidian');
   applyUserAppearance();
   if(state.user?.banned) showBanLock(state.user.banReason||"Community rules"); else if(state.user?.kickedUntil&&state.user.kickedUntil>Date.now()) showKickLock(state.user.kickedUntil,state.user.kickReason||"Community rules"); else clearActionLock();
   applyUserAppearance();
@@ -4386,7 +4386,7 @@ async function loadProfile(user){
   document.querySelectorAll('.settings-tab').forEach(b=>b.addEventListener('click',()=>render(b.dataset.st))); $('myProfileMenuBtn')?.addEventListener('click',()=>openProfileActionDrawer(state.user,{})); render('account');
 }
 
-async function saveMyProfile(fields,message){try{const r=await api('/api/profile',{method:'PUT',body:JSON.stringify(fields)});state.user=r.user;closeModal();updateNav();await loadProfile(state.user);toast(message||'Saved.');}catch(e){toast(e.message)}}
+async function saveMyProfile(fields,message){try{const r=await api('/api/profile',{method:'PUT',body:JSON.stringify(fields)});state.user=r.user;applyTheme(state.user?.settings?.theme||state.user?.theme||'obsidian');renderMessages();closeModal();updateNav();await loadProfile(state.user);toast(message||'Saved.');}catch(e){toast(e.message)}}
 function editProfileMusic(){
  const u=state.user||{};
  modal(`<div class="profile-music-upload"><h2>🎵 Profile music</h2><p class="muted">Choose an audio file from your device. It will be uploaded to your profile so visitors can play it there.</p>${u.profileMusicUrl?`<div class="profile-music-current">Current: <b>${esc(u.profileMusicTitle||'Profile music')}</b></div>`:''}<label class="profile-music-file-label" for="profileMusicFile">🎧 Choose music file</label><input id="profileMusicFile" type="file" accept=".mp3,.m4a,.aac,.ogg,.oga,.wav,.webm,.opus,.flac,audio/*"><small class="muted">MP3, M4A, AAC, OGG, WAV, WebM, OPUS or FLAC · maximum 15 MB</small><div class="toolbar"><button class="mini danger" id="clearProfileMusic" type="button">Remove music</button><button class="primary" id="uploadProfileMusic" type="button">Upload music</button></div></div>`);
@@ -6508,7 +6508,8 @@ function openRoomCreationModal() {
 
 function applyTheme(theme){
   const allowedThemes=['obsidian','midnight','forest','rose','lavender','sunset','ocean'];
-  theme=allowedThemes.includes(String(theme||'').toLowerCase())?String(theme).toLowerCase():'obsidian';
+  theme=String(theme||state.user?.settings?.theme||state.user?.theme||'obsidian').toLowerCase();
+  theme=allowedThemes.includes(theme)?theme:'obsidian';
   document.documentElement.dataset.theme=theme;
   document.body.dataset.theme=theme;
   const st=state.user?.settings||{}; document.documentElement.style.setProperty('--username-color',st.usernameColor||'#9b5cff');
@@ -6538,7 +6539,7 @@ async function loadSettings(){
     <div class="panel"><h3>🛡️ Security & sessions</h3><p class="muted">${sessions.length} active session record${sessions.length===1?'':'s'}.</p><button class="mini" id="viewLoginHistory">View login history</button><button class="mini danger" id="logoutAllDevices">Log out all other devices</button></div>
 <div class="panel danger-panel"><h3>⚠️ Account actions</h3><p class="muted">Deleting your account removes your account and personal conversations permanently.</p><button class="mini danger" onclick="deleteAccount()">Delete my account</button></div>
 `;
-  applyTheme(s.theme||'obsidian');
+  applyTheme(s.theme||state.user?.theme||'obsidian');
   const partyButton=$('settingsPartyMode');
   if(partyButton)partyButton.onclick=()=>{if(!canUsePartyMode()){toast('Party Mode is available to SUPER_ADMIN and higher ranks.');return;}setPartyMode(!isPartyModeActive());partyButton.textContent=isPartyModeActive()?'🎉 Turn Party Mode Off':'🎉 Turn Party Mode On';};
    $('savePrivacy').onclick=async()=>{try{await api('/api/profile',{method:'PUT',body:JSON.stringify({privacy:{lastSeen:$('setLastSeen').checked,online:$('setOnline').checked}})});toast('Privacy saved.');}catch(e){toast(e.message)}};
