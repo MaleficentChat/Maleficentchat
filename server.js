@@ -2273,12 +2273,13 @@ app.post("/api/rooms/code/resolve",auth,(req,res)=>{
   const room=db.rooms.find(item=>roomIsPrivate(item)&&String(item.roomCode||item.room_code||"").replace(/\D/g,"")===digits);
   if(!room)return res.status(404).json({error:"No private room matches that code."});
   const inviteToken=makeRoomInviteToken(room);
+  if(!roomAgeAllowed(actor,room))return res.status(403).json({error:"You don’t meet this room’s age restriction. Please choose another room.",code:"ROOM_AGE_RESTRICTED",minAge:Number(room.minAge??room.min_age??13),maxAge:Number(room.maxAge??room.max_age??99)});
   if(!roomJoinPolicyAllowed(actor,room,{inviteToken}))return res.status(403).json({error:"This room exists, but your account does not meet its access requirements."});
   if(!roomCapacityAvailable(actor,room))return res.status(403).json({error:"This room has reached its member limit."});
   // A numeric room code is exchanged server-side for a user-bound join token.
   // The code itself is never reused as a session credential or exposed in the room list.
   const joinToken=makeRoomJoinToken(actor.id,room);
-  res.json({room:{id:String(room.id),name:room.name,icon:room.icon||"💬",description:room.description||"",category:room.category||"Community",public:false,rankRequired:String(room.rankRequired||room.rank_required||"MEMBER").toUpperCase(),limit:Number(room.limit||room.room_limit||100),slowMode:Number(room.slowMode||room.slow_mode||0),announcement:room.announcement||"",ownerId:String(room.ownerId||room.created_by||""),creator:room.creator||null,isDefault:false,minAge:0,maxAge:120,friendsOnly:roomFriendsOnly(room),roomTheme:String(db.settings?.room_themes?.[String(room.id)]||"obsidian"),locked:!!(room.passwordHash||room.password_hash),onlineCount:visibleRoomOnlineCount(room.id)},joinToken});
+  res.json({room:{id:String(room.id),name:room.name,icon:room.icon||"💬",description:room.description||"",category:room.category||"Community",public:false,rankRequired:String(room.rankRequired||room.rank_required||"MEMBER").toUpperCase(),limit:Number(room.limit||room.room_limit||100),slowMode:Number(room.slowMode||room.slow_mode||0),announcement:room.announcement||"",ownerId:String(room.ownerId||room.created_by||""),creator:room.creator||null,isDefault:false,minAge:Number(room.minAge??room.min_age??13),maxAge:Number(room.maxAge??room.max_age??99),friendsOnly:roomFriendsOnly(room),roomTheme:String(db.settings?.room_themes?.[String(room.id)]||"obsidian"),locked:!!(room.passwordHash||room.password_hash),onlineCount:visibleRoomOnlineCount(room.id)},joinToken});
 });
 app.post("/api/rooms/invites/resolve",auth,(req,res)=>{
   const actor=current(req),roomId=String(req.body?.roomId||""),inviteToken=String(req.body?.inviteToken||"");
