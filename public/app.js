@@ -1780,7 +1780,7 @@ function rememberMyRoom(id){
 function renderRooms() {
   const search=(($('roomSearch')?.value)||'').trim().toLowerCase();
   const visited=joinedRoomIds();
-  const canSeeRoomPins=["COOWNER","OWNER","DEVELOPER"].includes(String(state.user?.rank||"").toUpperCase());
+  const canSeeRoomPins=["COOWNER","CO-OWNER","CO_OWNER","OWNER","DEVELOPER"].includes(String(state.user?.rank||"").toUpperCase().replace(/\s+/g,""));
   const allRooms=(Array.isArray(state.rooms)?state.rooms:[]).slice().sort((a,b)=>canSeeRoomPins?(Number(!!b.pinned)-Number(!!a.pinned)):0);
   const canViewHiddenRooms=["OWNER","DEVELOPER"].includes(String(state.user?.rank||"").toUpperCase());
   const hiddenRooms=allRooms.filter(room=>room.public===false);
@@ -6429,7 +6429,7 @@ $("youtubeComposerBtn")?.addEventListener("click",()=>openYoutubePanel("youtube"
 
 // Use capture-phase delegation so taps still work if the chat header is
 // re-rendered, or another component stops bubbling before the button handler.
-document.addEventListener("click", event => {
+document.addEventListener("click", async event => {
   const trigger = event.target instanceof Element ? event.target.closest("#roomMenu") : null;
   if (!trigger) return;
   event.preventDefault();
@@ -6439,6 +6439,12 @@ document.addEventListener("click", event => {
   try {
     const rooms = Array.isArray(state?.rooms) ? state.rooms : [];
     const room = rooms.find(r => String(r.id) === String(state?.currentRoom));
+    if (room && state.user) {
+      try {
+        const roomStaffInfo = await api(`/api/rooms/${encodeURIComponent(room.id)}/staff`);
+        state.currentRoomRole = roomStaffInfo.myRole || "USER";
+      } catch (_) {}
+    }
     const roomName = esc(room?.name || "Current room");
     // Core options must always render; optional actions are added only when
     // their permission checks complete successfully.
@@ -6531,9 +6537,10 @@ async function clearRoom() {
 
 function canEditRoomFromMenu(room){
   if(!room||!state.user)return false;
-  const role=String(state.currentRoomRole||"USER").toUpperCase();
+  const role=String(state.currentRoomRole||room.myRole||room.my_role||"USER").toUpperCase();
+  const ownerId=room.ownerId??room.owner_id??room.createdBy??room.created_by;
   return ["ROOM_OWNER","ROOM_ADMIN"].includes(role)||
-    String(room.ownerId||"")===String(state.user.id)||
+    (ownerId!=null&&String(ownerId)===String(state.user.id))||
     canFeature("edit_room");
 }
 async function toggleCurrentRoomPin(){
