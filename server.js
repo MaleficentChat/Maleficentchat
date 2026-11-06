@@ -5743,10 +5743,7 @@ app.patch('/api/staff/user/:id/profile',auth,accountModificationAccess,async(req
   if(body.displayName!==undefined&&!updates.displayName)return res.status(400).json({error:'Display name cannot be empty.'});
   if(body.website!==undefined&&updates.website){try{const url=new URL(updates.website);if(!['http:','https:'].includes(url.protocol))throw new Error();}catch{return res.status(400).json({error:'Website must be a valid http or https URL.'});}}
   let birthDateUpdate;
-  if(body.birthDate!==undefined){
-    birthDateUpdate=String(body.birthDate||'').trim();
-    if(birthDateUpdate){const parsed=new Date(birthDateUpdate+'T00:00:00Z');if(Number.isNaN(parsed.getTime())||parsed>new Date())return res.status(400).json({error:'Enter a valid date of birth.'});}
-  }
+  if(body.birthDate!==undefined)return res.status(403).json({error:'Date-of-birth changes must be submitted through the age-change approval process.'});
   let emailUpdate;
   if(body.email!==undefined){
     if(!featureGrantAllowed(actor,'edit_email'))return res.status(403).json({error:'Email editing has not been granted to your account.'});
@@ -5755,9 +5752,6 @@ app.patch('/api/staff/user/:id/profile',auth,accountModificationAccess,async(req
     if(emailUpdate){const duplicate=await pool.query('SELECT id FROM users WHERE LOWER(email)=LOWER($1) AND id<>$2 LIMIT 1',[emailUpdate,Number(target.id)]);if(duplicate.rowCount)return res.status(409).json({error:'Email is already registered.'});}
   }
   Object.assign(target,updates);
-  if(birthDateUpdate!==undefined){
-    target.birthDate=birthDateUpdate;target.dateOfBirth=birthDateUpdate;
-  }
   if(emailUpdate!==undefined){target.email=emailUpdate;await pool.query('UPDATE users SET email=$1 WHERE id=$2',[emailUpdate||null,Number(target.id)]);}
   save();log(actor,'ACCOUNT_PROFILE_MODIFY',target.username,{fields:Object.keys(body).filter(k=>k!=='email')});
   res.json({ok:true,user:safeUser(target)});
