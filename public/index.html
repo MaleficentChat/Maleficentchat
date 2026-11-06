@@ -119,7 +119,7 @@
   </div>
   <div class="top-header-actions">
     <button class="top-icon" id="topMessages" title="Private messages">✉<i id="topDmDot"></i></button><div id="topMessagesDropdown" class="notification-dropdown hidden"></div>
-    <button class="top-icon" id="topFriends" title="Friend requests" aria-label="Friend requests"><svg class="top-friends-glyph" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M16 21v-1.5a4.5 4.5 0 0 0-4.5-4.5h-5A4.5 4.5 0 0 0 2 19.5V21M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM22 21v-1.5a4.5 4.5 0 0 0-3.4-4.36M16.5 3.2a4 4 0 0 1 0 7.6"/></svg><i id="topFriendDot"></i></button><div id="topFriendsDropdown" class="notification-dropdown hidden"></div>
+    <button class="top-icon" id="topFriends" title="Friends & requests" aria-label="Friends & requests"><svg class="top-friends-glyph" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M16 21v-1.5a4.5 4.5 0 0 0-4.5-4.5h-5A4.5 4.5 0 0 0 2 19.5V21M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM22 21v-1.5a4.5 4.5 0 0 0-3.4-4.36M16.5 3.2a4 4 0 0 1 0 7.6"/></svg><i id="topFriendDot"></i></button><div id="topFriendsDropdown" class="notification-dropdown hidden"></div>
     <button class="top-icon" id="topNotifications" title="Notifications">🔔<i id="topNotifDot"></i></button><div id="notificationDropdown" class="notification-dropdown hidden"></div>
     <button class="top-icon staff-only hidden" id="topFlag" title="Reports">⚑<i id="topReportDot"></i></button><div id="reportDropdown" class="notification-dropdown hidden"></div>
     <button class="top-profile" id="topProfile" title="Profile and chat options"></button><div id="topProfileDropdown" class="notification-dropdown profile-quick-dropdown hidden"><div class="notification-dropdown-head"><div><b>👤 Your space</b><small class="notification-unread-summary">Profile & chat controls</small></div></div><button type="button" class="profile-quick-item" onclick="openMyProfileFromHeader()">👤 View profile</button><button type="button" class="profile-quick-item" onclick="openHeaderChatOptions()">💬 Chat options</button></div>
@@ -129,7 +129,6 @@
   <div class="logo"><div class="rail-logo">MC</div><div class="rail-brand"><b>Maleficent</b><span>Chat</span></div></div>
   <button class="nav active" data-view="rooms">🏠 <span>Rooms</span></button>
   <details class="nav-group" open><summary>✦ <span>Community</span><i>⌄</i></summary>
-    <button class="nav" data-view="friends">💜 <span>Friends</span></button>
     <button class="nav" data-view="dms">✉️ <span>Private Messages</span><i id="dmDot"></i></button>
     <button class="nav" data-view="news">📰 <span>News</span></button>
     <button class="nav" data-view="wall">🌘 <span>Shadow Feed</span></button>
@@ -206,7 +205,6 @@
     </div>
   </div>
 
-  <div id="viewFriends" class="view hidden"><div class="topbar"><h2>Friends & Requests</h2></div><div id="friends"></div></div>
   <div id="viewDms" class="view hidden"><div class="topbar"><div><h2>Private Messages</h2><p class="muted">Your conversations, or search by username to start a chat.</p></div><input id="dmUserSearch" placeholder="Search username…"><button class="primary" id="dmSearchBtn">Find user</button></div><div id="dmSearchResults" class="user-grid"></div><div id="dmList" class="user-grid"></div></div>
     <div id="viewGames" class="view hidden"><div class="topbar"><div><h2>🎮 Maleficent Arcade</h2><p class="muted">Pick a mini-game and chase a new high score.</p></div></div><div id="gamesRoot" class="games-root"></div></div>
   <div id="viewNews" class="view hidden"><div class="topbar"><div><h2>📰 News</h2><p class="muted">Community announcements.</p></div><button class="primary admin-only hidden" id="publishNews">Publish</button></div><div id="news" class="stack"></div></div>
