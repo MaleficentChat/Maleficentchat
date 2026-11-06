@@ -5929,3 +5929,161 @@ html,body,#app,.app,.main,.view,#profile,#viewProfile {
   #viewRooms:not(.chatting) .top-actions #newRoom{justify-self:end}
   .message-actions-menu.is-floating{width:min(246px,calc(100vw - 20px))!important;max-height:min(72dvh,calc(100dvh - 20px))!important}
 }
+
+
+/* Mobile screenshot corrections — keep header controls circular and room actions grouped. */
+@media(max-width:700px){
+  .top-header{
+    display:flex!important;
+    align-items:center!important;
+    gap:5px!important;
+    padding:0 8px!important;
+    overflow:visible!important;
+  }
+  .top-brand{flex:1 1 auto!important;min-width:0!important;gap:6px!important}
+  .top-brand-copy{min-width:0!important;overflow:hidden!important}
+  .top-brand-copy b{font-size:clamp(15px,4.2vw,19px)!important;white-space:nowrap!important}
+  .top-brand-copy span{display:none!important}
+  .top-header-actions{
+    display:flex!important;
+    flex:0 0 auto!important;
+    min-width:max-content!important;
+    align-items:center!important;
+    justify-content:flex-end!important;
+    gap:0!important;
+    overflow:visible!important;
+  }
+  .top-header-actions .top-icon{
+    flex:0 0 32px!important;
+    width:32px!important;
+    min-width:32px!important;
+    height:36px!important;
+    padding:0!important;
+    border-radius:50%!important;
+  }
+  .top-header-actions .top-profile{
+    display:grid!important;
+    place-items:center!important;
+    flex:0 0 36px!important;
+    width:36px!important;
+    min-width:36px!important;
+    height:36px!important;
+    padding:1px!important;
+    margin:0!important;
+    border-radius:50%!important;
+    overflow:hidden!important;
+    box-sizing:border-box!important;
+    background:transparent!important;
+  }
+  .top-profile .top-avatar{
+    display:grid!important;
+    place-items:center!important;
+    width:34px!important;
+    min-width:34px!important;
+    height:34px!important;
+    min-height:34px!important;
+    aspect-ratio:1/1!important;
+    box-sizing:border-box!important;
+    border-radius:50%!important;
+    overflow:hidden!important;
+    line-height:1!important;
+  }
+  .top-profile .top-avatar img{
+    display:block!important;
+    width:100%!important;
+    height:100%!important;
+    object-fit:cover!important;
+    border-radius:50%!important;
+  }
+  #topFriends #topFriendDot.count-badge{
+    display:inline-flex!important;
+    position:absolute!important;
+    top:-3px!important;
+    right:-3px!important;
+    left:auto!important;
+    bottom:auto!important;
+    width:auto!important;
+    min-width:17px!important;
+    height:17px!important;
+    padding:0 4px!important;
+    border:2px solid #09090f!important;
+    border-radius:999px!important;
+    align-items:center!important;
+    justify-content:center!important;
+    font-size:10px!important;
+    line-height:1!important;
+    z-index:10!important;
+  }
+  #viewRooms:not(.chatting) .top-actions{
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr) 38px auto!important;
+    grid-template-rows:auto auto auto!important;
+    grid-auto-flow:row!important;
+    align-items:center!important;
+    justify-items:stretch!important;
+    gap:8px!important;
+    width:100%!important;
+    min-width:0!important;
+    box-sizing:border-box!important;
+  }
+  #viewRooms:not(.chatting) .top-actions #roomSearch{
+    grid-column:1/-1!important;
+    grid-row:1!important;
+    width:100%!important;
+    min-width:0!important;
+    max-width:none!important;
+    justify-self:stretch!important;
+    margin:0!important;
+  }
+  #viewRooms:not(.chatting) .top-actions #hiddenRoomsToggle{
+    grid-column:1/-1!important;
+    grid-row:2!important;
+    width:100%!important;
+    justify-self:stretch!important;
+    margin:0!important;
+  }
+  #viewRooms:not(.chatting) .top-actions #refreshRoomsBtn{
+    grid-column:2!important;
+    grid-row:3!important;
+    justify-self:end!important;
+    width:38px!important;
+    min-width:38px!important;
+    height:38px!important;
+    margin:0!important;
+  }
+  #viewRooms:not(.chatting) .top-actions #newRoom{
+    grid-column:3!important;
+    grid-row:3!important;
+    justify-self:end!important;
+    width:auto!important;
+    min-width:112px!important;
+    margin:0!important;
+  }
+}
+@media(max-width:380px){
+  .top-brand-copy b{font-size:14px!important}
+  .top-header-actions .top-icon{flex-basis:29px!important;width:29px!important;min-width:29px!important}
+  .top-header-actions .top-profile{flex-basis:33px!important;width:33px!important;min-width:33px!important;height:33px!important}
+  .top-profile .top-avatar{width:31px!important;height:31px!important;min-width:31px!important;min-height:31px!important}
+}
+
+/* More submenu must remain scrollable inside the floating menu, never below it. */
+.message-actions-menu.is-floating{
+  height:auto!important;
+  max-height:min(58dvh,calc(100dvh - 28px))!important;
+  overflow-x:hidden!important;
+  overflow-y:auto!important;
+  overscroll-behavior:contain!important;
+  scrollbar-width:thin;
+  scrollbar-color:rgba(180,130,255,.45) transparent;
+}
+.message-actions-menu.is-floating .message-more-submenu{
+  display:flex!important;
+  position:static!important;
+  flex:0 0 auto!important;
+  max-height:none!important;
+  overflow:visible!important;
+  margin:5px 0 5px 36px!important;
+}
+.message-actions-menu.is-floating .message-more-submenu.hidden{display:none!important}
+.message-actions-menu.is-floating .message-more-wrap{flex:0 0 auto!important}
