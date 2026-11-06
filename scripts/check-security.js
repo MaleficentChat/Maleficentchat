@@ -355,12 +355,12 @@ const indexHtml=fs.readFileSync("public/index.html","utf8");
 const roomCreateStart=app.indexOf("function openRoomCreationModal()"),roomCreateEnd=app.indexOf("/* ---------------- V3 SETTINGS",roomCreateStart);
 assert.ok(roomCreateStart>=0&&roomCreateEnd>roomCreateStart,"room creation modal must exist");
 const roomCreateSource=app.slice(roomCreateStart,roomCreateEnd);
-assert.match(roomCreateSource,/id="rVisibility"[\s\S]*Secret — hidden, invite link required/,
-  "room creation must visibly offer secret rooms");
+assert.match(roomCreateSource,/id="rVisibility"[\s\S]*Secret — hidden, numeric room code required/,
+  "room creation must visibly offer numeric-code secret rooms");
 assert.match(roomCreateSource,/public:\$\("rVisibility"\)\.value!=="secret"/,
   "secret-room creation must persist private visibility through the existing room API");
 assert.match(roomCreateSource,/showInvite\(created\.room\)/,
-  "creating a secret room must show its signed invitation link from the creation response");
+  "creating a secret room must display its numeric room code");
 assert.match(app,/async function showInvite\(roomOrId=state\.currentRoom\)/,
   "room invitation UI must accept a newly created room even when the room list hides it");
 assert.match(app,/roomOrId&&typeof roomOrId==="object"[\s\S]*?roomOrId\s*:\s*state\.rooms\.find/,
