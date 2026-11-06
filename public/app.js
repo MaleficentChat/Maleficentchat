@@ -2248,7 +2248,7 @@ function messageHTML(message) {
         <div class="msg-top">
           <span class="msg-author-group">
             <button class="message-author tag-author" type="button" title="Tag @${esc(message.username)}" onclick="tagUserFromMessage('${esc(message.username)}')" style="color:${esc(message.usernameColor||state.user?.settings?.usernameColor||'var(--username-color)')}">${esc(message.displayName)}</button>
-            <span class="message-rank-floating" title="${esc(message.rank||"MEMBER")}">${rankIcon[String(message.rank||"MEMBER").toUpperCase()]||"⚡"} ${esc(String(message.rank||"MEMBER").replaceAll("_"," "))}</span>
+            <span class="message-rank-floating" title="${esc(message.rank||"MEMBER")}" aria-label="${esc(message.rank||"MEMBER")}">${rankIcon[String(message.rank||"MEMBER").toUpperCase()]||"⚡"}</span>
           </span>
           <span class="msg-header-right">
             <span class="msg-time-side">${fmt(message.time)}${message.edited ? " · edited" : ""}</span>
