@@ -1173,9 +1173,6 @@ async function renderView() {
     case "users":
       return loadUsers();
 
-    case "dms":
-      return loadDMList();
-
     case "news":
       return loadNews();
     case "wall":
@@ -3559,6 +3556,10 @@ function dmPrefs(){try{return JSON.parse(safeStorage.getItem("mc_dm_prefs_"+Stri
 function saveDMPrefs(p){safeStorage.setItem("mc_dm_prefs_"+String(state.user?.id||"guest"),JSON.stringify(p))}
 function dmSetPref(kind,id,value){const p=dmPrefs();p[kind]=p[kind]||{};if(value)p[kind][String(id)]=true;else delete p[kind][String(id)];saveDMPrefs(p)}
 async function loadDMList() {
+  if(!$("dmList")){
+    if(!$("topMessagesDropdown")?.classList.contains("hidden")) await toggleMessagesDropdown(true);
+    return;
+  }
   try {
     const data=await api("/api/dm/conversations");
     const conversations=data.conversations||[];
@@ -6022,17 +6023,42 @@ async function toggleMessagesDropdown(refresh=false){
   $("topFriendsDropdown")?.classList.add("hidden");$("notificationDropdown")?.classList.add("hidden");$("reportDropdown")?.classList.add("hidden");
   try{
     const d=await api("/api/dm/conversations");
+    const prefs=dmPrefs();
+    const filterKey="mc_dm_header_filter_"+String(state.user?.id||"");
+    const activeFilter=safeStorage.getItem(filterKey)||"all";
     const lastOpenedId=safeStorage.getItem("mc_dm_last_opened_"+String(state.user?.id||""))||"";
     const messageTime=c=>Number(c.lastMessage?.time||c.lastMessage?.createdAt||c.lastMessage?.created_at||0);
-    const conversations=(d.conversations||[]).sort((a,b)=>{
+    const all=(d.conversations||[]).slice().sort((a,b)=>{
       const priority=c=>Number(Number(c.unreadCount||0)>0)?2:(String(c.user?.id)===lastOpenedId?1:0);
       return priority(b)-priority(a) || messageTime(b)-messageTime(a);
-    }).slice(0,10);
+    });
     const nicknames=(await api('/api/private-nicknames').catch(()=>({nicknames:{}}))).nicknames||{};
-    box.innerHTML=`<div class="notification-dropdown-head"><div><b>✉ Private messages</b><small class="notification-unread-summary">${conversations.reduce((n,x)=>n+Number(x.unreadCount||0),0)} unread</small></div></div>${conversations.map(c=>{const u=c.user||{},id=String(u.id),last=c.lastMessage||{},preview=last.attachment?'📎 Attachment':(last.text||'Start a conversation');return `<button class="notification-dropdown-item dm-header-item ${Number(c.unreadCount||0)?'unread':''}" data-header-dm="${esc(id)}"><b>${esc(nicknames[id]||u.displayName||u.username||'User')} ${Number(c.unreadCount||0)?'<span class="dm-unread-badge">'+Number(c.unreadCount)+'</span>':''}</b><span>@${esc(u.username||'')} · ${esc(preview).slice(0,100)}</span><small>${last.time?fmt(last.time):''}</small></button>`}).join("")||'<p class="muted notification-empty">No private conversations yet.</p>'}`;
+    const filters=[["all","▤","All"],["unread","●","Unread"],["pinned","📌","Pinned"],["archived","▣","Archived"],["muted","🔕","Muted"]];
+    const visible=all.filter(c=>{
+      const id=String(c.user?.id),unread=Number(c.unreadCount||0)>0;
+      if(activeFilter==="unread")return unread;
+      if(activeFilter==="pinned")return !!prefs.pinned?.[id];
+      if(activeFilter==="archived")return !!prefs.archived?.[id];
+      if(activeFilter==="muted")return !!prefs.muted?.[id];
+      return activeFilter==="all"?!prefs.archived?.[id]:true;
+    }).slice(0,20);
+    const unreadCount=all.reduce((n,c)=>n+Number(c.unreadCount||0),0);
+    box.innerHTML=`<div class="notification-dropdown-head"><div><b>✉ Messages</b><small class="notification-unread-summary">${unreadCount} unread</small></div><button class="mini" id="refreshHeaderDM" type="button" title="Refresh conversations">↻</button></div>
+      <div class="dm-header-filters" role="group" aria-label="Filter conversations">${filters.map(([key,icon,label])=>`<button type="button" class="dm-header-filter ${activeFilter===key?'active':''}" data-header-filter="${key}" title="${label}" aria-label="${label}" aria-pressed="${activeFilter===key}"><span>${icon}</span><small>${label}</small></button>`).join("")}</div>
+      <div class="dm-header-conversations">${visible.map(c=>{
+        const u=c.user||{},id=String(u.id),last=c.lastMessage||{},preview=last.attachment?'📎 Attachment':(last.text||'Start a conversation');
+        const pinned=!!prefs.pinned?.[id],muted=!!prefs.muted?.[id],archived=!!prefs.archived?.[id];
+        return `<article class="dm-header-row">
+          <button type="button" class="notification-dropdown-item dm-header-item ${Number(c.unreadCount||0)?'unread':''}" data-header-dm="${esc(id)}"><b>${esc(nicknames[id]||u.displayName||u.username||'User')} ${Number(c.unreadCount||0)?'<span class="dm-unread-badge">'+Number(c.unreadCount)+'</span>':''}</b><span>@${esc(u.username||'')} · ${esc(preview).slice(0,85)}</span><small>${last.time?fmt(last.time):''}</small></button>
+          <div class="dm-header-actions"><button type="button" class="mini" data-header-pref="pinned" data-id="${esc(id)}" title="${pinned?'Unpin':'Pin'} conversation" aria-label="${pinned?'Unpin':'Pin'} conversation">${pinned?'📌':'＋'}</button><button type="button" class="mini" data-header-pref="muted" data-id="${esc(id)}" title="${muted?'Unmute':'Mute'} notifications" aria-label="${muted?'Unmute':'Mute'} notifications">${muted?'🔕':'🔔'}</button><button type="button" class="mini" data-header-pref="archived" data-id="${esc(id)}" title="${archived?'Unarchive':'Archive'} conversation" aria-label="${archived?'Unarchive':'Archive'} conversation">${archived?'↩':'▣'}</button></div>
+        </article>`;
+      }).join("")||'<p class="muted notification-empty">No conversations in this filter.</p>'}</div>`;
     box.classList.remove("hidden");
+    box.querySelector("#refreshHeaderDM")?.addEventListener("click",()=>toggleMessagesDropdown(true));
+    box.querySelectorAll("[data-header-filter]").forEach(b=>b.addEventListener("click",()=>{safeStorage.setItem(filterKey,b.dataset.headerFilter);toggleMessagesDropdown(true);}));
     box.querySelectorAll("[data-header-dm]").forEach(b=>b.onclick=()=>{box.classList.add("hidden");openDM(b.dataset.headerDm)});
-  }catch(e){box.innerHTML=`<div class="notification-dropdown-head"><b>✉ Private messages</b></div><p class="muted">${esc(e.message||"Could not load private messages.")}</p>`;box.classList.remove("hidden");}
+    box.querySelectorAll("[data-header-pref]").forEach(b=>b.addEventListener("click",()=>{const kind=b.dataset.headerPref,id=b.dataset.id,p=dmPrefs();dmSetPref(kind,id,!p[kind]?.[id]);toggleMessagesDropdown(true);}));
+  }catch(e){box.innerHTML=`<div class="notification-dropdown-head"><b>✉ Messages</b></div><p class="muted">${esc(e.message||"Could not load private messages.")}</p>`;box.classList.remove("hidden");}
 }
 
 async function toggleReportDropdown(refresh=false){
