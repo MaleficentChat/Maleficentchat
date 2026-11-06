@@ -4322,7 +4322,7 @@ async function staffFeatureBlockModal(user){
 function staffAccountModal(user){
   if((!can('MOD')&&!canFeature('manage_staff_accounts'))||!canAccessStaffTarget(user)){toast('You can only access staff controls for accounts ranked below you.');return;}
   const allowed=ranks.filter((r,i)=>i<=rankOrder.MOD && i<rankOrder[state.user.rank]);
-  modal(`<h2>⚙️ Staff account controls</h2><p class='muted'>Edit @${esc(user.username)}. Permissions are controlled by Owner Space.</p><div class='card'><b>Registration details</b><p>Date of birth: ${esc(user.dateOfBirth||user.birthDate||'Not provided')}<br>Gender: ${esc(user.gender||'Not provided')}<br>Joined: ${user.createdAt?new Date(user.createdAt).toLocaleDateString():'Unknown'}</p></div><label>Username<input id='staffUsername' value='${esc(user.username)}'></label><label>Rank<select id='staffRank'>${allowed.map(r=>`<option value='${r}' ${r===user.rank?'selected':''}>${r}</option>`).join('')}</select></label><div class='toolbar'><button class='primary' id='saveStaffAccount'>Save changes</button>${canFeature('change_password')?`<button class='mini' id='staffChangePassword'>Change password</button>`:''}${canFeature('edit_email')?`<button class='mini' id='staffEditEmail'>Edit Email</button>`:''}${canFeature('account_modifications')?`<button class='mini primary' id='staffAccountModifications'>Account modifications</button>`:''}</div>`);
+  modal(`<h2>⚙️ Staff account controls</h2><p class='muted'>Edit @${esc(user.username)}. Permissions are controlled by Owner Space.</p><div class='card'><b>Registration details</b><p>Age: ${esc(user.age??'Not available')}<br>Gender: ${esc(user.gender||'Not provided')}<br>Joined: ${user.createdAt?new Date(user.createdAt).toLocaleDateString():'Unknown'}</p></div><label>Username<input id='staffUsername' value='${esc(user.username)}'></label><label>Rank<select id='staffRank'>${allowed.map(r=>`<option value='${r}' ${r===user.rank?'selected':''}>${r}</option>`).join('')}</select></label><div class='toolbar'><button class='primary' id='saveStaffAccount'>Save changes</button>${canFeature('change_password')?`<button class='mini' id='staffChangePassword'>Change password</button>`:''}${canFeature('edit_email')?`<button class='mini' id='staffEditEmail'>Edit Email</button>`:''}${canFeature('account_modifications')?`<button class='mini primary' id='staffAccountModifications'>Account modifications</button>`:''}</div>`);
   $('staffAccountModifications')?.addEventListener('click',()=>staffAccountModificationModal(user));
   $('saveStaffAccount').onclick=async()=>{try{await api('/api/staff/user/'+encodeURIComponent(user.id)+'/account',{method:'PATCH',body:JSON.stringify({username:$('staffUsername').value.trim()})});await api('/api/staff/user/'+encodeURIComponent(user.id)+'/rank',{method:'PATCH',body:JSON.stringify({rank:$('staffRank').value})});closeModal();toast('Staff account updated.');}catch(e){toast(e.message)}};
   $('staffChangePassword')?.addEventListener('click',()=>{
@@ -5826,7 +5826,7 @@ async function ownerEdit(id) {
       <h2>Manage @${esc(user.username)}</h2>
       <p class="muted">${user.username==="Maleficent" ? "Permanent Developer account. Its identity and rank are protected." : "Manage this account’s rank, Gold, Diamonds, XP and level."}</p>
 
-      <p class="muted">Birth date: ${esc(user.birth_date||'—')} · Gender: ${esc(user.gender||'—')}</p>
+      <p class="muted">Age: ${esc(user.age??'—')} · Gender: ${esc(user.gender||'—')}</p>
       <select id="orank">
 
         ${
