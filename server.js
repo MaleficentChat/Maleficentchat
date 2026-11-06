@@ -2193,7 +2193,8 @@ app.get("/api/rooms",auth,async(req,res)=>{
   const {rows}=await pool.query(`SELECT r.*,u.username AS creator FROM rooms r LEFT JOIN users u ON r.created_by=u.id ORDER BY r.is_default DESC,r.created_at ASC,r.id ASC`);
   if(!rows.length) return res.status(503).json({error:'Rooms are not initialized yet. Please retry in a moment.',rooms:[]});
   const viewer=current(req);
-  const allRooms=rows.map(r=>{const room={id:String(r.id),name:r.name,icon:r.icon||"💬",description:r.description||"",category:r.category||"Community",public:r.is_public!==false,passwordHash:r.password_hash||null,rankRequired:String(r.rank_required||"MEMBER").toUpperCase(),limit:Number(r.room_limit||100),slowMode:Number(r.slow_mode||0),announcement:r.announcement||"",ownerId:r.created_by?String(r.created_by):null,banner:r.banner||"",inviteToken:r.invite_token||"",creator:r.creator||null,isDefault:!!r.is_default,minAge:Number(r.min_age??0),maxAge:Number(r.max_age??120),friendsOnly:!!(db.settings?.room_access?.[String(r.id)]?.friendsOnly),roomTheme:String(db.settings?.room_themes?.[String(r.id)]||"obsidian"),locked:!!r.password_hash,roomCode:r.is_public===false?formatRoomCode(r.room_code):null,onlineCount:visibleRoomOnlineCount(r.id)};return room;});
+  const canSeeRoomPins=["COOWNER","OWNER","DEVELOPER"].includes(String(viewer.rank||"").toUpperCase());
+   const allRooms=rows.map(r=>{const room={id:String(r.id),name:r.name,icon:r.icon||"💬",description:r.description||"",category:r.category||"Community",public:r.is_public!==false,passwordHash:r.password_hash||null,rankRequired:String(r.rank_required||"MEMBER").toUpperCase(),limit:Number(r.room_limit||100),slowMode:Number(r.slow_mode||0),announcement:r.announcement||"",ownerId:r.created_by?String(r.created_by):null,banner:r.banner||"",inviteToken:r.invite_token||"",creator:r.creator||null,isDefault:!!r.is_default,minAge:Number(r.min_age??0),maxAge:Number(r.max_age??120),friendsOnly:!!(db.settings?.room_access?.[String(r.id)]?.friendsOnly),roomTheme:String(db.settings?.room_themes?.[String(r.id)]||"obsidian"),locked:!!r.password_hash,roomCode:r.is_public===false?formatRoomCode(r.room_code):null,onlineCount:visibleRoomOnlineCount(r.id),...(canSeeRoomPins?{pinned:!!db.settings?.room_pins?.[String(r.id)]}:{})};return room;});
   db.rooms=allRooms;
   const joinToken=String(req.headers["x-room-join-token"]||"");
   const rooms=allRooms.filter(room=>{
@@ -2205,11 +2206,12 @@ app.get("/api/rooms",auth,async(req,res)=>{
 });
 
 function roomAgeAllowed(user,room){
-  const name=String(room?.name||"").trim().toLowerCase();
-  if(name!=="teen chat"&&name!=="adult chat")return true;
   const staff=["MOD","MODERATOR","ADMIN","SUPER_ADMIN","SUPERADMIN","COMMISSOR","INSTRUCTOR","COOWNER","OWNER","DEVELOPER"].includes(String(user?.rank||"").toUpperCase());
-  // Staff may manually enter either age room; the age-appropriate shortcut still routes them to Teen Chat.
+  // Staff may enter any room; the age-appropriate shortcut still routes them to Teen Chat.
   if(staff)return true;
+  const minAge=Number(room?.minAge??room?.min_age??0),maxAge=Number(room?.maxAge??room?.max_age??120);
+  if(!Number.isFinite(minAge)||!Number.isFinite(maxAge)||minAge<0||maxAge>120||minAge>maxAge)return false;
+  if(minAge===0&&maxAge===120)return true;
   const raw=user?.birthDate||user?.dateOfBirth||user?.birth_date||"";
   if(!raw)return false;
   const birth=new Date(String(raw).slice(0,10)+"T00:00:00");
@@ -2218,7 +2220,7 @@ function roomAgeAllowed(user,room){
   let age=today.getFullYear()-birth.getFullYear();
   if(today.getMonth()<birth.getMonth()||(today.getMonth()===birth.getMonth()&&today.getDate()<birth.getDate()))age--;
   if(age<0||age>120)return false;
-  return name==="teen chat"?age<=19:age>=20;
+  return age>=minAge&&age<=maxAge;
 }
 function roomFriendsOnly(room){
   return !!(db.settings?.room_access?.[String(room.id)]?.friendsOnly ?? room.friendsOnly);
@@ -2301,8 +2303,8 @@ function roomStaffStore(){ db.settings ||= {}; db.settings.room_staff ||= {}; db
 function roomRole(roomId,userId){return roomStaffStore().room_staff[String(roomId)]?.[String(userId)]||"USER";}
 function roomRoleLevel(role){return ({USER:0,ROOM_MODERATOR:1,ROOM_ADMIN:2,ROOM_OWNER:3})[String(role||"USER").toUpperCase()]||0;}
 const ROOM_ROLE_PERMISSION_DEFAULTS={
-  ROOM_MODERATOR:{mute:true,kick:false,block:false,delete_messages:true,clear_room:false,edit_rules:false,manage_staff:false,assign_ranks:false},
-  ROOM_ADMIN:{mute:true,kick:true,block:true,delete_messages:true,clear_room:true,edit_rules:false,manage_staff:false,assign_ranks:false}
+  ROOM_MODERATOR:{mute:true,kick:false,block:false,delete_messages:true,clear_room:false,edit_rules:false,manage_staff:false,assign_ranks:false,edit_room:false},
+  ROOM_ADMIN:{mute:true,kick:true,block:true,delete_messages:true,clear_room:true,edit_rules:false,manage_staff:false,assign_ranks:false,edit_room:true}
 };
 const ROOM_ROLE_PERMISSION_KEYS=["mute","kick","block","delete_messages","clear_room","edit_rules","manage_staff","assign_ranks"];
 function roomRoleCan(roomId,userId,permission){
@@ -2448,8 +2450,15 @@ app.post("/api/rooms/:id/staff-action",auth,async(req,res)=>{
 app.put("/api/rooms/:id",auth,async(req,res)=>{
   const u=current(req),r=db.rooms.find(x=>String(x.id)===String(req.params.id)); if(!r)return res.status(404).json({error:"Room not found"});
   if(r.isDefault || /^main room$/i.test(String(r.name||"").trim()))return res.status(403).json({error:"The permanent Main Room cannot be modified."});
-  if(!featureGrantAllowed(u,"edit_rooms")&&!(roomOwnerOrGlobal(u,r)&&Array.isArray(db.settings?.feature_grants?.room_edit_own)&&db.settings.feature_grants.room_edit_own.length))return res.status(403).json({error:"Room editing is disabled in Feature Granting or you do not own this room."});
+  const canEditThisRoom=roomOwnerOrGlobal(u,r)||roomRoleCan(r.id,u.id,"edit_room")||featureGrantAllowed(u,"edit_rooms")||featureGrantAllowed(u,"edit_room");
+  if(!canEditThisRoom)return res.status(403).json({error:"Room editing is available to this room's owner, room admins, and globally authorized staff."});
   const fields={}; for(const k of ["name","icon","description","category","rankRequired","limit","slowMode","banner","public"]) if(req.body[k]!==undefined) fields[k]=req.body[k];
+  if(req.body.ageCriteria!==undefined){
+    const criteria=String(req.body.ageCriteria||"").toLowerCase();
+    const ageRanges={teen:[0,19],adult:[20,120],global:[0,120]};
+    if(!Object.prototype.hasOwnProperty.call(ageRanges,criteria))return res.status(400).json({error:"Choose Teen, Adult, or Global age criteria."});
+    fields.minAge=ageRanges[criteria][0];fields.maxAge=ageRanges[criteria][1];
+  }
   if(fields.name!==undefined){fields.name=cleanText(fields.name).trim().slice(0,50);if(!fields.name)return res.status(400).json({error:"Room name is required."});}
   if(fields.rankRequired!==undefined){
     fields.rankRequired=String(fields.rankRequired||"").toUpperCase();
@@ -2465,9 +2474,9 @@ app.put("/api/rooms/:id",auth,async(req,res)=>{
     r.friendsOnly=req.body.friendsOnly===true;save();
   }
   if(req.body.password!==undefined){const roomPassword=String(req.body.password||"");if(Buffer.byteLength(roomPassword,"utf8")>72)return res.status(400).json({error:"Room passwords must be no more than 72 bytes."});fields.passwordHash=roomPassword?await bcrypt.hash(roomPassword,10):null;}
-  const sets=[],vals=[]; const map={name:"name",icon:"icon",description:"description",category:"category",rankRequired:"rank_required",limit:"room_limit",slowMode:"slow_mode",banner:"banner",public:"is_public",passwordHash:"password_hash"};
+  const sets=[],vals=[]; const map={name:"name",icon:"icon",description:"description",category:"category",rankRequired:"rank_required",limit:"room_limit",slowMode:"slow_mode",banner:"banner",public:"is_public",passwordHash:"password_hash",minAge:"min_age",maxAge:"max_age"};
   for(const [k,v] of Object.entries(fields)){sets.push(`${map[k]}=$${vals.length+1}`);vals.push(k==="rankRequired"?String(v).toUpperCase():v);}
-  if(sets.length){vals.push(Number(r.id));const q=await pool.query(`UPDATE rooms SET ${sets.join(",")} WHERE id=$${vals.length} RETURNING *`,vals);if(!q.rowCount)return res.status(404).json({error:"Room was not found while saving changes."});const x=q.rows[0];Object.assign(r,{name:x.name,icon:x.icon,description:x.description,category:x.category,rankRequired:x.rank_required,limit:x.room_limit,slowMode:x.slow_mode,banner:x.banner,public:x.is_public,passwordHash:x.password_hash,minAge:0,maxAge:120});}
+  if(sets.length){vals.push(Number(r.id));const q=await pool.query(`UPDATE rooms SET ${sets.join(",")} WHERE id=$${vals.length} RETURNING *`,vals);if(!q.rowCount)return res.status(404).json({error:"Room was not found while saving changes."});const x=q.rows[0];Object.assign(r,{name:x.name,icon:x.icon,description:x.description,category:x.category,rankRequired:x.rank_required,limit:x.room_limit,slowMode:x.slow_mode,banner:x.banner,public:x.is_public,passwordHash:x.password_hash,minAge:Number(x.min_age??0),maxAge:Number(x.max_age??120)});}
   save();
   // Revalidate signed access after privacy, password, rank, or friend rules change.
   evictRoomSocketsWithoutAccess(r);
@@ -2475,6 +2484,15 @@ app.put("/api/rooms/:id",auth,async(req,res)=>{
   res.json({room:{...r,passwordHash:undefined,inviteToken:undefined}});
 });
 
+app.put("/api/rooms/:id/pin",auth,(req,res)=>{
+  const actor=current(req),room=db.rooms.find(item=>String(item.id)===String(req.params.id));
+  if(!room)return res.status(404).json({error:"Room not found"});
+  if(!["COOWNER","OWNER","DEVELOPER"].includes(String(actor.rank||"").toUpperCase()))return res.status(403).json({error:"Only Co-owner, Owner, and Developer can pin rooms."});
+  const pinned=typeof req.body?.pinned==="boolean"?req.body.pinned:!db.settings?.room_pins?.[String(room.id)];
+  db.settings ||= {};db.settings.room_pins ||= {};db.settings.room_pins[String(room.id)]=pinned;
+  save();log(actor,pinned?"ROOM_PIN":"ROOM_UNPIN",room.name,{roomId:String(room.id)});
+  io.emit("rooms_updated");res.json({ok:true,roomId:String(room.id),pinned});
+});
 app.put("/api/rooms/:id/theme",auth,(req,res)=>{
  const actor=current(req),room=db.rooms.find(x=>String(x.id)===String(req.params.id));
  if(!room)return res.status(404).json({error:"Room not found"});
