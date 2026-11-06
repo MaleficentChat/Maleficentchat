@@ -516,6 +516,7 @@ function safeUser(u){
     mood:u.mood||"",
     birthday:u.birthday||"",
     banner:u.banner||"",
+    profilePhotos:Array.isArray(u.profilePhotos)?u.profilePhotos.slice(0,10).map(p=>({id:String(p.id),url:String(p.url)})):[],
     theme:u.settings?.theme||u.theme||"obsidian",
     settings:{usernameColor:u.settings?.usernameColor||'',chatFont:u.settings?.chatFont||'',messageEffects:u.settings?.messageEffects||'',fontSize:u.settings?.fontSize||'medium',compactMode:!!u.settings?.compactMode},
     profileColor:u.profileColor||"",
@@ -6539,6 +6540,7 @@ function ensureUserSchema(u){
   u.following ||= [];
   u.posts ||= [];
   u.interests ||= [];
+  u.profilePhotos=Array.isArray(u.profilePhotos)?u.profilePhotos.slice(0,10):[];
   u.saved ||= [];
   u.badges ||= [];
   u.achievements ||= [];
@@ -6697,6 +6699,50 @@ app.put('/api/profile',auth,(req,res)=>{
   if(!u.hideMode&&!u.deadMode)io.emit('profile:update',safeUser(u)); res.json({user:safeUser(u)});
 });
 
+
+// Profile photo gallery: members manage their own uploads; staff can only remove photos
+// from accounts strictly below their rank. The existing user record stores the gallery.
+app.get('/api/users/:id/profile-photos',auth,(req,res)=>{
+  const viewer=current(req),target=findUser(req.params.id);
+  if(!target||(target.hideMode&&String(target.id)!==String(viewer.id)))return res.status(404).json({error:'User not found.'});
+  const photos=Array.isArray(target.profilePhotos)?target.profilePhotos.slice(0,10):[];
+  res.json({photos:photos.map(p=>({id:String(p.id),url:String(p.url)}))});
+});
+app.post('/api/users/me/profile-photos',auth,upload.single('file'),async(req,res)=>{
+  const user=current(req);
+  if(!req.file)return res.status(400).json({error:'Choose a photo to upload.'});
+  const ext=path.extname(String(req.file.originalname||'')).toLowerCase();
+  const mime=String(req.file.mimetype||'').toLowerCase();
+  const allowed=new Set(['.jpg','.jpeg','.png','.webp','.gif']);
+  if(!allowed.has(ext)||!['image/jpeg','image/png','image/webp','image/gif'].includes(mime)){
+    await fs.promises.unlink(req.file.path).catch(()=>{});
+    return res.status(400).json({error:'Upload a JPG, PNG, WEBP or GIF image.'});
+  }
+  if(await checkRestrictedMediaUpload(req,res,user,req.file))return;
+  user.profilePhotos=Array.isArray(user.profilePhotos)?user.profilePhotos:[];
+  if(user.profilePhotos.length>=10){
+    await fs.promises.unlink(req.file.path).catch(()=>{});
+    return res.status(400).json({error:'Your profile already has 10 photos. Remove one before adding another.'});
+  }
+  user.profilePhotos.push({id:crypto.randomBytes(10).toString('hex'),url:'/uploads/'+req.file.filename,createdAt:Date.now()});
+  save();
+  res.status(201).json({ok:true,photos:user.profilePhotos.map(p=>({id:String(p.id),url:String(p.url)}))});
+});
+app.delete('/api/users/:id/profile-photos/:photoId',auth,async(req,res)=>{
+  const actor=current(req),target=findUser(req.params.id);
+  if(!target)return res.status(404).json({error:'User not found.'});
+  const self=String(actor.id)===String(target.id);
+  const staffCanRemove=hasRank(actor,'MOD')&&canAccessStaffTarget(actor,target);
+  if(!self&&!staffCanRemove)return res.status(403).json({error:'You cannot remove photos from this profile.'});
+  target.profilePhotos=Array.isArray(target.profilePhotos)?target.profilePhotos:[];
+  const index=target.profilePhotos.findIndex(p=>String(p.id)===String(req.params.photoId));
+  if(index<0)return res.status(404).json({error:'Profile photo not found.'});
+  const [removed]=target.profilePhotos.splice(index,1);
+  const filename=String(removed.url||'').replace(/^\/uploads\//,'');
+  if(filename&&filename===path.basename(filename))await fs.promises.unlink(path.join(UP,filename)).catch(()=>{});
+  save();
+  res.json({ok:true,photos:target.profilePhotos.map(p=>({id:String(p.id),url:String(p.url)}))});
+});
 
 // Gold-funded profile gifts. The sender pays once; received gifts remain visible on the recipient profile.
 app.get('/api/gifts/catalog',auth,async(req,res)=>{
