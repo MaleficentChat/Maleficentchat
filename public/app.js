@@ -6458,7 +6458,7 @@ document.addEventListener("click", async event => {
     try { if (canFeature("clear_room")) actions.unshift(["clear","🧹 Clear messages"]); } catch (_) {}
     try { if (canEditRoomFromMenu(room)) actions.unshift(["edit","✏️ Edit room"]); } catch (_) {}
     try { if (canFeature("delete_room")) actions.unshift(["delete","🗑 Delete room"]); } catch (_) {}
-    try { if (["COOWNER","OWNER","DEVELOPER"].includes(String(state.user?.rank||"").toUpperCase())) actions.unshift(["pin",room?.pinned?"📌 Unpin room":"📌 Pin room"]); } catch (_) {}
+    try { const pinRank=String(state.user?.rank||"").toUpperCase().replace(/[\s_-]/g,""); if (["COOWNER","OWNER","DEVELOPER"].includes(pinRank)) actions.unshift(["pin",room?.pinned?"📌 Unpin room":"📌 Pin room"]); } catch (_) {}
     try {
       if (["ghost","dead","invisible"].some(mode => canUsePresenceMode(mode))) {
         actions.push(["presence-settings","⚙️ Presence mode settings"]);
@@ -6545,7 +6545,7 @@ function canEditRoomFromMenu(room){
 }
 async function toggleCurrentRoomPin(){
   const room=state.rooms.find(r=>String(r.id)===String(state.currentRoom));
-  if(!room||!["COOWNER","OWNER","DEVELOPER"].includes(String(state.user?.rank||"").toUpperCase()))return;
+  if(!room||!["COOWNER","OWNER","DEVELOPER"].includes(String(state.user?.rank||"").toUpperCase().replace(/[\s_-]/g,"")))return;
   try{
     const result=await api("/api/rooms/"+encodeURIComponent(room.id)+"/pin",{method:"PUT",body:JSON.stringify({pinned:!room.pinned})});
     room.pinned=!!result.pinned;
