@@ -1067,12 +1067,10 @@ async function start() {
 
   await loadRooms();
 
-  // Staff accounts always enter Teen Chat. Other accounts retain the canonical
-  // Main Room login entry; the room-refresh control routes them by verified DOB.
-  const findDefaultEntryRoom=()=>isMaleficentStaff()
-    ? (state.rooms||[]).find(room=>String(room.name||"").trim().toLowerCase()==="teen chat")
-    : (state.rooms.find(room=>room.isDefault) || state.rooms.find(room=>String(room.name||"").trim().toLowerCase()==="main room"));
-  let mainRoom=findDefaultEntryRoom();
+  // Every member enters the correct age room immediately; staff always enter Teen Chat.
+  let mainRoom=null;
+  try { mainRoom=roomForAgeRouting(); }
+  catch(error){ toast(String(error?.message||error)); }
   let joined=false;
   const invite=roomInviteFromHash();
   if(invite?.roomId&&state.rooms.some(room=>String(room.id)===invite.roomId))joined=await joinRoom(invite.roomId);
@@ -1089,7 +1087,7 @@ async function start() {
         state.rooms=sanitizeRoomList(latest.rooms);
         state.roomListMode="all";
         renderRooms();
-        mainRoom=findDefaultEntryRoom();
+        try { mainRoom=roomForAgeRouting(); } catch(error) { mainRoom=null; }
       }catch(e){
         if(attempt===3)toast("Could not load Main Room: "+e.message);
       }
@@ -1684,23 +1682,11 @@ document.getElementById("chatGifBtn")?.addEventListener("click",()=>{if(!state.c
 /* Defensive room-list cleanup: never display the retired age-split defaults, even if an older server response is cached. */
 function sanitizeRoomList(input) {
   const rooms = Array.isArray(input) ? input : [];
-  const seenMain = new Set();
   return rooms.filter(room => {
-    const name = String(room?.name || "").trim().replace(/^🏠\s*/, "");
-    const normalized = name.toLowerCase().replace(/\s+/g, " ");
-    // Retire the two old age-split rooms, even if whitespace/case varies.
-    if (/^main room\s*[12]\b/i.test(normalized)) return false;
-    // Keep only one canonical Main Room.
-    if (normalized === "main room") {
-      if (seenMain.has("main room")) return false;
-      seenMain.add("main room");
-      return true;
-    }
-    return true;
-  }).map(room => {
-    const name = String(room?.name || "").trim().replace(/^🏠\s*/, "");
-    return { ...room, isDefault: name.toLowerCase() === "main room" };
-  });
+    const name=String(room?.name||"").replace("🏠","").trim().toLowerCase().replace(/\s+/g," ");
+    // Main Room remains stored for legacy data, but is no longer shown to members.
+    return name!=="main room";
+  }).map(room => ({...room,isDefault:false}));
 }
 
 function maleficentUserAge(user=state.user) {
