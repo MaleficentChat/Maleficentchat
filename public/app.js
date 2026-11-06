@@ -3353,9 +3353,10 @@ function renderUserProfileModal(user,data={}){
     </div>
     <div class="profile-tabs">
       <button class="profile-tab active" data-tab="info">Account</button>
-      <button class="profile-tab" data-tab="about">About Me</button>
+      ${user.privacy?.bio!==false?'<button class="profile-tab" data-tab="about">About Me</button>':''}
       <button class="profile-tab" data-tab="friends">Friends</button>
       <button class="profile-tab" data-tab="gifts">🎁 Gifts</button>
+      <button class="profile-tab" data-tab="photos">📷 Photos</button>
       <button class="profile-tab" data-tab="more">More</button>
     </div>
     <div id="profileTabContent" class="profile-info"></div>
@@ -3379,7 +3380,9 @@ function renderUserProfileModal(user,data={}){
       <div class="profile-info-row"><b>🏠 Status</b><span>${user.online?'Online':'Offline'}</span></div>
       <div class="profile-info-row"><b>◉ Last seen</b><span>${esc(lastSeen)}</span></div>
       <div class="profile-actions"><button class="mini" id="profileAchievementsBtn">🏆 Achievements</button>${!isSelf&&canFeature('profile_note')?`<button class="mini" id="profileNoteBtn">📝 Add Note <span id="profileNoteDot" style="display:none">●</span></button>${canFeature('profile_note')?'<button class="mini" id="profileFeatureBlockBtn">🚫 Feature Block</button>':''}`:''}<div class="profile-action-hint">Tap ☰ above for profile actions.</div></div>`;
-    else if(tab==='about') box.innerHTML=`<div class="about-card"><h3>About Me</h3><p>${esc(user.bio||'This user has not written an About Me yet.')}</p>${user.country?`<div class="profile-info-row"><b>🌍 Country</b><span>${esc(countryFlagFor(user.country))} ${esc(user.country)}</span></div>`:''}${user.pronouns?`<div class="profile-info-row"><b>Pronouns</b><span>${esc(user.pronouns)}</span></div>`:''}${user.interests?.length?`<div class="tag-list">${user.interests.map(x=>`<span class="tag">${esc(x)}</span>`).join('')}</div>`:''}${isSelf?`<button class="primary" id="editAboutBtn">✏️ Edit About Me</button>`:''}</div>`;
+    else if(tab==='about' && user.privacy?.bio!==false) box.innerHTML=`<div class="about-card"><h3>About Me</h3><p>${esc(user.bio||'This user has not written an About Me yet.')}</p>${user.privacy?.country!==false&&user.country?`<div class="profile-info-row"><b>🌍 Country</b><span>${esc(countryFlagFor(user.country))} ${esc(user.country)}</span></div>`:''}${user.privacy?.pronouns!==false&&user.pronouns?`<div class="profile-info-row"><b>Pronouns</b><span>${esc(user.pronouns)}</span></div>`:''}${user.privacy?.interests!==false&&user.interests?.length?`<div class="tag-list">${user.interests.map(x=>`<span class="tag">${esc(x)}</span>`).join('')}</div>`:''}${isSelf?`<button class="primary" id="editAboutBtn">✏️ Edit About Me</button>`:''}</div>`;
+    else if(tab==='about') box.innerHTML='';
+    else if(tab==='photos') renderProfilePhotos();
     else if(tab==='friends'){
       box.innerHTML=`<div class="profile-friends-grid-wrap"><div class="profile-friends-grid" id="profileFriendsGrid"><span class="muted">Loading friends…</span></div></div>`;
       api('/api/users/'+encodeURIComponent(user.id)+'/friends').then(result=>{
@@ -3409,6 +3412,36 @@ function renderUserProfileModal(user,data={}){
     if(tab==='info'&&!isSelf&&canFeature('profile_note'))api(`/api/staff/user/${encodeURIComponent(user.id)}/note`).then(n=>{if($('profileNoteDot'))$('profileNoteDot').style.display=n.hasNote?'inline-block':'none';}).catch(()=>{});
     wireProfileTabActions();
   };
+  async function renderProfilePhotos(){
+    const canStaffRemove=!isSelf&&can('MOD')&&canAccessStaffTarget(user);
+    box.innerHTML='<div class="about-card profile-photos-card"><div class="profile-photos-heading"><div><h3>📷 Photos</h3><p class="muted">Up to 10 square photos on this profile.</p></div>'+(isSelf?'<label class="mini primary profile-photo-add" for="profilePhotoUpload">＋ Add photo</label>':'')+'</div>'+(isSelf?'<input id="profilePhotoUpload" class="profile-photo-file" type="file" accept="image/jpeg,image/png,image/webp,image/gif" aria-label="Choose a profile photo">':'')+'<div class="profile-photo-grid" id="profilePhotoGrid"><p class="muted">Loading photos…</p></div></div>';
+    const grid=$('profilePhotoGrid');
+    const load=async()=>{
+      try{
+        const result=await api('/api/users/'+encodeURIComponent(user.id)+'/profile-photos');
+        if(!grid?.isConnected)return;
+        const photos=result.photos||[];
+        grid.innerHTML=photos.length?photos.map(photo=>'<figure class="profile-photo-tile"><img src="'+esc(photo.url)+'" alt="Profile photo" loading="lazy">'+((isSelf||canStaffRemove)?'<button type="button" class="profile-photo-remove" data-remove-photo="'+esc(photo.id)+'" title="Remove photo" aria-label="Remove photo">×</button>':'')+'</figure>').join(''):'<div class="profile-photos-empty">No photos added yet.</div>';
+        grid.querySelectorAll('[data-remove-photo]').forEach(button=>button.addEventListener('click',async()=>{
+          if(!confirm(isSelf?'Remove this photo from your profile?':'Remove this photo from the user profile?'))return;
+          try{await api('/api/users/'+encodeURIComponent(user.id)+'/profile-photos/'+encodeURIComponent(button.dataset.removePhoto),{method:'DELETE'});await load();toast('Photo removed.');}
+          catch(error){toast(error.message||'Could not remove photo.');}
+        }));
+      }catch(error){if(grid?.isConnected)grid.innerHTML='<p class="muted">'+esc(error.message||'Could not load photos.')+'</p>';}
+    };
+    await load();
+    const picker=$('profilePhotoUpload');
+    picker?.addEventListener('change',async()=>{
+      const file=picker.files?.[0];if(!file)return;
+      const form=new FormData();form.append('file',file);
+      try{
+        const result=await api('/api/users/me/profile-photos',{method:'POST',body:form});
+        user.profilePhotos=result.photos||user.profilePhotos||[];
+        if(state.user&&String(state.user.id)===String(user.id))state.user.profilePhotos=user.profilePhotos;
+        picker.value='';await load();toast('Photo added to your profile.');
+      }catch(error){picker.value='';toast(error.message||'Could not upload photo.');}
+    });
+  }
   function openGiftPicker(target,catalog){
     if(!Array.isArray(catalog)||!catalog.length){toast('No gifts are available right now.');return;}
     modal('<div class="gift-picker"><h2>🎁 Send a gift</h2><p class="muted">Choose a gift for @'+esc(target.username)+'. Your gold balance: 🪙 '+Number(state.user?.gold||0).toLocaleString()+'</p><div class="gift-picker-grid">'+catalog.map(g=>'<button type="button" class="gift-choice" data-gift-id="'+esc(g.id)+'"><span>'+esc(g.icon||'🎁')+'</span><b>'+esc(g.name)+'</b><small>🪙 '+Number(g.price||0).toLocaleString()+'</small></button>').join('')+'</div><label for="giftMessage">Add a note (optional)</label><textarea id="giftMessage" maxlength="180" rows="2" placeholder="A little something for you…"></textarea><div class="toolbar"><button class="primary" id="giftSendConfirm" disabled>Send gift</button><button class="mini" id="giftSendCancel">Cancel</button></div><p id="giftPickerStatus" class="muted"></p></div>');
