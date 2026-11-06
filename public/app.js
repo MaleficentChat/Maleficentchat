@@ -6656,6 +6656,8 @@ function openRoomCreationModal() {
           <label>Room visibility<select id="rVisibility"><option value="public">Public — listed for everyone</option><option value="secret">Secret — hidden, numeric room code required</option></select></label>
           <label>Minimum rank<select id="rr">${ranks.map(r=>'<option value="'+r+'" '+(r==="MEMBER"?"selected":"")+'>'+rankLabels[r]+'</option>').join("")}</select></label>
           <label>Member access<select id="rFriendsOnlyCreate"><option value="false">Anyone who meets the rank requirement</option><option value="true">Accepted friends only</option></select></label>
+          <div class="room-editor-grid"><label>Minimum age<input id="rMinAge" type="number" min="13" max="99" value="13" required></label><label>Maximum age<input id="rMaxAge" type="number" min="13" max="99" value="99" required></label></div>
+          <p class="room-editor-help">Only members within this age range can enter. Date-of-birth changes require staff approval.</p>
           <label>Room password <span class="room-editor-optional">optional</span><input id="rp" type="password" autocomplete="new-password" placeholder="Leave blank for no password"></label>
         </section>
         <section class="room-editor-section"><h3>⚙️ Room capacity</h3><div class="room-editor-grid">
@@ -6674,6 +6676,7 @@ function openRoomCreationModal() {
         name:$("rn").value.trim(),icon:$("ri").value.trim()||"💬",description:$("rd").value.trim(),
         category:$("rc").value.trim()||"Community",password:$("rp").value,public:$("rVisibility").value!=="secret",
         rankRequired:$("rr").value,friendsOnly:$("rFriendsOnlyCreate").value==="true",
+        minAge:Number($("rMinAge").value),maxAge:Number($("rMaxAge").value),
         limit:Math.max(2,Math.min(500,Number($("rl").value)||100)),
         slowMode:Math.max(0,Math.min(3600,Number($("rs").value)||0))
       })});
