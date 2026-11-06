@@ -837,13 +837,14 @@ async function start() {
   state.socket.on("connect",()=>{loadRooms().catch(()=>{});});
 
   state.socket.on("presence", () => {
-    // Presence changes frequently. Do not refetch the room directory on every
-    // join/leave; room creation/settings changes use rooms_updated instead.
-    // Re-render cached room data and fetch users only when their view is open.
-    if (state.view === "rooms") renderRooms();
+    // Refresh room counts after joins/leaves and logins; debounce bursts of presence events.
+    if(state.view==="rooms"){
+      clearTimeout(window.__mcRoomPresenceTimer);
+      window.__mcRoomPresenceTimer=setTimeout(()=>loadRooms().catch(()=>renderRooms()),350);
+    }
     const onlinePanel=$("onlinePanel");
     if(onlinePanel && !onlinePanel.classList.contains("hidden")) renderOnline(onlinePanelTab);
-    if (state.view === "users") loadUsers().catch(()=>{});
+    if(state.view==="users")loadUsers().catch(()=>{});
   });
 
   state.socket.on("message", message => {
@@ -1729,9 +1730,9 @@ function renderRooms() {
           </span>
           <span class="room-count"><strong>${count}</strong><span>♟</span></span>
         </button>
-        ${canManage && room.id!=="main" ? `<div class="room-list-actions">
-          <button class="mini" type="button" onclick="event.stopPropagation();editRoomById('${esc(room.id)}')">✏️ Edit</button>
-          ${canFeature("delete_room")?`<button class="mini danger" type="button" onclick="event.stopPropagation();deleteRoomById('${esc(room.id)}')">🗑️ Delete</button>`:""}
+        ${canManage && room.id!=="main" ? `<div class="room-list-actions" aria-label="Room actions">
+          <button class="mini room-action-icon" type="button" title="Edit room" aria-label="Edit room" onclick="event.stopPropagation();editRoomById('${esc(room.id)}')">✎</button>
+          ${canFeature("delete_room")?`<button class="mini danger room-action-icon" type="button" title="Delete room" aria-label="Delete room" onclick="event.stopPropagation();deleteRoomById('${esc(room.id)}')">⌫</button>`:""}
         </div>` : ""}
       </article>`;
   }).join('') || (search
@@ -2343,12 +2344,22 @@ async function copyMsg(id){
 }
 
 function toggleMessageMore(messageId){
-  const menu=document.getElementById("message-more-"+messageId);
-  if(!menu)return;
-  const willOpen=menu.classList.contains("hidden");
+  const submenu=document.getElementById("message-more-"+messageId);
+  if(!submenu)return;
+  const willOpen=submenu.classList.contains("hidden");
   document.querySelectorAll(".message-more-submenu").forEach(item=>item.classList.add("hidden"));
   document.querySelectorAll(".message-more-trigger").forEach(item=>item.setAttribute("aria-expanded","false"));
-  if(willOpen){menu.classList.remove("hidden");menu.parentElement?.querySelector(".message-more-trigger")?.setAttribute("aria-expanded","true");}
+  if(willOpen){
+    submenu.classList.remove("hidden");
+    submenu.parentElement?.querySelector(".message-more-trigger")?.setAttribute("aria-expanded","true");
+    requestAnimationFrame(()=>{
+      const panel=submenu.closest(".message-actions-menu");
+      if(!panel)return;
+      const panelRect=panel.getBoundingClientRect(),subRect=submenu.getBoundingClientRect();
+      if(subRect.bottom>panelRect.bottom)panel.scrollTop+=subRect.bottom-panelRect.bottom+12;
+      if(subRect.top<panelRect.top)panel.scrollTop-=panelRect.top-subRect.top+8;
+    });
+  }
 }
 function closeMessageMenus(){
   document.querySelectorAll(".message-actions-menu,.message-more-submenu").forEach(m=>{
@@ -2403,15 +2414,77 @@ window.addEventListener("resize",()=>{
     positionMessageMenu(open,id);
   }
 });
+function restoreMessageMenu(menu){
+  if(!menu?.__messageMenuParent)return;
+  const parent=menu.__messageMenuParent,next=menu.__messageMenuNext;
+  if(next&&next.parentNode===parent)parent.insertBefore(menu,next);
+  else parent.appendChild(menu);
+  delete menu.__messageMenuParent;delete menu.__messageMenuNext;
+}
+function closeMessageMenus(){
+  document.querySelectorAll(".message-actions-menu,.message-more-submenu").forEach(menu=>{
+    menu.classList.add("hidden");
+    if(menu.classList.contains("is-floating")){
+      menu.classList.remove("is-floating");
+      ["position","left","top","right","bottom","width","min-width","max-width","max-height","overflow-y","transform","z-index"].forEach(prop=>menu.style.removeProperty(prop));
+    }
+    if(menu.classList.contains("message-actions-menu"))restoreMessageMenu(menu);
+  });
+  document.querySelectorAll(".message-more-trigger").forEach(button=>button.setAttribute("aria-expanded","false"));
+}
+function positionMessageMenu(menu,id){
+  const message=document.querySelector('.msg[data-mid="'+CSS.escape(String(id))+'"]');
+  const viewport=document.getElementById("messages");
+  const trigger=message?.querySelector(".message-more-button");
+  const bubble=message?.querySelector(".msg-text,.message-image,.chat-gif,.quoted")||message?.querySelector(".msg-body");
+  if(!message||!viewport||!trigger||!bubble)return;
+  const area=viewport.getBoundingClientRect(),bubbleRect=bubble.getBoundingClientRect(),triggerRect=trigger.getBoundingClientRect();
+  const edge=9,gap=9,width=Math.max(180,Math.min(250,area.width-edge*2));
+  const maxHeight=Math.max(140,Math.min(window.innerHeight-24,area.height-edge*2));
+  menu.style.setProperty("position","fixed","important");
+  menu.style.setProperty("box-sizing","border-box","important");
+  menu.style.setProperty("width",width+"px","important");
+  menu.style.setProperty("min-width","0","important");
+  menu.style.setProperty("max-width",(area.width-edge*2)+"px","important");
+  menu.style.setProperty("max-height",maxHeight+"px","important");
+  menu.style.setProperty("overflow-y","auto","important");
+  menu.style.setProperty("overscroll-behavior","contain","important");
+  menu.style.setProperty("transform","none","important");
+  menu.style.setProperty("bottom","auto","important");
+  menu.style.setProperty("right","auto","important");
+  menu.style.setProperty("z-index","1200","important");
+  const leftSpace=bubbleRect.left-area.left-edge-gap;
+  const rightSpace=area.right-bubbleRect.right-edge-gap;
+  const preferLeft=message.classList.contains("mine");
+  let openLeft=preferLeft;
+  if(preferLeft&&leftSpace<width&&rightSpace>=width)openLeft=false;
+  else if(!preferLeft&&rightSpace<width&&leftSpace>=width)openLeft=true;
+  else if(leftSpace<width&&rightSpace<width)openLeft=leftSpace>=rightSpace;
+  let left=openLeft?bubbleRect.left-width-gap:bubbleRect.right+gap;
+  left=Math.max(area.left+edge,Math.min(left,area.right-width-edge));
+  const measuredHeight=Math.min(menu.scrollHeight,maxHeight);
+  let top=triggerRect.top+triggerRect.height/2-measuredHeight/2;
+  top=Math.max(area.top+edge,Math.min(top,area.bottom-measuredHeight-edge));
+  menu.style.setProperty("left",left+"px","important");
+  menu.style.setProperty("top",top+"px","important");
+  menu.classList.add("is-floating");
+}
+function openMessageMenu(menu,id){
+  if(!menu)return;
+  if(menu.parentNode!==document.body){
+    menu.__messageMenuParent=menu.parentNode;
+    menu.__messageMenuNext=menu.nextSibling;
+    document.body.appendChild(menu);
+  }
+  menu.classList.remove("hidden");
+  requestAnimationFrame(()=>positionMessageMenu(menu,id));
+}
 function toggleMessageMenu(id){
   const menu=$(`message-menu-${id}`);
-  if(!menu) return;
+  if(!menu)return;
   const wasHidden=menu.classList.contains("hidden");
   closeMessageMenus();
-  if(wasHidden){
-    menu.classList.remove("hidden");
-    positionMessageMenu(menu,id);
-  }
+  if(wasHidden)openMessageMenu(menu,id);
 }
 document.addEventListener("click",e=>{
   const msg=e.target instanceof Element?e.target.closest(".msg[data-mid]"):null;
@@ -2420,12 +2493,10 @@ document.addEventListener("click",e=>{
   if(!menu)return;
   const wasHidden=menu.classList.contains("hidden");
   closeMessageMenus();
-  if(wasHidden)menu.classList.remove("hidden");
+  if(wasHidden)openMessageMenu(menu,msg.dataset.mid);
 });
 document.addEventListener("click",e=>{
-  // A tap on a message must not be treated as an outside click immediately
-  // after the message-action menu has been opened by the delegated handler.
-  if(!e.target.closest(".msg-actions,.msg[data-mid]")) closeMessageMenus();
+  if(!e.target.closest(".msg-actions,.msg[data-mid],.message-actions-menu"))closeMessageMenus();
 });
 
 function showStefanOptions(){
