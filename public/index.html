@@ -336,6 +336,9 @@
       var body=document.getElementById("modalBody");
       if(!overlay||!body)throw new Error("Menu dialog is unavailable.");
       var actions=[
+        ["edit","✏️ Edit room"],
+        ["pin","📌 Pin / unpin room"],
+        ["announcement","📢 Room announcement"],
         ["pinned","📌 Pinned messages"],
         ["youtube","▶️ YouTube"],
         ["invite","🔐 Room code"],
@@ -350,7 +353,10 @@
         button.addEventListener("click",function(){
           var action=button.getAttribute("data-room-menu-fallback");
           try{
-            if(action==="pinned"&&typeof showPinnedMessages==="function")showPinnedMessages();
+            if(action==="edit"&&typeof editRoom==="function")editRoom();
+            else if(action==="pin"&&typeof toggleCurrentRoomPin==="function")toggleCurrentRoomPin();
+            else if(action==="announcement"&&typeof postRoomAnnouncement==="function")postRoomAnnouncement();
+            else if(action==="pinned"&&typeof showPinnedMessages==="function")showPinnedMessages();
             else if(action==="youtube"&&typeof openYoutubePanel==="function")openYoutubePanel();
             else if(action==="invite"&&typeof showInvite==="function")showInvite();
             else if(action==="theme"&&typeof openRoomThemePicker==="function")openRoomThemePicker();
