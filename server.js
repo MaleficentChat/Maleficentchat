@@ -2554,6 +2554,7 @@ app.post(
     }
 
     const existingJoinToken=verifyRoomJoinToken(req.headers['x-room-join-token'],u.id,r)||verifyRoomJoinToken(req.body?.joinToken,u.id,r);
+    if(!roomAgeAllowed(u,r))return res.status(403).json({error:"You don’t meet this room’s age restriction. Please choose another room.",code:"ROOM_AGE_RESTRICTED",minAge:Number(r.minAge??r.min_age??13),maxAge:Number(r.maxAge??r.max_age??99)});
     if(!roomJoinPolicyAllowed(u,r,{inviteToken:req.body?.inviteToken,existingJoinToken})){
       return res.status(403).json({error:"This room is private or your current account does not meet its access rules."});
     }
