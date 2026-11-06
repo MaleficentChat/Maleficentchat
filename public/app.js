@@ -269,10 +269,25 @@ async function hardRefreshSite(){
     if(button){button.disabled=false;button.textContent="🔄 Site refresh";}
   }
 }
-$("siteHardRefresh")?.addEventListener("click",()=>{
-  if(!window.confirm("Refresh Maleficent Chat and clear its cached files? Your account, messages, login session, and saved data will be kept."))return;
-  hardRefreshSite();
-});
+async function refreshCurrentRoomOnly(){
+  const button=$("siteHardRefresh");
+  const roomId=state.currentRoom;
+  if(!state.user||!roomId){toast("Open a room before refreshing its messages.");return;}
+  if(button){button.disabled=true;button.textContent="⏳";}
+  try{
+    // Fetch and redraw only the currently open room's messages. Do not reload
+    // the document, clear browser caches, or touch authentication/session data.
+    const refreshed=await refreshRoomMessageList(roomId,{force:true});
+    if(!refreshed)throw new Error("The room changed before it could be refreshed.");
+    toast("Room messages refreshed. Your login session is unchanged.");
+  }catch(error){
+    console.warn("Room-only refresh failed:",error?.message||error);
+    toast(error?.message||"Could not refresh this room.");
+  }finally{
+    if(button){button.disabled=false;button.textContent="⟳";}
+  }
+}
+$("siteHardRefresh")?.addEventListener("click",refreshCurrentRoomOnly);
 $("testSiteNotifications")?.addEventListener("click",testSiteNotifications);
 if("Notification" in window && Notification.permission==="granted") registerSiteNotificationWorker();
 
