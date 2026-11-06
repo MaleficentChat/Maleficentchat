@@ -903,7 +903,7 @@ async function start() {
       try{const access=JSON.parse(safeStorage.getItem("mc_room_join")||"null");if(String(access?.roomId)===String(d.roomId))safeStorage.removeItem("mc_room_join");}catch{}
       state.currentRoom=null;state.currentRoomRole="USER";state.messages=[];
       if($("messages"))$("messages").innerHTML="";
-      const main=state.rooms.find(room=>room.isDefault)||state.rooms.find(room=>/^main room$/i.test(String(room.name||"")));
+      const main=preferredDefaultRoom();
       if(main)joinRoom(main.id).catch(()=>{});
     }
   });
@@ -967,7 +967,7 @@ async function start() {
     state.messages=[];
     if($("messages"))$("messages").innerHTML="";
     toast("You were removed from this room. Reason: "+String(data?.reason||"Room rules"));
-    const main=state.rooms.find(r=>/^main room$/i.test(String(r.name||"")));
+    const main=preferredDefaultRoom();
     if(main&&String(main.id)!==String(state.currentRoom))joinRoom(main.id).catch(()=>{});
   });
   state.socket.on("room:clear", () => {
@@ -1069,8 +1069,7 @@ async function start() {
 
   // Always enter Main Room after login. Retry the authoritative room list/join
   // while the session and seeded rooms settle; do not switch to an old room.
-  const findMainRoom=()=>state.rooms.find(room=>room.isDefault) ||
-    state.rooms.find(room=>String(room.name||"").trim().toLowerCase()==="main room");
+  const findMainRoom=()=>preferredDefaultRoom();
   let mainRoom=findMainRoom();
   let joined=false;
   const invite=roomInviteFromHash();
@@ -1683,23 +1682,27 @@ document.getElementById("chatGifBtn")?.addEventListener("click",()=>{if(!state.c
 /* Defensive room-list cleanup: never display the retired age-split defaults, even if an older server response is cached. */
 function sanitizeRoomList(input) {
   const rooms = Array.isArray(input) ? input : [];
-  const seenMain = new Set();
-  return rooms.filter(room => {
-    const name = String(room?.name || "").trim().replace(/^🏠\s*/, "");
+  const seen = new Set();
+  return rooms.map(room => {
+    const rawName = String(room?.name || "").trim().replace(/^🏠\s*/, "");
+    const name = /^main room$/i.test(rawName) ? "Teenage Chat" : rawName;
     const normalized = name.toLowerCase().replace(/\s+/g, " ");
-    // Retire the two old age-split rooms, even if whitespace/case varies.
+    return { ...room, name, isDefault: normalized === "teenage chat" || normalized === "adult chat" };
+  }).filter(room => {
+    const normalized = String(room.name||"").trim().toLowerCase();
     if (/^main room\s*[12]\b/i.test(normalized)) return false;
-    // Keep only one canonical Main Room.
-    if (normalized === "main room") {
-      if (seenMain.has("main room")) return false;
-      seenMain.add("main room");
-      return true;
+    if (normalized === "teenage chat" || normalized === "adult chat") {
+      if (seen.has(normalized)) return false;
+      seen.add(normalized);
     }
     return true;
-  }).map(room => {
-    const name = String(room?.name || "").trim().replace(/^🏠\s*/, "");
-    return { ...room, isDefault: name.toLowerCase() === "main room" };
   });
+}
+function preferredDefaultRoom() {
+  const age = Number(state.user?.age);
+  const wanted = age >= 20 ? "adult chat" : "teenage chat";
+  return (state.rooms||[]).find(room => String(room.name||"").trim().toLowerCase() === wanted)
+    || (state.rooms||[]).find(room => room.isDefault);
 }
 
 async function goToMainRoomFromRoomRefresh() {
@@ -1708,9 +1711,7 @@ async function goToMainRoomFromRoomRefresh() {
   try {
     // Refresh the room data first, then use the same join flow as a room card.
     await loadRooms();
-    const mainRoom = (state.rooms || []).find(room =>
-      room?.isDefault || /^main room$/i.test(String(room?.name || "").trim().replace(/^🏠\s*/, ""))
-    );
+    const mainRoom = preferredDefaultRoom();
     if (!mainRoom) {
       toast("Main Room could not be found. Please try again.");
       return;
@@ -1795,7 +1796,7 @@ function renderRooms() {
   $('rooms').innerHTML=rooms.map(room=>{
     const locked=room.locked??!!room.passwordHash;
     const count=Number(room.onlineCount||0);
-    const isProtectedMainRoom = !!room.isDefault || /^main room$/i.test(String(room.name||"").trim());
+    const isProtectedMainRoom = !!room.isDefault || /^(teenage chat|adult chat)$/i.test(String(room.name||"").trim());
     const canManage = !isProtectedMainRoom && (canFeature("edit_room") || canFeature("delete_room") || room.ownerId===state.user?.id);
     return `
       <article class="room room-list-card ${state.currentRoom===room.id?'selected':''}">
@@ -6529,7 +6530,7 @@ async function clearRoom() {
 function editRoom() {
   const room=state.rooms.find(r=>String(r.id)===String(state.currentRoom));
   if(!room)return;
-  if(room.isDefault || /^main room$/i.test(String(room.name||"").trim())){toast("Main Room is protected.");return;}
+  if(room.isDefault || /^(teenage chat|adult chat)$/i.test(String(room.name||"").trim())){toast("Default age-group rooms are protected.");return;}
   const ranks=["MEMBER","VIP","PREMIUM","ROYAL","MOD","ADMIN","SUPER_ADMIN","COMMISSOR","INSTRUCTOR","COOWNER","OWNER","DEVELOPER"];
   const rankLabels={MEMBER:"Member",VIP:"VIP",PREMIUM:"Premium",MOD:"Moderator",ADMIN:"Admin",SUPER_ADMIN:"Super Admin",COMMISSOR:"Commissor",COOWNER:"Co-owner",OWNER:"Owner",ROYAL:"Legacy rank — Royal",INSTRUCTOR:"Legacy rank — Instructor"};
   const savedRequiredRank=String(room.rankRequired||"MEMBER").toUpperCase();
