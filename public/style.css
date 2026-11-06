@@ -6287,3 +6287,49 @@ html,body,#app,.app,.main,.view,#profile,#viewProfile {
     grid-column:1/-1!important;grid-row:5!important;justify-self:center!important;width:min(180px,70%)!important;min-width:0!important;margin:0 auto!important;
   }
 }
+
+
+/* Fine alignment requested: sender timestamps before name/rank; own messages unchanged. */
+#viewRooms.chatting .msg:not(.dm-msg).theirs .msg-top{justify-content:flex-start!important}
+#viewRooms.chatting .msg:not(.dm-msg).theirs .msg-time-side{
+  order:0!important;flex:0 0 auto!important;margin:0 3px 0 0!important;
+}
+#viewRooms.chatting .msg:not(.dm-msg).theirs .msg-author-group{order:1!important}
+#viewRooms.chatting .msg:not(.dm-msg).theirs .msg-header-right{
+  order:2!important;margin-left:auto!important;
+}
+#viewRooms.chatting .msg:not(.dm-msg).mine .msg-top{justify-content:flex-end!important}
+#viewRooms.chatting .msg:not(.dm-msg).mine .msg-author-group{order:0!important}
+#viewRooms.chatting .msg:not(.dm-msg).mine .msg-time-side{
+  order:1!important;margin:0 0 0 7px!important;flex:0 0 auto!important;
+}
+#viewRooms.chatting .msg:not(.dm-msg).mine .msg-header-right{order:2!important;margin-left:0!important}
+
+/* More breathing room between the profile stats row and avatar. */
+#modal:has(.profile-modal) .profile-stats{margin-bottom:13px!important}
+#modal:has(.profile-modal) .equipped-profile-frame{margin-top:0!important;margin-bottom:3px!important}
+
+/* Compact profile music control; keep it directly under the avatar. */
+#modal:has(.profile-modal) .profile-music-pill{
+  width:min(178px,78%)!important;min-height:29px!important;gap:6px!important;
+  margin:3px auto 1px!important;padding:3px 7px!important;border-radius:999px!important;
+}
+#modal:has(.profile-modal) .profile-music-toggle{
+  width:21px!important;height:21px!important;flex:0 0 21px!important;font-size:10px!important;
+}
+#modal:has(.profile-modal) .profile-music-bars{height:13px!important;gap:2px!important}
+#modal:has(.profile-modal) .profile-music-bars i{width:2px!important;height:5px!important}
+#modal:has(.profile-modal) .profile-music-title{font-size:10px!important}
+
+/* Quoted message preview is text-only: no avatar or author row. */
+#viewRooms.chatting .msg:not(.dm-msg) .quoted{
+  display:block!important;width:fit-content!important;max-width:100%!important;
+  margin:0 0 6px!important;padding:8px 11px!important;border-radius:13px!important;
+}
+#viewRooms.chatting .msg:not(.dm-msg) .quoted-header,
+#viewRooms.chatting .msg:not(.dm-msg) .quoted-avatar,
+#viewRooms.chatting .msg:not(.dm-msg) .quoted-author{display:none!important}
+#viewRooms.chatting .msg:not(.dm-msg) .quoted-text{
+  margin:0!important;padding:0!important;font-size:13px!important;line-height:1.35!important;
+  white-space:pre-wrap!important;overflow-wrap:anywhere!important;
+}
