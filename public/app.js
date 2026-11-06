@@ -6262,7 +6262,7 @@ document.addEventListener("click", event => {
       ["pinned","📌 Pinned messages"],
       ["youtube","▶️ YouTube"],
       ["invite","🔐 Room code"],
-      ["theme","🎨 Room Theme"]
+      ["theme","🎨 Site Theme"]
     ];
     try { if (can("COMMISSOR")) actions.unshift(["announcement","📢 Room announcement"]); } catch (_) {}
     try { if (canFeature("clear_room")) actions.unshift(["clear","🧹 Clear messages"]); } catch (_) {}
@@ -6314,11 +6314,11 @@ function applyRoomTheme(){
 }
 async function openRoomThemePicker(){
  const selected=String(state.user?.settings?.theme||state.user?.theme||"obsidian").toLowerCase();
- modal(`<div class="room-theme-picker"><h2>🎨 Site Theme</h2><p class="muted">Choose your personal site appearance. It applies across every section and chat room for your account only.</p><div class="room-theme-grid">${ROOM_THEMES.map(t=>`<article class="room-theme-card ${t.id===selected?"selected":""}"><div class="room-theme-preview" style="--preview-bg:${t.bg};--preview-bubble:${t.bubble};--preview-accent:${t.accent}"><span>${t.emoji} ${esc(t.name)}</span><i></i><i></i><b></b></div><div class="room-theme-card-footer"><strong>${esc(t.name)}</strong><button type="button" class="mini" data-apply-site-theme="${t.id}">${t.id===selected?"Selected":"Select"}</button></div></article>`).join("")}</div></div>`);
+ modal(`<div class="room-theme-picker"><h2>🎨 Site Theme</h2><p class="muted">Choose your personal site appearance. It applies across every section and chat room for your account only.</p><div class="room-theme-grid">${ROOM_THEMES.filter(t=>["obsidian","midnight","forest","rose","lavender","sunset","ocean"].includes(t.id)).map(t=>`<article class="room-theme-card ${t.id===selected?"selected":""}"><div class="room-theme-preview" style="--preview-bg:${t.bg};--preview-bubble:${t.bubble};--preview-accent:${t.accent}"><span>${t.emoji} ${esc(t.name)}</span><i></i><i></i><b></b></div><div class="room-theme-card-footer"><strong>${esc(t.name)}</strong><button type="button" class="mini" data-apply-site-theme="${t.id}">${t.id===selected?"Selected":"Select"}</button></div></article>`).join("")}</div></div>`);
  document.querySelectorAll("[data-apply-site-theme]").forEach(button=>button.addEventListener("click",async()=>{
   const themeId=button.dataset.applySiteTheme;button.disabled=true;
   try{const result=await api("/api/settings",{method:"PUT",body:JSON.stringify({theme:themeId})});state.user=state.user||{};state.user.settings={...(state.user.settings||{}),...(result.settings||{}),theme:themeId};state.user.theme=themeId;applyTheme(themeId);applyRoomTheme();closeModal();toast("Site theme saved for your account.");}
-  catch(e){toast(e.message||"Could not apply room theme.");button.disabled=false;}
+  catch(e){toast(e.message||"Could not save site theme.");button.disabled=false;}
  }));
 }
 
