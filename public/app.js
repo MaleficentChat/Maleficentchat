@@ -3353,9 +3353,10 @@ function renderUserProfileModal(user,data={}){
       <div class="profile-stats"><span class="profile-stat">⭐ ${user.level||1}</span><span class="profile-stat">XP ${user.xp||0}</span><span class="profile-stat">❤️ ${user.profileLikes||data.profileLikes||0}</span><button class="mini profile-hamburger" id="profileMenuBtn" title="Profile actions">☰</button>${!isSelf && (String(state.user?.rank||"").toUpperCase()==="DEVELOPER" || (state.user?.username==="Maleficent" && String(state.user?.rank||"").toUpperCase()==="OWNER") || canFeature("staff_rank_assignment")) ? `<button class="mini profile-rank-btn" id="profileRankBtn">🏅 Rank</button>` : ""}</div>
       <div class="equipped-profile-frame ${frame?esc(frame.id):''}" title="${frame?esc(frame.name):'Profile avatar'}">${avatar(user,'big-avatar')}</div>
       <div class="profile-rank">${rank(user.rank)}${user.verified?' · ✓ Verified':''}${profileBadge?` <span class="equipped-profile-badge" title="${esc(profileBadge.name)}">${esc(profileBadge.icon)} ${esc(profileBadge.name)}</span>`:''}</div>
-      ${user.profileMusicUrl?`<div class="profile-music-card"><div class="profile-music-heading">🎵 ${esc(user.profileMusicTitle||'Profile music')}</div><audio class="profile-music-audio" controls preload="none" src="${esc(safeProfileUrl(user.profileMusicUrl))}">Audio playback is not supported.</audio></div>`:''}
       <div class="profile-name">${esc(user.displayName)}${user._nickname?` <span class="nickname-badge">“${esc(user._nickname)}”</span>`:''}</div>
       <div class="profile-handle">@${esc(user.username)}</div>
+      ${user.bio?`<div class="profile-short-bio">${esc(user.bio)}</div>`:''}
+      ${user.profileMusicUrl?`<div class="profile-music-pill"><button type="button" class="profile-music-toggle" id="profileMusicToggle" aria-label="Play profile music">▶</button><span class="profile-music-bars" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span class="profile-music-title">${esc(user.profileMusicTitle||'Profile music')}</span><audio id="profileMusicAudio" preload="none" src="${esc(safeProfileUrl(user.profileMusicUrl))}"></audio></div>`:''}
       <div class="profile-social-stats">
         <span class="profile-social-stat"><b>🪙 ${Number(user.gold||0).toLocaleString()}</b><small>Gold</small></span>
         <span class="profile-social-stat"><b>💎 ${Number(user.diamonds||0).toLocaleString()}</b><small>Diamonds</small></span>
@@ -3373,6 +3374,12 @@ function renderUserProfileModal(user,data={}){
     </div>
     <div id="profileTabContent" class="profile-info"></div>
   </div>`);
+  const profileMusicAudio=$('profileMusicAudio'),profileMusicToggle=$('profileMusicToggle');
+  if(profileMusicAudio&&profileMusicToggle){
+    const syncMusic=()=>{const playing=!profileMusicAudio.paused&&!profileMusicAudio.ended;profileMusicToggle.textContent=playing?'Ⅱ':'▶';profileMusicToggle.setAttribute('aria-label',playing?'Pause profile music':'Play profile music');profileMusicToggle.classList.toggle('playing',playing);};
+    profileMusicToggle.addEventListener('click',async()=>{try{if(profileMusicAudio.paused)await profileMusicAudio.play();else profileMusicAudio.pause();}catch{toast('This audio link could not be played.');}syncMusic();});
+    profileMusicAudio.addEventListener('play',syncMusic);profileMusicAudio.addEventListener('pause',syncMusic);profileMusicAudio.addEventListener('ended',syncMusic);
+  }
   const renderTab=(tab)=>{
     document.querySelectorAll('.profile-tab').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));
     const box=$('profileTabContent');
@@ -3388,11 +3395,11 @@ function renderUserProfileModal(user,data={}){
       <div class="profile-actions"><button class="mini" id="profileAchievementsBtn">🏆 Achievements</button>${!isSelf&&canFeature('profile_note')?`<button class="mini" id="profileNoteBtn">📝 Add Note <span id="profileNoteDot" style="display:none">●</span></button>${canFeature('profile_note')?'<button class="mini" id="profileFeatureBlockBtn">🚫 Feature Block</button>':''}`:''}<div class="profile-action-hint">Tap ☰ above for profile actions.</div></div>`;
     else if(tab==='about') box.innerHTML=`<div class="about-card"><h3>About Me</h3><p>${esc(user.bio||'This user has not written an About Me yet.')}</p>${user.country?`<div class="profile-info-row"><b>🌍 Country</b><span>${esc(countryFlagFor(user.country))} ${esc(user.country)}</span></div>`:''}${user.pronouns?`<div class="profile-info-row"><b>Pronouns</b><span>${esc(user.pronouns)}</span></div>`:''}${user.interests?.length?`<div class="tag-list">${user.interests.map(x=>`<span class="tag">${esc(x)}</span>`).join('')}</div>`:''}${isSelf?`<button class="primary" id="editAboutBtn">✏️ Edit About Me</button>`:''}</div>`;
     else if(tab==='friends'){
-      box.innerHTML=`<div class="about-card"><h3>Friends</h3><p class="muted">Friends and social connections for @${esc(user.username)}.</p><div class="profile-friends-grid" id="profileFriendsGrid"><span class="muted">Loading friends…</span></div></div>`;
+      box.innerHTML=`<div class="profile-friends-grid-wrap"><div class="profile-friends-grid" id="profileFriendsGrid"><span class="muted">Loading friends…</span></div></div>`;
       api('/api/users/'+encodeURIComponent(user.id)+'/friends').then(result=>{
         if(!box.isConnected)return;
         const grid=$('profileFriendsGrid'),friends=result.users||[];if(!grid)return;
-        grid.innerHTML=friends.length?friends.map(friend=>`<button type="button" class="profile-friend-tile" data-friend-profile="${esc(friend.id)}"><span class="profile-friend-photo">${avatar(friend)}</span><span class="profile-friend-name">${esc(friend.displayName||friend.username)}</span><small>@${esc(friend.username)}</small></button>`).join(''):'<p class="muted">No friends to show yet.</p>';
+        grid.innerHTML=friends.length?friends.map(friend=>`<button type="button" class="profile-friend-tile" data-friend-profile="${esc(friend.id)}" title="${esc(friend.displayName||friend.username)}"><span class="profile-friend-photo">${avatar(friend)}</span><span class="profile-friend-name">${esc(friend.displayName||friend.username)}</span></button>`).join(''):'<p class="muted">No friends to show yet.</p>';
         grid.querySelectorAll('[data-friend-profile]').forEach(button=>button.addEventListener('click',()=>openUser(button.dataset.friendProfile)));
       }).catch(error=>{const grid=$('profileFriendsGrid');if(grid)grid.innerHTML='<p class="muted">'+esc(error.message||'Could not load friends.')+'</p>';});
     }
