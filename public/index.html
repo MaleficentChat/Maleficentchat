@@ -30,7 +30,7 @@
   "description": "Join Maleficent Chat for online chat rooms, friends, private messages, community posts and mini-games."
 }
 </script>
-<link rel="stylesheet" href="/style.css?v=maleficent-chat-room-menu-20261105-4">
+<link rel="stylesheet" href="/style.css?v=mc-wallet-20261106-1">
  <link rel="manifest" href="/manifest.json">
 <script src="/socket.io/socket.io.js"></script>
 <style>
@@ -117,6 +117,7 @@
     <button class="nav" data-view="guide">📘 <span>Guide</span></button>
   </details>
   <details class="nav-group"><summary>⌕ <span>My space</span><i>⌄</i></summary>
+    <button class="nav" data-view="wallet">🏦 <span>MC Wallet</span></button>
     <button class="nav" data-view="saved">🔖 <span>Saved Messages</span></button>
     <button class="nav" data-view="search">🔎 <span>Advanced Search</span></button>
     <button class="nav" data-view="profile">👤 <span>My Profile</span></button>
@@ -200,7 +201,7 @@
         <button class="settings-row" type="button" onclick="editEmail()"><span>✉</span><b>Edit email</b><small>Email settings</small><strong>›</strong></button>
         <button class="settings-row" type="button" onclick="showBlockedUsers()"><span>🚫</span><b>Blocked users</b><small>View and unblock people</small><strong>›</strong></button>
         <button class="settings-row" type="button" onclick="changePasswordModal()"><span>🔑</span><b>Change password</b><small>Update your login password</small><strong>›</strong></button>
-        <button class="settings-row" data-daily-reward type="button" onclick="claimDailyReward()"><span>🎁</span><b>Daily Gold and XP Reward</b><small>Claim 25 gold + 15 XP once per day</small><strong>›</strong></button>
+        <button class="settings-row" data-daily-reward type="button" onclick="claimDailyReward()"><span>💎</span><b>Daily Diamond Reward</b><small>Claim your daily Diamonds, Gold and XP</small><strong>›</strong></button>
       </div>
       <div class="settings-list" id="fallbackMoreOptions" hidden>
         <button class="settings-row" type="button" onclick="privacyModal()"><span>🔒</span><b>Privacy Control</b><small>Choose which profile details other members can see</small><strong>›</strong></button>
@@ -212,6 +213,7 @@
     </div></div>
   </div></div>
   <div id="viewSettings" class="view hidden"><div class="topbar"><div><h2>⚙️ Account Settings</h2><p class="muted">Security, status, appearance and notification controls.</p></div><div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end"><button class="mini" id="enableSiteNotifications" type="button">🔔 Enable site notifications</button><button class="mini" id="testSiteNotifications" type="button">🧪 Send test</button></div></div><div id="settings" class="settings-grid"></div></div>
+  <div id="viewWallet" class="view hidden"><div class="topbar"><div><h2>🏦 MC Wallet</h2><p class="muted">Diamonds, Gold, rewards and secure transfers.</p></div></div><div id="walletRoot"></div></div>
   <div id="viewStaffApplications" class="view hidden"><div class="topbar"><div><h2>📝 Staff Application</h2><p class="muted">Apply to join the Maleficent Chat moderation team.</p></div></div><div id="staffApplicationFormRoot"></div></div>
   <div id="viewManagement" class="view hidden">
     <div class="topbar"><div><h2 id="managementSpaceTitle">🛡️ Management Space</h2><p class="muted" id="managementSpaceDescription">Tools available to your rank and individual permissions.</p></div></div>
@@ -340,6 +342,6 @@
   },true);
 })();
 </script>
-<script src="/app.js?v=audit-evidence-preview-20261106"></script>
+<script src="/app.js?v=mc-wallet-20261106-1"></script>
 </body>
 </html>
