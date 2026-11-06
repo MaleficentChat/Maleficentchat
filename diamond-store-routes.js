@@ -58,6 +58,8 @@ function registerDiamondStoreRoutes({app,pool,current,notify,io,log,id,db,ownerO
       }
 
       const purchase = found.rows[0];
+      const lockedUser = await client.query("SELECT id FROM users WHERE id=$1 FOR UPDATE", [Number(purchase.user_id)]);
+      if (!lockedUser.rowCount) throw new Error("The requesting account no longer exists.");
       const amount = Number(purchase.diamonds);
       if (!Number.isSafeInteger(amount) || amount <= 0) throw new Error('Invalid Diamond amount on purchase request.');
 
@@ -101,7 +103,7 @@ function registerDiamondStoreRoutes({app,pool,current,notify,io,log,id,db,ownerO
         log(actor, 'DIAMOND_PURCHASE_GRANTED', purchase.username, { requestId: Number(purchase.id), diamonds: amount, price: Number(purchase.price) });
       } catch (e) { console.error('Diamond purchase audit log failed:', e); }
 
-      res.json({ ok: true, username: purchase.username, diamonds: amount, wallet });
+      res.json({ ok: true, userId: Number(purchase.user_id), username: purchase.username, diamonds: amount, wallet });
     } catch (error) {
       await client.query('ROLLBACK').catch(() => {});
       console.error('Diamond purchase grant failed:', error);
