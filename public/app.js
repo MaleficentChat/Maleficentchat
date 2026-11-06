@@ -3353,6 +3353,7 @@ function renderUserProfileModal(user,data={}){
       <div class="profile-stats"><span class="profile-stat">⭐ ${user.level||1}</span><span class="profile-stat">XP ${user.xp||0}</span><span class="profile-stat">❤️ ${user.profileLikes||data.profileLikes||0}</span><button class="mini profile-hamburger" id="profileMenuBtn" title="Profile actions">☰</button>${!isSelf && (String(state.user?.rank||"").toUpperCase()==="DEVELOPER" || (state.user?.username==="Maleficent" && String(state.user?.rank||"").toUpperCase()==="OWNER") || canFeature("staff_rank_assignment")) ? `<button class="mini profile-rank-btn" id="profileRankBtn">🏅 Rank</button>` : ""}</div>
       <div class="equipped-profile-frame ${frame?esc(frame.id):''}" title="${frame?esc(frame.name):'Profile avatar'}">${avatar(user,'big-avatar')}</div>
       <div class="profile-rank">${rank(user.rank)}${user.verified?' · ✓ Verified':''}${profileBadge?` <span class="equipped-profile-badge" title="${esc(profileBadge.name)}">${esc(profileBadge.icon)} ${esc(profileBadge.name)}</span>`:''}</div>
+      ${user.profileMusicUrl?`<div class="profile-music-card"><div class="profile-music-heading">🎵 ${esc(user.profileMusicTitle||'Profile music')}</div><audio class="profile-music-audio" controls preload="none" src="${esc(safeProfileUrl(user.profileMusicUrl))}">Audio playback is not supported.</audio></div>`:''}
       <div class="profile-name">${esc(user.displayName)}${user._nickname?` <span class="nickname-badge">“${esc(user._nickname)}”</span>`:''}</div>
       <div class="profile-handle">@${esc(user.username)}</div>
       <div class="profile-social-stats">
@@ -3386,7 +3387,15 @@ function renderUserProfileModal(user,data={}){
       <div class="profile-info-row"><b>◉ Last seen</b><span>${esc(lastSeen)}</span></div>
       <div class="profile-actions"><button class="mini" id="profileAchievementsBtn">🏆 Achievements</button>${!isSelf&&canFeature('profile_note')?`<button class="mini" id="profileNoteBtn">📝 Add Note <span id="profileNoteDot" style="display:none">●</span></button>${canFeature('profile_note')?'<button class="mini" id="profileFeatureBlockBtn">🚫 Feature Block</button>':''}`:''}<div class="profile-action-hint">Tap ☰ above for profile actions.</div></div>`;
     else if(tab==='about') box.innerHTML=`<div class="about-card"><h3>About Me</h3><p>${esc(user.bio||'This user has not written an About Me yet.')}</p>${user.country?`<div class="profile-info-row"><b>🌍 Country</b><span>${esc(countryFlagFor(user.country))} ${esc(user.country)}</span></div>`:''}${user.pronouns?`<div class="profile-info-row"><b>Pronouns</b><span>${esc(user.pronouns)}</span></div>`:''}${user.interests?.length?`<div class="tag-list">${user.interests.map(x=>`<span class="tag">${esc(x)}</span>`).join('')}</div>`:''}${isSelf?`<button class="primary" id="editAboutBtn">✏️ Edit About Me</button>`:''}</div>`;
-    else if(tab==='friends') box.innerHTML=`<div class="about-card"><h3>Friends</h3><p class="muted">Friends and social connections for @${esc(user.username)}.</p><div class="profile-info-row"><b>👥 Friends</b><span>${user.friendsCount||0}</span></div><button class="mini" id="viewFriendsBtn">Open Friends</button></div>`;
+    else if(tab==='friends'){
+      box.innerHTML=`<div class="about-card"><h3>Friends</h3><p class="muted">Friends and social connections for @${esc(user.username)}.</p><div class="profile-friends-grid" id="profileFriendsGrid"><span class="muted">Loading friends…</span></div></div>`;
+      api('/api/users/'+encodeURIComponent(user.id)+'/friends').then(result=>{
+        if(!box.isConnected)return;
+        const grid=$('profileFriendsGrid'),friends=result.users||[];if(!grid)return;
+        grid.innerHTML=friends.length?friends.map(friend=>`<button type="button" class="profile-friend-tile" data-friend-profile="${esc(friend.id)}"><span class="profile-friend-photo">${avatar(friend)}</span><span class="profile-friend-name">${esc(friend.displayName||friend.username)}</span><small>@${esc(friend.username)}</small></button>`).join(''):'<p class="muted">No friends to show yet.</p>';
+        grid.querySelectorAll('[data-friend-profile]').forEach(button=>button.addEventListener('click',()=>openUser(button.dataset.friendProfile)));
+      }).catch(error=>{const grid=$('profileFriendsGrid');if(grid)grid.innerHTML='<p class="muted">'+esc(error.message||'Could not load friends.')+'</p>';});
+    }
     else if(tab==='gifts'){
       box.innerHTML='<div class="about-card"><h3>🎁 Gifts</h3><p class="muted">Gold gifts received by this user.</p><div class="gift-profile-list">Loading gifts…</div></div>';
       Promise.all([api('/api/users/'+encodeURIComponent(user.id)+'/gifts'),api('/api/gifts/catalog')]).then(([giftData,catalogData])=>{
@@ -4370,6 +4379,7 @@ async function loadProfile(user){
       <button class="settings-row" onclick="privacyModal()"><span>🔒</span><b>Privacy Control</b><small>Choose which profile details other members can see</small><strong>›</strong></button>
       <button class="settings-row" onclick="uploadAvatar()"><span>🖼️</span><b>Edit photos</b><small>Profile photo and banner</small><strong>›</strong></button>
       <button class="settings-row" onclick="editProfileStyle()"><span>✨</span><b>Profile styles</b><small>Change profile colors and background — preview before saving</small><strong>›</strong></button>
+      <button class="settings-row" onclick="editProfileMusic()"><span>🎵</span><b>Profile music</b><small>${esc(user.profileMusicTitle||'Choose a song for your profile')}</small><strong>›</strong></button>
       <button class="settings-row" onclick="usernameHistory()"><span>📜</span><b>Username history</b><small>${(user.usernameHistory||[]).length} recorded changes</small><strong>›</strong></button>
       <button class="settings-row danger-row" onclick="deleteAccount()"><span>⊘</span><b>Delete account</b><small>This action is permanent</small><strong>›</strong></button>
     </div>`;}
@@ -4378,6 +4388,12 @@ async function loadProfile(user){
 }
 
 async function saveMyProfile(fields,message){try{const r=await api('/api/profile',{method:'PUT',body:JSON.stringify(fields)});state.user=r.user;closeModal();updateNav();await loadProfile(state.user);toast(message||'Saved.');}catch(e){toast(e.message)}}
+function editProfileMusic(){
+ const u=state.user||{};
+ modal(`<h2>🎵 Profile music</h2><p class="muted">Add a direct MP3, M4A, OGG or other browser-playable audio link. Visitors can play it from your profile.</p><label>Song title<input id="profileMusicTitleEdit" maxlength="100" value="${esc(u.profileMusicTitle||'')}" placeholder="Song name · Artist"></label><label>Direct audio URL<input id="profileMusicUrlEdit" maxlength="500" type="url" value="${esc(u.profileMusicUrl||'')}" placeholder="https://example.com/song.mp3"></label><div class="toolbar"><button class="mini" id="clearProfileMusic">Remove music</button><button class="primary" id="saveProfileMusic">Save music</button></div>`);
+ $('clearProfileMusic')?.addEventListener('click',()=>saveMyProfile({profileMusicTitle:'',profileMusicUrl:''},'Profile music removed.'));
+ $('saveProfileMusic')?.addEventListener('click',()=>{const url=$('profileMusicUrlEdit').value.trim();if(!url){toast('Enter a direct audio URL or use Remove music.');return;}saveMyProfile({profileMusicTitle:$('profileMusicTitleEdit').value.trim(),profileMusicUrl:url},'Profile music saved.');});
+}
 function editProfileInfo(){const u=state.user||{};modal(`<h2>Edit info</h2><input id="piName" value="${esc(u.displayName||'')}" placeholder="Display name"><input id="piPronouns" value="${esc(u.pronouns||'')}" placeholder="Pronouns"><input id="piCountry" maxlength="80" value="${esc(u.country||'')}" placeholder="Country (e.g. India)"><input id="piLocation" value="${esc(u.location||'')}" placeholder="City / location"><input id="piWebsite" value="${esc(u.website||'')}" placeholder="Website URL"><input id="piInterests" value="${esc((u.interests||[]).join(', '))}" placeholder="Interests, separated by commas"><button class="primary" id="savePI">Save</button>`);$('savePI').onclick=()=>saveMyProfile({displayName:$('piName').value.trim(),pronouns:$('piPronouns').value.trim(),country:$('piCountry').value.trim(),location:$('piLocation').value.trim(),website:$('piWebsite').value.trim(),interests:$('piInterests').value.split(',').map(x=>x.trim()).filter(Boolean)},'Info saved.');}
 function editRelationship(){modal(`<h2>Edit relationship</h2><select id="rel"><option value="">Not set</option><option>Single</option><option>In a relationship</option><option>Complicated</option><option>Prefer not to say</option></select><button class="primary" id="saveRel">Save</button>`);$('rel').value=state.user.relationship||'';$('saveRel').onclick=()=>saveMyProfile({relationship:$('rel').value},'Relationship saved.');}
 function editUsername(){modal(`<h2>Edit username</h2><input id="newUsername" maxlength="24" value="${esc(state.user.username)}"><p class="muted">3–24 letters, numbers and underscores.</p><button class="primary" id="saveUsername">Save</button>`);$('saveUsername').onclick=()=>saveMyProfile({username:$('newUsername').value.trim()},'Username saved.');}
