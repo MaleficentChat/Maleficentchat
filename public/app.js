@@ -3398,7 +3398,7 @@ async function loadDMList() {
 
 function dmMessageHTML(message, messages, user) {
   const deleteAction=String(message.from)===String(state.user?.id)&&!message.deleted
-    ? '<button type="button" class="mini danger" data-dm-delete="'+esc(message.id)+'">🗑 Delete</button>'
+    ? '<button type="button" class="mini danger dm-delete-icon" data-dm-delete="'+esc(message.id)+'" title="Delete message" aria-label="Delete message">🗑</button>'
     : "";
   const quoted = message.replyTo
     ? messages.find(m => String(m.id) === String(message.replyTo))
@@ -3511,7 +3511,7 @@ async function openDM(id) {
     modal(`
       <div class="dm-chat-header">
         <div class="dm-chat-person">${avatar(user)}<div class="dm-chat-person-copy"><h2>${esc(privateNickname||user.displayName)}</h2><span>@${esc(user.username)} · <i class="${user.online?'is-online':'is-offline'}"></i> ${user.online?'Online':'Offline'}</span></div></div>
-        <div class="dm-chat-actions"><button type="button" class="mini dm-settings-toggle" id="dmChatSettingsBtn" title="Conversation settings" aria-expanded="false">⚙️</button><button type="button" class="mini" id="dmCloseBtn" title="Close conversation">×</button><div class="dm-settings-menu hidden" id="dmChatSettingsMenu">
+        <div class="dm-chat-actions"><button type="button" class="mini dm-settings-toggle" id="dmChatSettingsBtn" title="Conversation settings" aria-expanded="false">⚙️</button><div class="dm-settings-menu hidden" id="dmChatSettingsMenu">
 <button type="button" data-dm-action="nickname">✏️ <span><b>Nickname</b><small>Set a private nickname</small></span></button>
 <button type="button" data-dm-action="ignore">🚫 <span><b>Ignore</b><small>Block this user</small></span></button>
 <button type="button" data-dm-action="mute">🔕 <span><b>Mute</b><small>Mute conversation notifications</small></span></button>
@@ -3519,7 +3519,6 @@ async function openDM(id) {
 <button type="button" data-dm-action="report">⚑ <span><b>Report</b><small>Report this conversation</small></span></button></div></div>
       </div>
       <div class="dm-message-search"><span>⌕</span><input id="dmMessageSearch" placeholder="Search in this conversation…" autocomplete="off"><small id="dmSearchCount">${messages.length} messages</small></div>
-      <div class="dm-conversation-tools"><span>🔒 Private conversation</span><span id="dmTypingStatus" aria-live="polite">Quote a message to reply · Attach photos or files</span></div>
       <div
         id="dmMessages"
         class="messages dm-message-list"
@@ -3558,9 +3557,6 @@ async function openDM(id) {
           : ""
       }
 
-      <div class="dm-quick-replies" aria-label="Quick emoji">
-        <button type="button" data-dm-emoji="❤️">❤️</button><button type="button" data-dm-emoji="😂">😂</button><button type="button" data-dm-emoji="😭">😭</button><button type="button" data-dm-emoji="✨">✨</button><button type="button" data-dm-emoji="👍">👍</button>
-      </div>
       <form id="dmForm" class="composer dm-composer">
         <label class="dm-upload-btn" title="Attach photo, audio, video or file">📎
           <input id="dmFile" type="file" accept="image/*,audio/*,video/*,.pdf,.txt" hidden>
@@ -3591,7 +3587,6 @@ async function openDM(id) {
         loadDMList().catch(()=>{});
       }catch(error){toast(error.message||"Could not delete the message.");button.disabled=false;}
     });
-    $('dmCloseBtn')?.addEventListener('click',closeModal);
     dmSettings?.querySelectorAll('[data-dm-action]').forEach(btn=>btn.addEventListener('click',async()=>{
       const action=btn.dataset.dmAction;dmSettings.classList.add('hidden');
       if(action==='nickname'){modal(`<h2>Set nickname for this user</h2><p class="muted">Only you can see this nickname. Their username and account identity stay unchanged.</p><input id="privateNicknameInput" maxlength="50" value="${esc(privateNickname)}" placeholder="Private nickname"><div class="toolbar"><button class="primary" id="savePrivateNicknameBtn">Save</button></div>`);$('savePrivateNicknameBtn').onclick=async()=>{try{await api('/api/private-nickname',{method:'POST',body:JSON.stringify({targetId:user.id,nickname:$('privateNicknameInput').value.trim()})});closeModal();openDM(user.id);}catch(e){toast(e.message)}};return;}
@@ -4116,35 +4111,29 @@ async function openProfileActionDrawer(user,data={}){
   const canStaffAccount=canActOnTarget&&canFeature("manage_staff_accounts")&&canAccessStaffTarget(user);
   const canHistory=canActOnTarget&&canFeature("view_user_history")&&canAccessStaffTarget(user);
   modal(`<div class="profile-drawer quick-action-menu"><h2>Actions · @${esc(user.username||'user')}</h2>
-     <button class="quick-user-row" id="drawerPM"><span>💬</span><b>Private message</b><i>›</i></button>
-     <button class="quick-user-row" id="drawerLikeProfile"><span>❤️</span><b>Like profile</b><i>›</i></button>
      <button class="quick-user-row" id="drawerAddFriend"><span>👥</span><b>Add friend</b><i>›</i></button>
+     ${canShareWallet?'<button class="quick-user-row" id="drawerWallet"><span>🏧</span><b>Share Wallet</b><i>›</i></button>':''}
      <button class="quick-user-row" id="drawerBlock"><span>🚫</span><b>Block</b><i>›</i></button>
-     ${canStaffModification?'<button class="quick-user-row" id="drawerStaffModification"><span>🛠️</span><b>Staff modification</b><i>›</i></button>':''}
-     ${canShareWallet?'<button class="quick-user-row" id="drawerWallet"><span>💝</span><b>Share Wallet</b><i>›</i></button>':''}
-     ${canGiveRank?'<button class="quick-user-row" id="drawerGiveRank"><span>🏅</span><b>Give rank</b><i>›</i></button>':''}
-     ${canRoomRank?'<button class="quick-user-row" id="drawerRoomRank"><span>✨</span><b>Room rank</b><i>›</i></button>':''}
-     ${canRoomModerate?'<button class="quick-user-row" id="drawerRoomModerate"><span>🛡️</span><b>Room moderation</b><i>›</i></button>':''}
      ${canModerate?'<button class="quick-user-row" id="drawerModerateUser"><span>🛡️</span><b>Moderate user</b><i>›</i></button>':''}
      ${canStaffAccount?'<button class="quick-user-row" id="drawerStaffAccount"><span>⚙️</span><b>Staff account</b><i>›</i></button>':''}
-     ${canHistory?'<button class="quick-user-row" id="drawerUserHistory"><span>📜</span><b>User history</b><i>›</i></button>':''}
-     <button class="quick-user-row" id="drawerNickname"><span>✏️</span><b>Nickname</b><i>›</i></button>
-     <button class="quick-user-row" id="drawerReport"><span>⚑</span><b>Report user</b><i>›</i></button>
+     ${canStaffModification?'<button class="quick-user-row" id="drawerStaffModification"><span>🛠️</span><b>Staff modification</b><i>›</i></button>':''}
+     ${canRoomRank||canRoomModerate?'<button class="quick-user-row" id="drawerRoomAction"><span>✨</span><b>Room Action</b><i>›</i></button>':''}
    </div>`);
-  $('drawerPM')?.addEventListener('click',()=>{closeModal();openDM(id)});
-  $('drawerLikeProfile')?.addEventListener('click',async()=>{try{const r=await api(`/api/users/${encodeURIComponent(id)}/like`,{method:'POST'});closeModal();toast(r.liked?'Profile liked.':'Like removed.');}catch(e){toast(e.message)}});
   $('drawerAddFriend')?.addEventListener('click',async()=>{try{await friend(id);closeModal();}catch(e){toast(e.message)}});
   $('drawerBlock')?.addEventListener('click',async()=>{try{await block(id);closeModal();}catch(e){toast(e.message)}});
   $('drawerStaffModification')?.addEventListener('click',()=>staffAccountModificationModal(user));
   $('drawerWallet')?.addEventListener('click',event=>{event.preventDefault();event.stopPropagation();closeModal();shareWalletModal(user);});
-  $('drawerGiveRank')?.addEventListener('click',()=>rankFromProfile(user));
-  $('drawerRoomRank')?.addEventListener('click',()=>roomRankModal(user));
-  $('drawerRoomModerate')?.addEventListener('click',()=>roomModerationModal(user));
+  $('drawerRoomAction')?.addEventListener('click',()=>roomActionModal(user,{canRoomRank,canRoomModerate}));
   $('drawerModerateUser')?.addEventListener('click',()=>moderate(id));
   $('drawerStaffAccount')?.addEventListener('click',()=>staffAccountModal(user));
-  $('drawerUserHistory')?.addEventListener('click',()=>showUserActionHistory(id));
-  $('drawerNickname')?.addEventListener('click',async()=>{const current=(await api('/api/private-nicknames').catch(()=>({nicknames:{}}))).nicknames||{};const value=prompt('Private nickname for @'+(user.username||'user')+' (only you can see it):',current[id]||'');if(value===null)return;try{await api('/api/private-nickname',{method:'POST',body:JSON.stringify({targetId:id,nickname:value.trim()})});closeModal();toast(value.trim()?'Private nickname saved.':'Private nickname cleared.');}catch(e){toast(e.message)}});
-  $('drawerReport')?.addEventListener('click',async()=>{const reason=prompt('Why are you reporting this user?','Rule-breaking behavior');if(reason===null)return;try{await api('/api/report',{method:'POST',body:JSON.stringify({reportedUserId:id,reason})});closeModal();toast('Report submitted.');}catch(e){toast(e.message)}});
+}
+function roomActionModal(user,permissions){
+  const actions=[];
+  if(permissions.canRoomRank)actions.push('<button type="button" class="quick-user-row" id="roomActionRank"><span>✨</span><b>Room rank</b><i>›</i></button>');
+  if(permissions.canRoomModerate)actions.push('<button type="button" class="quick-user-row" id="roomActionModerate"><span>🛡️</span><b>Room moderation</b><i>›</i></button>');
+  modal('<div class="profile-drawer quick-action-menu"><h2>Room Action · @'+esc(user.username||'user')+'</h2>'+actions.join('')+'</div>');
+  $('roomActionRank')?.addEventListener('click',()=>roomRankModal(user));
+  $('roomActionModerate')?.addEventListener('click',()=>roomModerationModal(user));
 }
 async function roomModerationModal(user){
   const room=state.rooms.find(r=>String(r.id)===String(state.currentRoom));
