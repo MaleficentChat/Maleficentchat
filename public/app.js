@@ -2238,7 +2238,7 @@ function messageHTML(message) {
 
   return `
     <div
-      class="msg ${message.userId===state.user?.id?"mine":"theirs"}"
+      class="msg theirs ${message.userId===state.user?.id?"own-message":""}"
       data-mid="${esc(message.id)}"
     >
       <button class="message-avatar-button" onclick="openQuickUserCard('${esc(user.id)}')" title="Quick profile actions">${avatar(user)}</button>
