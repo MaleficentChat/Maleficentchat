@@ -6035,12 +6035,13 @@ async function toggleMessagesDropdown(refresh=false){
     const nicknames=(await api('/api/private-nicknames').catch(()=>({nicknames:{}}))).nicknames||{};
     const filters=[["all","▤","All"],["unread","●","Unread"],["pinned","📌","Pinned"],["archived","▣","Archived"],["muted","🔕","Muted"]];
     const visible=all.filter(c=>{
-      const id=String(c.user?.id),unread=Number(c.unreadCount||0)>0;
+      const id=String(c.user?.id),unread=Number(c.unreadCount||0)>0,archived=!!prefs.archived?.[id];
+      if(activeFilter==="archived")return archived;
+      if(archived)return false;
       if(activeFilter==="unread")return unread;
       if(activeFilter==="pinned")return !!prefs.pinned?.[id];
-      if(activeFilter==="archived")return !!prefs.archived?.[id];
       if(activeFilter==="muted")return !!prefs.muted?.[id];
-      return activeFilter==="all"?!prefs.archived?.[id]:true;
+      return true;
     }).slice(0,20);
     const unreadCount=all.reduce((n,c)=>n+Number(c.unreadCount||0),0);
     box.innerHTML=`<div class="notification-dropdown-head"><div><b>✉ Messages</b><small class="notification-unread-summary">${unreadCount} unread</small></div><button class="mini" id="refreshHeaderDM" type="button" title="Refresh conversations">↻</button></div>
