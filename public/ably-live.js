@@ -1,7 +1,7 @@
 
 /* Ably Chat realtime transport for public rooms. The backend remains authoritative. */
 (()=>{
-  let chatClient=null,activeRoom=null,activeRoomName=null,subscription=null,seen=new Set(),connecting=null;
+  let chatClient=null,activeRoom=null,activeRoomName=null,subscription=null,seen=new Set(),connecting=null,activeUserId=null;
   const enabled=()=>!!(window.Ably&&window.Ably.Realtime&&window.AblyChat&&window.AblyChat.ChatClient);
   async function getClient(){
     if(chatClient)return chatClient;
@@ -31,14 +31,20 @@
     })().finally(()=>{connecting=null;});
     return connecting;
   }
+  async function setUser(userId){
+    const next=String(userId||"");
+    if(activeUserId&&next&&activeUserId!==next)await close();
+    activeUserId=next;
+  }
+  async function leaveRoom(){
+    if(activeRoom){try{subscription?.unsubscribe?.();await activeRoom.detach();}catch{}}
+    activeRoom=null;activeRoomName=null;subscription=null;
+  }
   async function joinRoom(roomId){
     if(!roomId)return;
     const id=String(roomId),name="mc-room-"+id;
     if(activeRoomName===name&&activeRoom)return;
-    if(activeRoom){
-      try{subscription?.unsubscribe?.();await activeRoom.detach();}catch{}
-      activeRoom=null;subscription=null;activeRoomName=null;
-    }
+    await leaveRoom();
     const client=await getClient();
     const room=await client.rooms.get(name);
     subscription=room.messages.subscribe(event=>{
@@ -55,13 +61,16 @@
       window.dispatchEvent(new CustomEvent("mc:ably-discontinuity",{detail:{roomId:id}}));
     });
   }
+  async function close(){
+    await leaveRoom();
+    if(chatClient){try{await chatClient.dispose();}catch{}chatClient=null;}
+    connecting=null;activeUserId=null;seen.clear();
+  }
   window.MaleficentAbly={
+    setUser,
     joinRoom,
+    leaveRoom,
     get status(){return chatClient?.connection?.status||"not-connected";},
-    close:async()=>{
-      try{subscription?.unsubscribe?.();if(activeRoom)await activeRoom.detach();}catch{}
-      activeRoom=null;activeRoomName=null;subscription=null;
-      if(chatClient){await chatClient.dispose();chatClient=null;}
-    }
+    close
   };
 })();
