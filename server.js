@@ -2302,6 +2302,8 @@ app.get("/api/rooms",auth,async(req,res)=>{
   db.rooms=allRooms;
   const joinToken=String(req.headers["x-room-join-token"]||"");
   const rooms=allRooms.filter(room=>{
+    // Do not expose the retired Main Room, even if an old database row remains.
+    if(String(room.name||"").trim().toLowerCase()==="main room")return false;
     if(!roomIsPrivate(room))return true;
     if(roomOwnerOrGlobal(viewer,room)||roomRole(room.id,viewer.id)!=="USER")return true;
     return verifyRoomJoinToken(joinToken,viewer.id,room);
@@ -4038,7 +4040,7 @@ async function auroraRoomMessage(text, roomId){
   db.messages.push(notice); save(); io.to('room:'+roomId).emit('message',notice); return notice;
 }
 function systemNotice(text, roomId=null){
-  const targetRoom=roomId||((db.rooms.find(x=>/^main room 1$/i.test(String(x.name||'')))||db.rooms.find(x=>x.id==='main'||String(x.name).toLowerCase()==='main room')||db.rooms[0])?.id||null);
+  const targetRoom=roomId||(db.rooms.find(x=>/^teen chat$/i.test(String(x.name||"")))||db.rooms.find(x=>/^adult chat$/i.test(String(x.name||"")))||db.rooms[0])?.id||null;
   if(targetRoom){auroraRoomMessage(text,targetRoom).catch(err=>console.error("Aurora notice failed:",err.message));}
   else {const notice={id:id(),system:true,username:'Aurora',displayName:'Aurora',rank:'BOT',text:String(text),roomId:null,time:Date.now(),reactions:{},pinned:false,deleted:false};io.emit('system-message',notice);}
 }
@@ -4408,7 +4410,7 @@ app.post(
 
     systemAudit({target:target.id,actor:actor.id,actorUsername:actor.username,action,reason:cleanText(req.body.reason)||action,source:"staff",durationMinutes:(action==="MUTE"||action==="KICK")?Math.max(1,Number(req.body.minutes)||10):0});
     save();
-    // Warnings are private account-level notices, never public Main Room announcements.
+    // Warnings are private account-level notices, never public room announcements.
     if(action!=="WARN"){
       const actionText={MUTE:'muted',KICK:'kicked',BAN:'banned',UNMUTE:'unmuted',REVOKE_MUTE:'unmuted',REVOKE_BAN:'unbanned',REVOKE_KICK:'unkicked'}[action]||action.toLowerCase();
       // Moderation outcomes are delivered privately to the affected account.
@@ -4482,13 +4484,12 @@ app.post("/api/users/:id/action-history/clear",auth,(req,res)=>{
 
 app.get("/api/owner/message-persistence-status",auth,ownerOnly,async(req,res)=>{
   // Read-only diagnostic: never changes or clears message history.
-  const [dbInfo,roomCount,dmCount,latestRoom,latestDm,mainRoom] = await Promise.all([
+  const [dbInfo,roomCount,dmCount,latestRoom,latestDm] = await Promise.all([
     pool.query("SELECT current_database() AS database, current_schema() AS schema"),
     pool.query("SELECT COUNT(*)::int AS count FROM room_messages"),
     pool.query("SELECT COUNT(*)::int AS count FROM private_messages"),
     pool.query("SELECT MAX(created_at) AS latest FROM room_messages"),
-    pool.query("SELECT MAX(created_at) AS latest FROM private_messages"),
-    pool.query("SELECT id,name FROM rooms WHERE LOWER(TRIM(name))='main room' ORDER BY id")
+    pool.query("SELECT MAX(created_at) AS latest FROM private_messages")
   ]);
   res.set("Cache-Control","no-store");
   res.json({
@@ -4499,7 +4500,6 @@ app.get("/api/owner/message-persistence-status",auth,ownerOnly,async(req,res)=>{
     database:dbInfo.rows[0],
     roomMessages:{count:roomCount.rows[0].count,latestAt:latestRoom.rows[0].latest},
     privateMessages:{count:dmCount.rows[0].count,latestAt:latestDm.rows[0].latest},
-    mainRooms:mainRoom.rows
   });
 });
 
