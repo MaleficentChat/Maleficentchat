@@ -14,7 +14,39 @@ const session=require("express-session");
 const multer=require("multer");
 const {createWorker}=require("tesseract.js");
 const {Server}=require("socket.io");
+const Ably=require("ably");
 const {initDB,loadState,persistState,pool}=require("./db");
+/*
+ * Ably Chat bridge. PostgreSQL remains the source of truth; the existing
+ * authenticated HTTP routes persist every message before this best-effort
+ * realtime publish. Browser clients receive subscribe-only tokens.
+ */
+let ablyServerChatPromise=null;
+async function getAblyServerChat(){
+  if(!process.env.ABLY_API_KEY)return null;
+  if(!ablyServerChatPromise){
+    ablyServerChatPromise=(async()=>{
+      const {ChatClient}=await import("@ably/chat");
+      const realtime=new Ably.Realtime({key:process.env.ABLY_API_KEY,clientId:"maleficent-chat-server"});
+      return new ChatClient(realtime,{logLevel:"error"});
+    })().catch(error=>{ablyServerChatPromise=null;throw error;});
+  }
+  return ablyServerChatPromise;
+}
+async function publishAblyRoomMessage(message){
+  if(!process.env.ABLY_API_KEY||!message?.roomId)return false;
+  const roomRecord=db.rooms.find(item=>String(item.id)===String(message.roomId));
+  // Do not leak password-protected or private rooms through the public-room bridge.
+  if(!roomRecord||roomIsPrivate(roomRecord)||roomRecord.locked||roomRecord.passwordHash)return false;
+  const chat=await getAblyServerChat();
+  const room=await chat.rooms.get("mc-room-"+String(message.roomId));
+  await room.messages.send({
+    text:String(message.text||" "),
+    metadata:{maleficentChatMessage:message}
+  });
+  return true;
+}
+
 const {initSocialFeatureTables,registerSocialFeatureRoutes}=require("./social-features");
 let firebaseAdminApp=null;
 function getFirebaseAdmin(){
@@ -1051,6 +1083,35 @@ async function auth(req,res,next){
 
   next();
 }
+
+
+app.get("/api/ably-token",auth,async(req,res)=>{
+  const apiKey=String(process.env.ABLY_API_KEY||"").trim();
+  if(!apiKey)return res.status(503).json({error:"Ably is not configured on the server."});
+  try{
+    const actor=current(req);
+    const clientId="mc-user-"+String(actor.id);
+    const capability={};
+    // A token can subscribe only to rooms that are public and not password locked.
+    // The Chat SDK appends ::$chat to each room's underlying channel name.
+    for(const room of db.rooms||[]){
+      if(roomIsPrivate(room)||room.locked||room.passwordHash)continue;
+      capability["mc-room-"+String(room.id)+"::$chat"]=["subscribe","history"];
+    }
+    if(!Object.keys(capability).length)return res.status(403).json({error:"No public chat rooms are currently available."});
+    const tokenIssuer=new Ably.Rest({key:apiKey,clientId:"maleficent-chat-token-issuer"});
+    const tokenRequest=await tokenIssuer.auth.createTokenRequest({
+      clientId,
+      capability:JSON.stringify(capability),
+      ttl:60*60*1000
+    });
+    res.set("Cache-Control","no-store");
+    res.json(tokenRequest);
+  }catch(error){
+    console.error("Ably token request failed:",error?.message||error);
+    res.status(503).json({error:"Could not establish a secure realtime connection."});
+  }
+});
 
 require("./entertainment").registerEntertainmentRoutes({app,auth,current,pool,uploadRoot:UP,persistUploadedMedia});
 registerSocialFeatureRoutes({app,auth,current,pool,storeMediaBuffer,hasFeature,getState:()=>db});
@@ -2924,6 +2985,7 @@ app.post("/api/rooms/:id/messages",auth,featureAllowed("send_messages"),upload.s
         [bankMessage.id,Number(r.id),JSON.stringify(bankMessage)]);
       db.messages.push(bankMessage);
       io.to("room:"+r.id).emit("message",bankMessage);
+       publishAblyRoomMessage(bankMessage).catch(error=>console.error("Ably room publish failed:",error?.message||error));
       return res.json({message:bankMessage,command:true});
     }
     if(canonicalCommand==="convert"){
@@ -2943,6 +3005,7 @@ app.post("/api/rooms/:id/messages",auth,featureAllowed("send_messages"),upload.s
         [walletMessage.id,Number(r.id),JSON.stringify(walletMessage)]);
       db.messages.push(walletMessage);
       io.to("room:"+r.id).emit("message",walletMessage);
+       publishAblyRoomMessage(walletMessage).catch(error=>console.error("Ably room publish failed:",error?.message||error));
       return res.json({message:walletMessage,command:true,diamonds:converted.diamonds,gold:converted.gold});
     }
     if(canonicalCommand==="steal"){
@@ -2999,6 +3062,7 @@ app.post("/api/rooms/:id/messages",auth,featureAllowed("send_messages"),upload.s
         [stealMessage.id,Number(r.id),JSON.stringify(stealMessage)]);
       db.messages.push(stealMessage);
       io.to("room:"+r.id).emit("message",stealMessage);
+       publishAblyRoomMessage(stealMessage).catch(error=>console.error("Ably room publish failed:",error?.message||error));
       return res.json({message:stealMessage,command:true,outcome,amount});
     }
     if(canonicalCommand==="welcome"){
@@ -3016,6 +3080,7 @@ app.post("/api/rooms/:id/messages",auth,featureAllowed("send_messages"),upload.s
         [welcomeMessage.id,Number(r.id),JSON.stringify(welcomeMessage)]);
       db.messages.push(welcomeMessage);
       io.to("room:"+r.id).emit("message",welcomeMessage);
+       publishAblyRoomMessage(welcomeMessage).catch(error=>console.error("Ably room publish failed:",error?.message||error));
       return res.json({message:welcomeMessage,command:true});
     }
     if(canonicalCommand==="ship"){
@@ -3037,6 +3102,7 @@ app.post("/api/rooms/:id/messages",auth,featureAllowed("send_messages"),upload.s
         [shipMessage.id,Number(r.id),JSON.stringify(shipMessage)]);
       db.messages.push(shipMessage);
       io.to("room:"+r.id).emit("message",shipMessage);
+       publishAblyRoomMessage(shipMessage).catch(error=>console.error("Ably room publish failed:",error?.message||error));
       return res.json({message:shipMessage,command:true});
     }
     if(canonicalCommand==="bread"){
@@ -3055,6 +3121,7 @@ app.post("/api/rooms/:id/messages",auth,featureAllowed("send_messages"),upload.s
         [breadMessage.id,Number(r.id),JSON.stringify(breadMessage)]);
       db.messages.push(breadMessage);
       io.to("room:"+r.id).emit("message",breadMessage);
+       publishAblyRoomMessage(breadMessage).catch(error=>console.error("Ably room publish failed:",error?.message||error));
       return res.json({message:breadMessage,command:true});
     }
     if(canonicalCommand==="brain"){
@@ -3073,6 +3140,7 @@ app.post("/api/rooms/:id/messages",auth,featureAllowed("send_messages"),upload.s
         [brainMessage.id,Number(r.id),JSON.stringify(brainMessage)]);
       db.messages.push(brainMessage);
       io.to("room:"+r.id).emit("message",brainMessage);
+       publishAblyRoomMessage(brainMessage).catch(error=>console.error("Ably room publish failed:",error?.message||error));
       return res.json({message:brainMessage,command:true});
     }
     if(canonicalCommand==="rose"){
@@ -3091,6 +3159,7 @@ app.post("/api/rooms/:id/messages",auth,featureAllowed("send_messages"),upload.s
         [roseMessage.id,Number(r.id),JSON.stringify(roseMessage)]);
       db.messages.push(roseMessage);
       io.to("room:"+r.id).emit("message",roseMessage);
+       publishAblyRoomMessage(roseMessage).catch(error=>console.error("Ably room publish failed:",error?.message||error));
       return res.json({message:roseMessage,command:true});
     }
     if(canonicalCommand==="roast" || canonicalCommand==="aura"){
@@ -3126,6 +3195,7 @@ app.post("/api/rooms/:id/messages",auth,featureAllowed("send_messages"),upload.s
         [botMessage.id,Number(r.id),JSON.stringify(botMessage)]);
       db.messages.push(botMessage);
       io.to("room:"+r.id).emit("message",botMessage);
+       publishAblyRoomMessage(botMessage).catch(error=>console.error("Ably room publish failed:",error?.message||error));
       return res.json({message:botMessage,command:true});
     }
     if(commandKey!=="clear")return res.status(400).json({error:"Unknown command. Available commands: /clear, /Abrakadabra, /welcome, /ship, /roast, /aura, /rose, /bread, and /brain."});
@@ -3196,6 +3266,7 @@ app.post("/api/rooms/:id/messages",auth,featureAllowed("send_messages"),upload.s
     roomDelivery=roomDelivery.to("user:"+memberId);
   }
   roomDelivery.emit("message",m);
+  publishAblyRoomMessage(m).catch(error=>console.error("Ably room publish failed:",error?.message||error));
   res.json({message:m,autoMuted});
 
   setImmediate(async()=>{
@@ -3227,6 +3298,7 @@ app.post("/api/rooms/:id/messages",auth,featureAllowed("send_messages"),upload.s
           await pool.query(`INSERT INTO room_messages(id,room_id,data,created_at) VALUES($1,$2,$3::jsonb,NOW())`,[bot.id,Number(r.id),JSON.stringify(bot)]);
           db.messages.push(bot);
           io.to("room:"+r.id).emit("message",bot);
+       publishAblyRoomMessage(bot).catch(error=>console.error("Ably room publish failed:",error?.message||error));
         }
       }
       const botMention=anonymousMode?null:text.match(/^@([A-Za-z0-9_]+)\s+([\s\S]*)/);
@@ -3238,6 +3310,7 @@ app.post("/api/rooms/:id/messages",auth,featureAllowed("send_messages"),upload.s
           await pool.query(`INSERT INTO room_messages(id,room_id,data,created_at) VALUES($1,$2,$3::jsonb,NOW())`,[bot.id,Number(r.id),JSON.stringify(bot)]);
           db.messages.push(bot);
           io.to("room:"+r.id).emit("message",bot);
+       publishAblyRoomMessage(bot).catch(error=>console.error("Ably room publish failed:",error?.message||error));
         }
       }
       // Keep message activity in memory without triggering a full-site save per message.
@@ -4037,7 +4110,7 @@ app.post(
 async function auroraRoomMessage(text, roomId){
   const notice={id:id(),system:true,username:'Aurora',displayName:'Aurora',rank:'BOT',text:String(text),roomId:String(roomId),time:Date.now(),reactions:{},pinned:false,deleted:false};
   try{await pool.query(`INSERT INTO room_messages(id,room_id,data,created_at) VALUES($1,$2,$3::jsonb,NOW())`,[notice.id,Number(roomId),JSON.stringify(notice)]);}catch(err){console.error("Aurora message persistence failed:",err.message);}
-  db.messages.push(notice); save(); io.to('room:'+roomId).emit('message',notice); return notice;
+  db.messages.push(notice); save(); io.to('room:'+roomId).emit('message',notice); publishAblyRoomMessage(notice).catch(error=>console.error("Ably Aurora publish failed:",error?.message||error)); return notice;
 }
 function systemNotice(text, roomId=null){
   const targetRoom=roomId||((db.rooms.find(x=>/^main room 1$/i.test(String(x.name||'')))||db.rooms.find(x=>x.id==='main'||String(x.name).toLowerCase()==='main room')||db.rooms[0])?.id||null);
@@ -7160,7 +7233,8 @@ app.post('/api/rooms/:id/gif',auth,featureAllowed('gif_sending'),async(req,res)=
   u.gold=Number(u.gold||0)-cost;
   const m={id:id(),roomId:String(r.id),userId:u.id,username:u.username,displayName:u.displayName,rank:u.rank,avatar:u.avatar||'',text:'',type:'gif',gifUrl:url,reactions:{},edited:false,deleted:false,pinned:false,time:Date.now(),delivered:true};
   await pool.query(`INSERT INTO room_messages(id,room_id,user_id,data,created_at) VALUES($1,$2,$3,$4::jsonb,NOW())`,[m.id,Number(r.id),Number(u.id),JSON.stringify(m)]);
-  db.messages.push(m);db.goldTransactions ||= [];db.goldTransactions.push({id:id(),userId:u.id,amount:-cost,reason:'GIF sent',time:Date.now()});save();io.to('room:'+r.id).emit('message',m);res.json({ok:true,message:m,gold:u.gold,cost});
+  db.messages.push(m);db.goldTransactions ||= [];db.goldTransactions.push({id:id(),userId:u.id,amount:-cost,reason:'GIF sent',time:Date.now()});save();io.to('room:'+r.id).emit('message',m);
+       publishAblyRoomMessage(m).catch(error=>console.error("Ably room publish failed:",error?.message||error));res.json({ok:true,message:m,gold:u.gold,cost});
 });
 
 app.post('/api/rooms/:id/youtube',auth,featureAllowed('use_youtube'),async(req,res)=>{
