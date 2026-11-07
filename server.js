@@ -5836,9 +5836,10 @@ function accountModificationAccess(req,res,next){
 app.patch('/api/staff/user/:id/profile',auth,accountModificationAccess,async(req,res)=>{
   const {profileActor:actor,profileTarget:target}=req;
   const body=req.body||{};
-  const limits={displayName:32,gender:50,mood:80,bio:500,pronouns:60,birthday:40,location:120,website:240,banner:500};
+  const limits={displayName:32,gender:50,mood:80,bio:500,pronouns:60,birthday:40,location:120,website:240,banner:500,country:80,relationship:80};
   const updates={};
   for(const [key,max] of Object.entries(limits))if(body[key]!==undefined)updates[key]=cleanText(body[key]).trim().slice(0,max);
+  if(body.interests!==undefined)updates.interests=Array.isArray(body.interests)?body.interests.map(x=>cleanText(x).slice(0,40)).slice(0,20):String(body.interests).split(',').map(x=>cleanText(x).slice(0,40)).filter(Boolean).slice(0,20);
   if(body.displayName!==undefined&&!updates.displayName)return res.status(400).json({error:'Display name cannot be empty.'});
   if(body.website!==undefined&&updates.website){try{const url=new URL(updates.website);if(!['http:','https:'].includes(url.protocol))throw new Error();}catch{return res.status(400).json({error:'Website must be a valid http or https URL.'});}}
   let birthDateUpdate;
@@ -5872,6 +5873,15 @@ app.post('/api/staff/user/:id/avatar',auth,accountModificationAccess,upload.sing
 app.delete('/api/staff/user/:id/avatar',auth,accountModificationAccess,(req,res)=>{
   const target=req.profileTarget;target.avatar='';save();log(req.profileActor,'ACCOUNT_AVATAR_MODIFY',target.username,{operation:'remove'});res.json({ok:true,user:safeUser(target)});
 });
+app.post('/api/staff/user/:id/banner',auth,accountModificationAccess,upload.single('file'),async(req,res)=>{
+  const file=req.file;
+  if(!file)return res.status(400).json({error:'Choose an image to upload.'});
+  if(await checkRestrictedMediaUpload(req,res,current(req),file))return;
+  if(!/^image\/(png|jpe?g|gif|webp|avif)$/i.test(file.mimetype||'')){await fs.promises.unlink(file.path).catch(()=>{});return res.status(400).json({error:'Profile backgrounds must be PNG, JPG, GIF, WebP or AVIF images.'});}
+  const target=req.profileTarget;target.banner='/uploads/'+file.filename;save();log(req.profileActor,'ACCOUNT_BANNER_MODIFY',target.username,{operation:'upload'});
+  res.json({ok:true,user:safeUser(target)});
+});
+
 
 app.patch('/api/staff/user/:id/account',auth,(req,res)=>{
   const actor=current(req), target=findUser(req.params.id);
@@ -6815,7 +6825,7 @@ app.put('/api/profile',auth,(req,res)=>{
     u.privacy={...(u.privacy||{lastSeen:true,online:true})};
     for(const key of ['lastSeen','online','country','location','website','bio','pronouns','relationship','mood','interests','showGuestbook']) if(req.body.privacy[key]!==undefined)u.privacy[key]=!!req.body.privacy[key];
   }
-  const next={displayName:req.body.displayName,bio:req.body.bio,pronouns:req.body.pronouns,relationship:req.body.relationship,mood:req.body.mood,country:req.body.country,location:req.body.location,website:req.body.website,interests:req.body.interests,profileColor:req.body.profileColor,profileAccentColor:req.body.profileAccentColor,theme:req.body.theme,badge:req.body.badge,banner:req.body.banner};
+  const next={displayName:req.body.displayName,gender:req.body.gender,bio:req.body.bio,pronouns:req.body.pronouns,relationship:req.body.relationship,mood:req.body.mood,country:req.body.country,location:req.body.location,website:req.body.website,interests:req.body.interests,profileColor:req.body.profileColor,profileAccentColor:req.body.profileAccentColor,theme:req.body.theme,badge:req.body.badge,banner:req.body.banner};
   for(const [k,v] of Object.entries(next)) if(v!==undefined){
     if(k==='displayName') u[k]=String(v).trim().slice(0,40);
     else if(k==='interests') u[k]=Array.isArray(v)?v.map(x=>String(x).slice(0,40)).slice(0,20):String(v).split(',').map(x=>x.trim()).filter(Boolean).slice(0,20);
