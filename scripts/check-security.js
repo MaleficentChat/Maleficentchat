@@ -52,8 +52,12 @@ assert.match(server, /sender_username:row\.sender_username\|\|data\.fromUsername
   "owner private-message inspection must normalize sender/receiver fields from PostgreSQL");
 assert.match(server, /Private-message report evidence failed/,
   "staff private-message evidence endpoint must handle lookup errors");
-assert.match(server, /isPermanentMainRoom[\s\S]*!hasFeature\(u,"join_rooms"\)/,
-  "joining the permanent Main Room must not depend on optional room-join grants");
+assert.match(server, /const isAgeRoom=\/\^\(teen chat\|adult chat\)\$\/i\.test\(String\(r\.name\|\|""\)\.trim\(\)\)/,
+  "Teen Chat and Adult Chat must remain the only age-room join-grant exemptions");
+assert.match(server, /if\(!isAgeRoom&&!isStaffAccount&&!hasFeature\(u,"join_rooms"\)\)/,
+  "custom rooms must continue to enforce the room-join grant");
+assert.match(server, /UPDATE rooms SET is_default=false WHERE name IN \(\x27Main Room\x27,\x27Teen Chat\x27,\x27Adult Chat\x27\)/,
+  "legacy Main Room must not remain a default room");
 assert.match(fs.readFileSync("public/app.js", "utf8"), /state\.rooms\.find\(r => String\(r\.id\) === String\(id\)\)/,
   "room join must tolerate numeric/string room IDs");
 

@@ -88,38 +88,7 @@ dmReplyText: null,
 };
 
 
-window.addEventListener("mc:ably-dm",event=>{
-  const message=event.detail;
-  if(!message)return;
-  const from=String(message.from??message.senderId??"");
-  const to=String(message.to??message.receiverId??"");
-  const me=String(state.user?.id??"");
-  if(from!==me&&to!==me)return;
-  refreshTopDMUnreadBadge();
-  const peer=String(state.dmUserId??"");
-  if(!peer||!(from===peer||to===peer))return;
-  if(!state.dmMessages)state.dmMessages=[];
-  const messageId=String(message.id||"");
-  if(messageId&&state.dmMessages.some(item=>String(item.id)===messageId))return;
-  state.dmMessages.push(message);
-  const list=$("dmMessages");
-  if(list&&state.dmPeerUser){
-    list.querySelector(".muted")?.remove();
-    list.insertAdjacentHTML("beforeend",dmMessageHTML(message,state.dmMessages,state.dmPeerUser));
-    list.scrollTop=list.scrollHeight;
-  }
-  loadDMList().catch(()=>{});
-});
-window.addEventListener("mc:ably-message",event=>{
-  const message=event.detail;
-  if(!message||String(message.roomId)!==String(state.currentRoom))return;
-  const messageId=String(message.id||"");
-  if(messageId&&Array.from(document.querySelectorAll("[data-mid]")).some(node=>String(node.dataset.mid)===messageId))return;
-  appendMessage(message);
-  if(document.hidden&&String(message.userId||"")!==String(state.user?.id)){
-    showSiteNotification(message.displayName||message.username||"New message",String(message.text||"New room message").slice(0,180),"rooms");
-  }
-});
+
 
 const rankIcon = {
   MEMBER: "⚡",
@@ -828,34 +797,18 @@ async function syncLiveMessages(){
     }
 }
 let liveSyncWakeListenersBound=false;
-let liveRoomPollTimer=null, liveDMPollTimer=null;
-let liveRoomLastFallbackPoll=0, liveDMLastFallbackPoll=0;
+let liveWarningPollTimer=null;
 function startLiveSync(){
-  // Socket.IO is the primary instant transport. Reconcile only the active room
-  // and open DM every 500ms while connected (1s during reconnect), using one
-  // scheduler so simultaneous room/DM polls never launch duplicate sync passes.
-  if(liveRoomPollTimer)clearInterval(liveRoomPollTimer);
-  if(liveDMPollTimer)clearInterval(liveDMPollTimer);
-  liveDMPollTimer=null;
-  syncLiveMessages();
-  // Keep checking server-side outstanding warnings; reloads never acknowledge them.
-  setInterval(()=>{if(state.user&&!activeWarningNotificationId)loadPendingWarning().catch(()=>{});},5000);
-  liveRoomPollTimer=setInterval(()=>{
-    const now=Date.now(), connected=!!state.socket?.connected;
-    const interval=connected?500:1000;
-    const roomDue=!!(state.currentRoom&&!liveRoomSyncBusy&&now-liveRoomLastFallbackPoll>=interval);
-    const dmDue=!!(state.dmUserId&&!liveDMSyncBusy&&now-liveDMLastFallbackPoll>=interval);
-    if(!state.user||(!roomDue&&!dmDue))return;
-    if(roomDue)liveRoomLastFallbackPoll=now;
-    if(dmDue)liveDMLastFallbackPoll=now;
-    syncLiveMessages().catch(error=>console.warn("Automatic live-message sync failed:",error?.message||error));
-  },500);
-  // Bind once so app focus/reconnect immediately catches up without sending a message.
+  // Socket.IO delivers live room and DM events. REST history is used only for
+  // initial load, reconnect recovery, and waking the tab after it was inactive.
+  syncLiveMessages().catch(error=>console.warn("Initial live-message recovery failed:",error?.message||error));
+  if(liveWarningPollTimer)clearInterval(liveWarningPollTimer);
+  liveWarningPollTimer=setInterval(()=>{if(state.user&&!activeWarningNotificationId)loadPendingWarning().catch(()=>{});},5000);
   if(!liveSyncWakeListenersBound){
     liveSyncWakeListenersBound=true;
-    document.addEventListener("visibilitychange",()=>{if(!document.hidden&&state.user)syncLiveMessages();});
-    window.addEventListener("focus",()=>{if(state.user)syncLiveMessages();});
-    window.addEventListener("online",()=>{if(state.user)syncLiveMessages();});
+    document.addEventListener("visibilitychange",()=>{if(!document.hidden&&state.user)syncLiveMessages().catch(()=>{});});
+    window.addEventListener("focus",()=>{if(state.user)syncLiveMessages().catch(()=>{});});
+    window.addEventListener("online",()=>{if(state.user)syncLiveMessages().catch(()=>{});});
   }
 }
 async function authenticateSocketAndJoinRoom(socket=state.socket, syncHistory=true) {
@@ -932,7 +885,7 @@ async function start() {
 
   state.socket.on("connect", () => {
     loadNotifications();
-    // A connect event can fire before or after the login flow joins Main Room.
+    // A connect event can fire before or after the login flow joins the age-appropriate chat.
     // Authenticate and restore room membership first, then reconcile both live
     // channels so messages missed while offline appear without reopening a view.
     const connectedSocket=state.socket;
@@ -955,8 +908,7 @@ async function start() {
       try{const access=JSON.parse(safeStorage.getItem("mc_room_join")||"null");if(String(access?.roomId)===String(d.roomId))safeStorage.removeItem("mc_room_join");}catch{}
       state.currentRoom=null;state.currentRoomRole="USER";state.messages=[];
       if($("messages"))$("messages").innerHTML="";
-      const main=state.rooms.find(room=>room.isDefault)||state.rooms.find(room=>/^main room$/i.test(String(room.name||"")));
-      if(main)joinRoom(main.id).catch(()=>{});
+      try{const fallbackRoom=roomForAgeRouting();joinRoom(fallbackRoom.id).catch(()=>renderRooms());}catch{renderRooms();}
     }
   });
   state.socket.on("dm-typing",d=>{
@@ -1027,8 +979,7 @@ async function start() {
     state.messages=[];
     if($("messages"))$("messages").innerHTML="";
     toast("You were removed from this room. Reason: "+String(data?.reason||"Room rules"));
-    const main=state.rooms.find(r=>/^main room$/i.test(String(r.name||"")));
-    if(main&&String(main.id)!==String(state.currentRoom))joinRoom(main.id).catch(()=>{});
+    try{const fallbackRoom=roomForAgeRouting();if(String(fallbackRoom.id)!==String(state.currentRoom))joinRoom(fallbackRoom.id).catch(()=>renderRooms());}catch{renderRooms();}
   });
   state.socket.on("room:clear", () => {
     if (state.currentRoom) {
@@ -1147,7 +1098,7 @@ async function start() {
   let joined=false;
   const invite=roomInviteFromHash();
   if(invite?.roomId&&state.rooms.some(room=>String(room.id)===invite.roomId))joined=await joinRoom(invite.roomId);
-  // Every authenticated visit should land directly in its selected default room, not the room directory.
+  // Every authenticated visit should land directly in the age-appropriate chat, not the room directory.
   // Avoid renderView() here because it re-fetches the room list and briefly returns to the directory.
   state.view = "rooms";
   document.querySelectorAll(".view").forEach(view => view.classList.add("hidden"));
@@ -1162,13 +1113,13 @@ async function start() {
         renderRooms();
         try { mainRoom=roomForAgeRouting(); } catch(error) { mainRoom=null; }
       }catch(e){
-        if(attempt===3)toast("Could not load Main Room: "+e.message);
+        if(attempt===3)toast("Could not load your chat room: "+e.message);
       }
     }
     if(mainRoom)joined=await joinRoom(String(mainRoom.id));
     if(!joined&&attempt<3)await new Promise(resolve=>setTimeout(resolve,500*(attempt+1)));
   }
-  if(!joined)toast("Main Room could not open automatically. Please open Rooms and try again.");
+  if(!joined)toast("Your chat room could not open automatically. Please open Rooms and try again.");
   await loadNotifications();
   // Notification Reply/Open actions deep-link directly into the sender conversation.
   const notificationPeer=new URL(window.location.href).searchParams.get("dm");
@@ -2068,12 +2019,6 @@ async function joinRoom(id) {
 
     const staffInfo=await api(`/api/rooms/${encodeURIComponent(id)}/staff`).catch(()=>({myRole:'USER'}));
     state.currentRoom = id;
-    if(window.MaleficentAbly){
-      const ablyEligible=!(room.isPrivate||room.private||room.locked||room.passwordHash||String(room.visibility||"").toLowerCase()==="private");
-      await window.MaleficentAbly.setUser(state.user?.id);
-      if(ablyEligible)window.MaleficentAbly.joinRoom(id).catch(error=>console.warn("Ably room attach failed; Socket.IO fallback remains active:",error?.message||error));
-      else window.MaleficentAbly.leaveRoom().catch(()=>{});
-    }
     const activeRoomTheme=state.rooms.find(r=>String(r.id)===String(id));applyRoomTheme();
     state.currentRoomRole=staffInfo.myRole||'USER';
     rememberMyRoom(id);
@@ -3986,7 +3931,6 @@ async function openDM(id) {
 
     state.dmUserId = String(id);
     state.dmPeerUser = user;
-    window.MaleficentAbly?.joinDM?.(id).catch(error=>console.warn("Ably DM connection failed; Socket.IO fallback remains active:",error?.message||error));
     // Remember the most recently opened conversation for inbox ordering.
     if(state.user?.id)safeStorage.setItem("mc_dm_last_opened_"+String(state.user.id),String(id));
 
