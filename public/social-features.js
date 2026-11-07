@@ -34,14 +34,14 @@ function bookEntry(entry,ownerId,isOwner){
  return '<article class="sf-entry"><div class="sf-entry-top"><b>'+esc(entry.title||"A memory")+'</b>'+(entry.pinned?'<span>📌</span>':'')+'</div>'+media+sticker+(entry.body?'<p>'+esc(entry.body)+'</p>':'')+'<div class="sf-entry-foot"><span>'+new Date(entry.created_at).toLocaleDateString()+'</span><span>♡ '+Number(entry.reaction_count||0)+'</span><span>◯ '+Number(entry.comment_count||0)+'</span></div><div class="sf-entry-actions"><button class="mini" data-sf-react="'+entry.id+'">🖤 React</button><button class="mini" data-sf-comments="'+entry.id+'">Comments</button>'+(isOwner?'<button class="mini danger" data-sf-delete="'+entry.id+'">Delete</button>':'')+'</div><div class="sf-comments" id="sfComments-'+entry.id+'"></div></article>';
 }
 async function loadScrapbook(userId,isOwner){
- const root=el(isOwner?"sfBookContent":"profileTabContent");if(!root||!userId)return;
+ const profileRoot=document.querySelector(".profile-modal #profileTabContent");const root=profileRoot||el("sfBookContent");if(!root||!userId)return;
  root.innerHTML='<p class="muted">Loading scrapbook…</p>';
  try{
   const d=await request("/api/social/scrapbooks/"+encodeURIComponent(userId));
   const book=d.scrapbook||{};
   const ownerMode=!!isOwner&&String(state.user?.id)===String(userId);
-  root.innerHTML='<div class="sf-book sf-theme-'+esc(book.theme||"midnight")+'"><div class="sf-book-head"><div><h2>'+esc(book.title||"My Scrapbook")+'</h2><p class="muted">'+esc(d.owner?.username||"")+'’s memories</p></div>'+(ownerMode?'<button class="primary" id="sfAddMemory">＋ Add memory</button>':'')+'</div><div class="sf-entry-grid">'+(d.entries||[]).map(x=>bookEntry(x,userId,ownerMode)).join("")+'</div>'+(d.entries?.length?'':'<div class="sf-empty">🌙 No memories here yet.</div>')+'</div>';
-  if(ownerMode)el("sfAddMemory")?.addEventListener("click",addMemory);
+  root.innerHTML='<div class="sf-book sf-theme-'+esc(book.theme||"midnight")+'"><div class="sf-book-head"><div><h2>'+esc(book.title||"My Scrapbook")+'</h2><p class="muted">'+esc(d.owner?.username||"")+'’s memories</p></div>'+(ownerMode?(profileRoot?'<button class="primary" id="sfOpenScrapbookEditor">✏️ Edit scrapbook</button>':'<button class="primary" id="sfAddMemory">＋ Add memory</button>'):'')+'</div><div class="sf-entry-grid">'+(d.entries||[]).map(x=>bookEntry(x,userId,ownerMode)).join("")+'</div>'+(d.entries?.length?'':'<div class="sf-empty">🌙 No memories here yet.</div>')+'</div>';
+  if(ownerMode){el("sfAddMemory")?.addEventListener("click",addMemory);el("sfOpenScrapbookEditor")?.addEventListener("click",()=>openSocialView("scrapbook"));}
   root.querySelectorAll("[data-sf-delete]").forEach(b=>b.addEventListener("click",async()=>{if(!confirm("Delete this scrapbook entry?"))return;try{await request("/api/social/scrapbooks/entries/"+b.dataset.sfDelete,{method:"DELETE"});loadScrapbook(userId,ownerMode);}catch(e){say(e.message);}}));
   root.querySelectorAll("[data-sf-react]").forEach(b=>b.addEventListener("click",async()=>{try{await request("/api/social/scrapbooks/entries/"+b.dataset.sfReact+"/reactions",{method:"POST",body:JSON.stringify({emoji:"🖤"})});say("Reaction saved.");}catch(e){say(e.message);}}));
   root.querySelectorAll("[data-sf-comments]").forEach(b=>b.addEventListener("click",()=>loadBookComments(b.dataset.sfComments)));
