@@ -19,20 +19,23 @@ async function initSocialFeatureTables(pool){
   await pool.query("CREATE INDEX IF NOT EXISTS social_confession_reports_status_idx ON social_confession_reports(status,created_at DESC)");
   await pool.query("CREATE TABLE IF NOT EXISTS social_confession_audit_logs(id BIGSERIAL PRIMARY KEY,confession_id UUID NOT NULL REFERENCES social_confessions(id) ON DELETE CASCADE,actor_id INTEGER REFERENCES users(id) ON DELETE SET NULL,action VARCHAR(40) NOT NULL,reason VARCHAR(500) NOT NULL,created_at TIMESTAMPTZ NOT NULL DEFAULT NOW())");
 }
-function registerSocialFeatureRoutes({app,auth,current,pool,storeMediaBuffer,hasFeature}){
+function registerSocialFeatureRoutes({app,auth,current,pool,storeMediaBuffer,hasFeature,getState}){
   const who=req=>current(req),clean=(v,n)=>String(v??"").trim().slice(0,n),int=v=>Number.isSafeInteger(Number(v))&&Number(v)>0?Number(v):null;
   const senior=u=>["OWNER","DEVELOPER"].includes(String(u?.rank||"").toUpperCase());
   const moderate=u=>senior(u)||(typeof hasFeature==="function"&&hasFeature(u,"moderate_user"));
   const ensureBook=async id=>{await pool.query("INSERT INTO social_scrapbooks(user_id) VALUES($1) ON CONFLICT(user_id) DO NOTHING",[id]);return (await pool.query("SELECT * FROM social_scrapbooks WHERE user_id=$1",[id])).rows[0];};
   const canView=async(req,id,visibility)=>{
     const u=who(req);if(String(u.id)===String(id))return true;if(visibility==="private")return false;if(visibility==="public")return true;
-    try{const q=await pool.query("SELECT 1 FROM friends WHERE status='accepted' AND ((user_id=$1 AND friend_id=$2) OR (user_id=$2 AND friend_id=$1)) LIMIT 1",[Number(u.id),Number(id)]);return q.rowCount>0;}catch{return false;}
+    const friends=getState?.()?.friends||[];
+    return friends.some(f=>String(f.status||"").toUpperCase()==="ACCEPTED"&&
+      ((String(f.a)===String(u.id)&&String(f.b)===String(id))||(String(f.b)===String(u.id)&&String(f.a)===String(id))));
   };
   app.get("/api/social/scrapbooks/:userId",auth,async(req,res)=>{
     const id=int(req.params.userId);if(!id)return res.status(400).json({error:"Invalid profile."});
     const owner=await pool.query("SELECT id,username FROM users WHERE id=$1",[id]);if(!owner.rowCount)return res.status(404).json({error:"Profile not found."});
     const book=await ensureBook(id);if(!await canView(req,id,book.visibility))return res.status(403).json({error:"This scrapbook is private."});
-    const entries=await pool.query("SELECT e.id,e.entry_type,e.title,e.body,e.media_key,e.sticker,e.visibility,e.pinned,e.created_at,(SELECT COUNT(*)::int FROM social_scrapbook_reactions r WHERE r.entry_id=e.id) AS reaction_count,(SELECT COUNT(*)::int FROM social_scrapbook_comments c WHERE c.entry_id=e.id AND c.status='visible') AS comment_count FROM social_scrapbook_entries e WHERE e.user_id=$1 AND (e.visibility='inherit' OR e.visibility=$2) ORDER BY e.pinned DESC,e.created_at DESC LIMIT 100",[id,book.visibility]);
+    const isOwner=String(actor(req).id)===String(id);
+    const entries=await pool.query("SELECT e.id,e.entry_type,e.title,e.body,e.media_key,e.sticker,e.visibility,e.pinned,e.created_at,(SELECT COUNT(*)::int FROM social_scrapbook_reactions r WHERE r.entry_id=e.id) AS reaction_count,(SELECT COUNT(*)::int FROM social_scrapbook_comments c WHERE c.entry_id=e.id AND c.status='visible') AS comment_count FROM social_scrapbook_entries e WHERE e.user_id=$1 AND ($3=true OR e.visibility='inherit' OR e.visibility=$2) ORDER BY e.pinned DESC,e.created_at DESC LIMIT 100",[id,book.visibility,isOwner]);
     res.json({owner:owner.rows[0],scrapbook:{title:book.title,theme:book.theme,layout:book.layout,visibility:book.visibility,allowComments:book.allow_comments},entries:entries.rows});
   });
   app.put("/api/social/scrapbooks/settings",auth,async(req,res)=>{
