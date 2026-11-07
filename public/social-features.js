@@ -103,7 +103,7 @@ async function loadMyConfessions(){
 }
 function installProfileTab(){
  const root=document.querySelector(".profile-modal"),tabs=root?.querySelector(".profile-tabs");if(!root||!tabs||tabs.querySelector('[data-sf-profile-tab]'))return;
- const userId=root.dataset.sfUserId,isSelf=root.dataset.sfIsSelf==="true";if(!userId)return;
+ const userId=root.dataset.sfUserId,isSelf=root.dataset.sfIsSelf==="true";if(!userId||(!isSelf&&root.dataset.sfShowScrapbook==="false"))return;
  const button=document.createElement("button");button.className="profile-tab";button.type="button";button.dataset.sfProfileTab="true";button.textContent="📖 Scrapbook";tabs.appendChild(button);
  button.addEventListener("click",()=>{tabs.querySelectorAll(".profile-tab").forEach(x=>x.classList.remove("active"));button.classList.add("active");loadScrapbook(userId,isSelf);});
 }
