@@ -6428,11 +6428,18 @@ async function loadNotifications() {
     if($("topNotifDot")) $("topNotifDot").classList.toggle("green",counts.all>0);
   } catch(error) {
     console.warn("Notification refresh failed",error);
+    // Keep the last known badge if a transient request fails; retry on resume.
   } finally {
     notificationRefreshPromise=null;
   }
   })();
   return notificationRefreshPromise;
+}
+// Refresh counts immediately when the app returns to the foreground.
+if(!window.__mcNotificationBadgeResumeBound){
+  window.__mcNotificationBadgeResumeBound=true;
+  window.addEventListener("pageshow",()=>{if(state.user)loadNotifications().catch(()=>{});});
+  document.addEventListener("visibilitychange",()=>{if(!document.hidden&&state.user)loadNotifications().catch(()=>{});});
 }
 // Notification counters are a background convenience, not a live chat
 // transport. Polling five APIs every 5 seconds was creating needless load.
@@ -6441,17 +6448,32 @@ setInterval(()=>{if(state.user)loadNotifications();},15000);
 setInterval(()=>{if(state.user)refreshTopDMUnreadBadge();},5000);
 setTimeout(()=>{if(state.user){loadNotifications();refreshTopDMUnreadBadge();}},1200);
 
-$("notifications").onclick=async()=>{
+async function openNotificationCenter(){
+  const button=$("notifications");
+  if(button){button.disabled=true;button.setAttribute("aria-busy","true");}
   try{
     const data=await api("/api/notifications");
-    const rows=data.notifications||[];
-    modal(`<div class="notification-center"><div class="notification-head"><div><h2>🔔 Notifications</h2><p class="muted">${rows.filter(n=>!n.read).length} unread</p></div><div class="toolbar"><button class="mini" id="markAllNotifications">Mark all read</button><button class="mini danger" id="clearNotifications">Clear all</button></div></div><div class="stack">${rows.map(n=>`<div class="card notification-card ${n.read?'':'unread'}"><div><b>${esc(n.title)}</b><p>${esc(n.text)}</p><small>${fmt(n.time)}</small></div><div class="toolbar"><button class="mini" data-notif-read="${esc(n.id)}">${n.read?'Read':'Mark read'}</button><button class="mini danger" data-notif-delete="${esc(n.id)}">×</button></div></div>`).join("")||'<p class="muted">No notifications.</p>'}</div></div>`);
-    document.querySelectorAll('[data-notif-read]').forEach(b=>b.onclick=async()=>{const row=b.closest('.notification-card');if(row?.querySelector('b')?.textContent==='Warning ⚠️'){closeModal();await loadNotifications();return;}await api('/api/notifications/'+encodeURIComponent(b.dataset.notifRead)+'/read',{method:'PATCH'});b.textContent='Read';row?.classList.remove('unread');loadNotifications();});
-    document.querySelectorAll('[data-notif-delete]').forEach(b=>b.onclick=async()=>{await api('/api/notifications/'+encodeURIComponent(b.dataset.notifDelete),{method:'DELETE'});b.closest('.notification-card')?.remove();loadNotifications();});
-    $('markAllNotifications').onclick=async()=>{await api('/api/notifications/read',{method:'POST'});closeModal();loadNotifications();toast('Notifications marked as read.');};
-    $('clearNotifications').onclick=async()=>{if(!confirm('Clear all notifications?'))return;await api('/api/notifications',{method:'DELETE'});closeModal();loadNotifications();toast('Notifications cleared.');};
-  }catch(e){toast(e.message)}
-};
+    const rows=Array.isArray(data.notifications)?data.notifications:[];
+    const unreadCount=rows.filter(n=>!n.read).length;
+    modal(`<div class="notification-center"><div class="notification-head"><div><h2>🔔 Notifications</h2><p class="muted">${unreadCount} unread</p></div><div class="toolbar"><button class="mini" id="markAllNotifications" type="button" ${unreadCount?'':'disabled'}>Mark all read</button><button class="mini danger" id="clearNotifications" type="button">Clear all</button></div></div><div class="stack">${rows.map(n=>`<div class="card notification-card ${n.read?'':'unread'}"><div><b>${esc(n.title||n.type||'Notification')}</b><p>${esc(n.text||n.message||'')}</p><small>${fmt(n.time)}</small></div><div class="toolbar"><button class="mini" data-notif-read="${esc(n.id)}" type="button">${n.read?'Read':'Mark read'}</button><button class="mini danger" data-notif-delete="${esc(n.id)}" type="button">×</button></div></div>`).join('')||'<p class="muted">No notifications.</p>'}</div></div>`);
+    document.querySelectorAll('[data-notif-read]').forEach(b=>b.onclick=async()=>{
+      try{const row=b.closest('.notification-card');if(row?.querySelector('b')?.textContent==='Warning ⚠️'){closeModal();return;}await api('/api/notifications/'+encodeURIComponent(b.dataset.notifRead)+'/read',{method:'PATCH'});row?.classList.remove('unread');b.textContent='Read';await loadNotifications();}catch(e){toast(e.message||'Could not update notification.');}
+    });
+    document.querySelectorAll('[data-notif-delete]').forEach(b=>b.onclick=async()=>{
+      try{await api('/api/notifications/'+encodeURIComponent(b.dataset.notifDelete),{method:'DELETE'});b.closest('.notification-card')?.remove();await loadNotifications();}catch(e){toast(e.message||'Could not delete notification.');}
+    });
+    $('markAllNotifications')?.addEventListener('click',async()=>{try{await api('/api/notifications/read',{method:'POST'});closeModal();await loadNotifications();toast('Notifications marked as read.');}catch(e){toast(e.message);}});
+    $('clearNotifications')?.addEventListener('click',async()=>{if(!confirm('Clear all notifications?'))return;try{await api('/api/notifications',{method:'DELETE'});closeModal();await loadNotifications();toast('Notifications cleared.');}catch(e){toast(e.message);}});
+    await loadNotifications();
+  }catch(e){toast(e.message||'Could not load notifications.');}
+  finally{if(button){button.disabled=false;button.removeAttribute("aria-busy");}}
+}
+document.addEventListener("click",event=>{
+  const button=event.target.closest("#notifications");
+  if(!button)return;
+  event.preventDefault();
+  openNotificationCenter();
+});
 
 async function showPinnedMessages(){
   try{ const data=await api(`/api/rooms/${encodeURIComponent(state.currentRoom)}/pinned`); const pinned=data.messages||[]; modal(`<h2>📌 Pinned messages</h2><p class="muted">Pinned messages in ${esc(state.rooms.find(r=>String(r.id)===String(state.currentRoom))?.name||'this room')}.</p><div class="pinned-list">${pinned.map(m=>`<button class="pinned-result" onclick="closeModal();jumpToMessage('${esc(m.id)}')"><b>${esc(m.displayName||m.username)}</b><small>${fmt(m.time)}</small><span>${esc(m.text||'📎 Attachment')}</span></button>`).join('')||'<p class="muted">No pinned messages in this room.</p>'}</div>`); }catch(e){toast(e.message)}
