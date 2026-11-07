@@ -7260,3 +7260,24 @@ html[data-theme] .settings-tab.active {
   }
   #modal:has(.profile-modal) .profile-banner{min-height:220px}
 }
+
+
+/* News composer refresh: compact, clear, mobile-first publishing controls. */
+.news-compose-v2{width:min(580px,94vw);padding:clamp(16px,3vw,24px);box-sizing:border-box;border:1px solid rgba(177,126,255,.3);border-radius:20px;background:linear-gradient(155deg,rgba(30,20,45,.99),rgba(10,9,19,.99));}
+.news-compose-v2 .instagram-compose-head{align-items:flex-start;gap:12px;}
+.news-compose-mark{flex:none;padding:6px 9px;border:1px solid rgba(177,126,255,.28);border-radius:999px;color:#d8b9ff;font-size:10px;font-weight:850;letter-spacing:.09em;}
+.news-compose-v2 .instagram-compose-author{gap:11px;}
+.news-compose-v2 .instagram-compose-author>div:last-child{display:grid;gap:3px;}
+.news-compose-label{display:flex;justify-content:space-between;gap:10px;margin:13px 0 6px;font-size:12px;font-weight:800;color:#eee5ff;}
+.news-compose-label span{color:#a99ab9;font-weight:500;}
+.news-compose-v2 #nt,.news-compose-v2 #nb{width:100%;box-sizing:border-box;border:1px solid rgba(190,155,230,.2);border-radius:12px;background:rgba(5,5,12,.62);color:#fff;padding:12px 13px;}
+.news-compose-v2 #nb{min-height:142px;line-height:1.5;resize:vertical;}
+.news-compose-v2 #nt:focus,.news-compose-v2 #nb:focus{outline:2px solid rgba(173,116,255,.42);border-color:#a66aff;}
+.news-compose-upload{margin:14px 0 10px;padding:13px;border-radius:13px;}
+.news-compose-upload>div{display:grid;gap:3px;flex:1;}
+.news-compose-upload>strong{font-size:11px;color:#d9baff;}
+.news-compose-footer{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:14px;padding-top:13px;border-top:1px solid rgba(190,155,230,.16);}
+.news-compose-footer .instagram-compose-actions{margin:0;}
+.news-compose-v2 #newsComposePublish{min-width:126px;border-radius:999px;font-weight:850;}
+.news-compose-v2 #newsComposeError{margin:8px 0 0;min-height:0;}
+@media(max-width:600px){.news-compose-v2{width:calc(100vw - 22px);max-height:86dvh;overflow:auto;padding:15px;border-radius:16px}.news-compose-footer{align-items:stretch}.news-compose-footer>.muted{width:100%}.news-compose-footer .instagram-compose-actions{width:100%;display:flex}.news-compose-footer .instagram-compose-actions button{flex:1}.news-compose-v2 #nb{min-height:120px}}
