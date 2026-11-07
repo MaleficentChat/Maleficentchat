@@ -87,6 +87,18 @@ dmReplyText: null,
   userPermissions: {}
 };
 
+
+window.addEventListener("mc:ably-message",event=>{
+  const message=event.detail;
+  if(!message||String(message.roomId)!==String(state.currentRoom))return;
+  const messageId=String(message.id||"");
+  if(messageId&&Array.from(document.querySelectorAll("[data-mid]")).some(node=>String(node.dataset.mid)===messageId))return;
+  appendMessage(message);
+  if(document.hidden&&String(message.userId||"")!==String(state.user?.id)){
+    showSiteNotification(message.displayName||message.username||"New message",String(message.text||"New room message").slice(0,180),"rooms");
+  }
+});
+
 const rankIcon = {
   MEMBER: "⚡",
   VIP: "💎",
@@ -2030,6 +2042,7 @@ async function joinRoom(id) {
 
     const staffInfo=await api(`/api/rooms/${encodeURIComponent(id)}/staff`).catch(()=>({myRole:'USER'}));
     state.currentRoom = id;
+    if(window.MaleficentAbly)window.MaleficentAbly.joinRoom(id).catch(error=>console.warn("Ably room attach failed; Socket.IO fallback remains active:",error?.message||error));
     const activeRoomTheme=state.rooms.find(r=>String(r.id)===String(id));applyRoomTheme();
     state.currentRoomRole=staffInfo.myRole||'USER';
     rememberMyRoom(id);
