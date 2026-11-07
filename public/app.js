@@ -1326,13 +1326,6 @@ if ($("topProfile")) $("topProfile").onclick = () => {
 };
 document.addEventListener("click",e=>{if(!e.target.closest("#topProfile")&&!e.target.closest("#topProfileDropdown"))$("topProfileDropdown")?.classList.add("hidden");});
 function openMyProfileFromHeader(){ $("topProfileDropdown")?.classList.add("hidden"); state.view="profile"; document.querySelectorAll(".nav[data-view]").forEach(x=>x.classList.toggle("active",x.dataset.view==="profile")); renderView(); }
-function openHeaderChatOptions(){
-  $("topProfileDropdown")?.classList.add("hidden");const s=state.user?.settings||{};
-  modal('<div class="header-chat-options"><h2>💬 Chat options</h2><p class="muted">Quick chat customization without leaving the room.</p><label>Message text size<select id="quickChatSize"><option value="small">Small</option><option value="medium">Medium</option><option value="large">Large</option></select></label><label>Chat font<select id="quickChatFont"><option>Inter</option><option>Georgia</option><option>Monospace</option><option>Arial</option><option>Trebuchet MS</option></select></label><label>Bubble color<input type="color" id="quickBubbleColor"></label><label>Display-name color<input type="color" id="quickUsernameColor"></label><label class="quick-chat-check"><input type="checkbox" id="quickCompact"> Compact chat spacing</label><button class="primary" id="quickChatSave">Save chat options</button></div>');
-  $("quickChatSize").value=s.fontSize||"medium";$("quickChatFont").value=s.chatFont||"Inter";$("quickBubbleColor").value=s.bubbleColor||"#33244f";$("quickUsernameColor").value=s.usernameColor||"#9b5cff";$("quickCompact").checked=!!s.compactMode;
-  $("quickChatSave").onclick=async()=>{const p={fontSize:$("quickChatSize").value,chatFont:$("quickChatFont").value,bubbleColor:$("quickBubbleColor").value,usernameColor:$("quickUsernameColor").value,compactMode:$("quickCompact").checked};try{const d=await api("/api/settings",{method:"PUT",body:JSON.stringify(p)});state.user.settings={...(state.user.settings||{}),...(d.settings||p)};applyTheme(state.user.settings.theme||"obsidian");renderMessages();closeModal();toast("Chat options saved.");}catch(e){toast(e.message)}};
-}
-
 async function loadSuggestions(){
   const list=$('suggestionsList'),form=$('suggestionForm');
   if(!list||!form)return;
@@ -4631,45 +4624,6 @@ async function confirmAccountDeletion(targetUser=null){
   try{if(self)await api('/api/me',{method:'DELETE'});else{const typed=prompt('Type the exact username to confirm deletion: '+u.username);if(typed!==u.username){toast('Username did not match. Account was not deleted.');return;}await api('/api/staff/users/'+encodeURIComponent(u.id),{method:'DELETE',body:JSON.stringify({confirmUsername:typed})});}location.reload();}
   catch(e){toast(e.message);}
 }
-function editProfileStyle(){
-  const u=state.user||{};
-  const themes={
-    obsidian:{bg:'#171126',panel:'#0b0912',accent:'#b69aff',text:'#f6f0ff'},
-    midnight:{bg:'#101b2b',panel:'#080f1a',accent:'#63d8ff',text:'#eaf7ff'},
-    rose:{bg:'#351725',panel:'#1c0c16',accent:'#ff8eb7',text:'#fff0f6'},
-    emerald:{bg:'#123128',panel:'#081d17',accent:'#73efbb',text:'#eafff5'}
-  };
-  modal(`<h2>✨ Profile styles</h2>
-    <p class="muted">Choose a style and see the preview update before saving. This changes the appearance of your profile card.</p>
-    <div id="profileStylePreview" style="border:1px solid #7d58aa;border-radius:16px;overflow:hidden;margin:12px 0 16px;background:#171126;color:#f6f0ff">
-      <div id="profileStyleBannerPreview" style="height:74px;background:linear-gradient(135deg,#38245c,#120d20);"></div>
-      <div style="padding:0 14px 16px;text-align:center">
-        <div id="profileStyleAvatarPreview" style="width:64px;height:64px;margin:-32px auto 8px;border:3px solid #171126;border-radius:50%;background:#34224b;display:flex;align-items:center;justify-content:center;font-size:28px;position:relative">🖤</div>
-        <div id="profileStyleNamePreview" style="font-size:18px;font-weight:800;color:#b69aff">${esc(u.displayName||u.username||'Your profile')}</div>
-        <div style="opacity:.8;font-size:12px">@${esc(u.username||'username')} · ${esc(u.rank||'MEMBER')}</div>
-        <div id="profileStyleBadgePreview" style="display:inline-block;margin-top:8px;padding:4px 10px;border-radius:999px;background:#302044;color:#b69aff;font-size:12px">${esc(u.badge||'Profile badge')}</div>
-      </div>
-    </div>
-    <label>Profile theme<select id="profileThemeEdit"><option value="obsidian">Obsidian</option><option value="midnight">Midnight Cyber</option><option value="rose">Rose</option><option value="emerald">Emerald</option></select></label>
-    <label>Display name color<input id="profileColorEdit" type="color" value="${/^#[0-9a-f]{6}$/i.test(u.profileColor||'')?u.profileColor:'#b69aff'}"></label>
-    <label>Profile badge text<input id="profileBadgeEdit" maxlength="32" value="${esc(u.badge||'')}" placeholder="e.g. Artist, Gamer"></label>
-    <label>Profile banner image URL<input id="profileBannerEdit" maxlength="500" value="${esc(u.banner||'')}" placeholder="https://… (optional)"></label>
-    <div class="toolbar"><button class="mini" type="button" id="previewProfileStyle">Preview profile</button><button class="primary" id="saveProfileStyle">Save appearance</button></div>`);
-  const themeInput=$('profileThemeEdit'), colorInput=$('profileColorEdit'), badgeInput=$('profileBadgeEdit'), bannerInput=$('profileBannerEdit');
-  themeInput.value=themes[u.theme]?u.theme:'obsidian';
-  const preview=()=>{const t=themes[themeInput.value]||themes.obsidian;const card=$('profileStylePreview');card.style.background=t.bg;card.style.color=t.text;card.style.borderColor=t.accent;$('profileStyleBannerPreview').style.background=bannerInput.value.trim()? `linear-gradient(180deg,rgba(0,0,0,.1),rgba(0,0,0,.5)),url("${bannerInput.value.trim().replace(/["\\\\]/g,'')}") center/cover`:`linear-gradient(135deg,${t.accent},${t.panel})`;$('profileStyleAvatarPreview').style.borderColor=t.bg;$('profileStyleNamePreview').style.color=colorInput.value;$('profileStyleBadgePreview').style.color=t.accent;$('profileStyleBadgePreview').style.background=t.panel;$('profileStyleBadgePreview').textContent=badgeInput.value.trim()||'Profile badge';};
-  [themeInput,colorInput,badgeInput,bannerInput].forEach(el=>el.addEventListener('input',preview));
-  preview();
-  $('previewProfileStyle').onclick=()=>{
-    const card=$('profileStylePreview');
-    const previewHtml=card.outerHTML;
-    modal('<h2>✨ Profile preview</h2><p class="muted">This is how your profile card will look with the current selections. Nothing has been saved yet.</p>'+previewHtml+'<div class="toolbar"><button class="mini" type="button" id="backToProfileStyle">Back to settings</button><button class="primary" type="button" id="savePreviewedProfileStyle">Save appearance</button></div>');
-    $('backToProfileStyle').onclick=editProfileStyle;
-    $('savePreviewedProfileStyle').onclick=()=>saveMyProfile({profileColor:colorInput.value,theme:themeInput.value,badge:badgeInput.value.trim(),banner:bannerInput.value.trim()},'Profile appearance saved.');
-  };
-  $('saveProfileStyle').onclick=()=>saveMyProfile({profileColor:colorInput.value,theme:themeInput.value,badge:badgeInput.value.trim(),banner:bannerInput.value.trim()},'Profile appearance saved.');
-}
-
 async function editEmail(){try{const r=await api('/api/me/email');modal(`<h2>Edit email</h2><p class="muted">Email is optional. It is not required on the registration screen.</p><input id="emailEdit" type="email" value="${esc(r.email||'')}" placeholder="Email address"><div class="toolbar"><button class="primary" id="saveEmail">Save</button></div>`);$('saveEmail').onclick=async()=>{try{await api('/api/me/email',{method:'PUT',body:JSON.stringify({email:$('emailEdit').value.trim()})});closeModal();toast('Email saved.');}catch(e){toast(e.message)}}}catch(e){toast(e.message)}}
 function changePasswordModal(){modal(`<h2>Change password</h2><input id="oldPassword" type="password" placeholder="Current password"><input id="newPassword" type="password" placeholder="New password (8+ characters)"><button class="primary" id="savePassword">Change password</button>`);$('savePassword').onclick=async()=>{try{await api('/api/password/change',{method:'POST',body:JSON.stringify({currentPassword:$('oldPassword').value,newPassword:$('newPassword').value})});closeModal();toast('Password changed.');}catch(e){toast(e.message)}}}
 
