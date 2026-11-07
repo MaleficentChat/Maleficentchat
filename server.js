@@ -1053,7 +1053,7 @@ async function auth(req,res,next){
 }
 
 require("./entertainment").registerEntertainmentRoutes({app,auth,current,pool,uploadRoot:UP,persistUploadedMedia});
-registerSocialFeatureRoutes({app,auth,current,pool,storeMediaBuffer,hasFeature});
+registerSocialFeatureRoutes({app,auth,current,pool,storeMediaBuffer,hasFeature,getState:()=>db});
 
 async function persistUnderConstructionSetting(setting){
   // Persist independently of the legacy whole-state snapshot so Render restarts
