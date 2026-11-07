@@ -87,6 +87,40 @@ dmReplyText: null,
   userPermissions: {}
 };
 
+
+window.addEventListener("mc:ably-dm",event=>{
+  const message=event.detail;
+  if(!message)return;
+  const from=String(message.from??message.senderId??"");
+  const to=String(message.to??message.receiverId??"");
+  const me=String(state.user?.id??"");
+  if(from!==me&&to!==me)return;
+  refreshTopDMUnreadBadge();
+  const peer=String(state.dmUserId??"");
+  if(!peer||!(from===peer||to===peer))return;
+  if(!state.dmMessages)state.dmMessages=[];
+  const messageId=String(message.id||"");
+  if(messageId&&state.dmMessages.some(item=>String(item.id)===messageId))return;
+  state.dmMessages.push(message);
+  const list=$("dmMessages");
+  if(list&&state.dmPeerUser){
+    list.querySelector(".muted")?.remove();
+    list.insertAdjacentHTML("beforeend",dmMessageHTML(message,state.dmMessages,state.dmPeerUser));
+    list.scrollTop=list.scrollHeight;
+  }
+  loadDMList().catch(()=>{});
+});
+window.addEventListener("mc:ably-message",event=>{
+  const message=event.detail;
+  if(!message||String(message.roomId)!==String(state.currentRoom))return;
+  const messageId=String(message.id||"");
+  if(messageId&&Array.from(document.querySelectorAll("[data-mid]")).some(node=>String(node.dataset.mid)===messageId))return;
+  appendMessage(message);
+  if(document.hidden&&String(message.userId||"")!==String(state.user?.id)){
+    showSiteNotification(message.displayName||message.username||"New message",String(message.text||"New room message").slice(0,180),"rooms");
+  }
+});
+
 const rankIcon = {
   MEMBER: "⚡",
   VIP: "💎",
@@ -950,8 +984,12 @@ async function start() {
 
   state.socket.on("message", message => {
     if (String(message.roomId) === String(state.currentRoom)) {
-      appendMessage(message);
-      if (document.hidden && String(message.userId||"")!==String(state.user?.id)) showSiteNotification(message.displayName||message.username||"New message", String(message.text||"New room message").slice(0,180), "rooms");
+      const messageId=String(message.id||"");
+      const alreadyRendered=messageId&&Array.from(document.querySelectorAll("[data-mid]")).some(node=>String(node.dataset.mid)===messageId);
+      if(!alreadyRendered){
+        appendMessage(message);
+        if (document.hidden && String(message.userId||"")!==String(state.user?.id)) showSiteNotification(message.displayName||message.username||"New message", String(message.text||"New room message").slice(0,180), "rooms");
+      }
     }
   });
 
@@ -2030,6 +2068,12 @@ async function joinRoom(id) {
 
     const staffInfo=await api(`/api/rooms/${encodeURIComponent(id)}/staff`).catch(()=>({myRole:'USER'}));
     state.currentRoom = id;
+    if(window.MaleficentAbly){
+      const ablyEligible=!(room.isPrivate||room.private||room.locked||room.passwordHash||String(room.visibility||"").toLowerCase()==="private");
+      await window.MaleficentAbly.setUser(state.user?.id);
+      if(ablyEligible)window.MaleficentAbly.joinRoom(id).catch(error=>console.warn("Ably room attach failed; Socket.IO fallback remains active:",error?.message||error));
+      else window.MaleficentAbly.leaveRoom().catch(()=>{});
+    }
     const activeRoomTheme=state.rooms.find(r=>String(r.id)===String(id));applyRoomTheme();
     state.currentRoomRole=staffInfo.myRole||'USER';
     rememberMyRoom(id);
@@ -3942,6 +3986,7 @@ async function openDM(id) {
 
     state.dmUserId = String(id);
     state.dmPeerUser = user;
+    window.MaleficentAbly?.joinDM?.(id).catch(error=>console.warn("Ably DM connection failed; Socket.IO fallback remains active:",error?.message||error));
     // Remember the most recently opened conversation for inbox ordering.
     if(state.user?.id)safeStorage.setItem("mc_dm_last_opened_"+String(state.user.id),String(id));
 

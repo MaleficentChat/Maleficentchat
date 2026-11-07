@@ -18,5 +18,7 @@ jobs:
           node-version: 20
       - name: Validate package manifest
         run: node -e "JSON.parse(require('node:fs').readFileSync('package.json', 'utf8'))"
+      - name: Install dependencies
+        run: npm install --ignore-scripts --no-audit --no-fund
       - name: Run security and syntax checks
         run: npm run check
