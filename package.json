@@ -21,6 +21,8 @@
     "pg": "^8.16.3",
     "web-push": "^3.6.7",
     "tesseract.js": "^6.0.1",
-    "firebase-admin": "^13.0.2"
+    "firebase-admin": "^13.0.2",
+    "ably": "^2.11.0",
+    "@ably/chat": "^1.4.0"
   }
 }
