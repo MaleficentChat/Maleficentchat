@@ -4574,8 +4574,8 @@ function openProfileEditMenu(targetUser=null){
   const canDelete=self?(!['OWNER','DEVELOPER'].includes(String(user.rank||'').toUpperCase())):(can('COOWNER')&&canAccessStaffTarget(user));
   const sections=[
     {id:'editUpload',icon:'📤',title:'Upload',desc:'Profile picture or profile background',show:self||canModify},
-    {id:'removeProfilePicture',icon:'🗑️',title:'Remove profile picture',desc:'Clear your current profile photo',show:self},
-    {id:'removeProfileBackground',icon:'🗑️',title:'Remove background',desc:'Clear your current profile background',show:self},
+    {id:'removeProfilePicture',icon:'🗑️',title:'Remove profile picture',desc:self?'Clear your current profile photo':'Remove this member\'s profile photo',show:self||(!self&&canModify&&canAccessStaffTarget(user))},
+    {id:'removeProfileBackground',icon:'🗑️',title:'Remove background',desc:self?'Clear your current profile background':'Remove this member\'s profile background',show:self||(!self&&canModify&&canAccessStaffTarget(user))},
     {id:'editName',icon:'✏️',title:'Edit Name',desc:'Username and display name',show:canEditUsername||canModify},
     {id:'editEmail',icon:'✉️',title:'Edit email',desc:'Change account email address',show:canEditEmail},
     {id:'editPassword',icon:'🔒',title:'Edit password',desc:'Set a new account password',show:canChangePassword},
@@ -4585,8 +4585,8 @@ function openProfileEditMenu(targetUser=null){
   ].filter(x=>x.show);
   modal(`<div class="profile-edit-menu"><h2>✏️ ${self?'Edit account':`Edit @${esc(user.username||'member')}`}</h2><p class="muted">Only actions you are allowed to use are shown here.</p><div class="profile-edit-menu-grid">${sections.map(x=>`<button class="settings-row" id="${x.id}" type="button"><span>${x.icon}</span><b>${x.title}</b><small>${x.desc}</small><strong>›</strong></button>`).join('')}</div></div>`);
   $('editUpload')?.addEventListener('click',()=>openAccountUploadMenu(self?null:user));
-  $('removeProfilePicture')?.addEventListener('click',deleteAvatar);
-  $('removeProfileBackground')?.addEventListener('click',deleteBanner);
+  $('removeProfilePicture')?.addEventListener('click',()=>self?deleteAvatar():deleteStaffProfileMedia(user,'avatar'));
+  $('removeProfileBackground')?.addEventListener('click',()=>self?deleteBanner():deleteStaffProfileMedia(user,'banner'));
   $('editName')?.addEventListener('click',()=>openAccountNameEditor(self?null:user));
   $('editEmail')?.addEventListener('click',()=>openAccountEmailEditor(self?null:user));
   $('editPassword')?.addEventListener('click',()=>openAccountPasswordEditor(self?null:user));
@@ -4690,6 +4690,18 @@ function uploadAvatar() {
       
     </div>
   `);
+}
+
+async function deleteStaffProfileMedia(user,kind){
+  const label=kind==='avatar'?'profile picture':'profile background';
+  if(!user?.id||!confirm(`Remove this member's ${label}?`))return;
+  try{
+    const result=await api('/api/staff/user/'+encodeURIComponent(user.id)+'/'+(kind==='avatar'?'avatar':'banner'),{method:'DELETE'});
+    Object.assign(user,result.user||{});
+    closeModal();
+    await loadProfile(user);
+    toast(kind==='avatar'?'Member profile picture removed.':'Member profile background removed.');
+  }catch(error){toast(error.message||'Could not remove profile media.');}
 }
 
 async function deleteAvatar(){

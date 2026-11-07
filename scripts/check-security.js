@@ -69,18 +69,18 @@ assert.match(server, /roomDelivery\.emit\("message",m\)/,
   "persisted room messages must be pushed through Socket.IO");
 assert.match(server, /io\.to\("user:"\+v\.id\)\.emit\("dm",m\)/,
   "private messages must be pushed to the recipient's authenticated Socket.IO room");
+const activeClient = fs.readFileSync("public/app.js", "utf8");
 const accountEditorStart = activeClient.indexOf("function openProfileEditMenu(targetUser=null){");
 const accountEditorEnd = activeClient.indexOf("function openAccountUploadMenu(targetUser=null){", accountEditorStart);
 assert.ok(accountEditorStart >= 0 && accountEditorEnd > accountEditorStart,
   "the account editor must expose its own action list");
 const accountEditorSource = activeClient.slice(accountEditorStart, accountEditorEnd);
-assert.match(accountEditorSource, /title:'Remove profile picture'[\\s\\S]*show:self&&!!user\\.avatar/,
-  "the Edit account menu must show a separate remove-picture action only when a picture exists");
-assert.match(accountEditorSource, /title:'Remove background'[\\s\\S]*show:self&&!!user\\.banner/,
-  "the Edit account menu must show a separate remove-background action only when a background exists");
-assert.match(accountEditorSource, /removeProfilePicture'[\\s\\S]*deleteAvatar/);
-assert.match(accountEditorSource, /removeProfileBackground'[\\s\\S]*deleteBanner/);
-const activeClient = fs.readFileSync("public/app.js", "utf8");
+assert.match(accountEditorSource, /title:'Remove profile picture'[\\s\\S]*show:self\\|\\|\\(!self&&canModify&&canAccessStaffTarget\\(user\\)\\)/,
+  "the Edit account menu must expose picture removal to the owner and authorized staff on lower-ranked profiles");
+assert.match(accountEditorSource, /title:'Remove background'[\\s\\S]*show:self\\|\\|\\(!self&&canModify&&canAccessStaffTarget\\(user\\)\\)/,
+  "the Edit account menu must expose background removal to the owner and authorized staff on lower-ranked profiles");
+assert.match(accountEditorSource, /removeProfilePicture'[\\s\\S]*deleteStaffProfileMedia\\(user,'avatar'\\)/);
+assert.match(accountEditorSource, /removeProfileBackground'[\\s\\S]*deleteStaffProfileMedia\\(user,'banner'\\)/);
 assert.match(activeClient, /state\.socket\.on\("message"/,
   "the browser must subscribe to Socket.IO room-message events");
 assert.match(activeClient, /state\.socket\.on\("dm"/,
