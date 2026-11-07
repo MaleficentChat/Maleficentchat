@@ -956,7 +956,11 @@ async function start() {
   });
 
   state.socket.on("system-message", notice => {
-    if(!notice.roomId || notice.roomId===state.currentRoom) appendMessage({...notice,system:true});
+    // Room IDs can arrive as numbers from one path and strings from another.
+    // Normalize before comparing so Aurora/system notices are not silently dropped.
+    if(!notice?.roomId || String(notice.roomId)===String(state.currentRoom)) {
+      appendMessage({...notice,system:true});
+    }
   });
   state.socket.on("gravity:invite", invite => window.GravityRun && window.GravityRun.showInvite(invite));
 
