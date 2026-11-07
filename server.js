@@ -15,6 +15,7 @@ const multer=require("multer");
 const {createWorker}=require("tesseract.js");
 const {Server}=require("socket.io");
 const {initDB,loadState,persistState,pool}=require("./db");
+const {initSocialFeatureTables,registerSocialFeatureRoutes}=require("./social-features");
 let firebaseAdminApp=null;
 function getFirebaseAdmin(){
   if(firebaseAdminApp)return firebaseAdminApp;
@@ -1052,6 +1053,7 @@ async function auth(req,res,next){
 }
 
 require("./entertainment").registerEntertainmentRoutes({app,auth,current,pool,uploadRoot:UP,persistUploadedMedia});
+registerSocialFeatureRoutes({app,auth,current,pool,storeMediaBuffer,hasFeature});
 
 async function persistUnderConstructionSetting(setting){
   // Persist independently of the legacy whole-state snapshot so Render restarts
@@ -7362,6 +7364,7 @@ app.get('/api/me/account',auth,async(req,res)=>{
 (async function bootstrap(){
   try {
     await initDB();
+    await initSocialFeatureTables(pool);
     await migrateExistingUploads();
     await pool.query('CREATE TABLE IF NOT EXISTS push_subscriptions(id BIGSERIAL PRIMARY KEY,user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,endpoint TEXT NOT NULL UNIQUE,p256dh TEXT NOT NULL,auth TEXT NOT NULL,created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),last_used_at TIMESTAMPTZ)');
     await pool.query('CREATE INDEX IF NOT EXISTS push_subscriptions_user_idx ON push_subscriptions(user_id)');
