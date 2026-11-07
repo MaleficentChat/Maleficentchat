@@ -4255,22 +4255,23 @@ function openPublishNews(){
   form?.addEventListener('submit',event=>{event.preventDefault();publishPost();});
 }
 
-// Capture composer submission before modal/drawer handlers can swallow the tap.
-document.addEventListener('click',event=>{
-  const submitButton=event.target instanceof Element?event.target.closest('#newsComposePublish'):null;
+// Handle News controls at WINDOW capture, before any document-level capture
+// listener can swallow mobile taps. The submit action disables itself immediately,
+// so the following synthetic click/form-submit cannot send a duplicate post.
+window.addEventListener('click',event=>{
+  const target=event.target;
+  const submitButton=target instanceof Element?target.closest('#newsComposePublish'):null;
   if(submitButton){
     event.preventDefault();
-    event.stopPropagation();
     event.stopImmediatePropagation();
     const action=submitButton.__mcPublishAction;
     if(typeof action!=='function'){toast('The News composer is not ready. Close it and open it again.');return;}
     action();
     return;
   }
-  const button=event.target instanceof Element?event.target.closest('#publishNews'):null;
+  const button=target instanceof Element?target.closest('#publishNews'):null;
   if(!button)return;
   event.preventDefault();
-  event.stopPropagation();
   event.stopImmediatePropagation();
   if(button.disabled||button.classList.contains('hidden'))return;
   try{openPublishNews();}
