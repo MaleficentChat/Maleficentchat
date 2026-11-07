@@ -9,7 +9,7 @@
     const data=await res.json().catch(()=>({}));
     if(!res.ok)throw Error(data.error||"Request failed");return data;
   }
-  let canvas,ctx,mode="pen",color="#171126",size=6,background="#ffffff",drawing=false,history=[],textLabel="✦";
+  let canvas,ctx,mode="pen",color="#171126",size=6,background="#ffffff",drawing=false,history=[],textLabel="✦",savedOpenRequest=0,galleryLoadRequest=0;
   const status=message=>{const el=$("doodleStudioStatus");if(el)el.textContent=message||""};
   function render(){
     const root=$("doodleStudioRoot");if(!root)return;
@@ -46,33 +46,48 @@
   }
   async function loadGallery(){
     const host=$("doodleStudioGallery");if(!host)return;
-    try{const data=await request("/api/doodles");const items=data.doodles||[];
+    const requestId=++galleryLoadRequest;
+    try{
+      const data=await request("/api/doodles");
+      if(requestId!==galleryLoadRequest||!host.isConnected)return;
+      const items=data.doodles||[];
       if(!items.length){host.innerHTML='<p class="muted">No saved doodles yet. Create your first one!</p>';return}
       host.innerHTML=items.map(d=>'<article class="doodle-gallery-item"><img loading="lazy" alt="Saved doodle: '+esc(d.title)+'" data-doodle-image="'+esc(d.id)+'"><b>'+esc(d.title)+'</b><small class="muted">'+esc(new Date(d.created_at||d.createdAt).toLocaleDateString())+'</small><div class="doodle-gallery-actions"><button type="button" class="mini" data-doodle-load="'+esc(d.id)+'">Open</button><button type="button" class="mini danger" data-doodle-delete="'+esc(d.id)+'">Delete</button></div></article>').join("");
-      for(const img of host.querySelectorAll("[data-doodle-image]")){try{const item=await request("/api/doodles/"+encodeURIComponent(img.dataset.doodleImage)+"/image");img.src=item.image}catch{img.alt="Could not load doodle image"}}
+      const images=Array.from(host.querySelectorAll("[data-doodle-image]"));
+      await Promise.all(images.map(async img=>{
+        try{
+          const item=await request("/api/doodles/"+encodeURIComponent(img.dataset.doodleImage)+"/image");
+          if(requestId===galleryLoadRequest&&img.isConnected)img.src=item.image;
+        }catch{if(requestId===galleryLoadRequest&&img.isConnected)img.alt="Could not load doodle image"}
+      }));
+      if(requestId!==galleryLoadRequest||!host.isConnected)return;
       host.querySelectorAll("[data-doodle-load]").forEach(btn=>btn.onclick=()=>openSaved(btn.dataset.doodleLoad));
       host.querySelectorAll("[data-doodle-delete]").forEach(btn=>btn.onclick=()=>deleteSaved(btn.dataset.doodleDelete));
-    }catch(e){host.innerHTML='<p class="muted">Sign in to load your saved gallery.</p>';status(e.message)}
+    }catch(e){
+      if(requestId===galleryLoadRequest&&host.isConnected){host.innerHTML='<p class="muted">Sign in to load your saved gallery.</p>';status(e.message)}
+    }
   }
   async function openSaved(id){
+    const requestId=++savedOpenRequest;
     status("Loading saved doodle…");
     try{
       const d=await request("/api/doodles/"+encodeURIComponent(id)+"/image");
       if(typeof d.image!=="string"||!d.image.startsWith("data:image/png;base64,"))throw Error("The saved doodle image data is missing or invalid. Your saved drawing has not been deleted.");
       const img=new Image();
-      img.onload=()=>{
-        try{
-          ctx.clearRect(0,0,canvas.width,canvas.height);
-          ctx.fillStyle=background;ctx.fillRect(0,0,canvas.width,canvas.height);
-          ctx.drawImage(img,0,0,canvas.width,canvas.height);
-          history=[];snapshot();
-          $("doodleStudioTitle").value=d.title||"Saved doodle";
-          status("Opened "+(d.title||"saved doodle")+".");
-        }catch(error){status("Could not restore this drawing to the canvas: "+error.message);}
-      };
-      img.onerror=()=>status("The saved doodle could not be decoded. The saved record is still in your gallery.");
       img.src=d.image;
-    }catch(e){status(e.message||"Could not open this saved doodle.");}
+      try{await img.decode()}catch{throw Error("The saved doodle could not be decoded. The saved record is still in your gallery.");}
+      // If another gallery item was opened while this image loaded, never let
+      // the older response overwrite the newer selection.
+      if(requestId!==savedOpenRequest||!canvas?.isConnected)return;
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      ctx.fillStyle=background;ctx.fillRect(0,0,canvas.width,canvas.height);
+      ctx.drawImage(img,0,0,canvas.width,canvas.height);
+      history=[];snapshot();
+      $("doodleStudioTitle").value=d.title||"Saved doodle";
+      status("Opened "+(d.title||"saved doodle")+".");
+    }catch(e){
+      if(requestId===savedOpenRequest)status(e.message||"Could not open this saved doodle.");
+    }
   }
   async function deleteSaved(id){if(!confirm("Delete this saved doodle from your gallery?"))return;try{await request("/api/doodles/"+encodeURIComponent(id),{method:"DELETE"});status("Doodle deleted.");loadGallery()}catch(e){status(e.message)}}
   async function shareToChat(){

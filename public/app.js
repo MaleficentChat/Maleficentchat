@@ -648,6 +648,8 @@ function clearActionLock(){if(actionLockTimer)clearTimeout(actionLockTimer);acti
 let roomMessageSyncTimer=null;
 let roomMessageSyncInFlight=false;
 let roomMessageSyncSignature="";
+let activeDMSyncTimer=null;
+let activeDMSyncInFlight=false;
 async function refreshRoomMessageList(roomId,{force=false}={}){
   if(!state.user||!roomId||String(state.currentRoom)!==String(roomId))return false;
   const requestedRoom=String(roomId);
@@ -691,6 +693,21 @@ async function refreshActiveDMMessageList(peerId){
     const count=$("dmSearchCount");if(count)count.textContent=incoming.length+" messages";
   }
   return true;
+}
+
+// Socket.IO is the instant delivery path. This low-frequency, single-flight
+// recovery catches messages missed during mobile background suspension or a
+// transient socket gap, without reloading the page or touching session state.
+function startActiveDMMessageBackgroundSync(){
+  if(activeDMSyncTimer)clearInterval(activeDMSyncTimer);
+  activeDMSyncTimer=setInterval(async()=>{
+    const peerId=String(state.dmUserId||"");
+    if(!state.user||!peerId||activeDMSyncInFlight||document.hidden)return;
+    activeDMSyncInFlight=true;
+    try{await refreshActiveDMMessageList(peerId);}
+    catch(error){console.warn("Background private-message recovery failed:",error?.message||error);}
+    finally{activeDMSyncInFlight=false;}
+  },2000);
 }
 
 async function authenticateSocketAndJoinRoom(socket=state.socket, syncHistory=true) {
@@ -751,6 +768,7 @@ async function start() {
   // Reconcile the open room every 2 seconds. Socket.IO remains the instant path;
   // this catches any event missed by a sleeping or temporarily disconnected client.
   startRoomMessageBackgroundSync();
+  startActiveDMMessageBackgroundSync();
   state.socket.io.opts.reconnection = true;
   state.socket.io.opts.reconnectionAttempts = Infinity;
   state.socket.io.opts.reconnectionDelay = 500;
@@ -3403,11 +3421,11 @@ function renderUserProfileModal(user,data={}){
         const layout=['polaroid','journal','collage','timeline','minimal'].includes(book.layout)?book.layout:'polaroid';
         const canComment=book.allowComments!==false;
         box.innerHTML='<section class="about-card scrapbook scrapbook-theme-'+theme+' scrapbook-layout-'+layout+'"><div class="scrapbook-heading"><div><h3>📚 '+esc(book.title||'My Scrapbook')+'</h3><p class="muted">'+(isSelf?'Your memories, notes and saved moments.':'Memories shared by @'+esc(user.username)+'.')+'</p></div></div>'+
-          (isSelf?'<form id="scrapbookSettingsForm" class="scrapbook-settings"><label>Title<input id="scrapbookTitle" maxlength="100" value="'+esc(book.title||'My Scrapbook')+'"></label><label>Theme<select id="scrapbookTheme">'+[['midnight','Midnight'],['violet','Violet'],['rose','Rose'],['paper','Paper'],['forest','Forest']].map(([v,n])=>'<option value="'+v+'" '+(theme===v?'selected':'')+'>'+n+'</option>').join('')+'</select></label><label>Layout<select id="scrapbookLayout">'+[['polaroid','Polaroid'],['journal','Journal'],['collage','Collage'],['timeline','Timeline'],['minimal','Minimal']].map(([v,n])=>'<option value="'+v+'" '+(layout===v?'selected':'')+'>'+n+'</option>').join('')+'</select></label><label>Visibility<select id="scrapbookVisibility">'+[['public','Everyone'],['friends','Friends only'],['private','Only me']].map(([v,n])=>'<option value="'+v+'" '+(book.visibility===v?'selected':'')+'>'+n+'</option>').join('')+'</select></label><label class="scrapbook-comments-toggle"><input id="scrapbookAllowComments" type="checkbox" '+(canComment?'checked':'')+'> Allow comments</label><button class="mini primary" type="submit">Save scrapbook settings</button></form><form id="scrapbookNoteForm" class="scrapbook-note-form"><input id="scrapbookNoteTitle" maxlength="120" placeholder="Memory title (optional)"><textarea id="scrapbookNoteBody" rows="3" maxlength="4000" placeholder="Write a memory…"></textarea><button class="primary" type="submit">＋ Add memory</button></form>':'')+
+          (isSelf?'<form id="scrapbookSettingsForm" class="scrapbook-settings"><label>Title<input id="scrapbookTitle" maxlength="100" value="'+esc(book.title||'My Scrapbook')+'"></label><label>Layout<select id="scrapbookLayout">'+[['polaroid','Polaroid'],['journal','Journal'],['collage','Collage'],['timeline','Timeline'],['minimal','Minimal']].map(([v,n])=>'<option value="'+v+'" '+(layout===v?'selected':'')+'>'+n+'</option>').join('')+'</select></label><label>Visibility<select id="scrapbookVisibility">'+[['public','Everyone'],['friends','Friends only'],['private','Only me']].map(([v,n])=>'<option value="'+v+'" '+(book.visibility===v?'selected':'')+'>'+n+'</option>').join('')+'</select></label><label class="scrapbook-comments-toggle"><input id="scrapbookAllowComments" type="checkbox" '+(canComment?'checked':'')+'> Allow comments</label><button class="mini primary" type="submit">Save scrapbook settings</button></form><form id="scrapbookNoteForm" class="scrapbook-note-form"><input id="scrapbookNoteTitle" maxlength="120" placeholder="Memory title (optional)"><textarea id="scrapbookNoteBody" rows="3" maxlength="4000" placeholder="Write a memory…"></textarea><button class="primary" type="submit">＋ Add memory</button></form>':'')+
           '<div class="scrapbook-entry-grid">'+(entries.length?entries.map(entry=>'<article class="scrapbook-entry">'+(entry.entry_type==='media'&&entry.media_key?'<img src="/uploads/'+esc(entry.media_key)+'" alt="Scrapbook memory" loading="lazy">':entry.entry_type==='sticker'?'<div class="scrapbook-sticker">'+esc(entry.sticker||'✦')+'</div>':'')+'<div class="scrapbook-entry-copy">'+(entry.title?'<b>'+esc(entry.title)+'</b>':'')+(entry.body?'<p>'+esc(entry.body)+'</p>':'')+'<small>'+esc(fmt(entry.created_at))+'</small></div>'+(isSelf?'<button type="button" class="mini danger" data-scrapbook-delete="'+esc(entry.id)+'">Delete</button>':'')+'</article>').join(''):'<p class="muted">No scrapbook memories yet.</p>')+'</div></section>';
         $('scrapbookSettingsForm')?.addEventListener('submit',async event=>{
           event.preventDefault();const button=event.currentTarget.querySelector('button[type="submit"]');button.disabled=true;
-          try{await api('/api/social/scrapbooks/settings',{method:'PUT',body:JSON.stringify({title:$('scrapbookTitle').value.trim(),theme:$('scrapbookTheme').value,layout:$('scrapbookLayout').value,visibility:$('scrapbookVisibility').value,allowComments:$('scrapbookAllowComments').checked})});toast('Scrapbook settings saved.');renderTab('scrapbook');}
+          try{await api('/api/social/scrapbooks/settings',{method:'PUT',body:JSON.stringify({title:$('scrapbookTitle').value.trim(),theme:theme,layout:$('scrapbookLayout').value,visibility:$('scrapbookVisibility').value,allowComments:$('scrapbookAllowComments').checked})});toast('Scrapbook settings saved.');renderTab('scrapbook');}
           catch(error){toast(error.message||'Could not save scrapbook settings.');button.disabled=false;}
         });
         $('scrapbookNoteForm')?.addEventListener('submit',async event=>{
