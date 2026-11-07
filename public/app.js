@@ -4193,7 +4193,7 @@ function openPublishNews(){
       <label class="instagram-photo-picker news-compose-upload" for="nphoto"><span>＋</span><div><b>Add a photo</b><small>Attach an image to your News post</small></div><strong>Browse</strong></label>
       <input id="nphoto" type="file" accept="image/jpeg,image/png,image/webp,image/gif" hidden>
       <div id="newsPhotoPreview" class="instagram-photo-preview hidden"><img id="newsPhotoPreviewImage" alt="Selected News photo preview"><button type="button" class="mini danger" id="newsPhotoRemove">Remove photo</button></div>
-      <div class="news-compose-footer"><small class="muted">Your post will appear in the News feed.</small><div class="toolbar instagram-compose-actions"><button class="mini" type="button" id="newsComposeCancel">Cancel</button><button class="primary" type="button" id="newsComposePublish">Publish post</button></div></div>
+      <div class="news-compose-footer"><small class="muted">Your post will appear in the News feed.</small><div class="toolbar instagram-compose-actions"><button class="mini" type="button" id="newsComposeCancel">Cancel</button><button class="primary" type="submit" id="newsComposePublish">Publish post</button></div></div>
       <p id="newsComposeError" class="error" role="status" aria-live="polite"></p>
     </form>
   </div>`);
@@ -4246,7 +4246,10 @@ function openPublishNews(){
   // Keep the publish callback on the live button and route both touch/click
   // and form submission through one capture-phase handler. This survives modal
   // overlays and other document-level handlers that may stop bubbling events.
-  if(publish)publish.__mcPublishAction=publishPost;
+  if(publish){
+    publish.__mcPublishAction=publishPost;
+    publish.addEventListener('click',event=>{event.preventDefault();publishPost();});
+  }
   form?.addEventListener('submit',event=>{event.preventDefault();publishPost();});
 }
 
