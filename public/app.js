@@ -4397,51 +4397,6 @@ async function staffFeatureBlockModal(user){
   }catch(e){toast(e.message);}
 }
 
-function staffAccountModal(user){
-  if((!can('MOD')&&!canFeature('manage_staff_accounts'))||!canAccessStaffTarget(user)){toast('You can only access staff controls for accounts ranked below you.');return;}
-  const allowed=ranks.filter((r,i)=>i<=rankOrder.MOD && i<rankOrder[state.user.rank]);
-  modal(`<h2>⚙️ Staff account controls</h2><p class='muted'>Edit @${esc(user.username)}. Permissions are controlled by Owner Space.</p><div class='card'><b>Registration details</b><p>Date of birth: ${esc(user.dateOfBirth||user.birthDate||'Not provided')}<br>Gender: ${esc(user.gender||'Not provided')}<br>Joined: ${user.createdAt?new Date(user.createdAt).toLocaleDateString():'Unknown'}</p></div><label>Username<input id='staffUsername' value='${esc(user.username)}'></label><label>Rank<select id='staffRank'>${allowed.map(r=>`<option value='${r}' ${r===user.rank?'selected':''}>${r}</option>`).join('')}</select></label><div class='toolbar'><button class='primary' id='saveStaffAccount'>Save changes</button>${canFeature('change_password')?`<button class='mini' id='staffChangePassword'>Change password</button>`:''}${canFeature('edit_email')?`<button class='mini' id='staffEditEmail'>Edit Email</button>`:''}${canFeature('account_modifications')?`<button class='mini primary' id='staffAccountModifications'>Account modifications</button>`:''}</div>`);
-  $('staffAccountModifications')?.addEventListener('click',()=>staffAccountModificationModal(user));
-  $('saveStaffAccount').onclick=async()=>{try{await api('/api/staff/user/'+encodeURIComponent(user.id)+'/account',{method:'PATCH',body:JSON.stringify({username:$('staffUsername').value.trim()})});await api('/api/staff/user/'+encodeURIComponent(user.id)+'/rank',{method:'PATCH',body:JSON.stringify({rank:$('staffRank').value})});closeModal();toast('Staff account updated.');}catch(e){toast(e.message)}};
-  $('staffChangePassword')?.addEventListener('click',()=>{
-    modal(`<h2>Change password for @${esc(user.username)}</h2><p class='muted'>The existing password is never shown.</p><input id='staffNewPassword' type='password' minlength='8' placeholder='New password'><button class='primary' id='saveStaffPassword'>Set new password</button>`);
-    $('saveStaffPassword').onclick=async()=>{try{await api(`/api/staff/user/${encodeURIComponent(user.id)}/password`,{method:'PATCH',body:JSON.stringify({password:$('staffNewPassword').value})});closeModal();toast('Password changed.');}catch(e){toast(e.message)}};
-  });
-  $('staffEditEmail')?.addEventListener('click',async()=>{
-    try{const currentEmail=await api(`/api/staff/user/${encodeURIComponent(user.id)}/email-history`);modal(`<h2>Edit email for @${esc(user.username)}</h2><label>Email<input id='staffNewEmail' type='email' value='${esc(currentEmail.email||'')}' placeholder='Email address' required></label><button class='primary' id='saveStaffEmail'>Save</button>`);$('saveStaffEmail').onclick=async()=>{try{await api('/api/admin/edit-email',{method:'PUT',body:JSON.stringify({userId:user.id,newEmail:$('staffNewEmail').value})});closeModal();toast('Email updated.');}catch(e){toast(e.message)}};}catch(e){toast(e.message)}
-  });
-}
-
-async function staffUploadProfileAvatar(user,data){
-  const picker=document.createElement('input');picker.type='file';picker.accept='image/png,image/jpeg,image/gif,image/webp,image/avif';
-  picker.onchange=async()=>{const file=picker.files?.[0];if(!file)return;const fd=new FormData();fd.append('file',file);try{const r=await api('/api/staff/user/'+encodeURIComponent(user.id)+'/avatar',{method:'POST',body:fd,uploadProgress:true});Object.assign(user,r.user||{});renderUserProfileModal(user,data);toast('Member profile picture uploaded.');}catch(e){toast(e.message);}};
-  picker.click();
-}
-async function staffRemoveProfileAvatar(user,data){
-  if(!confirm('Remove @'+user.username+' profile picture?'))return;
-  try{const r=await api('/api/staff/user/'+encodeURIComponent(user.id)+'/avatar',{method:'DELETE'});Object.assign(user,r.user||{});renderUserProfileModal(user,data);toast('Member profile picture removed.');}catch(e){toast(e.message);}
-}
-
-async function staffAccountModificationModal(user){
-  if(!canFeature('account_modifications')){toast('Account modifications have not been granted to your account.');return;}
-  let emailData=null;
-  if(canFeature('edit_email'))emailData=await api(`/api/staff/user/${encodeURIComponent(user.id)}/email-history`).catch(()=>null);
-  const dob=user.dateOfBirth||user.birthDate||user.birth_date||'';
-  modal(`<div class='account-modification-modal'><h2>🛠️ Account modifications</h2><p class='muted'>Update profile details for @${esc(user.username)}.</p><div class='account-avatar-editor'><div class='account-avatar-preview'>${user.avatar?`<img src='${esc(user.avatar)}' alt='Profile picture'>`:'<span>👤</span>'}</div><label>Profile picture<input id='staffProfileAvatar' type='file' accept='image/png,image/jpeg,image/gif,image/webp,image/avif'></label><button class='mini danger' type='button' id='removeStaffAvatar'>Remove picture</button></div><form id='staffProfileModForm' class='account-modification-form'><label>Display name<input id='staffDisplayName' maxlength='32' value='${esc(user.displayName||'')}' required></label><div class='account-modification-readonly'><b>Date of birth</b><span>${esc(dob||'Not provided')}</span><small>Age changes must go through pending staff verification and cannot be changed directly here.</small></div><label>Gender<input id='staffGender' maxlength='50' value='${esc(user.gender||'')}'></label>${emailData?`<label>Registration email<input id='staffProfileEmail' type='email' value='${esc(emailData.email||'')}'></label>`:''}<label>Mood<input id='staffMood' maxlength='80' value='${esc(user.mood||'')}' placeholder='Current mood'></label><label>About me<textarea id='staffBio' maxlength='500' rows='4'>${esc(user.bio||'')}</textarea></label><label>Pronouns<input id='staffPronouns' maxlength='60' value='${esc(user.pronouns||'')}'></label><label>Birthday<input id='staffBirthday' maxlength='40' value='${esc(user.birthday||'')}'></label><label>Location<input id='staffLocation' maxlength='120' value='${esc(user.location||'')}'></label><label>Website<input id='staffWebsite' maxlength='240' value='${esc(user.website||'')}' placeholder='https://…'></label><label>Profile background image URL<input id='staffBanner' maxlength='500' value='${esc(user.banner||'')}' placeholder='https://…'></label><div class='toolbar'><button class='primary' type='submit'>Save account changes</button></div></form></div>`);
-  $('removeStaffAvatar').onclick=async()=>{try{const d=await api(`/api/staff/user/${encodeURIComponent(user.id)}/avatar`,{method:'DELETE'});user.avatar=d.user?.avatar||'';closeModal();toast('Profile picture removed.');}catch(e){toast(e.message)}};
-  $('staffProfileModForm').onsubmit=async e=>{
-    e.preventDefault();
-    try{
-      const file=$('staffProfileAvatar').files?.[0];
-      if(file){const fd=new FormData();fd.append('file',file);const d=await api(`/api/staff/user/${encodeURIComponent(user.id)}/avatar`,{method:'POST',body:fd,uploadProgress:true});user.avatar=d.user?.avatar||'';}
-      const changes={displayName:$('staffDisplayName').value.trim(),gender:$('staffGender').value.trim(),mood:$('staffMood').value.trim(),bio:$('staffBio').value.trim(),pronouns:$('staffPronouns').value.trim(),birthday:$('staffBirthday').value.trim(),location:$('staffLocation').value.trim(),website:$('staffWebsite').value.trim(),banner:$('staffBanner').value.trim()};
-      if(emailData)changes.email=$('staffProfileEmail').value.trim();
-      const d=await api(`/api/staff/user/${encodeURIComponent(user.id)}/profile`,{method:'PATCH',body:JSON.stringify(changes)});
-      Object.assign(user,d.user||{});closeModal();toast('Account modifications saved.');
-    }catch(e){toast(e.message)}
-  };
-}
-
 function rankFromProfile(user){
   const actorRank=String(state.user?.rank||"MEMBER").toUpperCase();
   const isOwner=actorRank==="DEVELOPER" || (state.user?.username==="Maleficent" && actorRank==="OWNER");
