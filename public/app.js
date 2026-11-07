@@ -3365,6 +3365,7 @@ function renderUserProfileModal(user,data={}){
       ${isSelf||user.privacy?.showGuestbook!==false?'<button class="profile-tab" data-tab="guestbook">📖 Guestbook</button>':''}
       ${isSelf||user.privacy?.showGifts!==false?'<button class="profile-tab" data-tab="gifts">🎁 Gifts</button>':''}
       ${isSelf||user.privacy?.photos!==false?'<button class="profile-tab" data-tab="photos">📷 Photos</button>':''}
+      ${isSelf||user.privacy?.showScrapbook!==false?'<button class="profile-tab" data-tab="scrapbook">📚 Scrapbook</button>':''}
       <button class="profile-tab" data-tab="more">More</button>
     </div>
     <div id="profileTabContent" class="profile-info"></div>
@@ -3391,6 +3392,30 @@ function renderUserProfileModal(user,data={}){
     else if(tab==='about' && user.privacy?.bio!==false) box.innerHTML=`<div class="about-card"><h3>About Me</h3><p>${esc(user.bio||'This user has not written an About Me yet.')}</p>${user.privacy?.country!==false&&user.country?`<div class="profile-info-row"><b>🌍 Country</b><span>${esc(countryFlagFor(user.country))} ${esc(user.country)}</span></div>`:''}${user.privacy?.pronouns!==false&&user.pronouns?`<div class="profile-info-row"><b>Pronouns</b><span>${esc(user.pronouns)}</span></div>`:''}${user.privacy?.interests!==false&&user.interests?.length?`<div class="tag-list">${user.interests.map(x=>`<span class="tag">${esc(x)}</span>`).join('')}</div>`:''}${isSelf?`<button class="primary" id="editAboutBtn">✏️ Edit About Me</button>`:''}</div>`;
     else if(tab==='about') box.innerHTML='';
     else if(tab==='photos') renderProfilePhotos();
+    else if(tab==='scrapbook'){
+      box.innerHTML='<div class="about-card"><h3>📚 Scrapbook</h3><p class="muted">Loading scrapbook…</p></div>';
+      api('/api/social/scrapbooks/'+encodeURIComponent(user.id)).then(result=>{
+        if(!box.isConnected)return;
+        const book=result.scrapbook||{},entries=result.entries||[];
+        const theme=['midnight','violet','rose','paper','forest'].includes(book.theme)?book.theme:'midnight';
+        const layout=['polaroid','journal','collage','timeline','minimal'].includes(book.layout)?book.layout:'polaroid';
+        const canComment=book.allowComments!==false;
+        box.innerHTML='<section class="about-card scrapbook scrapbook-theme-'+theme+' scrapbook-layout-'+layout+'"><div class="scrapbook-heading"><div><h3>📚 '+esc(book.title||'My Scrapbook')+'</h3><p class="muted">'+(isSelf?'Your memories, notes and saved moments.':'Memories shared by @'+esc(user.username)+'.')+'</p></div></div>'+
+          (isSelf?'<form id="scrapbookSettingsForm" class="scrapbook-settings"><label>Title<input id="scrapbookTitle" maxlength="100" value="'+esc(book.title||'My Scrapbook')+'"></label><label>Theme<select id="scrapbookTheme">'+[['midnight','Midnight'],['violet','Violet'],['rose','Rose'],['paper','Paper'],['forest','Forest']].map(([v,n])=>'<option value="'+v+'" '+(theme===v?'selected':'')+'>'+n+'</option>').join('')+'</select></label><label>Layout<select id="scrapbookLayout">'+[['polaroid','Polaroid'],['journal','Journal'],['collage','Collage'],['timeline','Timeline'],['minimal','Minimal']].map(([v,n])=>'<option value="'+v+'" '+(layout===v?'selected':'')+'>'+n+'</option>').join('')+'</select></label><label>Visibility<select id="scrapbookVisibility">'+[['public','Everyone'],['friends','Friends only'],['private','Only me']].map(([v,n])=>'<option value="'+v+'" '+(book.visibility===v?'selected':'')+'>'+n+'</option>').join('')+'</select></label><label class="scrapbook-comments-toggle"><input id="scrapbookAllowComments" type="checkbox" '+(canComment?'checked':'')+'> Allow comments</label><button class="mini primary" type="submit">Save scrapbook settings</button></form><form id="scrapbookNoteForm" class="scrapbook-note-form"><input id="scrapbookNoteTitle" maxlength="120" placeholder="Memory title (optional)"><textarea id="scrapbookNoteBody" rows="3" maxlength="4000" placeholder="Write a memory…"></textarea><button class="primary" type="submit">＋ Add memory</button></form>':'')+
+          '<div class="scrapbook-entry-grid">'+(entries.length?entries.map(entry=>'<article class="scrapbook-entry">'+(entry.entry_type==='media'&&entry.media_key?'<img src="/uploads/'+esc(entry.media_key)+'" alt="Scrapbook memory" loading="lazy">':entry.entry_type==='sticker'?'<div class="scrapbook-sticker">'+esc(entry.sticker||'✦')+'</div>':'')+'<div class="scrapbook-entry-copy">'+(entry.title?'<b>'+esc(entry.title)+'</b>':'')+(entry.body?'<p>'+esc(entry.body)+'</p>':'')+'<small>'+esc(fmt(entry.created_at))+'</small></div>'+(isSelf?'<button type="button" class="mini danger" data-scrapbook-delete="'+esc(entry.id)+'">Delete</button>':'')+'</article>').join(''):'<p class="muted">No scrapbook memories yet.</p>')+'</div></section>';
+        $('scrapbookSettingsForm')?.addEventListener('submit',async event=>{
+          event.preventDefault();const button=event.currentTarget.querySelector('button[type="submit"]');button.disabled=true;
+          try{await api('/api/social/scrapbooks/settings',{method:'PUT',body:JSON.stringify({title:$('scrapbookTitle').value.trim(),theme:$('scrapbookTheme').value,layout:$('scrapbookLayout').value,visibility:$('scrapbookVisibility').value,allowComments:$('scrapbookAllowComments').checked})});toast('Scrapbook settings saved.');renderTab('scrapbook');}
+          catch(error){toast(error.message||'Could not save scrapbook settings.');button.disabled=false;}
+        });
+        $('scrapbookNoteForm')?.addEventListener('submit',async event=>{
+          event.preventDefault();const body=$('scrapbookNoteBody').value.trim();if(!body){toast('Write a memory before saving.');return;}const button=event.currentTarget.querySelector('button[type="submit"]');button.disabled=true;
+          try{await api('/api/social/scrapbooks/entries',{method:'POST',body:JSON.stringify({type:'note',title:$('scrapbookNoteTitle').value.trim(),body})});toast('Memory added to your scrapbook.');renderTab('scrapbook');}
+          catch(error){toast(error.message||'Could not add memory.');button.disabled=false;}
+        });
+        box.querySelectorAll('[data-scrapbook-delete]').forEach(button=>button.addEventListener('click',async()=>{if(!confirm('Delete this scrapbook memory?'))return;try{await api('/api/social/scrapbooks/entries/'+encodeURIComponent(button.dataset.scrapbookDelete),{method:'DELETE'});renderTab('scrapbook');toast('Memory deleted.');}catch(error){toast(error.message||'Could not delete memory.');}}));
+      }).catch(error=>{if(box.isConnected)box.innerHTML='<div class="about-card"><h3>📚 Scrapbook</h3><p class="muted">'+esc(error.message||'Could not load scrapbook.')+'</p></div>';});
+    }
     else if(tab==='friends'){
       box.innerHTML=`<div class="profile-friends-grid-wrap"><div class="profile-friends-grid" id="profileFriendsGrid"><span class="muted">Loading friends…</span></div></div>`;
       api('/api/users/'+encodeURIComponent(user.id)+'/friends').then(result=>{
