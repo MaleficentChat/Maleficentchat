@@ -56,6 +56,20 @@ assert.match(server, /const isAgeRoom=\/\^\(teen chat\|adult chat\)\$\/i\.test\(
   "Teen Chat and Adult Chat must remain the only age-room join-grant exemptions");
 assert.match(server, /if\(!isAgeRoom&&!isStaffAccount&&!hasFeature\(u,"join_rooms"\)\)/,
   "custom rooms must continue to enforce the room-join grant");
+assert.match(server, /if\\(!roomAgeAllowed\\(u,r\\)\\)/,
+  "server room joining must enforce age restrictions before issuing room access");
+assert.match(server, /roomDelivery\\.emit\\("message",m\\)/,
+  "persisted room messages must be pushed to the room over Socket.IO");
+assert.match(server, /io\\.to\\("user:"\\+v\\.id\\)\\.emit\\("dm",m\\)/,
+  "private messages must be pushed to the recipient's authenticated Socket.IO room");
+const activeClient = fs.readFileSync("public/app.js", "utf8");
+assert.match(activeClient, /state\\.socket\\.on\\("message"/,
+  "the browser must subscribe to Socket.IO room-message events");
+assert.match(activeClient, /state\\.socket\\.on\\("dm"/,
+  "the browser must subscribe to Socket.IO private-message events");
+assert.doesNotMatch(server + activeClient + fs.readFileSync("public/index.html", "utf8"), /Ably|ably-live/i,
+  "Socket.IO must be the only active realtime transport");
+
 assert.match(server, /UPDATE rooms SET is_default=false WHERE name IN \(\x27Main Room\x27,\x27Teen Chat\x27,\x27Adult Chat\x27\)/,
   "legacy Main Room must not remain a default room");
 assert.match(fs.readFileSync("public/app.js", "utf8"), /state\.rooms\.find\(r => String\(r\.id\) === String\(id\)\)/,
