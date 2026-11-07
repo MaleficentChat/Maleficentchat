@@ -265,6 +265,7 @@ async function api(url, opt = {}) {
 
   if (!res.ok) {
     const err = Error(body.error || "Request failed");
+    err.status = res.status;
     err.kickedUntil = body.kickedUntil || null;
     err.reason = body.reason || null;
     err.moderationLock = body.moderationLock || null;
@@ -790,29 +791,24 @@ let liveSyncWakeListenersBound=false;
 let liveRoomPollTimer=null, liveDMPollTimer=null;
 let liveRoomLastFallbackPoll=0, liveDMLastFallbackPoll=0;
 function startLiveSync(){
-  // Socket.IO delivers new messages immediately. Keep a frequent recovery poll
-  // only while disconnected; when connected, periodically reconcile history to
-  // recover missed events without querying PostgreSQL every second.
+  // Socket.IO is the primary instant transport. Reconcile only the active room
+  // and open DM every 500ms while connected (1s during reconnect), using one
+  // scheduler so simultaneous room/DM polls never launch duplicate sync passes.
   if(liveRoomPollTimer)clearInterval(liveRoomPollTimer);
   if(liveDMPollTimer)clearInterval(liveDMPollTimer);
+  liveDMPollTimer=null;
   syncLiveMessages();
   // Keep checking server-side outstanding warnings; reloads never acknowledge them.
   setInterval(()=>{if(state.user&&!activeWarningNotificationId)loadPendingWarning().catch(()=>{});},5000);
   liveRoomPollTimer=setInterval(()=>{
     const now=Date.now(), connected=!!state.socket?.connected;
-    const interval=connected?4000:1000;
-    if(state.user&&state.currentRoom&&!liveRoomSyncBusy&&now-liveRoomLastFallbackPoll>=interval){
-      liveRoomLastFallbackPoll=now;
-      syncLiveMessages().catch(error=>console.warn("Automatic room sync failed:",error?.message||error));
-    }
-  },500);
-  liveDMPollTimer=setInterval(()=>{
-    const now=Date.now(), connected=!!state.socket?.connected;
-    const interval=connected?4000:1000;
-    if(state.user&&state.dmUserId&&!liveDMSyncBusy&&now-liveDMLastFallbackPoll>=interval){
-      liveDMLastFallbackPoll=now;
-      syncLiveMessages().catch(error=>console.warn("Automatic private-message sync failed:",error?.message||error));
-    }
+    const interval=connected?500:1000;
+    const roomDue=!!(state.currentRoom&&!liveRoomSyncBusy&&now-liveRoomLastFallbackPoll>=interval);
+    const dmDue=!!(state.dmUserId&&!liveDMSyncBusy&&now-liveDMLastFallbackPoll>=interval);
+    if(!state.user||(!roomDue&&!dmDue))return;
+    if(roomDue)liveRoomLastFallbackPoll=now;
+    if(dmDue)liveDMLastFallbackPoll=now;
+    syncLiveMessages().catch(error=>console.warn("Automatic live-message sync failed:",error?.message||error));
   },500);
   // Bind once so app focus/reconnect immediately catches up without sending a message.
   if(!liveSyncWakeListenersBound){
@@ -1136,30 +1132,42 @@ async function start() {
 }
 
 async function bootstrap() {
-  try {
-    const data = await api("/api/bootstrap");
-
-    if (data.user) {
-      state.user = data.user;
-      state.featurePermissions = data.featurePermissions || {};
-      state.featureGrants = data.settings?.feature_grants || {};
-      state.modeManagement = data.settings?.mode_management || {};
-      state.userPermissions = data.userPermissions || {};
-      await start();
+  let data=null,lastError=null;
+  // A short transient API/network failure during a mobile page restore should
+  // not strand a valid signed-in user at the login screen. Retry once without
+  // discarding the durable token or changing any account data.
+  for(let attempt=0;attempt<2;attempt++){
+    try{data=await api("/api/bootstrap");lastError=null;break;}
+    catch(error){
+      lastError=error;
+      const retryable=!Number(error?.status)||Number(error.status)>=500;
+      if(!retryable||attempt===1)break;
+      await new Promise(resolve=>setTimeout(resolve,700));
     }
-  } catch (error) {
-    // A kicked account is intentionally rejected by bootstrap with HTTP 403.
-    // Show the same full-screen moderation lock used after a failed login,
-    // rather than silently leaving the user at the ordinary login screen.
-    if (/you have been kicked/i.test(String(error?.message||"")) && error?.kickedUntil) {
-      $("auth")?.classList.add("hidden");
-      $("app")?.classList.add("hidden");
+  }
+  if(!data){
+    const error=lastError||new Error("Could not restore your session.");
+    // A kicked or banned account is intentionally rejected by bootstrap.
+    if(/you have been kicked/i.test(String(error?.message||""))&&error?.kickedUntil){
+      $("auth")?.classList.add("hidden");$("app")?.classList.add("hidden");
       showKickLock(error.kickedUntil,error.reason||"Community rules");
-    } else if (/you have been banned/i.test(String(error?.message||""))) {
-      $("auth")?.classList.add("hidden");
-      $("app")?.classList.add("hidden");
+    }else if(/you have been banned/i.test(String(error?.message||""))){
+      $("auth")?.classList.add("hidden");$("app")?.classList.add("hidden");
       showBanLock(error.reason||"Community rules");
+    }else if($("authMsg")){
+      $("authMsg").textContent=Number(error?.status)===401
+        ?"Your session has expired. Please sign in again."
+        :"Could not restore your session. Please try again. "+String(error?.message||"");
     }
+    return;
+  }
+  if(data.user){
+    state.user=data.user;
+    state.featurePermissions=data.featurePermissions||{};
+    state.featureGrants=data.settings?.feature_grants||{};
+    state.modeManagement=data.settings?.mode_management||{};
+    state.userPermissions=data.userPermissions||{};
+    await start();
   }
 }
 
