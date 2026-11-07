@@ -4172,49 +4172,82 @@ async function loadNews() {
 // News publishing — explicitly wired here so the control keeps working after
 // the redesigned News view is rendered/re-rendered.
 function openPublishNews(){
-  if(!canFeature('publish_news')){ toast('You do not have permission to publish news.'); return; }
-  modal(`<div class="publish-news-modal instagram-publish-modal">
-    <div class="instagram-compose-head"><div><h2>＋ Create post</h2><p class="muted">Share an update with the Maleficent Chat community.</p></div></div>
-    <div class="instagram-compose-author">${avatar(state.user,'avatar')}<b>${esc(state.user?.displayName||state.user?.username||'You')}</b></div>
-    <form id="newsForm">
-      <input id="nt" maxlength="120" placeholder="Add a headline (optional)">
-      <textarea id="nb" rows="5" maxlength="3000" placeholder="Write a caption…" ></textarea>
-      <label class="instagram-photo-picker" for="nphoto"><span>🖼️</span><b>Add photo</b><small>Choose an image to include in your post</small></label>
-      <input id="nphoto" type="file" accept="image/*" hidden>
-      <div id="newsPhotoPreview" class="instagram-photo-preview hidden"><img id="newsPhotoPreviewImage" alt="Post preview"><button type="button" class="mini danger" id="newsPhotoRemove">Remove photo</button></div>
-      <div class="toolbar instagram-compose-actions"><button class="mini" type="button" id="newsComposeCancel">Cancel</button><button class="primary" type="submit" id="newsComposePublish">Share post</button></div>
+  if(!state.user){toast('Please log in before publishing.');return;}
+  modal(`<div class="publish-news-modal instagram-publish-modal news-compose-v2">
+    <div class="instagram-compose-head">
+      <div><h2>＋ Create a News post</h2><p class="muted">Share an update with the Maleficent Chat community.</p></div>
+      <span class="news-compose-mark">📰 NEWS</span>
+    </div>
+    <div class="instagram-compose-author">${avatar(state.user,'avatar')}<div><b>${esc(state.user?.displayName||state.user?.username||'You')}</b><small class="muted">Publishing to Community News</small></div></div>
+    <form id="newsForm" novalidate>
+      <label class="news-compose-label" for="nt">Headline <span>Optional</span></label>
+      <input id="nt" maxlength="120" placeholder="Give your update a headline…">
+      <label class="news-compose-label" for="nb">Your update</label>
+      <textarea id="nb" rows="6" maxlength="3000" placeholder="What's happening? Write your announcement…" required></textarea>
+      <label class="instagram-photo-picker news-compose-upload" for="nphoto"><span>＋</span><div><b>Add a photo</b><small>Attach an image to your News post</small></div><strong>Browse</strong></label>
+      <input id="nphoto" type="file" accept="image/jpeg,image/png,image/webp,image/gif" hidden>
+      <div id="newsPhotoPreview" class="instagram-photo-preview hidden"><img id="newsPhotoPreviewImage" alt="Selected News photo preview"><button type="button" class="mini danger" id="newsPhotoRemove">Remove photo</button></div>
+      <div class="news-compose-footer"><small class="muted">Your post will appear in the News feed.</small><div class="toolbar instagram-compose-actions"><button class="mini" type="button" id="newsComposeCancel">Cancel</button><button class="primary" type="button" id="newsComposePublish">Publish post</button></div></div>
+      <p id="newsComposeError" class="error" role="status" aria-live="polite"></p>
     </form>
   </div>`);
-  const form=$('newsForm'),photo=$('nphoto'),preview=$('newsPhotoPreview'),previewImage=$('newsPhotoPreviewImage'),publish=$('newsComposePublish');
+  const form=$('newsForm'),photo=$('nphoto'),preview=$('newsPhotoPreview'),previewImage=$('newsPhotoPreviewImage');
+  const publish=$('newsComposePublish'),errorBox=$('newsComposeError');
   $('newsComposeCancel')?.addEventListener('click',closeModal);
   photo?.addEventListener('change',()=>{
     const file=photo.files?.[0];
     if(!file){preview?.classList.add('hidden');return;}
-    if(!file.type.startsWith('image/')){photo.value='';toast('Choose an image file.');return;}
+    if(!file.type.startsWith('image/')){photo.value='';toast('Choose a supported image file.');return;}
+    if(file.size>10*1024*1024){photo.value='';toast('News photos must be 10 MB or smaller.');return;}
     const reader=new FileReader();
     reader.onload=()=>{if(previewImage)previewImage.src=String(reader.result||'');preview?.classList.remove('hidden');};
     reader.onerror=()=>toast('Could not preview this image.');
     reader.readAsDataURL(file);
   });
-  $('newsPhotoRemove')?.addEventListener('click',()=>{if(photo)photo.value='';if(previewImage)previewImage.removeAttribute('src');preview?.classList.add('hidden');});
-  form.onsubmit=async e=>{
-    e.preventDefault();
-    const title=$('nt').value.trim(),body=$('nb').value.trim(),file=photo?.files?.[0];
-    if(!body&&!file){toast('Write a caption or add a photo before sharing.');return;}
-    publish.disabled=true;publish.textContent='Sharing…';
+  $('newsPhotoRemove')?.addEventListener('click',()=>{
+    if(photo)photo.value='';
+    if(previewImage)previewImage.removeAttribute('src');
+    preview?.classList.add('hidden');
+  });
+  const publishPost=async()=>{
+    if(publish?.disabled)return;
+    const title=$('nt')?.value.trim()||'';
+    const body=$('nb')?.value.trim()||'';
+    const file=photo?.files?.[0];
+    if(!body&&!file){if(errorBox)errorBox.textContent='Write an update or attach a photo before publishing.';return;}
+    if(file&&(!file.type.startsWith('image/')||file.size>10*1024*1024)){
+      if(errorBox)errorBox.textContent='Choose an image no larger than 10 MB.';return;
+    }
+    publish.disabled=true;
+    publish.textContent='Publishing…';
+    if(errorBox)errorBox.textContent='';
     try{
       const payload=new FormData();
-      payload.append('title',title);payload.append('body',body);
+      payload.append('title',title);
+      payload.append('body',body);
       if(file)payload.append('file',file);
       await api('/api/news',{method:'POST',body:payload,uploadProgress:true});
-      closeModal();await loadNews();toast('Your post has been shared.');
-    }catch(err){toast(err.message||'Could not publish this post.');}
-    finally{if(publish){publish.disabled=false;publish.textContent='Share post';}}
+      closeModal();
+      await loadNews();
+      toast('Your News post is published.');
+    }catch(err){
+      const message=err.message||'Could not publish this News post.';
+      if(errorBox)errorBox.textContent=message;
+      toast(message);
+      if(publish){publish.disabled=false;publish.textContent='Publish post';}
+    }
   };
+  // Use a direct button action rather than depending on implicit form submission.
+  publish?.addEventListener('click',publishPost);
+  form?.addEventListener('submit',event=>{event.preventDefault();publishPost();});
 }
 
-document.addEventListener('click',event=>{const button=event.target instanceof Element?event.target.closest('#publishNews'):null;if(!button||button.disabled)return;event.preventDefault();event.stopPropagation();event.stopImmediatePropagation();openPublishNews();},true);
-if($('publishNews')) $('publishNews').onclick=openPublishNews;
+document.addEventListener('click',event=>{
+  const button=event.target instanceof Element?event.target.closest('#publishNews'):null;
+  if(!button)return;
+  event.preventDefault();
+  openPublishNews();
+});
 
 async function openNewsComments(id){
   try{
