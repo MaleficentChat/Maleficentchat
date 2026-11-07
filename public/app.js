@@ -110,14 +110,6 @@ window.addEventListener("mc:ably-dm",event=>{
   }
   loadDMList().catch(()=>{});
 });
-window.addEventListener("mc:ably-dm-typing",event=>{
-  const detail=event.detail||{};
-  if(String(detail.peerId)!==String(state.dmUserId||""))return;
-  const status=$("dmTypingStatus");
-  if(!status)return;
-  const typers=detail.typers||[];
-  status.textContent=typers.length?"Someone is typing…":"Quote a message to reply · Attach photos or files";
-});
 window.addEventListener("mc:ably-message",event=>{
   const message=event.detail;
   if(!message||String(message.roomId)!==String(state.currentRoom))return;
@@ -4130,7 +4122,7 @@ async function openDM(id) {
 
     const draftKey="mc_dm_draft_"+String(state.user?.id||"")+"_"+String(id);
     const dmInput=$("dmText");
-    if(dmInput){dmInput.value=safeStorage.getItem(draftKey)||"";dmInput.addEventListener("input",()=>{if(dmInput.value)safeStorage.setItem(draftKey,dmInput.value);else safeStorage.removeItem(draftKey);if(state.socket?.connected)state.socket.emit("dm-typing",{userId:id,user:state.user?.displayName||state.user?.username,typing:!!dmInput.value.trim()});window.MaleficentAbly?.dmTyping?.(!!dmInput.value.trim());});}
+    if(dmInput){dmInput.value=safeStorage.getItem(draftKey)||"";dmInput.addEventListener("input",()=>{if(dmInput.value)safeStorage.setItem(draftKey,dmInput.value);else safeStorage.removeItem(draftKey);if(state.socket?.connected)state.socket.emit("dm-typing",{userId:id,user:state.user?.displayName||state.user?.username,typing:!!dmInput.value.trim()});});}
     $("dmForm").onsubmit = async e => {
       e.preventDefault();
       const input = $("dmText");
