@@ -1080,6 +1080,19 @@ async function start() {
       toast("New private message");
     }
   });
+  state.socket.on("dm-read", payload => {
+    const from=String(payload?.from||""),to=String(payload?.to||""),myId=String(state.user?.id||"");
+    if(!from||!to||from!==myId)return;
+    const peerId=String(state.dmUserId||"");
+    if(peerId!==to)return;
+    state.dmMessages=(state.dmMessages||[]).map(message=>
+      String(message.from)===from&&String(message.to)===to?{...message,read:true}:message
+    );
+    const list=$("dmMessages");
+    if(list&&state.dmPeerUser){
+      list.innerHTML=state.dmMessages.map(message=>dmMessageHTML(message,state.dmMessages,state.dmPeerUser)).join("")||'<p class="muted">No private messages yet.</p>';
+    }
+  });
 
   await loadRooms();
 

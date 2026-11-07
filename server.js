@@ -3808,6 +3808,7 @@ function privateMessagesBlocked(userA,userB){
   return (userA.blocked||[]).some(id=>String(id)===b)||(userB.blocked||[]).some(id=>String(id)===a);
 }
 app.get("/api/dm/conversations",auth,featureAllowed("private_messages"),async(req,res)=>{
+  res.set("Cache-Control","no-store");
   const u=current(req);
   const {rows}=await pool.query(`SELECT DISTINCT ON (other_id) other_id,data,created_at,id,
     (SELECT COUNT(*)::int FROM private_messages unread WHERE unread.sender_id=other_id AND unread.receiver_id=$1 AND unread.data->>'read' IS DISTINCT FROM 'true') AS unread_count
@@ -3822,6 +3823,7 @@ app.get("/api/dm/conversations",auth,featureAllowed("private_messages"),async(re
 });
 
 app.get("/api/dm/:id",auth,featureAllowed("private_messages"),async(req,res)=>{
+  res.set("Cache-Control","no-store");
   const u=current(req);
   if(String(req.params.id)==="system-bot"){
     const {rows}=await pool.query("SELECT data FROM private_messages WHERE sender_id IS NULL AND receiver_id=$1 ORDER BY created_at DESC,id DESC LIMIT 300",[Number(u.id)]);
@@ -4011,6 +4013,9 @@ app.post(
       db.privateMessages
         .filter(m=>String(m.from??m.sender_id)===senderId&&String(m.to??m.receiverId)===String(u.id))
         .forEach(m=>m.read=true);
+      // Propagate the persisted read receipt to every connected device belonging
+      // to the sender so message status changes without reopening the chat.
+      io.to("user:"+senderId).emit("dm-read",{from:senderId,to:String(u.id),time:Date.now()});
       res.set("Cache-Control","no-store");
       res.json({ok:true});
     } catch(err) {
