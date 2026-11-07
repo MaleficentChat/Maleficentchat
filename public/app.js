@@ -979,8 +979,7 @@ async function start() {
     state.messages=[];
     if($("messages"))$("messages").innerHTML="";
     toast("You were removed from this room. Reason: "+String(data?.reason||"Room rules"));
-    const main=state.rooms.find(r=>/^main room$/i.test(String(r.name||"")));
-    if(main&&String(main.id)!==String(state.currentRoom))joinRoom(main.id).catch(()=>{});
+    try{const fallbackRoom=roomForAgeRouting();if(String(fallbackRoom.id)!==String(state.currentRoom))joinRoom(fallbackRoom.id).catch(()=>renderRooms());}catch{renderRooms();}
   });
   state.socket.on("room:clear", () => {
     if (state.currentRoom) {
