@@ -2,7 +2,7 @@
 /* Ably Chat realtime transport for public rooms. The backend remains authoritative. */
 (()=>{
   let chatClient=null,activeRoom=null,activeRoomName=null,subscription=null,seen=new Set(),connecting=null,activeUserId=null;
-  let activeDMRoom=null,activeDMName=null,dmMessageSubscription=null,dmTypingSubscription=null;
+  let activeDMRoom=null,activeDMName=null,dmMessageSubscription=null,presenceSubscription=null;
   const enabled=()=>!!(window.Ably&&window.Ably.Realtime&&window.AblyChat&&window.AblyChat.ChatClient);
   async function getClient(){
     if(chatClient)return chatClient;
@@ -38,7 +38,7 @@
     activeUserId=next;
   }
   async function leaveRoom(){
-    if(activeRoom){try{subscription?.unsubscribe?.();await activeRoom.detach();}catch{}}
+    if(activeRoom){try{subscription?.unsubscribe?.();presenceSubscription?.unsubscribe?.();await activeRoom.presence.leave({userId:activeUserId}).catch(()=>{});await activeRoom.detach();}catch{}}
     activeRoom=null;activeRoomName=null;subscription=null;
   }
   async function joinRoom(roomId){
@@ -56,7 +56,11 @@
       seen.add(key);if(seen.size>1500)seen=new Set(Array.from(seen).slice(-750));
       window.dispatchEvent(new CustomEvent("mc:ably-message",{detail:message}));
     });
+    presenceSubscription=room.presence.subscribe(event=>{
+      window.dispatchEvent(new CustomEvent("mc:ably-presence",{detail:{roomId:id,type:event.type,userId:String(event.member?.clientId||"").replace(/^mc-user-/,""),data:event.member?.data||{}}}));
+    });
     await room.attach();
+    await room.presence.enter({userId:activeUserId});
     activeRoom=room;activeRoomName=name;
     room.onDiscontinuity?.(()=>{
       window.dispatchEvent(new CustomEvent("mc:ably-discontinuity",{detail:{roomId:id}}));
@@ -64,9 +68,9 @@
   }
   async function leaveDM(){
     if(activeDMRoom){
-      try{dmMessageSubscription?.unsubscribe?.();dmTypingSubscription?.unsubscribe?.();await activeDMRoom.detach();}catch{}
+      try{dmMessageSubscription?.unsubscribe?.();await activeDMRoom.detach();}catch{}
     }
-    activeDMRoom=null;activeDMName=null;dmMessageSubscription=null;dmTypingSubscription=null;
+    activeDMRoom=null;activeDMName=null;dmMessageSubscription=null;
   }
   async function joinDM(peerId){
     if(!peerId||!activeUserId)return;
@@ -83,16 +87,8 @@
       if(key){seen.add("dm:"+key);if(seen.size>1500)seen=new Set(Array.from(seen).slice(-750));}
       window.dispatchEvent(new CustomEvent("mc:ably-dm",{detail:message}));
     });
-    dmTypingSubscription=room.typing.subscribe(event=>{
-      const typers=(event.currentTypers||[]).map(item=>String(item.clientId||"").replace(/^mc-user-/,"")).filter(id=>id&&id!==String(activeUserId));
-      window.dispatchEvent(new CustomEvent("mc:ably-dm-typing",{detail:{peerId:String(peerId),typers}}));
-    });
     await room.attach();
     activeDMRoom=room;activeDMName=name;
-  }
-  async function dmTyping(typing){
-    if(!activeDMRoom)return;
-    try{if(typing)await activeDMRoom.typing.keystroke();else await activeDMRoom.typing.stop();}catch(error){console.warn("Ably DM typing unavailable:",error?.message||error);}
   }
   async function close(){
     await leaveRoom();
@@ -106,7 +102,6 @@
     leaveRoom,
     joinDM,
     leaveDM,
-    dmTyping,
     get status(){return chatClient?.connection?.status||"not-connected";},
     close
   };
