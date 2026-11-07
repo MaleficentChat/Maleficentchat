@@ -79,6 +79,12 @@ assert.doesNotMatch(server + activeClient + fs.readFileSync("public/index.html",
 
 assert.match(server, /UPDATE rooms SET is_default=false WHERE name IN \(\x27Main Room\x27,\x27Teen Chat\x27,\x27Adult Chat\x27\)/,
   "legacy Main Room must not remain a default room");
+assert.ok(server.includes('if(String(room.name||"").trim().toLowerCase()==="main room")return false;'),
+  "the retired Main Room must not be exposed by the room-list API");
+assert.doesNotMatch(activeClient, /syncLiveMessages\(|livePollUrl\(|startLiveSync\(/,
+  "room and private-message bodies must not rely on recurring REST history synchronization");
+assert.doesNotMatch(activeClient, /refreshRoomMessageList\(sentRoomId|refreshActiveDMMessageList\(String\(id\)/,
+  "successful sends must not trigger a second history fetch to make messages appear");
 assert.match(fs.readFileSync("public/app.js", "utf8"), /state\.rooms\.find\(r => String\(r\.id\) === String\(id\)\)/,
   "room join must tolerate numeric/string room IDs");
 

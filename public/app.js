@@ -643,174 +643,38 @@ function showBanLock(reason="Community rules"){
 }
 function clearActionLock(){if(actionLockTimer)clearTimeout(actionLockTimer);actionLockTimer=null;const box=$("actionLock");if(box){box.classList.add("hidden");box.innerHTML="";box.dataset.lockType="";}}
 
-let liveSyncTimer=null, liveSyncRunId=0, liveRoomSyncBusy=false, liveDMSyncBusy=false, liveSyncLastInbox=0;
-// Give every live-history read a unique URL as an extra safeguard against service-worker,
-// embedded-browser, or intermediary caches that may ignore fetch cache:'no-store'.
-function livePollUrl(path){const join=String(path).includes('?')?'&':'?';return String(path)+join+'__mc_live_poll='+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2);}
-
+// Socket.IO is the sole live transport. REST is used for explicit history loads,
+// manual refresh, and one-time recovery after a socket reconnect.
 async function refreshRoomMessageList(roomId,{force=false}={}){
   if(!state.user||!roomId||String(state.currentRoom)!==String(roomId))return false;
   const requestedRoom=String(roomId);
-  const data=await api(livePollUrl("/api/rooms/"+encodeURIComponent(requestedRoom)+"/messages"),{
-    ...(typeof AbortSignal!=="undefined"&&typeof AbortSignal.timeout==="function"?{signal:AbortSignal.timeout(7000)}:{})
-  });
+  const data=await api("/api/rooms/"+encodeURIComponent(requestedRoom)+"/messages");
   if(String(state.currentRoom)!==requestedRoom||!Array.isArray(data.messages))return false;
   const list=$("messages");if(!list)return false;
-  const incoming=data.messages;
-  const incomingIds=incoming.map(m=>String(m.id));
-  const renderedIds=Array.from(list.querySelectorAll("[data-mid]")).map(el=>String(el.dataset.mid));
-  const same=incomingIds.length===renderedIds.length&&incomingIds.every((id,i)=>id===renderedIds[i]);
-  if(!same||force){
-    const nearBottom=list.scrollHeight-list.scrollTop-list.clientHeight<180;
-    state.messages=incoming;
-    list.innerHTML=incoming.map(messageHTML).join("");
-    if(nearBottom)list.scrollTop=list.scrollHeight;
-  }else{state.messages=incoming;}
+  const nearBottom=list.scrollHeight-list.scrollTop-list.clientHeight<180;
+  state.messages=data.messages;
+  list.innerHTML=state.messages.map(messageHTML).join("");
+  if(nearBottom)list.scrollTop=list.scrollHeight;
   return true;
 }
 
 async function refreshActiveDMMessageList(peerId){
   if(!state.user||!peerId||String(state.dmUserId)!==String(peerId))return false;
   const requestedPeer=String(peerId);
-  const data=await api(livePollUrl("/api/dm/"+encodeURIComponent(requestedPeer)),{
-    ...(typeof AbortSignal!=="undefined"&&typeof AbortSignal.timeout==="function"?{signal:AbortSignal.timeout(7000)}:{})
-  });
+  const data=await api("/api/dm/"+encodeURIComponent(requestedPeer));
   if(String(state.dmUserId)!==requestedPeer||!Array.isArray(data.messages))return false;
-  const list=$("dmMessages");if(!list)return false;
-  const incoming=data.messages,peer=state.dmPeerUser||{};
-  const oldIds=Array.from(list.querySelectorAll("[data-dmid]")).map(el=>String(el.dataset.dmid));
-  const newIds=incoming.map(m=>String(m.id));
-  const signature=m=>JSON.stringify([String(m?.id??""),String(m?.from??""),String(m?.to??""),String(m?.text??""),String(m?.time??""),String(m?.read??""),JSON.stringify(m?.attachment??null),String(m?.deleted??""),String(m?.edited??"")]);
-  const same=oldIds.length===newIds.length&&oldIds.every((id,i)=>id===newIds[i])&&
-    Array.isArray(state.dmMessages)&&state.dmMessages.length===incoming.length&&
-    state.dmMessages.every((message,i)=>signature(message)===signature(incoming[i]));
-  const nearBottom=list.scrollHeight-list.scrollTop-list.clientHeight<180;
-  if(!same){
-    state.dmMessages=incoming;
-    list.innerHTML=incoming.length?incoming.map(m=>dmMessageHTML(m,incoming,peer)).join(""):'<p class="muted">No private messages yet.</p>';
+  const list=$("dmMessages");
+  const incoming=data.messages;
+  state.dmMessages=incoming;
+  if(list){
+    const nearBottom=list.scrollHeight-list.scrollTop-list.clientHeight<180;
+    list.innerHTML=incoming.length?incoming.map(m=>dmMessageHTML(m,incoming,state.dmPeerUser||{})).join(""):'<p class="muted">No private messages yet.</p>';
     if(nearBottom)list.scrollTop=list.scrollHeight;
     const count=$("dmSearchCount");if(count)count.textContent=incoming.length+" messages";
-  }else{state.dmMessages=incoming;}
+  }
   return true;
 }
 
-async function syncLiveMessages(){
-  if(!state.user)return; // Keep polling active even when mobile/webview visibility state is unreliable.
-  // Keep each channel on its own lock. A slow or rejected room-history
-  // request must never block private-message synchronization (or vice versa).
-    // Run room history and the active private conversation independently. A slow
-    // room request must not delay private messages (or vice versa).
-    const roomTask=(async()=>{
-    if(state.currentRoom&&!liveRoomSyncBusy){
-      liveRoomSyncBusy=true;
-      try {
-      const roomId=String(state.currentRoom);
-      try{
-        // A stalled fetch must not leave the room-sync lock set forever.
-        // Abort this read after 7 seconds so the next poll can recover.
-        const data=await api(livePollUrl("/api/rooms/"+encodeURIComponent(roomId)+"/messages"),{...(typeof AbortSignal!=="undefined"&&typeof AbortSignal.timeout==="function"?{signal:AbortSignal.timeout(7000)}:{})});
-        if(String(state.currentRoom)===roomId&&Array.isArray(data.messages)){
-          const incoming=data.messages;
-          const list=$("messages");
-          const incomingIds=incoming.map(m=>String(m.id));
-          const renderedIds=list?Array.from(list.querySelectorAll("[data-mid]")).map(el=>String(el.dataset.mid)):[];
-          const stateIds=(state.messages||[]).map(m=>String(m.id));
-          const sameIds=(a,b)=>a.length===b.length&&a.every((id,index)=>id===b[index]);
-          const domMatches=sameIds(renderedIds,incomingIds);
-          const stateMatches=sameIds(stateIds,incomingIds);
-          if(list&&(!domMatches||!stateMatches)){
-            const wasNearBottom=list.scrollHeight-list.scrollTop-list.clientHeight<180;
-            state.messages=incoming;
-            list.innerHTML=incoming.map(messageHTML).join("");
-            if(wasNearBottom)list.scrollTop=list.scrollHeight;
-          }else{
-            const previousById=new Map((state.messages||[]).map(m=>[String(m.id),m]));
-            state.messages=incoming;
-            for(const message of incoming){
-              const previous=previousById.get(String(message.id));
-              if(!previous)continue;
-              const stamp=JSON.stringify([message.edited,message.deleted,message.reactions,message.text,message.attachment]);
-              const el=list?Array.from(list.querySelectorAll("[data-mid]")).find(node=>String(node.dataset.mid)===String(message.id)):null;
-              if(el&&String(el.dataset.syncStamp||"")!==stamp){
-                el.outerHTML=messageHTML(message);
-                const fresh=list?Array.from(list.querySelectorAll("[data-mid]")).find(node=>String(node.dataset.mid)===String(message.id)):null;
-                if(fresh)fresh.dataset.syncStamp=stamp;
-              }
-            }
-          }
-          if(list&&incoming.length&&list.scrollHeight-list.scrollTop-list.clientHeight<180)list.scrollTop=list.scrollHeight;
-        }
-      }catch(error){console.warn("Live room sync failed:",error?.message||error);}
-      } finally { liveRoomSyncBusy=false; }
-    }
-    })();
-    const dmTask=(async()=>{
-    if(state.dmUserId&&!liveDMSyncBusy){
-      liveDMSyncBusy=true;
-      try {
-      const peerId=String(state.dmUserId);
-      try{
-        // A stalled fetch must not leave the DM-sync lock set forever.
-        // Abort this read after 7 seconds so the next poll can recover.
-        const data=await api(livePollUrl("/api/dm/"+encodeURIComponent(peerId)),{...(typeof AbortSignal!=="undefined"&&typeof AbortSignal.timeout==="function"?{signal:AbortSignal.timeout(7000)}:{})});
-        if(String(state.dmUserId)===peerId&&Array.isArray(data.messages)){
-          // PostgreSQL history is authoritative. Reconcile both message order and
-          // sender/content fields, not just IDs; otherwise stale bubbles can keep
-          // showing the wrong sender or an obsolete message on one device.
-          const incoming=data.messages;
-          const previous=Array.isArray(state.dmMessages)?state.dmMessages:[];
-          const signature=m=>JSON.stringify([
-            String(m?.id??""),String(m?.from??""),String(m?.to??""),
-            String(m?.text??""),String(m?.time??""),String(m?.read??""),
-            String(m?.replyTo??""),JSON.stringify(m?.attachment??null),
-            String(m?.deleted??""),String(m?.edited??"")
-          ]);
-          const list=$("dmMessages");
-          const renderedIds=list?Array.from(list.querySelectorAll("[data-dmid]")).map(el=>String(el.dataset.dmid)):[];
-          const incomingIds=incoming.map(m=>String(m.id));
-          const domMatches=renderedIds.length===incomingIds.length&&renderedIds.every((id,index)=>id===incomingIds[index]);
-          const changed=previous.length!==incoming.length ||
-            previous.some((m,i)=>signature(m)!==signature(incoming[i])) || !domMatches;
-          state.dmMessages=incoming;
-          if(list&&changed){
-            const wasNearBottom=list.scrollHeight-list.scrollTop-list.clientHeight<180;
-            list.innerHTML=incoming.map(m=>dmMessageHTML(m,incoming,state.dmPeerUser||{})).join("");
-            if(wasNearBottom)list.scrollTop=list.scrollHeight;
-          }
-          // Mark the conversation read only when there is actually an unread
-          // incoming message. Posting this on every history poll created needless
-          // database writes while the conversation was idle.
-          if(peerId!=="system-bot"&&incoming.some(m=>String(m?.from??"")===peerId&&!m?.read)){
-            api("/api/dm/"+encodeURIComponent(peerId)+"/read",{method:"POST"}).then(()=>{refreshTopDMUnreadBadge();loadDMList().catch(()=>{});}).catch(error=>console.warn("Could not mark active conversation read:",error?.message||error));
-          }
-        }
-      }catch(error){console.warn("Live private-message sync failed:",error?.message||error);}
-      } finally { liveDMSyncBusy=false; }
-    }
-    })();
-    await Promise.allSettled([roomTask,dmTask]);
-    const now=Date.now();
-    if(now-liveSyncLastInbox>15000){
-      liveSyncLastInbox=now;
-      loadDMList().catch(()=>{});
-      loadNotifications().catch(()=>{});
-    }
-}
-let liveSyncWakeListenersBound=false;
-let liveWarningPollTimer=null;
-function startLiveSync(){
-  // Socket.IO delivers live room and DM events. REST history is used only for
-  // initial load, reconnect recovery, and waking the tab after it was inactive.
-  syncLiveMessages().catch(error=>console.warn("Initial live-message recovery failed:",error?.message||error));
-  if(liveWarningPollTimer)clearInterval(liveWarningPollTimer);
-  liveWarningPollTimer=setInterval(()=>{if(state.user&&!activeWarningNotificationId)loadPendingWarning().catch(()=>{});},5000);
-  if(!liveSyncWakeListenersBound){
-    liveSyncWakeListenersBound=true;
-    document.addEventListener("visibilitychange",()=>{if(!document.hidden&&state.user)syncLiveMessages().catch(()=>{});});
-    window.addEventListener("focus",()=>{if(state.user)syncLiveMessages().catch(()=>{});});
-    window.addEventListener("online",()=>{if(state.user)syncLiveMessages().catch(()=>{});});
-  }
-}
 async function authenticateSocketAndJoinRoom(socket=state.socket, syncHistory=true) {
   if(!socket || !socket.connected || !state.user) return false;
   return new Promise(resolve=>{
@@ -870,7 +734,7 @@ async function start() {
   state.socket.io.opts.reconnectionAttempts = Infinity;
   state.socket.io.opts.reconnectionDelay = 500;
   state.socket.io.opts.reconnectionDelayMax = 5000;
-  startLiveSync();
+  // Socket.IO handles all live room and private-message delivery.
   state.socket.on("under-construction:status",payload=>{
     if(payload?.enabled&&!isOwnerExempt())showConstructionPanel(payload.until);
     else hideConstructionPanel();
@@ -891,7 +755,7 @@ async function start() {
     const connectedSocket=state.socket;
     authenticateSocketAndJoinRoom(connectedSocket,true).then(ok=>{
       if(!ok||connectedSocket!==state.socket||!connectedSocket.connected)return;
-      syncLiveMessages().catch(error=>console.warn("Post-reconnect message sync failed:",error?.message||error));
+      if(state.dmUserId)refreshActiveDMMessageList(String(state.dmUserId)).catch(error=>console.warn("Private-message reconnect recovery failed:",error?.message||error));
       loadDMList().catch(error=>console.warn("Post-reconnect inbox sync failed:",error?.message||error));
       refreshTopDMUnreadBadge();
     }).catch(error=>console.warn("Socket recovery failed:",error?.message||error));
@@ -899,8 +763,9 @@ async function start() {
   // Socket.IO can finish its first handshake before listeners are attached on slow/older clients.
   // If it is already connected here, perform the same authentication/join recovery explicitly.
   if(state.socket.connected){
-    authenticateSocketAndJoinRoom(state.socket,true).catch(error=>console.warn("Initial socket recovery failed:",error?.message||error));
-    syncLiveMessages();
+    authenticateSocketAndJoinRoom(state.socket,true).then(ok=>{
+      if(ok&&state.dmUserId)refreshActiveDMMessageList(String(state.dmUserId)).catch(error=>console.warn("Initial private-message recovery failed:",error?.message||error));
+    }).catch(error=>console.warn("Initial socket recovery failed:",error?.message||error));
   }
   state.socket.on("room-error",d=>{
     toast(d?.error||"Could not join room.");
@@ -2061,7 +1926,7 @@ $("messages").innerHTML =
     renderRooms();
     // Reconcile against the server immediately after the room UI is ready;
     // do not rely solely on a Socket.IO event that may have raced the join.
-    syncLiveMessages().catch(error=>console.warn("Post-join live sync failed:",error?.message||error));
+    // The confirmed Socket.IO room subscription now receives new messages live.
     return true;
   } catch (error) {
     toast(error.message);
@@ -3015,8 +2880,7 @@ if(composer && !composer.dataset.submitBound){
     if(state.replyTo)form.append("replyTo",String(state.replyTo));
     if(sendButton){sendButton.disabled=true;sendButton.textContent="Sending…";}
     try{
-      const sentRoomId=String(state.currentRoom);
-      const result=await api("/api/rooms/"+encodeURIComponent(sentRoomId)+"/messages",{method:"POST",body:form});
+      const result=await api("/api/rooms/"+encodeURIComponent(state.currentRoom)+"/messages",{method:"POST",body:form});
       if(result.guide){
         const rows=(result.commands||[]).map(item=>'<div style="padding:10px 12px;border:1px solid var(--border,#342544);border-radius:10px;background:rgba(155,92,255,.07);margin:7px 0"><b style="color:#d8b4fe">'+esc(item.usage||("/"+item.name))+'</b><div style="font-size:13px;margin-top:4px">'+esc(item.description||"")+'</div></div>').join("");
         modal('<div class="guide-command-dialog"><h2>📖 Your Command Guide</h2><p class="muted">Commands available to your <b>'+esc(result.rank||state.user.rank||"MEMBER")+'</b> rank only.</p><div style="max-height:55vh;overflow:auto;padding-right:3px">'+(rows||'<p class="muted">No commands are currently available for your rank.</p>')+'</div><div style="display:flex;justify-content:flex-end;margin-top:12px"><button class="primary" onclick="closeModal()">Close</button></div></div>');
@@ -3025,9 +2889,7 @@ if(composer && !composer.dataset.submitBound){
         return;
       }
       if(result.message)appendMessage(result.message);
-      // Targeted refresh: reconcile only this room's message list after a successful send.
-      // This never reloads the page or touches login/session state.
-      try{await refreshRoomMessageList(sentRoomId,{force:true});}catch(refreshError){console.warn("Post-send room refresh failed:",refreshError?.message||refreshError);}
+      // The API response renders the sender copy; Socket.IO delivers it to other room members.
       if(input)input.value="";
       if(fileInput)fileInput.value="";
       const fileName=$("fileName");if(fileName)fileName.textContent="";
@@ -4031,7 +3893,7 @@ async function openDM(id) {
     if (box) box.scrollTop = box.scrollHeight;
     // The conversation DOM now exists. Fetch again now so a message that arrived
     // while the contact list/modal was loading appears without reopening the DM.
-    syncLiveMessages().catch(error=>console.warn("Post-open private-message sync failed:",error?.message||error));
+    // The active conversation receives incoming messages directly via Socket.IO.
     const dmSearch=$("dmMessageSearch");
     dmSearch?.addEventListener("input",()=>{
       const q=dmSearch.value.trim().toLowerCase();
@@ -4094,8 +3956,7 @@ async function openDM(id) {
         input.value=""; safeStorage.removeItem(draftKey); if(state.socket?.connected)state.socket.emit("dm-typing",{userId:id,user:state.user?.displayName||state.user?.username,typing:false}); if($("dmFile")) $("dmFile").value=""; if($("dmFileName")) $("dmFileName").textContent="";
         state.dmReplyTo=null; state.dmReplyUser=null; state.dmReplyAuthor=null; state.dmReplyText=null;
         const count=$("dmSearchCount");if(count)count.textContent=(state.dmMessages||[]).length+" messages";
-        // A final targeted reconciliation catches any message state omitted from the send response.
-        refreshActiveDMMessageList(String(id)).catch(refreshError=>console.warn("Post-send private-message refresh failed:",refreshError?.message||refreshError));
+        // The API response renders the sender copy; Socket.IO delivers it to the recipient and other devices.
         loadDMList().catch(()=>{});
       } catch(error){ toast(error.message); }
     };
