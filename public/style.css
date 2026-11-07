@@ -7211,3 +7211,35 @@ html[data-theme] .settings-tab.active {
 .scrapbook-layout-polaroid .scrapbook-entry{padding:6px 6px 0;transform:rotate(-.3deg)}
 .scrapbook-layout-polaroid .scrapbook-entry:nth-child(even){transform:rotate(.4deg)}
 @media(max-width:560px){.scrapbook-settings,.scrapbook-entry-grid{grid-template-columns:1fr}.scrapbook-layout-collage .scrapbook-entry:nth-child(3n){grid-row:auto}}
+
+
+/* Keep every profile tab scrollable inside the profile dialog on desktop and mobile. */
+.profile-modal{
+  display:flex;
+  flex-direction:column;
+  max-height:calc(100dvh - 40px);
+  min-height:0;
+}
+.profile-modal .profile-banner,
+.profile-modal .profile-tabs{flex:0 0 auto}
+.profile-modal .profile-tabs{
+  justify-content:flex-start;
+  overflow-x:auto;
+  overflow-y:hidden;
+  white-space:nowrap;
+  scrollbar-width:thin;
+}
+.profile-modal .profile-tab{flex:0 0 auto}
+.profile-modal .profile-info{
+  flex:1 1 auto;
+  min-height:0;
+  overflow-y:auto;
+  overscroll-behavior:contain;
+  -webkit-overflow-scrolling:touch;
+}
+@media(max-width:800px){
+  .profile-modal{max-height:calc(100dvh - 16px);width:calc(100vw - 18px)}
+  .profile-modal .profile-banner{min-height:220px}
+  .profile-modal .profile-tabs{gap:8px;padding:9px}
+  .profile-modal .profile-info{padding:14px}
+}
