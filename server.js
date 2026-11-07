@@ -6825,7 +6825,7 @@ app.put('/api/profile',auth,(req,res)=>{
   }
   if(req.body.privacy && typeof req.body.privacy==='object'){
     u.privacy={...(u.privacy||{lastSeen:true,online:true})};
-    for(const key of ['lastSeen','online','country','location','website','bio','pronouns','relationship','mood','interests','showGuestbook']) if(req.body.privacy[key]!==undefined)u.privacy[key]=!!req.body.privacy[key];
+    for(const key of ['lastSeen','online','country','location','website','bio','pronouns','relationship','mood','interests','photos','friends','showGuestbook','showGifts','showScrapbook']) if(req.body.privacy[key]!==undefined)u.privacy[key]=!!req.body.privacy[key];
   }
   const next={displayName:req.body.displayName,gender:req.body.gender,bio:req.body.bio,pronouns:req.body.pronouns,relationship:req.body.relationship,mood:req.body.mood,country:req.body.country,location:req.body.location,website:req.body.website,interests:req.body.interests,profileColor:req.body.profileColor,profileAccentColor:req.body.profileAccentColor,theme:req.body.theme,badge:req.body.badge,banner:req.body.banner};
   for(const [k,v] of Object.entries(next)) if(v!==undefined){
@@ -6852,8 +6852,10 @@ app.put('/api/profile',auth,(req,res)=>{
 app.get('/api/users/:id/profile-photos',auth,(req,res)=>{
   const viewer=current(req),target=findUser(req.params.id);
   if(!target||(target.hideMode&&String(target.id)!==String(viewer.id)))return res.status(404).json({error:'User not found.'});
+  const isOwner=String(viewer.id)===String(target.id);
+  if(!isOwner&&target.privacy?.photos===false)return res.json({hidden:true,photos:[]});
   const photos=Array.isArray(target.profilePhotos)?target.profilePhotos.slice(0,10):[];
-  res.json({photos:photos.map(p=>({id:String(p.id),url:String(p.url)}))});
+  res.json({hidden:false,photos:photos.map(p=>({id:String(p.id),url:String(p.url)}))});
 });
 app.post('/api/users/me/profile-photos',auth,upload.single('file'),async(req,res)=>{
   const user=current(req);
@@ -6949,8 +6951,10 @@ app.patch('/api/users/me/gift-visibility',auth,(req,res)=>{
 app.get('/api/users/:id/friends',auth,(req,res)=>{
   const viewer=current(req),target=findUser(req.params.id);
   if(!target||(target.hideMode&&String(target.id)!==String(viewer.id)))return res.status(404).json({error:'User not found'});
+  const isOwner=String(viewer.id)===String(target.id);
+  if(!isOwner&&target.privacy?.friends===false)return res.json({hidden:true,users:[]});
   const ids=db.friends.filter(f=>f.status==='ACCEPTED'&&(String(f.a)===String(target.id)||String(f.b)===String(target.id))).map(f=>String(f.a)===String(target.id)?f.b:f.a);
-  res.json({users:ids.map(findUser).filter(friend=>friend&&!friend.hideMode).map(safeUser)});
+  res.json({hidden:false,users:ids.map(findUser).filter(friend=>friend&&!friend.hideMode).map(safeUser)});
 });
 
 app.get('/api/users/:id/profile',auth,(req,res)=>{
@@ -6961,7 +6965,7 @@ app.get('/api/users/:id/profile',auth,(req,res)=>{
   const profile=safeUser(v);
   if(String(v.id)===String(u.id)||hasRank(u,'MOD')) profile.staffPoints=Math.max(0,Math.floor(Number(v.staffPoints)||0));
   if(String(v.id)!==String(u.id)){
-    const p={lastSeen:true,online:true,country:true,location:true,website:true,bio:true,pronouns:true,relationship:true,mood:true,interests:true,...(v.privacy||{})};
+    const p={lastSeen:true,online:true,country:true,location:true,website:true,bio:true,pronouns:true,relationship:true,mood:true,interests:true,photos:true,friends:true,showGuestbook:true,showGifts:true,showScrapbook:true,...(v.privacy||{})};
     for(const key of ['country','location','website','bio','pronouns','relationship','mood','interests']) if(p[key]===false){if(key==='socials')profile.socials={};else if(key==='interests')profile.interests=[];else profile[key]='';}
     if(p.lastSeen===false)profile.lastSeen=null;
     if(p.online===false)profile.online=false;
