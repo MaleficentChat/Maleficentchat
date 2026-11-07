@@ -6243,6 +6243,45 @@ app.get(
     })
 );
 
+// Official Brand News is stored independently from community News.
+app.get("/api/brand-news",auth,(req,res)=>{
+  db.brandNews??=[];
+  res.json({items:db.brandNews});
+});
+app.post("/api/brand-news",auth,upload.single("file"),async(req,res)=>{
+  const u=current(req);
+  if(!u)return res.status(401).json({error:"Login required"});
+  if(isUserFeatureBlocked(u,"publish_news"))return res.status(403).json({error:"Brand News publishing is blocked for your account."});
+  if(!hasRank(u,"ADMIN"))return res.status(403).json({error:"Brand News publishing requires Admin rank or higher."});
+  if(await checkRestrictedMediaUpload(req,res,u,req.file))return;
+  const categories=["Product update","Community","Events","Service notice","Behind the scenes"];
+  const category=String(req.body.category||"").trim();
+  const headline=cleanText(req.body.headline||"").trim().slice(0,120);
+  const summary=cleanText(req.body.summary||"").trim().slice(0,260);
+  const body=cleanText(req.body.body||"").trim().slice(0,5000);
+  const linkLabel=cleanText(req.body.linkLabel||"").trim().slice(0,32);
+  const linkUrl=String(req.body.linkUrl||"").trim().slice(0,500);
+  if(!categories.includes(category))return res.status(400).json({error:"Choose a valid Brand News category."});
+  if(!headline||!summary||!body)return res.status(400).json({error:"Headline, introduction and announcement are required."});
+  if(linkUrl){try{const parsed=new URL(linkUrl);if(!["http:","https:"].includes(parsed.protocol))throw new Error();}catch{return res.status(400).json({error:"Destination must be an http or https URL."});}}
+  if(linkLabel&&!linkUrl)return res.status(400).json({error:"Add a destination URL for the button label."});
+  db.brandNews??=[];
+  const item={id:id(),category,headline,summary,body,linkLabel,linkUrl,createdAt:Date.now(),author:u.displayName||u.username,avatar:u.avatar||"",image:req.file?{url:"/uploads/"+req.file.filename,type:req.file.mimetype,name:req.file.originalname}:null};
+  db.brandNews.unshift(item);
+  save();io.emit("brand-news");
+  res.status(201).json({item});
+});
+app.delete("/api/brand-news/:id",auth,(req,res)=>{
+  const u=current(req);
+  if(!u||!hasRank(u,"ADMIN"))return res.status(403).json({error:"Removing Brand News requires Admin rank or higher."});
+  db.brandNews??=[];
+  const index=db.brandNews.findIndex(item=>String(item.id)===String(req.params.id));
+  if(index<0)return res.status(404).json({error:"Brand News update not found."});
+  const [removed]=db.brandNews.splice(index,1);
+  save();io.emit("brand-news");
+  res.json({ok:true,id:removed.id});
+});
+
 app.post("/api/news",auth,upload.single("file"),featureAllowed("publish_news"),async(req,res)=>{
     const u=current(req);
     if(await checkRestrictedMediaUpload(req,res,u,req.file))return;
