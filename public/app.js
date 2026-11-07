@@ -1116,6 +1116,11 @@ function updateNav() {
       el.classList.toggle("hidden", !can("ADMIN"))
     );
 
+  // News publishing follows the actual feature-grant policy, not a hard-coded
+  // ADMIN class. This keeps the button in sync with Owner Space grants.
+  const newsPublishButton=$("publishNews");
+  if(newsPublishButton)newsPublishButton.classList.toggle("hidden",!canFeature("publish_news"));
+
   // Room creation is Premium+ by default; staff ranks are explicitly eligible too.
   const roomCreatorRanks=["PREMIUM","ROYAL","MOD","ADMIN","SUPER_ADMIN","COMMISSOR","INSTRUCTOR","COOWNER","OWNER","DEVELOPER"];
   const mayCreateRooms=roomCreatorRanks.includes(String(state.user?.rank||"").toUpperCase())||canFeature("create_room")||canFeature("create_rooms");
@@ -4242,12 +4247,17 @@ function openPublishNews(){
   form?.addEventListener('submit',event=>{event.preventDefault();publishPost();});
 }
 
+// Capture the News action before sidebar/drawer handlers can swallow the tap.
 document.addEventListener('click',event=>{
   const button=event.target instanceof Element?event.target.closest('#publishNews'):null;
   if(!button)return;
   event.preventDefault();
-  openPublishNews();
-});
+  event.stopPropagation();
+  event.stopImmediatePropagation();
+  if(button.disabled||button.classList.contains('hidden'))return;
+  try{openPublishNews();}
+  catch(error){console.error('News composer failed to open:',error);toast(error?.message||'Could not open the News composer.');}
+},true);
 
 async function openNewsComments(id){
   try{
