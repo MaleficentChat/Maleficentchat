@@ -4255,10 +4255,11 @@ function openPublishNews(){
   form?.addEventListener('submit',event=>{event.preventDefault();publishPost();});
 }
 
-// Handle News controls at WINDOW capture, before any document-level capture
-// listener can swallow mobile taps. The submit action disables itself immediately,
-// so the following synthetic click/form-submit cannot send a duplicate post.
-window.addEventListener('click',event=>{
+// Route News actions from mobile pointer/touch as well as ordinary clicks.
+// Some Android WebViews can deliver pointer/touch activation without a dependable
+// synthesized click when a modal is scrollable. publishPost disables the button
+// synchronously, so pointerup + touchend + click cannot submit duplicates.
+function handleNewsControlActivation(event){
   const target=event.target;
   const submitButton=target instanceof Element?target.closest('#newsComposePublish'):null;
   if(submitButton){
@@ -4276,7 +4277,10 @@ window.addEventListener('click',event=>{
   if(button.disabled||button.classList.contains('hidden'))return;
   try{openPublishNews();}
   catch(error){console.error('News composer failed to open:',error);toast(error?.message||'Could not open the News composer.');}
-},true);
+}
+window.addEventListener('pointerup',handleNewsControlActivation,true);
+window.addEventListener('touchend',handleNewsControlActivation,{capture:true,passive:false});
+window.addEventListener('click',handleNewsControlActivation,true);
 
 async function openNewsComments(id){
   try{
