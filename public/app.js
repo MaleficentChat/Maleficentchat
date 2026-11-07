@@ -4233,26 +4233,43 @@ async function loadNews() {
 // the redesigned News view is rendered/re-rendered.
 function openPublishNews(){
   if(!canFeature('publish_news')){ toast('You do not have permission to publish news.'); return; }
-  modal(`<div class="publish-news-modal">
-    <h2>📰 Publish News</h2>
+  modal(`<div class="publish-news-modal instagram-publish-modal">
+    <div class="instagram-compose-head"><div><h2>＋ Create post</h2><p class="muted">Share an update with the Maleficent Chat community.</p></div></div>
+    <div class="instagram-compose-author">${avatar(state.user,'avatar')}<b>${esc(state.user?.displayName||state.user?.username||'You')}</b></div>
     <form id="newsForm">
-      <input id="nt" maxlength="120" placeholder="News title" required>
-      <textarea id="nb" rows="9" maxlength="3000" placeholder="Write your announcement…" required></textarea><label class="field-label">Optional photo</label><input id="nphoto" type="file" accept="image/*">
-      <div class="toolbar"><button class="primary" type="submit">Publish news</button></div>
+      <input id="nt" maxlength="120" placeholder="Add a headline (optional)">
+      <textarea id="nb" rows="5" maxlength="3000" placeholder="Write a caption…" ></textarea>
+      <label class="instagram-photo-picker" for="nphoto"><span>🖼️</span><b>Add photo</b><small>Choose an image to include in your post</small></label>
+      <input id="nphoto" type="file" accept="image/*" hidden>
+      <div id="newsPhotoPreview" class="instagram-photo-preview hidden"><img id="newsPhotoPreviewImage" alt="Post preview"><button type="button" class="mini danger" id="newsPhotoRemove">Remove photo</button></div>
+      <div class="toolbar instagram-compose-actions"><button class="mini" type="button" id="newsComposeCancel">Cancel</button><button class="primary" type="submit" id="newsComposePublish">Share post</button></div>
     </form>
   </div>`);
-  $('newsForm').onsubmit=async e=>{
+  const form=$('newsForm'),photo=$('nphoto'),preview=$('newsPhotoPreview'),previewImage=$('newsPhotoPreviewImage'),publish=$('newsComposePublish');
+  $('newsComposeCancel')?.addEventListener('click',closeModal);
+  photo?.addEventListener('change',()=>{
+    const file=photo.files?.[0];
+    if(!file){preview?.classList.add('hidden');return;}
+    if(!file.type.startsWith('image/')){photo.value='';toast('Choose an image file.');return;}
+    const reader=new FileReader();
+    reader.onload=()=>{if(previewImage)previewImage.src=String(reader.result||'');preview?.classList.remove('hidden');};
+    reader.onerror=()=>toast('Could not preview this image.');
+    reader.readAsDataURL(file);
+  });
+  $('newsPhotoRemove')?.addEventListener('click',()=>{if(photo)photo.value='';if(previewImage)previewImage.removeAttribute('src');preview?.classList.add('hidden');});
+  form.onsubmit=async e=>{
     e.preventDefault();
-    const title=$('nt').value.trim(), body=$('nb').value.trim();
-    if(!title||!body) return;
+    const title=$('nt').value.trim(),body=$('nb').value.trim(),file=photo?.files?.[0];
+    if(!body&&!file){toast('Write a caption or add a photo before sharing.');return;}
+    publish.disabled=true;publish.textContent='Sharing…';
     try{
-      const form=new FormData(); form.append('title',title); form.append('body',body);
-      const photo=$('nphoto')?.files?.[0]; if(photo) form.append('file',photo);
-      await api('/api/news',{method:'POST',body:form,uploadProgress:true});
-      closeModal();
-      await loadNews();
-      toast('News published successfully.');
-    }catch(err){toast(err.message);}
+      const payload=new FormData();
+      payload.append('title',title);payload.append('body',body);
+      if(file)payload.append('file',file);
+      await api('/api/news',{method:'POST',body:payload,uploadProgress:true});
+      closeModal();await loadNews();toast('Your post has been shared.');
+    }catch(err){toast(err.message||'Could not publish this post.');}
+    finally{if(publish){publish.disabled=false;publish.textContent='Share post';}}
   };
 }
 
