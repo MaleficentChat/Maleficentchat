@@ -501,7 +501,10 @@ function featureAllowed(key){
     if(!u) return res.status(401).json({error:"Login required"});
     ensureFeatureGrants();
     if(isUserFeatureBlocked(u,key)) return res.status(403).json({error:"This feature has been disabled for your account by staff."});
-    if(String(u.rank).toUpperCase()==="DEVELOPER") return next();
+    // Keep the configured site Owner bypass consistent with hasFeature().
+    // Without this, an explicit rank-grant array can reject the Owner before
+    // the normal feature check gets a chance to apply the Owner override.
+    if(String(u.rank).toUpperCase()==="DEVELOPER" || (u.username===DEFAULT_OWNER && String(u.rank).toUpperCase()==="OWNER")) return next();
     const individual=userFeatureGrant(u,key);
     if(individual!==null)return individual?next():res.status(403).json({error:"This feature has not been granted to your account."});
     const alias={create_room:"create_rooms",manage_filters:"manage_filter_words",moderate_user:"moderate_users",publish_news:"news_posting",wall_post:"friend_wall_posting"}[key]||key;
