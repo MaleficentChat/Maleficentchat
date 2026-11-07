@@ -6428,8 +6428,6 @@ async function loadNotifications() {
     if($("topNotifDot")) $("topNotifDot").classList.toggle("green",counts.all>0);
   } catch(error) {
     console.warn("Notification refresh failed",error);
-  } catch(error) {
-    console.warn("Notification refresh failed",error);
     // Keep the last known badge if a transient request fails; retry on resume.
   } finally {
     notificationRefreshPromise=null;
