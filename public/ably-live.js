@@ -1,7 +1,7 @@
 
 /* Ably Chat realtime transport for public rooms. The backend remains authoritative. */
 (()=>{
-  let chatClient=null,activeRoom=null,activeRoomName=null,subscription=null,seen=new Set(),connecting=null,activeUserId=null;
+  let chatClient=null,realtimeClient=null,activeRoom=null,activeRoomName=null,subscription=null,seen=new Set(),connecting=null,activeUserId=null,pendingDMPeerId=null;
   let activeDMRoom=null,activeDMName=null,dmMessageSubscription=null,presenceSubscription=null;
   const enabled=()=>!!(window.Ably&&window.Ably.Realtime&&window.AblyChat&&window.AblyChat.ChatClient);
   async function getClient(){
@@ -12,7 +12,8 @@
       const realtime=new Ably.Realtime({
         authCallback:async(_params,callback)=>{
           try{
-            const response=await fetch("/api/ably-token",{method:"GET",credentials:"same-origin",cache:"no-store",headers:{"Accept":"application/json"}});
+            const tokenUrl="/api/ably-token"+(pendingDMPeerId?"?dm="+encodeURIComponent(pendingDMPeerId):"");
+            const response=await fetch(tokenUrl,{method:"GET",credentials:"same-origin",cache:"no-store",headers:{"Accept":"application/json"}});
             if(!response.ok)throw new Error("Ably authentication failed ("+response.status+").");
             const tokenRequest=await response.json();
             callback(null,tokenRequest);
@@ -21,6 +22,7 @@
         disconnectedRetryTimeout:15000,
         suspendedRetryTimeout:30000
       });
+      realtimeClient=realtime;
       const client=new AblyChat.ChatClient(realtime,{logLevel:"error"});
       await new Promise((resolve,reject)=>{
         const timeout=setTimeout(()=>reject(new Error("Timed out connecting to Ably.")),15000);
@@ -77,7 +79,13 @@
     const pair=[""+activeUserId,""+peerId].sort(),name="mc-dm-"+pair.join("-");
     if(activeDMName===name&&activeDMRoom)return;
     await leaveDM();
-    const client=await getClient();
+    const hadClient=!!chatClient;
+    pendingDMPeerId=String(peerId);
+    let client;
+    try{
+      client=await getClient();
+      if(hadClient&&realtimeClient)await realtimeClient.auth.authorize();
+    }finally{pendingDMPeerId=null;}
     const room=await client.rooms.get(name);
     dmMessageSubscription=room.messages.subscribe(event=>{
       const message=event?.message?.metadata?.maleficentChatDM;
@@ -93,7 +101,7 @@
   async function close(){
     await leaveRoom();
     await leaveDM();
-    if(chatClient){try{await chatClient.dispose();}catch{}chatClient=null;}
+    if(chatClient){try{await chatClient.dispose();}catch{}chatClient=null;realtimeClient=null;}
     connecting=null;activeUserId=null;seen.clear();
   }
   window.MaleficentAbly={
