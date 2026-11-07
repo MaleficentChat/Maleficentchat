@@ -2759,6 +2759,8 @@ async function loadDoodleLibrary(){
         const preview=$("doodlePreviewImage"),status=$("doodlePreviewStatus");
         preview?.addEventListener("load",()=>{if(status)status.remove();});
         preview?.addEventListener("error",()=>{if(status)status.textContent="This saved drawing image could not be decoded. Your saved record has not been deleted.";});
+        // Data URLs can finish decoding before listeners are attached on fast devices.
+        if(preview?.complete&&preview.naturalWidth>0)status?.remove();
       }catch(e){toast(e.message||"Could not open drawing.");}
       finally{btn.disabled=false;}
     });
