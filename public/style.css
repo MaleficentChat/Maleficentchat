@@ -7108,3 +7108,15 @@ html[data-theme] .settings-tab.active {
 #modal .profile-modal .profile-tabs{display:flex!important;flex-wrap:nowrap!important;max-width:100%!important;min-width:0!important;overflow-x:auto!important;overflow-y:hidden!important;scrollbar-width:thin!important;overscroll-behavior-x:contain!important;}
 #modal .profile-modal .profile-tab{flex:0 0 auto!important;white-space:nowrap!important;padding:11px 12px!important;font-size:12px!important;}
 #modal .profile-modal #profileTabContent{min-width:0!important;max-width:100%!important;overflow-wrap:anywhere!important;}
+
+
+/* Compact wallet activity disclosure and keep the composer Send action visible. */
+.wallet-history-details > summary { list-style: none; cursor: pointer; display:flex; align-items:center; justify-content:space-between; gap:12px; }
+.wallet-history-details > summary::-webkit-details-marker { display:none; }
+.wallet-history-details .wallet-history-chevron { transition: transform .18s ease; }
+.wallet-history-details[open] .wallet-history-chevron { transform: rotate(180deg); }
+.wallet-history-details:not([open]) .wallet-transactions { display:none; }
+#composer .send, #messageForm .send { flex: 0 0 auto; min-width: 58px; position: relative; z-index: 2; }
+#composer, #messageForm { min-width: 0; }
+#composer .composer-actions, #messageForm .composer-actions { min-width: 0; flex-wrap: wrap; }
+.doodle-preview img { display:block; max-width:100%; max-height:70vh; width:auto; height:auto; object-fit:contain; margin:0 auto; }

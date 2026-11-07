@@ -69,7 +69,7 @@ function registerSocialFeatureRoutes({app,auth,current,pool,storeMediaBuffer,has
   app.get("/api/social/scrapbooks/entries/:id/comments",auth,async(req,res)=>{const id=int(req.params.id);if(!id)return res.status(400).json({error:"Invalid entry."});if(!await canViewEntry(req,id))return res.status(404).json({error:"Entry not found."});const r=await pool.query("SELECT id,body,created_at FROM social_scrapbook_comments WHERE entry_id=$1 AND status='visible' ORDER BY created_at LIMIT 100",[id]);res.json({comments:r.rows.map(x=>({...x,author:"Member"}))});});
 
   app.get("/api/confessions",auth,async(req,res)=>{
-    const category=CATEGORIES.includes(req.query.category)?req.query.category:null,sort=req.query.sort==="popular"?"reaction_count DESC,c.created_at DESC":"c.created_at DESC",params=[Number(who(req).id)];let where="c.status='visible'";if(category){params.push(category);where+=" AND c.category=$"+params.length;}
+    const category=CATEGORIES.includes(req.query.category)?req.query.category:null,sort=req.query.sort==="popular"?"reaction_count DESC,c.created_at DESC":"c.created_at DESC",params=[];let where="c.status='visible'";if(category){params.push(category);where+=" AND c.category=$"+params.length;}
     const sql="SELECT c.id,c.category,c.body,c.content_warning,c.created_at,(SELECT COUNT(*)::int FROM social_confession_reactions r WHERE r.confession_id=c.id) AS reaction_count,(SELECT COUNT(*)::int FROM social_confession_comments m WHERE m.confession_id=c.id AND m.status='visible') AS comment_count FROM social_confessions c WHERE "+where+" ORDER BY "+sort+" LIMIT 100";
     const r=await pool.query(sql,params);res.json({confessions:r.rows});
   });
