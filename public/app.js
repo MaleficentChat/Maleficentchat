@@ -2042,7 +2042,12 @@ async function joinRoom(id) {
 
     const staffInfo=await api(`/api/rooms/${encodeURIComponent(id)}/staff`).catch(()=>({myRole:'USER'}));
     state.currentRoom = id;
-    if(window.MaleficentAbly)window.MaleficentAbly.joinRoom(id).catch(error=>console.warn("Ably room attach failed; Socket.IO fallback remains active:",error?.message||error));
+    if(window.MaleficentAbly){
+      const ablyEligible=!(room.isPrivate||room.private||room.locked||room.passwordHash||String(room.visibility||"").toLowerCase()==="private");
+      window.MaleficentAbly.setUser(state.user?.id);
+      if(ablyEligible)window.MaleficentAbly.joinRoom(id).catch(error=>console.warn("Ably room attach failed; Socket.IO fallback remains active:",error?.message||error));
+      else window.MaleficentAbly.leaveRoom().catch(()=>{});
+    }
     const activeRoomTheme=state.rooms.find(r=>String(r.id)===String(id));applyRoomTheme();
     state.currentRoomRole=staffInfo.myRole||'USER';
     rememberMyRoom(id);
