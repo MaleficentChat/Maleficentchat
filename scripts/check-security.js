@@ -57,22 +57,22 @@ assert.match(server, /const isAgeRoom=\/\^\(teen chat\|adult chat\)\$\/i\.test\(
 assert.match(server, /if\(!isAgeRoom&&!isStaffAccount&&!hasFeature\(u,"join_rooms"\)\)/,
   "custom rooms must continue to enforce the room-join grant");
 const systemNoticeStart = server.indexOf("function systemNotice(text, roomId=null){");
-const systemNoticeEnd = server.indexOf("\\n}", systemNoticeStart);
+const systemNoticeEnd = server.indexOf("\n}", systemNoticeStart);
 assert.ok(systemNoticeStart >= 0 && systemNoticeEnd > systemNoticeStart,
   "system notices must have a dedicated routing function");
 const systemNoticeSource = server.slice(systemNoticeStart, systemNoticeEnd);
-assert.doesNotMatch(systemNoticeSource, /main room|db\\.rooms\\[0\\]/i,
+assert.doesNotMatch(systemNoticeSource, /main room|db\.rooms\[0\]/i,
   "site-wide notices must never fall back to the retired Main Room or the first database room");
-assert.match(systemNoticeSource, /if\\(roomId\\)[\\s\\S]*auroraRoomMessage\\(text,roomId\\)/,
+assert.match(systemNoticeSource, /if\(roomId\)[\s\S]*auroraRoomMessage\(text,roomId\)/,
   "room-scoped notices must be delivered only to their explicitly selected room");
-assert.match(server, /roomDelivery\\.emit\\("message",m\\)/,
+assert.match(server, /roomDelivery\.emit\("message",m\)/,
   "persisted room messages must be pushed through Socket.IO");
-assert.match(server, /io\\.to\\("user:"\\+v\\.id\\)\\.emit\\("dm",m\\)/,
+assert.match(server, /io\.to\("user:"\+v\.id\)\.emit\("dm",m\)/,
   "private messages must be pushed to the recipient's authenticated Socket.IO room");
 const activeClient = fs.readFileSync("public/app.js", "utf8");
-assert.match(activeClient, /state\\.socket\\.on\\("message"/,
+assert.match(activeClient, /state\.socket\.on\("message"/,
   "the browser must subscribe to Socket.IO room-message events");
-assert.match(activeClient, /state\\.socket\\.on\\("dm"/,
+assert.match(activeClient, /state\.socket\.on\("dm"/,
   "the browser must subscribe to Socket.IO private-message events");
 assert.doesNotMatch(server + activeClient + fs.readFileSync("public/index.html", "utf8"), /Ably|ably-live/i,
   "Socket.IO must be the only active realtime transport");
