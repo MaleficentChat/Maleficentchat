@@ -33,6 +33,20 @@ async function getAblyServerChat(){
   }
   return ablyServerChatPromise;
 }
+async function publishAblyDMMessage(message){
+  if(!process.env.ABLY_API_KEY||!message)return false;
+  const from=String(message.from??message.senderId??"system-bot");
+  const to=String(message.to??message.receiverId??"");
+  if(!to)return false;
+  const pair=[from,to].sort();
+  const chat=await getAblyServerChat();
+  const room=await chat.rooms.get("mc-dm-"+pair.join("-"));
+  await room.messages.send({
+    text:String(message.text||message.message||" "),
+    metadata:{maleficentChatDM:message}
+  });
+  return true;
+}
 async function publishAblyRoomMessage(message){
   if(!process.env.ABLY_API_KEY||!message?.roomId)return false;
   const roomRecord=db.rooms.find(item=>String(item.id)===String(message.roomId));
@@ -1098,7 +1112,17 @@ app.get("/api/ably-token",auth,async(req,res)=>{
       if(roomIsPrivate(room)||room.locked||room.passwordHash||db.settings?.locked_rooms?.[String(room.id)])continue;
       capability["mc-room-"+String(room.id)]=["subscribe","history"];
     }
-    if(!Object.keys(capability).length)return res.status(403).json({error:"No public chat rooms are currently available."});
+    // Private conversation channels are granted only to one of their two participants.
+    // Existing PostgreSQL message rows define which conversations a user may subscribe to.
+    for(const message of db.privateMessages||[]){
+      const from=String(message?.from??message?.senderId??"");
+      const to=String(message?.to??message?.receiverId??"");
+      if(!from||!to||from==="system-bot"&&to!==String(actor.id))continue;
+      if(String(actor.id)!==from&&String(actor.id)!==to)continue;
+      const pair=[from,to].sort();
+      capability["mc-dm-"+pair.join("-")]=["subscribe","history"];
+    }
+    if(!Object.keys(capability).length)return res.status(403).json({error:"No realtime conversations are available."});
     const tokenIssuer=new Ably.Rest({key:apiKey,clientId:"maleficent-chat-token-issuer"});
     const tokenRequest=await tokenIssuer.auth.createTokenRequest({
       clientId,
@@ -1364,7 +1388,7 @@ async function sendRestrictedMediaBotMessage(user){
   await pool.query("INSERT INTO private_messages(id,sender_id,receiver_id,message,data,created_at) VALUES($1,NULL,$2,$3,$4::jsonb,NOW())",[message.id,Number(user.id),text,JSON.stringify(message)]);
   db.privateMessages.push(message);
   notify(user.id,"private-message","System Bot",text);
-  io.to("user:"+user.id).emit("dm",message);
+  io.to("user:"+user.id).emit("dm",message);publishAblyDMMessage(message).catch(error=>console.error("Ably private-message publish failed:",error?.message||error));
 }
 async function checkRestrictedMediaUpload(req,res,user,file){
   if(!file)return false;
@@ -2953,7 +2977,7 @@ app.post("/api/rooms/:id/messages",auth,featureAllowed("send_messages"),upload.s
       await pool.query("INSERT INTO private_messages(id,sender_id,receiver_id,message,data,created_at) VALUES($1,NULL,$2,$3,$4::jsonb,NOW())",[message.id,Number(target.id),message.text,JSON.stringify(message)]);
       db.privateMessages.push(message);
       notify(target.id,"private-message","Anonymous message","You received an anonymous message from System Bot.");
-      io.to("user:"+target.id).emit("dm",message);
+      io.to("user:"+target.id).emit("dm",message);publishAblyDMMessage(message).catch(error=>console.error("Ably private-message publish failed:",error?.message||error));
       return res.json({command:true,anonymousSent:true});
     }
     if(canonicalCommand==="abrakadabra"){
@@ -4005,7 +4029,7 @@ app.post("/api/native/dm/reply",async(req,res)=>{
     await pool.query("INSERT INTO private_messages(id,sender_id,receiver_id,message,data,created_at) VALUES($1,$2,$3,$4,$5::jsonb,NOW())",[m.id,Number(u.id),Number(v.id),m.text,JSON.stringify(m)]);
     db.privateMessages.push(m);
     notify(v.id,"private-message",`💌 @${u.username}`,m.text.slice(0,180),`/?dm=${encodeURIComponent(u.id)}`);
-    io.to("user:"+u.id).emit("dm",m);io.to("user:"+v.id).emit("dm",m);
+    io.to("user:"+u.id).emit("dm",m);publishAblyDMMessage(m).catch(error=>console.error("Ably private-message publish failed:",error?.message||error));io.to("user:"+v.id).emit("dm",m);publishAblyDMMessage(m).catch(error=>console.error("Ably private-message publish failed:",error?.message||error));
     await pool.query("UPDATE native_device_tokens SET last_used_at=NOW() WHERE credential_hash=$1",[hash]);
     res.json({ok:true,messageId:m.id});
   }catch(error){console.error("Native inline reply failed:",error?.message||error);res.status(500).json({error:"Could not send reply."});}
@@ -4028,8 +4052,8 @@ app.post("/api/dm/:id",auth,featureAllowed("private_messages"),upload.single("fi
   // by message ID, so the sender can safely reconcile the optimistic/API copy.
   // Send separately to both authenticated user rooms so every active device
   // for each participant receives the new private message.
-  io.to("user:"+u.id).emit("dm",m);
-  io.to("user:"+v.id).emit("dm",m);
+  io.to("user:"+u.id).emit("dm",m);publishAblyDMMessage(m).catch(error=>console.error("Ably private-message publish failed:",error?.message||error));
+  io.to("user:"+v.id).emit("dm",m);publishAblyDMMessage(m).catch(error=>console.error("Ably private-message publish failed:",error?.message||error));
   res.json({message:m});
 });
 
@@ -4132,7 +4156,7 @@ async function sendRankChangeBotDM(target,newRank){
   );
   db.privateMessages.push(message);
   notify(target.id,"private-message","Your rank has been changed","Your Rank Has Been Changed To "+rank);
-  io.to("user:"+target.id).emit("dm",message);
+  io.to("user:"+target.id).emit("dm",message);publishAblyDMMessage(message).catch(error=>console.error("Ably private-message publish failed:",error?.message||error));
 }
 
 const DAILY_DIAMOND_REWARDS=[2,3,4,5,6,8,15];
