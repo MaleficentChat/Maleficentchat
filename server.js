@@ -2726,6 +2726,9 @@ app.get('/api/rooms/:id/pinned',auth,(req,res)=>{
 });
 
 app.get("/api/rooms/:id/messages",auth,async(req,res)=>{
+  res.set("Cache-Control","no-store, no-cache, must-revalidate, proxy-revalidate");
+  res.set("Pragma","no-cache");
+  res.set("Expires","0");
   const actor=current(req),room=db.rooms.find(x=>String(x.id)===String(req.params.id));
   if(!room)return res.status(404).json({error:"Room not found"});
   if(!verifyRoomJoinToken(req.headers['x-room-join-token'],actor.id,room))return res.status(403).json({error:"Join this room before viewing its messages."});
@@ -3178,13 +3181,19 @@ app.post("/api/rooms/:id/messages",auth,featureAllowed("send_messages"),upload.s
       [m.id,Number(r.id),Number(u.id),JSON.stringify(m)]);
   }catch(error){releaseRoomSlowMode(slowModeReservation);throw error;}
   db.messages.push(m);
-  // Fan out to the room subscription AND to each participant's authenticated
-  // user room. Socket.IO unions targets, so subscribed clients receive one copy.
+  // Fan out to the room and every authenticated user who currently has a
+  // connected socket subscribed to it. Do not rely on users.roomId here: that
+  // persisted presence field can lag behind reconnects or another device's
+  // room switch. Socket.IO unions targets, so each socket receives one copy.
   let roomDelivery=io.to("room:"+r.id);
-  for(const member of db.users){
-    if(String(member.roomId)===String(r.id) && member.id!=null){
-      roomDelivery=roomDelivery.to("user:"+member.id);
+  const activeRoomUsers=new Set();
+  for(const connectedSocket of io.sockets.sockets.values()){
+    if(connectedSocket.rooms.has("room:"+r.id) && connectedSocket.data?.userId!=null){
+      activeRoomUsers.add(String(connectedSocket.data.userId));
     }
+  }
+  for(const memberId of activeRoomUsers){
+    roomDelivery=roomDelivery.to("user:"+memberId);
   }
   roomDelivery.emit("message",m);
   res.json({message:m,autoMuted});
