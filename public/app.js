@@ -643,19 +643,37 @@ function showBanLock(reason="Community rules"){
 }
 function clearActionLock(){if(actionLockTimer)clearTimeout(actionLockTimer);actionLockTimer=null;const box=$("actionLock");if(box){box.classList.add("hidden");box.innerHTML="";box.dataset.lockType="";}}
 
-// Socket.IO is the sole live transport. REST is used for explicit history loads,
-// manual refresh, and one-time recovery after a socket reconnect.
+// Socket.IO provides instant delivery; REST reconciliation is the safety net
+// for missed events, background suspension, and transient connection failures.
+let roomMessageSyncTimer=null;
+let roomMessageSyncInFlight=false;
+let roomMessageSyncSignature="";
 async function refreshRoomMessageList(roomId,{force=false}={}){
   if(!state.user||!roomId||String(state.currentRoom)!==String(roomId))return false;
   const requestedRoom=String(roomId);
   const data=await api("/api/rooms/"+encodeURIComponent(requestedRoom)+"/messages");
   if(String(state.currentRoom)!==requestedRoom||!Array.isArray(data.messages))return false;
   const list=$("messages");if(!list)return false;
+  const incoming=data.messages;
+  const signature=requestedRoom+":"+incoming.map(m=>JSON.stringify([m.id,m.text,m.edited,m.deleted,m.pinned,m.reactions,m.attachment,m.expiresAt])).join("|");
+  if(!force&&signature===roomMessageSyncSignature)return true;
   const nearBottom=list.scrollHeight-list.scrollTop-list.clientHeight<180;
-  state.messages=data.messages;
-  list.innerHTML=state.messages.map(messageHTML).join("");
+  state.messages=incoming;
+  list.innerHTML=incoming.map(messageHTML).join("");
+  roomMessageSyncSignature=signature;
   if(nearBottom)list.scrollTop=list.scrollHeight;
   return true;
+}
+function startRoomMessageBackgroundSync(){
+  if(roomMessageSyncTimer)clearInterval(roomMessageSyncTimer);
+  roomMessageSyncTimer=setInterval(async()=>{
+    const roomId=String(state.currentRoom||"");
+    if(!state.user||!roomId||roomMessageSyncInFlight||document.hidden)return;
+    roomMessageSyncInFlight=true;
+    try{await refreshRoomMessageList(roomId);}
+    catch(error){console.warn("Background room-message sync failed:",error?.message||error);}
+    finally{roomMessageSyncInFlight=false;}
+  },2000);
 }
 
 async function refreshActiveDMMessageList(peerId){
@@ -730,6 +748,9 @@ async function start() {
   }
 
   state.socket = io();
+  // Reconcile the open room every 2 seconds. Socket.IO remains the instant path;
+  // this catches any event missed by a sleeping or temporarily disconnected client.
+  startRoomMessageBackgroundSync();
   state.socket.io.opts.reconnection = true;
   state.socket.io.opts.reconnectionAttempts = Infinity;
   state.socket.io.opts.reconnectionDelay = 500;
