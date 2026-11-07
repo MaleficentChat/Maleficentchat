@@ -10,18 +10,32 @@ function mediaUrl(key){return "/uploads/"+String(key||"").split("/").map(encodeU
 function addNav(){
  const group=document.querySelector(".nav-group");
  if(group){
-  const conf=document.createElement("button");conf.className="nav";conf.type="button";conf.dataset.socialView="confessions";conf.textContent="🥀 Confessions";group.appendChild(conf);
-  const book=document.createElement("button");book.className="nav";book.type="button";book.dataset.socialView="scrapbook";book.textContent="📖 My Scrapbook";group.appendChild(book);
+  if(!group.querySelector('[data-social-view="confessions"]')){
+   const conf=document.createElement("button");conf.className="nav";conf.type="button";conf.dataset.socialView="confessions";conf.innerHTML='🥀 <span>Confessions</span>';group.appendChild(conf);
+  }
+  if(!group.querySelector('[data-social-view="scrapbook"]')){
+   const book=document.createElement("button");book.className="nav";book.type="button";book.dataset.socialView="scrapbook";book.innerHTML='📖 <span>My Scrapbook</span>';group.appendChild(book);
+  }
  }
  const main=document.querySelector(".main");if(!main)return;
- const scrapbook=document.createElement("section");scrapbook.id="sfScrapbookView";scrapbook.className="view hidden sf-view";
- scrapbook.innerHTML='<div class="topbar"><div><h2>📖 My Scrapbook</h2><p class="muted">Your memories, your little corner of Maleficent Chat.</p></div><button class="primary" id="sfBookSettings">⚙ Settings</button></div><div class="sf-content" id="sfBookContent"></div>';
- const conf=document.createElement("section");conf.id="sfConfessionsView";conf.className="view hidden sf-view";
- conf.innerHTML='<div class="topbar"><div><h2>🥀 Anonymous Confessions</h2><p class="muted">Share thoughts without showing your public identity.</p></div><div class="toolbar"><button class="mini" id="sfConfLatest">Latest</button><button class="mini" id="sfConfPopular">Popular</button><button class="mini" id="sfConfMine">My submissions</button></div></div><div class="sf-content" id="sfConfContent"></div>';
- main.append(scrapbook,conf);
- document.querySelectorAll("[data-social-view]").forEach(b=>b.addEventListener("click",()=>openSocialView(b.dataset.socialView)));
+ if(!el("sfScrapbookView")){
+  const scrapbook=document.createElement("section");scrapbook.id="sfScrapbookView";scrapbook.className="view hidden sf-view";
+  scrapbook.innerHTML='<div class="topbar"><div><h2>📖 My Scrapbook</h2><p class="muted">Your memories, your little corner of Maleficent Chat.</p></div><button class="primary" id="sfBookSettings">⚙ Settings</button></div><div class="sf-content" id="sfBookContent"></div>';
+  main.appendChild(scrapbook);
+ }
+ if(!el("sfConfessionsView")){
+  const conf=document.createElement("section");conf.id="sfConfessionsView";conf.className="view hidden sf-view";
+  conf.innerHTML='<div class="topbar"><div><h2>🥀 Anonymous Confessions</h2><p class="muted">Share thoughts without showing your public identity.</p></div><div class="toolbar"><button class="mini" id="sfConfLatest">Latest</button><button class="mini" id="sfConfPopular">Popular</button><button class="mini" id="sfConfMine">My submissions</button></div></div><div class="sf-content" id="sfConfContent"></div>';
+  main.appendChild(conf);
+ }
+ document.querySelectorAll("[data-social-view]").forEach(b=>{
+  if(b.dataset.socialBound==="true")return;
+  b.dataset.socialBound="true";
+  b.addEventListener("click",()=>openSocialView(b.dataset.socialView));
+ });
 }
 function openSocialView(which){
+ state.view=which;
  document.querySelectorAll(".view").forEach(v=>v.classList.add("hidden"));
  document.querySelectorAll(".nav[data-view],.nav[data-social-view]").forEach(v=>v.classList.remove("active"));
  const button=document.querySelector('[data-social-view="'+which+'"]');button?.classList.add("active");
