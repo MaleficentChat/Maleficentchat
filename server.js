@@ -4038,9 +4038,15 @@ async function auroraRoomMessage(text, roomId){
   db.messages.push(notice); save(); io.to('room:'+roomId).emit('message',notice); return notice;
 }
 function systemNotice(text, roomId=null){
-  const targetRoom=roomId||((db.rooms.find(x=>/^main room 1$/i.test(String(x.name||'')))||db.rooms.find(x=>x.id==='main'||String(x.name).toLowerCase()==='main room')||db.rooms[0])?.id||null);
-  if(targetRoom){auroraRoomMessage(text,targetRoom).catch(err=>console.error("Aurora notice failed:",err.message));}
-  else {const notice={id:id(),system:true,username:'Aurora',displayName:'Aurora',rank:'BOT',text:String(text),roomId:null,time:Date.now(),reactions:{},pinned:false,deleted:false};io.emit('system-message',notice);}
+  // Room-scoped announcements go only to the room explicitly supplied by the
+  // caller. Site-wide account notices must never fall back to a retired room
+  // or whichever room happens to be first in the database.
+  if(roomId){
+    auroraRoomMessage(text,roomId).catch(err=>console.error("Aurora notice failed:",err.message));
+    return;
+  }
+  const notice={id:id(),system:true,username:'Aurora',displayName:'Aurora',rank:'BOT',text:String(text),roomId:null,time:Date.now(),reactions:{},pinned:false,deleted:false};
+  io.emit('system-message',notice);
 }
 
 async function sendRankChangeBotDM(target,newRank){
