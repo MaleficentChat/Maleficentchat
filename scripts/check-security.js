@@ -74,6 +74,17 @@ assert.match(activeClient, /state\.socket\.on\("message"/,
   "the browser must subscribe to Socket.IO room-message events");
 assert.match(activeClient, /state\.socket\.on\("dm"/,
   "the browser must subscribe to Socket.IO private-message events");
+assert.match(activeClient, /function startActiveDMMessageBackgroundSync\(\)[\s\S]*?setInterval\(async\(\)=>[\s\S]*?refreshActiveDMMessageList\(peerId\)[\s\S]*?\},2000\)/,
+  "the active private conversation must have single-flight recovery for missed realtime events");
+assert.match(activeClient, /startActiveDMMessageBackgroundSync\(\)/,
+  "active private-message recovery must start after login");
+assert.match(server, /app\.post\(["']\/api\/news["'][\s\S]*?io\.emit\(["']news["']\)/,
+  "publishing a News post must broadcast a live feed update");
+assert.match(activeClient, /state\.socket\.on\(["']news["'][\s\S]*?loadNews\(\)/,
+  "the open News feed must refresh on live post events");
+const mobileStyles = fs.readFileSync("public/style.css", "utf8");
+assert.match(mobileStyles, /#viewRooms\.chatting \.composer\{[^}]*display:grid/s,
+  "the mobile chat composer must use a real grid layout so its input and send button stay visible");
 assert.doesNotMatch(server + activeClient + fs.readFileSync("public/index.html", "utf8") + fs.readFileSync("package.json", "utf8"), /\bAbly\b|ably-live|@ably\//i,
   "Socket.IO must be the only active realtime transport");
 
