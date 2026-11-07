@@ -492,6 +492,8 @@ function canAccessStaffTarget(user){
 }
 function canFeature(key){
   if(!state.user) return false;
+  // News publishing is always available to Admin and every higher staff rank.
+  if(key==='publish_news'||key==='news_posting')return (rankOrder[String(state.user.rank||'').toUpperCase()]??-1)>=(rankOrder.ADMIN??999);
   const roomRole=String(state.currentRoomRole||'USER').toUpperCase();
   const roomOwnedFeature={
     edit_room:['ROOM_OWNER','ROOM_ADMIN'].includes(roomRole),
