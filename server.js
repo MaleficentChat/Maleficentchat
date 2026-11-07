@@ -270,7 +270,7 @@ function canAccessStaffTarget(actor,target){
 }
 
 function featurePermissionKey(key){
-  const aliases={create_room:"can_create_rooms",create_rooms:"can_create_rooms",edit_room:"can_edit_rooms",edit_rooms:"can_edit_rooms",delete_room:"can_delete_rooms",delete_rooms:"can_delete_rooms",profile_note:"can_add_notes",edit_email:"can_edit_emails",share_gold:"can_share_gold",moderate_users:"can_mute",delete_message:"can_delete_messages",manage_staff_accounts:"can_edit_usernames",reports_management:"can_manage_reports",publish_news:"can_manage_news",manage_ranks:"can_manage_ranks",manage_clubs:"can_manage_clubs",manage_settings:"can_manage_settings",clear_history_button:"can_clear_history",account_modifications:"can_manage_profiles",manage_profiles:"can_manage_profiles"};
+  const aliases={create_room:"can_create_rooms",create_rooms:"can_create_rooms",edit_room:"can_edit_rooms",edit_rooms:"can_edit_rooms",delete_room:"can_delete_rooms",delete_rooms:"can_delete_rooms",profile_note:"can_add_notes",edit_email:"can_edit_emails",share_gold:"can_share_gold",moderate_users:"can_mute",delete_message:"can_delete_messages",manage_staff_accounts:"can_edit_usernames",reports_management:"can_manage_reports",manage_ranks:"can_manage_ranks",manage_clubs:"can_manage_clubs",manage_settings:"can_manage_settings",clear_history_button:"can_clear_history",account_modifications:"can_manage_profiles",manage_profiles:"can_manage_profiles"};
   return aliases[key]|| (String(key).startsWith("can_")?key:null);
 }
 function userFeatureGrant(u,key){
