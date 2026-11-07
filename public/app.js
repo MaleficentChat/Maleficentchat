@@ -4574,6 +4574,8 @@ function openProfileEditMenu(targetUser=null){
   const canDelete=self?(!['OWNER','DEVELOPER'].includes(String(user.rank||'').toUpperCase())):(can('COOWNER')&&canAccessStaffTarget(user));
   const sections=[
     {id:'editUpload',icon:'📤',title:'Upload',desc:'Profile picture or profile background',show:self||canModify},
+    {id:'removeProfilePicture',icon:'🗑️',title:'Remove profile picture',desc:'Clear your current profile photo',show:self&&!!user.avatar},
+    {id:'removeProfileBackground',icon:'🗑️',title:'Remove background',desc:'Clear your current profile background',show:self&&!!user.banner},
     {id:'editName',icon:'✏️',title:'Edit Name',desc:'Username and display name',show:canEditUsername||canModify},
     {id:'editEmail',icon:'✉️',title:'Edit email',desc:'Change account email address',show:canEditEmail},
     {id:'editPassword',icon:'🔒',title:'Edit password',desc:'Set a new account password',show:canChangePassword},
@@ -4583,6 +4585,8 @@ function openProfileEditMenu(targetUser=null){
   ].filter(x=>x.show);
   modal(`<div class="profile-edit-menu"><h2>✏️ ${self?'Edit account':`Edit @${esc(user.username||'member')}`}</h2><p class="muted">Only actions you are allowed to use are shown here.</p><div class="profile-edit-menu-grid">${sections.map(x=>`<button class="settings-row" id="${x.id}" type="button"><span>${x.icon}</span><b>${x.title}</b><small>${x.desc}</small><strong>›</strong></button>`).join('')}</div></div>`);
   $('editUpload')?.addEventListener('click',()=>openAccountUploadMenu(self?null:user));
+  $('removeProfilePicture')?.addEventListener('click',deleteAvatar);
+  $('removeProfileBackground')?.addEventListener('click',deleteBanner);
   $('editName')?.addEventListener('click',()=>openAccountNameEditor(self?null:user));
   $('editEmail')?.addEventListener('click',()=>openAccountEmailEditor(self?null:user));
   $('editPassword')?.addEventListener('click',()=>openAccountPasswordEditor(self?null:user));
