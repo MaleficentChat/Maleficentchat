@@ -6453,16 +6453,19 @@ io.on(
     socket.on("gravity:invite", data=>{
       const u=findUser(socket.data.userId);
       if(!u)return socket.emit("gravity:error",{error:"Please log in before starting a game."});
-      const main=db.rooms.find(r=>r.isDefault||/^main room$/i.test(String(r.name||"")));
-      if(!main)return socket.emit("gravity:error",{error:"Main Room is not available right now."});
+      const activeRoomId=String(socket.data.roomId||"");
+      const activeRoom=db.rooms.find(r=>String(r.id)===activeRoomId);
+      if(!activeRoom||!socket.rooms.has("room:"+activeRoomId)||!verifyRoomJoinToken(socket.data.roomJoinToken,u.id,activeRoom)){
+        return socket.emit("gravity:error",{error:"Join a chat room before inviting someone to Gravity Run."});
+      }
       const gameId=id();
       const difficulty=Math.max(0,Math.min(100,Number(data&&data.difficulty)||25));
       const match={id:gameId,hostId:String(u.id),hostName:u.displayName||u.username,players:[{userId:String(u.id),username:u.username,displayName:u.displayName||u.username,side:0}],status:"waiting",difficulty,createdAt:Date.now(),state:null};
       gravityMatches.set(gameId,match);
       socket.join("gravity:"+gameId);
-      const invite={gameId:gameId,hostId:String(u.id),hostName:match.hostName,roomId:String(main.id),gameName:"Maleficent's Gravity Run",difficulty:difficulty};
-      io.to("room:"+main.id).emit("system-message",{id:id(),roomId:String(main.id),system:true,bot:"Aurora",text:match.hostName+" has started Maleficent's Gravity Run",time:Date.now(),gameInvite:invite});
-      io.to("room:"+main.id).emit("gravity:invite",invite);
+      const invite={gameId:gameId,hostId:String(u.id),hostName:match.hostName,roomId:activeRoomId,gameName:"Maleficent's Gravity Run",difficulty:difficulty};
+      io.to("room:"+activeRoomId).emit("system-message",{id:id(),roomId:activeRoomId,system:true,bot:"Aurora",text:match.hostName+" has started Maleficent's Gravity Run",time:Date.now(),gameInvite:invite});
+      io.to("room:"+activeRoomId).emit("gravity:invite",invite);
       socket.emit("gravity:created",{gameId:gameId,hostId:String(u.id),hostName:match.hostName,difficulty:difficulty});
     });
 
