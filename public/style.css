@@ -7008,3 +7008,25 @@ html[data-theme] .settings-tab.active {
 .profile-account-details{display:grid;gap:0}
 .profile-account-details .profile-info-row{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)}
 .profile-account-details .profile-info-row span{text-align:right;overflow-wrap:anywhere}
+
+/* Profile header controls: hamburger occupies the former Edit position; Edit moves to the former hamburger position. */
+#modal:has(.profile-modal) .profile-stats{display:flex!important;align-items:center!important;gap:7px!important}
+#modal:has(.profile-modal) .profile-rank-btn{order:1!important}
+#modal:has(.profile-modal) .profile-hamburger{order:2!important}
+#modal:has(.profile-modal) .profile-edit-btn{order:3!important}
+#viewProfile .profile-settings-top{display:flex!important;align-items:center!important;gap:7px!important}
+#viewProfile .profile-settings-top .profile-edit-launch{order:3!important}
+#viewProfile .profile-settings-top #myProfileMenuBtn{order:4!important}
+#viewProfile .profile-settings-head>.big-avatar{
+ position:relative!important;display:grid!important;place-items:center!important;
+ width:112px!important;height:112px!important;min-width:112px!important;min-height:112px!important;
+ margin:10px auto 8px!important;padding:0!important;overflow:hidden!important;
+ border-radius:50%!important;box-sizing:border-box!important;
+}
+#viewProfile .profile-settings-head>.big-avatar img{
+ display:block!important;width:100%!important;height:100%!important;max-width:none!important;max-height:none!important;
+ object-fit:cover!important;object-position:center!important;border-radius:50%!important;
+}
+#viewProfile .profile-settings-head>.big-avatar:after,
+#viewProfile .profile-settings-head>.big-avatar:before{content:none!important;display:none!important}
+#viewProfile .profile-settings-head .profile-media-actions{display:none!important}
