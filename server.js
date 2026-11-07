@@ -6241,7 +6241,8 @@ app.post("/api/news",auth,upload.single("file"),async(req,res)=>{
         ).slice(0,3000),
 
       time:Date.now(),
-      author:u.username,
+      author:u.displayName||u.username,
+      avatar:u.avatar||"",
       comments:[],
       attachment:req.file?{url:"/uploads/"+req.file.filename,type:req.file.mimetype,name:req.file.originalname}:null
     };

@@ -2855,8 +2855,11 @@ async function loadDoodleLibrary(){
       try{
         const result=await api("/api/doodles/"+encodeURIComponent(btn.dataset.doodleView)+"/image");
         if(!/^data:image\/png;base64,/.test(String(result.image||"")))throw Error("Saved drawing image is invalid.");
-        modal(`<div class="doodle-preview"><div class="news-card-top"><h3>${esc(result.title||"Saved doodle")}</h3><button type="button" class="mini" id="doodlePreviewClose">×</button></div><img src="${esc(result.image)}" alt="Saved doodle preview"></div>`);
+        modal(`<div class="doodle-preview"><div class="news-card-top"><h3>${esc(result.title||"Saved doodle")}</h3><button type="button" class="mini" id="doodlePreviewClose">×</button></div><img id="doodlePreviewImage" src="${esc(result.image)}" alt="Saved doodle preview"><p class="muted" id="doodlePreviewStatus">Loading saved drawing…</p></div>`);
         $("doodlePreviewClose")?.addEventListener("click",closeModal);
+        const preview=$("doodlePreviewImage"),status=$("doodlePreviewStatus");
+        preview?.addEventListener("load",()=>{if(status)status.remove();});
+        preview?.addEventListener("error",()=>{if(status)status.textContent="This saved drawing image could not be decoded. Your saved record has not been deleted.";});
       }catch(e){toast(e.message||"Could not open drawing.");}
       finally{btn.disabled=false;}
     });
@@ -4212,7 +4215,7 @@ async function loadNews() {
       const reactions=reactionKeys.map(([emoji,legacy])=>{const users=Array.isArray(rx[emoji])?rx[emoji]:[];const old=Number(rx[legacy]||rx[legacy+'s']||0);return [emoji,users.length||old,users.map(String).includes(String(state.user?.id))]});
       return `<article class="card news-card social-feed-card" data-news-id="${esc(n.id)}">
         <div class="news-card-top"><div class="social-author"><div class="social-author-avatar">${n.avatar?`<img src="${esc(n.avatar)}" alt="">`:'📰'}</div><div><h3>${esc(n.author||'Maleficent Chat')}</h3><div class="muted">${fmt(n.time)}</div></div></div><button class="social-more" data-news-more="${esc(n.id)}" aria-label="Post options">•••</button></div>
-        <div class="news-body">${esc(n.title? n.title+'\\n\\n'+n.body : n.body)}</div>
+        <div class="news-post-content">${n.title?'<h3 class="news-post-title">'+esc(n.title)+'</h3>':''}<div class="news-body">${esc(n.body||'')}</div></div>
         ${n.attachment?.type?.startsWith('image/')?`<img class="news-attachment" src="${esc(n.attachment.url)}" alt="News photo">`:''}
         <div class="social-reaction-summary">${reactions.map(([emoji,count])=>`<span>${emoji} <b>${count}</b></span>`).join('')}<button class="social-comments-shortcut" onclick="openNewsComments('${esc(n.id)}')">${comments.length} 💬</button></div>
         <div class="news-actions social-reaction-actions">${reactions.map(([emoji,count,reacted])=>`<button class="mini ${reacted?'reacted':''}" type="button" data-news-reaction="${emoji}" data-news-id="${esc(n.id)}">${emoji} <b>${count}</b></button>`).join('')}<button class="mini" onclick="openNewsComments('${esc(n.id)}')">💬 <b>${comments.length}</b></button>${canFeature('delete_news')?`<button class="mini danger" onclick="deleteNews('${esc(n.id)}')">🗑 Delete</button>`:""}</div>
@@ -6386,6 +6389,8 @@ async function toggleReportDropdown(refresh=false){
 async function toggleNotificationDropdown(){
   const box=$('notificationDropdown'); if(!box)return;
   if(!box.classList.contains('hidden')){box.classList.add('hidden');return;}
+  box.innerHTML='<div class="notification-dropdown-head"><b>🔔 Notifications</b></div><p class="muted notification-empty">Loading notifications…</p>';
+  box.classList.remove('hidden');
   try{
     const d=await api('/api/notifications');
     const rows=(d.notifications||[]).slice(0,20);
@@ -6396,7 +6401,10 @@ async function toggleNotificationDropdown(){
       try{await api('/api/notifications/'+encodeURIComponent(b.dataset.dropdownNotif)+'/read',{method:'PATCH'});b.classList.remove('unread');loadNotifications();toggleNotificationDropdown();}catch(e){toast(e.message)}
     });
     $('dropdownMarkAll')?.addEventListener('click',async e=>{e.stopPropagation();try{await api('/api/notifications/read',{method:'POST'});box.classList.add('hidden');loadNotifications();toast('All notifications marked as read.');}catch(err){toast(err.message)}});
-  }catch(e){toast(e.message)}
+  }catch(e){
+    box.innerHTML='<div class="notification-dropdown-head"><b>🔔 Notifications</b></div><p class="muted notification-empty">'+esc(e.message||'Could not load notifications.')+'</p>';
+    box.classList.remove('hidden');
+  }
 }
 
 /* ---------------- NOTIFICATIONS ---------------- */

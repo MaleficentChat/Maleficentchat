@@ -82,7 +82,11 @@ async function bookSettings(){
 async function loadConfessions(mode,category){
  const root=el("sfConfContent");if(!root)return;root.innerHTML='<p class="muted">Loading confessions…</p>';
  try{
-  const d=await request("/api/confessions"+(mode==="popular"?"?sort=popular":"")+(category?"&category="+encodeURIComponent(category):""));
+  const params=new URLSearchParams();
+  if(mode==="popular")params.set("sort","popular");
+  if(category)params.set("category",category);
+  const query=params.toString();
+  const d=await request("/api/confessions"+(query?"?"+query:""));
   root.innerHTML='<div class="sf-conf-compose"><h3>Whisper into the darkness 🥀</h3><form id="sfConfForm"><select name="category">'+CATS.map(x=>'<option>'+esc(x)+'</option>').join("")+'</select><textarea name="body" maxlength="2000" required placeholder="Write what is on your mind…"></textarea><input name="warning" maxlength="160" placeholder="Optional content warning"><small>Your username and profile photo are never displayed publicly. Authorized Owner / Developer investigations are audited.</small><button class="primary">Submit anonymously</button></form></div><div class="sf-feed">'+(d.confessions||[]).map(confessionCard).join("")+'</div>';
   root.querySelector("#sfConfForm")?.addEventListener("submit",async e=>{e.preventDefault();const f=e.currentTarget;try{await request("/api/confessions",{method:"POST",body:JSON.stringify({category:f.category.value,body:f.body.value,contentWarning:f.warning.value})});say("Your confession was submitted anonymously.");loadConfessions("latest");}catch(err){say(err.message);}});
   root.querySelectorAll("[data-conf-react]").forEach(b=>b.addEventListener("click",async()=>{try{await request("/api/confessions/"+b.dataset.confReact+"/reactions",{method:"POST",body:JSON.stringify({emoji:b.dataset.emoji})});loadConfessions(mode,category);}catch(e){say(e.message);}}));
