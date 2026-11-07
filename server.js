@@ -807,7 +807,6 @@ function makeToken(userId){const b64=o=>Buffer.from(JSON.stringify(o)).toString(
 function verifyToken(token){try{const [h,p,sig]=String(token||"").split(".");if(!h||!p||!sig)return null;const e=crypto.createHmac("sha256",TOKEN_SECRET).update(h+"."+p).digest("base64url");if(sig!==e)return null;const x=JSON.parse(Buffer.from(p,"base64url").toString("utf8"));return x.exp>=Math.floor(Date.now()/1000)?x:null;}catch{return null;}}
 function roomRankCanEnter(user,room){
   if(!user||!room)return false;
-  if(room.isDefault||/^main room$/i.test(String(room.name||"").trim()))return true;
   const userRank=String(user.rank||"MEMBER").toUpperCase();
   const requiredRank=String(room.rankRequired||"MEMBER").toUpperCase();
   const userLevel=rankOrder[userRank],requiredLevel=rankOrder[requiredRank];
@@ -1569,7 +1568,7 @@ function visibleRoomOnlineCount(roomId){
 }
 function roomCapacityAvailable(user,room){
   if(!user||!room)return false;
-  if(room.isDefault||/^main room$/i.test(String(room.name||"").trim())||roomOwnerOrGlobal(user,room)||roomRoleLevel(roomRole(room.id,user.id))>0)return true;
+  if(roomOwnerOrGlobal(user,room)||roomRoleLevel(roomRole(room.id,user.id))>0)return true;
   const limit=Number(room.limit??room.room_limit??100);
   if(!Number.isInteger(limit)||limit<1)return false;
   const members=new Set();
@@ -2681,7 +2680,6 @@ app.post(
  
     const userRank=String(u.rank||"MEMBER").toUpperCase();
     const requiredRank=String(r.rankRequired||"MEMBER").toUpperCase();
-    // Main Room is the guaranteed post-login entry point for every account.
     if(!isAgeRoom && !isStaffAccount && !roomRankCanEnter(u,r)){
       return res.status(403).json({error:`This room requires ${requiredRank.replaceAll("_"," ")} rank or higher.`});
     }
@@ -4413,8 +4411,7 @@ app.post(
     // Warnings are private account-level notices, never public Main Room announcements.
     if(action!=="WARN"){
       const actionText={MUTE:'muted',KICK:'kicked',BAN:'banned',UNMUTE:'unmuted',REVOKE_MUTE:'unmuted',REVOKE_BAN:'unbanned',REVOKE_KICK:'unkicked'}[action]||action.toLowerCase();
-      const mainRoom=db.rooms.find(x=>/^main room 1$/i.test(String(x.name||'')))||db.rooms.find(x=>x.id==='main'||String(x.name).toLowerCase()==='main room')||db.rooms[0];
-      systemNotice(`@${target.username} has been ${actionText}.`,mainRoom?.id||null);
+      // Moderation outcomes are delivered privately to the affected account.
     }
 
     const moderationReason=cleanText(req.body.reason)||"Community rules";
