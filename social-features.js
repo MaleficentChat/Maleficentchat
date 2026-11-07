@@ -71,7 +71,7 @@ function registerSocialFeatureRoutes({app,auth,current,pool,storeMediaBuffer,has
   app.get("/api/confessions",auth,async(req,res)=>{
     const category=CATEGORIES.includes(req.query.category)?req.query.category:null,sort=req.query.sort==="popular"?"reaction_count DESC,c.created_at DESC":"c.created_at DESC",params=[];let where="c.status='visible'";if(category){params.push(category);where+=" AND c.category=$"+params.length;}
     const sql="SELECT c.id,c.category,c.body,c.content_warning,c.created_at,(SELECT COUNT(*)::int FROM social_confession_reactions r WHERE r.confession_id=c.id) AS reaction_count,(SELECT COUNT(*)::int FROM social_confession_comments m WHERE m.confession_id=c.id AND m.status='visible') AS comment_count FROM social_confessions c WHERE "+where+" ORDER BY "+sort+" LIMIT 100";
-    const r=await pool.query(sql,params);res.json({confessions:r.rows});
+    const r=params.length?await pool.query(sql,params):await pool.query(sql);res.json({confessions:r.rows});
   });
   app.get("/api/confessions/mine",auth,async(req,res)=>{const r=await pool.query("SELECT c.id,c.category,c.body,c.content_warning,c.status,c.created_at FROM social_confessions c JOIN social_confession_identities i ON i.confession_id=c.id WHERE i.sender_user_id=$1 ORDER BY c.created_at DESC LIMIT 100",[Number(who(req).id)]);res.json({confessions:r.rows});});
   app.post("/api/confessions",auth,async(req,res)=>{
