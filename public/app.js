@@ -88,6 +88,36 @@ dmReplyText: null,
 };
 
 
+window.addEventListener("mc:ably-dm",event=>{
+  const message=event.detail;
+  if(!message)return;
+  const from=String(message.from??message.senderId??"");
+  const to=String(message.to??message.receiverId??"");
+  const me=String(state.user?.id??"");
+  if(from!==me&&to!==me)return;
+  refreshTopDMUnreadBadge();
+  const peer=String(state.dmUserId??"");
+  if(!peer||!(from===peer||to===peer))return;
+  if(!state.dmMessages)state.dmMessages=[];
+  const messageId=String(message.id||"");
+  if(messageId&&state.dmMessages.some(item=>String(item.id)===messageId))return;
+  state.dmMessages.push(message);
+  const list=$("dmMessages");
+  if(list&&state.dmPeerUser){
+    list.querySelector(".muted")?.remove();
+    list.insertAdjacentHTML("beforeend",dmMessageHTML(message,state.dmMessages,state.dmPeerUser));
+    list.scrollTop=list.scrollHeight;
+  }
+  loadDMList().catch(()=>{});
+});
+window.addEventListener("mc:ably-dm-typing",event=>{
+  const detail=event.detail||{};
+  if(String(detail.peerId)!==String(state.dmUserId||""))return;
+  const status=$("dmTypingStatus");
+  if(!status)return;
+  const typers=detail.typers||[];
+  status.textContent=typers.length?"Someone is typing…":"Quote a message to reply · Attach photos or files";
+});
 window.addEventListener("mc:ably-message",event=>{
   const message=event.detail;
   if(!message||String(message.roomId)!==String(state.currentRoom))return;
@@ -3964,6 +3994,7 @@ async function openDM(id) {
 
     state.dmUserId = String(id);
     state.dmPeerUser = user;
+    window.MaleficentAbly?.joinDM?.(id).catch(error=>console.warn("Ably DM connection failed; Socket.IO fallback remains active:",error?.message||error));
     // Remember the most recently opened conversation for inbox ordering.
     if(state.user?.id)safeStorage.setItem("mc_dm_last_opened_"+String(state.user.id),String(id));
 
@@ -4099,7 +4130,7 @@ async function openDM(id) {
 
     const draftKey="mc_dm_draft_"+String(state.user?.id||"")+"_"+String(id);
     const dmInput=$("dmText");
-    if(dmInput){dmInput.value=safeStorage.getItem(draftKey)||"";dmInput.addEventListener("input",()=>{if(dmInput.value)safeStorage.setItem(draftKey,dmInput.value);else safeStorage.removeItem(draftKey);if(state.socket?.connected)state.socket.emit("dm-typing",{userId:id,user:state.user?.displayName||state.user?.username,typing:!!dmInput.value.trim()});});}
+    if(dmInput){dmInput.value=safeStorage.getItem(draftKey)||"";dmInput.addEventListener("input",()=>{if(dmInput.value)safeStorage.setItem(draftKey,dmInput.value);else safeStorage.removeItem(draftKey);if(state.socket?.connected)state.socket.emit("dm-typing",{userId:id,user:state.user?.displayName||state.user?.username,typing:!!dmInput.value.trim()});window.MaleficentAbly?.dmTyping?.(!!dmInput.value.trim());});}
     $("dmForm").onsubmit = async e => {
       e.preventDefault();
       const input = $("dmText");
