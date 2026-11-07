@@ -7081,3 +7081,20 @@ html[data-theme] .settings-tab.active {
 #modal:has(.quick-user-card) .quick-user-row>i{
   flex:0 0 16px!important;width:16px!important;font-size:20px!important;line-height:1!important;
 }
+
+
+/* Hard override: compact only the three glyphs in the Main Chat quick-user action rows. */
+#modal:has(.quick-user-card) .quick-user-row>span,
+#modal:has(.quick-user-card) .quick-user-row>span *{
+  flex:0 0 18px!important;width:18px!important;min-width:18px!important;
+  max-width:18px!important;height:18px!important;min-height:18px!important;max-height:18px!important;
+  font-size:14px!important;line-height:18px!important;
+  transform:none!important;scale:1!important;
+}
+#modal:has(.quick-user-card) .quick-user-row>span svg,
+#modal:has(.quick-user-card) .quick-user-row>span img{
+  width:16px!important;height:16px!important;max-width:16px!important;max-height:16px!important;
+}
+#modal:has(.quick-user-card) .quick-user-row{
+  min-height:44px!important;height:44px!important;padding:5px 12px!important;gap:8px!important;
+}
