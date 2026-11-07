@@ -4295,9 +4295,7 @@ window.addEventListener('click',handleNewsControlActivation,true);
    It intentionally does not reuse community News posts or their renderer. */
 const BRAND_NEWS_CATEGORIES=["Product update","Community","Events","Service notice","Behind the scenes"];
 function brandNewsCanPublish(){
-  const rankName=String(state.user?.rank||"").toUpperCase();
-  return ["ADMIN","SUPER_ADMIN","COMMISSOR","INSTRUCTOR","COOWNER","OWNER","DEVELOPER"].includes(rankName)
-    && !state.userPermissions?.publish_news_blocked;
+  return !!state.user && canFeature("publish_news");
 }
 async function loadBrandNews(){
   const root=$("brandNewsFeed");if(!root)return;
