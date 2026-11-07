@@ -4243,13 +4243,25 @@ function openPublishNews(){
       if(publish){publish.disabled=false;publish.textContent='Publish post';}
     }
   };
-  // Use a direct button action rather than depending on implicit form submission.
-  publish?.addEventListener('click',publishPost);
+  // Keep the publish callback on the live button and route both touch/click
+  // and form submission through one capture-phase handler. This survives modal
+  // overlays and other document-level handlers that may stop bubbling events.
+  if(publish)publish.__mcPublishAction=publishPost;
   form?.addEventListener('submit',event=>{event.preventDefault();publishPost();});
 }
 
-// Capture the News action before sidebar/drawer handlers can swallow the tap.
+// Capture composer submission before modal/drawer handlers can swallow the tap.
 document.addEventListener('click',event=>{
+  const submitButton=event.target instanceof Element?event.target.closest('#newsComposePublish'):null;
+  if(submitButton){
+    event.preventDefault();
+    event.stopPropagation();
+    event.stopImmediatePropagation();
+    const action=submitButton.__mcPublishAction;
+    if(typeof action!=='function'){toast('The News composer is not ready. Close it and open it again.');return;}
+    action();
+    return;
+  }
   const button=event.target instanceof Element?event.target.closest('#publishNews'):null;
   if(!button)return;
   event.preventDefault();
