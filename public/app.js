@@ -641,11 +641,14 @@ function showBanLock(reason="Community rules"){
 function clearActionLock(){if(actionLockTimer)clearTimeout(actionLockTimer);actionLockTimer=null;const box=$("actionLock");if(box){box.classList.add("hidden");box.innerHTML="";box.dataset.lockType="";}}
 
 let liveSyncTimer=null, liveSyncRunId=0, liveRoomSyncBusy=false, liveDMSyncBusy=false, liveSyncLastInbox=0;
+// Give every live-history read a unique URL as an extra safeguard against service-worker,
+// embedded-browser, or intermediary caches that may ignore fetch cache:'no-store'.
+function livePollUrl(path){const join=String(path).includes('?')?'&':'?';return String(path)+join+'__mc_live_poll='+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2);}
 
 async function refreshRoomMessageList(roomId,{force=false}={}){
   if(!state.user||!roomId||String(state.currentRoom)!==String(roomId))return false;
   const requestedRoom=String(roomId);
-  const data=await api("/api/rooms/"+encodeURIComponent(requestedRoom)+"/messages",{
+  const data=await api(livePollUrl("/api/rooms/"+encodeURIComponent(requestedRoom)+"/messages"),{
     ...(typeof AbortSignal!=="undefined"&&typeof AbortSignal.timeout==="function"?{signal:AbortSignal.timeout(7000)}:{})
   });
   if(String(state.currentRoom)!==requestedRoom||!Array.isArray(data.messages))return false;
@@ -666,7 +669,7 @@ async function refreshRoomMessageList(roomId,{force=false}={}){
 async function refreshActiveDMMessageList(peerId){
   if(!state.user||!peerId||String(state.dmUserId)!==String(peerId))return false;
   const requestedPeer=String(peerId);
-  const data=await api("/api/dm/"+encodeURIComponent(requestedPeer),{
+  const data=await api(livePollUrl("/api/dm/"+encodeURIComponent(requestedPeer)),{
     ...(typeof AbortSignal!=="undefined"&&typeof AbortSignal.timeout==="function"?{signal:AbortSignal.timeout(7000)}:{})
   });
   if(String(state.dmUserId)!==requestedPeer||!Array.isArray(data.messages))return false;
@@ -674,7 +677,10 @@ async function refreshActiveDMMessageList(peerId){
   const incoming=data.messages,peer=state.dmPeerUser||{};
   const oldIds=Array.from(list.querySelectorAll("[data-dmid]")).map(el=>String(el.dataset.dmid));
   const newIds=incoming.map(m=>String(m.id));
-  const same=oldIds.length===newIds.length&&oldIds.every((id,i)=>id===newIds[i]);
+  const signature=m=>JSON.stringify([String(m?.id??""),String(m?.from??""),String(m?.to??""),String(m?.text??""),String(m?.time??""),String(m?.read??""),JSON.stringify(m?.attachment??null),String(m?.deleted??""),String(m?.edited??"")]);
+  const same=oldIds.length===newIds.length&&oldIds.every((id,i)=>id===newIds[i])&&
+    Array.isArray(state.dmMessages)&&state.dmMessages.length===incoming.length&&
+    state.dmMessages.every((message,i)=>signature(message)===signature(incoming[i]));
   const nearBottom=list.scrollHeight-list.scrollTop-list.clientHeight<180;
   if(!same){
     state.dmMessages=incoming;
@@ -699,7 +705,7 @@ async function syncLiveMessages(){
       try{
         // A stalled fetch must not leave the room-sync lock set forever.
         // Abort this read after 7 seconds so the next poll can recover.
-        const data=await api("/api/rooms/"+encodeURIComponent(roomId)+"/messages",{...(typeof AbortSignal!=="undefined"&&typeof AbortSignal.timeout==="function"?{signal:AbortSignal.timeout(7000)}:{})});
+        const data=await api(livePollUrl("/api/rooms/"+encodeURIComponent(roomId)+"/messages"),{...(typeof AbortSignal!=="undefined"&&typeof AbortSignal.timeout==="function"?{signal:AbortSignal.timeout(7000)}:{})});
         if(String(state.currentRoom)===roomId&&Array.isArray(data.messages)){
           const incoming=data.messages;
           const list=$("messages");
@@ -743,7 +749,7 @@ async function syncLiveMessages(){
       try{
         // A stalled fetch must not leave the DM-sync lock set forever.
         // Abort this read after 7 seconds so the next poll can recover.
-        const data=await api("/api/dm/"+encodeURIComponent(peerId),{...(typeof AbortSignal!=="undefined"&&typeof AbortSignal.timeout==="function"?{signal:AbortSignal.timeout(7000)}:{})});
+        const data=await api(livePollUrl("/api/dm/"+encodeURIComponent(peerId)),{...(typeof AbortSignal!=="undefined"&&typeof AbortSignal.timeout==="function"?{signal:AbortSignal.timeout(7000)}:{})});
         if(String(state.dmUserId)===peerId&&Array.isArray(data.messages)){
           // PostgreSQL history is authoritative. Reconcile both message order and
           // sender/content fields, not just IDs; otherwise stale bubbles can keep
