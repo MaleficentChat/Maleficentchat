@@ -1110,7 +1110,7 @@ app.get("/api/ably-token",auth,async(req,res)=>{
     // The Chat SDK appends ::$chat to each room's underlying channel name.
     for(const room of db.rooms||[]){
       if(roomIsPrivate(room)||room.locked||room.passwordHash||db.settings?.locked_rooms?.[String(room.id)])continue;
-      capability["mc-room-"+String(room.id)]=["subscribe","history"];
+      capability["mc-room-"+String(room.id)]=["subscribe","history","presence"];
     }
     // Private conversation channels are granted only to one of their two participants.
     // Existing PostgreSQL message rows define which conversations a user may subscribe to.
