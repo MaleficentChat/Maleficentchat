@@ -4253,6 +4253,7 @@ function openPublishNews(){
   };
 }
 
+document.addEventListener('click',event=>{const button=event.target instanceof Element?event.target.closest('#publishNews'):null;if(!button||button.disabled)return;event.preventDefault();event.stopPropagation();event.stopImmediatePropagation();openPublishNews();},true);
 if($('publishNews')) $('publishNews').onclick=openPublishNews;
 
 async function openNewsComments(id){
@@ -4776,21 +4777,23 @@ async function deleteAvatar(){
 
 function uploadBanner() {
   modal(`
-    <h2>Profile banner</h2>
-
-    <input
-      type="file"
-      id="bn"
-      accept="image/*"
-    >
-
-    <button
-      class="primary"
-      onclick="sendUpload('/api/me/banner','bn')"
-    >
-      Upload
-    </button>
+    <h2>Profile background</h2>
+    <p class="muted">Upload a new background or remove the current one.</p>
+    <input type="file" id="bn" accept="image/*">
+    <div class="toolbar">
+      <button class="primary" type="button" onclick="sendUpload('/api/me/banner','bn')">Upload</button>
+      ${state.user?.banner?'<button class="mini danger" type="button" id="removeProfileBanner">Remove background</button>':''}
+    </div>
   `);
+  $('removeProfileBanner')?.addEventListener('click',deleteBanner);
+}
+async function deleteBanner(){
+  if(!confirm("Remove your profile background?"))return;
+  try{
+    const data=await api('/api/me/banner',{method:'DELETE'});
+    state.user=data.user;closeModal();updateNav();await loadProfile(state.user);
+    toast('Profile background removed.');
+  }catch(error){toast(error.message);}
 }
 
 async function sendUpload(url, id) {

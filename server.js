@@ -2025,6 +2025,13 @@ app.delete('/api/me/avatar',auth,(req,res)=>{
   res.json({ok:true,user:safeUser(u)});
 });
 
+app.delete('/api/me/banner',auth,(req,res)=>{
+  const u=current(req);
+  u.banner='';
+  save();
+  res.json({ok:true,user:safeUser(u)});
+});
+
 app.post(
   "/api/me/banner",
   auth,
