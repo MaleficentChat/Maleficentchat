@@ -885,7 +885,7 @@ async function start() {
 
   state.socket.on("connect", () => {
     loadNotifications();
-    // A connect event can fire before or after the login flow joins Main Room.
+    // A connect event can fire before or after the login flow joins the age-appropriate chat.
     // Authenticate and restore room membership first, then reconcile both live
     // channels so messages missed while offline appear without reopening a view.
     const connectedSocket=state.socket;
@@ -908,8 +908,7 @@ async function start() {
       try{const access=JSON.parse(safeStorage.getItem("mc_room_join")||"null");if(String(access?.roomId)===String(d.roomId))safeStorage.removeItem("mc_room_join");}catch{}
       state.currentRoom=null;state.currentRoomRole="USER";state.messages=[];
       if($("messages"))$("messages").innerHTML="";
-      const main=state.rooms.find(room=>room.isDefault)||state.rooms.find(room=>/^main room$/i.test(String(room.name||"")));
-      if(main)joinRoom(main.id).catch(()=>{});
+      try{const fallbackRoom=roomForAgeRouting();joinRoom(fallbackRoom.id).catch(()=>renderRooms());}catch{renderRooms();}
     }
   });
   state.socket.on("dm-typing",d=>{
@@ -1100,7 +1099,7 @@ async function start() {
   let joined=false;
   const invite=roomInviteFromHash();
   if(invite?.roomId&&state.rooms.some(room=>String(room.id)===invite.roomId))joined=await joinRoom(invite.roomId);
-  // Every authenticated visit should land directly in its selected default room, not the room directory.
+  // Every authenticated visit should land directly in the age-appropriate chat, not the room directory.
   // Avoid renderView() here because it re-fetches the room list and briefly returns to the directory.
   state.view = "rooms";
   document.querySelectorAll(".view").forEach(view => view.classList.add("hidden"));
@@ -1115,13 +1114,13 @@ async function start() {
         renderRooms();
         try { mainRoom=roomForAgeRouting(); } catch(error) { mainRoom=null; }
       }catch(e){
-        if(attempt===3)toast("Could not load Main Room: "+e.message);
+        if(attempt===3)toast("Could not load your chat room: "+e.message);
       }
     }
     if(mainRoom)joined=await joinRoom(String(mainRoom.id));
     if(!joined&&attempt<3)await new Promise(resolve=>setTimeout(resolve,500*(attempt+1)));
   }
-  if(!joined)toast("Main Room could not open automatically. Please open Rooms and try again.");
+  if(!joined)toast("Your chat room could not open automatically. Please open Rooms and try again.");
   await loadNotifications();
   // Notification Reply/Open actions deep-link directly into the sender conversation.
   const notificationPeer=new URL(window.location.href).searchParams.get("dm");
@@ -3933,7 +3932,6 @@ async function openDM(id) {
 
     state.dmUserId = String(id);
     state.dmPeerUser = user;
-    window.MaleficentAbly?.joinDM?.(id).catch(error=>console.warn("Ably DM connection failed; Socket.IO fallback remains active:",error?.message||error));
     // Remember the most recently opened conversation for inbox ordering.
     if(state.user?.id)safeStorage.setItem("mc_dm_last_opened_"+String(state.user.id),String(id));
 
