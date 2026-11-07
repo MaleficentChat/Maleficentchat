@@ -2,6 +2,7 @@
 /* Ably Chat realtime transport for public rooms. The backend remains authoritative. */
 (()=>{
   let chatClient=null,activeRoom=null,activeRoomName=null,subscription=null,seen=new Set(),connecting=null,activeUserId=null;
+  let activeDMRoom=null,activeDMName=null,dmMessageSubscription=null,dmTypingSubscription=null;
   const enabled=()=>!!(window.Ably&&window.Ably.Realtime&&window.AblyChat&&window.AblyChat.ChatClient);
   async function getClient(){
     if(chatClient)return chatClient;
@@ -61,8 +62,41 @@
       window.dispatchEvent(new CustomEvent("mc:ably-discontinuity",{detail:{roomId:id}}));
     });
   }
+  async function leaveDM(){
+    if(activeDMRoom){
+      try{dmMessageSubscription?.unsubscribe?.();dmTypingSubscription?.unsubscribe?.();await activeDMRoom.detach();}catch{}
+    }
+    activeDMRoom=null;activeDMName=null;dmMessageSubscription=null;dmTypingSubscription=null;
+  }
+  async function joinDM(peerId){
+    if(!peerId||!activeUserId)return;
+    const pair=[""+activeUserId,""+peerId].sort(),name="mc-dm-"+pair.join("-");
+    if(activeDMName===name&&activeDMRoom)return;
+    await leaveDM();
+    const client=await getClient();
+    const room=await client.rooms.get(name);
+    dmMessageSubscription=room.messages.subscribe(event=>{
+      const message=event?.message?.metadata?.maleficentChatDM;
+      if(!message)return;
+      const key=String(message.id||"");
+      if(key&&seen.has("dm:"+key))return;
+      if(key){seen.add("dm:"+key);if(seen.size>1500)seen=new Set(Array.from(seen).slice(-750));}
+      window.dispatchEvent(new CustomEvent("mc:ably-dm",{detail:message}));
+    });
+    dmTypingSubscription=room.typing.subscribe(event=>{
+      const typers=(event.currentTypers||[]).map(item=>String(item.clientId||"").replace(/^mc-user-/,"")).filter(id=>id&&id!==String(activeUserId));
+      window.dispatchEvent(new CustomEvent("mc:ably-dm-typing",{detail:{peerId:String(peerId),typers}}));
+    });
+    await room.attach();
+    activeDMRoom=room;activeDMName=name;
+  }
+  async function dmTyping(typing){
+    if(!activeDMRoom)return;
+    try{if(typing)await activeDMRoom.typing.keystroke();else await activeDMRoom.typing.stop();}catch(error){console.warn("Ably DM typing unavailable:",error?.message||error);}
+  }
   async function close(){
     await leaveRoom();
+    await leaveDM();
     if(chatClient){try{await chatClient.dispose();}catch{}chatClient=null;}
     connecting=null;activeUserId=null;seen.clear();
   }
@@ -70,6 +104,9 @@
     setUser,
     joinRoom,
     leaveRoom,
+    joinDM,
+    leaveDM,
+    dmTyping,
     get status(){return chatClient?.connection?.status||"not-connected";},
     close
   };
