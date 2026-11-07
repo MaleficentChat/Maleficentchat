@@ -37,7 +37,7 @@ async function publishAblyRoomMessage(message){
   if(!process.env.ABLY_API_KEY||!message?.roomId)return false;
   const roomRecord=db.rooms.find(item=>String(item.id)===String(message.roomId));
   // Do not leak password-protected or private rooms through the public-room bridge.
-  if(!roomRecord||roomIsPrivate(roomRecord)||roomRecord.locked||roomRecord.passwordHash)return false;
+  if(!roomRecord||roomIsPrivate(roomRecord)||roomRecord.locked||roomRecord.passwordHash||db.settings?.locked_rooms?.[String(roomRecord.id)])return false;
   const chat=await getAblyServerChat();
   const room=await chat.rooms.get("mc-room-"+String(message.roomId));
   await room.messages.send({
@@ -1095,7 +1095,7 @@ app.get("/api/ably-token",auth,async(req,res)=>{
     // A token can subscribe only to rooms that are public and not password locked.
     // The Chat SDK appends ::$chat to each room's underlying channel name.
     for(const room of db.rooms||[]){
-      if(roomIsPrivate(room)||room.locked||room.passwordHash)continue;
+      if(roomIsPrivate(room)||room.locked||room.passwordHash||db.settings?.locked_rooms?.[String(room.id)])continue;
       capability["mc-room-"+String(room.id)]=["subscribe","history"];
     }
     if(!Object.keys(capability).length)return res.status(403).json({error:"No public chat rooms are currently available."});
