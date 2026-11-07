@@ -6993,3 +6993,18 @@ html[data-theme] .settings-tab.active {
     margin:0 auto calc(40px + env(safe-area-inset-bottom,0px))!important;
   }
 }
+
+/* Unified account editor: keep avatar images crisp and remove legacy floating upload controls. */
+#modal:has(.profile-modal) .equipped-profile-frame .big-avatar,
+#modal:has(.profile-modal) .equipped-profile-frame .big-avatar img{
+  width:100%!important;height:100%!important;min-width:0!important;min-height:0!important;
+  border-radius:50%!important;object-fit:cover!important;display:block!important;
+}
+#modal:has(.profile-modal) .profile-avatar-controls{display:none!important}
+#modal:has(.profile-modal) .profile-stats{align-items:center!important}
+#modal:has(.profile-modal) .profile-edit-btn{order:1!important}
+#modal:has(.profile-modal) .profile-rank-btn{order:2!important}
+#modal:has(.profile-modal) .profile-hamburger{order:3!important}
+.profile-account-details{display:grid;gap:0}
+.profile-account-details .profile-info-row{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)}
+.profile-account-details .profile-info-row span{text-align:right;overflow-wrap:anywhere}
