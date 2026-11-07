@@ -1096,7 +1096,7 @@ app.get("/api/ably-token",auth,async(req,res)=>{
     // The Chat SDK appends ::$chat to each room's underlying channel name.
     for(const room of db.rooms||[]){
       if(roomIsPrivate(room)||room.locked||room.passwordHash)continue;
-      capability["mc-room-"+String(room.id)+"::$chat"]=["subscribe","history"];
+      capability["mc-room-"+String(room.id)]=["subscribe","history"];
     }
     if(!Object.keys(capability).length)return res.status(403).json({error:"No public chat rooms are currently available."});
     const tokenIssuer=new Ably.Rest({key:apiKey,clientId:"maleficent-chat-token-issuer"});
