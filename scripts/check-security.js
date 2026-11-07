@@ -74,7 +74,7 @@ assert.match(activeClient, /state\.socket\.on\("message"/,
   "the browser must subscribe to Socket.IO room-message events");
 assert.match(activeClient, /state\.socket\.on\("dm"/,
   "the browser must subscribe to Socket.IO private-message events");
-assert.doesNotMatch(server + activeClient + fs.readFileSync("public/index.html", "utf8") + fs.readFileSync("package.json", "utf8"), /\\bAbly\\b|ably-live|@ably\\//i,
+assert.doesNotMatch(server + activeClient + fs.readFileSync("public/index.html", "utf8") + fs.readFileSync("package.json", "utf8"), /\bAbly\b|ably-live|@ably\//i,
   "Socket.IO must be the only active realtime transport");
 
 assert.match(server, /UPDATE rooms SET is_default=false WHERE name IN \(\x27Main Room\x27,\x27Teen Chat\x27,\x27Adult Chat\x27\)/,
