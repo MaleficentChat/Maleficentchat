@@ -648,6 +648,8 @@ function clearActionLock(){if(actionLockTimer)clearTimeout(actionLockTimer);acti
 let roomMessageSyncTimer=null;
 let roomMessageSyncInFlight=false;
 let roomMessageSyncSignature="";
+let activeDMSyncTimer=null;
+let activeDMSyncInFlight=false;
 async function refreshRoomMessageList(roomId,{force=false}={}){
   if(!state.user||!roomId||String(state.currentRoom)!==String(roomId))return false;
   const requestedRoom=String(roomId);
@@ -691,6 +693,21 @@ async function refreshActiveDMMessageList(peerId){
     const count=$("dmSearchCount");if(count)count.textContent=incoming.length+" messages";
   }
   return true;
+}
+
+// Socket.IO is the instant delivery path. This low-frequency, single-flight
+// recovery catches messages missed during mobile background suspension or a
+// transient socket gap, without reloading the page or touching session state.
+function startActiveDMMessageBackgroundSync(){
+  if(activeDMSyncTimer)clearInterval(activeDMSyncTimer);
+  activeDMSyncTimer=setInterval(async()=>{
+    const peerId=String(state.dmUserId||"");
+    if(!state.user||!peerId||activeDMSyncInFlight||document.hidden)return;
+    activeDMSyncInFlight=true;
+    try{await refreshActiveDMMessageList(peerId);}
+    catch(error){console.warn("Background private-message recovery failed:",error?.message||error);}
+    finally{activeDMSyncInFlight=false;}
+  },2000);
 }
 
 async function authenticateSocketAndJoinRoom(socket=state.socket, syncHistory=true) {
@@ -751,6 +768,7 @@ async function start() {
   // Reconcile the open room every 2 seconds. Socket.IO remains the instant path;
   // this catches any event missed by a sleeping or temporarily disconnected client.
   startRoomMessageBackgroundSync();
+  startActiveDMMessageBackgroundSync();
   state.socket.io.opts.reconnection = true;
   state.socket.io.opts.reconnectionAttempts = Infinity;
   state.socket.io.opts.reconnectionDelay = 500;
