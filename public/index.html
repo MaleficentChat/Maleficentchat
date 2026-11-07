@@ -386,9 +386,31 @@
     var overlay=document.createElement("div");
     overlay.id="mcStandaloneNotificationCenter";
     overlay.style.cssText="position:fixed;inset:0;z-index:2147483000;background:rgba(4,3,10,.82);backdrop-filter:blur(10px);display:flex;align-items:center;justify-content:center;padding:14px;box-sizing:border-box;";
-    overlay.innerHTML='<section role="dialog" aria-modal="true" aria-label="Notifications" style="width:min(680px,100%);max-height:88dvh;overflow:auto;background:#100d1b;color:#f8f4ff;border:1px solid #7545a8;border-radius:18px;padding:18px;box-sizing:border-box;box-shadow:0 20px 70px #000b"><header style="display:flex;align-items:center;justify-content:space-between;gap:12px"><h2 style="margin:0">🔔 Notifications</h2><button type="button" data-nc-close style="font-size:24px;background:#292039;color:white;border:0;border-radius:10px;padding:4px 12px">×</button></header><p data-nc-status style="color:#c9bdd8">Loading notifications…</p><div data-nc-list></div></section>';
+    overlay.innerHTML='<section role="dialog" aria-modal="true" aria-label="Notifications" style="width:min(680px,100%);max-height:88dvh;overflow:auto;background:#100d1b;color:#f8f4ff;border:1px solid #7545a8;border-radius:18px;padding:18px;box-sizing:border-box;box-shadow:0 20px 70px #000b"><header style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap"><h2 style="margin:0">🔔 Notifications</h2><div style="display:flex;gap:8px;align-items:center"><button type="button" data-nc-clear style="background:#4b244f;color:white;border:1px solid #a66be0;border-radius:9px;padding:8px 11px">Clear all</button><button type="button" data-nc-close aria-label="Close notifications" style="font-size:24px;background:#292039;color:white;border:0;border-radius:10px;padding:4px 12px">×</button></div></header><p data-nc-status style="color:#c9bdd8">Loading notifications…</p><div data-nc-list></div></section>';
     document.body.appendChild(overlay);
     overlay.addEventListener("click",function(event){if(event.target===overlay||event.target.closest("[data-nc-close]"))overlay.remove();});
+    overlay.addEventListener("click",function(event){
+      var remove=event.target.closest("[data-nc-remove]");
+      var clear=event.target.closest("[data-nc-clear]");
+      if(!remove&&!clear)return;
+      event.preventDefault();
+      var button=remove||clear;
+      var endpoint=remove?("/api/notifications/"+encodeURIComponent(remove.getAttribute("data-nc-remove"))):"/api/notifications";
+      button.disabled=true;
+      var previous=button.textContent;
+      button.textContent=remove?"Removing…":"Clearing…";
+      fetch(endpoint,{method:"DELETE",credentials:"same-origin",cache:"no-store",headers:headers})
+        .then(async function(response){var data=await response.json().catch(function(){return {};});if(!response.ok)throw new Error(data.error||("Request failed ("+response.status+")"));return data;})
+        .then(function(){
+          if(remove){var card=remove.closest("[data-nc-item]");if(card)card.remove();}
+          else list.innerHTML="";
+          var remaining=list.querySelectorAll("[data-nc-item]").length;
+          status.textContent=remaining+" notification"+(remaining===1?"":"s")+" remaining";
+          if(!remaining)list.innerHTML='<p style="color:#c9bdd8">✨ You’re all caught up. No notifications.</p>';
+          if(clear)status.textContent="All removable notifications cleared. Protected warnings may remain.";
+        })
+        .catch(function(error){button.disabled=false;button.textContent=previous;status.textContent="Could not "+(remove?"remove notification: ":"clear notifications: ")+(error.message||"Unknown error");});
+    });
     var status=overlay.querySelector("[data-nc-status]"),list=overlay.querySelector("[data-nc-list]");
     var headers={};
     try{var token=localStorage.getItem("mc_token");if(token)headers["x-auth-token"]=token;}catch(e){}
@@ -398,7 +420,7 @@
         var rows=Array.isArray(data.notifications)?data.notifications:[];
         status.textContent=rows.filter(function(n){return !n.read;}).length+" unread";
         if(!rows.length){list.innerHTML='<p style="color:#c9bdd8">✨ You’re all caught up. No notifications.</p>';return;}
-        list.innerHTML=rows.map(function(n){return '<article style="padding:12px;margin:10px 0;border:1px solid '+(n.read?'#40364e':'#a66be0')+';border-radius:12px;background:'+(n.read?'#171321':'#241832')+'"><b>'+escapeHtml(n.title||n.type||"Notification")+'</b><p style="margin:6px 0">'+escapeHtml(n.text||n.message||"")+'</p><small style="color:#bbaecb">'+escapeHtml(n.time||"")+'</small></article>';}).join("");
+        list.innerHTML=rows.map(function(n){return '<article data-nc-item="'+escapeHtml(n.id)+'" style="padding:12px;margin:10px 0;border:1px solid '+(n.read?'#40364e':'#a66be0')+';border-radius:12px;background:'+(n.read?'#171321':'#241832')+'"><div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px"><b>'+escapeHtml(n.title||n.type||"Notification")+'</b><button type="button" data-nc-remove="'+escapeHtml(n.id)+'" aria-label="Remove notification" title="Remove notification" style="flex:none;background:#392033;color:#ffd9e8;border:1px solid #8b496d;border-radius:8px;padding:6px 9px">✕ Remove</button></div><p style="margin:6px 0">'+escapeHtml(n.text||n.message||"")+'</p><small style="color:#bbaecb">'+escapeHtml(n.time||"")+(n.read?" · Read":" · Unread")+'</small></article>';}).join("");
       })
       .catch(function(error){status.textContent="Could not load notifications: "+(error.message||"Unknown error");});
   }
