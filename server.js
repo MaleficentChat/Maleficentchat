@@ -1119,7 +1119,22 @@ app.get("/api/ably-token",auth,async(req,res)=>{
       const to=String(message?.to??message?.receiverId??"");
       if(!from||!to||from==="system-bot"&&to!==String(actor.id))continue;
       if(String(actor.id)!==from&&String(actor.id)!==to)continue;
+      const peerId=from===String(actor.id)?to:from;
+      const peer=peerId==="system-bot"?null:findUser(peerId);
+      if(peer&&privateMessagesBlocked(actor,peer))continue;
       const pair=[from,to].sort();
+      capability["mc-dm-"+pair.join("-")]=["subscribe","history"];
+    }
+    // Allow a newly opened, empty conversation only after the server validates
+    // the same participant and block rules used by the authenticated DM API.
+    const requestedPeerId=String(req.query.dm||"");
+    if(requestedPeerId){
+      const peer=findUser(requestedPeerId);
+      if(!peer||String(peer.id)===String(actor.id)||privateMessagesBlocked(actor,peer)||
+         isUserFeatureBlocked(actor,"private_messages")||!hasFeature(actor,"private_messages")){
+        return res.status(403).json({error:"This private conversation is not available."});
+      }
+      const pair=[String(actor.id),String(peer.id)].sort();
       capability["mc-dm-"+pair.join("-")]=["subscribe","history"];
     }
     if(!Object.keys(capability).length)return res.status(403).json({error:"No realtime conversations are available."});
@@ -4029,7 +4044,7 @@ app.post("/api/native/dm/reply",async(req,res)=>{
     await pool.query("INSERT INTO private_messages(id,sender_id,receiver_id,message,data,created_at) VALUES($1,$2,$3,$4,$5::jsonb,NOW())",[m.id,Number(u.id),Number(v.id),m.text,JSON.stringify(m)]);
     db.privateMessages.push(m);
     notify(v.id,"private-message",`💌 @${u.username}`,m.text.slice(0,180),`/?dm=${encodeURIComponent(u.id)}`);
-    io.to("user:"+u.id).emit("dm",m);publishAblyDMMessage(m).catch(error=>console.error("Ably private-message publish failed:",error?.message||error));io.to("user:"+v.id).emit("dm",m);publishAblyDMMessage(m).catch(error=>console.error("Ably private-message publish failed:",error?.message||error));
+    io.to("user:"+u.id).emit("dm",m);io.to("user:"+v.id).emit("dm",m);publishAblyDMMessage(m).catch(error=>console.error("Ably private-message publish failed:",error?.message||error));
     await pool.query("UPDATE native_device_tokens SET last_used_at=NOW() WHERE credential_hash=$1",[hash]);
     res.json({ok:true,messageId:m.id});
   }catch(error){console.error("Native inline reply failed:",error?.message||error);res.status(500).json({error:"Could not send reply."});}
@@ -4052,8 +4067,7 @@ app.post("/api/dm/:id",auth,featureAllowed("private_messages"),upload.single("fi
   // by message ID, so the sender can safely reconcile the optimistic/API copy.
   // Send separately to both authenticated user rooms so every active device
   // for each participant receives the new private message.
-  io.to("user:"+u.id).emit("dm",m);publishAblyDMMessage(m).catch(error=>console.error("Ably private-message publish failed:",error?.message||error));
-  io.to("user:"+v.id).emit("dm",m);publishAblyDMMessage(m).catch(error=>console.error("Ably private-message publish failed:",error?.message||error));
+  io.to("user:"+u.id).emit("dm",m);io.to("user:"+v.id).emit("dm",m);publishAblyDMMessage(m).catch(error=>console.error("Ably private-message publish failed:",error?.message||error));
   res.json({message:m});
 });
 
