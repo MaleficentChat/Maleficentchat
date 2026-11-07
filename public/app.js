@@ -3445,9 +3445,9 @@ function renderUserProfileModal(user,data={}){
   const liked=!!data.likedByMe;
   modal(`<div class="profile-modal">
     <div class="profile-banner" ${bannerStyle}>
-      <div class="equipped-profile-frame ${frame?esc(frame.id):''}" title="${frame?esc(frame.name):'Profile avatar'}">${avatar(user,'big-avatar')}${(isSelf || (canFeature('account_modifications') && canAccessStaffTarget(user)))?'<div class="profile-avatar-controls">'+(isSelf?'<button type="button" class="profile-avatar-upload" id="profileAvatarUpload" title="Upload profile picture" aria-label="Upload profile picture">⬆</button>':'<button type="button" class="profile-avatar-upload" id="staffProfileAvatarUpload" title="Upload member profile picture" aria-label="Upload member profile picture">⬆</button>')+(user.avatar?(isSelf?'<button type="button" class="profile-avatar-remove" id="profileAvatarRemove" title="Remove profile picture" aria-label="Remove profile picture">✕</button>':'<button type="button" class="profile-avatar-remove" id="staffProfileAvatarRemove" title="Remove member profile picture" aria-label="Remove member profile picture">✕</button>'):'')+'</div>':''}</div>
+      <div class="equipped-profile-frame ${frame?esc(frame.id):''}" title="${frame?esc(frame.name):'Profile avatar'}">${avatar(user,'big-avatar')}</div>
       ${user.profileMusicUrl?`<div class="profile-music-pill"><button type="button" class="profile-music-toggle" id="profileMusicToggle" aria-label="Play profile music">▶</button><span class="profile-music-bars" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span class="profile-music-title">${esc(user.profileMusicTitle||'Profile music')}</span><audio id="profileMusicAudio" preload="none" src="${esc(safeProfileUrl(user.profileMusicUrl))}"></audio></div>`:''}
-      <div class="profile-stats"><span class="profile-stat">⭐ ${user.level||1}</span><span class="profile-stat">XP ${user.xp||0}</span><span class="profile-stat">❤️ ${user.profileLikes||data.profileLikes||0}</span><button class="mini profile-hamburger" id="profileMenuBtn" title="Profile actions">☰</button>${!isSelf && (String(state.user?.rank||"").toUpperCase()==="DEVELOPER" || (state.user?.username==="Maleficent" && String(state.user?.rank||"").toUpperCase()==="OWNER") || canFeature("staff_rank_assignment")) ? `<button class="mini profile-rank-btn" id="profileRankBtn">🏅 Rank</button>` : ""}${!isSelf && canFeature("account_modifications") && canAccessStaffTarget(user) ? '<button class="mini profile-edit-btn" id="staffProfileEditBtn" title="Edit this member profile">✏️ Edit</button>' : ''}${isSelf?'<button class="mini profile-edit-btn" id="profileEditBtn" title="Edit profile">✏️ Edit</button>':''}</div>
+      <div class="profile-stats"><span class="profile-stat">⭐ ${user.level||1}</span><span class="profile-stat">XP ${user.xp||0}</span><span class="profile-stat">❤️ ${user.profileLikes||data.profileLikes||0}</span><button class="mini profile-hamburger" id="profileEditBtn" title="Edit account">✏️ Edit</button><button class="mini profile-hamburger" id="profileMenuBtn" title="Profile actions">☰</button>${!isSelf && (String(state.user?.rank||"").toUpperCase()==="DEVELOPER" || (state.user?.username==="Maleficent" && String(state.user?.rank||"").toUpperCase()==="OWNER") || canFeature("staff_rank_assignment")) ? `<button class="mini profile-rank-btn" id="profileRankBtn">🏅 Rank</button>` : ""}${!isSelf && canFeature("account_modifications") && canAccessStaffTarget(user) ? '<button class="mini profile-edit-btn" id="staffProfileEditBtn" title="Edit this member profile">✏️ Edit</button>' : ''}</div>
       <div class="profile-rank">${rank(user.rank)}${user.verified?' · ✓ Verified':''}${profileBadge?` <span class="equipped-profile-badge" title="${esc(profileBadge.name)}">${esc(profileBadge.icon)} ${esc(profileBadge.name)}</span>`:''}</div>
       <div class="profile-name">${esc(user.displayName)}${user._nickname?` <span class="nickname-badge">“${esc(user._nickname)}”</span>`:''}</div>
       <div class="profile-handle">@${esc(user.username)}</div>
@@ -3639,7 +3639,7 @@ function renderUserProfileModal(user,data={}){
     $('profileGoldBtn')?.addEventListener('click',()=>shareWalletModal(user));
     $('profileNicknameBtn')?.addEventListener('click',()=>nicknameModal(user));
     $('profileModerateBtn')?.addEventListener('click',()=>moderate(user.id));
-    $('profileStaffAccountBtn')?.addEventListener('click',()=>staffAccountModal(user));
+
     $('profileSendPM')?.addEventListener('click',()=>{closeModal();openDM(user.id);});
     const profileFriendButton=$('profileAddFriend');
     if(profileFriendButton){
@@ -3676,12 +3676,9 @@ function renderUserProfileModal(user,data={}){
     }
     $('profileMenuBtn')?.addEventListener('click',()=>openProfileActionDrawer(user,data));
     $('profileRankBtn')?.addEventListener('click',()=>rankFromProfile(user));
-    $('profileEditBtn')?.addEventListener('click',openProfileEditMenu);
-    $('staffProfileEditBtn')?.addEventListener('click',()=>staffAccountModificationModal(user));
-    $('staffProfileAvatarUpload')?.addEventListener('click',()=>staffUploadProfileAvatar(user,data));
-    $('staffProfileAvatarRemove')?.addEventListener('click',()=>staffRemoveProfileAvatar(user,data));
-    $('profileAvatarUpload')?.addEventListener('click',uploadAvatar);
-    $('profileAvatarRemove')?.addEventListener('click',deleteAvatar);
+    $('profileEditBtn')?.addEventListener('click',()=>openProfileEditMenu());
+    $('staffProfileEditBtn')?.addEventListener('click',()=>openProfileEditMenu(user));
+
     $('editProfileFromModal')?.addEventListener('click',()=>{closeModal();state.view='profile';renderView();});
     $('editAboutBtn')?.addEventListener('click',()=>{modal(`<h2>Edit About Me</h2><textarea id="aboutEdit" rows="7">${esc(state.user.bio||'')}</textarea><div class="toolbar"><button class="primary" id="saveAbout">Save</button></div>`);$('saveAbout').onclick=async()=>{try{const r=await api('/api/profile',{method:'PUT',body:JSON.stringify({bio:$('aboutEdit').value})});state.user=r.user;closeModal();toast('About Me saved.');}catch(e){toast(e.message)}};});
     $('viewFriendsBtn')?.addEventListener('click',()=>{closeModal();state.view='friends';renderView();});
@@ -4524,7 +4521,6 @@ async function openProfileActionDrawer(user,data={}){
   const actorIsDeveloper=String(state.user?.rank||'').toUpperCase()==='DEVELOPER'||String(state.user?.username||'').toLowerCase()==='maleficent';
   const targetIsDeveloper=String(user.rank||'').toUpperCase()==='DEVELOPER'||String(user.username||'').toLowerCase()==='maleficent';
   const canActOnTarget=!targetIsDeveloper||actorIsDeveloper;
-  const canStaffModification=canActOnTarget&&canFeature('account_modifications')&&canAccessStaffTarget(user);
   const canShareWallet=!blocked;
   const roomRole=String(state.currentRoomRole||'USER').toUpperCase();
   const targetIsStaff=(rankOrder[String(user.rank||'MEMBER').toUpperCase()]??-1)>=(rankOrder.MOD??4)||String(user.username||'').toLowerCase()==='maleficent';
@@ -4533,7 +4529,6 @@ async function openProfileActionDrawer(user,data={}){
   const canRoomRank=hierarchyAllowsRoomActions&&(canFeature('room_rank_assign')||['ROOM_OWNER','ROOM_ADMIN'].includes(roomRole));
   const canRoomModerate=hierarchyAllowsRoomActions&&(canFeature('room_moderate')||['ROOM_OWNER','ROOM_ADMIN','ROOM_MODERATOR'].includes(roomRole));
   const canModerate=canActOnTarget&&(canFeature('moderate_user')||canFeature('moderate_users'))&&canAccessStaffTarget(user);
-  const canStaffAccount=canActOnTarget&&canFeature('manage_staff_accounts')&&canAccessStaffTarget(user);
   const canHistory=canActOnTarget&&canFeature('view_user_history')&&canAccessStaffTarget(user);
   const canSeeStaffPoints=!!staffPointInfo,canEditTargetPoints=canEditStaffPoints&&canSeeStaffPoints;
   modal(`<div class="profile-drawer quick-action-menu"><h2>Actions · @${esc(user.username||'user')}</h2>
@@ -4541,18 +4536,14 @@ async function openProfileActionDrawer(user,data={}){
      ${canShareWallet?'<button class="quick-user-row" id="drawerWallet"><span>🏧</span><b>Share Wallet</b><i>›</i></button>':''}
      <button class="quick-user-row" id="drawerBlock"><span>🚫</span><b>Block</b><i>›</i></button>
      ${canModerate?'<button class="quick-user-row" id="drawerModerateUser"><span>🛡️</span><b>Moderate user</b><i>›</i></button>':''}
-     ${canStaffAccount?'<button class="quick-user-row" id="drawerStaffAccount"><span>⚙️</span><b>Staff account</b><i>›</i></button>':''}
-     ${canStaffModification?'<button class="quick-user-row" id="drawerStaffModification"><span>🛠️</span><b>Staff modification</b><i>›</i></button>':''}
      ${canRoomRank||canRoomModerate?'<button class="quick-user-row" id="drawerRoomAction"><span>✨</span><b>Room Action</b><i>›</i></button>':''}
       ${canSeeStaffPoints?`<div class="staff-points-action-row" style="display:flex;gap:8px;align-items:center"><button class="quick-user-row" id="drawerStaffPoints" style="flex:1"><span>🏅</span><b>Staff Points</b><i>›</i></button>${canEditTargetPoints?'<button class="mini" id="drawerEditStaffPoints" type="button" aria-label="Edit staff points" title="Edit staff points">✏️</button>':''}</div>`:''}
    </div>`);
   $('drawerAddFriend')?.addEventListener('click',async()=>{try{await friend(id);closeModal();}catch(e){toast(e.message)}});
   $('drawerBlock')?.addEventListener('click',async()=>{try{await block(id);closeModal();}catch(e){toast(e.message)}});
-  $('drawerStaffModification')?.addEventListener('click',()=>staffAccountModificationModal(user));
   $('drawerWallet')?.addEventListener('click',event=>{event.preventDefault();event.stopPropagation();closeModal();shareWalletModal(user);});
   $('drawerRoomAction')?.addEventListener('click',()=>roomActionModal(user,{canRoomRank,canRoomModerate}));
   $('drawerModerateUser')?.addEventListener('click',()=>moderate(id));
-  $('drawerStaffAccount')?.addEventListener('click',()=>staffAccountModal(user));
   $('drawerStaffPoints')?.addEventListener('click',()=>modal(`<div class="profile-drawer"><h2>🏅 Staff Points · @${esc(user.username)}</h2><div class="profile-info-row"><b>Total points</b><strong>${Number(staffPointInfo?.staffPoints||0).toLocaleString()}</strong></div></div>`));
    $('drawerEditStaffPoints')?.addEventListener('click',()=>openStaffPointsEditor(user,staffPointInfo?.staffPoints||0));
 }
@@ -4654,30 +4645,108 @@ function editRelationship(){modal(`<h2>Edit relationship</h2><select id="rel"><o
 function editUsername(){modal(`<h2>Edit username</h2><input id="newUsername" maxlength="24" value="${esc(state.user.username)}"><p class="muted">3–24 letters, numbers and underscores.</p><button class="primary" id="saveUsername">Save</button>`);$('saveUsername').onclick=()=>saveMyProfile({username:$('newUsername').value.trim()},'Username saved.');}
 function editAboutMe(){modal(`<h2>Edit about me</h2><textarea id="aboutMeEdit" rows="7" maxlength="500">${esc(state.user.bio||'')}</textarea><button class="primary" id="saveAboutMe">Save</button>`);$('saveAboutMe').onclick=()=>saveMyProfile({bio:$('aboutMeEdit').value},'About Me saved.');}
 function editMood(){modal(`<h2>Edit mood</h2><input id="moodEdit" maxlength="120" value="${esc(state.user.mood||'')}" placeholder="How are you feeling?"><button class="primary" id="saveMood">Save</button>`);$('saveMood').onclick=()=>saveMyProfile({mood:$('moodEdit').value.trim()},'Mood saved.');}
-function openProfileEditMenu(){
-  const u=state.user||{};
-  modal(`<div class="profile-edit-menu"><h2>✏️ Edit your profile</h2><p class="muted">Choose what you want to update.</p>
-    <div class="profile-edit-menu-grid">
-      <button class="settings-row" id="profileEditInfo"><span>🪪</span><b>Profile details</b><small>Display name, pronouns, country and interests</small><strong>›</strong></button>
-      <button class="settings-row" id="profileEditAbout"><span>📝</span><b>About Me</b><small>Edit your profile description</small><strong>›</strong></button>
-      <button class="settings-row" id="profileEditMood"><span>☻</span><b>Mood</b><small>${esc(u.mood||'Not set')}</small><strong>›</strong></button>
-      <button class="settings-row" id="profileEditRelationship"><span>♥</span><b>Relationship</b><small>${esc(u.relationship||'Not set')}</small><strong>›</strong></button>
-      <button class="settings-row" id="profileEditBirthday"><span>🎂</span><b>Date of birth</b><small>Changes require staff verification</small><strong>›</strong></button>
-      <button class="settings-row" id="profileEditPhoto"><span>📷</span><b>Profile picture</b><small>Upload or remove your picture</small><strong>›</strong></button>
-      <button class="settings-row" id="profileEditBanner"><span>🖼️</span><b>Profile background</b><small>Change your profile background</small><strong>›</strong></button>
-      <button class="settings-row" id="profileEditStyle"><span>✨</span><b>Appearance</b><small>Profile colors and style</small><strong>›</strong></button>
-      <button class="settings-row" id="profileEditMusic"><span>🎵</span><b>Profile music</b><small>Change or remove your profile music</small><strong>›</strong></button>
-    </div>
-  </div>`);
-  $('profileEditInfo')?.addEventListener('click',editProfileInfo);
-  $('profileEditAbout')?.addEventListener('click',editAboutMe);
-  $('profileEditMood')?.addEventListener('click',editMood);
-  $('profileEditRelationship')?.addEventListener('click',editRelationship);
-  $('profileEditPhoto')?.addEventListener('click',uploadAvatar);
-  $('profileEditBanner')?.addEventListener('click',uploadBanner);
-  $('profileEditStyle')?.addEventListener('click',editProfileStyle);
-  $('profileEditMusic')?.addEventListener('click',editProfileMusic);
-  $('profileEditBirthday')?.addEventListener('click',()=>modal('<h2>🎂 Date of birth</h2><p class="muted">For account safety, a date-of-birth change must be reviewed by staff. Your current date of birth and age remain unchanged until staff approves the request.</p><p class="muted">Please contact a staff member to submit a date-of-birth correction. Do not create a second account.</p><div class="toolbar"><button class="primary" type="button" onclick="closeModal()">Got it</button></div>'));
+function openProfileEditMenu(targetUser=null){
+  const self=!targetUser||String(targetUser.id)===String(state.user?.id);
+  const user=self?(state.user||{}):targetUser;
+  const canModify=self||canFeature('account_modifications');
+  const canEditUsername=self||canFeature('manage_staff_accounts');
+  const canEditEmail=self||canFeature('edit_email');
+  const canChangePassword=self||canFeature('change_password');
+  const canViewAccount=self||canFeature('manage_staff_accounts');
+  const canDelete=self?(!['OWNER','DEVELOPER'].includes(String(user.rank||'').toUpperCase())):(can('COOWNER')&&canAccessStaffTarget(user));
+  const sections=[
+    {id:'editUpload',icon:'📤',title:'Upload',desc:'Profile picture or profile background',show:self||canModify},
+    {id:'editName',icon:'✏️',title:'Edit Name',desc:'Username and display name',show:canEditUsername||canModify},
+    {id:'editEmail',icon:'✉️',title:'Edit email',desc:'Change account email address',show:canEditEmail},
+    {id:'editPassword',icon:'🔒',title:'Edit password',desc:'Set a new account password',show:canChangePassword},
+    {id:'editDetails',icon:'🪪',title:'Edit details',desc:'Gender, birthday, location, website and more',show:self||canModify},
+    {id:'viewAccount',icon:'👁️',title:'View account',desc:'Registration and account details',show:canViewAccount},
+    {id:'deleteAccount',icon:'🗑️',title:'Delete account',desc:'Permanently delete this account',show:canDelete}
+  ].filter(x=>x.show);
+  modal(`<div class="profile-edit-menu"><h2>✏️ ${self?'Edit account':`Edit @${esc(user.username||'member')}`}</h2><p class="muted">Only actions you are allowed to use are shown here.</p><div class="profile-edit-menu-grid">${sections.map(x=>`<button class="settings-row" id="${x.id}" type="button"><span>${x.icon}</span><b>${x.title}</b><small>${x.desc}</small><strong>›</strong></button>`).join('')}</div></div>`);
+  $('editUpload')?.addEventListener('click',()=>openAccountUploadMenu(self?null:user));
+  $('editName')?.addEventListener('click',()=>openAccountNameEditor(self?null:user));
+  $('editEmail')?.addEventListener('click',()=>openAccountEmailEditor(self?null:user));
+  $('editPassword')?.addEventListener('click',()=>openAccountPasswordEditor(self?null:user));
+  $('editDetails')?.addEventListener('click',()=>openAccountDetailsEditor(self?null:user));
+  $('viewAccount')?.addEventListener('click',()=>viewAccountDetails(self?null:user));
+  $('deleteAccount')?.addEventListener('click',()=>confirmAccountDeletion(self?null:user));
+}
+function openAccountUploadMenu(targetUser=null){
+  const self=!targetUser;
+  modal(`<div class="profile-edit-menu"><h2>📤 Upload</h2><div class="profile-edit-menu-grid">
+    <button class="settings-row" id="uploadAccountAvatar"><span>🖼️</span><b>Profile picture</b><small>Upload or replace the avatar</small><strong>›</strong></button>
+    <button class="settings-row" id="uploadAccountBackground"><span>🌌</span><b>Background</b><small>Upload a profile background image</small><strong>›</strong></button>
+  </div></div>`);
+  $('uploadAccountAvatar')?.addEventListener('click',()=>self?uploadAvatar():pickStaffAccountImage(targetUser,'avatar'));
+  $('uploadAccountBackground')?.addEventListener('click',()=>self?uploadBanner():pickStaffAccountImage(targetUser,'banner'));
+}
+function pickStaffAccountImage(user,kind){
+  const picker=document.createElement('input');picker.type='file';picker.accept='image/png,image/jpeg,image/gif,image/webp,image/avif';
+  picker.onchange=async()=>{const file=picker.files?.[0];if(!file)return;const fd=new FormData();fd.append('file',file);
+    try{
+      if(kind==='avatar'){const r=await api('/api/staff/user/'+encodeURIComponent(user.id)+'/avatar',{method:'POST',body:fd,uploadProgress:true});Object.assign(user,r.user||{});}
+      else {const r=await api('/api/staff/user/'+encodeURIComponent(user.id)+'/banner',{method:'POST',body:fd,uploadProgress:true});Object.assign(user,r.user||{});}
+      closeModal();await openUser(user.id);toast(kind==='avatar'?'Profile picture updated.':'Profile background updated.');
+    }catch(e){toast(e.message);}
+  };picker.click();
+}
+function openAccountNameEditor(targetUser=null){
+  const self=!targetUser,u=self?(state.user||{}):targetUser;
+  const canUsername=self||canFeature('manage_staff_accounts'),canDisplay=self||canFeature('account_modifications');
+  modal(`<h2>✏️ Edit Name</h2>${canUsername?`<label>Username<input id="accountUsername" maxlength="24" value="${esc(u.username||'')}"></label>`:''}${canDisplay?`<label>Display name<input id="accountDisplayName" maxlength="32" value="${esc(u.displayName||'')}"></label>`:''}<p class="muted">Username: 3–24 letters, numbers or underscores.</p><div class="toolbar"><button class="primary" id="saveAccountName">Save</button></div>`);
+  $('saveAccountName').onclick=async()=>{try{
+    if(canUsername){const username=$('accountUsername')?.value.trim();if(!/^[A-Za-z0-9_]{3,24}$/.test(username||''))throw new Error('Username must be 3–24 letters, numbers or underscores.');if(self)await api('/api/profile',{method:'PUT',body:JSON.stringify({username})});else await api('/api/staff/user/'+encodeURIComponent(u.id)+'/account',{method:'PATCH',body:JSON.stringify({username})});}
+    if(canDisplay){const displayName=$('accountDisplayName')?.value.trim();if(!displayName)throw new Error('Display name cannot be empty.');if(self){const r=await api('/api/profile',{method:'PUT',body:JSON.stringify({displayName})});state.user=r.user;}else{const r=await api('/api/staff/user/'+encodeURIComponent(u.id)+'/profile',{method:'PATCH',body:JSON.stringify({displayName})});Object.assign(u,r.user||{});}}
+    closeModal();if(self){await loadProfile(state.user);updateNav();}else await openUser(u.id);toast('Name updated.');
+  }catch(e){toast(e.message);}};
+}
+function openAccountEmailEditor(targetUser=null){
+  const self=!targetUser,u=self?(state.user||{}):targetUser;
+  (async()=>{try{const currentEmail=self?(await api('/api/me/email')).email:(await api('/api/staff/user/'+encodeURIComponent(u.id)+'/email-history')).email;
+    modal(`<h2>✉️ Edit email</h2><label>Email address<input id="accountEmail" type="email" maxlength="160" value="${esc(currentEmail||'')}" placeholder="name@example.com"></label><div class="toolbar"><button class="primary" id="saveAccountEmail">Save email</button></div>`);
+    $('saveAccountEmail').onclick=async()=>{try{const email=$('accountEmail').value.trim();if(self)await api('/api/me/email',{method:'PUT',body:JSON.stringify({email})});else await api('/api/staff/user/'+encodeURIComponent(u.id)+'/email',{method:'PATCH',body:JSON.stringify({email})});closeModal();if(self){await loadProfile(state.user);}else await openUser(u.id);toast('Email updated.');}catch(e){toast(e.message);}};
+  }catch(e){toast(e.message);}})();
+}
+function openAccountPasswordEditor(targetUser=null){
+  const self=!targetUser,u=self?(state.user||{}):targetUser;
+  modal(`<h2>🔒 Edit password</h2>${self?'<label>Current password<input id="accountCurrentPassword" type="password" autocomplete="current-password"></label>':''}<label>New password<input id="accountNewPassword" type="password" minlength="8" autocomplete="new-password"></label><label>Confirm new password<input id="accountConfirmPassword" type="password" minlength="8" autocomplete="new-password"></label><p class="muted">Use at least 8 characters. The existing password is never displayed.</p><button class="primary" id="saveAccountPassword">Change password</button>`);
+  $('saveAccountPassword').onclick=async()=>{const password=$('accountNewPassword').value;if(password.length<8){toast('Password must be at least 8 characters.');return;}if(password!==$('accountConfirmPassword').value){toast('Passwords do not match.');return;}try{if(self)await api('/api/password/change',{method:'POST',body:JSON.stringify({currentPassword:$('accountCurrentPassword').value,newPassword:password})});else await api('/api/staff/user/'+encodeURIComponent(u.id)+'/password',{method:'PATCH',body:JSON.stringify({password})});closeModal();toast('Password changed.');}catch(e){toast(e.message);}};
+}
+function openAccountDetailsEditor(targetUser=null){
+  const self=!targetUser,u=self?(state.user||{}):targetUser;
+  modal(`<div class="profile-edit-menu"><h2>🪪 Edit details</h2>
+    <label>Gender<input id="detailGender" maxlength="50" value="${esc(u.gender||'')}"></label>
+    <label>Date of birth<input id="detailDob" type="date" value="${esc(u.dateOfBirth||u.birthDate||'')}" disabled></label>
+    <p class="muted">Date-of-birth changes require staff verification. Your current date of birth stays unchanged until approved.</p>
+    <label>Location<input id="detailLocation" maxlength="120" value="${esc(u.location||'')}"></label>
+    <label>Website<input id="detailWebsite" maxlength="240" value="${esc(u.website||'')}" placeholder="https://…"></label>
+    <label>Pronouns<input id="detailPronouns" maxlength="60" value="${esc(u.pronouns||'')}"></label>
+    <label>Country<input id="detailCountry" maxlength="80" value="${esc(u.country||'')}"></label>
+    <label>About me<textarea id="detailBio" maxlength="500" rows="3">${esc(u.bio||'')}</textarea></label>
+    <label>Interests<input id="detailInterests" value="${esc(Array.isArray(u.interests)?u.interests.join(', '):(u.interests||''))}"></label>
+    <label>Relationship<input id="detailRelationship" maxlength="80" value="${esc(u.relationship||'')}" placeholder="Relationship status"></label>
+    <label>Mood<input id="detailMood" maxlength="80" value="${esc(u.mood||'')}"></label>
+    <div class="toolbar"><button class="primary" id="saveAccountDetails">Save details</button></div></div>`);
+  $('saveAccountDetails').onclick=async()=>{const changes={gender:$('detailGender').value.trim(),location:$('detailLocation').value.trim(),website:$('detailWebsite').value.trim(),pronouns:$('detailPronouns').value.trim(),country:$('detailCountry').value.trim(),bio:$('detailBio').value,interests:$('detailInterests').value.split(',').map(x=>x.trim()).filter(Boolean),relationship:$('detailRelationship').value.trim(),mood:$('detailMood').value.trim()};
+    try{if(self){const r=await api('/api/profile',{method:'PUT',body:JSON.stringify(changes)});state.user=r.user;await loadProfile(state.user);}else{const r=await api('/api/staff/user/'+encodeURIComponent(u.id)+'/profile',{method:'PATCH',body:JSON.stringify(changes)});Object.assign(u,r.user||{});await openUser(u.id);}closeModal();toast('Account details saved.');}catch(e){toast(e.message);}};
+}
+async function viewAccountDetails(targetUser=null){
+  const self=!targetUser,u=self?(state.user||{}):targetUser;
+  try{
+    const [account,email]=self?await Promise.all([api('/api/me/account'),api('/api/me/email')]):await Promise.all([api('/api/users/'+encodeURIComponent(u.id)+'/profile'),canFeature('edit_email')?api('/api/staff/user/'+encodeURIComponent(u.id)+'/email-history').catch(()=>({email:''})):Promise.resolve({email:''})]);
+    const x=self?(account.account||{}):(account.user||u);
+    const rows=[['Username',x.username||u.username],['Display name',x.displayName||u.displayName],['Email',email.email||'Not available'],['Date of birth',x.dateOfBirth||x.birthDate||x.birth_date||'Not provided'],['Gender',x.gender||'Not provided'],['Country',x.country||'Not provided'],['Location',x.location||'Not provided'],['Pronouns',x.pronouns||'Not provided'],['Website',x.website||'Not provided'],['Joined',x.createdAt?new Date(x.createdAt).toLocaleString():(x.created_at?new Date(x.created_at).toLocaleString():'Not available')],['Rank',x.rank||u.rank],['User ID',x.id||u.id]];
+    modal(`<div class="profile-edit-menu"><h2>👁️ Account details</h2><div class="profile-account-details">${rows.map(([k,v])=>`<div class="profile-info-row"><b>${esc(k)}</b><span>${esc(String(v??'Not provided'))}</span></div>`).join('')}</div></div>`);
+  }catch(e){toast(e.message);}
+}
+async function confirmAccountDeletion(targetUser=null){
+  const self=!targetUser,u=self?(state.user||{}):targetUser;
+  const name=self?'your account':('@'+(u.username||'member'));
+  if(!confirm(`Permanently delete ${name}? This cannot be undone.`))return;
+  if(!confirm('Final confirmation: delete this account and its private account data?'))return;
+  try{if(self)await api('/api/me',{method:'DELETE'});else await api('/api/staff/users/'+encodeURIComponent(u.id),{method:'DELETE'});location.reload();}
+  catch(e){toast(e.message);}
 }
 function editProfileStyle(){
   const u=state.user||{};
