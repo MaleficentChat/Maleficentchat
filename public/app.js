@@ -3445,9 +3445,9 @@ function renderUserProfileModal(user,data={}){
   const liked=!!data.likedByMe;
   modal(`<div class="profile-modal">
     <div class="profile-banner" ${bannerStyle}>
-      <div class="equipped-profile-frame ${frame?esc(frame.id):''}" title="${frame?esc(frame.name):'Profile avatar'}">${avatar(user,'big-avatar')}</div>
+      <div class="equipped-profile-frame ${frame?esc(frame.id):''}" title="${frame?esc(frame.name):'Profile avatar'}">${avatar(user,'big-avatar')}${(isSelf || (canFeature('account_modifications') && canAccessStaffTarget(user)))?'<div class="profile-avatar-controls">'+(isSelf?'<button type="button" class="profile-avatar-upload" id="profileAvatarUpload" title="Upload profile picture" aria-label="Upload profile picture">⬆</button>':'<button type="button" class="profile-avatar-upload" id="staffProfileAvatarUpload" title="Upload member profile picture" aria-label="Upload member profile picture">⬆</button>')+(user.avatar?(isSelf?'<button type="button" class="profile-avatar-remove" id="profileAvatarRemove" title="Remove profile picture" aria-label="Remove profile picture">✕</button>':'<button type="button" class="profile-avatar-remove" id="staffProfileAvatarRemove" title="Remove member profile picture" aria-label="Remove member profile picture">✕</button>'):'')+'</div>':''}</div>
       ${user.profileMusicUrl?`<div class="profile-music-pill"><button type="button" class="profile-music-toggle" id="profileMusicToggle" aria-label="Play profile music">▶</button><span class="profile-music-bars" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span class="profile-music-title">${esc(user.profileMusicTitle||'Profile music')}</span><audio id="profileMusicAudio" preload="none" src="${esc(safeProfileUrl(user.profileMusicUrl))}"></audio></div>`:''}
-      <div class="profile-stats"><span class="profile-stat">⭐ ${user.level||1}</span><span class="profile-stat">XP ${user.xp||0}</span><span class="profile-stat">❤️ ${user.profileLikes||data.profileLikes||0}</span><button class="mini profile-hamburger" id="profileMenuBtn" title="Profile actions">☰</button>${!isSelf && (String(state.user?.rank||"").toUpperCase()==="DEVELOPER" || (state.user?.username==="Maleficent" && String(state.user?.rank||"").toUpperCase()==="OWNER") || canFeature("staff_rank_assignment")) ? `<button class="mini profile-rank-btn" id="profileRankBtn">🏅 Rank</button>` : ""}</div>
+      <div class="profile-stats"><span class="profile-stat">⭐ ${user.level||1}</span><span class="profile-stat">XP ${user.xp||0}</span><span class="profile-stat">❤️ ${user.profileLikes||data.profileLikes||0}</span><button class="mini profile-hamburger" id="profileMenuBtn" title="Profile actions">☰</button>${!isSelf && (String(state.user?.rank||"").toUpperCase()==="DEVELOPER" || (state.user?.username==="Maleficent" && String(state.user?.rank||"").toUpperCase()==="OWNER") || canFeature("staff_rank_assignment")) ? `<button class="mini profile-rank-btn" id="profileRankBtn">🏅 Rank</button>` : ""}${!isSelf && canFeature("account_modifications") && canAccessStaffTarget(user) ? '<button class="mini profile-edit-btn" id="staffProfileEditBtn" title="Edit this member profile">✏️ Edit</button>' : ''}${isSelf?'<button class="mini profile-edit-btn" id="profileEditBtn" title="Edit profile">✏️ Edit</button>':''}</div>
       <div class="profile-rank">${rank(user.rank)}${user.verified?' · ✓ Verified':''}${profileBadge?` <span class="equipped-profile-badge" title="${esc(profileBadge.name)}">${esc(profileBadge.icon)} ${esc(profileBadge.name)}</span>`:''}</div>
       <div class="profile-name">${esc(user.displayName)}${user._nickname?` <span class="nickname-badge">“${esc(user._nickname)}”</span>`:''}</div>
       <div class="profile-handle">@${esc(user.username)}</div>
@@ -3676,6 +3676,12 @@ function renderUserProfileModal(user,data={}){
     }
     $('profileMenuBtn')?.addEventListener('click',()=>openProfileActionDrawer(user,data));
     $('profileRankBtn')?.addEventListener('click',()=>rankFromProfile(user));
+    $('profileEditBtn')?.addEventListener('click',openProfileEditMenu);
+    $('staffProfileEditBtn')?.addEventListener('click',()=>staffAccountModificationModal(user));
+    $('staffProfileAvatarUpload')?.addEventListener('click',()=>staffUploadProfileAvatar(user,data));
+    $('staffProfileAvatarRemove')?.addEventListener('click',()=>staffRemoveProfileAvatar(user,data));
+    $('profileAvatarUpload')?.addEventListener('click',uploadAvatar);
+    $('profileAvatarRemove')?.addEventListener('click',deleteAvatar);
     $('editProfileFromModal')?.addEventListener('click',()=>{closeModal();state.view='profile';renderView();});
     $('editAboutBtn')?.addEventListener('click',()=>{modal(`<h2>Edit About Me</h2><textarea id="aboutEdit" rows="7">${esc(state.user.bio||'')}</textarea><div class="toolbar"><button class="primary" id="saveAbout">Save</button></div>`);$('saveAbout').onclick=async()=>{try{const r=await api('/api/profile',{method:'PUT',body:JSON.stringify({bio:$('aboutEdit').value})});state.user=r.user;closeModal();toast('About Me saved.');}catch(e){toast(e.message)}};});
     $('viewFriendsBtn')?.addEventListener('click',()=>{closeModal();state.view='friends';renderView();});
@@ -4409,19 +4415,29 @@ function staffAccountModal(user){
   });
 }
 
+async function staffUploadProfileAvatar(user,data){
+  const picker=document.createElement('input');picker.type='file';picker.accept='image/png,image/jpeg,image/gif,image/webp,image/avif';
+  picker.onchange=async()=>{const file=picker.files?.[0];if(!file)return;const fd=new FormData();fd.append('file',file);try{const r=await api('/api/staff/user/'+encodeURIComponent(user.id)+'/avatar',{method:'POST',body:fd,uploadProgress:true});Object.assign(user,r.user||{});renderUserProfileModal(user,data);toast('Member profile picture uploaded.');}catch(e){toast(e.message);}};
+  picker.click();
+}
+async function staffRemoveProfileAvatar(user,data){
+  if(!confirm('Remove @'+user.username+' profile picture?'))return;
+  try{const r=await api('/api/staff/user/'+encodeURIComponent(user.id)+'/avatar',{method:'DELETE'});Object.assign(user,r.user||{});renderUserProfileModal(user,data);toast('Member profile picture removed.');}catch(e){toast(e.message);}
+}
+
 async function staffAccountModificationModal(user){
   if(!canFeature('account_modifications')){toast('Account modifications have not been granted to your account.');return;}
   let emailData=null;
   if(canFeature('edit_email'))emailData=await api(`/api/staff/user/${encodeURIComponent(user.id)}/email-history`).catch(()=>null);
   const dob=user.dateOfBirth||user.birthDate||user.birth_date||'';
-  modal(`<div class='account-modification-modal'><h2>🛠️ Account modifications</h2><p class='muted'>Update profile details for @${esc(user.username)}.</p><div class='account-avatar-editor'><div class='account-avatar-preview'>${user.avatar?`<img src='${esc(user.avatar)}' alt='Profile picture'>`:'<span>👤</span>'}</div><label>Profile picture<input id='staffProfileAvatar' type='file' accept='image/png,image/jpeg,image/gif,image/webp,image/avif'></label><button class='mini danger' type='button' id='removeStaffAvatar'>Remove picture</button></div><form id='staffProfileModForm' class='account-modification-form'><label>Display name<input id='staffDisplayName' maxlength='32' value='${esc(user.displayName||'')}' required></label><label>Date of birth<input id='staffBirthDate' type='date' value='${esc(dob)}'></label><label>Gender<input id='staffGender' maxlength='50' value='${esc(user.gender||'')}'></label>${emailData?`<label>Registration email<input id='staffProfileEmail' type='email' value='${esc(emailData.email||'')}'></label>`:''}<label>Mood<input id='staffMood' maxlength='80' value='${esc(user.mood||'')}' placeholder='Current mood'></label><label>About me<textarea id='staffBio' maxlength='500' rows='4'>${esc(user.bio||'')}</textarea></label><label>Pronouns<input id='staffPronouns' maxlength='60' value='${esc(user.pronouns||'')}'></label><label>Birthday<input id='staffBirthday' maxlength='40' value='${esc(user.birthday||'')}'></label><label>Location<input id='staffLocation' maxlength='120' value='${esc(user.location||'')}'></label><label>Website<input id='staffWebsite' maxlength='240' value='${esc(user.website||'')}' placeholder='https://…'></label><label>Profile background image URL<input id='staffBanner' maxlength='500' value='${esc(user.banner||'')}' placeholder='https://…'></label><div class='toolbar'><button class='primary' type='submit'>Save account changes</button></div></form></div>`);
+  modal(`<div class='account-modification-modal'><h2>🛠️ Account modifications</h2><p class='muted'>Update profile details for @${esc(user.username)}.</p><div class='account-avatar-editor'><div class='account-avatar-preview'>${user.avatar?`<img src='${esc(user.avatar)}' alt='Profile picture'>`:'<span>👤</span>'}</div><label>Profile picture<input id='staffProfileAvatar' type='file' accept='image/png,image/jpeg,image/gif,image/webp,image/avif'></label><button class='mini danger' type='button' id='removeStaffAvatar'>Remove picture</button></div><form id='staffProfileModForm' class='account-modification-form'><label>Display name<input id='staffDisplayName' maxlength='32' value='${esc(user.displayName||'')}' required></label><div class='account-modification-readonly'><b>Date of birth</b><span>${esc(dob||'Not provided')}</span><small>Age changes must go through pending staff verification and cannot be changed directly here.</small></div><label>Gender<input id='staffGender' maxlength='50' value='${esc(user.gender||'')}'></label>${emailData?`<label>Registration email<input id='staffProfileEmail' type='email' value='${esc(emailData.email||'')}'></label>`:''}<label>Mood<input id='staffMood' maxlength='80' value='${esc(user.mood||'')}' placeholder='Current mood'></label><label>About me<textarea id='staffBio' maxlength='500' rows='4'>${esc(user.bio||'')}</textarea></label><label>Pronouns<input id='staffPronouns' maxlength='60' value='${esc(user.pronouns||'')}'></label><label>Birthday<input id='staffBirthday' maxlength='40' value='${esc(user.birthday||'')}'></label><label>Location<input id='staffLocation' maxlength='120' value='${esc(user.location||'')}'></label><label>Website<input id='staffWebsite' maxlength='240' value='${esc(user.website||'')}' placeholder='https://…'></label><label>Profile background image URL<input id='staffBanner' maxlength='500' value='${esc(user.banner||'')}' placeholder='https://…'></label><div class='toolbar'><button class='primary' type='submit'>Save account changes</button></div></form></div>`);
   $('removeStaffAvatar').onclick=async()=>{try{const d=await api(`/api/staff/user/${encodeURIComponent(user.id)}/avatar`,{method:'DELETE'});user.avatar=d.user?.avatar||'';closeModal();toast('Profile picture removed.');}catch(e){toast(e.message)}};
   $('staffProfileModForm').onsubmit=async e=>{
     e.preventDefault();
     try{
       const file=$('staffProfileAvatar').files?.[0];
       if(file){const fd=new FormData();fd.append('file',file);const d=await api(`/api/staff/user/${encodeURIComponent(user.id)}/avatar`,{method:'POST',body:fd,uploadProgress:true});user.avatar=d.user?.avatar||'';}
-      const changes={displayName:$('staffDisplayName').value.trim(),birthDate:$('staffBirthDate').value,gender:$('staffGender').value.trim(),mood:$('staffMood').value.trim(),bio:$('staffBio').value.trim(),pronouns:$('staffPronouns').value.trim(),birthday:$('staffBirthday').value.trim(),location:$('staffLocation').value.trim(),website:$('staffWebsite').value.trim(),banner:$('staffBanner').value.trim()};
+      const changes={displayName:$('staffDisplayName').value.trim(),gender:$('staffGender').value.trim(),mood:$('staffMood').value.trim(),bio:$('staffBio').value.trim(),pronouns:$('staffPronouns').value.trim(),birthday:$('staffBirthday').value.trim(),location:$('staffLocation').value.trim(),website:$('staffWebsite').value.trim(),banner:$('staffBanner').value.trim()};
       if(emailData)changes.email=$('staffProfileEmail').value.trim();
       const d=await api(`/api/staff/user/${encodeURIComponent(user.id)}/profile`,{method:'PATCH',body:JSON.stringify(changes)});
       Object.assign(user,d.user||{});closeModal();toast('Account modifications saved.');
@@ -4638,6 +4654,31 @@ function editRelationship(){modal(`<h2>Edit relationship</h2><select id="rel"><o
 function editUsername(){modal(`<h2>Edit username</h2><input id="newUsername" maxlength="24" value="${esc(state.user.username)}"><p class="muted">3–24 letters, numbers and underscores.</p><button class="primary" id="saveUsername">Save</button>`);$('saveUsername').onclick=()=>saveMyProfile({username:$('newUsername').value.trim()},'Username saved.');}
 function editAboutMe(){modal(`<h2>Edit about me</h2><textarea id="aboutMeEdit" rows="7" maxlength="500">${esc(state.user.bio||'')}</textarea><button class="primary" id="saveAboutMe">Save</button>`);$('saveAboutMe').onclick=()=>saveMyProfile({bio:$('aboutMeEdit').value},'About Me saved.');}
 function editMood(){modal(`<h2>Edit mood</h2><input id="moodEdit" maxlength="120" value="${esc(state.user.mood||'')}" placeholder="How are you feeling?"><button class="primary" id="saveMood">Save</button>`);$('saveMood').onclick=()=>saveMyProfile({mood:$('moodEdit').value.trim()},'Mood saved.');}
+function openProfileEditMenu(){
+  const u=state.user||{};
+  modal(`<div class="profile-edit-menu"><h2>✏️ Edit your profile</h2><p class="muted">Choose what you want to update.</p>
+    <div class="profile-edit-menu-grid">
+      <button class="settings-row" id="profileEditInfo"><span>🪪</span><b>Profile details</b><small>Display name, pronouns, country and interests</small><strong>›</strong></button>
+      <button class="settings-row" id="profileEditAbout"><span>📝</span><b>About Me</b><small>Edit your profile description</small><strong>›</strong></button>
+      <button class="settings-row" id="profileEditMood"><span>☻</span><b>Mood</b><small>${esc(u.mood||'Not set')}</small><strong>›</strong></button>
+      <button class="settings-row" id="profileEditRelationship"><span>♥</span><b>Relationship</b><small>${esc(u.relationship||'Not set')}</small><strong>›</strong></button>
+      <button class="settings-row" id="profileEditBirthday"><span>🎂</span><b>Date of birth</b><small>Changes require staff verification</small><strong>›</strong></button>
+      <button class="settings-row" id="profileEditPhoto"><span>📷</span><b>Profile picture</b><small>Upload or remove your picture</small><strong>›</strong></button>
+      <button class="settings-row" id="profileEditBanner"><span>🖼️</span><b>Profile background</b><small>Change your profile background</small><strong>›</strong></button>
+      <button class="settings-row" id="profileEditStyle"><span>✨</span><b>Appearance</b><small>Profile colors and style</small><strong>›</strong></button>
+      <button class="settings-row" id="profileEditMusic"><span>🎵</span><b>Profile music</b><small>Change or remove your profile music</small><strong>›</strong></button>
+    </div>
+  </div>`);
+  $('profileEditInfo')?.addEventListener('click',editProfileInfo);
+  $('profileEditAbout')?.addEventListener('click',editAboutMe);
+  $('profileEditMood')?.addEventListener('click',editMood);
+  $('profileEditRelationship')?.addEventListener('click',editRelationship);
+  $('profileEditPhoto')?.addEventListener('click',uploadAvatar);
+  $('profileEditBanner')?.addEventListener('click',uploadBanner);
+  $('profileEditStyle')?.addEventListener('click',editProfileStyle);
+  $('profileEditMusic')?.addEventListener('click',editProfileMusic);
+  $('profileEditBirthday')?.addEventListener('click',()=>modal('<h2>🎂 Date of birth</h2><p class="muted">For account safety, a date-of-birth change must be reviewed by staff. Your current date of birth and age remain unchanged until staff approves the request.</p><p class="muted">Please contact a staff member to submit a date-of-birth correction. Do not create a second account.</p><div class="toolbar"><button class="primary" type="button" onclick="closeModal()">Got it</button></div>'));
+}
 function editProfileStyle(){
   const u=state.user||{};
   const themes={
