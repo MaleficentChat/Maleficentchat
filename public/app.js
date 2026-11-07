@@ -4602,7 +4602,6 @@ async function loadProfile(user){
     </div>`;}else{content.innerHTML=`<div class="settings-list">
       <button class="settings-row" onclick="privacyModal()"><span>🔒</span><b>Privacy Control</b><small>Choose which profile details other members can see</small><strong>›</strong></button>
       
-      <button class="settings-row" onclick="editProfileStyle()"><span>✨</span><b>Profile styles</b><small>Change profile colors and background — preview before saving</small><strong>›</strong></button>
       <button class="settings-row" onclick="editProfileMusic()"><span>🎵</span><b>Profile music</b><small>${esc(user.profileMusicTitle||'Choose a song for your profile')}</small><strong>›</strong></button>
       <button class="settings-row" onclick="usernameHistory()"><span>📜</span><b>Username history</b><small>${(user.usernameHistory||[]).length} recorded changes</small><strong>›</strong></button>
       <button class="settings-row danger-row" onclick="deleteAccount()"><span>⊘</span><b>Delete account</b><small>This action is permanent</small><strong>›</strong></button>
@@ -4655,9 +4654,13 @@ function openAccountUploadMenu(targetUser=null){
   modal(`<div class="profile-edit-menu"><h2>📤 Upload</h2><div class="profile-edit-menu-grid">
     <button class="settings-row" id="uploadAccountAvatar"><span>🖼️</span><b>Profile picture</b><small>Upload or replace the avatar</small><strong>›</strong></button>
     <button class="settings-row" id="uploadAccountBackground"><span>🌌</span><b>Background</b><small>Upload a profile background image</small><strong>›</strong></button>
+    ${self&&state.user?.avatar?'<button class="settings-row danger-row" id="removeAccountAvatar"><span>🗑️</span><b>Remove profile picture</b><small>Clear your current profile photo</small><strong>›</strong></button>':''}
+    ${self&&state.user?.banner?'<button class="settings-row danger-row" id="removeAccountBackground"><span>🗑️</span><b>Remove background</b><small>Clear your current profile background or banner</small><strong>›</strong></button>':''}
   </div></div>`);
   $('uploadAccountAvatar')?.addEventListener('click',()=>self?uploadAvatar():pickStaffAccountImage(targetUser,'avatar'));
   $('uploadAccountBackground')?.addEventListener('click',()=>self?uploadBanner():pickStaffAccountImage(targetUser,'banner'));
+  $('removeAccountAvatar')?.addEventListener('click',deleteAvatar);
+  $('removeAccountBackground')?.addEventListener('click',deleteBanner);
 }
 function pickStaffAccountImage(user,kind){
   const picker=document.createElement('input');picker.type='file';picker.accept='image/png,image/jpeg,image/gif,image/webp,image/avif';
