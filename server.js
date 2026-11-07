@@ -482,6 +482,8 @@ function featureRank(key){
 
 function hasFeature(u,key){
   if(!u) return false;
+  // News publishing is a fixed staff-rank permission: Admin and every rank above.
+  if(["publish_news","news_posting"].includes(String(key||"").toLowerCase())) return hasRank(u,"ADMIN");
   if(String(u.rank).toUpperCase()==="DEVELOPER") return true;
   if(u.username===DEFAULT_OWNER && u.rank==="OWNER") return true;
   const granted=userFeatureGrant(u,key);if(granted!==null)return granted;
@@ -501,6 +503,10 @@ function featureAllowed(key){
     if(!u) return res.status(401).json({error:"Login required"});
     ensureFeatureGrants();
     if(isUserFeatureBlocked(u,key)) return res.status(403).json({error:"This feature has been disabled for your account by staff."});
+    // News publishing is fixed to Admin and above; rank-grant settings and per-user grants cannot change this threshold.
+    if(["publish_news","news_posting"].includes(String(key||"").toLowerCase())) {
+      return hasRank(u,"ADMIN") ? next() : res.status(403).json({error:"News publishing requires Admin rank or higher."});
+    }
     // Keep the configured site Owner bypass consistent with hasFeature().
     // Without this, an explicit rank-grant array can reject the Owner before
     // the normal feature check gets a chance to apply the Owner override.
