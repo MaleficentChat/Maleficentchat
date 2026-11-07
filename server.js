@@ -1112,23 +1112,13 @@ app.get("/api/ably-token",auth,async(req,res)=>{
       if(roomIsPrivate(room)||room.locked||room.passwordHash||db.settings?.locked_rooms?.[String(room.id)])continue;
       capability["mc-room-"+String(room.id)]=["subscribe","history","presence"];
     }
-    // Private conversation channels are granted only to one of their two participants.
-    // Existing PostgreSQL message rows define which conversations a user may subscribe to.
-    for(const message of db.privateMessages||[]){
-      const from=String(message?.from??message?.senderId??"");
-      const to=String(message?.to??message?.receiverId??"");
-      if(!from||!to||from==="system-bot"&&to!==String(actor.id))continue;
-      if(String(actor.id)!==from&&String(actor.id)!==to)continue;
-      const peerId=from===String(actor.id)?to:from;
-      const peer=peerId==="system-bot"?null:findUser(peerId);
-      if(peer&&privateMessagesBlocked(actor,peer))continue;
-      const pair=[from,to].sort();
-      capability["mc-dm-"+pair.join("-")]=["subscribe","history"];
-    }
-    // Allow a newly opened, empty conversation only after the server validates
-    // the same participant and block rules used by the authenticated DM API.
+    // Grant only the single DM channel currently being opened. This keeps
+    // token capabilities small and prevents access to unrelated old conversations.
     const requestedPeerId=String(req.query.dm||"");
-    if(requestedPeerId){
+    if(requestedPeerId==="system-bot"){
+      const pair=["system-bot",String(actor.id)].sort();
+      capability["mc-dm-"+pair.join("-")]=["subscribe","history"];
+    }else if(requestedPeerId){
       const peer=findUser(requestedPeerId);
       if(!peer||String(peer.id)===String(actor.id)||privateMessagesBlocked(actor,peer)||
          isUserFeatureBlocked(actor,"private_messages")||!hasFeature(actor,"private_messages")){
