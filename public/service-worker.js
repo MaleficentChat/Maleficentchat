@@ -1,4 +1,4 @@
-const CACHE="maleficent-chat-v26-dm-notification-reply";
+const CACHE="maleficent-chat-v27-socket-only-live-chat";
 const ASSETS=["/","/style.css","/app.js","/manifest.json","/favicon.svg","/robots.txt","/sitemap.xml","/doodle-studio.js"];
 
 self.addEventListener("install",event=>{
