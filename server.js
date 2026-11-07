@@ -6234,13 +6234,9 @@ app.get(
     })
 );
 
-app.post("/api/news",auth,upload.single("file"),async(req,res)=>{
+app.post("/api/news",auth,upload.single("file"),featureAllowed("publish_news"),async(req,res)=>{
     const u=current(req);
     if(await checkRestrictedMediaUpload(req,res,u,req.file))return;
-
-    if(!hasFeature(u,"publish_news")){
-      return res.status(403).json({error:`Publish news requires ${featureRank("publish_news")} or higher.`});
-    }
 
     db.news??=[];
 
