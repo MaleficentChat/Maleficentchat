@@ -6324,7 +6324,7 @@ async function toggleReportDropdown(refresh=false){
   }catch(e){box.innerHTML=`<div class="notification-dropdown-head"><b>⚑ Report Management</b></div><p class="muted">${esc(e.message||"Reports are available to authorized staff only.")}</p>`;box.classList.remove("hidden");}
 }
 
-async function toggleNotificationDropdown(){
+async async function toggleNotificationDropdown(){
   const box=$('notificationDropdown'); if(!box)return;
   if(!box.classList.contains('hidden')){box.classList.add('hidden');return;}
   box.innerHTML='<div class="notification-dropdown-head"><b>🔔 Notifications</b></div><p class="muted notification-empty">Loading notifications…</p>';
