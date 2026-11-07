@@ -2044,7 +2044,7 @@ async function joinRoom(id) {
     state.currentRoom = id;
     if(window.MaleficentAbly){
       const ablyEligible=!(room.isPrivate||room.private||room.locked||room.passwordHash||String(room.visibility||"").toLowerCase()==="private");
-      window.MaleficentAbly.setUser(state.user?.id);
+      await window.MaleficentAbly.setUser(state.user?.id);
       if(ablyEligible)window.MaleficentAbly.joinRoom(id).catch(error=>console.warn("Ably room attach failed; Socket.IO fallback remains active:",error?.message||error));
       else window.MaleficentAbly.leaveRoom().catch(()=>{});
     }
