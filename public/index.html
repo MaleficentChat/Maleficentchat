@@ -372,6 +372,42 @@
 })();
 </script>
 
+<script>
+/* Independent sidebar Notifications handler: works even if app.js modal/navigation
+   handlers fail to initialize. Keep this before app.js so it owns the tap. */
+(function(){
+  var trigger=document.getElementById("notifications");
+  if(!trigger||trigger.dataset.notificationFallbackBound)return;
+  trigger.dataset.notificationFallbackBound="true";
+  function escapeHtml(value){return String(value==null?"":value).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];});}
+  function openCenter(){
+    var old=document.getElementById("mcStandaloneNotificationCenter");
+    if(old)old.remove();
+    var overlay=document.createElement("div");
+    overlay.id="mcStandaloneNotificationCenter";
+    overlay.style.cssText="position:fixed;inset:0;z-index:2147483000;background:rgba(4,3,10,.82);backdrop-filter:blur(10px);display:flex;align-items:center;justify-content:center;padding:14px;box-sizing:border-box;";
+    overlay.innerHTML='<section role="dialog" aria-modal="true" aria-label="Notifications" style="width:min(680px,100%);max-height:88dvh;overflow:auto;background:#100d1b;color:#f8f4ff;border:1px solid #7545a8;border-radius:18px;padding:18px;box-sizing:border-box;box-shadow:0 20px 70px #000b"><header style="display:flex;align-items:center;justify-content:space-between;gap:12px"><h2 style="margin:0">🔔 Notifications</h2><button type="button" data-nc-close style="font-size:24px;background:#292039;color:white;border:0;border-radius:10px;padding:4px 12px">×</button></header><p data-nc-status style="color:#c9bdd8">Loading notifications…</p><div data-nc-list></div></section>';
+    document.body.appendChild(overlay);
+    overlay.addEventListener("click",function(event){if(event.target===overlay||event.target.closest("[data-nc-close]"))overlay.remove();});
+    var status=overlay.querySelector("[data-nc-status]"),list=overlay.querySelector("[data-nc-list]");
+    var headers={};
+    try{var token=localStorage.getItem("mc_token");if(token)headers["x-auth-token"]=token;}catch(e){}
+    fetch("/api/notifications",{method:"GET",credentials:"same-origin",cache:"no-store",headers:headers})
+      .then(async function(response){var data=await response.json().catch(function(){return {};});if(!response.ok)throw new Error(data.error||("Request failed ("+response.status+")"));return data;})
+      .then(function(data){
+        var rows=Array.isArray(data.notifications)?data.notifications:[];
+        status.textContent=rows.filter(function(n){return !n.read;}).length+" unread";
+        if(!rows.length){list.innerHTML='<p style="color:#c9bdd8">✨ You’re all caught up. No notifications.</p>';return;}
+        list.innerHTML=rows.map(function(n){return '<article style="padding:12px;margin:10px 0;border:1px solid '+(n.read?'#40364e':'#a66be0')+';border-radius:12px;background:'+(n.read?'#171321':'#241832')+'"><b>'+escapeHtml(n.title||n.type||"Notification")+'</b><p style="margin:6px 0">'+escapeHtml(n.text||n.message||"")+'</p><small style="color:#bbaecb">'+escapeHtml(n.time||"")+'</small></article>';}).join("");
+      })
+      .catch(function(error){status.textContent="Could not load notifications: "+(error.message||"Unknown error");});
+  }
+  trigger.addEventListener("click",function(event){
+    event.preventDefault();event.stopPropagation();event.stopImmediatePropagation();
+    openCenter();
+  },true);
+})();
+</script>
 <script src="/app.js?v=socket-live-20261107-3"></script>
 <script src="/social-features.js?v=1"></script>
 <script src="/entertainment.js?v=20261106-7"></script>
