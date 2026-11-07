@@ -3443,7 +3443,7 @@ function renderUserProfileModal(user,data={}){
   const bannerStyle=user.banner?`style="--profile-cover:url('${esc(user.banner)}')"`:'';
   const isSelf=user.id===state.user.id;
   const liked=!!data.likedByMe;
-  modal(`<div class="profile-modal" data-sf-user-id="${esc(user.id)}" data-sf-is-self="${isSelf?'true':'false'}">
+  modal(`<div class="profile-modal" data-sf-user-id="${esc(user.id)}" data-sf-is-self="${isSelf?'true':'false'}" data-sf-show-scrapbook="${user.privacy?.showScrapbook===false?'false':'true'}">
     <div class="profile-banner" ${bannerStyle}>
       <div class="equipped-profile-frame ${frame?esc(frame.id):''}" title="${frame?esc(frame.name):'Profile avatar'}">${avatar(user,'big-avatar')}</div>
       ${user.profileMusicUrl?`<div class="profile-music-pill"><button type="button" class="profile-music-toggle" id="profileMusicToggle" aria-label="Play profile music">▶</button><span class="profile-music-bars" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span class="profile-music-title">${esc(user.profileMusicTitle||'Profile music')}</span><audio id="profileMusicAudio" preload="none" src="${esc(safeProfileUrl(user.profileMusicUrl))}"></audio></div>`:''}
@@ -3462,10 +3462,10 @@ function renderUserProfileModal(user,data={}){
     <div class="profile-tabs">
       <button class="profile-tab active" data-tab="info">Account</button>
       ${user.privacy?.bio!==false?'<button class="profile-tab" data-tab="about">About Me</button>':''}
-      <button class="profile-tab" data-tab="friends">Friends</button>
-      <button class="profile-tab" data-tab="guestbook">📖 Guestbook</button>
-      <button class="profile-tab" data-tab="gifts">🎁 Gifts</button>
-      <button class="profile-tab" data-tab="photos">📷 Photos</button>
+      ${isSelf||user.privacy?.friends!==false?'<button class="profile-tab" data-tab="friends">Friends</button>':''}
+      ${isSelf||user.privacy?.showGuestbook!==false?'<button class="profile-tab" data-tab="guestbook">📖 Guestbook</button>':''}
+      ${isSelf||user.privacy?.showGifts!==false?'<button class="profile-tab" data-tab="gifts">🎁 Gifts</button>':''}
+      ${isSelf||user.privacy?.photos!==false?'<button class="profile-tab" data-tab="photos">📷 Photos</button>':''}
       <button class="profile-tab" data-tab="more">More</button>
     </div>
     <div id="profileTabContent" class="profile-info"></div>
@@ -3497,6 +3497,7 @@ function renderUserProfileModal(user,data={}){
       api('/api/users/'+encodeURIComponent(user.id)+'/friends').then(result=>{
         if(!box.isConnected)return;
         const grid=$('profileFriendsGrid'),friends=result.users||[];if(!grid)return;
+        if(result.hidden){box.innerHTML='<div class="about-card"><p class="muted">This user has hidden their friends list.</p></div>';return;}
         grid.innerHTML=friends.length?friends.map(friend=>`<button type="button" class="profile-friend-tile" data-friend-profile="${esc(friend.id)}" title="${esc(friend.displayName||friend.username)}"><span class="profile-friend-photo">${avatar(friend)}</span><span class="profile-friend-name">${esc(friend.displayName||friend.username)}</span></button>`).join(''):'<p class="muted">No friends to show yet.</p>';
         grid.querySelectorAll('[data-friend-profile]').forEach(button=>button.addEventListener('click',()=>openUser(button.dataset.friendProfile)));
       }).catch(error=>{const grid=$('profileFriendsGrid');if(grid)grid.innerHTML='<p class="muted">'+esc(error.message||'Could not load friends.')+'</p>';});
@@ -3580,6 +3581,7 @@ function renderUserProfileModal(user,data={}){
       try{
         const result=await api('/api/users/'+encodeURIComponent(user.id)+'/profile-photos');
         if(!grid?.isConnected)return;
+        if(result.hidden){box.innerHTML='<div class="about-card"><h3>📷 Photos</h3><p class="muted">This user has hidden their photo gallery.</p></div>';return;}
         const photos=result.photos||[];
         grid.innerHTML=photos.length?photos.map(photo=>'<figure class="profile-photo-tile"><img src="'+esc(photo.url)+'" alt="Profile photo" loading="lazy">'+((isSelf||canStaffRemove)?'<button type="button" class="profile-photo-remove" data-remove-photo="'+esc(photo.id)+'" title="Remove photo" aria-label="Remove photo">×</button>':'')+'</figure>').join(''):'<div class="profile-photos-empty">No photos added yet.</div>';
         grid.querySelectorAll('[data-remove-photo]').forEach(button=>button.addEventListener('click',async()=>{
@@ -4823,8 +4825,8 @@ async function sendUpload(url, id) {
 }
 
 function privacyModal() {
-  const u=state.user||{},p={lastSeen:true,online:true,country:true,location:true,website:true,bio:true,pronouns:true,relationship:true,mood:true,interests:true,...(u.privacy||{})};
-  const options=[['country','🌍 Country and flag','Show my country and its flag on my profile'],['location','📍 City / location','Show the location field'],['website','🔗 Website','Show my website link'],['bio','📝 About Me','Show my bio'],['pronouns','🪪 Pronouns','Show my pronouns'],['relationship','♥ Relationship','Show relationship status'],['mood','☻ Mood','Show my mood'],['interests','✨ Interests','Show my interests'],['online','🟢 Online status','Let others see when I am online'],['lastSeen','◉ Last seen','Show my last-seen time']];
+  const u=state.user||{},p={lastSeen:true,online:true,country:true,location:true,website:true,bio:true,pronouns:true,relationship:true,mood:true,interests:true,photos:true,friends:true,showGuestbook:true,showGifts:true,showScrapbook:true,...(u.privacy||{})};
+  const options=[['country','🌍 Country and flag','Show my country and its flag on my profile'],['location','📍 City / location','Show the location field'],['website','🔗 Website','Show my website link'],['bio','📝 About Me','Show my bio'],['pronouns','🪪 Pronouns','Show my pronouns'],['relationship','♥ Relationship','Show relationship status'],['mood','☻ Mood','Show my mood'],['interests','✨ Interests','Show my interests'],['photos','📷 Photos','Show my profile photo gallery'],['friends','👥 Friends','Show your friends list on your profile'],['showGuestbook','📖 Guestbook','Show your guestbook to other members'],['showGifts','🎁 Gifts','Show gifts received on your profile'],['showScrapbook','📚 Scrapbook','Show your scrapbook tab on your profile'],['online','🟢 Online status','Let others see when I am online'],['lastSeen','◉ Last seen','Show my last-seen time']];
   modal(`<div class="privacy-control-modal"><h2>🔒 Privacy Control</h2><p class="muted">Choose exactly which details appear to other members. Changes are saved to your account.</p><div class="privacy-control-list">${options.map(([key,title,desc])=>`<label class="privacy-control-row"><span><b>${title}</b><small>${desc}</small></span><input type="checkbox" data-privacy-key="${key}" ${p[key]!==false?'checked':''}></label>`).join('')}</div><div class="toolbar"><button class="mini" id="privacyCancel">Cancel</button><button class="primary" id="privacySave">Save privacy</button></div></div>`);
   $('privacyCancel').onclick=closeModal;
   $('privacySave').onclick=async()=>{const privacy={};document.querySelectorAll('[data-privacy-key]').forEach(el=>privacy[el.dataset.privacyKey]=el.checked);try{const r=await api('/api/profile',{method:'PUT',body:JSON.stringify({privacy})});state.user=r.user;closeModal();await loadProfile(state.user);toast('Privacy settings saved.');}catch(e){toast(e.message)}};
