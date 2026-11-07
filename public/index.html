@@ -132,6 +132,7 @@
   <button class="nav active" data-view="rooms">🏠 <span>Rooms</span></button>
   <details class="nav-group" open><summary>✦ <span>Community</span><i>⌄</i></summary>
     <button class="nav" data-view="news">📰 <span>News</span></button>
+    <button class="nav" data-view="brandNews">✦ <span>Brand News</span></button>
     <button class="nav" data-view="wall">🌘 <span>Shadow Feed</span></button>
     <button class="nav" data-view="suggestions">💡 <span>Suggestions</span></button>
   </details>
@@ -210,6 +211,17 @@
     <div id="viewEntertainment" class="view hidden"><div class="topbar"><div><h2>🎬 Entertainment</h2><p class="muted">Two public rooms. Everyone can join — no age or rank restrictions.</p></div></div><div id="entertainmentRoot" class="entertainment-root"><div class="et-empty">Loading entertainment rooms…</div></div></div>
     <div id="viewGames" class="view hidden"><div class="topbar"><div><h2>🎮 Maleficent Arcade</h2><p class="muted">Pick a mini-game and chase a new high score.</p></div></div><div id="gamesRoot" class="games-root"></div></div>
   <div id="viewNews" class="view hidden"><div class="topbar"><div><h2>📰 News</h2><p class="muted">Community announcements.</p></div><button class="primary admin-only hidden" id="publishNews">Publish</button></div><div id="news" class="stack"></div></div>
+  <div id="viewBrandNews" class="view hidden">
+    <section class="brand-news-masthead">
+      <div class="brand-news-orbit" aria-hidden="true">✦</div>
+      <div class="brand-news-kicker">THE OFFICIAL MALefICENT CHAT JOURNAL</div>
+      <h1>Brand <span>News</span></h1>
+      <p>Official product updates, upcoming experiences and important announcements from the Maleficent Chat team.</p>
+      <div class="brand-news-masthead-foot"><span>✧ DIRECT FROM THE TEAM</span><span>•</span><span>COMMUNITY FIRST</span></div>
+    </section>
+    <div class="brand-news-toolbar"><div><b>Latest from Maleficent Chat</b><small>Official updates, in one place.</small></div><button class="primary hidden" id="publishBrandNews" type="button">＋ Create update</button></div>
+    <div id="brandNewsFeed" class="brand-news-feed" aria-live="polite"><div class="brand-news-empty">Loading official updates…</div></div>
+  </div>
   <div id="viewLeaderboard" class="view hidden"><div class="topbar"><h2>🏆 XP, Gold & Diamonds Leaderboards</h2></div><div id="leaderboard" class="grid2"></div></div>
   <div id="viewSaved" class="view hidden"><div class="topbar"><h2>🔖 Saved / Bookmarked Messages</h2></div><div id="saved" class="stack"></div></div>
   <div id="viewSearch" class="view hidden"><div class="topbar"><div><h2>🔎 Advanced Message Search</h2><p class="muted">Search text, room or author.</p></div></div><form id="searchForm" class="searchbar"><input id="sq" placeholder="Keyword"><input id="sa" placeholder="Author username"><select id="sr"><option value="">All rooms</option></select><button class="primary">Search</button></form><div id="searchResults" class="stack"></div></div>
