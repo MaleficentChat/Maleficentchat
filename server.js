@@ -1110,14 +1110,14 @@ app.get("/api/ably-token",auth,async(req,res)=>{
     // The Chat SDK appends ::$chat to each room's underlying channel name.
     for(const room of db.rooms||[]){
       if(roomIsPrivate(room)||room.locked||room.passwordHash||db.settings?.locked_rooms?.[String(room.id)])continue;
-      capability["mc-room-"+String(room.id)]=["subscribe","history","presence"];
+      capability["mc-room-"+String(room.id)]=["subscribe","presence"];
     }
     // Grant only the single DM channel currently being opened. This keeps
     // token capabilities small and prevents access to unrelated old conversations.
     const requestedPeerId=String(req.query.dm||"");
     if(requestedPeerId==="system-bot"){
       const pair=["system-bot",String(actor.id)].sort();
-      capability["mc-dm-"+pair.join("-")]=["subscribe","history"];
+      capability["mc-dm-"+pair.join("-")]=["subscribe"];
     }else if(requestedPeerId){
       const peer=findUser(requestedPeerId);
       if(!peer||String(peer.id)===String(actor.id)||privateMessagesBlocked(actor,peer)||
@@ -1125,7 +1125,7 @@ app.get("/api/ably-token",auth,async(req,res)=>{
         return res.status(403).json({error:"This private conversation is not available."});
       }
       const pair=[String(actor.id),String(peer.id)].sort();
-      capability["mc-dm-"+pair.join("-")]=["subscribe","history"];
+      capability["mc-dm-"+pair.join("-")]=["subscribe"];
     }
     if(!Object.keys(capability).length)return res.status(403).json({error:"No realtime conversations are available."});
     const tokenIssuer=new Ably.Rest({key:apiKey,clientId:"maleficent-chat-token-issuer"});
