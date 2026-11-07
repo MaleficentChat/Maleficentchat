@@ -962,8 +962,12 @@ async function start() {
 
   state.socket.on("message", message => {
     if (String(message.roomId) === String(state.currentRoom)) {
-      appendMessage(message);
-      if (document.hidden && String(message.userId||"")!==String(state.user?.id)) showSiteNotification(message.displayName||message.username||"New message", String(message.text||"New room message").slice(0,180), "rooms");
+      const messageId=String(message.id||"");
+      const alreadyRendered=messageId&&Array.from(document.querySelectorAll("[data-mid]")).some(node=>String(node.dataset.mid)===messageId);
+      if(!alreadyRendered){
+        appendMessage(message);
+        if (document.hidden && String(message.userId||"")!==String(state.user?.id)) showSiteNotification(message.displayName||message.username||"New message", String(message.text||"New room message").slice(0,180), "rooms");
+      }
     }
   });
 
