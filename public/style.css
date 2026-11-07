@@ -7030,3 +7030,54 @@ html[data-theme] .settings-tab.active {
 #viewProfile .profile-settings-head>.big-avatar:after,
 #viewProfile .profile-settings-head>.big-avatar:before{content:none!important;display:none!important}
 #viewProfile .profile-settings-head .profile-media-actions{display:none!important}
+
+
+/* 2026-11-07 follow-up: exact profile header order, centered avatar, compact chat quick-actions */
+#modal:has(.profile-modal) .profile-stats .profile-edit-btn{order:2!important}
+#modal:has(.profile-modal) .profile-stats .profile-hamburger{order:3!important}
+#viewProfile .profile-settings-top{display:flex!important;align-items:center!important}
+#viewProfile .profile-settings-top .profile-edit-launch{order:2!important}
+#viewProfile .profile-settings-top #myProfileMenuBtn{order:3!important}
+
+/* Keep the profile image centered and remove any floating upload/arrow badge overlay. */
+#viewProfile .profile-settings-head>.big-avatar{
+  position:relative!important;isolation:isolate!important;
+  display:flex!important;align-items:center!important;justify-content:center!important;
+  width:112px!important;height:112px!important;min-width:112px!important;min-height:112px!important;
+  margin:12px auto 8px!important;padding:0!important;overflow:hidden!important;
+  border:4px solid rgba(255,255,255,.92)!important;border-radius:50%!important;
+  box-sizing:border-box!important;line-height:1!important;
+}
+#viewProfile .profile-settings-head>.big-avatar img{
+  position:absolute!important;inset:0!important;display:block!important;
+  width:100%!important;height:100%!important;max-width:none!important;max-height:none!important;
+  object-fit:cover!important;object-position:center center!important;border-radius:50%!important;
+}
+#viewProfile .profile-settings-head>.big-avatar button,
+#viewProfile .profile-settings-head>.big-avatar .upload,
+#viewProfile .profile-settings-head>.big-avatar .avatar-upload,
+#viewProfile .profile-settings-head>.big-avatar .upload-avatar,
+#viewProfile .profile-settings-head>.big-avatar .avatar-edit,
+#viewProfile .profile-settings-head>.big-avatar [title*="upload" i],
+#viewProfile .profile-settings-head>.big-avatar [aria-label*="upload" i],
+#viewProfile .profile-settings-head>.big-avatar [title*="change picture" i],
+#viewProfile .profile-settings-head>.big-avatar [aria-label*="change picture" i]{display:none!important}
+
+/* The avatar popup's three actions were inheriting oversized generic button/icon styles. */
+#modal:has(.quick-user-card) .quick-user-row{
+  display:flex!important;align-items:center!important;
+  min-height:48px!important;height:48px!important;
+  padding:6px 12px!important;gap:10px!important;
+  font-size:14px!important;line-height:1.15!important;
+}
+#modal:has(.quick-user-card) .quick-user-row>span{
+  display:inline-flex!important;align-items:center!important;justify-content:center!important;
+  flex:0 0 28px!important;width:28px!important;min-width:28px!important;height:28px!important;
+  font-size:21px!important;line-height:1!important;
+}
+#modal:has(.quick-user-card) .quick-user-row>b{
+  flex:1 1 auto!important;font-size:14px!important;font-weight:700!important;line-height:1.2!important;
+}
+#modal:has(.quick-user-card) .quick-user-row>i{
+  flex:0 0 16px!important;width:16px!important;font-size:20px!important;line-height:1!important;
+}
