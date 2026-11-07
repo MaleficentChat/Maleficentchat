@@ -6451,6 +6451,9 @@ setTimeout(()=>{if(state.user){loadNotifications();refreshTopDMUnreadBadge();}},
 async function openNotificationCenter(){
   const button=$("notifications");
   if(button){button.disabled=true;button.setAttribute("aria-busy","true");}
+  // Show the centre immediately. A slow or rejected API request must not make
+  // the navigation button appear dead.
+  modal('<div class="notification-center"><div class="notification-head"><h2>🔔 Notifications</h2></div><p class="muted">Loading notifications…</p></div>');
   try{
     const data=await api("/api/notifications");
     const rows=Array.isArray(data.notifications)?data.notifications:[];
@@ -6465,15 +6468,23 @@ async function openNotificationCenter(){
     $('markAllNotifications')?.addEventListener('click',async()=>{try{await api('/api/notifications/read',{method:'POST'});closeModal();await loadNotifications();toast('Notifications marked as read.');}catch(e){toast(e.message);}});
     $('clearNotifications')?.addEventListener('click',async()=>{if(!confirm('Clear all notifications?'))return;try{await api('/api/notifications',{method:'DELETE'});closeModal();await loadNotifications();toast('Notifications cleared.');}catch(e){toast(e.message);}});
     await loadNotifications();
-  }catch(e){toast(e.message||'Could not load notifications.');}
-  finally{if(button){button.disabled=false;button.removeAttribute("aria-busy");}}
+  }catch(e){
+    const message=esc(e?.message||'Could not load notifications.');
+    modal(`<div class="notification-center"><div class="notification-head"><h2>🔔 Notifications</h2></div><p class="muted">Could not load notifications: ${message}</p><button class="mini" id="retryNotifications" type="button">Retry</button></div>`);
+    $('retryNotifications')?.addEventListener('click',()=>openNotificationCenter());
+  }finally{
+    if(button){button.disabled=false;button.removeAttribute("aria-busy");}
+  }
 }
+// Capture the sidebar tap before other navigation handlers can swallow it.
 document.addEventListener("click",event=>{
-  const button=event.target.closest("#notifications");
+  const target=event.target;
+  const button=target instanceof Element?target.closest("#notifications"):null;
   if(!button)return;
   event.preventDefault();
+  event.stopImmediatePropagation();
   openNotificationCenter();
-});
+},true);
 
 async function showPinnedMessages(){
   try{ const data=await api(`/api/rooms/${encodeURIComponent(state.currentRoom)}/pinned`); const pinned=data.messages||[]; modal(`<h2>📌 Pinned messages</h2><p class="muted">Pinned messages in ${esc(state.rooms.find(r=>String(r.id)===String(state.currentRoom))?.name||'this room')}.</p><div class="pinned-list">${pinned.map(m=>`<button class="pinned-result" onclick="closeModal();jumpToMessage('${esc(m.id)}')"><b>${esc(m.displayName||m.username)}</b><small>${fmt(m.time)}</small><span>${esc(m.text||'📎 Attachment')}</span></button>`).join('')||'<p class="muted">No pinned messages in this room.</p>'}</div>`); }catch(e){toast(e.message)}
