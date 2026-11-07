@@ -938,6 +938,9 @@ async function start() {
   state.socket.on("news", () => {
     if(state.view==="news") loadNews();
   });
+  state.socket.on("brand-news", () => {
+    if(state.view==="brandNews") loadBrandNews();
+  });
 
   state.socket.on("dm-updated", payload => {
     const updated=payload?.message;
@@ -1123,6 +1126,8 @@ function updateNav() {
   // ADMIN class. This keeps the button in sync with Owner Space grants.
   const newsPublishButton=$("publishNews");
   if(newsPublishButton)newsPublishButton.classList.toggle("hidden",!canFeature("publish_news"));
+  const brandNewsPublishButton=$("publishBrandNews");
+  if(brandNewsPublishButton)brandNewsPublishButton.classList.toggle("hidden",!canFeature("publish_news"));
 
   // Room creation is Premium+ by default; staff ranks are explicitly eligible too.
   const roomCreatorRanks=["PREMIUM","ROYAL","MOD","ADMIN","SUPER_ADMIN","COMMISSOR","INSTRUCTOR","COOWNER","OWNER","DEVELOPER"];
@@ -1207,6 +1212,8 @@ async function renderView() {
 
     case "news":
       return loadNews();
+    case "brandNews":
+      return loadBrandNews();
     case "wall":
       return loadWall();
 
@@ -4281,6 +4288,80 @@ function handleNewsControlActivation(event){
 window.addEventListener('pointerup',handleNewsControlActivation,true);
 window.addEventListener('touchend',handleNewsControlActivation,{capture:true,passive:false});
 window.addEventListener('click',handleNewsControlActivation,true);
+
+
+/* ---------------- OFFICIAL BRAND NEWS ----------------
+   This is a separate editorial channel with its own records, API and composer.
+   It intentionally does not reuse community News posts or their renderer. */
+const BRAND_NEWS_CATEGORIES=["Product update","Community","Events","Service notice","Behind the scenes"];
+function brandNewsCanPublish(){
+  const rankName=String(state.user?.rank||"").toUpperCase();
+  return ["ADMIN","SUPER_ADMIN","COMMISSOR","INSTRUCTOR","COOWNER","OWNER","DEVELOPER"].includes(rankName)
+    && !state.userPermissions?.publish_news_blocked;
+}
+async function loadBrandNews(){
+  const root=$("brandNewsFeed");if(!root)return;
+  root.innerHTML='<div class="brand-news-empty">Gathering official updates…</div>';
+  try{
+    const result=await api("/api/brand-news");
+    const items=Array.isArray(result.items)?result.items:[];
+    if(!items.length){
+      root.innerHTML='<div class="brand-news-empty"><span>✦</span><b>The next chapter is being written.</b><p>Official Maleficent Chat updates will appear here when they are announced.</p></div>';
+      return;
+    }
+    root.innerHTML=items.map((item,index)=>{
+      const category=BRAND_NEWS_CATEGORIES.includes(item.category)?item.category:"Official update";
+      const image=item.image?.url?'<img class="brand-news-art" src="'+esc(item.image.url)+'" alt="Official update artwork" loading="lazy">':'';
+      const link=item.linkUrl?'<a class="brand-news-link" href="'+esc(item.linkUrl)+'" target="_blank" rel="noopener noreferrer">'+esc(item.linkLabel||"Explore update")+' <span>↗</span></a>':'';
+      const remove=brandNewsCanPublish()?'<button type="button" class="brand-news-remove" data-brand-news-delete="'+esc(item.id)+'" aria-label="Delete official update">Delete</button>':'';
+      return '<article class="brand-news-story" style="--story-index:'+index+'"><div class="brand-news-story-top"><span class="brand-news-category">'+esc(category)+'</span><time>'+esc(fmt(item.createdAt))+'</time></div><div class="brand-news-story-grid"><div class="brand-news-story-copy"><div class="brand-news-byline"><span class="brand-news-seal">✦</span><span>MALEFICENT CHAT <i>OFFICIAL</i></span></div><h2>'+esc(item.headline||"Official update")+'</h2>'+(item.summary?'<p class="brand-news-summary">'+esc(item.summary)+'</p>':'')+'<div class="brand-news-body">'+esc(item.body||"")+'</div>'+link+'</div>'+(image?'<div class="brand-news-story-media">'+image+'</div>':'')+'</div><footer class="brand-news-story-foot"><span>Published by '+esc(item.author||"Maleficent Chat Team")+'</span>'+remove+'</footer></article>';
+    }).join("");
+    root.querySelectorAll("[data-brand-news-delete]").forEach(button=>button.addEventListener("click",async()=>{
+      if(!confirm("Remove this official Brand News update?"))return;
+      button.disabled=true;
+      try{await api("/api/brand-news/"+encodeURIComponent(button.dataset.brandNewsDelete),{method:"DELETE"});toast("Official update removed.");await loadBrandNews();}
+      catch(error){toast(error.message||"Could not remove this update.");button.disabled=false;}
+    }));
+  }catch(error){
+    root.innerHTML='<div class="brand-news-empty"><b>Brand News could not load.</b><p>'+esc(error.message||"Please try again.")+'</p><button type="button" class="mini" id="brandNewsRetry">Retry</button></div>';
+    $("brandNewsRetry")?.addEventListener("click",loadBrandNews);
+  }
+}
+function openBrandNewsComposer(){
+  if(!brandNewsCanPublish()){toast("Brand News publishing requires Admin rank or higher.");return;}
+  modal(`<section class="brand-news-composer">
+    <div class="brand-news-compose-head"><span class="brand-news-compose-seal">✦</span><div><small>MALEFICENT CHAT · EDITORIAL DESK</small><h2>Publish an official update</h2><p>Write a clear announcement for the whole community.</p></div></div>
+    <form id="brandNewsForm">
+      <label>Update category<select id="brandNewsCategory">${BRAND_NEWS_CATEGORIES.map(value=>'<option>'+esc(value)+'</option>').join("")}</select></label>
+      <label>Headline<input id="brandNewsHeadline" maxlength="120" placeholder="A title people will remember" required></label>
+      <label>Short introduction<textarea id="brandNewsSummary" rows="2" maxlength="260" placeholder="A concise preview shown before the full update…" required></textarea></label>
+      <label>Full announcement<textarea id="brandNewsBody" rows="7" maxlength="5000" placeholder="Share the details…" required></textarea></label>
+      <div class="brand-news-compose-grid"><label>Button label <small>Optional</small><input id="brandNewsLinkLabel" maxlength="32" placeholder="Read more"></label><label>Destination URL <small>Optional</small><input id="brandNewsLinkUrl" type="url" maxlength="500" placeholder="https://…"></label></div>
+      <label class="brand-news-art-picker">✧ Add editorial artwork <input id="brandNewsImage" type="file" accept="image/jpeg,image/png,image/webp,image/gif"></label>
+      <div id="brandNewsImageName" class="brand-news-file-name">No artwork selected</div>
+      <p id="brandNewsError" class="error" role="status" aria-live="polite"></p>
+      <div class="brand-news-compose-actions"><button type="button" class="mini" id="brandNewsCancel">Cancel</button><button type="submit" class="primary" id="brandNewsSubmit">Publish official update</button></div>
+    </form>
+  </section>`);
+  const form=$("brandNewsForm"),file=$("brandNewsImage"),submit=$("brandNewsSubmit"),error=$("brandNewsError");
+  file?.addEventListener("change",()=>{const selected=file.files?.[0];$("brandNewsImageName").textContent=selected?selected.name+" · "+(selected.size/1024/1024).toFixed(1)+" MB":"No artwork selected";});
+  $("brandNewsCancel")?.addEventListener("click",closeModal);
+  form?.addEventListener("submit",async event=>{
+    event.preventDefault();if(submit.disabled)return;
+    const headline=$("brandNewsHeadline").value.trim(),summary=$("brandNewsSummary").value.trim(),body=$("brandNewsBody").value.trim(),image=file.files?.[0];
+    const linkLabel=$("brandNewsLinkLabel").value.trim(),linkUrl=$("brandNewsLinkUrl").value.trim();
+    if(!headline||!summary||!body){error.textContent="Add a headline, short introduction and full announcement.";return;}
+    if(linkUrl){try{const parsed=new URL(linkUrl);if(!["http:","https:"].includes(parsed.protocol))throw new Error();}catch{error.textContent="Enter a valid https:// or http:// destination.";return;}}
+    if(image&&(!image.type.startsWith("image/")||image.size>10*1024*1024)){error.textContent="Choose an image up to 10 MB.";return;}
+    submit.disabled=true;submit.textContent="Publishing…";error.textContent="";
+    try{
+      const payload=new FormData();payload.append("category",$("brandNewsCategory").value);payload.append("headline",headline);payload.append("summary",summary);payload.append("body",body);payload.append("linkLabel",linkLabel);payload.append("linkUrl",linkUrl);if(image)payload.append("file",image);
+      await api("/api/brand-news",{method:"POST",body:payload,uploadProgress:true});
+      closeModal();await loadBrandNews();toast("Official Brand News update published.");
+    }catch(err){error.textContent=err.message||"Could not publish this update.";toast(error.textContent);submit.disabled=false;submit.textContent="Publish official update";}
+  });
+}
+$("publishBrandNews")?.addEventListener("click",openBrandNewsComposer);
 
 async function openNewsComments(id){
   try{
