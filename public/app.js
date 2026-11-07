@@ -6428,11 +6428,20 @@ async function loadNotifications() {
     if($("topNotifDot")) $("topNotifDot").classList.toggle("green",counts.all>0);
   } catch(error) {
     console.warn("Notification refresh failed",error);
+  } catch(error) {
+    console.warn("Notification refresh failed",error);
+    // Keep the last known badge if a transient request fails; retry on resume.
   } finally {
     notificationRefreshPromise=null;
   }
   })();
   return notificationRefreshPromise;
+}
+// Refresh counts immediately when the app returns to the foreground.
+if(!window.__mcNotificationBadgeResumeBound){
+  window.__mcNotificationBadgeResumeBound=true;
+  window.addEventListener("pageshow",()=>{if(state.user)loadNotifications().catch(()=>{});});
+  document.addEventListener("visibilitychange",()=>{if(!document.hidden&&state.user)loadNotifications().catch(()=>{});});
 }
 // Notification counters are a background convenience, not a live chat
 // transport. Polling five APIs every 5 seconds was creating needless load.
