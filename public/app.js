@@ -4574,8 +4574,8 @@ function openProfileEditMenu(targetUser=null){
   const canDelete=self?(!['OWNER','DEVELOPER'].includes(String(user.rank||'').toUpperCase())):(can('COOWNER')&&canAccessStaffTarget(user));
   const sections=[
     {id:'editUpload',icon:'📤',title:'Upload',desc:'Profile picture or profile background',show:self||canModify},
-    {id:'removeProfilePicture',icon:'🗑️',title:'Remove profile picture',desc:'Clear your current profile photo',show:self&&!!user.avatar},
-    {id:'removeProfileBackground',icon:'🗑️',title:'Remove background',desc:'Clear your current profile background',show:self&&!!user.banner},
+    {id:'removeProfilePicture',icon:'🗑️',title:'Remove profile picture',desc:'Clear your current profile photo',show:self},
+    {id:'removeProfileBackground',icon:'🗑️',title:'Remove background',desc:'Clear your current profile background',show:self},
     {id:'editName',icon:'✏️',title:'Edit Name',desc:'Username and display name',show:canEditUsername||canModify},
     {id:'editEmail',icon:'✉️',title:'Edit email',desc:'Change account email address',show:canEditEmail},
     {id:'editPassword',icon:'🔒',title:'Edit password',desc:'Set a new account password',show:canChangePassword},
