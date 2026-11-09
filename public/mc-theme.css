@@ -1,0 +1,78 @@
+/* Knightpulse identity layer — intentionally separate from the legacy base stylesheet. */
+:root {
+  --bg:#100c0a; --bg-deep:#090807; --panel:#1a1411; --panel-2:#241a16; --panel-3:#30201b;
+  --border:rgba(221,164,132,.14); --border-strong:rgba(221,164,132,.25);
+  --text:#fff4e9; --muted:#bca99c; --accent:#d27a52; --accent-2:#e5bd78;
+  --accent-soft:rgba(210,122,82,.15); --bubble:#30211c; --mine:#71372f;
+  --pink:#e7a47d; --purple:#b85d43; --green:#d59b72; --danger:#ff7189;
+}
+html,body{background:#080f20;color:var(--text)}
+body{background:radial-gradient(ellipse at 70% -15%,rgba(56,102,181,.19),transparent 45%),#080f20}
+button,input,textarea,select{accent-color:#e6b17d}
+.auth-screen{position:relative;isolation:isolate;background:radial-gradient(ellipse at 50% 0%,rgba(61,111,201,.25),transparent 48%),linear-gradient(145deg,#080f20,#0b1428 58%,#080d1b)}
+.auth-screen:before{content:"";position:absolute;inset:0;z-index:-1;opacity:.22;background-image:linear-gradient(rgba(130,165,225,.08) 1px,transparent 1px),linear-gradient(90deg,rgba(130,165,225,.08) 1px,transparent 1px);background-size:44px 44px;mask-image:linear-gradient(to bottom,black,transparent 80%)}
+.auth-card{position:relative;width:min(460px,94vw);padding:38px 34px 32px;background:linear-gradient(155deg,rgba(21,35,63,.97),rgba(10,18,36,.98));border:1px solid rgba(133,174,246,.28);border-radius:26px;box-shadow:0 30px 100px rgba(0,0,0,.55),inset 0 1px rgba(255,255,255,.05)}
+.auth-card:before{content:"";position:absolute;top:0;left:12%;right:12%;height:2px;background:linear-gradient(90deg,transparent,#6fa6ff,#e6bd78,transparent);border-radius:50%}
+.brand-mark{display:grid;place-items:center;width:68px;height:68px;margin:0 auto 16px;border-radius:21px;background:linear-gradient(145deg,#294b83,#132544);border:1px solid rgba(154,192,255,.38);color:#f1d49d;font-size:0;box-shadow:0 12px 35px rgba(42,91,168,.28)}
+.brand-mark:after{content:"♞";font-family:Georgia,serif;font-size:42px;line-height:1;color:#f1d49d;text-shadow:0 3px 16px rgba(230,185,106,.25)}
+.auth-card h1{font-size:27px;letter-spacing:-.8px;color:#f4f7ff}
+.auth-card p{color:#9eafd0}
+.auth-tabs{padding:5px;background:#0b1529;border:1px solid rgba(142,174,229,.14);border-radius:14px}
+.auth-tabs button{border-radius:10px;color:#9aaccb}
+.auth-tabs button:hover,.auth-tabs button.active{background:linear-gradient(135deg,rgba(79,140,255,.25),rgba(230,185,106,.08));border-color:rgba(113,164,255,.3);color:#fff}
+form input,form textarea,form select,.field input,.field textarea,.field select,input,textarea,select{background:#0a1428;border:1px solid rgba(139,169,221,.2);border-radius:12px;color:#edf3ff}
+input:focus,textarea:focus,select:focus{border-color:#6fa6ff;box-shadow:0 0 0 3px rgba(79,140,255,.13)}
+.primary,.send{background:linear-gradient(115deg,#a84f3d,#e6a078 58%,#d3a75e);color:#071226;border-radius:12px;box-shadow:0 8px 22px rgba(51,111,207,.22);font-weight:800}
+.top-header{height:var(--header-h);padding:0 16px;background:rgba(10,18,36,.94);backdrop-filter:blur(18px);border-bottom:1px solid rgba(141,174,230,.15);box-shadow:0 8px 30px rgba(0,0,0,.18)}
+.top-menu,.top-icon,.top-profile{color:#d9e6ff;border-radius:12px}
+.top-menu:hover,.top-icon:hover{background:rgba(94,148,236,.14)}
+.brand-avatar,.rail-logo{background:linear-gradient(145deg,#315b9b,#142744 70%);border:1px solid rgba(151,190,255,.48);color:#f1d49d;box-shadow:0 5px 18px rgba(48,96,169,.25);font-size:0}
+.brand-avatar:after,.rail-logo:after{content:"♞";font-family:Georgia,serif;font-size:23px;color:#f1d49d}
+.top-brand-copy b{font-size:0}
+.top-brand-copy b:after{content:"Knightpulse";font-size:16px;letter-spacing:.1px;color:#f2f6ff}
+.top-brand-copy span{font-size:0}
+.top-brand-copy span:after{content:"community";font-size:11px;letter-spacing:1.3px;text-transform:uppercase;color:#d4b477}
+.sidebar{background:rgba(10,18,35,.97);border-right:1px solid rgba(141,174,230,.13);backdrop-filter:blur(16px)}
+.nav{color:#9aacca;border-radius:12px}
+.nav:hover,.nav.active{background:linear-gradient(110deg,rgba(67,123,211,.24),rgba(230,185,106,.07));border-color:rgba(111,162,244,.2);color:#f5f8ff}
+.nav-group{border-color:rgba(141,174,230,.13)}
+.nav-group>summary{color:#b8c8e4}
+.main{background:#080f20}
+.topbar{background:linear-gradient(100deg,#101c34,#0d172c);border-bottom:1px solid rgba(141,174,230,.13)}
+.topbar h2{color:#f1f5ff;letter-spacing:-.3px}
+.room-grid{background:radial-gradient(ellipse at 80% 0%,rgba(48,92,166,.12),transparent 55%)}
+.room,.card,.online-panel,.chat-card{background-color:#101b31;border-color:rgba(143,174,228,.14)}
+.room{background:linear-gradient(145deg,#172744,#101a30);border-radius:17px;box-shadow:0 12px 28px rgba(0,0,0,.12)}
+.room:hover,.room.selected{border-color:rgba(111,164,255,.55);box-shadow:0 12px 32px rgba(37,90,168,.17)}
+.room-meta{color:#d7b779}
+.chat-card{background-color:#0b1529;background-image:radial-gradient(circle at 1px 1px,rgba(131,167,226,.10) 1px,transparent 0);background-size:28px 28px}
+.chat-head,.panel-head{background:rgba(17,29,52,.97);border-color:rgba(141,174,230,.13)}
+.announcement{background:#172744;color:#dce8ff;border-color:rgba(141,174,230,.13)}
+.messages{scrollbar-color:#35517d transparent}
+.msg-text{color:#eaf1ff}
+.quoted{border-left-color:#d8b36e;background:rgba(31,49,79,.8)}
+.quoted-label{color:#e7c987}
+.composer,.replybar,.typing{background:#101d35;border-color:rgba(141,174,230,.13)}
+.composer input{background:#091327;border-color:rgba(141,174,230,.2)}
+.online-panel{background:#0e1930}
+button.mini,.icon-btn,.action{border-radius:11px}
+button.mini{background:#172744;border-color:rgba(141,174,230,.17);color:#dce7fb}
+button.mini:hover,.icon-btn:hover,.action:hover{background:rgba(79,140,255,.15);border-color:rgba(111,164,255,.28)}
+.modal-card,.notification-dropdown{background:#111e36;border:1px solid rgba(141,174,230,.2);border-radius:18px;box-shadow:0 25px 80px rgba(0,0,0,.5)}
+input,textarea,select{color-scheme:dark}
+a{color:#8eb8ff}
+.badge,.rank{letter-spacing:.2px}
+@media(max-width:700px){
+ :root{--header-h:58px;--rail-w:54px}
+ .top-header{padding:0 8px}
+ .brand-avatar{width:35px;height:35px}
+ .top-brand-copy b:after{font-size:14px}
+ .top-brand-copy span:after{font-size:9px}
+ .auth-card{padding:30px 22px 25px;border-radius:22px}
+ .topbar{padding:12px 13px}
+ .room-grid{padding:12px;grid-template-columns:repeat(auto-fill,minmax(165px,1fr));gap:10px}
+}
+@media(prefers-reduced-motion:no-preference){
+ .room,.nav,.primary,.send,.top-icon{transition:background .18s ease,border-color .18s ease,transform .18s ease,box-shadow .18s ease}
+ .primary:hover,.send:hover{transform:translateY(-1px);box-shadow:0 12px 26px rgba(51,111,207,.28)}
+}
