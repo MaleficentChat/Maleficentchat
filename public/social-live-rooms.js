@@ -1,4 +1,4 @@
-/* Shared room experiences: small-group voice and Spotify queue. */
+/* Shared room experiences: small-group voice and YouTube listening queue. */
 (()=> {
   if(window.__mcRoomExperiencesLoaded)return;window.__mcRoomExperiencesLoaded=true;
   const $=id=>document.getElementById(id);
@@ -6,22 +6,23 @@
   root.innerHTML=`
     <section class="mcre-panel" id="mcrePanel" hidden>
       <header><div><small>LIVE ROOM EXPERIENCES</small><h3 id="mcreTitle">Room Lounge</h3></div><button type="button" id="mcreClose" aria-label="Close">×</button></header>
-      <nav><button type="button" class="active" data-tab="voice">🎙 Group Voice</button><button type="button" data-tab="music">♫ Spotify Room</button></nav>
+      <nav><button type="button" class="active" data-tab="voice">🎙 Group Voice</button><button type="button" data-tab="music">▶ YouTube Room</button></nav>
       <div class="mcre-pane" id="mcreVoicePane">
         <p class="mcre-note">Talk together with people in this chat room. Up to 6 people · microphone only.</p>
         <div class="mcre-actions"><button type="button" class="mcre-primary" id="mcreJoinVoice">Join voice room</button><button type="button" id="mcreLeaveVoice" hidden>Leave voice</button><button type="button" id="mcreMute" hidden>Mute mic</button></div>
         <div id="mcreVoiceStatus" class="mcre-status">Not connected to group voice.</div><div id="mcreParticipants" class="mcre-participants"></div><div id="mcreAudio"></div>
       </div>
       <div class="mcre-pane" id="mcreMusicPane" hidden>
-        <p class="mcre-note">Share Spotify tracks, albums and playlists with this room. Each listener starts playback in their own Spotify embed.</p>
-        <div class="mcre-add"><input id="mcreSpotifyLink" type="url" placeholder="Paste a Spotify link" maxlength="500"><button type="button" id="mcreAddSpotify">Add</button></div>
+        <p class="mcre-note">Find a YouTube video, tap it, and add it to this room’s shared listening queue.</p>
+        <button type="button" class="mcre-primary mcre-add-listen" id="mcreOpenPicker">＋ Add to Listen</button>
+        <div class="mcre-picker" id="mcrePicker" hidden><div class="mcre-picker-head"><b>Choose a YouTube video</b><button type="button" id="mcrePickerClose" aria-label="Close video picker">×</button></div><div class="mcre-picker-search"><input id="mcreVideoSearch" type="search" placeholder="Search YouTube videos…" maxlength="100"><button type="button" id="mcreVideoSearchBtn">Search</button></div><div id="mcreVideoResults" class="mcre-video-results"><p class="mcre-note">Search for a song, artist, or video.</p></div></div>
         <div id="mcreNowPlaying" class="mcre-now">Nothing selected yet.</div><div id="mcreEmbed"></div>
         <h4>Room queue</h4><div id="mcreQueue" class="mcre-queue"></div>
       </div>
       <div id="mcreError" class="mcre-error" role="status"></div>
     </section>`;
   document.body.appendChild(root);
-  const css=document.createElement("link");css.rel="stylesheet";css.href="/room-experiences.css?v=3";document.head.appendChild(css);
+  const css=document.createElement("link");css.rel="stylesheet";css.href="/room-experiences.css?v=4";document.head.appendChild(css);
   const panel=$("mcrePanel"),voicePane=$("mcreVoicePane"),musicPane=$("mcreMusicPane");
   let socket=null,authed=false,ownUserId="",activeRoom="",localStream=null,joined=false,muted=false,peers=new Map(),peerNames=new Map(),pendingIce=new Map(),musicState={queue:[],current:null};
   let rtc={iceServers:[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}]};
@@ -104,7 +105,7 @@
     const now=$("mcreNowPlaying"),embed=$("mcreEmbed");embed.innerHTML="";
     if(!item){now.textContent="Nothing selected yet.";return;}
     now.textContent="Selected by "+(by||"room member")+" · "+item.title;
-    const frame=document.createElement("iframe");frame.title="Spotify room player";frame.loading="lazy";frame.allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture";frame.src="https://open.spotify.com/embed/"+encodeURIComponent(item.kind)+"/"+encodeURIComponent(item.spotifyId)+"?utm_source=generator";frame.width="100%";frame.height="152";frame.style.border="0";frame.style.borderRadius="12px";embed.appendChild(frame);
+    const frame=document.createElement("iframe");frame.title="YouTube listening room player";frame.loading="lazy";frame.allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share";frame.src="https://www.youtube-nocookie.com/embed/"+encodeURIComponent(item.videoId)+"?playsinline=1&rel=0";frame.width="100%";frame.height="220";frame.style.border="0";frame.style.borderRadius="12px";embed.appendChild(frame);
   }
   function renderQueue(){
     const box=$("mcreQueue");box.innerHTML="";
@@ -115,7 +116,7 @@
       const remove=document.createElement("button");remove.textContent="×";remove.title="Remove from queue";remove.onclick=()=>socket.emit("music-room:remove",{id:item.id},r=>{if(!r?.ok)error(r?.error||"Could not remove item.");});
       row.append(label,play,remove);box.appendChild(row);
     });
-    if(!(musicState.queue||[]).length){const empty=document.createElement("p");empty.className="mcre-note";empty.textContent="The room queue is empty. Add a Spotify link above.";box.appendChild(empty);}
+    if(!(musicState.queue||[]).length){const empty=document.createElement("p");empty.className="mcre-note";empty.textContent="The room queue is empty. Tap Add to Listen to find a YouTube video.";box.appendChild(empty);}
     if(musicState.current)renderNowPlaying(musicState.current);
   }
   function loadMusic(){
@@ -123,17 +124,45 @@
     activeRoom=String(window.currentRoomId||window.activeRoomId||"");if(!activeRoom){error("Open a chat room first.");return;}
     socket.emit("music-room:get",{},r=>{if(r?.ok){musicState=r;renderQueue();}else error(r?.error||"Could not load room music.");});
   }
-  $("mcreAddSpotify").onclick=()=>{
-    const link=$("mcreSpotifyLink").value.trim();if(!link)return error("Paste a Spotify link first.");
-    if(!ensureSocket()||!authed){auth();return error("Connecting your account… try again in a moment.");}
-    socket.emit("music-room:add",{spotify:link},r=>{if(!r?.ok)error(r?.error||"Could not add Spotify item.");else{$("mcreSpotifyLink").value="";error("");}});
-  };
+  function openVideoPicker(){
+    $("mcrePicker").hidden=false;$("mcreVideoSearch").focus();
+  }
+  function closeVideoPicker(){$("mcrePicker").hidden=true;}
+  async function searchRoomVideos(){
+    const query=$("mcreVideoSearch").value.trim();if(!query)return error("Search for a video first.");
+    const results=$("mcreVideoResults"),button=$("mcreVideoSearchBtn");button.disabled=true;button.textContent="Searching…";
+    results.innerHTML="";const loading=document.createElement("p");loading.className="mcre-note";loading.textContent="Finding videos…";results.appendChild(loading);
+    try{
+      const response=await fetch("/api/youtube/search?q="+encodeURIComponent(query),{headers:{Authorization:"Bearer "+token()}});
+      const data=await response.json();if(!response.ok)throw new Error(data.error||"YouTube search failed.");
+      results.replaceChildren();const videos=(data.results||[]).filter(v=>/^[A-Za-z0-9_-]{11}$/.test(String(v.id||"")));
+      if(!videos.length){const empty=document.createElement("p");empty.className="mcre-note";empty.textContent=data.notice||"No videos found. Try another search.";results.appendChild(empty);return;}
+      videos.forEach(video=>{
+        const pick=document.createElement("button");pick.type="button";pick.className="mcre-video-result";
+        const img=document.createElement("img");img.loading="lazy";img.src=video.thumbnail||("https://i.ytimg.com/vi/"+video.id+"/mqdefault.jpg");img.alt="";
+        const details=document.createElement("span"),title=document.createElement("b"),channel=document.createElement("small");title.textContent=video.title||"YouTube video";channel.textContent=video.channel||"YouTube";details.append(title,channel);pick.append(img,details);
+        pick.onclick=()=>{
+          if(!ensureSocket()||!authed){auth();error("Connecting your account… try again in a moment.");return;}
+          pick.disabled=true;pick.classList.add("adding");
+          socket.emit("music-room:add",{youtubeId:video.id,title:video.title||"YouTube video"},r=>{
+            if(!r?.ok){pick.disabled=false;pick.classList.remove("adding");error(r?.error||"Could not add this video.");return;}
+            closeVideoPicker();error("");
+          });
+        };
+        results.appendChild(pick);
+      });
+    }catch(e){results.replaceChildren();const note=document.createElement("p");note.className="mcre-note";note.textContent=e.message||"YouTube search failed.";results.appendChild(note);}
+    finally{button.disabled=false;button.textContent="Search";}
+  }
+  $("mcreOpenPicker").onclick=openVideoPicker;$("mcrePickerClose").onclick=closeVideoPicker;
+  $("mcreVideoSearchBtn").onclick=searchRoomVideos;
+  $("mcreVideoSearch").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();searchRoomVideos();}});
   $("mcreJoinVoice").onclick=joinVoice;$("mcreLeaveVoice").onclick=()=>stopVoice(true);
   $("mcreMute").onclick=()=>{muted=!muted;(localStream?.getAudioTracks()||[]).forEach(t=>t.enabled=!muted);$("mcreMute").textContent=muted?"Unmute mic":"Mute mic";};
   $("mcreClose").onclick=()=>{panel.hidden=true;};
   document.querySelectorAll("#mcrePanel [data-tab]").forEach(btn=>btn.onclick=()=>{
     document.querySelectorAll("#mcrePanel [data-tab]").forEach(x=>x.classList.toggle("active",x===btn));
-    const music=btn.dataset.tab==="music";voicePane.hidden=music;musicPane.hidden=!music;$("mcreTitle").textContent=music?"Spotify Listening Room":"Group Voice Room";
+    const music=btn.dataset.tab==="music";voicePane.hidden=music;musicPane.hidden=!music;$("mcreTitle").textContent=music?"YouTube Listening Room":"Group Voice Room";
     if(music)loadMusic();error("");
   });
   function openExperience(tab){
@@ -143,11 +172,11 @@
   }
   function addLaunchers(){
     const actions=document.querySelector(".mc-online-panel-actions")||document.querySelector("#onlinePanel .panel-head")||document.querySelector("#onlinePanelTitle")?.closest(".panel-head");
-    if(!actions||actions.querySelector("#mcreSpotifyLaunch")||actions.querySelector("#mcreVoiceLaunch"))return false;
+    if(!actions||actions.querySelector("#mcreYouTubeLaunch")||actions.querySelector("#mcreVoiceLaunch"))return false;
     const wrap=document.createElement("span");wrap.className="mcre-launch-actions";
-    wrap.innerHTML='<button type="button" id="mcreSpotifyLaunch" title="Open Spotify Listening Room">♫ Spotify</button><button type="button" id="mcreVoiceLaunch" title="Open Group Voice Room">🎙 Voice</button>';
+    wrap.innerHTML='<button type="button" id="mcreYoutubeLaunch" title="Open YouTube Listening Room">▶ YouTube</button><button type="button" id="mcreVoiceLaunch" title="Open Group Voice Room">🎙 Voice</button>';
     actions.appendChild(wrap);
-    $("mcreSpotifyLaunch").onclick=()=>openExperience("music");
+    $("mcreYoutubeLaunch").onclick=()=>openExperience("music");
     $("mcreVoiceLaunch").onclick=()=>openExperience("voice");
     return true;
   }

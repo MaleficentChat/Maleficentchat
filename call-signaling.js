@@ -153,16 +153,13 @@ function registerCallSignaling({io,findUser,privateMessagesBlocked}){
     socket.on("music-room:add",(payload,callback)=>{
       const ack=ackOf(callback),ctx=roomForSocket(socket);
       if(!ctx){ack({ok:false,error:"Join a chat room first."});return;}
-      const raw=String(payload&&payload.spotify||"").trim().slice(0,500);
-      const match=raw.match(/(?:open\.spotify\.com\/(track|album|playlist|episode|show)\/|spotify:(track|album|playlist|episode|show):)([A-Za-z0-9]{10,32})/i);
-      if(!match){ack({ok:false,error:"Paste a valid Spotify track, album, playlist, episode or show link."});return;}
-      const kind=String(match[1]||match[2]).toLowerCase(),spotifyId=match[3];
-      const spotify="spotify:"+kind+":"+spotifyId;
+      const videoId=String(payload&&payload.youtubeId||"").trim();
+      if(!/^[A-Za-z0-9_-]{11}$/.test(videoId)){ack({ok:false,error:"Choose a valid YouTube video from search results."});return;}
       let state=musicRooms.get(ctx.roomId);
       if(!state)state={queue:[],current:null,updatedAt:0};
-      if(state.queue.some(item=>item.spotify===spotify)){ack({ok:false,error:"That Spotify item is already in the room queue."});return;}
+      if(state.queue.some(item=>item.videoId===videoId)){ack({ok:false,error:"That video is already in the room queue."});return;}
       if(state.queue.length>=40){ack({ok:false,error:"The room queue is full (40 items)."});return;}
-      const item={id:require("crypto").randomUUID(),spotify,kind,spotifyId,title:String(payload&&payload.title||"Spotify "+kind).trim().slice(0,120),addedBy:String(ctx.user.displayName||ctx.user.username).slice(0,48),userId:String(ctx.user.id),addedAt:Date.now()};
+      const item={id:require("crypto").randomUUID(),videoId,title:String(payload&&payload.title||"YouTube video").trim().slice(0,120),addedBy:String(ctx.user.displayName||ctx.user.username).slice(0,48),userId:String(ctx.user.id),addedAt:Date.now()};
       state.queue.push(item);state.updatedAt=Date.now();musicRooms.set(ctx.roomId,state);
       io.to("room:"+ctx.roomId).emit("music-room:updated",state);ack({ok:true,item,state});
     });
