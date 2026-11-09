@@ -21,10 +21,19 @@
       <div id="mcreError" class="mcre-error" role="status"></div>
     </section>`;
   document.body.appendChild(root);
-  const css=document.createElement("link");css.rel="stylesheet";css.href="/room-experiences.css?v=1";document.head.appendChild(css);
+  const css=document.createElement("link");css.rel="stylesheet";css.href="/room-experiences.css?v=2";document.head.appendChild(css);
   const panel=$("mcrePanel"),voicePane=$("mcreVoicePane"),musicPane=$("mcreMusicPane");
   let socket=null,authed=false,ownUserId="",activeRoom="",localStream=null,joined=false,muted=false,peers=new Map(),peerNames=new Map(),pendingIce=new Map(),musicState={queue:[],current:null};
-  const rtc={iceServers:[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}]};
+  let rtc={iceServers:[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}]};
+  function refreshRtcConfig(){
+    return new Promise(resolve=>{
+      if(!socket||!authed){resolve(false);return;}
+      socket.emit("rtc:config",{},result=>{
+        if(result?.ok&&Array.isArray(result.iceServers)){rtc={iceServers:result.iceServers};resolve(true);}
+        else resolve(false);
+      });
+    });
+  }
   function error(message){$("mcreError").textContent=message||"";}
   function status(message){$("mcreVoiceStatus").textContent=message;}
   function token(){try{return localStorage.getItem("mc_token")||"";}catch{return "";}}
@@ -74,6 +83,7 @@
     error("");if(!ensureSocket())return;if(!authed){auth();error("Connecting your account… try again in a moment.");return;}
     activeRoom=String(window.__mcRoomContext?.().roomId||"");
     if(!activeRoom){error("Open a chat room first.");return;}
+    await refreshRtcConfig();
     try{localStream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true},video:false});}
     catch(e){error("Microphone permission is needed: "+(e.message||"permission denied"));return;}
     socket.emit("group-voice:join",{roomId:activeRoom},async r=>{
