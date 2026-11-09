@@ -23,19 +23,19 @@
   document.body.appendChild(root);
   const css=document.createElement("link");css.rel="stylesheet";css.href="/room-experiences.css?v=1";document.head.appendChild(css);
   const panel=$("mcrePanel"),voicePane=$("mcreVoicePane"),musicPane=$("mcreMusicPane");
-  let socket=null,authed=false,activeRoom="",localStream=null,joined=false,muted=false,peers=new Map(),musicState={queue:[],current:null};
+  let socket=null,authed=false,ownUserId="",activeRoom="",localStream=null,joined=false,muted=false,peers=new Map(),musicState={queue:[],current:null};
   const rtc={iceServers:[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}]};
   function error(message){$("mcreError").textContent=message||"";}
   function status(message){$("mcreVoiceStatus").textContent=message;}
   function token(){try{return localStorage.getItem("mc_token")||"";}catch{return "";}}
   function auth(){
     if(!socket?.connected)return;const t=token();if(!t){authed=false;error("Please log in to use room experiences.");return;}
-    socket.emit("auth",t,r=>{authed=!!r?.ok;if(!authed)error(r?.error||"Please log in again.");});
+    socket.emit("auth",t,r=>{authed=!!r?.ok;ownUserId=String(r?.userId||ownUserId);if(!authed)error(r?.error||"Please log in again.");});
   }
   function ensureSocket(){
     if(socket)return true;if(typeof window.io!=="function"){error("Live room features are unavailable.");return false;}
     socket=window.io();socket.on("connect",auth);socket.on("disconnect",()=>{authed=false;if(joined)stopVoice(false);});
-    socket.on("group-voice:peer-joined",p=>{if(!joined||String(p.userId)===String(window.currentUser?.id))return;ensurePeer(String(p.userId));renderParticipants();});
+    socket.on("group-voice:peer-joined",p=>{if(!joined||String(p.userId)===ownUserId)return;ensurePeer(String(p.userId));renderParticipants();});
     socket.on("group-voice:peer-left",p=>{closePeer(String(p.userId));renderParticipants();});
     socket.on("group-voice:count",p=>{if(joined)status("Connected · "+p.count+" / 6 participants");});
     socket.on("group-voice:signal",async p=>{
@@ -69,7 +69,7 @@
   }
   async function joinVoice(){
     error("");if(!ensureSocket())return;if(!authed){auth();error("Connecting your account… try again in a moment.");return;}
-    activeRoom=String(window.currentRoomId||window.activeRoomId||"");
+    activeRoom=String(window.__mcRoomContext?.().roomId||"");
     if(!activeRoom){error("Open a chat room first.");return;}
     try{localStream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true},video:false});}
     catch(e){error("Microphone permission is needed: "+(e.message||"permission denied"));return;}
