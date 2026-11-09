@@ -581,7 +581,7 @@ async function createParallelSplit(){
   try{
     const result=await api("/api/rooms/"+encodeURIComponent(parentId)+"/splits/create",{method:"POST",body:JSON.stringify({name,code,layout})});
     closeModal();
-    openParallelRoomLayout(parentId,String(result.room.id),code,layout,result.room?.name);
+    openParallelRoomLayout(parentId,String(result.room.id),code,layout,name,result.room.ownerId,result.room.portalEnabled!==false);
     toast("Alternate dimension created. Share its code: "+code);
   }catch(error){toast(error.message||"Could not create the split.");if(button){button.disabled=false;button.textContent="Create Split";}}
 }
@@ -597,7 +597,7 @@ async function joinParallelSplit(){
   try{
     const result=await api("/api/rooms/"+encodeURIComponent(parentId)+"/splits/join",{method:"POST",body:JSON.stringify({code})});
     closeModal();
-    openParallelRoomLayout(parentId,String(result.room.id),code,String(result.layout||"separate"),result.room?.name);
+    openParallelRoomLayout(parentId,String(result.room.id),code,String(result.layout||"separate"),result.room?.name,result.room.ownerId,result.room.portalEnabled!==false);
   }catch(error){toast(error.message||"Could not join that split.");if(button){button.disabled=false;button.textContent="Join Split";}}
 }
 document.getElementById("openParallelSplits")?.addEventListener("click",openParallelSplits);
