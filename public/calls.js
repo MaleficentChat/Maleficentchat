@@ -2,7 +2,7 @@
 (function(){
   if(window.__midnightCallsLoaded)return;
   window.__midnightCallsLoaded=true;
-  const style=document.createElement("link");style.rel="stylesheet";style.href="/calls.css?v=2";document.head.appendChild(style);
+  const style=document.createElement("link");style.rel="stylesheet";style.href="/calls.css?v=3";document.head.appendChild(style);
   const root=document.createElement("div");root.id="midnightCallsRoot";root.innerHTML=`
     <button class="mc-call-launch" id="mcCallLaunch" type="button" aria-label="Open Midnight Calls">☎</button>
     <section class="mc-call-panel" id="mcCallPanel" hidden aria-label="Midnight Calls">
@@ -39,7 +39,16 @@
     callLauncher.hidden=true;
   }
   let socket=null,authed=false,activeCall=null,localStream=null,peer=null,pendingIncoming=null,pendingCandidates=[],muted=false,cameraOff=false;
-  const rtcConfig={iceServers:[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}]};
+  let rtcConfig={iceServers:[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}]};
+  function refreshRtcConfig(){
+    return new Promise(resolve=>{
+      if(!socket||!authed){resolve(false);return;}
+      socket.emit("rtc:config",{},result=>{
+        if(result?.ok&&Array.isArray(result.iceServers)){rtcConfig={iceServers:result.iceServers};resolve(true);}
+        else resolve(false);
+      });
+    });
+  }
   function show(){panel.hidden=false;$("mcCallTarget").focus();}
   function resetUI(message){
     if(peer){peer.ontrack=null;peer.onicecandidate=null;peer.close();peer=null;}pendingCandidates=[];
@@ -69,6 +78,7 @@
       if(!activeCall||activeCall.callId!==data.callId)return;
       activeCall.peerId=data.peerId;startBox.hidden=true;incoming.hidden=true;media.hidden=false;controls.hidden=false;
       try{
+        await refreshRtcConfig();
         localStream=await navigator.mediaDevices.getUserMedia({audio:true,video:activeCall.mode==="video"});
         $("mcCallLocal").srcObject=localStream;$("mcCallLocal").hidden=activeCall.mode!=="video";
         peer=new RTCPeerConnection(rtcConfig);localStream.getTracks().forEach(track=>peer.addTrack(track,localStream));
@@ -83,6 +93,7 @@
       try{
         const signal=data.signal;
         if(signal.type==="offer"){
+          await refreshRtcConfig();
           if(!peer){
             localStream=await navigator.mediaDevices.getUserMedia({audio:true,video:activeCall.mode==="video"});
             $("mcCallLocal").srcObject=localStream;$("mcCallLocal").hidden=activeCall.mode!=="video";
