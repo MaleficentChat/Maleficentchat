@@ -3,6 +3,13 @@
 // Authenticated one-to-one WebRTC call signalling. Media stays peer-to-peer;
 // this server only routes invitations and SDP/ICE messages.
 function registerCallSignaling({io,findUser,privateMessagesBlocked}){
+  const getRtcConfig=()=>{
+    const urls=String(process.env.TURN_URLS||"").split(",").map(value=>value.trim()).filter(Boolean);
+    const username=String(process.env.TURN_USERNAME||"").trim();
+    const credential=String(process.env.TURN_CREDENTIAL||"").trim();
+    const turnServers=urls.length&&username&&credential?[{urls,username,credential}]:[];
+    return {iceServers:[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"},...turnServers],turnEnabled:turnServers.length>0};
+  };
   const calls=new Map();
   const userCall=new Map();
   const room=id=>"call:"+id;
@@ -19,6 +26,11 @@ function registerCallSignaling({io,findUser,privateMessagesBlocked}){
     }
   };
   io.on("connection",socket=>{
+    socket.on("rtc:config",(_payload,callback)=>{
+      const ack=typeof callback==="function"?callback:()=>{};
+      if(!findUser(socket.data.userId)){ack({ok:false,error:"Please log in before requesting call configuration."});return;}
+      ack({ok:true,...getRtcConfig()});
+    });
     socket.on("call:invite",(payload,acknowledge)=>{
       const ack=typeof acknowledge==="function"?acknowledge:()=>{};
       const caller=findUser(socket.data.userId);
