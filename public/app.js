@@ -3582,7 +3582,7 @@ function renderUserProfileModal(user,data={}){
   const renderTab=(tab)=>{
     document.querySelectorAll('.profile-tab').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));
     const box=$('profileTabContent');
-    if(tab==='info') box.innerHTML=`
+    if(tab==='info') { box.innerHTML=`
       <div class="profile-info-row"><b>👤 Username</b><span>@${esc(user.username)}</span></div>
       <div class="profile-info-row"><b>🏅 Rank</b><span>${rank(user.rank)}</span></div>
       <div class="profile-info-row"><b>⭐ Level</b><span>${user.level||1} · ${user.xp||0} XP</span></div>
@@ -3600,7 +3600,7 @@ function renderUserProfileModal(user,data={}){
         panel.innerHTML=featured.length?'<b>✦ Featured Trophies</b><div class="ac-featured">'+featured.map(name=>'<span class="ac-feature-chip">'+(icons[name]||'🏆')+' '+esc(name)+'</span>').join('')+'</div>':'';
       }).catch(()=>{});
     }else{const panel=$('profileAchievementShowcase');if(panel)panel.remove();}
-    else if(tab==='about' && user.privacy?.bio!==false) box.innerHTML=`<div class="about-card"><h3>About Me</h3><p>${esc(user.bio||'This user has not written an About Me yet.')}</p>${user.privacy?.country!==false&&user.country?`<div class="profile-info-row"><b>🌍 Country</b><span>${esc(countryFlagFor(user.country))} ${esc(user.country)}</span></div>`:''}${user.privacy?.pronouns!==false&&user.pronouns?`<div class="profile-info-row"><b>Pronouns</b><span>${esc(user.pronouns)}</span></div>`:''}${user.privacy?.interests!==false&&user.interests?.length?`<div class="tag-list">${user.interests.map(x=>`<span class="tag">${esc(x)}</span>`).join('')}</div>`:''}${isSelf?`<button class="primary" id="editAboutBtn">✏️ Edit About Me</button>`:''}</div>`;
+    } else if(tab==='about' && user.privacy?.bio!==false) box.innerHTML=`<div class="about-card"><h3>About Me</h3><p>${esc(user.bio||'This user has not written an About Me yet.')}</p>${user.privacy?.country!==false&&user.country?`<div class="profile-info-row"><b>🌍 Country</b><span>${esc(countryFlagFor(user.country))} ${esc(user.country)}</span></div>`:''}${user.privacy?.pronouns!==false&&user.pronouns?`<div class="profile-info-row"><b>Pronouns</b><span>${esc(user.pronouns)}</span></div>`:''}${user.privacy?.interests!==false&&user.interests?.length?`<div class="tag-list">${user.interests.map(x=>`<span class="tag">${esc(x)}</span>`).join('')}</div>`:''}${isSelf?`<button class="primary" id="editAboutBtn">✏️ Edit About Me</button>`:''}</div>`;
     else if(tab==='about') box.innerHTML='';
     else if(tab==='photos') renderProfilePhotos();
     else if(tab==='scrapbook'){
