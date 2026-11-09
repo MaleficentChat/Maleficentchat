@@ -86,5 +86,95 @@ function registerCallSignaling({io,findUser,privateMessagesBlocked}){
       },250);
     });
   });
+
+  // Room-scoped group voice and Spotify listening rooms. Voice uses a small
+  // peer mesh (maximum six members); the server only relays authenticated SDP/ICE.
+  const groupVoiceRooms=new Map();
+  const musicRooms=new Map();
+  const roomForSocket=socket=>{
+    const user=findUser(socket.data.userId),roomId=String(socket.data.roomId||"");
+    return user&&roomId&&socket.rooms.has("room:"+roomId)?{user,roomId}:null;
+  };
+  const voiceRoomName=id=>"group-voice:"+id;
+  const leaveVoice=(socket,notify=true)=>{
+    const userId=String(socket.data.userId||"");
+    for(const [roomId,session] of groupVoiceRooms){
+      if(!session.members.has(userId))continue;
+      session.members.delete(userId);socket.leave(voiceRoomName(roomId));
+      if(notify)io.to(voiceRoomName(roomId)).emit("group-voice:peer-left",{userId});
+      if(!session.members.size)groupVoiceRooms.delete(roomId);
+    }
+  };
+  io.on("connection",socket=>{
+    const ackOf=fn=>typeof fn==="function"?fn:()=>{};
+    socket.on("group-voice:join",(payload,callback)=>{
+      const ack=ackOf(callback),ctx=roomForSocket(socket);
+      if(!ctx){ack({ok:false,error:"Join an accessible chat room before starting group voice."});return;}
+      const requested=String(payload&&payload.roomId||ctx.roomId);
+      if(requested!==ctx.roomId){ack({ok:false,error:"Group voice is only available in your current chat room."});return;}
+      let session=groupVoiceRooms.get(ctx.roomId);
+      if(!session){session={members:new Map(),createdAt:Date.now()};groupVoiceRooms.set(ctx.roomId,session);}
+      const uid=String(ctx.user.id);
+      if(session.members.has(uid)){ack({ok:true,participants:[...session.members.values()].filter(x=>x.userId!==uid),limit:6});return;}
+      if(session.members.size>=6){ack({ok:false,error:"This voice room is full (maximum 6 participants)."});return;}
+      const participants=[...session.members.values()];
+      session.members.set(uid,{userId:uid,username:ctx.user.username,displayName:ctx.user.displayName||ctx.user.username,avatar:ctx.user.avatar||""});
+      socket.join(voiceRoomName(ctx.roomId));
+      socket.to(voiceRoomName(ctx.roomId)).emit("group-voice:peer-joined",{userId:uid,username:ctx.user.username,displayName:ctx.user.displayName||ctx.user.username,avatar:ctx.user.avatar||""});
+      ack({ok:true,participants,limit:6});
+      io.to(voiceRoomName(ctx.roomId)).emit("group-voice:count",{count:session.members.size});
+    });
+    socket.on("group-voice:signal",payload=>{
+      const ctx=roomForSocket(socket),roomId=String(payload&&payload.roomId||""),toId=String(payload&&payload.toId||""),signal=payload&&payload.signal;
+      const session=groupVoiceRooms.get(roomId),fromId=String(ctx?.user.id||"");
+      if(!ctx||ctx.roomId!==roomId||!session||!session.members.has(fromId)||!session.members.has(toId)||!signal||typeof signal!=="object")return;
+      if(!["offer","answer","candidate"].includes(String(signal.type||""))||JSON.stringify(signal).length>16000)return;
+      io.to(voiceRoomName(roomId)).emit("group-voice:signal",{roomId,fromId,toId,signal});
+    });
+    socket.on("group-voice:leave",()=>leaveVoice(socket));
+    socket.on("music-room:get",(_payload,callback)=>{
+      const ack=ackOf(callback),ctx=roomForSocket(socket);
+      if(!ctx){ack({ok:false,error:"Join a chat room first."});return;}
+      const state=musicRooms.get(ctx.roomId)||{queue:[],current:null,updatedAt:0};
+      ack({ok:true,...state});
+    });
+    socket.on("music-room:add",(payload,callback)=>{
+      const ack=ackOf(callback),ctx=roomForSocket(socket);
+      if(!ctx){ack({ok:false,error:"Join a chat room first."});return;}
+      const raw=String(payload&&payload.spotify||"").trim().slice(0,500);
+      const match=raw.match(/(?:open\.spotify\.com\/(track|album|playlist|episode|show)\/|spotify:(track|album|playlist|episode|show):)([A-Za-z0-9]{10,32})/i);
+      if(!match){ack({ok:false,error:"Paste a valid Spotify track, album, playlist, episode or show link."});return;}
+      const kind=String(match[1]||match[2]).toLowerCase(),spotifyId=match[3];
+      const spotify="spotify:"+kind+":"+spotifyId;
+      let state=musicRooms.get(ctx.roomId);
+      if(!state)state={queue:[],current:null,updatedAt:0};
+      if(state.queue.some(item=>item.spotify===spotify)){ack({ok:false,error:"That Spotify item is already in the room queue."});return;}
+      if(state.queue.length>=40){ack({ok:false,error:"The room queue is full (40 items)."});return;}
+      const item={id:require("crypto").randomUUID(),spotify,kind,spotifyId,title:String(payload&&payload.title||"Spotify "+kind).trim().slice(0,120),addedBy:String(ctx.user.displayName||ctx.user.username).slice(0,48),userId:String(ctx.user.id),addedAt:Date.now()};
+      state.queue.push(item);state.updatedAt=Date.now();musicRooms.set(ctx.roomId,state);
+      io.to("room:"+ctx.roomId).emit("music-room:updated",state);ack({ok:true,item,state});
+    });
+    socket.on("music-room:remove",(payload,callback)=>{
+      const ack=ackOf(callback),ctx=roomForSocket(socket);
+      if(!ctx){ack({ok:false,error:"Join a chat room first."});return;}
+      const state=musicRooms.get(ctx.roomId);if(!state){ack({ok:false,error:"The room queue is empty."});return;}
+      const item=state.queue.find(x=>x.id===String(payload&&payload.id||""));
+      if(!item){ack({ok:false,error:"Queue item not found."});return;}
+      if(item.userId!==String(ctx.user.id)&&!["MODERATOR","ADMIN","SUPERADMIN","COMMISSOR","INSTRUCTOR","COOWNER","OWNER","DEVELOPER"].includes(String(ctx.user.rank||"").toUpperCase())){ack({ok:false,error:"You can remove only your own queue items."});return;}
+      state.queue=state.queue.filter(x=>x.id!==item.id);if(state.current?.id===item.id)state.current=null;state.updatedAt=Date.now();
+      musicRooms.set(ctx.roomId,state);io.to("room:"+ctx.roomId).emit("music-room:updated",state);ack({ok:true,state});
+    });
+    socket.on("music-room:play",(payload,callback)=>{
+      const ack=ackOf(callback),ctx=roomForSocket(socket);
+      if(!ctx){ack({ok:false,error:"Join a chat room first."});return;}
+      const state=musicRooms.get(ctx.roomId);const item=state?.queue.find(x=>x.id===String(payload&&payload.id||""));
+      if(!state||!item){ack({ok:false,error:"Choose an item from the room queue."});return;}
+      state.current=item;state.updatedAt=Date.now();musicRooms.set(ctx.roomId,state);
+      io.to("room:"+ctx.roomId).emit("music-room:playing",{item,by:ctx.user.displayName||ctx.user.username,updatedAt:state.updatedAt});
+      ack({ok:true,item});
+    });
+    socket.on("disconnect",()=>leaveVoice(socket));
+  });
+
 }
 module.exports={registerCallSignaling};
