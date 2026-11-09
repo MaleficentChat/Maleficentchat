@@ -20,3 +20,8 @@
 .sf-vault-empty{grid-column:1/-1;padding:32px 16px;text-align:center;border:1px dashed rgba(184,145,255,.25);border-radius:13px;color:#b9a9cc}
 @media(max-width:650px){.sf-vault-add{grid-template-columns:1fr}.sf-vault-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.sf-vault-preview{height:120px}}
 @media(max-width:360px){.sf-vault-grid{grid-template-columns:1fr}}
+
+
+.sf-vault-filters{display:flex;gap:7px;overflow-x:auto;padding:2px 0 12px}
+.sf-vault-filters button{white-space:nowrap}
+.sf-vault-filters button.active{border-color:rgba(184,145,255,.65);background:rgba(139,92,246,.22);color:#f6efff}
