@@ -250,6 +250,7 @@ async function api(url, opt = {}) {
   // including YouTube sharing. Previously the token was only sent for messages
   // and pinned messages, so the YouTube endpoint always rejected the request.
   const roomMatch=String(url).match(/\/api\/rooms\/([^/?#]+)(?:\/|$)/);
+  if(roomMatch&&window.__mcRoomJoinTokens?.[String(roomMatch[1])])headers['x-room-join-token']=window.__mcRoomJoinTokens[String(roomMatch[1])];
   if(roomMatch){try{const roomAccess=JSON.parse(safeStorage.getItem('mc_room_join')||'null');if(roomAccess?.roomId!=null&&String(roomAccess.roomId)===String(roomMatch[1])&&roomAccess.joinToken)headers['x-room-join-token']=roomAccess.joinToken;}catch{}}
   const messageMatch=String(url).match(/\/api\/messages\/[^/?#]+(?:\/|$)/);
   if(!roomMatch&&messageMatch){try{const roomAccess=JSON.parse(safeStorage.getItem("mc_room_join")||"null");if(roomAccess?.roomId!=null&&String(roomAccess.roomId)===String(state.currentRoom)&&roomAccess.joinToken)headers["x-room-join-token"]=roomAccess.joinToken;}catch{}}
@@ -391,6 +392,67 @@ async function refreshCurrentRoomOnly(){
   }
 }
 
+
+function openParallelRoomLayout(parentId,splitId,code,layout){
+  const existing=document.getElementById("parallelRoomOverlay");existing?.remove();
+  const side=layout==="side-by-side";
+  const overlay=document.createElement("section");
+  overlay.id="parallelRoomOverlay";overlay.className="parallel-room-overlay";
+  overlay.innerHTML=`
+    <header class="parallel-room-toolbar">
+      <div class="parallel-room-toolbar-title"><b>⫶ Parallel Rooms</b><small>Two independent conversations</small></div>
+      <nav class="parallel-room-tabs" aria-label="Choose room view">
+        <button type="button" data-parallel-tab="parent" class="${side?"active":""}">Main Room</button>
+        <button type="button" data-parallel-tab="split" class="${side?"":"active"}">Split Room</button>
+      </nav>
+      <button type="button" class="parallel-room-close" aria-label="Close parallel view">×</button>
+    </header>
+    <div class="parallel-room-stage ${side?"side-by-side":"separate-view"}">
+      <div class="parallel-room-pane parent-pane ${side?"active":""}"><iframe title="Main Room" loading="eager" allow="clipboard-read; clipboard-write; autoplay; fullscreen"></iframe></div>
+      <div class="parallel-room-pane split-pane ${side?"":"active"}"><iframe title="Split Room" loading="eager" allow="clipboard-read; clipboard-write; autoplay; fullscreen"></iframe></div>
+    </div>`;
+  document.body.appendChild(overlay);
+  const query=(role)=>{const u=new URL(location.href);u.search="";u.hash="";u.searchParams.set("parallelEmbed","1");u.searchParams.set("parallelRole",role);u.searchParams.set("parallelParent",String(parentId));u.searchParams.set("parallelCode",String(code));return u.toString();};
+  overlay.querySelector(".parent-pane iframe").src=query("parent");
+  overlay.querySelector(".split-pane iframe").src=query("split");
+  overlay.querySelector(".parallel-room-close").addEventListener("click",()=>overlay.remove());
+  overlay.querySelectorAll("[data-parallel-tab]").forEach(button=>button.addEventListener("click",()=>{
+    const tab=button.dataset.parallelTab;
+    overlay.querySelectorAll("[data-parallel-tab]").forEach(b=>b.classList.toggle("active",b===button));
+    overlay.querySelector(".parent-pane").classList.toggle("active",tab==="parent");
+    overlay.querySelector(".split-pane").classList.toggle("active",tab==="split");
+  }));
+}
+async function startParallelEmbed(){
+  const params=new URLSearchParams(location.search);
+  if(params.get("parallelEmbed")!=="1")return;
+  document.body.classList.add("parallel-embed");
+  const role=params.get("parallelRole"),parentId=String(params.get("parallelParent")||""),code=String(params.get("parallelCode")||"");
+  let access=null;
+  try{access=JSON.parse(safeStorage.getItem("mc_parallel_parent_access")||"null");}catch{}
+  if(!parentId||!access||String(access.roomId)!==parentId||!access.joinToken){document.body.classList.add("parallel-embed-error");return;}
+  for(let attempt=0;attempt<150;attempt++){if(state.user)break;await new Promise(resolve=>setTimeout(resolve,200));}
+  if(!state.user){document.body.classList.add("parallel-embed-error");return;}
+  window.__mcRoomJoinTokens=window.__mcRoomJoinTokens||{};
+  window.__mcRoomJoinTokens[parentId]=access.joinToken;
+  try{
+    let roomId=parentId,joinToken=access.joinToken;
+    if(role==="split"){
+      const joined=await api("/api/rooms/"+encodeURIComponent(parentId)+"/splits/join",{method:"POST",headers:{"x-room-join-token":access.joinToken},body:JSON.stringify({code})});
+      state.rooms=Array.isArray(state.rooms)?state.rooms:[];
+      state.rooms=state.rooms.filter(r=>String(r.id)!==String(joined.room.id));
+      state.rooms.push(joined.room);
+      roomId=String(joined.room.id);joinToken=joined.joinToken;
+    }else{
+      const list=await api("/api/rooms",{headers:{"x-room-join-token":access.joinToken}});
+      state.rooms=list.rooms||state.rooms||[];
+    }
+    window.__mcRoomJoinTokens[String(roomId)]=joinToken;
+    const opened=await joinRoom(String(roomId));
+    if(!opened)document.body.classList.add("parallel-embed-error");
+  }catch(error){console.error("Parallel room frame failed:",error);document.body.classList.add("parallel-embed-error");}
+}
+
 function openParallelSplits(){
   if(!state.user||!state.currentRoom){toast("Open a room first.");return;}
   const rank=String(state.user.rank||"MEMBER").toUpperCase();
@@ -434,33 +496,31 @@ async function createParallelSplit(){
   const layout=document.querySelector('input[name="parallelLayout"]:checked')?.value||"separate";
   if(!/^[A-Z0-9]{4,24}$/.test(code)){toast("Use 4–24 letters or numbers for your Split Code.");return;}
   const parentId=String(state.currentRoom||"");
+  const parentAccess=JSON.parse(safeStorage.getItem("mc_room_join")||"null");
+  if(!parentAccess||String(parentAccess.roomId)!==parentId){toast("Refresh your parent-room access and try again.");return;}
+  safeStorage.setItem("mc_parallel_parent_access",JSON.stringify(parentAccess));
   const button=document.getElementById("parallelCreateBtn");
   if(button){button.disabled=true;button.textContent="Creating…";}
   try{
     const result=await api("/api/rooms/"+encodeURIComponent(parentId)+"/splits/create",{method:"POST",body:JSON.stringify({code,layout})});
-    state.rooms=state.rooms.filter(r=>String(r.id)!==String(result.room.id));
-    state.rooms.push(result.room);
-    window.__mcRoomJoinTokens=window.__mcRoomJoinTokens||{};
-    window.__mcRoomJoinTokens[String(result.room.id)]=result.joinToken;
     closeModal();
-    const opened=await joinRoom(String(result.room.id));
-    if(opened)toast("Split room created. Share code: "+code);
+    openParallelRoomLayout(parentId,String(result.room.id),code,layout);
+    toast("Split room created. Share this code: "+code);
   }catch(error){toast(error.message||"Could not create the split.");if(button){button.disabled=false;button.textContent="Create Split";}}
 }
 async function joinParallelSplit(){
   const code=String(document.getElementById("parallelJoinCode")?.value||"").trim().toUpperCase();
   if(!/^[A-Z0-9]{4,24}$/.test(code)){toast("Enter a valid Split Code.");return;}
   const parentId=String(state.currentRoom||"");
+  const parentAccess=JSON.parse(safeStorage.getItem("mc_room_join")||"null");
+  if(!parentAccess||String(parentAccess.roomId)!==parentId){toast("Refresh your parent-room access and try again.");return;}
+  safeStorage.setItem("mc_parallel_parent_access",JSON.stringify(parentAccess));
   const button=document.getElementById("parallelJoinBtn");
   if(button){button.disabled=true;button.textContent="Joining…";}
   try{
     const result=await api("/api/rooms/"+encodeURIComponent(parentId)+"/splits/join",{method:"POST",body:JSON.stringify({code})});
-    state.rooms=state.rooms.filter(r=>String(r.id)!==String(result.room.id));
-    state.rooms.push(result.room);
-    window.__mcRoomJoinTokens=window.__mcRoomJoinTokens||{};
-    window.__mcRoomJoinTokens[String(result.room.id)]=result.joinToken;
     closeModal();
-    await joinRoom(String(result.room.id));
+    openParallelRoomLayout(parentId,String(result.room.id),code,String(result.layout||"separate"));
   }catch(error){toast(error.message||"Could not join that split.");if(button){button.disabled=false;button.textContent="Join Split";}}
 }
 document.getElementById("openParallelSplits")?.addEventListener("click",openParallelSplits);
@@ -793,8 +853,8 @@ async function authenticateSocketAndJoinRoom(socket=state.socket, syncHistory=tr
   return new Promise(resolve=>{
     socket.emit("auth",{token:safeStorage.getItem("mc_token")||""},async ack=>{
       if(!ack?.ok || socket!==state.socket || !socket.connected){resolve(false);return;}
-      let access=null;
-      try{access=JSON.parse(safeStorage.getItem("mc_room_join")||"null");}catch{}
+      let access=state.currentRoom&&window.__mcRoomJoinTokens?.[String(state.currentRoom)]?{roomId:String(state.currentRoom),joinToken:window.__mcRoomJoinTokens[String(state.currentRoom)]}:null;
+      if(!access){try{access=JSON.parse(safeStorage.getItem("mc_room_join")||"null");}catch{}}
       if(!state.currentRoom || String(access?.roomId??"")!==String(state.currentRoom) || !access?.joinToken){resolve(true);return;}
       // Wait until the server confirms this socket has joined the room.
       // Otherwise a message sent immediately after joining can race the subscription.
@@ -1993,7 +2053,7 @@ async function joinRoom(id) {
     });
 
     safeStorage.setItem('mc_room_join',JSON.stringify({roomId:String(id),joinToken:access.joinToken}));
-    if(window.__mcRoomJoinTokens)delete window.__mcRoomJoinTokens[id];
+    window.__mcRoomJoinTokens=window.__mcRoomJoinTokens||{};window.__mcRoomJoinTokens[String(id)]=access.joinToken;
     if(roomInvite?.roomId===id)history.replaceState(null,"",location.pathname+location.search);
 
     if (
@@ -7161,3 +7221,5 @@ bootstrap();
   if(ticker){ticker.textContent=messages[0];window.setInterval(()=>{index=(index+1)%messages.length;ticker.textContent=messages[index];},60000);}
 })();
 
+
+if(new URLSearchParams(location.search).get("parallelEmbed")==="1")startParallelEmbed();
