@@ -7603,3 +7603,32 @@ body { background:#100c0a !important; color:#fff4e9 !important; }
 .parallel-split-card .secondary-btn{background:transparent;color:var(--text)}
 .parallel-rank-note{padding:10px;border:1px solid var(--border);border-radius:8px}
 @media(max-width:520px){.parallel-layout-options{grid-template-columns:1fr}}
+
+
+/* Parallel Rooms: two complete, isolated room clients in one responsive workspace. */
+.parallel-room-overlay{position:fixed;inset:0;z-index:100000;background:var(--bg,#080611);display:flex;flex-direction:column;min-width:0;min-height:0}
+.parallel-room-toolbar{height:58px;flex:0 0 58px;display:flex;align-items:center;gap:12px;padding:7px 12px;box-sizing:border-box;border-bottom:1px solid var(--border);background:var(--panel,#15121c)}
+.parallel-room-toolbar-title{display:grid;gap:2px;min-width:0}.parallel-room-toolbar-title b{font-size:14px}.parallel-room-toolbar-title small{font-size:10px;color:var(--muted)}
+.parallel-room-tabs{display:flex;gap:6px;margin-left:auto}.parallel-room-tabs button{border:1px solid var(--border);border-radius:9px;padding:8px 11px;background:transparent;color:var(--text);font-size:12px}.parallel-room-tabs button.active{background:var(--accent);border-color:var(--accent);color:#fff}
+.parallel-room-close{width:36px;height:36px;flex:none;border:1px solid var(--border);border-radius:10px;background:transparent;color:var(--text);font-size:24px;line-height:1}
+.parallel-room-stage{flex:1;min-height:0;min-width:0;display:grid;overflow:hidden}
+.parallel-room-stage.side-by-side{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+.parallel-room-stage.separate-view{display:block;position:relative}
+.parallel-room-pane{min-width:0;min-height:0;overflow:hidden;border-right:1px solid var(--border)}
+.parallel-room-pane iframe{display:block;width:100%;height:100%;border:0;background:var(--bg,#080611)}
+.parallel-room-stage.separate-view .parallel-room-pane{display:none;width:100%;height:100%}
+.parallel-room-stage.separate-view .parallel-room-pane.active{display:block}
+body.parallel-embed{overflow:hidden!important}
+body.parallel-embed #app>.top-header,body.parallel-embed #app>#sidebar{display:none!important}
+body.parallel-embed #app>.main{margin:0!important;padding:0!important;width:100%!important;height:100dvh!important;min-height:0!important}
+body.parallel-embed #viewRooms{position:fixed!important;inset:0!important;width:100vw!important;height:100dvh!important;min-height:0!important;margin:0!important;padding:0!important;display:flex!important;overflow:hidden!important}
+body.parallel-embed #viewRooms>*:not(#chatWrap){display:none!important}
+body.parallel-embed #viewRooms #chatWrap{display:grid!important;flex:1 1 auto!important;width:100%!important;height:100dvh!important;min-height:0!important;margin:0!important}
+body.parallel-embed #openParallelSplits{display:none!important}
+body.parallel-embed.parallel-embed-error:after{content:"This room could not be opened. Close this view and re-enter the parent room.";position:fixed;inset:0;display:grid;place-items:center;padding:24px;text-align:center;background:var(--bg);color:var(--text);z-index:100001}
+@media(max-width:760px){
+  .parallel-room-toolbar{gap:7px;padding:6px 8px}.parallel-room-toolbar-title small{display:none}.parallel-room-tabs button{padding:7px 9px;font-size:11px}
+  .parallel-room-stage.side-by-side{display:block;position:relative}
+  .parallel-room-stage.side-by-side .parallel-room-pane{display:none;width:100%;height:100%}
+  .parallel-room-stage.side-by-side .parallel-room-pane.active{display:block}
+}
