@@ -7475,51 +7475,40 @@ app.get('/api/me/account',auth,async(req,res)=>{
 
     await persistState(db);
 
-    // Publish a persistent System Bot Join Chat panel once per minute in the
-    // three named public community rooms. Existing room records and messages
-    // are preserved; a missing/retired Main Room is simply skipped.
-    let joinChatBroadcastInFlight = false;
+    // Cross-promote KnightPulse in the two active age-based public rooms.
+    // Main Room is retired/hidden, so only Teen Chat and Adult Chat receive this.
+    let joinKCBroadcastInFlight = false;
     setInterval(async () => {
-      if (joinChatBroadcastInFlight) return;
-      joinChatBroadcastInFlight = true;
+      if (joinKCBroadcastInFlight) return;
+      joinKCBroadcastInFlight = true;
       try {
         const targets = await pool.query(
           "SELECT id,name FROM rooms WHERE is_public=true AND LOWER(BTRIM(name))=ANY($1::text[]) ORDER BY id",
-          [["main room", "teen chat", "adult chat"]]
+          [["teen chat", "adult chat"]]
         );
         for (const room of targets.rows) {
-          const now = Date.now();
           const message = {
-            id: id(),
-            roomId: String(room.id),
-            userId: null,
-            username: "Bot",
-            displayName: "System Bot",
-            rank: "BOT",
-            system: false,
-            isBot: true,
-            bot: "Bot",
+            id: id(), roomId: String(room.id), userId: null,
+            username: "Bot", displayName: "System Bot", rank: "BOT",
+            system: false, isBot: true, bot: "Bot",
             joinChatPanel: true,
-            joinChatUrl: "https://maleficentchat.onrender.com/",
-            text: "Meet new people, make friends and join the conversation on Maleficent Chat.",
-            reactions: {},
-            edited: false,
-            deleted: false,
-            pinned: false,
-            time: now,
-            delivered: true
+            joinChatUrl: "https://knightpulse.up.railway.app/",
+            joinChatBrand: "KNIGHTPULSE",
+            text: "Join KnightPulse to meet the community, chat and take part in the fun.",
+            reactions: {}, edited: false, deleted: false, pinned: false,
+            time: Date.now(), delivered: true
           };
           await pool.query(
             "INSERT INTO room_messages(id,room_id,user_id,data,created_at) VALUES($1,$2,NULL,$3::jsonb,NOW())",
             [message.id, Number(room.id), JSON.stringify(message)]
           );
-          if (Array.isArray(db.messages)) db.messages.push(message);
+          db.messages.push(message);
           io.to("room:" + room.id).emit("message", message);
         }
       } catch (error) {
-        console.error("[SYSTEM BOT] Join Chat broadcast failed:", error?.message || error);
+        console.error("[SYSTEM BOT] Join KnightPulse broadcast failed:", error?.message || error);
       } finally {
-        joinChatBroadcastInFlight = false;
+        joinKCBroadcastInFlight = false;
       }
     }, 60 * 1000);
 
