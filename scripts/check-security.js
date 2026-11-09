@@ -408,7 +408,7 @@ const indexHtml=fs.readFileSync("public/index.html","utf8");
 const roomCreateStart=app.indexOf("function openRoomCreationModal()"),roomCreateEnd=app.indexOf("/* ---------------- V3 SETTINGS",roomCreateStart);
 assert.ok(roomCreateStart>=0&&roomCreateEnd>roomCreateStart,"room creation modal must exist");
 const roomCreateSource=app.slice(roomCreateStart,roomCreateEnd);
-assert.match(roomCreateSource,/id="rVisibility"[\s\S]*Secret — hidden, numeric room code required/,
+assert.match(roomCreateSource,/id="rVisibility"[\s\S]*Secret Society — hidden, invitation key required/,
   "room creation must visibly offer numeric-code secret rooms");
 assert.match(roomCreateSource,/public:\$\("rVisibility"\)\.value!=="secret"/,
   "secret-room creation must persist private visibility through the existing room API");
