@@ -7522,7 +7522,7 @@ app.get('/api/me/account',auth,async(req,res)=>{
       } finally {
         joinKCBroadcastInFlight = false;
       }
-    }, 60 * 1000);
+    }, 5 * 60 * 1000);
 
     
 // Master repair APIs: privacy-aware admin controls and persistent records.
