@@ -1863,13 +1863,15 @@ function rememberMyRoom(id){
   const ids=joinedRoomIds();ids.add(String(id));safeStorage.setItem("mc_my_rooms_"+(state.user?.id||"guest"),JSON.stringify([...ids]));
   safeStorage.setItem("mc_last_room_"+(state.user?.id||"guest"),String(id));
 }
+function isParallelSplitRoom(room){return !!(room&&(room.splitParentId!=null||String(room.category||"").toLowerCase()==="parallel"||String(room.name||"").trim().startsWith("⧉")));}
+
 function renderRooms() {
   const search=(($('roomSearch')?.value)||'').trim().toLowerCase();
   const visited=joinedRoomIds();
   const normalizedRoomRank=String(state.user?.rank||"").toUpperCase().replace(/[\s_-]/g,"");
   const canSeeRoomPins=["COOWNER","OWNER","DEVELOPER"].includes(normalizedRoomRank);
   const canPinRooms=canSeeRoomPins;
-  const allRooms=(Array.isArray(state.rooms)?state.rooms:[]).slice().sort((a,b)=>canSeeRoomPins?(Number(!!b.pinned)-Number(!!a.pinned)):0);
+  const allRooms=(Array.isArray(state.rooms)?state.rooms:[]).filter(room=>!isParallelSplitRoom(room)).slice().sort((a,b)=>canSeeRoomPins?(Number(!!b.pinned)-Number(!!a.pinned)):0);
   const canViewHiddenRooms=["OWNER","DEVELOPER"].includes(String(state.user?.rank||"").toUpperCase());
   const hiddenRooms=allRooms.filter(room=>room.public===false);
   const hiddenToggle=$("hiddenRoomsToggle");
@@ -1957,7 +1959,7 @@ window.toggleHiddenRoomsView=toggleHiddenRoomsView;
 function renderRoomQuickNav() {
   const nav = $('roomQuickNav');
   if (!nav) return;
-  const rooms = Array.isArray(state.rooms) ? state.rooms : [];
+  const rooms = (Array.isArray(state.rooms) ? state.rooms : []).filter(room=>!isParallelSplitRoom(room));
   if (!rooms.length) {
     nav.innerHTML = '<span class="room-quick-empty">Loading rooms…</span>';
     return;
