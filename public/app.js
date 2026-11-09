@@ -2117,11 +2117,9 @@ function messageHTML(message) {
     const joinUrl=String(message.joinChatUrl||"https://knightpulse.up.railway.app/");
     return `<div class="message bot-welcome-message bot-join-chat-message" data-mid="${esc(message.id)}">
       <div class="bot-welcome-bubble">
-        <div class="bot-welcome-byline">🤖 System Bot · COMMUNITY INVITE</div>
+        <div class="bot-welcome-byline">🤖 SYSTEM BOT</div>
         <div class="bot-welcome-glow">⚔️ JOIN KNIGHTPULSE</div>
-        <div class="bot-welcome-username">${esc(message.text||"Join KnightPulse to meet the community, chat and take part in the fun.")}</div>
-        <a class="bot-join-chat-link" href="${esc(joinUrl)}" target="_blank" rel="noopener noreferrer">✦ JOIN KNIGHTPULSE ✦</a>
-        <div class="bot-join-chat-footnote">Your KnightPulse community is waiting</div>
+        <a class="bot-join-chat-link" href="${esc(joinUrl)}" target="_blank" rel="noopener noreferrer">JOIN KNIGHTPULSE ↗</a>
       </div>
     </div>`;
   }
