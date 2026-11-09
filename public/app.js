@@ -253,9 +253,9 @@ async function api(url, opt = {}) {
   if(roomMatch&&window.__mcRoomJoinTokens?.[String(roomMatch[1])])headers['x-room-join-token']=window.__mcRoomJoinTokens[String(roomMatch[1])];
   if(roomMatch){try{const roomAccess=JSON.parse(safeStorage.getItem('mc_room_join')||'null');if(roomAccess?.roomId!=null&&String(roomAccess.roomId)===String(roomMatch[1])&&roomAccess.joinToken)headers['x-room-join-token']=roomAccess.joinToken;}catch{}}
   const messageMatch=String(url).match(/\/api\/messages\/[^/?#]+(?:\/|$)/);
-  if(!roomMatch&&messageMatch){try{const roomAccess=JSON.parse(safeStorage.getItem("mc_room_join")||"null");if(roomAccess?.roomId!=null&&String(roomAccess.roomId)===String(state.currentRoom)&&roomAccess.joinToken)headers["x-room-join-token"]=roomAccess.joinToken;}catch{}}
+  if(!roomMatch&&messageMatch){const activeRoomId=String(state.currentRoom||"");const memoryToken=window.__mcRoomJoinTokens?.[activeRoomId];if(memoryToken)headers["x-room-join-token"]=memoryToken;else{try{const roomAccess=JSON.parse(safeStorage.getItem("mc_room_join")||"null");if(roomAccess?.roomId!=null&&String(roomAccess.roomId)===activeRoomId&&roomAccess.joinToken)headers["x-room-join-token"]=roomAccess.joinToken;}catch{}}}
   if(!roomMatch&&/\/api\/messages\/[^/?#]+\/forward(?:[?#]|$)/.test(String(url))){
-    try{const body=typeof opt.body==="string"?JSON.parse(opt.body):opt.body;const roomAccess=JSON.parse(safeStorage.getItem("mc_room_join")||"null");if(body?.roomId!=null&&String(roomAccess?.roomId)===String(body.roomId)&&roomAccess?.joinToken)headers["x-room-join-token"]=roomAccess.joinToken;}catch{}
+    try{const body=typeof opt.body==="string"?JSON.parse(opt.body):opt.body;const memoryToken=body?.roomId!=null?window.__mcRoomJoinTokens?.[String(body.roomId)]:null;const roomAccess=JSON.parse(safeStorage.getItem("mc_room_join")||"null");if(memoryToken)headers["x-room-join-token"]=memoryToken;else if(body?.roomId!=null&&String(roomAccess?.roomId)===String(body.roomId)&&roomAccess?.joinToken)headers["x-room-join-token"]=roomAccess.joinToken;}catch{}
   }
   // API responses must never be read from or written to the browser HTTP cache.
   // In particular, chat history must be fetched fresh after reloads.
