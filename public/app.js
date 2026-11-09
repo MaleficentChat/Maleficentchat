@@ -395,7 +395,7 @@ async function refreshCurrentRoomOnly(){
 
 function openParallelRoomLayout(parentId,splitId,code,layout,dimensionName,ownerId){
   const existing=document.getElementById("parallelRoomOverlay");existing?.remove();
-  const side=layout==="side-by-side";
+  const side=false;
   const overlay=document.createElement("section");
   overlay.id="parallelRoomOverlay";overlay.className="parallel-room-overlay "+(side?"side-by-side-mode":"separate-view-mode");
   overlay.innerHTML=`
@@ -412,32 +412,6 @@ function openParallelRoomLayout(parentId,splitId,code,layout,dimensionName,owner
       <div class="parallel-room-pane split-pane ${side?"":"active"}"><iframe title="Split Room" loading="eager" allow="clipboard-read; clipboard-write; autoplay; fullscreen"></iframe></div>
     </div>`;
   document.body.appendChild(overlay);
-  const portalOpen=overlay.querySelector(".parallel-portal-open");
-  const portalToggle=overlay.querySelector(".parallel-portal-toggle");
-  if(portalToggle){
-    const isCreator=String(ownerId||"")===String(state.user?.id||"");
-    portalToggle.classList.toggle("hidden",!isCreator);
-    portalToggle.textContent="Portal: "+(portalEnabled===false?"OFF":"ON");
-    portalToggle.classList.toggle("portal-off",portalEnabled===false);
-    portalToggle.addEventListener("click",async()=>{
-      portalToggle.disabled=true;
-      try{
-        const result=await api("/api/rooms/"+encodeURIComponent(parentId)+"/splits/"+encodeURIComponent(splitId)+"/portal",{method:"POST",body:JSON.stringify({enabled:portalEnabled===false})});
-        portalEnabled=result.portalEnabled===true;
-        portalToggle.textContent="Portal: "+(portalEnabled?"ON":"OFF");
-        portalToggle.classList.toggle("portal-off",!portalEnabled);
-        portalOpen.disabled=!portalEnabled;
-        portalOpen.title=portalEnabled?"Travel to another dimension":"The creator has closed this Portal";
-        toast(portalEnabled?"Dimension Portal opened.":"Dimension Portal closed.");
-      }catch(error){toast(error.message||"Could not update the Portal.");}
-      finally{portalToggle.disabled=false;}
-    });
-  }
-  if(portalOpen){
-    portalOpen.disabled=portalEnabled===false;
-    portalOpen.title=portalEnabled===false?"The creator has closed this Portal":"Travel to another dimension";
-    portalOpen.addEventListener("click",()=>openDimensionPortal(parentId,splitId,portalEnabled!==false));
-  }
   const query=(role)=>{const u=new URL(location.href);u.search="";u.hash="";u.searchParams.set("parallelEmbed","1");u.searchParams.set("parallelRole",role);u.searchParams.set("parallelParent",String(parentId));u.searchParams.set("parallelCode",String(code));return u.toString();};
   overlay.querySelector(".parent-pane iframe").src=query("parent");
   overlay.querySelector(".split-pane iframe").src=query("split");
@@ -497,13 +471,7 @@ function openParallelSplits(){
           <input id="parallelDimensionName" maxlength="40" autocomplete="off" placeholder="E.G. The Velvet Nebula">
           <label for="parallelCreateCode">Custom Dimension Code</label>
           <input id="parallelCreateCode" maxlength="24" autocomplete="off" autocapitalize="characters" placeholder="E.G. NIGHTOWL24">
-          <small>4–24 letters or numbers. Codes are unique within this original room.</small>
-          <label>Choose layout</label>
-          <div class="parallel-layout-options">
-            <label><input type="radio" name="parallelLayout" value="side-by-side" checked><span><b>▥ Side-by-Side</b><small>Keep both rooms visible together.</small></span></label>
-            <label><input type="radio" name="parallelLayout" value="separate"><span><b>▣ Separate View</b><small>Open the split as its own full room.</small></span></label>
-          </div>
-          <button type="button" class="primary-btn" id="parallelCreateBtn">Create Dimension</button>
+          <small>4–24 letters or numbers. Codes are unique within this original room.</small><button type="button" class="primary-btn" id="parallelCreateBtn">Create Dimension</button>
         `:`<p class="parallel-rank-note">Creating a split requires ${threshold} rank or above.</p>`}
       </section>
       <section class="parallel-split-card">
@@ -522,7 +490,7 @@ function openParallelSplits(){
 async function createParallelSplit(){
   const name=String(document.getElementById("parallelDimensionName")?.value||"").trim();
   const code=String(document.getElementById("parallelCreateCode")?.value||"").trim().toUpperCase();
-  const layout=document.querySelector('input[name="parallelLayout"]:checked')?.value||"separate";
+  const layout="separate";
   if(name.length<2||name.length>40){toast("Give your dimension a name (2–40 characters).");return;}
   if(!/^[A-Z0-9]{4,24}$/.test(code)){toast("Use 4–24 letters or numbers for your Split Code.");return;}
   const parentId=String(state.currentRoom||"");
@@ -2287,8 +2255,7 @@ function messageHTML(message) {
     return `<div class="message bot-welcome-message bot-join-chat-message" data-mid="${esc(message.id)}">
       <div class="bot-welcome-bubble">
         <div class="bot-welcome-byline">🤖 SYSTEM BOT</div>
-        <div class="bot-welcome-glow">⚔️ JOIN KNIGHTPULSE</div>
-        <a class="bot-join-chat-link" href="${esc(joinUrl)}" target="_blank" rel="noopener noreferrer">JOIN KNIGHTPULSE ↗</a>
+        <a class="bot-welcome-glow bot-join-chat-glow" href="${esc(joinUrl)}" target="_blank" rel="noopener noreferrer">⚔️ JOIN KNIGHTPULSE</a>
       </div>
     </div>`;
   }
