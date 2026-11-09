@@ -7581,3 +7581,25 @@ body { background:#100c0a !important; color:#fff4e9 !important; }
   #viewRooms.chatting .bot-welcome-message .bot-welcome-bubble{width:100%!important;min-height:145px!important;padding:21px 15px!important;border-radius:17px!important}
   #viewRooms.chatting .bot-welcome-message .bot-welcome-glow{font-size:clamp(22px,6.5vw,29px)!important}
 }
+
+
+/* Parallel split room access panel */
+.parallel-split-panel{display:grid;gap:14px;max-width:520px;margin:0 auto}
+.parallel-split-heading{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.parallel-split-heading small{font-size:10px;letter-spacing:1.5px;color:var(--muted)}
+.parallel-split-heading h2{margin:3px 0 0;font-size:21px}
+.parallel-private-pill{font-size:10px;font-weight:800;letter-spacing:1px;padding:5px 9px;border:1px solid var(--accent);border-radius:20px;color:var(--accent)}
+.parallel-split-card{display:grid;gap:9px;padding:14px;border:1px solid var(--border);border-radius:13px;background:var(--panel,rgba(255,255,255,.025))}
+.parallel-split-card h3{margin:0;font-size:15px}
+.parallel-split-card p,.parallel-split-footnote{margin:0;color:var(--muted);font-size:12px;line-height:1.5}
+.parallel-split-card input:not([type=radio]){width:100%;min-width:0;box-sizing:border-box;padding:11px 12px;border:1px solid var(--border);border-radius:9px;background:var(--input-bg,transparent);color:var(--text);font:inherit;text-transform:uppercase}
+.parallel-split-card>small{font-size:10px;color:var(--muted)}
+.parallel-layout-options{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.parallel-layout-options>label{display:flex;align-items:flex-start;gap:7px;padding:10px;border:1px solid var(--border);border-radius:9px;cursor:pointer}
+.parallel-layout-options input{margin:3px 0 0;accent-color:var(--accent)}
+.parallel-layout-options span{display:grid;gap:3px;font-size:12px}
+.parallel-layout-options small{font-size:10px;color:var(--muted);line-height:1.35}
+.parallel-split-card button{width:100%;min-height:40px;border:1px solid var(--accent);border-radius:9px;background:var(--accent);color:#fff;font-weight:800}
+.parallel-split-card .secondary-btn{background:transparent;color:var(--text)}
+.parallel-rank-note{padding:10px;border:1px solid var(--border);border-radius:8px}
+@media(max-width:520px){.parallel-layout-options{grid-template-columns:1fr}}
