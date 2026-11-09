@@ -2354,6 +2354,8 @@ app.post("/api/rooms/:id/splits/join",auth,async(req,res)=>{
     const row=found.rows[0];
     if(!row)return res.status(404).json({error:"No split in this room matches that code."});
     const room=parallelSplitRoomShape(row,parent,actor);
+    if(!roomJoinPolicyAllowed(actor,room,{existingJoinToken:true}))return res.status(403).json({error:"You cannot access this split room."});
+    if(!roomCapacityAvailable(actor,room))return res.status(403).json({error:"This split room has reached its member limit."});
     db.rooms=db.rooms||[];
     db.rooms=db.rooms.filter(x=>String(x.id)!==String(row.id));
     db.rooms.push(room);
