@@ -27,8 +27,8 @@ function addNav(){
   const conf=document.createElement("section");conf.id="sfConfessionsView";conf.className="view hidden sf-view";
   conf.innerHTML='<div class="topbar"><div><h2>🥀 Anonymous Confessions</h2><p class="muted">Share thoughts without showing your public identity.</p></div><div class="toolbar"><button class="mini" id="sfConfLatest">Latest</button><button class="mini" id="sfConfPopular">Popular</button><button class="mini" id="sfConfMine">My submissions</button></div></div><div class="sf-content" id="sfConfContent"></div>';
   main.appendChild(conf);
-
-  const mySpace=document.querySelectorAll(".nav-group");
+ }
+ const mySpace=document.querySelectorAll(".nav-group");
   const personal=Array.from(mySpace).find(g=>g.querySelector('[data-view="saved"]'))||mySpace[0];
   if(personal&&!personal.querySelector('[data-social-view="media-vault"]')){
     const vault=document.createElement("button");vault.className="nav";vault.type="button";vault.dataset.socialView="media-vault";vault.innerHTML='🎞️ <span>Media Vault</span>';personal.appendChild(vault);
@@ -38,7 +38,6 @@ function addNav(){
     vault.innerHTML='<div class="topbar"><div><h2>🎞️ Media Vault</h2><p class="muted">Your private collection of saved photos, GIFs, videos and links.</p></div><span class="sf-vault-count" id="sfVaultCount">0 saved</span></div><div class="sf-content"><form class="sf-vault-add" id="sfVaultForm"><input name="url" type="url" placeholder="Paste a site upload or YouTube link…" required><input name="title" maxlength="140" placeholder="Give it a title (optional)"><button class="primary" type="submit">＋ Save to Vault</button></form><div class="sf-vault-note">Only you can see your vault. Save media from Shadow Feed with the “Save to Vault” action, or paste a link from this site or YouTube.</div><div class="sf-vault-filters"><button type="button" class="mini active" data-vault-filter="all">All</button><button type="button" class="mini" data-vault-filter="image">Photos</button><button type="button" class="mini" data-vault-filter="gif">GIFs</button><button type="button" class="mini" data-vault-filter="video">Videos</button><button type="button" class="mini" data-vault-filter="link">Links</button></div><div class="sf-vault-grid" id="sfVaultGrid"></div></div>';
     main.appendChild(vault);
   }
- }
  document.querySelectorAll("[data-social-view]").forEach(b=>{
   if(b.dataset.socialBound==="true")return;
   b.dataset.socialBound="true";
