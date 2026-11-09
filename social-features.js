@@ -98,7 +98,7 @@ function registerSocialFeatureRoutes({app,auth,current,pool,storeMediaBuffer,has
     }else{
       let parsed;try{parsed=new URL(value);}catch(_){throw new Error("Use a valid media link.");}
       if(parsed.protocol!=="https:")throw new Error("Only secure HTTPS links can be saved.");
-      if(parsed.host===req.get("host")&&parsed.pathname.startsWith("/uploads/")){url=parsed.pathname;if(!/^\\/uploads\\/[A-Za-z0-9._/-]+$/.test(url)||url.split("/").some(part=>part===".."||part==="."))throw new Error("Invalid media link.");}
+      if(parsed.host===req.get("host")&&parsed.pathname.startsWith("/uploads/")){url=parsed.pathname;if(!/^\/uploads\/[A-Za-z0-9._/-]+$/.test(url)||url.split("/").some(part=>part===".."||part==="."))throw new Error("Invalid media link.");}
       else if(["youtube.com","www.youtube.com","youtu.be","www.youtu.be","youtube-nocookie.com","www.youtube-nocookie.com"].includes(parsed.hostname))url=parsed.toString();
       else throw new Error("For privacy, save only this site's uploaded media or YouTube links.");
     }
