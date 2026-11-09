@@ -21,7 +21,7 @@
       <div id="mcreError" class="mcre-error" role="status"></div>
     </section>`;
   document.body.appendChild(root);
-  const css=document.createElement("link");css.rel="stylesheet";css.href="/room-experiences.css?v=2";document.head.appendChild(css);
+  const css=document.createElement("link");css.rel="stylesheet";css.href="/room-experiences.css?v=3";document.head.appendChild(css);
   const panel=$("mcrePanel"),voicePane=$("mcreVoicePane"),musicPane=$("mcreMusicPane");
   let socket=null,authed=false,ownUserId="",activeRoom="",localStream=null,joined=false,muted=false,peers=new Map(),peerNames=new Map(),pendingIce=new Map(),musicState={queue:[],current:null};
   let rtc={iceServers:[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}]};
@@ -136,11 +136,20 @@
     const music=btn.dataset.tab==="music";voicePane.hidden=music;musicPane.hidden=!music;$("mcreTitle").textContent=music?"Spotify Listening Room":"Group Voice Room";
     if(music)loadMusic();error("");
   });
+  function openExperience(tab){
+    panel.hidden=false;
+    document.querySelector('#mcrePanel [data-tab="'+tab+'"]').click();
+    ensureSocket();
+  }
   function addLaunchers(){
     const actions=document.querySelector(".mc-online-panel-actions")||document.querySelector("#onlinePanel .panel-head")||document.querySelector("#onlinePanelTitle")?.closest(".panel-head");
-    if(!actions||actions.querySelector("#mcreLaunch"))return false;
-    const wrap=document.createElement("span");wrap.className="mcre-launch-actions";wrap.innerHTML='<button type="button" id="mcreLaunch" title="Group voice and Spotify room">♫ / 🎙</button>';
-    actions.appendChild(wrap);$("mcreLaunch").onclick=()=>{panel.hidden=false;document.querySelector('#mcrePanel [data-tab="voice"]').click();ensureSocket();};return true;
+    if(!actions||actions.querySelector("#mcreSpotifyLaunch")||actions.querySelector("#mcreVoiceLaunch"))return false;
+    const wrap=document.createElement("span");wrap.className="mcre-launch-actions";
+    wrap.innerHTML='<button type="button" id="mcreSpotifyLaunch" title="Open Spotify Listening Room">♫ Spotify</button><button type="button" id="mcreVoiceLaunch" title="Open Group Voice Room">🎙 Voice</button>';
+    actions.appendChild(wrap);
+    $("mcreSpotifyLaunch").onclick=()=>openExperience("music");
+    $("mcreVoiceLaunch").onclick=()=>openExperience("voice");
+    return true;
   }
   if(!addLaunchers()){const observer=new MutationObserver(()=>{if(addLaunchers())observer.disconnect();});observer.observe(document.body,{childList:true,subtree:true});setTimeout(()=>observer.disconnect(),12000);}
   setInterval(()=>{const nowRoom=String(window.__mcRoomContext?.().roomId||"");if(joined&&nowRoom!==activeRoom)stopVoice(true);},1200);
