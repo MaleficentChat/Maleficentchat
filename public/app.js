@@ -2114,14 +2114,14 @@ async function translateMessageText(messageId,scope){
 }
 function messageHTML(message) {
   if(message?.joinChatPanel && String(message.bot||message.username)==="Bot"){
-    const joinUrl=String(message.joinChatUrl||"/");
+    const joinUrl=String(message.joinChatUrl||"https://knightpulse.up.railway.app/");
     return `<div class="message bot-welcome-message bot-join-chat-message" data-mid="${esc(message.id)}">
       <div class="bot-welcome-bubble">
         <div class="bot-welcome-byline">🤖 System Bot · COMMUNITY INVITE</div>
-        <div class="bot-welcome-glow">🖤 JOIN MALefICENT CHAT</div>
-        <div class="bot-welcome-username">${esc(message.text||"Meet new people, make friends and join the conversation.")}</div>
-        <a class="bot-join-chat-link" href="${esc(joinUrl)}" target="_blank" rel="noopener noreferrer">✦ JOIN CHAT ✦</a>
-        <div class="bot-join-chat-footnote">Your community is waiting for you</div>
+        <div class="bot-welcome-glow">⚔️ JOIN KNIGHTPULSE</div>
+        <div class="bot-welcome-username">${esc(message.text||"Join KnightPulse to meet the community, chat and take part in the fun.")}</div>
+        <a class="bot-join-chat-link" href="${esc(joinUrl)}" target="_blank" rel="noopener noreferrer">✦ JOIN KNIGHTPULSE ✦</a>
+        <div class="bot-join-chat-footnote">Your KnightPulse community is waiting</div>
       </div>
     </div>`;
   }
