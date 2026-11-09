@@ -2305,6 +2305,7 @@ async function ensureParallelSplitColumns(){
   await pool.query(`ALTER TABLE rooms ADD COLUMN IF NOT EXISTS split_code TEXT`);
   await pool.query(`ALTER TABLE rooms ADD COLUMN IF NOT EXISTS split_layout TEXT DEFAULT 'separate'`);
   await pool.query(`ALTER TABLE rooms ADD COLUMN IF NOT EXISTS split_name TEXT`);
+  await pool.query(`ALTER TABLE rooms ADD COLUMN IF NOT EXISTS split_portal_enabled BOOLEAN NOT NULL DEFAULT TRUE`);
   await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS rooms_parallel_split_code_unique_idx ON rooms(split_parent_id,LOWER(split_code)) WHERE split_parent_id IS NOT NULL`);
 }
 function parallelSplitRankAllowed(user){
@@ -2312,7 +2313,7 @@ function parallelSplitRankAllowed(user){
   return Number.isInteger(rankOrder[rank]) && Number.isInteger(rankOrder["PREMIUM"]) && rankOrder[rank]>=rankOrder["PREMIUM"];
 }
 function parallelSplitRoomShape(row,parent,user){
-  return {id:String(row.id),name:"⧉ "+String(row.split_name||"Alternate Dimension"),icon:"⧉",description:"An independent alternate dimension branching from "+String(parent.name||"the parent room")+".",category:"Dimension",public:false,passwordHash:null,rankRequired:"MEMBER",limit:100,slowMode:0,announcement:"",ownerId:String(row.created_by||user.id),banner:"",inviteToken:row.invite_token||"",creator:user.username||"Member",isDefault:false,minAge:0,maxAge:120,friendsOnly:false,roomTheme:"obsidian",locked:false,roomCode:null,onlineCount:visibleRoomOnlineCount(row.id),splitParentId:String(parent.id),splitLayout:String(row.split_layout||"separate"),isParallelSplit:true};
+  return {id:String(row.id),name:"⧉ "+String(row.split_name||"Alternate Dimension"),icon:"⧉",description:"An independent alternate dimension branching from "+String(parent.name||"the parent room")+".",category:"Dimension",public:false,passwordHash:null,rankRequired:"MEMBER",limit:100,slowMode:0,announcement:"",ownerId:String(row.created_by||user.id),banner:"",inviteToken:row.invite_token||"",creator:user.username||"Member",isDefault:false,minAge:0,maxAge:120,friendsOnly:false,roomTheme:"obsidian",locked:false,roomCode:null,onlineCount:visibleRoomOnlineCount(row.id),splitParentId:String(parent.id),splitLayout:String(row.split_layout||"separate"),portalEnabled:row.split_portal_enabled!==false,isParallelSplit:true};
 }
 app.post("/api/rooms/:id/splits/create",auth,async(req,res)=>{
   try{
@@ -2344,6 +2345,44 @@ app.post("/api/rooms/:id/splits/create",auth,async(req,res)=>{
     return res.status(500).json({error:"Could not create the split room."});
   }
 });
+app.post("/api/rooms/:id/splits/preview",auth,async(req,res)=>{
+  try{
+    await ensureParallelSplitColumns();
+    const actor=current(req),parent=db.rooms.find(x=>String(x.id)===String(req.params.id));
+    if(!parent)return res.status(404).json({error:"Parent room not found."});
+    const parentToken=String(req.headers["x-room-join-token"]||"");
+    if(!verifyRoomJoinToken(parentToken,actor.id,parent)||!roomJoinPolicyAllowed(actor,parent,{existingJoinToken:true}))return res.status(403).json({error:"Join the parent room first."});
+    const code=String(req.body?.code||"").trim().toUpperCase();
+    if(!/^[A-Z0-9]{4,24}$/.test(code))return res.status(400).json({error:"Enter a valid Dimension Code."});
+    const found=await pool.query("SELECT id,created_by,split_name,split_layout,split_portal_enabled FROM rooms WHERE split_parent_id=$1 AND LOWER(split_code)=LOWER($2) LIMIT 1",[Number(parent.id),code]);
+    const row=found.rows[0];
+    if(!row)return res.status(404).json({error:"No dimension matches that code."});
+    if(row.split_portal_enabled===false)return res.status(403).json({error:"The creator has closed this Dimension Portal."});
+    return res.json({dimensionName:String(row.split_name||"Alternate Dimension"),layout:String(row.split_layout||"separate"),portalEnabled:true,creatorId:String(row.created_by||"")});
+  }catch(error){
+    console.error("Dimension portal preview failed:",error);
+    return res.status(500).json({error:"Could not preview that dimension."});
+  }
+});
+app.post("/api/rooms/:id/splits/:splitId/portal",auth,async(req,res)=>{
+  try{
+    await ensureParallelSplitColumns();
+    const actor=current(req),parent=db.rooms.find(x=>String(x.id)===String(req.params.id));
+    if(!parent)return res.status(404).json({error:"Parent room not found."});
+    const parentToken=String(req.headers["x-room-join-token"]||"");
+    if(!verifyRoomJoinToken(parentToken,actor.id,parent)||!roomJoinPolicyAllowed(actor,parent,{existingJoinToken:true}))return res.status(403).json({error:"Join the parent room first."});
+    const found=await pool.query("SELECT id,created_by FROM rooms WHERE id=$1 AND split_parent_id=$2 LIMIT 1",[Number(req.params.splitId),Number(parent.id)]);
+    const row=found.rows[0];
+    if(!row)return res.status(404).json({error:"Dimension not found."});
+    if(String(row.created_by)!==String(actor.id))return res.status(403).json({error:"Only the Dimension creator can change its Portal."});
+    const enabled=req.body?.enabled===true;
+    await pool.query("UPDATE rooms SET split_portal_enabled=$1 WHERE id=$2",[enabled,Number(row.id)]);
+    return res.json({portalEnabled:enabled});
+  }catch(error){
+    console.error("Dimension portal setting failed:",error);
+    return res.status(500).json({error:"Could not update the Dimension Portal."});
+  }
+});
 app.post("/api/rooms/:id/splits/join",auth,async(req,res)=>{
   try{
     await ensureParallelSplitColumns();
@@ -2363,7 +2402,7 @@ app.post("/api/rooms/:id/splits/join",auth,async(req,res)=>{
     db.rooms=db.rooms.filter(x=>String(x.id)!==String(row.id));
     db.rooms.push(room);
     const joinToken=makeRoomJoinToken(actor.id,room);
-    return res.json({room,joinToken,layout:String(row.split_layout||"separate")});
+    return res.json({room,joinToken,layout:String(row.split_layout||"separate"),dimensionName:String(row.split_name||"Alternate Dimension"),portalEnabled:row.split_portal_enabled!==false});
   }catch(error){
     console.error("Parallel split join failed:",error);
     return res.status(500).json({error:"Could not join that split."});

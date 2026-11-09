@@ -393,11 +393,16 @@ async function refreshCurrentRoomOnly(){
 }
 
 
-function openParallelRoomLayout(parentId,splitId,code,layout,dimensionName){
+function openParallelRoomLayout(parentId,splitId,code,layout,dimensionName,ownerId,portalEnabled=true){
   const existing=document.getElementById("parallelRoomOverlay");existing?.remove();
   const side=layout==="side-by-side";
   const overlay=document.createElement("section");
   overlay.id="parallelRoomOverlay";overlay.className="parallel-room-overlay";
+  if(!document.getElementById("dimension-portal-inline-style")){
+    const style=document.createElement("style");style.id="dimension-portal-inline-style";
+    style.textContent=".parallel-portal-open,.parallel-portal-toggle{border:1px solid rgba(150,115,255,.38);background:rgba(95,55,150,.2);color:inherit;border-radius:9px;padding:7px 10px;font-weight:700;cursor:pointer;font-size:12px}.parallel-portal-toggle{border-color:rgba(72,210,205,.35)}.parallel-portal-toggle.portal-off{opacity:.7;border-color:rgba(255,120,120,.35)}.parallel-portal-open:disabled{opacity:.45;cursor:not-allowed}";
+    document.head.appendChild(style);
+  }
   overlay.innerHTML=`
     <header class="parallel-room-toolbar">
       <div class="parallel-room-toolbar-title"><b>✧ Alternate Dimensions</b><small>${esc(dimensionName||"Parallel dimension")} · its own members and history</small></div>
@@ -405,6 +410,8 @@ function openParallelRoomLayout(parentId,splitId,code,layout,dimensionName){
         <button type="button" data-parallel-tab="parent" class="${side?"active":""}">Main Room</button>
         <button type="button" data-parallel-tab="split" class="${side?"":"active"}">✧ Dimension</button>
       </nav>
+      <button type="button" class="parallel-portal-open" title="Travel to another dimension">↗ Portal</button>
+      <button type="button" class="parallel-portal-toggle" title="Open or close your Dimension Portal">Portal: ON</button>
       <button type="button" class="parallel-room-close" aria-label="Close parallel view">×</button>
     </header>
     <div class="parallel-room-stage ${side?"side-by-side":"separate-view"}">
@@ -412,6 +419,32 @@ function openParallelRoomLayout(parentId,splitId,code,layout,dimensionName){
       <div class="parallel-room-pane split-pane ${side?"":"active"}"><iframe title="Split Room" loading="eager" allow="clipboard-read; clipboard-write; autoplay; fullscreen"></iframe></div>
     </div>`;
   document.body.appendChild(overlay);
+  const portalOpen=overlay.querySelector(".parallel-portal-open");
+  const portalToggle=overlay.querySelector(".parallel-portal-toggle");
+  if(portalToggle){
+    const isCreator=String(ownerId||"")===String(state.user?.id||"");
+    portalToggle.classList.toggle("hidden",!isCreator);
+    portalToggle.textContent="Portal: "+(portalEnabled===false?"OFF":"ON");
+    portalToggle.classList.toggle("portal-off",portalEnabled===false);
+    portalToggle.addEventListener("click",async()=>{
+      portalToggle.disabled=true;
+      try{
+        const result=await api("/api/rooms/"+encodeURIComponent(parentId)+"/splits/"+encodeURIComponent(splitId)+"/portal",{method:"POST",body:JSON.stringify({enabled:portalEnabled===false})});
+        portalEnabled=result.portalEnabled===true;
+        portalToggle.textContent="Portal: "+(portalEnabled?"ON":"OFF");
+        portalToggle.classList.toggle("portal-off",!portalEnabled);
+        portalOpen.disabled=!portalEnabled;
+        portalOpen.title=portalEnabled?"Travel to another dimension":"The creator has closed this Portal";
+        toast(portalEnabled?"Dimension Portal opened.":"Dimension Portal closed.");
+      }catch(error){toast(error.message||"Could not update the Portal.");}
+      finally{portalToggle.disabled=false;}
+    });
+  }
+  if(portalOpen){
+    portalOpen.disabled=portalEnabled===false;
+    portalOpen.title=portalEnabled===false?"The creator has closed this Portal":"Travel to another dimension";
+    portalOpen.addEventListener("click",()=>openDimensionPortal(parentId,splitId,portalEnabled!==false));
+  }
   const query=(role)=>{const u=new URL(location.href);u.search="";u.hash="";u.searchParams.set("parallelEmbed","1");u.searchParams.set("parallelRole",role);u.searchParams.set("parallelParent",String(parentId));u.searchParams.set("parallelCode",String(code));return u.toString();};
   overlay.querySelector(".parent-pane iframe").src=query("parent");
   overlay.querySelector(".split-pane iframe").src=query("split");
@@ -422,6 +455,46 @@ function openParallelRoomLayout(parentId,splitId,code,layout,dimensionName){
     overlay.querySelector(".parent-pane").classList.toggle("active",tab==="parent");
     overlay.querySelector(".split-pane").classList.toggle("active",tab==="split");
   }));
+}
+async function openDimensionPortal(parentId,currentSplitId,portalEnabled){
+  if(!portalEnabled){toast("This Dimension Portal is currently closed.");return;}
+  const access=(()=>{try{return JSON.parse(safeStorage.getItem("mc_parallel_parent_access")||"null");}catch{return null;}})();
+  if(!access||String(access.roomId)!==String(parentId)||!access.joinToken){toast("Parent-room access is unavailable. Reopen the dimension from its parent room.");return;}
+  modal(`
+    <div class="parallel-split-panel dimension-panel">
+      <div class="parallel-split-heading"><div><small>TRAVEL BETWEEN DIMENSIONS</small><h2>↗ Dimension Portal</h2><p class="dimension-intro">Enter a destination code to preview its realm before travelling.</p></div><span class="parallel-private-pill">PORTAL</span></div>
+      <section class="parallel-split-card">
+        <label for="dimensionPortalCode">Destination Code</label>
+        <input id="dimensionPortalCode" maxlength="24" autocomplete="off" autocapitalize="characters" placeholder="Enter Dimension Code">
+        <button type="button" class="secondary-btn" id="dimensionPortalPreviewBtn">Preview Destination</button>
+      </section>
+      <p class="parallel-split-footnote">You must already have access to the original room. Portal travel never bypasses a dimension's code or room permissions.</p>
+    </div>`);
+  document.getElementById("dimensionPortalPreviewBtn")?.addEventListener("click",async()=>{
+    const code=String(document.getElementById("dimensionPortalCode")?.value||"").trim().toUpperCase();
+    if(!/^[A-Z0-9]{4,24}$/.test(code)){toast("Enter a valid Dimension Code.");return;}
+    const button=document.getElementById("dimensionPortalPreviewBtn");
+    if(button){button.disabled=true;button.textContent="Checking…";}
+    try{
+      const preview=await api("/api/rooms/"+encodeURIComponent(parentId)+"/splits/preview",{method:"POST",headers:{"x-room-join-token":access.joinToken},body:JSON.stringify({code})});
+      if(String(preview.creatorId||"")===String(state.user?.id||"")&&String(preview.dimensionName||"")===String(document.querySelector(".parallel-room-toolbar-title small")?.textContent||"")){toast("You are already in that dimension.");return;}
+      modal(`
+        <div class="parallel-split-panel dimension-panel">
+          <div class="parallel-split-heading"><div><small>DESTINATION CONFIRMED</small><h2>✧ ${esc(preview.dimensionName||"Alternate Dimension")}</h2><p class="dimension-intro">Your next destination is ready.</p></div><span class="parallel-private-pill">PREVIEW</span></div>
+          <section class="parallel-split-card"><p>Enter <strong>${esc(preview.dimensionName||"this dimension")}</strong>? Your current room stays available, and you can return to the parent room at any time.</p><button type="button" class="primary-btn" id="dimensionPortalTravelBtn">Travel to Dimension</button></section>
+        </div>`);
+      document.getElementById("dimensionPortalTravelBtn")?.addEventListener("click",async()=>{
+        const travelButton=document.getElementById("dimensionPortalTravelBtn");
+        if(travelButton){travelButton.disabled=true;travelButton.textContent="Opening…";}
+        try{
+          const joined=await api("/api/rooms/"+encodeURIComponent(parentId)+"/splits/join",{method:"POST",headers:{"x-room-join-token":access.joinToken},body:JSON.stringify({code})});
+          closeModal();
+          openParallelRoomLayout(parentId,String(joined.room.id),code,String(joined.layout||preview.layout||"separate"),joined.dimensionName||preview.dimensionName,joined.room.ownerId,joined.portalEnabled!==false);
+        }catch(error){toast(error.message||"Could not travel to that dimension.");if(travelButton){travelButton.disabled=false;travelButton.textContent="Travel to Dimension";}}
+      });
+    }catch(error){toast(error.message||"Could not preview that dimension.");}
+    finally{if(button){button.disabled=false;button.textContent="Preview Destination";}}
+  });
 }
 async function startParallelEmbed(){
   const params=new URLSearchParams(location.search);
