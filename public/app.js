@@ -390,6 +390,81 @@ async function refreshCurrentRoomOnly(){
     if(button){button.disabled=false;button.textContent="⟳";}
   }
 }
+
+function openParallelSplits(){
+  if(!state.user||!state.currentRoom){toast("Open a room first.");return;}
+  const rank=String(state.user.rank||"MEMBER").toUpperCase();
+  const threshold="PREMIUM";
+  const canCreate=Number.isInteger(rankOrder[rank])&&rankOrder[rank]>=rankOrder[threshold];
+  const room=state.rooms.find(r=>String(r.id)===String(state.currentRoom));
+  if(!room){toast("Current room details are unavailable.");return;}
+  modal(`
+    <div class="parallel-split-panel">
+      <div class="parallel-split-heading"><div><small>PRIVATE PARALLEL CHAT</small><h2>⫶ Parallel Rooms</h2></div><span class="parallel-private-pill">PRIVATE</span></div>
+      <section class="parallel-split-card">
+        <h3>＋ Create a Split</h3>
+        <p>A separate room linked to <strong>${esc(room.name)}</strong>, with its own messages and members.</p>
+        ${canCreate?`
+          <label for="parallelCreateCode">Your custom Split Code</label>
+          <input id="parallelCreateCode" maxlength="24" autocomplete="off" autocapitalize="characters" placeholder="E.G. NIGHTOWL24">
+          <small>4–24 letters or numbers. Codes are unique within this parent room.</small>
+          <label>Choose layout</label>
+          <div class="parallel-layout-options">
+            <label><input type="radio" name="parallelLayout" value="side-by-side" checked><span><b>▥ Side-by-Side</b><small>Keep both rooms visible together.</small></span></label>
+            <label><input type="radio" name="parallelLayout" value="separate"><span><b>▣ Separate View</b><small>Open the split as its own full room.</small></span></label>
+          </div>
+          <button type="button" class="primary-btn" id="parallelCreateBtn">Create Split</button>
+        `:`<p class="parallel-rank-note">Creating a split requires ${threshold} rank or above.</p>`}
+      </section>
+      <section class="parallel-split-card">
+        <h3>↗ Join a Split</h3>
+        <p>Enter the code shared by its creator.</p>
+        <label for="parallelJoinCode">Split Code</label>
+        <input id="parallelJoinCode" maxlength="24" autocomplete="off" autocapitalize="characters" placeholder="Enter Split Code">
+        <button type="button" class="secondary-btn" id="parallelJoinBtn">Join Split</button>
+      </section>
+      <p class="parallel-split-footnote">A split never grants access to its parent room. You must already be allowed into this room. Your original room and its history stay untouched.</p>
+    </div>`);
+  const createButton=document.getElementById("parallelCreateBtn");
+  createButton?.addEventListener("click",createParallelSplit);
+  document.getElementById("parallelJoinBtn")?.addEventListener("click",joinParallelSplit);
+}
+async function createParallelSplit(){
+  const code=String(document.getElementById("parallelCreateCode")?.value||"").trim().toUpperCase();
+  const layout=document.querySelector('input[name="parallelLayout"]:checked')?.value||"separate";
+  if(!/^[A-Z0-9]{4,24}$/.test(code)){toast("Use 4–24 letters or numbers for your Split Code.");return;}
+  const parentId=String(state.currentRoom||"");
+  const button=document.getElementById("parallelCreateBtn");
+  if(button){button.disabled=true;button.textContent="Creating…";}
+  try{
+    const result=await api("/api/rooms/"+encodeURIComponent(parentId)+"/splits/create",{method:"POST",body:JSON.stringify({code,layout})});
+    state.rooms=state.rooms.filter(r=>String(r.id)!==String(result.room.id));
+    state.rooms.push(result.room);
+    window.__mcRoomJoinTokens=window.__mcRoomJoinTokens||{};
+    window.__mcRoomJoinTokens[String(result.room.id)]=result.joinToken;
+    closeModal();
+    const opened=await joinRoom(String(result.room.id));
+    if(opened)toast("Split room created. Share code: "+code);
+  }catch(error){toast(error.message||"Could not create the split.");if(button){button.disabled=false;button.textContent="Create Split";}}
+}
+async function joinParallelSplit(){
+  const code=String(document.getElementById("parallelJoinCode")?.value||"").trim().toUpperCase();
+  if(!/^[A-Z0-9]{4,24}$/.test(code)){toast("Enter a valid Split Code.");return;}
+  const parentId=String(state.currentRoom||"");
+  const button=document.getElementById("parallelJoinBtn");
+  if(button){button.disabled=true;button.textContent="Joining…";}
+  try{
+    const result=await api("/api/rooms/"+encodeURIComponent(parentId)+"/splits/join",{method:"POST",body:JSON.stringify({code})});
+    state.rooms=state.rooms.filter(r=>String(r.id)!==String(result.room.id));
+    state.rooms.push(result.room);
+    window.__mcRoomJoinTokens=window.__mcRoomJoinTokens||{};
+    window.__mcRoomJoinTokens[String(result.room.id)]=result.joinToken;
+    closeModal();
+    await joinRoom(String(result.room.id));
+  }catch(error){toast(error.message||"Could not join that split.");if(button){button.disabled=false;button.textContent="Join Split";}}
+}
+document.getElementById("openParallelSplits")?.addEventListener("click",openParallelSplits);
+
 $("siteHardRefresh")?.addEventListener("click",refreshCurrentRoomOnly);
 $("testSiteNotifications")?.addEventListener("click",testSiteNotifications);
 if("Notification" in window && Notification.permission==="granted") registerSiteNotificationWorker();
