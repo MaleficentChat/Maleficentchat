@@ -7664,3 +7664,6 @@ body.parallel-embed.parallel-embed-error:after{content:"This room could not be o
 .parallel-room-overlay.side-by-side-mode{display:none!important}
 .bot-join-chat-glow{display:inline-block;text-decoration:none!important;cursor:pointer;transition:filter .18s ease,transform .18s ease}
 .bot-join-chat-glow:hover{filter:brightness(1.25);transform:translateY(-1px)}
+
+/* Compact dimension management list */
+.parallel-dimensions-list{display:grid;gap:8px;margin-top:12px}.parallel-dimension-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;border:1px solid rgba(180,130,255,.2);border-radius:12px;background:rgba(12,8,22,.72)}.parallel-dimension-row>div{min-width:0;display:grid;gap:4px}.parallel-dimension-row small{opacity:.72;overflow-wrap:anywhere}.parallel-dimension-row button{flex:0 0 auto}.dimension-management-card{margin-top:12px}
