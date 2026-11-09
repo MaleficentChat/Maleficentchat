@@ -7632,3 +7632,10 @@ body.parallel-embed.parallel-embed-error:after{content:"This room could not be o
   .parallel-room-stage.side-by-side .parallel-room-pane{display:none;width:100%;height:100%}
   .parallel-room-stage.side-by-side .parallel-room-pane.active{display:block}
 }
+
+
+/* Cross-promotion cards: keep their full width, trim only vertical height. */
+.bot-join-chat-message .bot-welcome-bubble{min-height:112px!important;padding:12px 16px 14px!important;}
+.bot-join-chat-message .bot-welcome-byline{margin-bottom:5px!important;}
+.bot-join-chat-message .bot-join-chat-link{min-height:40px!important;margin-top:8px!important;padding-top:7px!important;padding-bottom:7px!important;}
+@media(max-width:560px){.bot-join-chat-message .bot-welcome-bubble{min-height:104px!important;padding:11px 12px 13px!important;}.bot-join-chat-message .bot-join-chat-link{min-height:40px!important;margin-top:7px!important;}}
