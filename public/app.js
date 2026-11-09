@@ -3582,7 +3582,7 @@ function renderUserProfileModal(user,data={}){
   const renderTab=(tab)=>{
     document.querySelectorAll('.profile-tab').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));
     const box=$('profileTabContent');
-    if(tab==='info') box.innerHTML=`
+    if(tab==='info') { box.innerHTML=`
       <div class="profile-info-row"><b>👤 Username</b><span>@${esc(user.username)}</span></div>
       <div class="profile-info-row"><b>🏅 Rank</b><span>${rank(user.rank)}</span></div>
       <div class="profile-info-row"><b>⭐ Level</b><span>${user.level||1} · ${user.xp||0} XP</span></div>
@@ -3591,8 +3591,16 @@ function renderUserProfileModal(user,data={}){
       <div class="profile-info-row"><b>📅 Member since</b><span>${esc(memberSince)}</span></div>
       <div class="profile-info-row"><b>🏠 Status</b><span>${user.online?'Online':'Offline'}</span></div>
       <div class="profile-info-row"><b>◉ Last seen</b><span>${esc(lastSeen)}</span></div>
-      <div class="profile-actions"><button class="mini" id="profileAchievementsBtn">🏆 Achievements</button>${!isSelf&&canFeature('profile_note')?`<button class="mini" id="profileNoteBtn">📝 Add Note <span id="profileNoteDot" style="display:none">●</span></button>${canFeature('profile_note')?'<button class="mini" id="profileFeatureBlockBtn">🚫 Feature Block</button>':''}`:''}<div class="profile-action-hint">Tap ☰ above for profile actions.</div></div>`;
-    else if(tab==='about' && user.privacy?.bio!==false) box.innerHTML=`<div class="about-card"><h3>About Me</h3><p>${esc(user.bio||'This user has not written an About Me yet.')}</p>${user.privacy?.country!==false&&user.country?`<div class="profile-info-row"><b>🌍 Country</b><span>${esc(countryFlagFor(user.country))} ${esc(user.country)}</span></div>`:''}${user.privacy?.pronouns!==false&&user.pronouns?`<div class="profile-info-row"><b>Pronouns</b><span>${esc(user.pronouns)}</span></div>`:''}${user.privacy?.interests!==false&&user.interests?.length?`<div class="tag-list">${user.interests.map(x=>`<span class="tag">${esc(x)}</span>`).join('')}</div>`:''}${isSelf?`<button class="primary" id="editAboutBtn">✏️ Edit About Me</button>`:''}</div>`;
+      <div class="profile-achievement-showcase" id="profileAchievementShowcase"></div><div class="profile-actions"><button class="mini" id="profileAchievementsBtn">🏆 Achievement Collection</button>${!isSelf&&canFeature('profile_note')?`<button class="mini" id="profileNoteBtn">📝 Add Note <span id="profileNoteDot" style="display:none">●</span></button>${canFeature('profile_note')?'<button class="mini" id="profileFeatureBlockBtn">🚫 Feature Block</button>':''}`:''}<div class="profile-action-hint">Tap ☰ above for profile actions.</div></div>`;
+    if(user.privacy?.achievements!==false){
+      api('/api/achievements/'+encodeURIComponent(user.id)).then(result=>{
+        const panel=$('profileAchievementShowcase');if(!panel)return;
+        const icons={'First Message':'💬','Chatterbox':'🗣️','Chatterbox+':'📣','Legendary Chatter':'🌌','Gamer':'🎮','Game Night':'🕹️','Arcade Legend':'👾','Popular':'💜','Beloved':'💎','Rising Star':'✨','Veteran':'⚔️','Mythic Soul':'🔮'};
+        const featured=(result.showcase||[]).slice(0,3);
+        panel.innerHTML=featured.length?'<b>✦ Featured Trophies</b><div class="ac-featured">'+featured.map(name=>'<span class="ac-feature-chip">'+(icons[name]||'🏆')+' '+esc(name)+'</span>').join('')+'</div>':'';
+      }).catch(()=>{});
+    }else{const panel=$('profileAchievementShowcase');if(panel)panel.remove();}
+    } else if(tab==='about' && user.privacy?.bio!==false) box.innerHTML=`<div class="about-card"><h3>About Me</h3><p>${esc(user.bio||'This user has not written an About Me yet.')}</p>${user.privacy?.country!==false&&user.country?`<div class="profile-info-row"><b>🌍 Country</b><span>${esc(countryFlagFor(user.country))} ${esc(user.country)}</span></div>`:''}${user.privacy?.pronouns!==false&&user.pronouns?`<div class="profile-info-row"><b>Pronouns</b><span>${esc(user.pronouns)}</span></div>`:''}${user.privacy?.interests!==false&&user.interests?.length?`<div class="tag-list">${user.interests.map(x=>`<span class="tag">${esc(x)}</span>`).join('')}</div>`:''}${isSelf?`<button class="primary" id="editAboutBtn">✏️ Edit About Me</button>`:''}</div>`;
     else if(tab==='about') box.innerHTML='';
     else if(tab==='photos') renderProfilePhotos();
     else if(tab==='scrapbook'){
@@ -4734,7 +4742,61 @@ async function loadWallet(){
 
 
 function renderAchievementBadges(user){ return '<button class="mini" id="profileAchievementsBtn">🏆 Achievements</button>'; }
-async function showAchievements(user){try{const d=await api('/api/achievements/'+encodeURIComponent(user.id));modal(`<div class="achievement-modal"><h2>🏆 Achievements</h2><div class="stack achievement-scroll">${(d.achievements||[]).map(x=>`<div class="hub-row"><span style="font-size:1.5rem">${esc(x.icon||'🏆')}</span><div style="flex:1"><b>${esc(x.name)}</b><small class="muted">${fmt(x.earned_at)}</small></div></div>`).join('')||'<p class="muted">No achievements earned yet.</p>'}</div></div>`);}catch(e){toast(e.message)}}
+async function showAchievements(user){
+  try{
+    const d=await api('/api/achievements/'+encodeURIComponent(user.id));
+    const catalog=[
+      {name:'First Message',icon:'💬',tier:'Common',key:'messages',goal:1,desc:'Send your first chat message.'},
+      {name:'Chatterbox',icon:'🗣️',tier:'Rare',key:'messages',goal:100,desc:'Send 100 messages.'},
+      {name:'Chatterbox+',icon:'📣',tier:'Epic',key:'messages',goal:1000,desc:'Send 1,000 messages.'},
+      {name:'Legendary Chatter',icon:'🌌',tier:'Legendary',key:'messages',goal:10000,desc:'Send 10,000 messages.'},
+      {name:'Gamer',icon:'🎮',tier:'Common',key:'games',goal:1,desc:'Play your first game.'},
+      {name:'Game Night',icon:'🕹️',tier:'Rare',key:'games',goal:25,desc:'Play 25 games.'},
+      {name:'Arcade Legend',icon:'👾',tier:'Legendary',key:'games',goal:100,desc:'Play 100 games.'},
+      {name:'Popular',icon:'💜',tier:'Rare',key:'likes',goal:10,desc:'Receive 10 profile likes.'},
+      {name:'Beloved',icon:'💎',tier:'Epic',key:'likes',goal:50,desc:'Receive 50 profile likes.'},
+      {name:'Rising Star',icon:'✨',tier:'Common',key:'xp',goal:500,desc:'Earn 500 lifetime XP.'},
+      {name:'Veteran',icon:'⚔️',tier:'Epic',key:'xp',goal:5000,desc:'Earn 5,000 lifetime XP.'},
+      {name:'Mythic Soul',icon:'🔮',tier:'Legendary',key:'xp',goal:25000,desc:'Earn 25,000 lifetime XP.'}
+    ];
+    const earned=new Set((d.achievements||[]).map(item=>item.name));
+    let selected=(d.showcase||[]).filter(name=>earned.has(name)).slice(0,3);
+    const current=Number(state.user?.id)===Number(user.id);
+    const progress=d.progress||{};
+    const render=()=>{
+      const unlocked=catalog.filter(item=>earned.has(item.name));
+      const featured=selected.map(name=>catalog.find(item=>item.name===name)).filter(Boolean);
+      const cards=catalog.map(item=>{
+        const count=Math.max(0,Number(progress[item.key]||0)),done=earned.has(item.name),pct=Math.min(100,Math.round(count/item.goal*100));
+        return `<article class="ac-card ${done?'is-earned':'is-locked'} ac-${item.tier.toLowerCase()}">
+          <div class="ac-icon">${item.icon}</div><div class="ac-copy"><div class="ac-title-row"><b>${esc(item.name)}</b><span class="ac-tier">${item.tier}</span></div>
+          <p>${item.desc}</p><div class="ac-progress"><span style="width:${done?100:pct}%"></span></div><small>${done?'✓ Unlocked':count.toLocaleString()+' / '+item.goal.toLocaleString()}</small></div>
+          ${current&&done?`<button type="button" class="ac-pin ${selected.includes(item.name)?'selected':''}" data-ac-pin="${esc(item.name)}" aria-pressed="${selected.includes(item.name)}">${selected.includes(item.name)?'★ Pinned':'☆ Pin'}</button>`:''}
+        </article>`;
+      }).join('');
+      modal(`<div class="achievement-collection"><div class="ac-header"><div><span class="ac-eyebrow">LEGACY COLLECTION</span><h2>🏆 Achievement Collection</h2><p>${esc(user.displayName||user.username||'Member')} · ${unlocked.length}/${catalog.length} unlocked</p></div><div class="ac-score">${Math.round(unlocked.length/catalog.length*100)}%<small>complete</small></div></div>
+        <div class="ac-showcase"><div class="ac-showcase-head"><b>✦ Profile Showcase</b><small>${current?'Choose up to 3 trophies to feature':'Featured trophies'}</small></div>
+          <div class="ac-featured">${featured.length?featured.map(item=>`<span class="ac-feature-chip">${item.icon} ${esc(item.name)}</span>`).join(''):'<span class="muted">No trophies featured yet.</span>'}</div>
+          ${current?'<div class="ac-showcase-foot"><small id="acSelectedCount">'+selected.length+'/3 selected</small><button type="button" class="primary" id="acSaveShowcase">Save showcase</button></div>':''}
+        </div><div class="ac-grid">${cards}</div></div>`);
+      if(current){
+        document.querySelectorAll('[data-ac-pin]').forEach(button=>button.addEventListener('click',()=>{
+          const name=button.dataset.acPin;
+          if(selected.includes(name))selected=selected.filter(value=>value!==name);
+          else if(selected.length<3)selected.push(name);
+          else {toast('Your profile can showcase up to three achievements.');return;}
+          render();
+        }));
+        $('acSaveShowcase')?.addEventListener('click',async()=>{
+          const button=$('acSaveShowcase');button.disabled=true;button.textContent='Saving…';
+          try{const result=await api('/api/achievements/showcase',{method:'PUT',body:JSON.stringify({achievementNames:selected})});selected=result.showcase||selected;toast('Your achievement showcase is updated!');render();}
+          catch(error){toast(error.message);button.disabled=false;button.textContent='Save showcase';}
+        });
+      }
+    };
+    render();
+  }catch(error){toast(error.message||'Could not load achievements.');}
+}
 
 async function openProfileActionDrawer(user,data={}){
   const isSelf=String(user.id)===String(state.user.id);

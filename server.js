@@ -720,7 +720,7 @@ async function sendWebPushToPublicRoom(room,message,senderId){
 function awardAchievement(u,key,title,description){
   if(!u) return false;
   ensureUserSchema(u);
-  if(u.achievements.some(a=>a.key===key)) return false;
+  if(u.achievements.some(a=>a.key===key||a.title===title)) return false;
   const a={key,title,description,time:Date.now()};
   u.achievements.push(a);
   pool.query(`INSERT INTO achievements(user_id,name,icon) VALUES($1,$2,$3) ON CONFLICT(user_id,name) DO NOTHING`,[Number(u.id),title,'🏆']).catch(err=>console.error('Achievement persistence error:',err));
@@ -733,10 +733,18 @@ function checkAchievements(u){
   if(messages>=1) awardAchievement(u,"first-message","First Message","You sent your first chat message.");
   if(messages>=100) awardAchievement(u,"chatterbox-100","Chatterbox","You sent 100 messages.");
   if(messages>=1000) awardAchievement(u,"chatterbox-1000","Chatterbox+","You sent 1,000 messages.");
+  if(messages>=10000) awardAchievement(u,"chatterbox-10000","Legendary Chatter","You sent 10,000 messages.");
   const games=Number(u.gameStats?.played||0);
   if(games>=1) awardAchievement(u,"first-game","Gamer","You played your first game.");
   if(games>=25) awardAchievement(u,"game-25","Game Night","You played 25 games.");
-  if((u.profileLikes||0)>=10) awardAchievement(u,"liked-10","Popular","Your profile received 10 likes.");
+  if(games>=100) awardAchievement(u,"game-100","Arcade Legend","You played 100 games.");
+  const likes=Number(u.profileLikes||0);
+  if(likes>=10) awardAchievement(u,"liked-10","Popular","Your profile received 10 likes.");
+  if(likes>=50) awardAchievement(u,"liked-50","Beloved","Your profile received 50 likes.");
+  const xp=Number(u.xp||0);
+  if(xp>=500) awardAchievement(u,"xp-500","Rising Star","You earned 500 lifetime XP.");
+  if(xp>=5000) awardAchievement(u,"xp-5000","Veteran","You earned 5,000 lifetime XP.");
+  if(xp>=25000) awardAchievement(u,"xp-25000","Mythic Soul","You earned 25,000 lifetime XP.");
   return u.achievements;
 }
 
@@ -3312,6 +3320,7 @@ app.post("/api/rooms/:id/messages",auth,featureAllowed("send_messages"),upload.s
       u.stats.messages=(u.stats.messages||0)+1;
       checkAchievements(u);
       awardXp(u,Number(db.settings.xpPerMessage||5));
+      checkAchievements(u);
       u.gold=(u.gold||0)+Number(db.settings.goldPerMessage||0);
 
       // Persist only this sender's message-progress fields. save() writes every user
@@ -4269,8 +4278,56 @@ app.post('/api/wallet/reward',auth,async(req,res)=>{
   res.json({ok:true,recipient:safeUser(target),amount,reason,currency,balance});
 });
 
-app.get('/api/achievements/:userId',auth,async(req,res)=>{const {rows}=await pool.query(`SELECT id,user_id,name,icon,earned_at FROM achievements WHERE user_id=$1 ORDER BY earned_at DESC,id DESC`,[Number(req.params.userId)]);res.json({achievements:rows});});
-app.get('/api/achievements',auth,async(req,res)=>{const {rows}=await pool.query(`SELECT id,user_id,name,icon,earned_at FROM achievements WHERE user_id=$1 ORDER BY earned_at DESC,id DESC`,[Number(current(req).id)]);res.json({achievements:rows});});
+app.get('/api/achievements/:userId',auth,async(req,res)=>{
+  const target=db.users.find(user=>String(user.id)===String(req.params.userId));
+  if(!target)return res.status(404).json({error:'User not found.'});
+  const viewer=current(req);
+  if(String(viewer.id)!==String(target.id)&&target.privacy?.achievements===false)return res.status(403).json({error:'This user keeps their achievements private.'});
+  const userId=Number(target.id);
+  const [earned,showcase]=await Promise.all([
+    pool.query(`SELECT id,user_id,name,icon,earned_at FROM achievements WHERE user_id=$1 ORDER BY earned_at DESC,id DESC`,[userId]),
+    pool.query(`SELECT achievement_name,position FROM achievement_showcase WHERE user_id=$1 ORDER BY position ASC`,[userId])
+  ]);
+  res.json({
+    achievements:earned.rows,
+    showcase:showcase.rows.map(row=>row.achievement_name),
+    progress:{
+      messages:Number(target.stats?.messages||0),
+      games:Number(target.gameStats?.played||0),
+      likes:Number(target.profileLikes||0),
+      xp:Number(target.xp||0)
+    }
+  });
+});
+app.get('/api/achievements',auth,async(req,res)=>{
+  const user=current(req);
+  const [earned,showcase]=await Promise.all([
+    pool.query(`SELECT id,user_id,name,icon,earned_at FROM achievements WHERE user_id=$1 ORDER BY earned_at DESC,id DESC`,[Number(user.id)]),
+    pool.query(`SELECT achievement_name,position FROM achievement_showcase WHERE user_id=$1 ORDER BY position ASC`,[Number(user.id)])
+  ]);
+  res.json({achievements:earned.rows,showcase:showcase.rows.map(row=>row.achievement_name)});
+});
+app.put('/api/achievements/showcase',auth,async(req,res)=>{
+  const user=current(req);
+  const names=Array.isArray(req.body?.achievementNames)?req.body.achievementNames.map(name=>String(name||'').trim()).filter(Boolean):[];
+  if(names.length>3||new Set(names).size!==names.length)return res.status(400).json({error:'Choose up to three different achievements.'});
+  const {rows}=await pool.query(`SELECT name FROM achievements WHERE user_id=$1 AND name=ANY($2::text[])`,[Number(user.id),names]);
+  if(rows.length!==names.length)return res.status(400).json({error:'Only achievements you have earned can be showcased.'});
+  const client=await pool.connect();
+  try{
+    await client.query('BEGIN');
+    await client.query('DELETE FROM achievement_showcase WHERE user_id=$1',[Number(user.id)]);
+    for(let index=0;index<names.length;index++){
+      await client.query(`INSERT INTO achievement_showcase(user_id,achievement_name,position) VALUES($1,$2,$3)`,[Number(user.id),names[index],index+1]);
+    }
+    await client.query('COMMIT');
+    res.json({ok:true,showcase:names});
+  }catch(error){
+    await client.query('ROLLBACK').catch(()=>{});
+    console.error('Achievement showcase update failed:',error);
+    res.status(500).json({error:'Could not update your profile showcase.'});
+  }finally{client.release();}
+});
 app.get('/api/account/export',auth,(req,res)=>{
   const u=current(req);
   res.json({exportedAt:Date.now(),account:{username:u.username,displayName:u.displayName,createdAt:u.createdAt,rank:u.rank,level:u.level,xp:u.xp,gold:u.gold,bio:u.bio,interests:u.interests,achievements:u.achievements},loginHistory:u.loginHistory||[]});

@@ -258,6 +258,14 @@ async function initDB() {
       name TEXT NOT NULL, icon TEXT DEFAULT '🏆', earned_at TIMESTAMP DEFAULT NOW(),
       UNIQUE(user_id,name)
     );
+    CREATE TABLE IF NOT EXISTS achievement_showcase(
+      user_id INT REFERENCES users(id) ON DELETE CASCADE,
+      achievement_name TEXT NOT NULL,
+      position SMALLINT NOT NULL CHECK(position BETWEEN 1 AND 3),
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      PRIMARY KEY(user_id,achievement_name),
+      UNIQUE(user_id,position)
+    );
     CREATE TABLE IF NOT EXISTS gold_ledger(
       id BIGSERIAL PRIMARY KEY,
       user_id INT REFERENCES users(id) ON DELETE CASCADE,
