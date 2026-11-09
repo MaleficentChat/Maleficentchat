@@ -23,7 +23,7 @@
   document.body.appendChild(root);
   const css=document.createElement("link");css.rel="stylesheet";css.href="/room-experiences.css?v=1";document.head.appendChild(css);
   const panel=$("mcrePanel"),voicePane=$("mcreVoicePane"),musicPane=$("mcreMusicPane");
-  let socket=null,authed=false,ownUserId="",activeRoom="",localStream=null,joined=false,muted=false,peers=new Map(),musicState={queue:[],current:null};
+  let socket=null,authed=false,ownUserId="",activeRoom="",localStream=null,joined=false,muted=false,peers=new Map(),pendingIce=new Map(),musicState={queue:[],current:null};
   const rtc={iceServers:[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}]};
   function error(message){$("mcreError").textContent=message||"";}
   function status(message){$("mcreVoiceStatus").textContent=message;}
@@ -42,9 +42,9 @@
       if(!joined||p.roomId!==activeRoom||String(p.toId)!==String(window.currentUser?.id))return;
       const id=String(p.fromId),pc=ensurePeer(id),sig=p.signal;
       try{
-        if(sig.type==="offer"){await pc.setRemoteDescription({type:"offer",sdp:sig.sdp});const answer=await pc.createAnswer();await pc.setLocalDescription(answer);socket.emit("group-voice:signal",{roomId:activeRoom,toId:id,signal:{type:"answer",sdp:answer.sdp}});}
-        else if(sig.type==="answer"){await pc.setRemoteDescription({type:"answer",sdp:sig.sdp});}
-        else if(sig.type==="candidate"&&sig.candidate){await pc.addIceCandidate(sig.candidate);}
+        if(sig.type==="offer"){await pc.setRemoteDescription({type:"offer",sdp:sig.sdp});for(const candidate of pendingIce.get(id)||[])await pc.addIceCandidate(candidate);pendingIce.delete(id);const answer=await pc.createAnswer();await pc.setLocalDescription(answer);socket.emit("group-voice:signal",{roomId:activeRoom,toId:id,signal:{type:"answer",sdp:answer.sdp}});}
+        else if(sig.type==="answer"){await pc.setRemoteDescription({type:"answer",sdp:sig.sdp});for(const candidate of pendingIce.get(id)||[])await pc.addIceCandidate(candidate);pendingIce.delete(id);}
+        else if(sig.type==="candidate"&&sig.candidate){if(pc.remoteDescription)await pc.addIceCandidate(sig.candidate);else{const list=pendingIce.get(id)||[];list.push(sig.candidate);pendingIce.set(id,list);}}
       }catch(e){error("Voice connection issue: "+(e.message||"please retry."));}
     });
     socket.on("music-room:updated",s=>{musicState=s;renderQueue();});
@@ -61,7 +61,7 @@
     peers.set(id,pc);return pc;
   }
   async function offerTo(id){const pc=ensurePeer(id);const offer=await pc.createOffer();await pc.setLocalDescription(offer);socket.emit("group-voice:signal",{roomId:activeRoom,toId:id,signal:{type:"offer",sdp:offer.sdp}});}
-  function closePeer(id){const pc=peers.get(id);if(pc){pc.ontrack=null;pc.close();peers.delete(id);}const audio=$("mcre-audio-"+id);if(audio){audio.srcObject=null;audio.remove();}}
+  function closePeer(id){const pc=peers.get(id);if(pc){pc.ontrack=null;pc.close();peers.delete(id);}pendingIce.delete(id);const audio=$("mcre-audio-"+id);if(audio){audio.srcObject=null;audio.remove();}}
   function renderParticipants(){
     const box=$("mcreParticipants");box.innerHTML="";
     for(const [id] of peers){const chip=document.createElement("span");chip.className="mcre-person";chip.textContent="● "+id;box.appendChild(chip);}
@@ -130,5 +130,6 @@
     actions.appendChild(wrap);$("mcreLaunch").onclick=()=>{panel.hidden=false;document.querySelector('#mcrePanel [data-tab="voice"]').click();ensureSocket();};return true;
   }
   if(!addLaunchers()){const observer=new MutationObserver(()=>{if(addLaunchers())observer.disconnect();});observer.observe(document.body,{childList:true,subtree:true});setTimeout(()=>observer.disconnect(),12000);}
+  setInterval(()=>{const nowRoom=String(window.__mcRoomContext?.().roomId||"");if(joined&&nowRoom!==activeRoom)stopVoice(true);},1200);
   window.addEventListener("beforeunload",()=>stopVoice(true));
 })();
