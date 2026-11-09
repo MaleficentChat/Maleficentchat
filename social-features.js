@@ -17,6 +17,8 @@ async function initSocialFeatureTables(pool){
   await pool.query("CREATE TABLE IF NOT EXISTS social_confession_comments(id BIGSERIAL PRIMARY KEY,confession_id UUID NOT NULL REFERENCES social_confessions(id) ON DELETE CASCADE,user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,body VARCHAR(1000) NOT NULL,status VARCHAR(12) NOT NULL DEFAULT 'visible' CHECK(status IN ('visible','hidden')),created_at TIMESTAMPTZ NOT NULL DEFAULT NOW())");
   await pool.query("CREATE TABLE IF NOT EXISTS social_confession_reports(id BIGSERIAL PRIMARY KEY,confession_id UUID NOT NULL REFERENCES social_confessions(id) ON DELETE CASCADE,reporter_id INTEGER REFERENCES users(id) ON DELETE SET NULL,reason VARCHAR(500) NOT NULL,status VARCHAR(16) NOT NULL DEFAULT 'open' CHECK(status IN ('open','reviewed','removed','dismissed')),reviewed_by INTEGER REFERENCES users(id) ON DELETE SET NULL,reviewed_at TIMESTAMPTZ,created_at TIMESTAMPTZ NOT NULL DEFAULT NOW())");
   await pool.query("CREATE INDEX IF NOT EXISTS social_confession_reports_status_idx ON social_confession_reports(status,created_at DESC)");
+  await pool.query("CREATE TABLE IF NOT EXISTS personal_media_vault(id BIGSERIAL PRIMARY KEY,user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,media_url TEXT NOT NULL,title VARCHAR(140) NOT NULL DEFAULT '',media_type VARCHAR(16) NOT NULL CHECK(media_type IN ('image','video','gif','link')),created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),UNIQUE(user_id,media_url))");
+  await pool.query("CREATE INDEX IF NOT EXISTS personal_media_vault_owner_time_idx ON personal_media_vault(user_id,created_at DESC)");
   await pool.query("CREATE TABLE IF NOT EXISTS social_confession_audit_logs(id BIGSERIAL PRIMARY KEY,confession_id UUID NOT NULL REFERENCES social_confessions(id) ON DELETE CASCADE,actor_id INTEGER REFERENCES users(id) ON DELETE SET NULL,action VARCHAR(40) NOT NULL,reason VARCHAR(500) NOT NULL,created_at TIMESTAMPTZ NOT NULL DEFAULT NOW())");
 }
 function registerSocialFeatureRoutes({app,auth,current,pool,storeMediaBuffer,hasFeature,getState}){
@@ -87,5 +89,39 @@ function registerSocialFeatureRoutes({app,auth,current,pool,storeMediaBuffer,has
   app.get("/api/staff/confessions/reports",auth,async(req,res)=>{if(!moderate(who(req)))return res.status(403).json({error:"Confession moderation access is not granted."});const r=await pool.query("SELECT r.id,r.confession_id,r.reason,r.status,r.created_at,c.category,c.body FROM social_confession_reports r JOIN social_confessions c ON c.id=r.confession_id WHERE r.status='open' ORDER BY r.created_at LIMIT 100");res.json({reports:r.rows});});
   app.patch("/api/staff/confessions/:id",auth,async(req,res)=>{const u=who(req);if(!moderate(u))return res.status(403).json({error:"Confession moderation access is not granted."});const action=clean(req.body?.action,20),reason=clean(req.body?.reason,500);if(!["hide","remove","restore","dismiss"].includes(action)||reason.length<5)return res.status(400).json({error:"Choose an action and provide a reason."});const c=await pool.connect();try{await c.query("BEGIN");if(action==="hide")await c.query("UPDATE social_confessions SET status='hidden' WHERE id=$1",[req.params.id]);if(action==="remove")await c.query("UPDATE social_confessions SET status='removed' WHERE id=$1",[req.params.id]);if(action==="restore")await c.query("UPDATE social_confessions SET status='visible' WHERE id=$1",[req.params.id]);await c.query("UPDATE social_confession_reports SET status=$2,reviewed_by=$3,reviewed_at=NOW() WHERE confession_id=$1 AND status='open'",[req.params.id,action==="dismiss"?"dismissed":action==="remove"?"removed":"reviewed",Number(u.id)]);await c.query("INSERT INTO social_confession_audit_logs(confession_id,actor_id,action,reason) VALUES($1,$2,$3,$4)",[req.params.id,Number(u.id),action,reason]);await c.query("COMMIT");}catch(e){await c.query("ROLLBACK");throw e;}finally{c.release();}res.json({ok:true});});
   app.get("/api/staff/confessions/:id/identity",auth,async(req,res)=>{const u=who(req);if(!senior(u))return res.status(403).json({error:"Only Owner or Developer can resolve confession identities."});const reason=clean(req.query.reason,500);if(reason.length<8)return res.status(400).json({error:"An investigation reason of at least 8 characters is required."});const r=await pool.query("SELECT i.sender_user_id,u.username,u.rank,i.submitted_at FROM social_confession_identities i JOIN users u ON u.id=i.sender_user_id WHERE i.confession_id=$1",[req.params.id]);if(!r.rowCount)return res.status(404).json({error:"Identity not found."});await pool.query("INSERT INTO social_confession_audit_logs(confession_id,actor_id,action,reason) VALUES($1,$2,'identity_lookup',$3)",[req.params.id,Number(u.id),reason]);res.json({identity:r.rows[0]});});
+  const safeVaultUrl=(raw,req)=>{
+    const value=clean(raw,2048);if(!value)throw new Error("Add a media link first.");
+    let url;
+    if(value.startsWith("/uploads/")){
+      if(!/^\/uploads\/[A-Za-z0-9._/-]+$/.test(value)||value.split("/").some(part=>part===".."||part==="."))throw new Error("Invalid media link.");
+      url=value;
+    }else{
+      let parsed;try{parsed=new URL(value);}catch(_){throw new Error("Use a valid media link.");}
+      if(parsed.protocol!=="https:")throw new Error("Only secure HTTPS links can be saved.");
+      if(parsed.host===req.get("host")&&parsed.pathname.startsWith("/uploads/")){url=parsed.pathname;if(!/^\/uploads\/[A-Za-z0-9._/-]+$/.test(url)||url.split("/").some(part=>part===".."||part==="."))throw new Error("Invalid media link.");}
+      else if(["youtube.com","www.youtube.com","youtu.be","www.youtu.be","youtube-nocookie.com","www.youtube-nocookie.com"].includes(parsed.hostname))url=parsed.toString();
+      else throw new Error("For privacy, save only this site's uploaded media or YouTube links.");
+    }
+    const lower=url.toLowerCase();
+    const type=/\.(mp4|webm|mov|ogg)(\?|$)/.test(lower)?"video":/\.(gif)(\?|$)/.test(lower)?"gif":/\.(png|jpe?g|webp|avif)(\?|$)/.test(lower)?"image":/youtu/.test(lower)?"video":"link";
+    return {url,type};
+  };
+  app.get("/api/media-vault",auth,async(req,res)=>{
+    const r=await pool.query("SELECT id,media_url,title,media_type,created_at FROM personal_media_vault WHERE user_id=$1 ORDER BY created_at DESC LIMIT 300",[Number(who(req).id)]);
+    res.json({items:r.rows});
+  });
+  app.post("/api/media-vault",auth,async(req,res)=>{
+    const u=who(req),b=req.body||{};let media;
+    try{media=safeVaultUrl(b.url,req);}catch(error){return res.status(400).json({error:error.message});}
+    const title=clean(b.title,140);
+    const r=await pool.query("INSERT INTO personal_media_vault(user_id,media_url,title,media_type) VALUES($1,$2,$3,$4) ON CONFLICT(user_id,media_url) DO UPDATE SET title=CASE WHEN EXCLUDED.title<>'' THEN EXCLUDED.title ELSE personal_media_vault.title END RETURNING id,media_url,title,media_type,created_at",[Number(u.id),media.url,title,media.type]);
+    res.status(201).json({item:r.rows[0]});
+  });
+  app.delete("/api/media-vault/:id",auth,async(req,res)=>{
+    const id=int(req.params.id);if(!id)return res.status(400).json({error:"Invalid vault item."});
+    const r=await pool.query("DELETE FROM personal_media_vault WHERE id=$1 AND user_id=$2 RETURNING id",[id,Number(who(req).id)]);
+    if(!r.rowCount)return res.status(404).json({error:"Vault item not found."});
+    res.json({ok:true});
+  });
 }
 module.exports={initSocialFeatureTables,registerSocialFeatureRoutes};
