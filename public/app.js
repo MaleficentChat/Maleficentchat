@@ -397,7 +397,7 @@ function openParallelRoomLayout(parentId,splitId,code,layout,dimensionName,owner
   const existing=document.getElementById("parallelRoomOverlay");existing?.remove();
   const side=layout==="side-by-side";
   const overlay=document.createElement("section");
-  overlay.id="parallelRoomOverlay";overlay.className="parallel-room-overlay";
+  overlay.id="parallelRoomOverlay";overlay.className="parallel-room-overlay "+(side?"side-by-side-mode":"separate-view-mode");
   if(!document.getElementById("dimension-portal-inline-style")){
     const style=document.createElement("style");style.id="dimension-portal-inline-style";
     style.textContent=".parallel-portal-open,.parallel-portal-toggle{border:1px solid rgba(150,115,255,.38);background:rgba(95,55,150,.2);color:inherit;border-radius:9px;padding:7px 10px;font-weight:700;cursor:pointer;font-size:12px}.parallel-portal-toggle{border-color:rgba(72,210,205,.35)}.parallel-portal-toggle.portal-off{opacity:.7;border-color:rgba(255,120,120,.35)}.parallel-portal-open:disabled{opacity:.45;cursor:not-allowed}";

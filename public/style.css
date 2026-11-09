@@ -7626,11 +7626,15 @@ body.parallel-embed #viewRooms>*:not(#chatWrap){display:none!important}
 body.parallel-embed #viewRooms #chatWrap{display:grid!important;flex:1 1 auto!important;width:100%!important;height:100dvh!important;min-height:0!important;margin:0!important}
 body.parallel-embed #openParallelSplits{display:none!important}
 body.parallel-embed.parallel-embed-error:after{content:"This room could not be opened. Close this view and re-enter the parent room.";position:fixed;inset:0;display:grid;place-items:center;padding:24px;text-align:center;background:var(--bg);color:var(--text);z-index:100001}
+/* Side-by-Side is a true simultaneous split screen. Only Separate View uses room-switch tabs. */
+.parallel-room-overlay.side-by-side-mode .parallel-room-tabs{display:none!important}
+.parallel-room-overlay.side-by-side-mode .parallel-room-stage.side-by-side{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important}
+.parallel-room-overlay.side-by-side-mode .parallel-room-stage.side-by-side .parallel-room-pane{display:block!important;width:auto!important;height:100%!important;min-width:0;min-height:0}
+.parallel-room-overlay.separate-view-mode .parallel-room-tabs{display:flex}
 @media(max-width:760px){
   .parallel-room-toolbar{gap:7px;padding:6px 8px}.parallel-room-toolbar-title small{display:none}.parallel-room-tabs button{padding:7px 9px;font-size:11px}
-  .parallel-room-stage.side-by-side{display:block;position:relative}
-  .parallel-room-stage.side-by-side .parallel-room-pane{display:none;width:100%;height:100%}
-  .parallel-room-stage.side-by-side .parallel-room-pane.active{display:block}
+  .parallel-room-overlay.side-by-side-mode .parallel-room-stage.side-by-side{grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important}
+  .parallel-room-overlay.side-by-side-mode .parallel-room-stage.side-by-side .parallel-room-pane{display:block!important}
 }
 
 
