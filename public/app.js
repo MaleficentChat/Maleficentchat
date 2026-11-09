@@ -2113,6 +2113,18 @@ async function translateMessageText(messageId,scope){
   catch(error){target.textContent=error.message||"Translation failed."; }
 }
 function messageHTML(message) {
+  if(message?.joinChatPanel && String(message.bot||message.username)==="Bot"){
+    const joinUrl=String(message.joinChatUrl||"/");
+    return `<div class="message bot-welcome-message bot-join-chat-message" data-mid="${esc(message.id)}">
+      <div class="bot-welcome-bubble">
+        <div class="bot-welcome-byline">🤖 System Bot · COMMUNITY INVITE</div>
+        <div class="bot-welcome-glow">🖤 JOIN MALefICENT CHAT</div>
+        <div class="bot-welcome-username">${esc(message.text||"Meet new people, make friends and join the conversation.")}</div>
+        <a class="bot-join-chat-link" href="${esc(joinUrl)}" target="_blank" rel="noopener noreferrer">✦ JOIN CHAT ✦</a>
+        <div class="bot-join-chat-footnote">Your community is waiting for you</div>
+      </div>
+    </div>`;
+  }
   if(message?.breadCommand && String(message.bot||message.username)==="Bot"){
     return `<div class="message bot-welcome-message bot-bread-message" data-mid="${esc(message.id)}">
       <div class="bot-welcome-bubble" style="border-color:#ffbd59;box-shadow:0 0 16px #ff8c4244">
