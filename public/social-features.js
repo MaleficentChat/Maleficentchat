@@ -27,6 +27,17 @@ function addNav(){
   const conf=document.createElement("section");conf.id="sfConfessionsView";conf.className="view hidden sf-view";
   conf.innerHTML='<div class="topbar"><div><h2>🥀 Anonymous Confessions</h2><p class="muted">Share thoughts without showing your public identity.</p></div><div class="toolbar"><button class="mini" id="sfConfLatest">Latest</button><button class="mini" id="sfConfPopular">Popular</button><button class="mini" id="sfConfMine">My submissions</button></div></div><div class="sf-content" id="sfConfContent"></div>';
   main.appendChild(conf);
+
+  const mySpace=document.querySelectorAll(".nav-group");
+  const personal=Array.from(mySpace).find(g=>g.querySelector('[data-view="saved"]'))||mySpace[0];
+  if(personal&&!personal.querySelector('[data-social-view="media-vault"]')){
+    const vault=document.createElement("button");vault.className="nav";vault.type="button";vault.dataset.socialView="media-vault";vault.innerHTML='🎞️ <span>Media Vault</span>';personal.appendChild(vault);
+  }
+  if(!el("sfMediaVaultView")){
+    const vault=document.createElement("section");vault.id="sfMediaVaultView";vault.className="view hidden sf-view";
+    vault.innerHTML='<div class="topbar"><div><h2>🎞️ Media Vault</h2><p class="muted">Your private collection of saved photos, GIFs, videos and links.</p></div><span class="sf-vault-count" id="sfVaultCount">0 saved</span></div><div class="sf-content"><form class="sf-vault-add" id="sfVaultForm"><input name="url" type="url" placeholder="Paste a site upload or YouTube link…" required><input name="title" maxlength="140" placeholder="Give it a title (optional)"><button class="primary" type="submit">＋ Save to Vault</button></form><div class="sf-vault-note">Only you can see your vault. Save media from Shadow Feed with the “Save to Vault” action, or paste a link from this site or YouTube.</div><div class="sf-vault-grid" id="sfVaultGrid"></div></div>';
+    main.appendChild(vault);
+  }
  }
  document.querySelectorAll("[data-social-view]").forEach(b=>{
   if(b.dataset.socialBound==="true")return;
@@ -39,8 +50,8 @@ function openSocialView(which){
  document.querySelectorAll(".view").forEach(v=>v.classList.add("hidden"));
  document.querySelectorAll(".nav[data-view],.nav[data-social-view]").forEach(v=>v.classList.remove("active"));
  const button=document.querySelector('[data-social-view="'+which+'"]');button?.classList.add("active");
- const view=el(which==="scrapbook"?"sfScrapbookView":"sfConfessionsView");view?.classList.remove("hidden");
- if(which==="scrapbook")loadScrapbook(state.user?.id,true);else loadConfessions("latest");
+ const view=el(which==="scrapbook"?"sfScrapbookView":which==="media-vault"?"sfMediaVaultView":"sfConfessionsView");view?.classList.remove("hidden");
+ if(which==="scrapbook")loadScrapbook(state.user?.id,true);else if(which==="media-vault")loadMediaVault();else loadConfessions("latest");
 }
 function bookEntry(entry,ownerId,isOwner){
  const media=entry.media_key?'<div class="sf-memory-media">'+(String(entry.media_key).match(/\.(mp4|webm|mov)$/i)?'<video controls preload="metadata" src="'+esc(mediaUrl(entry.media_key))+'"></video>':'<img loading="lazy" src="'+esc(mediaUrl(entry.media_key))+'" alt="Scrapbook memory">')+'</div>':'';
@@ -105,6 +116,53 @@ async function loadMyConfessions(){
  const root=el("sfConfContent");root.innerHTML='<p class="muted">Loading your submissions…</p>';
  try{const d=await request("/api/confessions/mine");const submissions=Array.isArray(d.confessions)?d.confessions:[];root.innerHTML='<h3>My submissions</h3>'+(submissions.length?submissions.map(c=>'<article class="sf-conf-card"><div class="sf-conf-meta">'+esc(c.category)+' · '+esc(c.status)+'</div><p>'+esc(c.body)+'</p><button class="mini danger" data-conf-delete="'+esc(c.id)+'">Delete</button></article>').join(""):'<p class="sf-empty">You have not submitted anything yet.</p>');root.querySelectorAll("[data-conf-delete]").forEach(b=>b.onclick=async()=>{if(!confirm("Delete this confession?"))return;try{await request("/api/confessions/"+b.dataset.confDelete,{method:"DELETE"});loadMyConfessions();}catch(e){say(e.message);}});}catch(e){root.textContent=e.message;}
 }
+
+let vaultFilter="all";
+async function loadMediaVault(){
+ const root=el("sfVaultGrid");if(!root)return;root.innerHTML='<p class="muted">Opening your vault…</p>';
+ try{
+  const d=await request("/api/media-vault"),items=Array.isArray(d.items)?d.items:[];
+  const count=el("sfVaultCount");if(count)count.textContent=items.length+" saved";
+  const visible=items.filter(x=>vaultFilter==="all"||x.media_type===vaultFilter);
+  root.innerHTML=visible.map(item=>{
+   const url=esc(item.media_url),title=esc(item.title||"Saved media");
+   const local=item.media_url.startsWith("/uploads/");
+   const preview=local&&["image","gif"].includes(item.media_type)?'<img loading="lazy" src="'+url+'" alt="'+title+'">':
+    local&&item.media_type==="video"?'<video controls preload="metadata" src="'+url+'"></video>':
+    '<a class="sf-vault-link" href="'+url+'" target="_blank" rel="noopener noreferrer">▶ Open saved media</a>';
+   return '<article class="sf-vault-card" data-vault-item="'+esc(item.id)+'"><div class="sf-vault-preview">'+preview+'</div><div class="sf-vault-card-foot"><div><b>'+title+'</b><small>'+esc(item.media_type.toUpperCase())+'</small></div><button type="button" class="danger" data-vault-delete="'+esc(item.id)+'" aria-label="Remove from vault">✕</button></div></article>';
+  }).join("")||'<div class="sf-vault-empty">✧ Your vault is waiting. Save a photo, GIF, video or link from the feed.</div>';
+ }catch(error){root.innerHTML='<p class="error">'+esc(error.message||"Could not load your vault.")+'</p>';}
+}
+async function saveToMediaVault(url,title){
+ try{await request("/api/media-vault",{method:"POST",body:JSON.stringify({url,title})});say("Saved to your Media Vault ✨");if(state.view==="media-vault")loadMediaVault();}
+ catch(error){say(error.message||"Could not save this media.");}
+}
+function installWallVaultActions(){
+ document.querySelectorAll(".wall-post").forEach(post=>{
+  const media=post.querySelector(".wall-media"),actions=post.querySelector(".news-actions");
+  if(!media||!actions||actions.querySelector("[data-vault-post]"))return;
+  const button=document.createElement("button");button.type="button";button.className="mini";button.dataset.vaultPost="true";button.textContent="🎞 Save to Vault";
+  button.addEventListener("click",()=>saveToMediaVault(media.getAttribute("src")||media.currentSrc,post.querySelector(".social-author h3")?.textContent||"Shadow Feed media"));
+  actions.insertBefore(button,actions.firstChild);
+}
+document.addEventListener("submit",async event=>{
+ if(event.target?.id!=="sfVaultForm")return;event.preventDefault();
+ const form=event.target,button=form.querySelector('button[type="submit"]');
+ button.disabled=true;
+ try{await request("/api/media-vault",{method:"POST",body:JSON.stringify({url:form.elements.url.value,title:form.elements.title.value})});form.reset();say("Added to your private vault.");await loadMediaVault();}
+ catch(error){say(error.message||"Could not save that link.");}
+ finally{button.disabled=false;}
+});
+document.addEventListener("click",async event=>{
+ const del=event.target.closest("[data-vault-delete]");
+ if(del){del.disabled=true;try{await request("/api/media-vault/"+encodeURIComponent(del.dataset.vaultDelete),{method:"DELETE"});await loadMediaVault();}catch(error){say(error.message||"Could not remove item.");del.disabled=false;}return;}
+ const filter=event.target.closest("[data-vault-filter]");
+ if(filter){vaultFilter=filter.dataset.vaultFilter;document.querySelectorAll("[data-vault-filter]").forEach(b=>b.classList.toggle("active",b===filter));loadMediaVault();}
+});
+const wallObserver=new MutationObserver(installWallVaultActions);
+if(document.body)wallObserver.observe(document.body,{childList:true,subtree:true});
+
 function installProfileTab(){
  const root=document.querySelector(".profile-modal"),tabs=root?.querySelector(".profile-tabs");if(!root||!tabs||tabs.querySelector('[data-sf-profile-tab]'))return;
  const userId=root.dataset.sfUserId,isSelf=root.dataset.sfIsSelf==="true";if(!userId||(!isSelf&&root.dataset.sfShowScrapbook==="false"))return;
