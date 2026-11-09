@@ -2,7 +2,7 @@
 (function(){
   if(window.__midnightCallsLoaded)return;
   window.__midnightCallsLoaded=true;
-  const style=document.createElement("link");style.rel="stylesheet";style.href="/calls.css?v=1";document.head.appendChild(style);
+  const style=document.createElement("link");style.rel="stylesheet";style.href="/calls.css?v=2";document.head.appendChild(style);
   const root=document.createElement("div");root.id="midnightCallsRoot";root.innerHTML=`
     <button class="mc-call-launch" id="mcCallLaunch" type="button" aria-label="Open Midnight Calls">☎</button>
     <section class="mc-call-panel" id="mcCallPanel" hidden aria-label="Midnight Calls">
@@ -23,6 +23,21 @@
   document.body.appendChild(root);
   const $=id=>document.getElementById(id);
   const panel=$("mcCallPanel"),startBox=$("mcCallStart"),status=$("mcCallStatus"),media=$("mcCallMedia"),controls=$("mcCallControls"),incoming=$("mcCallIncoming");
+  // Place the call launcher in the Online Users panel, away from the message composer.
+  const callLauncher=$("mcCallLaunch");
+  const onlinePanel=document.getElementById("onlinePanel");
+  const onlineHeading=onlinePanel?.querySelector("#onlinePanelTitle")?.closest(".panel-head");
+  if(callLauncher&&onlineHeading){
+    onlineHeading.classList.add("mc-online-panel-head");
+    const moreButton=onlineHeading.querySelector(".panel-more");
+    const actions=document.createElement("div");
+    actions.className="mc-online-panel-actions";
+    if(moreButton)actions.appendChild(moreButton);
+    actions.appendChild(callLauncher);
+    onlineHeading.appendChild(actions);
+  }else if(callLauncher){
+    callLauncher.hidden=true;
+  }
   let socket=null,authed=false,activeCall=null,localStream=null,peer=null,pendingIncoming=null,pendingCandidates=[],muted=false,cameraOff=false;
   const rtcConfig={iceServers:[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}]};
   function show(){panel.hidden=false;$("mcCallTarget").focus();}
