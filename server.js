@@ -7475,6 +7475,54 @@ app.get('/api/me/account',auth,async(req,res)=>{
 
     await persistState(db);
 
+    // Publish a persistent System Bot Join Chat panel once per minute in the
+    // three named public community rooms. Existing room records and messages
+    // are preserved; a missing/retired Main Room is simply skipped.
+    let joinChatBroadcastInFlight = false;
+    setInterval(async () => {
+      if (joinChatBroadcastInFlight) return;
+      joinChatBroadcastInFlight = true;
+      try {
+        const targets = await pool.query(
+          "SELECT id,name FROM rooms WHERE is_public=true AND LOWER(BTRIM(name))=ANY($1::text[]) ORDER BY id",
+          [["main room", "teen chat", "adult chat"]]
+        );
+        for (const room of targets.rows) {
+          const now = Date.now();
+          const message = {
+            id: id(),
+            roomId: String(room.id),
+            userId: null,
+            username: "Bot",
+            displayName: "System Bot",
+            rank: "BOT",
+            system: false,
+            isBot: true,
+            bot: "Bot",
+            joinChatPanel: true,
+            joinChatUrl: "https://maleficentchat.onrender.com/",
+            text: "Meet new people, make friends and join the conversation on Maleficent Chat.",
+            reactions: {},
+            edited: false,
+            deleted: false,
+            pinned: false,
+            time: now,
+            delivered: true
+          };
+          await pool.query(
+            "INSERT INTO room_messages(id,room_id,user_id,data,created_at) VALUES($1,$2,NULL,$3::jsonb,NOW())",
+            [message.id, Number(room.id), JSON.stringify(message)]
+          );
+          if (Array.isArray(db.messages)) db.messages.push(message);
+          io.to("room:" + room.id).emit("message", message);
+        }
+      } catch (error) {
+        console.error("[SYSTEM BOT] Join Chat broadcast failed:", error?.message || error);
+      } finally {
+        joinChatBroadcastInFlight = false;
+      }
+    }, 60 * 1000);
+
     
 // Master repair APIs: privacy-aware admin controls and persistent records.
 app.post('/api/private-nickname',auth,async(req,res)=>{try{const u=current(req),target=String(req.body.targetId||''),nickname=cleanText(req.body.nickname||'').trim().slice(0,50);if(!target||target===String(u.id))return res.status(400).json({error:'Choose another user.'});const exists=await pool.query('SELECT id FROM users WHERE id=$1',[target]);if(!exists.rowCount)return res.status(404).json({error:'User not found'});if(!nickname){await pool.query('DELETE FROM private_nicknames WHERE owner_id=$1 AND target_user_id=$2',[u.id,target]);return res.json({ok:true,nickname:''});}await pool.query(`INSERT INTO private_nicknames(owner_id,target_user_id,nickname) VALUES($1,$2,$3) ON CONFLICT(owner_id,target_user_id) DO UPDATE SET nickname=EXCLUDED.nickname`,[u.id,target,nickname]);res.json({ok:true,nickname});}catch(e){console.error(e);res.status(500).json({error:'Could not save nickname'});}});
