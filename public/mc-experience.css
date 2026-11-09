@@ -921,15 +921,19 @@ body.kp-rooms-panel-open{overflow:hidden!important}
 .kp-rooms-panel-close:active{transform:scale(.94)!important}
 
 
-/* Match the standard /welcome bot message dimensions. */
-.bot-join-chat-message { margin:14px 0 !important; }
+/* The invite uses the same full chat-column width and dimensions as /welcome. */
+.bot-join-chat-message {
+  display:flex !important; justify-content:center !important;
+  width:100% !important; max-width:100% !important; flex:0 0 100% !important;
+  margin:14px 0 !important; padding:0 8px !important; box-sizing:border-box !important;
+}
 .bot-join-chat-message .bot-welcome-bubble {
   display:flex !important; flex-direction:column !important; align-items:center !important;
-  gap:0 !important; width:min(100%,420px) !important; max-width:420px !important;
-  padding:18px 20px 20px !important; border-radius:18px !important;
+  width:100% !important; max-width:100% !important; box-sizing:border-box !important;
+  gap:0 !important; padding:18px 20px 20px !important; border-radius:18px !important;
   border:1px solid rgba(210,122,82,.35) !important;
   background:linear-gradient(145deg,rgba(38,25,20,.98),rgba(19,13,11,.98)) !important;
-  box-shadow:0 8px 24px rgba(0,0,0,.22) !important;
+  box-shadow:0 0 10px rgba(230,154,104,.25),inset 0 0 22px rgba(230,154,104,.05) !important;
 }
 .bot-join-chat-message .bot-welcome-byline { margin:0 0 13px !important; font-size:12px !important; }
 .bot-join-chat-message .bot-welcome-glow { margin:0 !important; font-size:clamp(20px,5vw,29px) !important; line-height:1.25 !important; }
