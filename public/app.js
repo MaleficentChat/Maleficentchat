@@ -4944,7 +4944,7 @@ function editMood(){
   $("clearMood").onclick=()=>{$("moodEdit").value="";};
   $("saveMood").onclick=()=>saveMyProfile({mood:$("moodEdit").value.trim()},'Mood saved.');
 }
-window.__mcRoomContext=()=>({userId:String(state.user?.id||''),roomId:String(state.currentRoom||'')});
+window.__mcRoomContext=()=>({userId:String(state.user?.id||''),roomId:String(state.currentRoom||''),socket:state.socket});
 function openProfileEditMenu(targetUser=null){
   const self=!targetUser||String(targetUser.id)===String(state.user?.id);
   const user=self?(state.user||{}):targetUser;
