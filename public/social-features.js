@@ -145,6 +145,7 @@ function installWallVaultActions(){
   const button=document.createElement("button");button.type="button";button.className="mini";button.dataset.vaultPost="true";button.textContent="🎞 Save to Vault";
   button.addEventListener("click",()=>saveToMediaVault(media.getAttribute("src")||media.currentSrc,post.querySelector(".social-author h3")?.textContent||"Shadow Feed media"));
   actions.insertBefore(button,actions.firstChild);
+ });
 }
 document.addEventListener("submit",async event=>{
  if(event.target?.id!=="sfVaultForm")return;event.preventDefault();
