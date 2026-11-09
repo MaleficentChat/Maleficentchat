@@ -7330,3 +7330,50 @@ html[data-theme] .settings-tab.active {
 .brand-news-file-name{font-size:10px;color:#9d91aa}
 .brand-news-compose-actions{display:flex;justify-content:flex-end;gap:8px;padding-top:8px}
 @media(max-width:650px){.brand-news-masthead{margin:12px 12px 0;padding:25px 20px;border-radius:17px}.brand-news-toolbar{margin:16px 13px 8px}.brand-news-feed{padding:10px 12px 24px}.brand-news-story-grid{grid-template-columns:1fr!important;padding:15px}.brand-news-story-media{order:-1}.brand-news-art{max-height:210px}.brand-news-compose-grid{grid-template-columns:1fr}.brand-news-composer{width:94vw}.brand-news-story-top{padding:12px 14px 0}.brand-news-story-foot{padding:10px 14px}}
+
+
+/* Scrollable, compact leaderboard columns: each category scrolls independently. */
+#leaderboard { align-items: start; }
+#leaderboard > .card {
+  max-height: min(68vh, 720px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: #8054ad #130f1d;
+}
+#leaderboard > .card > h3 {
+  position: sticky;
+  top: -1px;
+  z-index: 3;
+  margin-top: 0;
+  padding: 10px 0;
+  background: var(--card, #100d1b);
+}
+#leaderboard > .card::-webkit-scrollbar { width: 7px; }
+#leaderboard > .card::-webkit-scrollbar-thumb { background: #8054ad; border-radius: 20px; }
+.bot-join-chat-message .bot-welcome-bubble {
+  border: 1px solid #9b5cff;
+  background: linear-gradient(145deg, rgba(25,15,42,.98), rgba(9,8,19,.98));
+  box-shadow: 0 0 18px #9b5cff33;
+}
+.bot-join-chat-message .bot-welcome-glow {
+  color: #d6b2ff;
+  text-shadow: 0 0 12px #9b5cff;
+}
+.bot-join-chat-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 42px;
+  margin-top: 14px;
+  border: 1px solid #b78aff;
+  border-radius: 12px;
+  background: linear-gradient(100deg, #4a2475, #7b3eb0);
+  color: #fff !important;
+  font-weight: 800;
+  letter-spacing: .06em;
+  text-decoration: none !important;
+}
+.bot-join-chat-link:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
+.bot-join-chat-footnote { margin-top: 9px; color: #bba9d2; font-size: 11px; text-align: center; }
