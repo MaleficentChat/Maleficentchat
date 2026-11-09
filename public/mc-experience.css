@@ -32,7 +32,7 @@ body{background-image:radial-gradient(ellipse at 48% -18%,rgba(184, 98, 55,.22),
 .nav-group>summary{padding:11px 9px!important;color:#e7cec2!important;font-size:10px!important;font-weight:850!important;letter-spacing:.16em!important;text-transform:uppercase!important}
 .main{background:transparent!important}
 .topbar{position:relative!important;margin:16px 18px 12px!important;padding:17px 20px!important;border:1px solid var(--kp-line)!important;border-radius:16px!important;background:linear-gradient(105deg,rgba(55, 31, 19,.96),rgba(41, 22, 12,.92))!important;box-shadow:0 8px 28px rgba(0, 0, 0,.12)!important}
-.topbar:after{content:"KNIGHTPULSE  /  COMMUNITY NETWORK";display:block;margin-top:5px;color:#b98870;font-size:9px;font-weight:800;letter-spacing:.19em}
+.topbar:after{content:"MALEFICENT CHAT  /  COMMUNITY NETWORK";display:block;margin-top:5px;color:#b98870;font-size:9px;font-weight:800;letter-spacing:.19em}
 .topbar h2{color:#fdf8f5!important;font-size:clamp(18px,2vw,23px)!important;letter-spacing:-.035em!important}
 .room-grid{padding:18px!important;gap:13px!important;background:transparent!important}
 .room,.card,.online-panel,.chat-card,.panel,.stat-card,.user-card,.friend-card,.news-card,.game-card,.settings-card,.staff-card{background:linear-gradient(145deg,rgba(59, 34, 22,.97),rgba(41, 22, 13,.98))!important;border:1px solid var(--kp-line)!important;border-radius:var(--kp-radius)!important;box-shadow:0 9px 28px rgba(0, 0, 0,.15)!important;color:var(--kp-ink)!important}
@@ -116,7 +116,7 @@ input:focus,textarea:focus,select:focus{border-color:var(--kp-blue)!important;bo
 }
 
 
-/* Knightpulse room discovery hub */
+/* Maleficent Chat room discovery */
 #viewRooms{max-width:100%;padding-bottom:28px}
 #viewRooms .kp-room-hub{position:relative;isolation:isolate;overflow:hidden;margin:18px 20px 8px;padding:clamp(20px,3vw,34px);border:1px solid rgba(235, 164, 129,.22);border-radius:22px;background:radial-gradient(ellipse at 83% 5%,rgba(206, 115, 69,.22),transparent 36%),radial-gradient(ellipse at 0% 100%,rgba(210, 173, 112,.09),transparent 35%),linear-gradient(118deg,#311b10 0%,#28150c 52%,#2d1a10 100%);box-shadow:0 20px 60px rgba(0, 0, 0,.2)}
 #viewRooms .kp-room-hub:before{content:"";position:absolute;z-index:-1;width:310px;height:310px;right:8%;top:-205px;border:1px solid rgba(239, 187, 161,.16);border-radius:50%;box-shadow:0 0 0 24px rgba(239, 187, 161,.025),0 0 0 52px rgba(239, 187, 161,.02)}
@@ -185,7 +185,7 @@ input:focus,textarea:focus,select:focus{border-color:var(--kp-blue)!important;bo
 }
 
 
-/* Knightpulse active people panel refresh */
+/* Maleficent Chat active people panel */
 #onlinePanel{position:relative!important;overflow:hidden!important;padding:0!important;border:1px solid rgba(229, 164, 132,.22)!important;border-radius:18px!important;background:linear-gradient(180deg,#321b10 0%,#28150b 100%)!important}
 #onlinePanel:before{content:"";position:absolute;pointer-events:none;top:-110px;right:-90px;width:230px;height:230px;border-radius:50%;background:radial-gradient(circle,rgba(222, 123, 73,.16),transparent 68%)}
 #onlinePanel>.mobile-users-head{position:relative;z-index:1;padding:14px 15px!important;background:linear-gradient(105deg,#4d2b1a,#3a1f12)!important}
@@ -231,7 +231,7 @@ input:focus,textarea:focus,select:focus{border-color:var(--kp-blue)!important;bo
 }
 
 
-/* Knightpulse — refined member profile, sapphire & champagne edition */
+/* Maleficent Chat — refined member profile, sapphire & champagne edition */
 #viewProfile{--kp-gold:#e8cc91;--kp-gold-soft:rgba(232, 204, 145,.16);--kp-blue:#e7a47d}
 #viewProfile .my-profile-wrap{width:min(100%,900px);margin:clamp(8px,2vw,22px) auto 34px;padding:0 10px;box-sizing:border-box}
 #viewProfile .profile-settings-card{position:relative;isolation:isolate;overflow:hidden;border:1px solid rgba(224, 177, 153,.2)!important;border-radius:24px!important;background:linear-gradient(155deg,#351c10 0%,#29150b 48%,#211109 100%)!important;box-shadow:0 24px 70px rgba(0, 0, 0,.34),inset 0 1px rgba(255, 255, 255,.045)!important;color:#fcf4f0}
@@ -280,7 +280,7 @@ input:focus,textarea:focus,select:focus{border-color:var(--kp-blue)!important;bo
 }
 
 
-/* KNIGHTPULSE FIXED DEFAULT THEME — one consistent look across the entire site. */
+/* MALEFICENT CHAT FIXED DEFAULT THEME — one consistent look across the entire site. */
 :root{color-scheme:dark;--kp-void:#140b07;--kp-night:#20120b;--kp-surface:#2d1a11;--kp-raised:#3b2317;--kp-raised2:#492c1d;--kp-line:rgba(231, 183, 159,.16);--kp-line-hot:rgba(235, 165, 130,.42);--kp-ink:#fdf5f1;--kp-muted:#c7a18e;--kp-blue:#dc8b62;--kp-blue2:#a84f3d;--kp-gold:#e5c17e;--kp-mint:#66d9bf;--kp-red:#ff7f91}
 html[data-theme],body[data-theme]{background-color:#140b07!important;color:#fdf5f1!important}
 html[data-theme] body{background-image:radial-gradient(ellipse at 48% -18%,rgba(184, 98, 55,.22),transparent 47%),radial-gradient(ellipse at 100% 65%,rgba(111, 56, 28,.10),transparent 35%)!important;background-attachment:fixed!important}
@@ -536,7 +536,7 @@ html[data-theme] body{background-image:radial-gradient(ellipse at 48% -18%,rgba(
 @media(max-width:390px){.staff-space-hero-seal{display:none}.staff-space-hero p{max-width:100%}.staff-space-hero h2{font-size:21px}}
 
 
-/* KnightPulse staff command center */
+/* Maleficent Chat staff command center */
 .kp-command-center,.kp-staff-inbox{border:1px solid rgba(240, 196, 166,.25);background:linear-gradient(135deg,rgba(54, 36, 24,.96),rgba(25, 17, 13,.98));box-shadow:0 14px 38px rgba(0, 0, 0,.2)}
 .kp-command-head,.kp-inbox-head{display:flex;align-items:center;justify-content:space-between;gap:14px}
 .kp-command-head small,.kp-inbox-head small{letter-spacing:.16em;color:#f3cdb3;font-size:.68rem;font-weight:800}
@@ -667,7 +667,7 @@ html[data-theme] body{background-image:radial-gradient(ellipse at 48% -18%,rgba(
 #staff .admin-activity-logs>.admin-activity-logs-card{display:block!important;box-sizing:border-box!important;width:100%!important;max-width:none!important;min-width:0!important}
 #staff .admin-activity-logs-card #systemAuditSearchForm{width:100%!important;min-width:0!important}
 
-/* KnightPulse premium public profile — match the Edit Profile account experience. */
+/* Maleficent Chat premium public profile — match the Edit Profile account experience. */
 .profile-modal.kp-public-profile{
   width:min(880px,96vw)!important;max-width:880px!important;max-height:94vh!important;
   overflow:auto!important;overscroll-behavior:contain!important;
@@ -850,7 +850,7 @@ body.kp-rooms-panel-open{overflow:hidden!important}
 }
 
 
-/* KnightPulse room browser + leaderboard refinement */
+/* Maleficent Chat room browser + leaderboard refinement */
 #viewRooms .kp-room-primary-actions>.kp-browse-rooms{
   flex:0 0 58px!important;height:58px!important;min-height:58px!important;max-height:58px!important;
   align-self:stretch!important;justify-content:flex-start!important;padding:0 20px!important;
@@ -875,7 +875,7 @@ body.kp-rooms-panel-open{overflow:hidden!important}
 #viewLeaderboard>.topbar{margin:0 0 18px!important;padding:22px!important;border:1px solid rgba(226, 191, 174,.16)!important;
  border-radius:20px!important;background:radial-gradient(circle at 90% 0,rgba(206, 174, 112,.16),transparent 42%),linear-gradient(135deg,#482717,#2c170c)!important}
 #viewLeaderboard>.topbar h2{margin:0!important;color:#f4e7c8!important;font-family:Georgia,serif!important;font-size:clamp(23px,4vw,32px)!important}
-#viewLeaderboard>.topbar:after{content:"Celebrate the members shaping the KnightPulse community";display:block;margin-top:7px;color:#cead9c;font-size:13px}
+#viewLeaderboard>.topbar:after{content:"Celebrate the members shaping the Maleficent Chat community";display:block;margin-top:7px;color:#cead9c;font-size:13px}
 #viewLeaderboard #leaderboard{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:15px!important;align-items:start!important}
 #viewLeaderboard #leaderboard>.card{min-width:0!important;padding:17px!important;border:1px solid rgba(224, 177, 153,.18)!important;border-radius:19px!important;
  background:linear-gradient(155deg,rgba(73, 40, 24,.96),rgba(41, 20, 10,.98))!important;box-shadow:0 14px 34px rgba(0, 0, 0,.2)!important}
