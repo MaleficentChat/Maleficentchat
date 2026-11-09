@@ -93,7 +93,7 @@ function registerSocialFeatureRoutes({app,auth,current,pool,storeMediaBuffer,has
     const value=clean(raw,2048);if(!value)throw new Error("Add a media link first.");
     let url;
     if(value.startsWith("/uploads/")){
-      if(value.split("/").some(part=>part===".."||part==="."))throw new Error("Invalid media link.");
+      if(!/^\/uploads\/[A-Za-z0-9._/-]+$/.test(value)||value.split("/").some(part=>part===".."||part==="."))throw new Error("Invalid media link.");
       url=value;
     }else{
       let parsed;try{parsed=new URL(value);}catch(_){throw new Error("Use a valid media link.");}
