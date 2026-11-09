@@ -7639,3 +7639,18 @@ body.parallel-embed.parallel-embed-error:after{content:"This room could not be o
 .bot-join-chat-message .bot-welcome-byline{margin-bottom:5px!important;}
 .bot-join-chat-message .bot-join-chat-link{min-height:40px!important;margin-top:8px!important;padding-top:7px!important;padding-bottom:7px!important;}
 @media(max-width:560px){.bot-join-chat-message .bot-welcome-bubble{min-height:104px!important;padding:11px 12px 13px!important;}.bot-join-chat-message .bot-join-chat-link{min-height:40px!important;margin-top:7px!important;}}
+
+
+/* Secret Societies: private-club identity, distinct from public rooms and dimensions. */
+.room-list-card.secret-society{border-color:rgba(190,153,92,.38);background:linear-gradient(125deg,rgba(87,59,29,.18),rgba(18,14,25,.94) 58%);box-shadow:inset 3px 0 0 rgba(190,153,92,.72)}
+.room-list-card.secret-society .room-icon-wrap{filter:drop-shadow(0 0 9px rgba(201,164,99,.3))}
+.secret-society-label{color:#d7b77b!important;border-color:rgba(215,183,123,.5)!important;letter-spacing:.02em}
+.room-list-card.secret-society .room-subrow{color:#c6ad82}
+.dimension-panel .parallel-split-heading{align-items:flex-start}
+.dimension-panel .parallel-split-heading h2{background:linear-gradient(100deg,#d8b5ff,#8b73ff 55%,#5ee7ff);background-clip:text;-webkit-background-clip:text;color:transparent}
+.dimension-intro{margin:5px 0 0;color:var(--muted);font-size:12px;line-height:1.5}
+.dimension-panel .parallel-split-card{border-color:rgba(145,113,255,.3);background:radial-gradient(ellipse at 100% 0,rgba(111,76,255,.13),transparent 58%),var(--panel,rgba(255,255,255,.025))}
+.dimension-panel .parallel-split-card button{background:linear-gradient(110deg,#6d43c8,#397fba);border-color:rgba(165,145,255,.65)}
+.dimension-panel .parallel-private-pill{border-color:#9678ed;color:#bdaaff}
+.parallel-room-toolbar{background:radial-gradient(ellipse at 80% 0,rgba(104,75,204,.2),transparent 55%),var(--panel,#15121c)}
+.parallel-room-toolbar-title b{background:linear-gradient(90deg,#d5b5ff,#83dfff);background-clip:text;-webkit-background-clip:text;color:transparent}

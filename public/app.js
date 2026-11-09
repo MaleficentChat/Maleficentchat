@@ -393,17 +393,17 @@ async function refreshCurrentRoomOnly(){
 }
 
 
-function openParallelRoomLayout(parentId,splitId,code,layout){
+function openParallelRoomLayout(parentId,splitId,code,layout,dimensionName){
   const existing=document.getElementById("parallelRoomOverlay");existing?.remove();
   const side=layout==="side-by-side";
   const overlay=document.createElement("section");
   overlay.id="parallelRoomOverlay";overlay.className="parallel-room-overlay";
   overlay.innerHTML=`
     <header class="parallel-room-toolbar">
-      <div class="parallel-room-toolbar-title"><b>⫶ Parallel Rooms</b><small>Two independent conversations</small></div>
+      <div class="parallel-room-toolbar-title"><b>✧ Alternate Dimensions</b><small>${esc(dimensionName||"Parallel dimension")} · its own members and history</small></div>
       <nav class="parallel-room-tabs" aria-label="Choose room view">
         <button type="button" data-parallel-tab="parent" class="${side?"active":""}">Main Room</button>
-        <button type="button" data-parallel-tab="split" class="${side?"":"active"}">Split Room</button>
+        <button type="button" data-parallel-tab="split" class="${side?"":"active"}">✧ Dimension</button>
       </nav>
       <button type="button" class="parallel-room-close" aria-label="Close parallel view">×</button>
     </header>
@@ -461,39 +461,43 @@ function openParallelSplits(){
   const room=state.rooms.find(r=>String(r.id)===String(state.currentRoom));
   if(!room){toast("Current room details are unavailable.");return;}
   modal(`
-    <div class="parallel-split-panel">
-      <div class="parallel-split-heading"><div><small>PRIVATE PARALLEL CHAT</small><h2>⫶ Parallel Rooms</h2></div><span class="parallel-private-pill">PRIVATE</span></div>
+    <div class="parallel-split-panel dimension-panel">
+      <div class="parallel-split-heading"><div><small>BRANCH INTO ANOTHER WORLD</small><h2>✧ Alternate Dimensions</h2><p class="dimension-intro">Create a parallel space with its own name, members and message history.</p></div><span class="parallel-private-pill">CODE ACCESS</span></div>
       <section class="parallel-split-card">
-        <h3>＋ Create a Split</h3>
-        <p>A separate room linked to <strong>${esc(room.name)}</strong>, with its own messages and members.</p>
+        <h3>✧ Create a Dimension</h3>
+        <p>Branch away from <strong>${esc(room.name)}</strong> into a separate conversation universe. It will not appear in the room list.</p>
         ${canCreate?`
-          <label for="parallelCreateCode">Your custom Split Code</label>
+          <label for="parallelDimensionName">Dimension Name</label>
+          <input id="parallelDimensionName" maxlength="40" autocomplete="off" placeholder="E.G. The Velvet Nebula">
+          <label for="parallelCreateCode">Custom Dimension Code</label>
           <input id="parallelCreateCode" maxlength="24" autocomplete="off" autocapitalize="characters" placeholder="E.G. NIGHTOWL24">
-          <small>4–24 letters or numbers. Codes are unique within this parent room.</small>
+          <small>4–24 letters or numbers. Codes are unique within this original room.</small>
           <label>Choose layout</label>
           <div class="parallel-layout-options">
             <label><input type="radio" name="parallelLayout" value="side-by-side" checked><span><b>▥ Side-by-Side</b><small>Keep both rooms visible together.</small></span></label>
             <label><input type="radio" name="parallelLayout" value="separate"><span><b>▣ Separate View</b><small>Open the split as its own full room.</small></span></label>
           </div>
-          <button type="button" class="primary-btn" id="parallelCreateBtn">Create Split</button>
+          <button type="button" class="primary-btn" id="parallelCreateBtn">Create Dimension</button>
         `:`<p class="parallel-rank-note">Creating a split requires ${threshold} rank or above.</p>`}
       </section>
       <section class="parallel-split-card">
-        <h3>↗ Join a Split</h3>
-        <p>Enter the code shared by its creator.</p>
-        <label for="parallelJoinCode">Split Code</label>
+        <h3>↗ Enter a Dimension</h3>
+        <p>Use the dimension code shared by its creator. You must have access to the original room first.</p>
+        <label for="parallelJoinCode">Dimension Code</label>
         <input id="parallelJoinCode" maxlength="24" autocomplete="off" autocapitalize="characters" placeholder="Enter Split Code">
-        <button type="button" class="secondary-btn" id="parallelJoinBtn">Join Split</button>
+        <button type="button" class="secondary-btn" id="parallelJoinBtn">Enter Dimension</button>
       </section>
-      <p class="parallel-split-footnote">A split never grants access to its parent room. You must already be allowed into this room. Your original room and its history stay untouched.</p>
+      <p class="parallel-split-footnote">Every dimension keeps its own chat, member list and identity. The original room remains untouched; a dimension code never grants access to the original room.</p>
     </div>`);
   const createButton=document.getElementById("parallelCreateBtn");
   createButton?.addEventListener("click",createParallelSplit);
   document.getElementById("parallelJoinBtn")?.addEventListener("click",joinParallelSplit);
 }
 async function createParallelSplit(){
+  const name=String(document.getElementById("parallelDimensionName")?.value||"").trim();
   const code=String(document.getElementById("parallelCreateCode")?.value||"").trim().toUpperCase();
   const layout=document.querySelector('input[name="parallelLayout"]:checked')?.value||"separate";
+  if(name.length<2||name.length>40){toast("Give your dimension a name (2–40 characters).");return;}
   if(!/^[A-Z0-9]{4,24}$/.test(code)){toast("Use 4–24 letters or numbers for your Split Code.");return;}
   const parentId=String(state.currentRoom||"");
   const parentAccess=JSON.parse(safeStorage.getItem("mc_room_join")||"null");
@@ -502,10 +506,10 @@ async function createParallelSplit(){
   const button=document.getElementById("parallelCreateBtn");
   if(button){button.disabled=true;button.textContent="Creating…";}
   try{
-    const result=await api("/api/rooms/"+encodeURIComponent(parentId)+"/splits/create",{method:"POST",body:JSON.stringify({code,layout})});
+    const result=await api("/api/rooms/"+encodeURIComponent(parentId)+"/splits/create",{method:"POST",body:JSON.stringify({name,code,layout})});
     closeModal();
-    openParallelRoomLayout(parentId,String(result.room.id),code,layout);
-    toast("Split room created. Share this code: "+code);
+    openParallelRoomLayout(parentId,String(result.room.id),code,layout,result.room?.name);
+    toast("Alternate dimension created. Share its code: "+code);
   }catch(error){toast(error.message||"Could not create the split.");if(button){button.disabled=false;button.textContent="Create Split";}}
 }
 async function joinParallelSplit(){
@@ -520,7 +524,7 @@ async function joinParallelSplit(){
   try{
     const result=await api("/api/rooms/"+encodeURIComponent(parentId)+"/splits/join",{method:"POST",body:JSON.stringify({code})});
     closeModal();
-    openParallelRoomLayout(parentId,String(result.room.id),code,String(result.layout||"separate"));
+    openParallelRoomLayout(parentId,String(result.room.id),code,String(result.layout||"separate"),result.room?.name);
   }catch(error){toast(error.message||"Could not join that split.");if(button){button.disabled=false;button.textContent="Join Split";}}
 }
 document.getElementById("openParallelSplits")?.addEventListener("click",openParallelSplits);
@@ -1895,7 +1899,7 @@ function renderRooms() {
         <button class="room-open" onclick="joinRoom('${esc(room.id)}')">
           <span class="room-icon-wrap">${esc(room.icon||'💬')}</span>
           <span class="room-main">
-          <span class="room-title-row"><strong>${esc(room.name)}</strong>${canSeeRoomPins&&room.pinned?'<span class="room-pinned-badge" title="Pinned for senior staff">📌</span>':''}${room.public===false?'<span class="room-lock" title="Secret room">🔒 Secret</span>':''}${locked?'<span class="room-lock">🔒</span>':''}</span>
+          <span class="room-title-row"><strong>${esc(room.name)}</strong>${canSeeRoomPins&&room.pinned?'<span class="room-pinned-badge" title="Pinned for senior staff">📌</span>':''}${room.public===false?'<span class="room-lock secret-society-label" title="Private Society">♛ Secret Society</span>':''}${locked?'<span class="room-lock">🔒</span>':''}</span>
             <span class="room-desc">${esc(room.description||'No description has been written for this room')}</span>
             <span class="room-subrow"><span>${esc(room.category||'Community')}</span><span>•</span><span>${esc(room.rankRequired||'MEMBER')}+</span>${room.announcement?'<span>• 📌 announcement</span>':''}</span>
           </span>
@@ -7104,7 +7108,7 @@ function openRoomCreationModal() {
           <label>Topic / category<input id="rc" maxlength="40" value="Community" placeholder="Community"></label>
         </div></section>
         <section class="room-editor-section"><h3>🔐 Who can join?</h3>
-          <label>Room visibility<select id="rVisibility"><option value="public">Public — listed for everyone</option><option value="secret">Secret — hidden, numeric room code required</option></select></label>
+          <label>Room visibility<select id="rVisibility"><option value="public">Public — listed for everyone</option><option value="secret">Secret Society — hidden, invitation key required</option></select></label>
           <label>Minimum rank<select id="rr">${ranks.map(r=>'<option value="'+r+'" '+(r==="MEMBER"?"selected":"")+'>'+rankLabels[r]+'</option>').join("")}</select></label>
           <label>Member access<select id="rFriendsOnlyCreate"><option value="false">Anyone who meets the rank requirement</option><option value="true">Accepted friends only</option></select></label>
           <label>Room password <span class="room-editor-optional">optional</span><input id="rp" type="password" autocomplete="new-password" placeholder="Leave blank for no password"></label>
