@@ -1895,7 +1895,7 @@ function renderRooms() {
     const isProtectedMainRoom = !!room.isDefault || /^main room$/i.test(String(room.name||"").trim());
     const canManage = !isProtectedMainRoom && (canFeature("edit_room") || canFeature("delete_room") || room.ownerId===state.user?.id);
     return `
-      <article class="room room-list-card ${state.currentRoom===room.id?'selected':''}">
+      <article class="room room-list-card ${room.public===false?'secret-society':''} ${state.currentRoom===room.id?'selected':''}">
         <button class="room-open" onclick="joinRoom('${esc(room.id)}')">
           <span class="room-icon-wrap">${esc(room.icon||'💬')}</span>
           <span class="room-main">
