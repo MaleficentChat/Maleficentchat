@@ -3591,7 +3591,15 @@ function renderUserProfileModal(user,data={}){
       <div class="profile-info-row"><b>📅 Member since</b><span>${esc(memberSince)}</span></div>
       <div class="profile-info-row"><b>🏠 Status</b><span>${user.online?'Online':'Offline'}</span></div>
       <div class="profile-info-row"><b>◉ Last seen</b><span>${esc(lastSeen)}</span></div>
-      <div class="profile-actions"><button class="mini" id="profileAchievementsBtn">🏆 Achievements</button>${!isSelf&&canFeature('profile_note')?`<button class="mini" id="profileNoteBtn">📝 Add Note <span id="profileNoteDot" style="display:none">●</span></button>${canFeature('profile_note')?'<button class="mini" id="profileFeatureBlockBtn">🚫 Feature Block</button>':''}`:''}<div class="profile-action-hint">Tap ☰ above for profile actions.</div></div>`;
+      <div class="profile-achievement-showcase" id="profileAchievementShowcase"></div><div class="profile-actions"><button class="mini" id="profileAchievementsBtn">🏆 Achievement Collection</button>${!isSelf&&canFeature('profile_note')?`<button class="mini" id="profileNoteBtn">📝 Add Note <span id="profileNoteDot" style="display:none">●</span></button>${canFeature('profile_note')?'<button class="mini" id="profileFeatureBlockBtn">🚫 Feature Block</button>':''}`:''}<div class="profile-action-hint">Tap ☰ above for profile actions.</div></div>`;
+    if(user.privacy?.achievements!==false){
+      api('/api/achievements/'+encodeURIComponent(user.id)).then(result=>{
+        const panel=$('profileAchievementShowcase');if(!panel)return;
+        const icons={'First Message':'💬','Chatterbox':'🗣️','Chatterbox+':'📣','Legendary Chatter':'🌌','Gamer':'🎮','Game Night':'🕹️','Arcade Legend':'👾','Popular':'💜','Beloved':'💎','Rising Star':'✨','Veteran':'⚔️','Mythic Soul':'🔮'};
+        const featured=(result.showcase||[]).slice(0,3);
+        panel.innerHTML=featured.length?'<b>✦ Featured Trophies</b><div class="ac-featured">'+featured.map(name=>'<span class="ac-feature-chip">'+(icons[name]||'🏆')+' '+esc(name)+'</span>').join('')+'</div>':'';
+      }).catch(()=>{});
+    }else{const panel=$('profileAchievementShowcase');if(panel)panel.remove();}
     else if(tab==='about' && user.privacy?.bio!==false) box.innerHTML=`<div class="about-card"><h3>About Me</h3><p>${esc(user.bio||'This user has not written an About Me yet.')}</p>${user.privacy?.country!==false&&user.country?`<div class="profile-info-row"><b>🌍 Country</b><span>${esc(countryFlagFor(user.country))} ${esc(user.country)}</span></div>`:''}${user.privacy?.pronouns!==false&&user.pronouns?`<div class="profile-info-row"><b>Pronouns</b><span>${esc(user.pronouns)}</span></div>`:''}${user.privacy?.interests!==false&&user.interests?.length?`<div class="tag-list">${user.interests.map(x=>`<span class="tag">${esc(x)}</span>`).join('')}</div>`:''}${isSelf?`<button class="primary" id="editAboutBtn">✏️ Edit About Me</button>`:''}</div>`;
     else if(tab==='about') box.innerHTML='';
     else if(tab==='photos') renderProfilePhotos();
