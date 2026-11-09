@@ -42,7 +42,7 @@
     socket.on("group-voice:peer-left",p=>{peerNames.delete(String(p.userId));closePeer(String(p.userId));renderParticipants();});
     socket.on("group-voice:count",p=>{if(joined)status("Connected · "+p.count+" / 6 participants");});
     socket.on("group-voice:signal",async p=>{
-      if(!joined||p.roomId!==activeRoom||String(p.toId)!==String(window.currentUser?.id))return;
+      if(!joined||p.roomId!==activeRoom||String(p.toId)!==ownUserId)return;
       const id=String(p.fromId),pc=ensurePeer(id),sig=p.signal;
       try{
         if(sig.type==="offer"){await pc.setRemoteDescription({type:"offer",sdp:sig.sdp});for(const candidate of pendingIce.get(id)||[])await pc.addIceCandidate(candidate);pendingIce.delete(id);const answer=await pc.createAnswer();await pc.setLocalDescription(answer);socket.emit("group-voice:signal",{roomId:activeRoom,toId:id,signal:{type:"answer",sdp:answer.sdp}});}
@@ -52,7 +52,7 @@
     });
     socket.on("music-room:updated",s=>{musicState=s;renderQueue();});
     socket.on("music-room:playing",p=>{musicState.current=p.item;renderNowPlaying(p.item,p.by);});
-    if(socket.connected)auth();return true;
+    if(!authed&&socket.connected)auth();return true;
   }
   function ensurePeer(id){
     if(peers.has(id))return peers.get(id);
