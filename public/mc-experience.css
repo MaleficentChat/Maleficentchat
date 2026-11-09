@@ -218,7 +218,7 @@ input:focus,textarea:focus,select:focus{border-color:var(--kp-blue)!important;bo
 #onlinePanel .online-user-copy>b{overflow:hidden;color:#fcf4f0!important;font-size:11px!important;font-weight:800;text-overflow:ellipsis;white-space:nowrap}
 #onlinePanel .online-user-copy>small{overflow:hidden;color:#c69e8a!important;font-size:9px!important;text-overflow:ellipsis;white-space:nowrap}
 #onlinePanel .online-user-copy .room-user-rank{overflow:hidden;color:#d8bd8a!important;font-size:9px!important;text-overflow:ellipsis;white-space:nowrap}
-#onlinePanel .online-user>.status{flex:0 0 8px;width:8px;height:8px;border:2px solid #3a2114;border-radius:50%;background:#65748a}
+#onlinePanel .online-user>.status{flex:0 0 8px;width:8px;height:8px;border:2px solid #3a2114;border-radius:50%;background:#887364}
 #onlinePanel .online-user>.status.on{background:#65d9ac;box-shadow:0 0 10px rgba(101, 217, 172,.8)}
 #onlinePanel .online-empty{display:grid;justify-items:center;gap:5px;padding:26px 12px!important;border:1px dashed rgba(216, 160, 132,.2);border-radius:13px;background:rgba(54, 30, 18,.45);text-align:center}
 #onlinePanel .online-empty>div{font-size:22px}
