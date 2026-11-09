@@ -23,11 +23,11 @@
   document.body.appendChild(root);
   const $=id=>document.getElementById(id);
   const panel=$("mcCallPanel"),startBox=$("mcCallStart"),status=$("mcCallStatus"),media=$("mcCallMedia"),controls=$("mcCallControls"),incoming=$("mcCallIncoming");
-  let socket=null,authed=false,activeCall=null,localStream=null,peer=null,pendingIncoming=null,muted=false,cameraOff=false;
+  let socket=null,authed=false,activeCall=null,localStream=null,peer=null,pendingIncoming=null,pendingCandidates=[],muted=false,cameraOff=false;
   const rtcConfig={iceServers:[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}]};
   function show(){panel.hidden=false;$("mcCallTarget").focus();}
   function resetUI(message){
-    if(peer){peer.ontrack=null;peer.onicecandidate=null;peer.close();peer=null;}
+    if(peer){peer.ontrack=null;peer.onicecandidate=null;peer.close();peer=null;}pendingCandidates=[];
     if(localStream){localStream.getTracks().forEach(t=>t.stop());localStream=null;}
     $("mcCallRemote").srcObject=null;$("mcCallLocal").srcObject=null;
     activeCall=null;pendingIncoming=null;muted=false;cameraOff=false;
@@ -58,7 +58,7 @@
         $("mcCallLocal").srcObject=localStream;$("mcCallLocal").hidden=activeCall.mode!=="video";
         peer=new RTCPeerConnection(rtcConfig);localStream.getTracks().forEach(track=>peer.addTrack(track,localStream));
         peer.ontrack=event=>{$("mcCallRemote").srcObject=event.streams[0];};
-        peer.onicecandidate=event=>{if(event.candidate)socket.emit("call:signal",{callId:activeCall.callId,signal:{type:"candidate",candidate:event.candidate}});};
+        pendingCandidates=[];peer.onicecandidate=event=>{if(event.candidate)socket.emit("call:signal",{callId:activeCall.callId,signal:{type:"candidate",candidate:event.candidate}});};
         if(activeCall.initiator){const offer=await peer.createOffer();await peer.setLocalDescription(offer);socket.emit("call:signal",{callId:activeCall.callId,signal:{type:"offer",sdp:offer.sdp}});}
         say("Connected · "+(activeCall.mode==="video"?"Video call":"Voice call"));
       }catch(error){say("Could not access your microphone or camera: "+(error.message||"permission denied"));socket.emit("call:end",{callId:activeCall.callId});}
@@ -75,9 +75,9 @@
             peer.ontrack=event=>{$("mcCallRemote").srcObject=event.streams[0];};
             peer.onicecandidate=event=>{if(event.candidate)socket.emit("call:signal",{callId:activeCall.callId,signal:{type:"candidate",candidate:event.candidate}});};
           }
-          await peer.setRemoteDescription({type:"offer",sdp:signal.sdp});const answer=await peer.createAnswer();await peer.setLocalDescription(answer);socket.emit("call:signal",{callId:activeCall.callId,signal:{type:"answer",sdp:answer.sdp}});
-        }else if(signal.type==="answer"&&peer){await peer.setRemoteDescription({type:"answer",sdp:signal.sdp});}
-        else if(signal.type==="candidate"&&peer&&signal.candidate){await peer.addIceCandidate(signal.candidate);}
+          await peer.setRemoteDescription({type:"offer",sdp:signal.sdp});for(const candidate of pendingCandidates.splice(0)){await peer.addIceCandidate(candidate);}const answer=await peer.createAnswer();await peer.setLocalDescription(answer);socket.emit("call:signal",{callId:activeCall.callId,signal:{type:"answer",sdp:answer.sdp}});
+        }else if(signal.type==="answer"&&peer){await peer.setRemoteDescription({type:"answer",sdp:signal.sdp});for(const candidate of pendingCandidates.splice(0)){await peer.addIceCandidate(candidate);}}
+        else if(signal.type==="candidate"&&peer&&signal.candidate){if(peer.remoteDescription)await peer.addIceCandidate(signal.candidate);else pendingCandidates.push(signal.candidate);}
       }catch(error){say("Call connection error: "+(error.message||"please try again"));socket.emit("call:end",{callId:activeCall.callId});}
     });
     socket.on("call:ended",data=>{if(activeCall?.callId===data.callId||pendingIncoming?.callId===data.callId)resetUI(data.reason==="declined"?"Call declined.":data.reason==="no-answer"?"No answer.":"Call ended.");});
