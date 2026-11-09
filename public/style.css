@@ -7658,3 +7658,9 @@ body.parallel-embed.parallel-embed-error:after{content:"This room could not be o
 .dimension-panel .parallel-private-pill{border-color:#9678ed;color:#bdaaff}
 .parallel-room-toolbar{background:radial-gradient(ellipse at 80% 0,rgba(104,75,204,.2),transparent 55%),var(--panel,#15121c)}
 .parallel-room-toolbar-title b{background:linear-gradient(90deg,#d5b5ff,#83dfff);background-clip:text;-webkit-background-clip:text;color:transparent}
+
+/* Single-layout split rooms and linked promotion text */
+.parallel-room-overlay{--parallel-layout:separate}
+.parallel-room-overlay.side-by-side-mode{display:none!important}
+.bot-join-chat-glow{display:inline-block;text-decoration:none!important;cursor:pointer;transition:filter .18s ease,transform .18s ease}
+.bot-join-chat-glow:hover{filter:brightness(1.25);transform:translateY(-1px)}
