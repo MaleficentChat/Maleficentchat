@@ -176,6 +176,21 @@
         <button class="kp-create-room primary hidden room-create-button" id="newRoom" type="button"><span>＋</span> Create a room</button>
       </div>
     </section>
+
+    <section class="midnight-live-hub" aria-label="Midnight Live Hub">
+      <div class="midnight-live-head"><div class="midnight-live-title"><i aria-hidden="true"></i> Midnight Live Hub</div><span class="midnight-live-sub">A little life between conversations</span></div>
+      <div class="midnight-live-ticker" aria-live="polite"><span id="midnightLiveTickerText">✦ Welcome to MALEFICENT CHAT NETWORK — make yourself at home, meet someone new and enjoy the moment.</span></div>
+      <div class="midnight-live-grid">
+        <article class="midnight-live-card"><small>✦ Daily question</small><b id="midnightDailyQuestionTitle">Today's conversation starter</b><p id="midnightDailyQuestion">If you could visit any fictional world, where would you go?</p></article>
+        <article class="midnight-live-card"><small>♜ Community pulse</small><b>Find your people</b><p>Drop into a room, say hello and make a new connection today.</p></article>
+        <article class="midnight-live-card"><small>★ Your next moment</small><b>Make a little progress</b><p>Play a game, climb the leaderboard or share something on the community wall.</p></article>
+      </div>
+      <div class="midnight-live-actions" aria-label="Quick links">
+        <button type="button" data-midnight-view="games">🎮 Explore games</button>
+        <button type="button" data-midnight-view="leaderboard">🏆 Leaderboards</button>
+        <button type="button" data-midnight-view="news">📰 Community news</button>
+      </div>
+    </section>
     <section class="kp-rooms-overlay hidden" id="kpRoomsPanel" role="dialog" aria-modal="true" aria-labelledby="kpRoomsPanelTitle">
       <div class="kp-rooms-panel">
         <header class="kp-rooms-panel-head">
@@ -480,7 +495,7 @@
   document.addEventListener("keydown",function(event){if(event.key==="Escape"&&!panel.classList.contains("hidden"))hide();});
 })();
 </script>
-<script src="/app.js?v=mc-kp-ui-migration-20261109"></script>
+<script src="/app.js?v=midnight-live-hub-20261109-1"></script>
 <script src="/social-features.js?v=1"></script>
 <script src="/entertainment.js?v=20261106-7"></script>
 </body>
