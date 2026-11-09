@@ -14,6 +14,7 @@ const session=require("express-session");
 const multer=require("multer");
 const {createWorker}=require("tesseract.js");
 const {Server}=require("socket.io");
+const {registerCallSignaling}=require("./call-signaling");
 
 const {initDB,loadState,persistState,pool}=require("./db");
 const {initSocialFeatureTables,registerSocialFeatureRoutes}=require("./social-features");
@@ -51,6 +52,7 @@ async function sendNativePushToUser(userId,payload){
 
 
 const app=express(), server=http.createServer(app), io=new Server(server);
+registerCallSignaling({io,findUser,privateMessagesBlocked});
 // Express 4 does not automatically forward rejected async route handlers to
 // error middleware. Wrap route callbacks once so GET/API failures return a
 // useful JSON error instead of hanging or appearing as a generic GET error.
