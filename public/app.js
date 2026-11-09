@@ -4937,7 +4937,14 @@ function editProfileInfo(){const u=state.user||{};modal(`<h2>Edit info</h2><inpu
 function editRelationship(){modal(`<h2>Edit relationship</h2><select id="rel"><option value="">Not set</option><option>Single</option><option>In a relationship</option><option>Complicated</option><option>Prefer not to say</option></select><button class="primary" id="saveRel">Save</button>`);$('rel').value=state.user.relationship||'';$('saveRel').onclick=()=>saveMyProfile({relationship:$('rel').value},'Relationship saved.');}
 function editUsername(){modal(`<h2>Edit username</h2><input id="newUsername" maxlength="24" value="${esc(state.user.username)}"><p class="muted">3–24 letters, numbers and underscores.</p><button class="primary" id="saveUsername">Save</button>`);$('saveUsername').onclick=()=>saveMyProfile({username:$('newUsername').value.trim()},'Username saved.');}
 function editAboutMe(){modal(`<h2>Edit about me</h2><textarea id="aboutMeEdit" rows="7" maxlength="500">${esc(state.user.bio||'')}</textarea><button class="primary" id="saveAboutMe">Save</button>`);$('saveAboutMe').onclick=()=>saveMyProfile({bio:$('aboutMeEdit').value},'About Me saved.');}
-function editMood(){modal(`<h2>Edit mood</h2><input id="moodEdit" maxlength="120" value="${esc(state.user.mood||'')}" placeholder="How are you feeling?"><button class="primary" id="saveMood">Save</button>`);$('saveMood').onclick=()=>saveMyProfile({mood:$('moodEdit').value.trim()},'Mood saved.');}
+function editMood(){
+  const presets=[["😊","Happy"],["😌","Chill"],["🥰","Loved"],["⚡","Energetic"],["🎧","Listening to music"],["🎮","Gaming"],["🌙","Quiet mode"],["🧠","Focused"],["☕","Taking a break"],["🥱","Sleepy"],["✨","Feeling magical"],["🚫","Do not disturb"]];
+  modal(`<div class="mood-status-editor"><h2>☻ Your mood</h2><p class="muted">Pick a vibe or write your own status. It appears on your profile when mood visibility is enabled.</p><div class="mood-status-grid">${presets.map(([emoji,label])=>`<button type="button" class="mood-preset" data-mood="${esc(label)}"><span>${emoji}</span><b>${esc(label)}</b></button>`).join('')}</div><label class="mood-custom-label">Custom status<input id="moodEdit" maxlength="80" value="${esc(state.user.mood||'')}" placeholder="What's your vibe today?"></label><div class="toolbar"><button class="primary" id="saveMood">Save mood</button><button class="mini" id="clearMood">Clear</button></div></div>`);
+  document.querySelectorAll(".mood-preset").forEach(btn=>{btn.onclick=()=>{document.querySelectorAll(".mood-preset").forEach(x=>x.classList.remove("selected"));btn.classList.add("selected");$("moodEdit").value=btn.dataset.mood;};});
+  $("clearMood").onclick=()=>{$("moodEdit").value="";};
+  $("saveMood").onclick=()=>saveMyProfile({mood:$("moodEdit").value.trim()},'Mood saved.');
+}
+window.__mcRoomContext=()=>({userId:String(state.user?.id||''),roomId:String(state.currentRoom||'')});
 function openProfileEditMenu(targetUser=null){
   const self=!targetUser||String(targetUser.id)===String(state.user?.id);
   const user=self?(state.user||{}):targetUser;
