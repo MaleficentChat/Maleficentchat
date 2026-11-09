@@ -22,7 +22,7 @@
       <div id="mcreError" class="mcre-error" role="status"></div>
     </section>`;
   document.body.appendChild(root);
-  const css=document.createElement("link");css.rel="stylesheet";css.href="/room-experiences.css?v=3";document.head.appendChild(css);
+  const css=document.createElement("link");css.rel="stylesheet";css.href="/room-experiences.css?v=4";document.head.appendChild(css);
   const panel=$("mcrePanel"),voicePane=$("mcreVoicePane"),musicPane=$("mcreMusicPane");
   let socket=null,authed=false,ownUserId="",activeRoom="",localStream=null,joined=false,muted=false,peers=new Map(),peerNames=new Map(),pendingIce=new Map(),musicState={queue:[],current:null};
   let rtc={iceServers:[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}]};
@@ -172,7 +172,7 @@
   }
   function addLaunchers(){
     const actions=document.querySelector(".mc-online-panel-actions")||document.querySelector("#onlinePanel .panel-head")||document.querySelector("#onlinePanelTitle")?.closest(".panel-head");
-    if(!actions||actions.querySelector("#mcreSpotifyLaunch")||actions.querySelector("#mcreVoiceLaunch"))return false;
+    if(!actions||actions.querySelector("#mcreYouTubeLaunch")||actions.querySelector("#mcreVoiceLaunch"))return false;
     const wrap=document.createElement("span");wrap.className="mcre-launch-actions";
     wrap.innerHTML='<button type="button" id="mcreSpotifyLaunch" title="Open Spotify Listening Room">♫ Spotify</button><button type="button" id="mcreVoiceLaunch" title="Open Group Voice Room">🎙 Voice</button>';
     actions.appendChild(wrap);
