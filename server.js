@@ -3320,6 +3320,7 @@ app.post("/api/rooms/:id/messages",auth,featureAllowed("send_messages"),upload.s
       u.stats.messages=(u.stats.messages||0)+1;
       checkAchievements(u);
       awardXp(u,Number(db.settings.xpPerMessage||5));
+      checkAchievements(u);
       u.gold=(u.gold||0)+Number(db.settings.goldPerMessage||0);
 
       // Persist only this sender's message-progress fields. save() writes every user
@@ -4280,6 +4281,8 @@ app.post('/api/wallet/reward',auth,async(req,res)=>{
 app.get('/api/achievements/:userId',auth,async(req,res)=>{
   const target=db.users.find(user=>String(user.id)===String(req.params.userId));
   if(!target)return res.status(404).json({error:'User not found.'});
+  const viewer=current(req);
+  if(String(viewer.id)!==String(target.id)&&target.privacy?.achievements===false)return res.status(403).json({error:'This user keeps their achievements private.'});
   const userId=Number(target.id);
   const [earned,showcase]=await Promise.all([
     pool.query(`SELECT id,user_id,name,icon,earned_at FROM achievements WHERE user_id=$1 ORDER BY earned_at DESC,id DESC`,[userId]),
