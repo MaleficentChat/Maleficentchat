@@ -7053,3 +7053,33 @@ function toggleReactionPicker(id){document.getElementById("reactionPicker-"+id)?
 // The saved token is sent by api() as X-Auth-Token; if it is valid, bootstrap()
 // restores the user and starts the app without asking them to log in again.
 bootstrap();
+
+
+/* Midnight Live Hub: shared daily prompt and quick navigation. */
+(function(){
+  const prompts=[["Today's conversation starter","If you could visit any fictional world, where would you go?"],["A little nostalgia","What's one memory that always makes you smile?"],["Choose your adventure","Would you rather explore space or the deepest ocean?"],["Creative minds","If you could instantly master one skill, what would it be?"],["Community question","What's a song that matches your mood today?"],["Imagine this","If you could host a themed party, what would the theme be?"],["Quick question","What's one small thing that made your day better?"]];
+  const root=document.querySelector(".midnight-live-hub");
+  if(!root||root.dataset.initialized)return;
+  root.dataset.initialized="true";
+  const day=Math.floor(Date.now()/86400000);
+  const prompt=prompts[((day%prompts.length)+prompts.length)%prompts.length];
+  const title=root.querySelector("#midnightDailyQuestionTitle");
+  const question=root.querySelector("#midnightDailyQuestion");
+  if(title)title.textContent=prompt[0];
+  if(question)question.textContent=prompt[1];
+  const ticker=root.querySelector("#midnightLiveTickerText");
+  const messages=[
+    "✦ Welcome — make yourself at home, meet someone new and enjoy the moment.",
+    "♜ Your community is waiting. Explore a room and start a conversation.",
+    "★ Take a break, try a game and see where the leaderboard takes you.",
+    "✧ Be kind, be curious and make someone's day a little brighter."
+  ];
+  let index=0;
+  root.querySelectorAll("[data-midnight-view]").forEach(button=>button.addEventListener("click",()=>{
+    const view=button.getAttribute("data-midnight-view");
+    const nav=document.querySelector('.nav[data-view="'+view+'"]');
+    if(nav)nav.click();
+  }));
+  if(ticker){ticker.textContent=messages[0];window.setInterval(()=>{index=(index+1)%messages.length;ticker.textContent=messages[index];},60000);}
+})();
+
