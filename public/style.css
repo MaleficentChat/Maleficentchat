@@ -7538,3 +7538,18 @@ body { background:#100c0a !important; color:#fff4e9 !important; }
 .midnight-live-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}.midnight-live-card{min-width:0;padding:11px;border:1px solid var(--ml-line);border-radius:13px;background:linear-gradient(145deg,var(--ml-panel2),var(--ml-panel));}.midnight-live-card small{display:block;color:var(--ml-accent);font-size:.62rem;font-weight:850;letter-spacing:.08em;text-transform:uppercase;margin-bottom:5px}.midnight-live-card b{display:block;font-size:.8rem;line-height:1.25;margin-bottom:4px}.midnight-live-card p{font-size:.7rem;line-height:1.4;color:#cbb9aa;margin:0}.midnight-live-actions{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}.midnight-live-actions button{border:1px solid var(--ml-line);border-radius:999px;padding:7px 11px;background:#302116;color:#f1dfcf;font-size:.7rem;font-weight:750}.midnight-live-actions button:active{transform:scale(.97)}
 @media(max-width:650px){.midnight-live-hub{padding:11px;margin:10px 0 14px}.midnight-live-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.midnight-live-card:last-child{grid-column:1/-1}.midnight-live-card{padding:9px}.midnight-live-sub{display:none}.midnight-live-ticker span{animation-duration:30s}}
 
+
+
+/* Room-only composer and actions stay completely out of view until a room is joined. */
+#viewRooms:not(.chatting) #chatWrap,
+#viewRooms:not(.chatting) #composer,
+#viewRooms:not(.chatting) #chatToolsToggle,
+#viewRooms:not(.chatting) #chatToolsDrawer{display:none!important;visibility:hidden!important;pointer-events:none!important}
+
+/* Larger cross-promotion cards: readable at a glance on desktop and mobile. */
+.bot-join-chat-message{width:100%;margin:18px 0;padding:0 10px;box-sizing:border-box}
+.bot-join-chat-message .bot-welcome-bubble{width:min(100%,620px);max-width:620px;min-height:190px;padding:28px 30px 30px;border-radius:22px;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:4px}
+.bot-join-chat-message .bot-welcome-byline{font-size:14px;letter-spacing:.12em;margin-bottom:14px}
+.bot-join-chat-message .bot-welcome-glow{font-size:clamp(25px,5.2vw,36px);line-height:1.2;letter-spacing:.1em}
+.bot-join-chat-message .bot-join-chat-link{max-width:420px;min-height:54px;margin-top:18px;font-size:15px;letter-spacing:.08em;border-radius:14px}
+@media(max-width:560px){.bot-join-chat-message{padding:0 4px;margin:14px 0}.bot-join-chat-message .bot-welcome-bubble{width:100%;min-height:170px;padding:22px 16px 24px;border-radius:18px}.bot-join-chat-message .bot-welcome-glow{font-size:clamp(22px,7vw,30px)}.bot-join-chat-message .bot-join-chat-link{min-height:50px;margin-top:14px}}
