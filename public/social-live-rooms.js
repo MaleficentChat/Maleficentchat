@@ -174,7 +174,7 @@
     const actions=document.querySelector(".mc-online-panel-actions")||document.querySelector("#onlinePanel .panel-head")||document.querySelector("#onlinePanelTitle")?.closest(".panel-head");
     if(!actions||actions.querySelector("#mcreYouTubeLaunch")||actions.querySelector("#mcreVoiceLaunch"))return false;
     const wrap=document.createElement("span");wrap.className="mcre-launch-actions";
-    wrap.innerHTML='<button type="button" id="mcreYoutubeLaunch" title="Open YouTube Listening Room">▶ YouTube</button><button type="button" id="mcreVoiceLaunch" title="Open Group Voice Room">🎙 Voice</button>';
+    wrap.innerHTML='<button type="button" class="mcre-launch-icon" id="mcreYoutubeLaunch" title="YouTube listening room" aria-label="Open YouTube listening room">▶</button><button type="button" class="mcre-launch-icon" id="mcreVoiceLaunch" title="Group voice room" aria-label="Open group voice room">🎙</button>';
     actions.appendChild(wrap);
     $("mcreYoutubeLaunch").onclick=()=>openExperience("music");
     $("mcreVoiceLaunch").onclick=()=>openExperience("voice");
