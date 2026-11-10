@@ -476,6 +476,10 @@ assert.match(server, /auth_token_version=auth_token_version\+1/,
   "logout and password changes must revoke older signed tokens");
 assert.match(server, /SELECT auth_token_version FROM users WHERE id=\$1/,
   "API and Socket.IO authentication must verify token versions against PostgreSQL");
+assert.match(server, /req\.session\.authTokenVersion=u\.authTokenVersion/,
+  "cookie-session logins must carry the same revocation version as signed tokens");
+assert.match(server, /const safeInlineMime=/,
+  "legacy active-content uploads must never be served inline");
 assert.match(server, /loginThrottleWait\(req,loginUsername\)[\s\S]*recordLoginFailure\(req,loginUsername\)/,
   "failed login attempts must be throttled by account and network");
 assert.match(server, /validateMediaFile\(\{\.\.\.req\.file,buffer:uploadBytes\}\)/,
