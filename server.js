@@ -1602,13 +1602,21 @@ const upload=multer({
   }
 });
 
+async function discardUploadedMedia(file){
+  if(!file)return;
+  const key=String(file.filename||"");
+  if(key)await pool.query("DELETE FROM stored_media WHERE media_key=$1",[key]).catch(error=>console.warn("Rejected upload cleanup failed:",error?.message||error));
+  if(file.path)await fs.promises.unlink(file.path).catch(()=>{});
+}
+
 // Persist every ordinary file upload immediately after Multer writes it.
 const parseSingleUpload=upload.single.bind(upload);
 upload.single=(field)=>{const parse=parseSingleUpload(field);return (req,res,next)=>parse(req,res,async error=>{
   if(error)return next(error);
   if(!req.file)return next();
   try{
-    const inspected=validateMediaFile(req.file);
+    const uploadBytes=await fs.promises.readFile(req.file.path);
+    const inspected=validateMediaFile({...req.file,buffer:uploadBytes});
     if(!inspected.ok){await fs.promises.unlink(req.file.path).catch(()=>{});req.file=null;return res.status(415).json({error:inspected.error});}
     // Never trust a browser-supplied MIME type when storing or serving a file.
     req.file.mimetype=inspected.mime;
