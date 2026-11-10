@@ -1367,6 +1367,7 @@ async function checkRestrictedMediaUpload(req,res,user,file){
     console.info("Restricted media OCR scan:",{userId:String(user.id),phraseCount:phrases.length,recognizedCharacters:text.length,matched});
     if(!matched)return false;
     await fs.promises.unlink(file.path).catch(()=>{});
+    await pool.query("DELETE FROM stored_media WHERE media_key=$1",[String(file.filename||"")]).catch(()=>{});
     await sendRestrictedMediaBotMessage(user);
     res.status(400).json({error:"The File Contains Restricted Content. Try Different One",restrictedMedia:true});
     return true;
@@ -1391,6 +1392,8 @@ async function checkRestrictedMediaBuffer(res,user,buffer){
     return true;
   }catch(err){
     console.error("Restricted media OCR failed:",err?.message||err);
+    await fs.promises.unlink(file.path).catch(()=>{});
+    await pool.query("DELETE FROM stored_media WHERE media_key=$1",[String(file.filename||"")]).catch(()=>{});
     res.status(503).json({error:"Image content could not be checked safely. Please try again later."});
     return true;
   }
@@ -1527,6 +1530,11 @@ app.get("/uploads/*",async(req,res,next)=>{
     if(mediaKey.startsWith("scrapbooks/")){
       const viewer=current(req);
       if(!viewer)return res.sendStatus(401);
+      const claims=tokenClaimsFromRequest(req);
+      if(claims){
+        const version=await pool.query("SELECT auth_token_version FROM users WHERE id=$1",[Number(viewer.id)]);
+        if(!version.rowCount||Number(claims.ver||0)!==Number(version.rows[0].auth_token_version||0))return res.sendStatus(401);
+      }
       const access=await pool.query("SELECT e.user_id,e.visibility,s.visibility AS book_visibility,u.profile_data FROM social_scrapbook_entries e JOIN social_scrapbooks s ON s.user_id=e.user_id JOIN users u ON u.id=e.user_id WHERE e.media_key=$1 LIMIT 1",[mediaKey]);
       if(!access.rowCount)return res.sendStatus(404);
       const row=access.rows[0];
@@ -1556,8 +1564,10 @@ app.get("/uploads/*",async(req,res,next)=>{
     if(!found.rowCount)return next();
     const row=found.rows[0],bytes=row.content;
     const mime=String(row.mime_type||"application/octet-stream");
+    const activeContent=/^(image\/svg\+xml|text\/html|application\/xhtml\+xml|application\/javascript|text\/javascript|text\/xml|application\/xml)$/i.test(mime);
+    const responseMime=activeContent?"application/octet-stream":mime;
     const safeName=String(row.original_name||path.basename(mediaKey)).replace(/[\r\n"]/g,"_").replace(/[^\x20-\x7E]/g,"_");
-    res.set({"Content-Type":mime,"Accept-Ranges":"bytes","Cache-Control":"public, max-age=31536000, immutable","X-Content-Type-Options":"nosniff","Content-Disposition":'inline; filename="'+safeName+'"'});
+    res.set({"Content-Type":responseMime,"Accept-Ranges":"bytes","Cache-Control":"public, max-age=31536000, immutable","X-Content-Type-Options":"nosniff","Content-Disposition":(activeContent?"attachment":"inline")+'; filename="'+safeName+'"'});
     const range=String(req.headers.range||"");
     if(range){
       const match=/^bytes=(\d*)-(\d*)$/.exec(range);
@@ -2063,7 +2073,7 @@ app.post("/api/me/profile-music",auth,upload.single("file"),async(req,res)=>{
   const extension=path.extname(String(req.file.originalname||"")).toLowerCase();
   const mime=String(req.file.mimetype||"").toLowerCase();
   if(!allowedExtensions.has(extension)||(!mime.startsWith("audio/")&&!["application/ogg","application/octet-stream","video/webm"].includes(mime))){
-    await fs.promises.unlink(req.file.path).catch(()=>{});
+    await discardUploadedMedia(req.file);
     return res.status(400).json({error:"Unsupported audio file. Upload MP3, M4A, AAC, OGG, WAV, WebM, OPUS or FLAC."});
   }
   const title=path.basename(String(req.file.originalname||"Profile music"),extension).replace(/[_-]+/g," ").trim().slice(0,100)||"Profile music";
@@ -2092,7 +2102,7 @@ app.post(
     }
 
     if(await checkRestrictedMediaUpload(req,res,current(req),req.file))return;
-    if(!String(req.file.mimetype||"").startsWith("image/"))return res.status(415).json({error:"Profile avatars must be image files."});
+    if(!String(req.file.mimetype||"").startsWith("image/")){await discardUploadedMedia(req.file);return res.status(415).json({error:"Profile avatars must be image files."});}
     current(req).avatar=
       "/uploads/"+req.file.filename;
 
@@ -2132,7 +2142,7 @@ app.post(
     }
 
     if(await checkRestrictedMediaUpload(req,res,current(req),req.file))return;
-    if(!String(req.file.mimetype||"").startsWith("image/"))return res.status(415).json({error:"Profile banners must be image files."});
+    if(!String(req.file.mimetype||"").startsWith("image/")){await discardUploadedMedia(req.file);return res.status(415).json({error:"Profile banners must be image files."});}
     current(req).banner=
       "/uploads/"+req.file.filename;
 
@@ -2971,7 +2981,7 @@ app.post("/api/rooms/:id/messages",auth,featureAllowed("send_messages"),upload.s
     const allowedAudioExt=[".mp3",".m4a",".wav",".ogg",".aac",".flac",".opus",".weba"];
     const allowedImageExt=[".png",".jpg",".jpeg",".gif",".webp",".avif"];
     const allowedType=mime.startsWith("image/")||mime.startsWith("audio/")||allowedAudioExt.includes(ext)||allowedImageExt.includes(ext);
-    if(!allowedType)return res.status(400).json({error:"Only image and audio files are allowed in chat."});
+    if(!allowedType){await discardUploadedMedia(req.file);return res.status(400).json({error:"Only image and audio files are allowed in chat."});}
   }
   let text=cleanText(req.body.text);
   let reelAttachment=null;
@@ -4130,7 +4140,7 @@ app.post("/api/dm/:id",auth,featureAllowed("private_messages"),upload.single("fi
   const u=current(req),v=findUser(req.params.id); if(!v)return res.status(404).json({error:"User not found"});
   if(await checkRestrictedMediaUpload(req,res,u,req.file))return;
   if(privateMessagesBlocked(u,v))return res.status(403).json({error:"Messaging blocked"});
-  if(req.file&&!/^(image|audio)\//i.test(String(req.file.mimetype||"")))return res.status(415).json({error:"Private-message attachments must be image or audio files."});
+  if(req.file&&!/^(image|audio)\//i.test(String(req.file.mimetype||""))){await discardUploadedMedia(req.file);return res.status(415).json({error:"Private-message attachments must be image or audio files."});}
   const m={id:id(),from:u.id,to:v.id,text:cleanText(req.body.text),attachment:req.file?{url:"/uploads/"+req.file.filename,type:req.file.mimetype,name:req.file.originalname}:null,replyTo:req.body.replyTo||null,time:Date.now(),read:false,delivered:true};
   if(!m.text&&!m.attachment)return res.status(400).json({error:"Empty message"});
   await pool.query(`INSERT INTO private_messages(id,sender_id,receiver_id,message,data,created_at) VALUES($1,$2,$3,$4,$5::jsonb,NOW())`,
@@ -5562,7 +5572,7 @@ async function wallPostHandler(req,res){
   if(await checkRestrictedMediaUpload(req,res,u,req.file))return;
   if(String(u.rank).toUpperCase()!=="DEVELOPER" && u.username!==DEFAULT_OWNER&&!grants.map(x=>String(x).toUpperCase()).includes(rank))return res.status(403).json({error:"Your rank cannot create wall posts."});
   const content=cleanText(req.body.content||"").trim().slice(0,5000), media=req.file;
-  if(media&&!/^(image\/(png|jpe?g|gif|webp|avif)|video\/)/i.test(media.mimetype))return res.status(400).json({error:"Only image or video files are allowed."});
+  if(media&&!/^(image\/(png|jpe?g|gif|webp|avif)|video\/)/i.test(media.mimetype)){await discardUploadedMedia(media);return res.status(400).json({error:"Only image or video files are allowed."});}
   if(!content&&!media)return res.status(400).json({error:"Post cannot be empty."});
   const mediaUrl=media?`/uploads/${media.filename}`:null;
   const expiresInHours=Number(req.body.expiresInHours??0),allowedExpiries=[0,1,6,24,72,168];
@@ -6128,7 +6138,7 @@ app.post('/api/staff/user/:id/avatar',auth,accountModificationAccess,upload.sing
   const file=req.file;
   if(!file)return res.status(400).json({error:'Choose an image to upload.'});
   if(await checkRestrictedMediaUpload(req,res,current(req),file))return;
-  if(!/^image\/(png|jpe?g|gif|webp|avif)$/i.test(file.mimetype||'')){await fs.promises.unlink(file.path).catch(()=>{});return res.status(400).json({error:'Profile pictures must be PNG, JPG, GIF, WebP or AVIF images.'});}
+  if(!/^image\/(png|jpe?g|gif|webp|avif)$/i.test(file.mimetype||'')){await discardUploadedMedia(file);return res.status(400).json({error:'Profile pictures must be PNG, JPG, GIF, WebP or AVIF images.'});}
   const target=req.profileTarget;target.avatar='/uploads/'+file.filename;save();log(req.profileActor,'ACCOUNT_AVATAR_MODIFY',target.username,{operation:'upload'});
   res.json({ok:true,user:safeUser(target)});
 });
@@ -6139,7 +6149,7 @@ app.post('/api/staff/user/:id/banner',auth,accountModificationAccess,upload.sing
   const file=req.file;
   if(!file)return res.status(400).json({error:'Choose an image to upload.'});
   if(await checkRestrictedMediaUpload(req,res,current(req),file))return;
-  if(!/^image\/(png|jpe?g|gif|webp|avif)$/i.test(file.mimetype||'')){await fs.promises.unlink(file.path).catch(()=>{});return res.status(400).json({error:'Profile backgrounds must be PNG, JPG, GIF, WebP or AVIF images.'});}
+  if(!/^image\/(png|jpe?g|gif|webp|avif)$/i.test(file.mimetype||'')){await discardUploadedMedia(file);return res.status(400).json({error:'Profile backgrounds must be PNG, JPG, GIF, WebP or AVIF images.'});}
   const target=req.profileTarget;target.banner='/uploads/'+file.filename;save();log(req.profileActor,'ACCOUNT_BANNER_MODIFY',target.username,{operation:'upload'});
   res.json({ok:true,user:safeUser(target)});
 });
@@ -7164,18 +7174,18 @@ app.get('/api/users/:id/profile-photos',auth,(req,res)=>{
 app.post('/api/users/me/profile-photos',auth,upload.single('file'),async(req,res)=>{
   const user=current(req);
   if(!req.file)return res.status(400).json({error:'Choose a photo to upload.'});
-  if(!String(req.file.mimetype||"").startsWith("image/"))return res.status(415).json({error:"Profile gallery uploads must be images."});
+  if(!String(req.file.mimetype||"").startsWith("image/")){await discardUploadedMedia(req.file);return res.status(415).json({error:"Profile gallery uploads must be images."});}
   const ext=path.extname(String(req.file.originalname||'')).toLowerCase();
   const mime=String(req.file.mimetype||'').toLowerCase();
   const allowed=new Set(['.jpg','.jpeg','.png','.webp','.gif']);
   if(!allowed.has(ext)||!['image/jpeg','image/png','image/webp','image/gif'].includes(mime)){
-    await fs.promises.unlink(req.file.path).catch(()=>{});
+    await discardUploadedMedia(req.file);
     return res.status(400).json({error:'Upload a JPG, PNG, WEBP or GIF image.'});
   }
   if(await checkRestrictedMediaUpload(req,res,user,req.file))return;
   user.profilePhotos=Array.isArray(user.profilePhotos)?user.profilePhotos:[];
   if(user.profilePhotos.length>=10){
-    await fs.promises.unlink(req.file.path).catch(()=>{});
+    await discardUploadedMedia(req.file);
     return res.status(400).json({error:'Your profile already has 10 photos. Remove one before adding another.'});
   }
   user.profilePhotos.push({id:crypto.randomBytes(10).toString('hex'),url:'/uploads/'+req.file.filename,createdAt:Date.now()});
