@@ -6750,6 +6750,28 @@ const gravityMatches = new Map();
 io.on(
   "connection",
   socket=>{
+    // A socket may be connected to another app instance when logout/password
+    // changes occur. Re-check its DB-backed token version before accepting
+    // further client events, with a short cache to avoid a query per packet.
+    socket.use((packet,next)=>{
+      const userId=String(socket.data.userId||"");
+      if(!userId)return next();
+      const checkedAt=Number(socket.data.authVersionCheckedAt||0),now=Date.now();
+      if(now-checkedAt<5000)return next();
+      pool.query("SELECT auth_token_version FROM users WHERE id=$1",[Number(userId)]).then(result=>{
+        const currentVersion=Number(result.rows[0]?.auth_token_version||0);
+        if(!result.rowCount||currentVersion!==Number(socket.data.authTokenVersion||0)){
+          socket.disconnect(true);
+          return next(new Error("Session expired"));
+        }
+        socket.data.authVersionCheckedAt=now;
+        next();
+      }).catch(error=>{
+        console.error("Socket session version check failed:",error?.message||error);
+        socket.disconnect(true);
+        next(new Error("Authentication temporarily unavailable"));
+      });
+    });
     socket.on("gravity:invite", data=>{
       const u=findUser(socket.data.userId);
       if(!u)return socket.emit("gravity:error",{error:"Please log in before starting a game."});
@@ -6848,6 +6870,8 @@ io.on(
         }
 
         socket.data.userId=u.id;
+        socket.data.authTokenVersion=storedVersion;
+        socket.data.authVersionCheckedAt=Date.now();
         socket.join("user:"+u.id);
         u.online=true;
         u.lastSeen=Date.now();
