@@ -468,3 +468,30 @@ assert.match(server,/Your rank cannot create wall posts/,
   "Shadow Feed additions must preserve existing post-creation authorization");
 
 console.log("Room history, private-room access, invitations, private-message deletion, Shadow Feed, Friends Activity, bootstrap privacy, capacity, and slow-mode regression checks passed.");
+
+
+const socialFeatures = fs.readFileSync("social-features.js", "utf8");
+const mediaValidation = fs.readFileSync("media-validation.js", "utf8");
+assert.match(server, /auth_token_version=auth_token_version\\+1/,
+  "logout and password changes must revoke older signed tokens");
+assert.match(server, /SELECT auth_token_version FROM users WHERE id=\\$1/,
+  "API and Socket.IO authentication must verify token versions against PostgreSQL");
+assert.match(server, /loginThrottleWait\\(req,loginUsername\\)[\\s\\S]*recordLoginFailure\\(req,loginUsername\\)/,
+  "failed login attempts must be throttled by account and network");
+assert.match(server, /validateMediaFile\\(\\{\\.\\.\\.req\\.file,buffer:uploadBytes\\}\\)/,
+  "uploaded files must be validated from their bytes before persistence");
+assert.match(server, /Private-message attachments must be image or audio files/,
+  "private-message attachments must use the safe media allowlist");
+assert.match(server, /Scrapbook media is private content/,
+  "scrapbook media URLs must enforce scrapbook visibility");
+assert.match(database, /rejectUnauthorized:\\s*true/,
+  "PostgreSQL TLS certificate verification must be enabled");
+assert.match(socialFeatures, /profileData\\.privacy\\?\\.showScrapbook===false/,
+  "scrapbook entry interactions must respect the profile scrapbook privacy setting");
+assert.match(socialFeatures, /SELECT id FROM social_confessions WHERE id=\\$1 AND status='visible'/,
+  "confession comments must only be returned for visible confessions");
+assert.match(mediaValidation, /detectMediaMime[\\s\\S]*validateMediaFile/,
+  "upload validation must inspect actual file signatures");
+assert.doesNotMatch(mediaValidation, /image\\/svg\\+xml|image\\/svg/,
+  "SVG must not be included in accepted uploaded media");
+console.log("Session revocation, upload validation, TLS and social privacy checks passed.");
