@@ -1078,6 +1078,17 @@ async function auth(req,res,next){
       error:"Login required"
     });
   }
+  const tokenClaims=tokenClaimsFromRequest(req);
+  const matchingToken=tokenClaims&&String(tokenClaims.sub)===String(u.id)?tokenClaims:null;
+  const sessionUid=req.session?.userId;
+  if(matchingToken||sessionUid){
+    const versionResult=await pool.query("SELECT auth_token_version FROM users WHERE id=$1",[Number(u.id)]);
+    if(!versionResult.rowCount)return res.status(401).json({error:"Login required"});
+    const storedVersion=Number(versionResult.rows[0].auth_token_version||0);
+    const presentedVersion=matchingToken?Number(matchingToken.ver||0):Number(req.session?.authTokenVersion||0);
+    if(presentedVersion!==storedVersion)return res.status(401).json({error:"Your session has expired. Please log in again."});
+    u.authTokenVersion=storedVersion;
+  }
   if(!(await enforceNetworkAccess(req,res,u)))return;
   // Enforce account-wide moderation before any authenticated API route, including private messages.
   if(u.banned===true)return res.status(403).json({error:"You have been banned",reason:u.banReason||"Community rules",moderationLock:"BAN"});
@@ -1530,9 +1541,11 @@ app.get("/uploads/*",async(req,res,next)=>{
       const viewer=current(req);
       if(!viewer)return res.sendStatus(401);
       const claims=tokenClaimsFromRequest(req);
-      if(claims){
+      const matchingToken=claims&&String(claims.sub)===String(viewer.id)?claims:null;
+      if(matchingToken||req.session?.userId){
         const version=await pool.query("SELECT auth_token_version FROM users WHERE id=$1",[Number(viewer.id)]);
-        if(!version.rowCount||Number(claims.ver||0)!==Number(version.rows[0].auth_token_version||0))return res.sendStatus(401);
+        const presentedVersion=matchingToken?Number(matchingToken.ver||0):Number(req.session?.authTokenVersion||0);
+        if(!version.rowCount||presentedVersion!==Number(version.rows[0].auth_token_version||0))return res.sendStatus(401);
       }
       const access=await pool.query("SELECT e.user_id,e.visibility,s.visibility AS book_visibility,u.profile_data FROM social_scrapbook_entries e JOIN social_scrapbooks s ON s.user_id=e.user_id JOIN users u ON u.id=e.user_id WHERE e.media_key=$1 LIMIT 1",[mediaKey]);
       if(!access.rowCount)return res.sendStatus(404);
@@ -1836,10 +1849,12 @@ app.post(
     const inserted=await pool.query(`INSERT INTO users(username,password,rank,gold,xp,birth_date,gender,bio,email,device_fingerprint,created_at) VALUES($1,$2,'member',0,0,$3,$4,$5,$6,$7,NOW()) RETURNING id`,
       [u.username,u.passwordHash,u.dateOfBirth||null,u.gender||null,u.bio||"",u.email||null,fingerprintHash]);
     u.id=String(inserted.rows[0].id);
+    u.authTokenVersion=0;
     await pool.query(`INSERT INTO device_fingerprints(fingerprint_hash,ip_hash,user_id) VALUES($1,$2,$3)`,[fingerprintHash,ipHash,Number(u.id)]);
     db.users.push(u);
 
     req.session.userId=u.id;
+    req.session.authTokenVersion=0;
     await recordUserIp(req,u,"register");
 
     save();
@@ -1912,6 +1927,7 @@ app.post(
     u.lastSeen=Date.now();
 
     req.session.userId=u.id;
+    req.session.authTokenVersion=u.authTokenVersion;
     await recordUserIp(req,u,"login");
 
     save();
