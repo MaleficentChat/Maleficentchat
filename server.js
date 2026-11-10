@@ -6807,7 +6807,7 @@ io.on(
 
     socket.on(
       "auth",
-      (credentials, acknowledge)=>{
+      async(credentials, acknowledge)=>{
         const ack=typeof acknowledge==="function"?acknowledge:()=>{};
         const claims=verifyToken(typeof credentials==="string"?credentials:credentials?.token);
         if(!claims){ack({ok:false,error:"Authentication failed"});return socket.disconnect(true);}
