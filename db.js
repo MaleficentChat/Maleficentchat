@@ -3,7 +3,8 @@ const { Pool } = require("pg");
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false }
+  // Verify PostgreSQL certificates; set DATABASE_SSL_CA only when the host uses a private CA.
+  ssl: { rejectUnauthorized: true, ...(process.env.DATABASE_SSL_CA ? { ca: process.env.DATABASE_SSL_CA } : {}) }
 });
 
 
