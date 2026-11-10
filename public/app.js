@@ -3561,6 +3561,7 @@ function renderUserProfileModal(user,data={}){
       </div>
       ${!isSelf?`<div class="profile-primary-actions"><button class="profile-social-button profile-message-button" id="profileSendPM"><span>✉</span> Send PM</button><button class="profile-social-button profile-friend-button" id="profileAddFriend"><span>＋</span> Add Friend</button></div>`:""}
     </div>
+    <div class="mc-profile-tabs-label"><span>PROFILE</span><small>Explore ${esc(user.displayName||user.username)}’s space</small></div>
     <div class="profile-tabs">
       <button class="profile-tab active" data-tab="info">Account</button>
       ${user.privacy?.bio!==false?'<button class="profile-tab" data-tab="about">About Me</button>':''}
