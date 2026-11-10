@@ -1576,7 +1576,7 @@ app.get("/uploads/*",async(req,res,next)=>{
     if(!found.rowCount)return next();
     const row=found.rows[0],bytes=row.content;
     const mime=String(row.mime_type||"application/octet-stream");
-    const safeInlineMime=/^(image\/(png|jpeg|gif|webp|avif)|audio\/(mpeg|mp4|aac|ogg|wav|flac|webm|opus)|video\/(mp4|webm|quicktime|ogg))$/i.test(mime);
+    const safeInlineMime=/^(image\/(png|jpeg|gif|webp|avif|bmp|tiff|heic|heif)|audio\/(mpeg|mp4|aac|ogg|wav|flac|webm|opus)|video\/(mp4|webm|quicktime|ogg))$/i.test(mime);
     const activeContent=!safeInlineMime;
     const responseMime=activeContent?"application/octet-stream":mime;
     const safeName=String(row.original_name||path.basename(mediaKey)).replace(/[\r\n"]/g,"_").replace(/[^\x20-\x7E]/g,"_");
