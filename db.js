@@ -1,10 +1,35 @@
 
 const { Pool } = require("pg");
 
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false }
-});
+function databaseConnectionConfig() {
+  const raw = process.env.DATABASE_URL;
+  try {
+    const url = new URL(raw);
+    const hostname = url.hostname.toLowerCase();
+    // Render's internal Postgres host is reachable only on its private network.
+    // Internal Render connections do not require TLS; public hosts must verify certificates.
+    const privateHost = hostname === "localhost" || hostname === "127.0.0.1" ||
+      hostname === "::1" || !hostname.includes(".") ||
+      hostname.endsWith(".internal") || hostname.endsWith(".local");
+    // Strip URL SSL parameters so node-postgres cannot silently replace this explicit policy.
+    for (const key of ["sslmode", "sslrootcert", "sslcert", "sslkey"]) url.searchParams.delete(key);
+    const ssl = privateHost ? false : {
+      rejectUnauthorized: true,
+      ...(process.env.DATABASE_SSL_CA
+        ? { ca: process.env.DATABASE_SSL_CA.replace(/\\n/g, "\n") }
+        : {})
+    };
+    return { connectionString: url.toString(), ssl };
+  } catch {
+    // Invalid/missing URLs are reported by initDB; keep verification enabled for non-private hosts.
+    return {
+      connectionString: raw,
+      ssl: { rejectUnauthorized: true, ...(process.env.DATABASE_SSL_CA ? { ca: process.env.DATABASE_SSL_CA } : {}) }
+    };
+  }
+}
+
+const pool = new Pool(databaseConnectionConfig());
 
 
 async function initDB() {
@@ -25,6 +50,7 @@ async function initDB() {
       bio TEXT,
       email TEXT,
       profile_data JSONB NOT NULL DEFAULT '{}'::jsonb,
+      auth_token_version INTEGER NOT NULL DEFAULT 0,
       vip_expires_at TIMESTAMP,
       is_premium BOOLEAN DEFAULT false,
       created_at TIMESTAMP DEFAULT NOW()
@@ -33,6 +59,7 @@ async function initDB() {
     ALTER TABLE users ADD COLUMN IF NOT EXISTS diamonds BIGINT NOT NULL DEFAULT 0;
     ALTER TABLE users ADD COLUMN IF NOT EXISTS device_fingerprint VARCHAR(255);
     ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_data JSONB NOT NULL DEFAULT '{}'::jsonb;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS auth_token_version INTEGER NOT NULL DEFAULT 0;
 
     CREATE TABLE IF NOT EXISTS settings(key TEXT PRIMARY KEY, value JSONB);
     CREATE TABLE IF NOT EXISTS stored_media(
@@ -392,6 +419,7 @@ async function loadState(defaultState) {
     gender: row.gender || "",
     bio: row.bio || "",
     email: row.email || "",
+    authTokenVersion: Number(row.auth_token_version || 0),
     vipExpiresAt: row.vip_expires_at ? new Date(row.vip_expires_at).getTime() : null,
     vip_expires_at: row.vip_expires_at ? new Date(row.vip_expires_at).getTime() : null,
     isPremium: !!row.is_premium,
@@ -533,7 +561,7 @@ async function persistState(state) {
   for (const u of state.users || []) {
     if(!Number.isFinite(Number(u.id))) continue;
     const profileData={...u};
-    for (const key of ['id','username','password','passwordHash','rank','gold','diamonds','xp','avatar','birthDate','dateOfBirth','gender','bio','email','vipExpiresAt','vip_expires_at','isPremium','is_premium','giftsReceived']) delete profileData[key];
+    for (const key of ['id','username','password','passwordHash','rank','gold','diamonds','xp','avatar','birthDate','dateOfBirth','gender','bio','email','vipExpiresAt','vip_expires_at','isPremium','is_premium','authTokenVersion','giftsReceived']) delete profileData[key];
     await pool.query(
       `UPDATE users SET username=$2,password=$3,rank=$4,gold=$5,xp=$6,avatar=$7,birth_date=$8,gender=$9,bio=$10,email=$11,vip_expires_at=$12,is_premium=$13,profile_data=$14::jsonb,diamonds=$15 WHERE id=$1`,
       [Number(u.id),u.username,u.passwordHash||u.password||"",String(u.rank||"MEMBER"),Number(u.gold||0),Number(u.xp||0),u.avatar||null,

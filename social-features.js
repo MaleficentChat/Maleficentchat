@@ -1,5 +1,6 @@
 const crypto=require("crypto");
 const multer=require("multer");
+const {detectMediaMime,mediaExtensionForMime}=require("./media-validation");
 const upload=multer({storage:multer.memoryStorage(),limits:{fileSize:25*1024*1024,files:1}});
 const CATEGORIES=["Love & Crushes","Heartbreak","Secrets","Rants","Friendships","Random Thoughts"];
 const REACTIONS=["❤️","🥀","😭","👀","🖤"];
@@ -33,9 +34,12 @@ function registerSocialFeatureRoutes({app,auth,current,pool,storeMediaBuffer,has
       ((String(f.a)===String(u.id)&&String(f.b)===String(id))||(String(f.b)===String(u.id)&&String(f.a)===String(id))));
   };
   const canViewEntry=async(req,entryId)=>{
-    const q=await pool.query("SELECT e.user_id,e.visibility,s.visibility AS book_visibility FROM social_scrapbook_entries e JOIN social_scrapbooks s ON s.user_id=e.user_id WHERE e.id=$1",[entryId]);
+    const q=await pool.query("SELECT e.user_id,e.visibility,s.visibility AS book_visibility,u.profile_data FROM social_scrapbook_entries e JOIN social_scrapbooks s ON s.user_id=e.user_id JOIN users u ON u.id=e.user_id WHERE e.id=$1",[entryId]);
     if(!q.rowCount)return false;
-    const row=q.rows[0];if(String(who(req).id)===String(row.user_id))return true;
+    const row=q.rows[0],viewer=who(req);
+    if(String(viewer.id)===String(row.user_id))return true;
+    const profileData=row.profile_data&&typeof row.profile_data==="object"?row.profile_data:{};
+    if(profileData.privacy?.showScrapbook===false)return false;
     return canView(req,row.user_id,row.visibility==="inherit"?row.book_visibility:row.visibility);
   };
   app.get("/api/social/scrapbooks/:userId",auth,async(req,res)=>{
@@ -59,9 +63,12 @@ function registerSocialFeatureRoutes({app,auth,current,pool,storeMediaBuffer,has
   });
   app.post("/api/social/scrapbooks/media",auth,upload.single("file"),async(req,res)=>{
     const u=who(req),f=req.file;if(!f)return res.status(400).json({error:"Choose a photo or video."});
-    if(!/^image\/(jpeg|png|gif|webp|avif)$|^video\/(mp4|webm|quicktime)$/i.test(f.mimetype))return res.status(415).json({error:"Unsupported photo or video format."});
-    const key="scrapbooks/"+Number(u.id)+"/"+crypto.randomUUID()+"-"+clean(f.originalname,80).replace(/[^a-zA-Z0-9._-]/g,"_");
-    await storeMediaBuffer(key,f.buffer,f.mimetype,f.originalname);
+    const detectedMime=detectMediaMime(f.buffer,f.originalname,f.mimetype);
+    if(!detectedMime||!/^image\/(jpeg|png|gif|webp|avif)$|^video\/(mp4|webm|quicktime)$/i.test(detectedMime))return res.status(415).json({error:"Unsupported photo or video content."});
+    const extension=mediaExtensionForMime(detectedMime);
+    if(!extension)return res.status(415).json({error:"Unsupported photo or video content."});
+    const key="scrapbooks/"+Number(u.id)+"/"+crypto.randomUUID()+extension;
+    await storeMediaBuffer(key,f.buffer,detectedMime,f.originalname);
     const r=await pool.query("INSERT INTO social_scrapbook_entries(user_id,entry_type,title,body,media_key,visibility) VALUES($1,'media',$2,$3,$4,'inherit') RETURNING id,entry_type,title,body,media_key,visibility,pinned,created_at",[Number(u.id),clean(req.body?.title,120),clean(req.body?.caption,1000),key]);
     res.status(201).json({entry:r.rows[0],url:"/uploads/"+key});
   });
@@ -83,7 +90,12 @@ function registerSocialFeatureRoutes({app,auth,current,pool,storeMediaBuffer,has
   });
   app.delete("/api/confessions/:id",auth,async(req,res)=>{const r=await pool.query("DELETE FROM social_confessions c USING social_confession_identities i WHERE c.id=$1 AND i.confession_id=c.id AND i.sender_user_id=$2 RETURNING c.id",[req.params.id,Number(who(req).id)]);if(!r.rowCount)return res.status(404).json({error:"Your confession was not found."});res.json({ok:true});});
   app.post("/api/confessions/:id/reactions",auth,async(req,res)=>{const emoji=clean(req.body?.emoji,12);if(!REACTIONS.includes(emoji))return res.status(400).json({error:"Invalid reaction."});const u=who(req),exists=await pool.query("SELECT id FROM social_confessions WHERE id=$1 AND status='visible'",[req.params.id]);if(!exists.rowCount)return res.status(404).json({error:"Confession not found."});const d=await pool.query("DELETE FROM social_confession_reactions WHERE confession_id=$1 AND user_id=$2 AND emoji=$3 RETURNING confession_id",[req.params.id,Number(u.id),emoji]);if(!d.rowCount)await pool.query("INSERT INTO social_confession_reactions(confession_id,user_id,emoji) VALUES($1,$2,$3) ON CONFLICT DO NOTHING",[req.params.id,Number(u.id),emoji]);res.json({ok:true,reacted:!d.rowCount});});
-  app.get("/api/confessions/:id/comments",auth,async(req,res)=>{const r=await pool.query("SELECT id,body,created_at FROM social_confession_comments WHERE confession_id=$1 AND status='visible' ORDER BY created_at LIMIT 100",[req.params.id]);res.json({comments:r.rows.map(x=>({...x,author:"Anonymous member"}))});});
+  app.get("/api/confessions/:id/comments",auth,async(req,res)=>{
+    const confession=await pool.query("SELECT id FROM social_confessions WHERE id=$1 AND status='visible'",[req.params.id]);
+    if(!confession.rowCount)return res.status(404).json({error:"Confession not found."});
+    const r=await pool.query("SELECT id,body,created_at FROM social_confession_comments WHERE confession_id=$1 AND status='visible' ORDER BY created_at LIMIT 100",[req.params.id]);
+    res.json({comments:r.rows.map(x=>({...x,author:"Anonymous member"}))});
+  });
   app.post("/api/confessions/:id/comments",auth,async(req,res)=>{const body=clean(req.body?.body,1000),u=who(req);if(!body)return res.status(400).json({error:"Write a comment first."});const c=await pool.query("SELECT id FROM social_confessions WHERE id=$1 AND status='visible'",[req.params.id]);if(!c.rowCount)return res.status(404).json({error:"Confession not found."});const r=await pool.query("INSERT INTO social_confession_comments(confession_id,user_id,body) VALUES($1,$2,$3) RETURNING id,body,created_at",[req.params.id,Number(u.id),body]);res.status(201).json({comment:{...r.rows[0],author:"Anonymous member"}});});
   app.post("/api/confessions/:id/report",auth,async(req,res)=>{const u=who(req),reason=clean(req.body?.reason,500)||"Community guidelines concern",c=await pool.query("SELECT id FROM social_confessions WHERE id=$1 AND status='visible'",[req.params.id]);if(!c.rowCount)return res.status(404).json({error:"Confession not found."});await pool.query("INSERT INTO social_confession_reports(confession_id,reporter_id,reason) VALUES($1,$2,$3)",[req.params.id,Number(u.id),reason]);res.status(201).json({ok:true});});
   app.get("/api/staff/confessions/reports",auth,async(req,res)=>{if(!moderate(who(req)))return res.status(403).json({error:"Confession moderation access is not granted."});const r=await pool.query("SELECT r.id,r.confession_id,r.reason,r.status,r.created_at,c.category,c.body FROM social_confession_reports r JOIN social_confessions c ON c.id=r.confession_id WHERE r.status='open' ORDER BY r.created_at LIMIT 100");res.json({reports:r.rows});});

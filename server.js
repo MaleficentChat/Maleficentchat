@@ -15,6 +15,7 @@ const multer=require("multer");
 const {createWorker}=require("tesseract.js");
 const {Server}=require("socket.io");
 const {registerCallSignaling}=require("./call-signaling");
+const {validateMediaFile}=require("./media-validation");
 
 const {initDB,loadState,persistState,pool}=require("./db");
 const {initSocialFeatureTables,registerSocialFeatureRoutes}=require("./social-features");
@@ -141,6 +142,7 @@ let db=load();
 const systemModerationWindows = new Map();
 const systemNetworkWindows = new Map();
 const roomMessageLastSent = new Map();
+const loginAttemptWindows = new Map();
 function systemAudit(entry){
   db.moderationHistory ||= [];
   db.moderationHistory.push({id:id(),target:String(entry.target||""),actor:String(entry.actor||"SYSTEM"),actorUsername:String(entry.actorUsername||"System Moderation"),action:String(entry.action||"EVENT"),reason:String(entry.reason||""),time:Date.now(),source:String(entry.source||"system"),durationMinutes:Number(entry.durationMinutes)||0});
@@ -822,7 +824,7 @@ function getSessionSecret() {
 }
 const SESSION_SECRET = getSessionSecret();
 const TOKEN_SECRET = SESSION_SECRET;
-function makeToken(userId){const b64=o=>Buffer.from(JSON.stringify(o)).toString("base64url");const h=b64({alg:"HS256",typ:"JWT"}),p=b64({sub:String(userId),exp:Math.floor(Date.now()/1000)+7*86400});const sig=crypto.createHmac("sha256",TOKEN_SECRET).update(h+"."+p).digest("base64url");return h+"."+p+"."+sig;}
+function makeToken(userId){const b64=o=>Buffer.from(JSON.stringify(o)).toString("base64url");const user=findUser(userId);const h=b64({alg:"HS256",typ:"JWT"}),p=b64({sub:String(userId),ver:Number(user?.authTokenVersion)||0,exp:Math.floor(Date.now()/1000)+7*86400});const sig=crypto.createHmac("sha256",TOKEN_SECRET).update(h+"."+p).digest("base64url");return h+"."+p+"."+sig;}
 function verifyToken(token){try{const [h,p,sig]=String(token||"").split(".");if(!h||!p||!sig)return null;const e=crypto.createHmac("sha256",TOKEN_SECRET).update(h+"."+p).digest("base64url");if(sig!==e)return null;const x=JSON.parse(Buffer.from(p,"base64url").toString("utf8"));return x.exp>=Math.floor(Date.now()/1000)?x:null;}catch{return null;}}
 function roomRankCanEnter(user,room){
   if(!user||!room)return false;
@@ -898,26 +900,23 @@ function verifyRoomJoinToken(token,userId,room){
     return roomJoinPolicyAllowed(user,room,{existingJoinToken:true});
   }catch{return false;}
 }
-function current(req){
-  // Accept the signed token from the app header, a Bearer header, or the
-  // HttpOnly first-party cookie. The cookie is a durable fallback when mobile
-  // browsers or embedded webviews fail to retain localStorage.
+function tokenClaimsFromRequest(req){
   const authorization=String(req.headers.authorization||"");
   const cookieToken=String(req.headers.cookie||"").split(";").map(part=>part.trim()).find(part=>part.startsWith("mc_auth="));
   let cookieValue="";
   if(cookieToken){try{cookieValue=decodeURIComponent(cookieToken.slice("mc_auth=".length));}catch{}}
-  const candidates=[
-    req.headers["x-auth-token"],
-    authorization.startsWith("Bearer ")?authorization.slice(7):"",
-    cookieValue
-  ];
-  for(const raw of candidates){
-    const tokenPayload=verifyToken(raw);
-    if(!tokenPayload)continue;
+  const candidates=[req.headers["x-auth-token"],authorization.startsWith("Bearer ")?authorization.slice(7):"",cookieValue];
+  for(const raw of candidates){const claims=verifyToken(raw);if(claims)return claims;}
+  return null;
+}
+function current(req){
+  // Prefer the app header token before falling back to the cookie session: req.headers["x-auth-token"].
+  // Older signed tokens without a version are treated as version zero.
+  const tokenPayload=tokenClaimsFromRequest(req);
+  if(tokenPayload){
     const tokenUser=db.users.find(u=>String(u.id)===String(tokenPayload.sub));
-    if(tokenUser)return tokenUser;
+    if(tokenUser&&Number(tokenPayload.ver||0)===Number(tokenUser.authTokenVersion||0))return tokenUser;
   }
-
   // Keep cookie-session authentication as a final fallback for existing clients.
   const sessionUid=req.session?.userId;
   return sessionUid?db.users.find(u=>String(u.id)===String(sessionUid))||null:null;
@@ -949,6 +948,32 @@ function clientIp(req){
   ].flatMap(value=>String(value||"").split(",").map(normalize)).filter(Boolean);
   return forwarded.find(ip=>!isPrivateOrLocal(ip))||forwarded[0]||"unknown";
 }
+function loginThrottleKeys(req,username){
+  const ip=String(clientIp(req)||"unknown");
+  return {network:"network:"+ip,identity:"identity:"+ip+":"+String(username||"").trim().toLowerCase()};
+}
+function loginThrottleWait(req,username){
+  const now=Date.now(),keys=loginThrottleKeys(req,username),limits=[[keys.identity,10],[keys.network,100]];
+  let wait=0;
+  for(const [key,limit] of limits){
+    const recent=(loginAttemptWindows.get(key)||[]).filter(time=>now-time<15*60*1000);
+    loginAttemptWindows.set(key,recent);
+    if(recent.length>=limit)wait=Math.max(wait,15*60*1000-(now-recent[0]));
+  }
+  return Math.max(0,wait);
+}
+function recordLoginFailure(req,username){
+  const now=Date.now(),keys=loginThrottleKeys(req,username);
+  for(const key of [keys.identity,keys.network]){
+    const recent=(loginAttemptWindows.get(key)||[]).filter(time=>now-time<15*60*1000);
+    recent.push(now);loginAttemptWindows.set(key,recent);
+  }
+  if(loginAttemptWindows.size>10000){
+    for(const [key,times] of loginAttemptWindows){if(!times.length||now-times[times.length-1]>15*60*1000)loginAttemptWindows.delete(key);}
+  }
+}
+function clearLoginIdentityFailures(req,username){loginAttemptWindows.delete(loginThrottleKeys(req,username).identity);}
+
 async function recordUserIp(req,user,eventType){
   const ip=clientIp(req);
   if(!ip || ip==="unknown") return;
@@ -1052,6 +1077,17 @@ async function auth(req,res,next){
     return res.status(401).json({
       error:"Login required"
     });
+  }
+  const tokenClaims=tokenClaimsFromRequest(req);
+  const matchingToken=tokenClaims&&String(tokenClaims.sub)===String(u.id)?tokenClaims:null;
+  const sessionUid=req.session?.userId;
+  if(matchingToken||sessionUid){
+    const versionResult=await pool.query("SELECT auth_token_version FROM users WHERE id=$1",[Number(u.id)]);
+    if(!versionResult.rowCount)return res.status(401).json({error:"Login required"});
+    const storedVersion=Number(versionResult.rows[0].auth_token_version||0);
+    const presentedVersion=matchingToken?Number(matchingToken.ver||0):Number(req.session?.authTokenVersion||0);
+    if(presentedVersion!==storedVersion)return res.status(401).json({error:"Your session has expired. Please log in again."});
+    u.authTokenVersion=storedVersion;
   }
   if(!(await enforceNetworkAccess(req,res,u)))return;
   // Enforce account-wide moderation before any authenticated API route, including private messages.
@@ -1342,12 +1378,14 @@ async function checkRestrictedMediaUpload(req,res,user,file){
     console.info("Restricted media OCR scan:",{userId:String(user.id),phraseCount:phrases.length,recognizedCharacters:text.length,matched});
     if(!matched)return false;
     await fs.promises.unlink(file.path).catch(()=>{});
+    await pool.query("DELETE FROM stored_media WHERE media_key=$1",[String(file.filename||"")]).catch(()=>{});
     await sendRestrictedMediaBotMessage(user);
     res.status(400).json({error:"The File Contains Restricted Content. Try Different One",restrictedMedia:true});
     return true;
   }catch(err){
     console.error("Restricted media OCR failed:",err?.message||err);
     await fs.promises.unlink(file.path).catch(()=>{});
+    await pool.query("DELETE FROM stored_media WHERE media_key=$1",[String(file.filename||"")]).catch(()=>{});
     res.status(503).json({error:"Image content could not be checked safely. Please try again later."});
     return true;
   }
@@ -1498,6 +1536,31 @@ app.get("/uploads/*",async(req,res,next)=>{
   const mediaKey=String(req.params[0]||"").replace(/\\/g,"/");
   if(!mediaKey||mediaKey.split("/").some(part=>!part||part==="."||part===".."))return res.sendStatus(404);
   try{
+    // Scrapbook media is private content: apply the same visibility rules as its API.
+    if(mediaKey.startsWith("scrapbooks/")){
+      const viewer=current(req);
+      if(!viewer)return res.sendStatus(401);
+      const claims=tokenClaimsFromRequest(req);
+      const matchingToken=claims&&String(claims.sub)===String(viewer.id)?claims:null;
+      if(matchingToken||req.session?.userId){
+        const version=await pool.query("SELECT auth_token_version FROM users WHERE id=$1",[Number(viewer.id)]);
+        const presentedVersion=matchingToken?Number(matchingToken.ver||0):Number(req.session?.authTokenVersion||0);
+        if(!version.rowCount||presentedVersion!==Number(version.rows[0].auth_token_version||0))return res.sendStatus(401);
+      }
+      const access=await pool.query("SELECT e.user_id,e.visibility,s.visibility AS book_visibility,u.profile_data FROM social_scrapbook_entries e JOIN social_scrapbooks s ON s.user_id=e.user_id JOIN users u ON u.id=e.user_id WHERE e.media_key=$1 LIMIT 1",[mediaKey]);
+      if(!access.rowCount)return res.sendStatus(404);
+      const row=access.rows[0];
+      if(String(viewer.id)!==String(row.user_id)){
+        const profileData=row.profile_data&&typeof row.profile_data==="object"?row.profile_data:{};
+        if(profileData.privacy?.showScrapbook===false)return res.sendStatus(404);
+        const visibility=row.visibility==="inherit"?row.book_visibility:row.visibility;
+        if(visibility==="private")return res.sendStatus(404);
+        if(visibility==="friends"){
+          const isFriend=(db.friends||[]).some(friend=>String(friend.status||"").toUpperCase()==="ACCEPTED"&&((String(friend.a)===String(viewer.id)&&String(friend.b)===String(row.user_id))||(String(friend.b)===String(viewer.id)&&String(friend.a)===String(row.user_id))));
+          if(!isFriend)return res.sendStatus(404);
+        }
+      }
+    }
     let found=await pool.query("SELECT mime_type,original_name,content FROM stored_media WHERE media_key=$1",[mediaKey]);
     if(!found.rowCount){
       const localPath=path.resolve(UP,...mediaKey.split("/"));
@@ -1513,8 +1576,11 @@ app.get("/uploads/*",async(req,res,next)=>{
     if(!found.rowCount)return next();
     const row=found.rows[0],bytes=row.content;
     const mime=String(row.mime_type||"application/octet-stream");
+    const safeInlineMime=/^(image\/(png|jpeg|gif|webp|avif|bmp|tiff|heic|heif)|audio\/(mpeg|mp4|aac|ogg|wav|flac|webm|opus)|video\/(mp4|webm|quicktime|ogg))$/i.test(mime);
+    const activeContent=!safeInlineMime;
+    const responseMime=activeContent?"application/octet-stream":mime;
     const safeName=String(row.original_name||path.basename(mediaKey)).replace(/[\r\n"]/g,"_").replace(/[^\x20-\x7E]/g,"_");
-    res.set({"Content-Type":mime,"Accept-Ranges":"bytes","Cache-Control":"public, max-age=31536000, immutable","X-Content-Type-Options":"nosniff","Content-Disposition":'inline; filename="'+safeName+'"'});
+    res.set({"Content-Type":responseMime,"Accept-Ranges":"bytes","Cache-Control":"public, max-age=31536000, immutable","X-Content-Type-Options":"nosniff","Content-Disposition":(activeContent?"attachment":"inline")+'; filename="'+safeName+'"'});
     const range=String(req.headers.range||"");
     if(range){
       const match=/^bytes=(\d*)-(\d*)$/.exec(range);
@@ -1560,13 +1626,33 @@ const upload=multer({
   }
 });
 
+async function discardUploadedMedia(file){
+  if(!file)return;
+  const key=String(file.filename||"");
+  if(key)await pool.query("DELETE FROM stored_media WHERE media_key=$1",[key]).catch(error=>console.warn("Rejected upload cleanup failed:",error?.message||error));
+  if(file.path)await fs.promises.unlink(file.path).catch(()=>{});
+}
+
 // Persist every ordinary file upload immediately after Multer writes it.
 const parseSingleUpload=upload.single.bind(upload);
 upload.single=(field)=>{const parse=parseSingleUpload(field);return (req,res,next)=>parse(req,res,async error=>{
   if(error)return next(error);
   if(!req.file)return next();
-  try{await persistUploadedMedia(req.file,req.file.filename);next();}
-  catch(storageError){await fs.promises.unlink(req.file.path).catch(()=>{});next(storageError);}
+  try{
+    const uploadHandle=await fs.promises.open(req.file.path,"r");
+    let uploadBytes;
+    try{
+      const signatureSample=Buffer.alloc(Math.min(65536,Math.max(8,Number(req.file.size)||65536)));
+      const {bytesRead}=await uploadHandle.read(signatureSample,0,signatureSample.length,0);
+      uploadBytes=signatureSample.subarray(0,bytesRead);
+    }finally{await uploadHandle.close();}
+    const inspected=validateMediaFile({...req.file,buffer:uploadBytes});
+    if(!inspected.ok){await fs.promises.unlink(req.file.path).catch(()=>{});req.file=null;return res.status(415).json({error:inspected.error});}
+    // Never trust a browser-supplied MIME type when storing or serving a file.
+    req.file.mimetype=inspected.mime;
+    await persistUploadedMedia(req.file,req.file.filename);
+    next();
+  }catch(storageError){await fs.promises.unlink(req.file.path).catch(()=>{});next(storageError);}
 });};
 
 function visibleRoomOnlineCount(roomId){
@@ -1769,10 +1855,12 @@ app.post(
     const inserted=await pool.query(`INSERT INTO users(username,password,rank,gold,xp,birth_date,gender,bio,email,device_fingerprint,created_at) VALUES($1,$2,'member',0,0,$3,$4,$5,$6,$7,NOW()) RETURNING id`,
       [u.username,u.passwordHash,u.dateOfBirth||null,u.gender||null,u.bio||"",u.email||null,fingerprintHash]);
     u.id=String(inserted.rows[0].id);
+    u.authTokenVersion=0;
     await pool.query(`INSERT INTO device_fingerprints(fingerprint_hash,ip_hash,user_id) VALUES($1,$2,$3)`,[fingerprintHash,ipHash,Number(u.id)]);
     db.users.push(u);
 
     req.session.userId=u.id;
+    req.session.authTokenVersion=0;
     await recordUserIp(req,u,"register");
 
     save();
@@ -1804,6 +1892,8 @@ app.post(
   async(req,res)=>{
     const loginUsername=String(req.body?.username||"").trim();
     const passwordInput=String(req.body?.password||"");
+    const throttleWait=loginThrottleWait(req,loginUsername);
+    if(throttleWait>0){res.set("Retry-After",String(Math.ceil(throttleWait/1000)));return res.status(429).json({error:"Too many failed login attempts. Please wait before trying again."});}
     if(!loginUsername||!passwordInput){
       return res.status(400).json({error:"Enter both your username and password."});
     }
@@ -1822,8 +1912,12 @@ app.post(
       }
     }
     if(!u||!passwordValid){
+      recordLoginFailure(req,loginUsername);
       return res.status(401).json({error:"Invalid username or password."});
     }
+    clearLoginIdentityFailures(req,loginUsername);
+    const authVersionRow=await pool.query("SELECT auth_token_version FROM users WHERE id=$1",[Number(u.id)]);
+    u.authTokenVersion=Number(authVersionRow.rows[0]?.auth_token_version||0);
 
     if(String(u.rank).toUpperCase()==="VIP" && u.vipExpiresAt && Number(u.vipExpiresAt)<Date.now()){
       u.rank="MEMBER"; u.vipExpiresAt=null; u.vip_expires_at=null;
@@ -1839,6 +1933,7 @@ app.post(
     u.lastSeen=Date.now();
 
     req.session.userId=u.id;
+    req.session.authTokenVersion=u.authTokenVersion;
     await recordUserIp(req,u,"login");
 
     save();
@@ -1883,8 +1978,12 @@ app.post(
 app.post(
   "/api/logout",
   auth,
-  (req,res)=>{
+  async(req,res)=>{
     const u=current(req);
+    const revoked=await pool.query("UPDATE users SET auth_token_version=auth_token_version+1 WHERE id=$1 RETURNING auth_token_version",[Number(u.id)]);
+    if(revoked.rowCount)u.authTokenVersion=Number(revoked.rows[0].auth_token_version||0);
+    await pool.query("DELETE FROM user_sessions WHERE sess->>'userId'=$1",[String(u.id)]).catch(error=>console.warn("Session cleanup failed during logout:",error?.message||error));
+    io.in("user:"+u.id).disconnectSockets(true);
 
     u.online=false;
     u.lastSeen=Date.now();
@@ -1996,7 +2095,7 @@ app.post("/api/me/profile-music",auth,upload.single("file"),async(req,res)=>{
   const extension=path.extname(String(req.file.originalname||"")).toLowerCase();
   const mime=String(req.file.mimetype||"").toLowerCase();
   if(!allowedExtensions.has(extension)||(!mime.startsWith("audio/")&&!["application/ogg","application/octet-stream","video/webm"].includes(mime))){
-    await fs.promises.unlink(req.file.path).catch(()=>{});
+    await discardUploadedMedia(req.file);
     return res.status(400).json({error:"Unsupported audio file. Upload MP3, M4A, AAC, OGG, WAV, WebM, OPUS or FLAC."});
   }
   const title=path.basename(String(req.file.originalname||"Profile music"),extension).replace(/[_-]+/g," ").trim().slice(0,100)||"Profile music";
@@ -2025,6 +2124,7 @@ app.post(
     }
 
     if(await checkRestrictedMediaUpload(req,res,current(req),req.file))return;
+    if(!String(req.file.mimetype||"").startsWith("image/")){await discardUploadedMedia(req.file);return res.status(415).json({error:"Profile avatars must be image files."});}
     current(req).avatar=
       "/uploads/"+req.file.filename;
 
@@ -2064,6 +2164,7 @@ app.post(
     }
 
     if(await checkRestrictedMediaUpload(req,res,current(req),req.file))return;
+    if(!String(req.file.mimetype||"").startsWith("image/")){await discardUploadedMedia(req.file);return res.status(415).json({error:"Profile banners must be image files."});}
     current(req).banner=
       "/uploads/"+req.file.filename;
 
@@ -2902,7 +3003,7 @@ app.post("/api/rooms/:id/messages",auth,featureAllowed("send_messages"),upload.s
     const allowedAudioExt=[".mp3",".m4a",".wav",".ogg",".aac",".flac",".opus",".weba"];
     const allowedImageExt=[".png",".jpg",".jpeg",".gif",".webp",".avif"];
     const allowedType=mime.startsWith("image/")||mime.startsWith("audio/")||allowedAudioExt.includes(ext)||allowedImageExt.includes(ext);
-    if(!allowedType)return res.status(400).json({error:"Only image and audio files are allowed in chat."});
+    if(!allowedType){await discardUploadedMedia(req.file);return res.status(400).json({error:"Only image and audio files are allowed in chat."});}
   }
   let text=cleanText(req.body.text);
   let reelAttachment=null;
@@ -4061,6 +4162,7 @@ app.post("/api/dm/:id",auth,featureAllowed("private_messages"),upload.single("fi
   const u=current(req),v=findUser(req.params.id); if(!v)return res.status(404).json({error:"User not found"});
   if(await checkRestrictedMediaUpload(req,res,u,req.file))return;
   if(privateMessagesBlocked(u,v))return res.status(403).json({error:"Messaging blocked"});
+  if(req.file&&!/^(image|audio)\//i.test(String(req.file.mimetype||""))){await discardUploadedMedia(req.file);return res.status(415).json({error:"Private-message attachments must be image or audio files."});}
   const m={id:id(),from:u.id,to:v.id,text:cleanText(req.body.text),attachment:req.file?{url:"/uploads/"+req.file.filename,type:req.file.mimetype,name:req.file.originalname}:null,replyTo:req.body.replyTo||null,time:Date.now(),read:false,delivered:true};
   if(!m.text&&!m.attachment)return res.status(400).json({error:"Empty message"});
   await pool.query(`INSERT INTO private_messages(id,sender_id,receiver_id,message,data,created_at) VALUES($1,$2,$3,$4,$5::jsonb,NOW())`,
@@ -5492,7 +5594,7 @@ async function wallPostHandler(req,res){
   if(await checkRestrictedMediaUpload(req,res,u,req.file))return;
   if(String(u.rank).toUpperCase()!=="DEVELOPER" && u.username!==DEFAULT_OWNER&&!grants.map(x=>String(x).toUpperCase()).includes(rank))return res.status(403).json({error:"Your rank cannot create wall posts."});
   const content=cleanText(req.body.content||"").trim().slice(0,5000), media=req.file;
-  if(media&&!/^(image\/(png|jpe?g|gif|webp|avif)|video\/)/i.test(media.mimetype))return res.status(400).json({error:"Only image or video files are allowed."});
+  if(media&&!/^(image\/(png|jpe?g|gif|webp|avif)|video\/)/i.test(media.mimetype)){await discardUploadedMedia(media);return res.status(400).json({error:"Only image or video files are allowed."});}
   if(!content&&!media)return res.status(400).json({error:"Post cannot be empty."});
   const mediaUrl=media?`/uploads/${media.filename}`:null;
   const expiresInHours=Number(req.body.expiresInHours??0),allowedExpiries=[0,1,6,24,72,168];
@@ -6058,7 +6160,7 @@ app.post('/api/staff/user/:id/avatar',auth,accountModificationAccess,upload.sing
   const file=req.file;
   if(!file)return res.status(400).json({error:'Choose an image to upload.'});
   if(await checkRestrictedMediaUpload(req,res,current(req),file))return;
-  if(!/^image\/(png|jpe?g|gif|webp|avif)$/i.test(file.mimetype||'')){await fs.promises.unlink(file.path).catch(()=>{});return res.status(400).json({error:'Profile pictures must be PNG, JPG, GIF, WebP or AVIF images.'});}
+  if(!/^image\/(png|jpe?g|gif|webp|avif)$/i.test(file.mimetype||'')){await discardUploadedMedia(file);return res.status(400).json({error:'Profile pictures must be PNG, JPG, GIF, WebP or AVIF images.'});}
   const target=req.profileTarget;target.avatar='/uploads/'+file.filename;save();log(req.profileActor,'ACCOUNT_AVATAR_MODIFY',target.username,{operation:'upload'});
   res.json({ok:true,user:safeUser(target)});
 });
@@ -6069,7 +6171,7 @@ app.post('/api/staff/user/:id/banner',auth,accountModificationAccess,upload.sing
   const file=req.file;
   if(!file)return res.status(400).json({error:'Choose an image to upload.'});
   if(await checkRestrictedMediaUpload(req,res,current(req),file))return;
-  if(!/^image\/(png|jpe?g|gif|webp|avif)$/i.test(file.mimetype||'')){await fs.promises.unlink(file.path).catch(()=>{});return res.status(400).json({error:'Profile backgrounds must be PNG, JPG, GIF, WebP or AVIF images.'});}
+  if(!/^image\/(png|jpe?g|gif|webp|avif)$/i.test(file.mimetype||'')){await discardUploadedMedia(file);return res.status(400).json({error:'Profile backgrounds must be PNG, JPG, GIF, WebP or AVIF images.'});}
   const target=req.profileTarget;target.banner='/uploads/'+file.filename;save();log(req.profileActor,'ACCOUNT_BANNER_MODIFY',target.username,{operation:'upload'});
   res.json({ok:true,user:safeUser(target)});
 });
@@ -6137,7 +6239,7 @@ app.patch('/api/staff/user/:id/password',auth,async(req,res)=>{
   if(!featureGrantAllowed(actor,'change_password'))return res.status(403).json({error:'Password change permission has not been granted.'});
   if(rankOrder[target.rank]>=rankOrder[actor.rank])return res.status(403).json({error:'You cannot modify an equal or higher rank.'});
   const password=String(req.body.password||'');if(password.length<8)return res.status(400).json({error:'New password must be at least 8 characters.'});
-  target.password=await bcrypt.hash(password,10);target.passwordHash=target.password;await pool.query('UPDATE users SET password=$1 WHERE id=$2',[target.password,Number(target.id)]);save();res.json({ok:true});
+  target.password=await bcrypt.hash(password,10);target.passwordHash=target.password;const updated=await pool.query('UPDATE users SET password=$1,auth_token_version=auth_token_version+1 WHERE id=$2 RETURNING auth_token_version',[target.password,Number(target.id)]);target.authTokenVersion=Number(updated.rows[0]?.auth_token_version||0);await pool.query("DELETE FROM user_sessions WHERE sess->>'userId'=$1",[String(target.id)]);io.in("user:"+target.id).disconnectSockets(true);save();res.json({ok:true});
 });
 app.get('/api/staff/user/:id/email-history',auth,(req,res)=>{const actor=current(req),target=findUser(req.params.id);if(!target)return res.status(404).json({error:'User not found'});if(!featureGrantAllowed(actor,'edit_email')||rankOrder[target.rank]>=rankOrder[actor.rank])return res.status(403).json({error:'Email history permission required.'});res.json({email:target.email||'',history:target.emailHistory||[]});});
 app.patch('/api/staff/user/:id/email',auth,async(req,res)=>{
@@ -6654,6 +6756,28 @@ const gravityMatches = new Map();
 io.on(
   "connection",
   socket=>{
+    // A socket may be connected to another app instance when logout/password
+    // changes occur. Re-check its DB-backed token version before accepting
+    // further client events, with a short cache to avoid a query per packet.
+    socket.use((packet,next)=>{
+      const userId=String(socket.data.userId||"");
+      if(!userId)return next();
+      const checkedAt=Number(socket.data.authVersionCheckedAt||0),now=Date.now();
+      if(now-checkedAt<5000)return next();
+      pool.query("SELECT auth_token_version FROM users WHERE id=$1",[Number(userId)]).then(result=>{
+        const currentVersion=Number(result.rows[0]?.auth_token_version||0);
+        if(!result.rowCount||currentVersion!==Number(socket.data.authTokenVersion||0)){
+          socket.disconnect(true);
+          return next(new Error("Session expired"));
+        }
+        socket.data.authVersionCheckedAt=now;
+        next();
+      }).catch(error=>{
+        console.error("Socket session version check failed:",error?.message||error);
+        socket.disconnect(true);
+        next(new Error("Authentication temporarily unavailable"));
+      });
+    });
     socket.on("gravity:invite", data=>{
       const u=findUser(socket.data.userId);
       if(!u)return socket.emit("gravity:error",{error:"Please log in before starting a game."});
@@ -6727,13 +6851,18 @@ io.on(
 
     socket.on(
       "auth",
-      (credentials, acknowledge)=>{
+      async(credentials, acknowledge)=>{
         const ack=typeof acknowledge==="function"?acknowledge:()=>{};
         const claims=verifyToken(typeof credentials==="string"?credentials:credentials?.token);
         if(!claims){ack({ok:false,error:"Authentication failed"});return socket.disconnect(true);}
         const userId=String(claims.sub);
         const u=findUser(userId);
         if(!u){ack({ok:false,error:"User not found"});return;}
+        let versionResult;
+        try{versionResult=await pool.query("SELECT auth_token_version FROM users WHERE id=$1",[Number(userId)]);}catch(error){ack({ok:false,error:"Authentication temporarily unavailable"});return socket.disconnect(true);}
+        const storedVersion=Number(versionResult.rows[0]?.auth_token_version||0);
+        if(!versionResult.rowCount||Number(claims.ver||0)!==storedVersion){ack({ok:false,error:"Session expired"});return socket.disconnect(true);}
+        u.authTokenVersion=storedVersion;
 
         const previousUserId=String(socket.data.userId||"");
         if(previousUserId&&previousUserId!==userId){
@@ -6747,6 +6876,8 @@ io.on(
         }
 
         socket.data.userId=u.id;
+        socket.data.authTokenVersion=storedVersion;
+        socket.data.authVersionCheckedAt=Date.now();
         socket.join("user:"+u.id);
         u.online=true;
         u.lastSeen=Date.now();
@@ -7089,17 +7220,18 @@ app.get('/api/users/:id/profile-photos',auth,(req,res)=>{
 app.post('/api/users/me/profile-photos',auth,upload.single('file'),async(req,res)=>{
   const user=current(req);
   if(!req.file)return res.status(400).json({error:'Choose a photo to upload.'});
+  if(!String(req.file.mimetype||"").startsWith("image/")){await discardUploadedMedia(req.file);return res.status(415).json({error:"Profile gallery uploads must be images."});}
   const ext=path.extname(String(req.file.originalname||'')).toLowerCase();
   const mime=String(req.file.mimetype||'').toLowerCase();
   const allowed=new Set(['.jpg','.jpeg','.png','.webp','.gif']);
   if(!allowed.has(ext)||!['image/jpeg','image/png','image/webp','image/gif'].includes(mime)){
-    await fs.promises.unlink(req.file.path).catch(()=>{});
+    await discardUploadedMedia(req.file);
     return res.status(400).json({error:'Upload a JPG, PNG, WEBP or GIF image.'});
   }
   if(await checkRestrictedMediaUpload(req,res,user,req.file))return;
   user.profilePhotos=Array.isArray(user.profilePhotos)?user.profilePhotos:[];
   if(user.profilePhotos.length>=10){
-    await fs.promises.unlink(req.file.path).catch(()=>{});
+    await discardUploadedMedia(req.file);
     return res.status(400).json({error:'Your profile already has 10 photos. Remove one before adding another.'});
   }
   user.profilePhotos.push({id:crypto.randomBytes(10).toString('hex'),url:'/uploads/'+req.file.filename,createdAt:Date.now()});
@@ -7539,7 +7671,10 @@ app.post('/api/password/change',auth,async(req,res)=>{
   if(!valid)return res.status(401).json({error:"Current password is incorrect."});
   try{
     const hash=await bcrypt.hash(newPassword,10);
-    await pool.query("UPDATE users SET password=$1 WHERE id=$2",[hash,Number(u.id)]);
+    const changed=await pool.query("UPDATE users SET password=$1,auth_token_version=auth_token_version+1 WHERE id=$2 RETURNING auth_token_version",[hash,Number(u.id)]);
+    u.authTokenVersion=Number(changed.rows[0]?.auth_token_version||0);
+    await pool.query("DELETE FROM user_sessions WHERE sess->>'userId'=$1",[String(u.id)]);
+    io.in("user:"+u.id).disconnectSockets(true);
     u.password=hash;u.passwordHash=hash;
     await persistState(db);
     log(u,"PASSWORD_CHANGE",u.username);
