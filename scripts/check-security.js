@@ -492,6 +492,8 @@ assert.match(server, /Scrapbook media is private content/,
   "scrapbook media URLs must enforce scrapbook visibility");
 assert.match(database, /rejectUnauthorized:\s*true/,
   "PostgreSQL TLS certificate verification must be enabled");
+assert.match(database, /const privateHost =/,
+  "private Render Postgres hosts must use the private network without invalid self-signed TLS verification");
 assert.match(socialFeatures, /profileData\.privacy\?\.showScrapbook===false/,
   "scrapbook entry interactions must respect the profile scrapbook privacy setting");
 assert.match(socialFeatures, /SELECT id FROM social_confessions WHERE id=\$1 AND status='visible'/,
