@@ -1,11 +1,35 @@
 
 const { Pool } = require("pg");
 
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  // Verify PostgreSQL certificates; set DATABASE_SSL_CA only when the host uses a private CA.
-  ssl: { rejectUnauthorized: true, ...(process.env.DATABASE_SSL_CA ? { ca: process.env.DATABASE_SSL_CA } : {}) }
-});
+function databaseConnectionConfig() {
+  const raw = process.env.DATABASE_URL;
+  try {
+    const url = new URL(raw);
+    const hostname = url.hostname.toLowerCase();
+    // Render's internal Postgres host is reachable only on its private network.
+    // Internal Render connections do not require TLS; public hosts must verify certificates.
+    const privateHost = hostname === "localhost" || hostname === "127.0.0.1" ||
+      hostname === "::1" || !hostname.includes(".") ||
+      hostname.endsWith(".internal") || hostname.endsWith(".local");
+    // Strip URL SSL parameters so node-postgres cannot silently replace this explicit policy.
+    for (const key of ["sslmode", "sslrootcert", "sslcert", "sslkey"]) url.searchParams.delete(key);
+    const ssl = privateHost ? false : {
+      rejectUnauthorized: true,
+      ...(process.env.DATABASE_SSL_CA
+        ? { ca: process.env.DATABASE_SSL_CA.replace(/\\n/g, "\n") }
+        : {})
+    };
+    return { connectionString: url.toString(), ssl };
+  } catch {
+    // Invalid/missing URLs are reported by initDB; keep verification enabled for non-private hosts.
+    return {
+      connectionString: raw,
+      ssl: { rejectUnauthorized: true, ...(process.env.DATABASE_SSL_CA ? { ca: process.env.DATABASE_SSL_CA } : {}) }
+    };
+  }
+}
+
+const pool = new Pool(databaseConnectionConfig());
 
 
 async function initDB() {
