@@ -910,6 +910,7 @@ function tokenClaimsFromRequest(req){
   return null;
 }
 function current(req){
+  // Prefer the app header token before falling back to the cookie session: req.headers["x-auth-token"].
   // Older signed tokens without a version are treated as version zero.
   const tokenPayload=tokenClaimsFromRequest(req);
   if(tokenPayload){
@@ -1884,6 +1885,8 @@ app.post(
       return res.status(401).json({error:"Invalid username or password."});
     }
     clearLoginIdentityFailures(req,loginUsername);
+    const authVersionRow=await pool.query("SELECT auth_token_version FROM users WHERE id=$1",[Number(u.id)]);
+    u.authTokenVersion=Number(authVersionRow.rows[0]?.auth_token_version||0);
 
     if(String(u.rank).toUpperCase()==="VIP" && u.vipExpiresAt && Number(u.vipExpiresAt)<Date.now()){
       u.rank="MEMBER"; u.vipExpiresAt=null; u.vip_expires_at=null;
@@ -1947,6 +1950,8 @@ app.post(
     const u=current(req);
     const revoked=await pool.query("UPDATE users SET auth_token_version=auth_token_version+1 WHERE id=$1 RETURNING auth_token_version",[Number(u.id)]);
     if(revoked.rowCount)u.authTokenVersion=Number(revoked.rows[0].auth_token_version||0);
+    await pool.query("DELETE FROM user_sessions WHERE sess->>'userId'=$1",[String(u.id)]).catch(error=>console.warn("Session cleanup failed during logout:",error?.message||error));
+    io.in("user:"+u.id).disconnectSockets(true);
 
     u.online=false;
     u.lastSeen=Date.now();
@@ -6202,7 +6207,7 @@ app.patch('/api/staff/user/:id/password',auth,async(req,res)=>{
   if(!featureGrantAllowed(actor,'change_password'))return res.status(403).json({error:'Password change permission has not been granted.'});
   if(rankOrder[target.rank]>=rankOrder[actor.rank])return res.status(403).json({error:'You cannot modify an equal or higher rank.'});
   const password=String(req.body.password||'');if(password.length<8)return res.status(400).json({error:'New password must be at least 8 characters.'});
-  target.password=await bcrypt.hash(password,10);target.passwordHash=target.password;const updated=await pool.query('UPDATE users SET password=$1,auth_token_version=auth_token_version+1 WHERE id=$2 RETURNING auth_token_version',[target.password,Number(target.id)]);target.authTokenVersion=Number(updated.rows[0]?.auth_token_version||0);save();res.json({ok:true});
+  target.password=await bcrypt.hash(password,10);target.passwordHash=target.password;const updated=await pool.query('UPDATE users SET password=$1,auth_token_version=auth_token_version+1 WHERE id=$2 RETURNING auth_token_version',[target.password,Number(target.id)]);target.authTokenVersion=Number(updated.rows[0]?.auth_token_version||0);await pool.query("DELETE FROM user_sessions WHERE sess->>'userId'=$1",[String(target.id)]);io.in("user:"+target.id).disconnectSockets(true);save();res.json({ok:true});
 });
 app.get('/api/staff/user/:id/email-history',auth,(req,res)=>{const actor=current(req),target=findUser(req.params.id);if(!target)return res.status(404).json({error:'User not found'});if(!featureGrantAllowed(actor,'edit_email')||rankOrder[target.rank]>=rankOrder[actor.rank])return res.status(403).json({error:'Email history permission required.'});res.json({email:target.email||'',history:target.emailHistory||[]});});
 app.patch('/api/staff/user/:id/email',auth,async(req,res)=>{
@@ -6799,7 +6804,8 @@ io.on(
         const userId=String(claims.sub);
         const u=findUser(userId);
         if(!u){ack({ok:false,error:"User not found"});return;}
-        const versionResult=await pool.query("SELECT auth_token_version FROM users WHERE id=$1",[Number(userId)]);
+        let versionResult;
+        try{versionResult=await pool.query("SELECT auth_token_version FROM users WHERE id=$1",[Number(userId)]);}catch(error){ack({ok:false,error:"Authentication temporarily unavailable"});return socket.disconnect(true);}
         const storedVersion=Number(versionResult.rows[0]?.auth_token_version||0);
         if(!versionResult.rowCount||Number(claims.ver||0)!==storedVersion){ack({ok:false,error:"Session expired"});return socket.disconnect(true);}
         u.authTokenVersion=storedVersion;
@@ -7611,6 +7617,8 @@ app.post('/api/password/change',auth,async(req,res)=>{
     const hash=await bcrypt.hash(newPassword,10);
     const changed=await pool.query("UPDATE users SET password=$1,auth_token_version=auth_token_version+1 WHERE id=$2 RETURNING auth_token_version",[hash,Number(u.id)]);
     u.authTokenVersion=Number(changed.rows[0]?.auth_token_version||0);
+    await pool.query("DELETE FROM user_sessions WHERE sess->>'userId'=$1",[String(u.id)]);
+    io.in("user:"+u.id).disconnectSockets(true);
     u.password=hash;u.passwordHash=hash;
     await persistState(db);
     log(u,"PASSWORD_CHANGE",u.username);
