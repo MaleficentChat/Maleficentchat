@@ -70,7 +70,7 @@ function validateMediaFile(file) {
   const ext = path.extname(String(file.originalname || "")).toLowerCase();
   const extensionMime = EXTENSION_MIME[ext];
   if (extensionMime && extensionMime !== detectedMime &&
-      !(extensionMime === "audio/ogg" && detectedMime === "audio/ogg")) {
+      !(ext === ".webm" && ["audio/webm","video/webm"].includes(detectedMime))) {
     return { ok: false, error: "The file extension does not match its actual content." };
   }
   if (ext && !extensionMime) return { ok: false, error: "This file extension is not supported." };
@@ -78,7 +78,8 @@ function validateMediaFile(file) {
   const claimed = String(file.mimetype || "").toLowerCase();
   if (claimed && claimed !== "application/octet-stream" && claimed !== "binary/octet-stream" &&
       claimed !== detectedMime &&
-      !(claimed === "audio/webm" && detectedMime === "audio/webm")) {
+      !(claimed === "audio/opus" && detectedMime === "audio/ogg") &&
+      !(claimed === "application/ogg" && detectedMime === "audio/ogg")) {
     return { ok: false, error: "The file type does not match its actual content." };
   }
 
