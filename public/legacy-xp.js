@@ -14,7 +14,9 @@
 
   function decorateProfile(){
     const panel = document.getElementById("profileTabContent");
-    if (!panel || panel.querySelector(".legacy-xp-card")) return;
+    const profile = panel?.closest(".profile-modal");
+    const tabs = profile?.querySelector(".profile-tabs");
+    if (!panel || !profile || !tabs || profile.querySelector(".legacy-xp-card")) return;
     const rows = Array.from(panel.querySelectorAll(".profile-info-row"));
     const levelRow = rows.find(row => /level/i.test(row.querySelector("b")?.textContent || ""));
     if (!levelRow) return;
@@ -56,7 +58,7 @@
     foot.textContent = maxed ? "✹ Maximum legacy title reached" :
       (next.xp - xp).toLocaleString() + " XP to " + next.title;
     card.append(head, track, foot);
-    levelRow.insertAdjacentElement("afterend", card);
+    tabs.insertAdjacentElement("afterend", card);
   }
 
   const observer = new MutationObserver(decorateProfile);
