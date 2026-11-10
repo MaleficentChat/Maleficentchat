@@ -9,10 +9,16 @@ const EXTENSION_MIME = Object.freeze({
   ".gif": "image/gif",
   ".webp": "image/webp",
   ".avif": "image/avif",
+  ".bmp": "image/bmp",
+  ".tif": "image/tiff",
+  ".tiff": "image/tiff",
+  ".heic": "image/heic",
+  ".heif": "image/heif",
   ".mp3": "audio/mpeg",
   ".m4a": "audio/mp4",
   ".aac": "audio/aac",
   ".ogg": "audio/ogg",
+  ".ogv": "video/ogg",
   ".oga": "audio/ogg",
   ".opus": "audio/ogg",
   ".wav": "audio/wav",
@@ -35,10 +41,15 @@ function detectMediaMime(input, originalName = "", claimedMime = "") {
   if (first6 === "GIF87a" || first6 === "GIF89a") return "image/gif";
   if (buffer.subarray(0, 4).toString("ascii") === "RIFF" &&
       buffer.subarray(8, 12).toString("ascii") === "WEBP") return "image/webp";
+  if (buffer[0] === 0x42 && buffer[1] === 0x4d) return "image/bmp";
+  if (buffer.subarray(0, 4).equals(Buffer.from([0x49,0x49,0x2a,0x00])) ||
+      buffer.subarray(0, 4).equals(Buffer.from([0x4d,0x4d,0x00,0x2a]))) return "image/tiff";
 
   if (buffer.subarray(4, 8).toString("ascii") === "ftyp") {
     const brand = buffer.subarray(8, 12).toString("ascii");
     if (brand === "avif" || brand === "avis") return "image/avif";
+    if (["heic","heix","hevc","hevx"].includes(brand)) return "image/heic";
+    if (["mif1","msf1"].includes(brand)) return "image/heif";
     if (brand === "M4A " || brand === "M4B " || brand === "F4A ") return "audio/mp4";
     if (brand === "qt  ") return "video/quicktime";
     if (["isom","iso2","iso3","iso4","iso5","iso6","mp41","mp42","M4V ","avc1","dash","3gp4","3gp5"].includes(brand)) return "video/mp4";
@@ -50,7 +61,9 @@ function detectMediaMime(input, originalName = "", claimedMime = "") {
       ? "audio/webm" : "video/webm";
   }
   if (buffer.subarray(0, 4).toString("ascii") === "OggS") {
-    return buffer.includes(Buffer.from("OpusHead")) ? "audio/ogg" : "audio/ogg";
+    const ext = path.extname(String(originalName || "")).toLowerCase();
+    return ext === ".ogv" || String(claimedMime || "").toLowerCase() === "video/ogg"
+      ? "video/ogg" : "audio/ogg";
   }
   if (buffer.subarray(0, 4).toString("ascii") === "fLaC") return "audio/flac";
   if (buffer.subarray(0, 4).toString("ascii") === "RIFF" &&
@@ -70,7 +83,8 @@ function validateMediaFile(file) {
   const ext = path.extname(String(file.originalname || "")).toLowerCase();
   const extensionMime = EXTENSION_MIME[ext];
   if (extensionMime && extensionMime !== detectedMime &&
-      !(ext === ".webm" && ["audio/webm","video/webm"].includes(detectedMime))) {
+      !(ext === ".webm" && ["audio/webm","video/webm"].includes(detectedMime)) &&
+      !(ext === ".ogg" && ["audio/ogg","video/ogg"].includes(detectedMime))) {
     return { ok: false, error: "The file extension does not match its actual content." };
   }
   if (ext && !extensionMime) return { ok: false, error: "This file extension is not supported." };
@@ -89,11 +103,12 @@ function validateMediaFile(file) {
 function mediaExtensionForMime(mime) {
   const extensions = {
     "image/png": ".png", "image/jpeg": ".jpg", "image/gif": ".gif",
-    "image/webp": ".webp", "image/avif": ".avif",
+    "image/webp": ".webp", "image/avif": ".avif", "image/bmp": ".bmp",
+    "image/tiff": ".tif", "image/heic": ".heic", "image/heif": ".heif",
     "audio/mpeg": ".mp3", "audio/mp4": ".m4a", "audio/aac": ".aac",
     "audio/ogg": ".ogg", "audio/wav": ".wav", "audio/flac": ".flac",
     "audio/webm": ".weba", "video/webm": ".webm",
-    "video/mp4": ".mp4", "video/quicktime": ".mov"
+    "video/mp4": ".mp4", "video/quicktime": ".mov", "video/ogg": ".ogv"
   };
   return extensions[mime] || "";
 }
