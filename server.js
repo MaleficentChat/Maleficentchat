@@ -1374,6 +1374,7 @@ async function checkRestrictedMediaUpload(req,res,user,file){
   }catch(err){
     console.error("Restricted media OCR failed:",err?.message||err);
     await fs.promises.unlink(file.path).catch(()=>{});
+    await pool.query("DELETE FROM stored_media WHERE media_key=$1",[String(file.filename||"")]).catch(()=>{});
     res.status(503).json({error:"Image content could not be checked safely. Please try again later."});
     return true;
   }
@@ -1392,8 +1393,6 @@ async function checkRestrictedMediaBuffer(res,user,buffer){
     return true;
   }catch(err){
     console.error("Restricted media OCR failed:",err?.message||err);
-    await fs.promises.unlink(file.path).catch(()=>{});
-    await pool.query("DELETE FROM stored_media WHERE media_key=$1",[String(file.filename||"")]).catch(()=>{});
     res.status(503).json({error:"Image content could not be checked safely. Please try again later."});
     return true;
   }
