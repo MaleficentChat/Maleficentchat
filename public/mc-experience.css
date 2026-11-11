@@ -961,3 +961,26 @@ body.kp-rooms-panel-open{overflow:hidden!important}
 html,body,#app,.main{background-color:#100c0a!important;color:#fff4e9!important}
 .top-brand-copy b:after{content:"Maleficent Chat"!important}
 .brand-mark:after,.brand-avatar:after,.rail-logo:after{content:"🖤"!important;font-family:inherit!important;font-size:22px!important}
+
+
+/* Scroll audit 2026-11-11: restore usable scrolling across views and panels. */
+.main{min-height:0!important;overscroll-behavior:contain}
+.view:not(#viewRooms){min-height:0!important;overflow-x:hidden!important;overflow-y:auto!important;overscroll-behavior-y:contain!important;-webkit-overflow-scrolling:touch!important;touch-action:pan-y}
+.view:not(#viewRooms)>.topbar{flex-shrink:0}
+#viewLeaderboard{display:block!important;height:100%!important;min-height:0!important;overflow-x:hidden!important;overflow-y:auto!important;overscroll-behavior-y:contain!important;-webkit-overflow-scrolling:touch!important;touch-action:pan-y}
+#viewLeaderboard #leaderboard{min-height:0!important;align-items:start!important}
+#viewLeaderboard #leaderboard>.card{min-height:0!important;max-height:min(68dvh,720px)!important;height:auto!important;overflow-x:hidden!important;overflow-y:auto!important;overscroll-behavior-y:contain!important;-webkit-overflow-scrolling:touch!important;scrollbar-width:thin!important;scrollbar-gutter:stable!important;touch-action:pan-y!important}
+#viewLeaderboard #leaderboard>.card::-webkit-scrollbar{width:7px}
+#viewLeaderboard #leaderboard>.card::-webkit-scrollbar-thumb{background:var(--kp-blue,#6da5ff);border-radius:20px}
+.modal-card,.profile-modal,.kp-rooms-panel{max-height:min(92dvh,900px)!important;overflow-x:hidden!important;overflow-y:auto!important;overscroll-behavior:contain!important;-webkit-overflow-scrolling:touch!important;touch-action:pan-y}
+.modal-card>* ,.profile-modal>*{min-width:0}
+@media(max-width:820px){
+ #viewLeaderboard{height:100%!important;overflow-y:auto!important}
+ #viewLeaderboard #leaderboard{grid-template-columns:minmax(0,1fr)!important;grid-auto-flow:row!important;align-content:start!important}
+ #viewLeaderboard #leaderboard>.card{max-height:min(62dvh,620px)!important;overflow-y:auto!important}
+}
+@media(max-width:600px){
+ .view:not(#viewRooms){padding-bottom:max(18px,env(safe-area-inset-bottom))!important}
+ #viewLeaderboard{padding-bottom:max(28px,env(safe-area-inset-bottom))!important}
+ #viewLeaderboard #leaderboard>.card{max-height:min(62dvh,560px)!important}
+}
