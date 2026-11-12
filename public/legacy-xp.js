@@ -12,7 +12,18 @@
     { xp: 300000, title: "Immortal", crest: "✹" }
   ];
 
+  function removeDuplicateProfileTabs(){
+    document.querySelectorAll(".profile-modal .profile-tabs").forEach(strip=>{
+      const seen=new Set();
+      strip.querySelectorAll(".profile-tab[data-tab]").forEach(tab=>{
+        const key=tab.dataset.tab;
+        if(seen.has(key)) tab.remove(); else seen.add(key);
+      });
+    });
+  }
+
   function decorateProfile(){
+    removeDuplicateProfileTabs();
     const panel = document.getElementById("profileTabContent");
     const profile = panel?.closest(".profile-modal");
     const tabs = profile?.querySelector(".profile-tabs");
