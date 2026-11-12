@@ -1596,16 +1596,19 @@ app.get("/uploads/*",async(req,res,next)=>{
   }catch(error){next(error);}
 });
 
-app.use(
-  "/uploads",
-  express.static(UP)
-);
+// Cache static files briefly to reduce repeat downloads on mobile connections.
+ // ETags remain enabled so browsers can revalidate changed assets cheaply.
+const staticAssetOptions = {
+  maxAge: "1d",
+  etag: true,
+  lastModified: true,
+  setHeaders(res) {
+    res.setHeader("Cache-Control", "public, max-age=86400, stale-while-revalidate=604800");
+  }
+};
 
-app.use(
-  express.static(
-    path.join(__dirname,"public")
-  )
-);
+app.use("/uploads", express.static(UP, staticAssetOptions));
+app.use(express.static(path.join(__dirname,"public"), staticAssetOptions));
 app.get("/", (req, res) => res.sendFile(path.join(__dirname, "public", "index.html")));
 
 const upload=multer({
