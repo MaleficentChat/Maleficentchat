@@ -3573,7 +3573,7 @@ function renderUserProfileModal(user,data={}){
       ${isSelf||user.privacy?.showGuestbook!==false?'<button class="profile-tab" data-tab="guestbook">📖 Guestbook</button>':''}
       ${isSelf||user.privacy?.showGifts!==false?'<button class="profile-tab" data-tab="gifts">🎁 Gifts</button>':''}
       ${isSelf||user.privacy?.photos!==false?'<button class="profile-tab" data-tab="photos">📷 Photos</button>':''}
-      ${isSelf||user.privacy?.showScrapbook!==false?'<button class="profile-tab" data-tab="scrapbook">📚 Scrapbook</button>':''}
+      
       <button class="profile-tab" data-tab="more">More</button>
     </div>
     <div id="profileTabContent" class="profile-info"></div>
