@@ -1344,6 +1344,12 @@ document
   });
 
 async function renderView() {
+  // The People directory is the existing room-side panel, not a standalone .view.
+  if(state.view==="users"){
+    $("sidebar")?.classList.remove("open");
+    $("onlinePanel")?.classList.add("mobile-open");
+    return renderOnline("all");
+  }
   document
     .querySelectorAll(".view")
     .forEach(v => v.classList.add("hidden"));
@@ -1368,7 +1374,7 @@ async function renderView() {
       return loadRooms();
 
     case "users":
-      return loadUsers();
+      return renderOnline("all");
 
     case "news":
       return loadNews();
@@ -1650,7 +1656,7 @@ async function loadRankShop(){
   const canBuyVip=rank==='MEMBER';
   const canBuyPremium=!['PREMIUM','MOD','MODERATOR','ADMIN','SUPER_ADMIN','SUPERADMIN','COMMISSOR','INSTRUCTOR','COOWNER','OWNER','DEVELOPER'].includes(rank);
   c.innerHTML=`<div class="panel shop-item"><div class="shop-icon">🏅</div><h3>Premium — $6 lifetime</h3><p>Request Premium from the owner, or unlock it instantly for 50,000 Diamonds.</p>${canBuyPremium?'<button class="primary" id="requestPremium">Request Premium — $6</button>':'<p class="muted">Premium purchase is unavailable for your current rank.</p>'}${canBuyPremium?'<button class="mini" id="buyPremiumDiamonds" style="margin-top:8px">💎 Buy with 50,000 Diamonds</button>':'<p class="muted">Premium purchase is unavailable for your current rank.</p>'}</div>${canBuyVip?d.vip.map(v=>`<div class="panel shop-item"><div class="shop-icon">💎</div><h3>VIP — ${v.label}</h3><p>${v.price} gold</p><button class="mini" data-vip-plan="${v.label.includes('7')?'7':v.label.includes('month')&&v.label.includes('3')?'90':v.label.includes('year')?'365':'30'}">${v.price} gold</button></div>`).join(''):'<div class="panel shop-item"><div class="shop-icon">💎</div><h3>VIP</h3><p>Higher ranks cannot buy VIP</p></div>'}`;
-  $('requestPremium').onclick=async()=>{try{await api('/api/shop/premium/request',{method:'POST'});toast('Premium request sent to owner.')}catch(e){toast(e.message)}};
+  const requestPremiumButton=$('requestPremium');if(requestPremiumButton)requestPremiumButton.onclick=async()=>{try{await api('/api/shop/premium/request',{method:'POST'});toast('Premium request sent to owner.')}catch(e){toast(e.message)}};
   const diamondPremiumButton=$('buyPremiumDiamonds'); if(diamondPremiumButton)diamondPremiumButton.onclick=async()=>{if(!confirm('Spend 50,000 Diamonds to activate lifetime Premium?'))return;diamondPremiumButton.disabled=true;try{const result=await api('/api/shop/premium/buy-diamonds',{method:'POST'});state.user.rank='PREMIUM';state.user.is_premium=true;state.user.isPremium=true;state.user.diamonds=Number(result.diamonds);toast('Premium activated! 50,000 Diamonds spent.');updateNav();await loadRankShop();}catch(e){toast(e.message);diamondPremiumButton.disabled=false;}};
   document.querySelectorAll('[data-vip-plan]').forEach(b=>b.onclick=async()=>{try{const d=await api('/api/shop/vip',{method:'POST',body:JSON.stringify({plan:b.dataset.vipPlan})});state.user.gold=d.gold;toast('VIP activated.');updateNav();loadRankShop()}catch(e){toast(e.message)}});
 }
@@ -3403,54 +3409,11 @@ function getUserAge(user){
   if(now.getMonth()<date.getMonth()||(now.getMonth()===date.getMonth()&&now.getDate()<date.getDate()))age--;
   return age>=0&&age<=120?age:null;
 }
-async function loadUsers() {
-  try {
-    const query=$("userSearch")?.value.trim()||"";
-    const data=await api(`/api/users?q=${encodeURIComponent(query)}`);
-    state.roomRankByUser={};
-    if(state.currentRoom){
-      try{const roomStaff=await api(`/api/rooms/${encodeURIComponent(state.currentRoom)}/staff`);for(const item of (roomStaff.staff||[])){if(item.user?.id)state.roomRankByUser[String(item.user.id)]=item.role;}}catch{}
-    }
-    const selectedGender=$("userGenderFilter")?.value||"";
-    const countryQuery=($("userCountryFilter")?.value||"").trim().toLowerCase();
-    const minRaw=$("userAgeMin")?.value, maxRaw=$("userAgeMax")?.value;
-    const minAge=minRaw===""||minRaw==null?null:Number(minRaw),maxAge=maxRaw===""||maxRaw==null?null:Number(maxRaw);
-    let filtered=(data.users||[]).filter(user=>{
-      if(selectedRank&&String(user.rank||"").toUpperCase()!==selectedRank)return false;
-      if(selectedGender&&String(user.gender||"").toLowerCase()!==selectedGender.toLowerCase())return false;
-      if(countryQuery&&!String(user.location||"").toLowerCase().includes(countryQuery))return false;
-      const age=getUserAge(user);
-      if(minAge!==null&&(age===null||age<minAge))return false;
-      if(maxAge!==null&&(age===null||age>maxAge))return false;
-      return true;
-    });
-    const sortBy=$("userSortBy")?.value||"default";
-    const rankValue=u=>rankOrder[String(u.rank||"").toUpperCase()]??-1;
-    filtered.sort((a,b)=>{
-      if(sortBy==="rank")return rankValue(b)-rankValue(a)||a.username.localeCompare(b.username);
-      if(sortBy==="age-asc")return (getUserAge(a)??999)-(getUserAge(b)??999)||a.username.localeCompare(b.username);
-      if(sortBy==="age-desc")return (getUserAge(b)??-1)-(getUserAge(a)??-1)||a.username.localeCompare(b.username);
-      if(sortBy==="name")return a.username.localeCompare(b.username);
-      if(sortBy==="country")return String(a.location||"").localeCompare(String(b.location||""))||a.username.localeCompare(b.username);
-      if(sortBy==="newest")return (new Date(b.createdAt||0).getTime()||0)-(new Date(a.createdAt||0).getTime()||0);
-      if(sortBy==="active")return (Number(b.lastActive||b.lastSeen||0)||new Date(b.lastActive||b.lastSeen||0).getTime()||0)-(Number(a.lastActive||a.lastSeen||0)||new Date(a.lastActive||a.lastSeen||0).getTime()||0);
-      return (Number(b.online)-Number(a.online))||rankValue(b)-rankValue(a)||a.username.localeCompare(b.username);
-    });
-    const invisible=filtered.filter(user=>user.invisible);
-    const online=filtered.filter(user=>user.online&&!user.invisible);
-    const offline=filtered.filter(user=>!user.online&&!user.invisible);
-    $("users").innerHTML=`${online.length?`<section class="user-presence-section"><h3>🟢 Online users <small>${online.length}</small></h3><div class="user-grid">${online.map(userCard).join("")}</div></section>`:""}${offline.length?`<section class="user-presence-section"><h3>⚪ Offline users <small>${offline.length}</small></h3><div class="user-grid">${offline.map(userCard).join("")}</div></section>`:""}${invisible.length?`<section class="user-presence-section"><h3>🟢 Invisible mode <small>${invisible.length}</small></h3><div class="user-grid">${invisible.map(userCard).join("")}</div></section>`:""}`||`<div class="room-empty"><div>🔎</div><b>No users match these filters</b><span>Try changing the rank, age, gender or location.</span></div>`;
-  } catch(error){toast(error.message);}
+async function loadUsers(){
+  // Keep legacy callers on the current People panel instead of the retired Users page.
+  return renderOnline(onlinePanelTab);
 }
-$("userSearch").oninput=()=>loadUsers();
-["userGenderFilter","userAgeMin","userAgeMax","userCountryFilter","userSortBy"].forEach(id=>$ (id)?.addEventListener("input",()=>loadUsers()));
-["userGenderFilter","userSortBy"].forEach(id=>$ (id)?.addEventListener("change",()=>loadUsers()));
-$("resetUserFilters")?.addEventListener("click",()=>{
-  ["userSearch","userCountryFilter","userAgeMin","userAgeMax"].forEach(id=>{if($(id))$(id).value="";});
-  ["userGenderFilter"].forEach(id=>{if($(id))$(id).value="";});
-  if($("userSortBy"))$("userSortBy").value="default";
-  loadUsers();
-});
+
 function invisibleDot(user){return user?.invisible?'<i class="invisible-staff-dot" title="Invisible mode active"></i>':'';}
 function moderationStatusTags(user){
   const tags=[];
@@ -3573,7 +3536,7 @@ function renderUserProfileModal(user,data={}){
       ${isSelf||user.privacy?.showGuestbook!==false?'<button class="profile-tab" data-tab="guestbook">📖 Guestbook</button>':''}
       ${isSelf||user.privacy?.showGifts!==false?'<button class="profile-tab" data-tab="gifts">🎁 Gifts</button>':''}
       ${isSelf||user.privacy?.photos!==false?'<button class="profile-tab" data-tab="photos">📷 Photos</button>':''}
-      ${isSelf||user.privacy?.showScrapbook!==false?'<button class="profile-tab" data-tab="scrapbook">📚 Scrapbook</button>':''}
+      
       <button class="profile-tab" data-tab="more">More</button>
     </div>
     <div id="profileTabContent" class="profile-info"></div>
