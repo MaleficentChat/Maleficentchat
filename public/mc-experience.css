@@ -984,3 +984,63 @@ html,body,#app,.main{background-color:#100c0a!important;color:#fff4e9!important}
  #viewLeaderboard{padding-bottom:max(28px,env(safe-area-inset-bottom))!important}
  #viewLeaderboard #leaderboard>.card{max-height:min(62dvh,560px)!important}
 }
+
+
+/* 2026-11-13 mobile layout repair: one continuous leaderboard scroll, centered avatars, compact bot cards. */
+#viewLeaderboard{
+  display:grid!important;grid-auto-rows:max-content!important;align-content:start!important;
+  height:auto!important;min-height:0!important;max-height:none!important;
+  overflow:visible!important;overflow-y:visible!important;overflow-x:visible!important;
+  -webkit-overflow-scrolling:auto!important;overscroll-behavior:initial!important;touch-action:pan-y!important;
+}
+#viewLeaderboard #leaderboard{
+  display:grid!important;grid-template-columns:repeat(auto-fit,minmax(min(100%,290px),1fr))!important;
+  height:auto!important;min-height:0!important;max-height:none!important;overflow:visible!important;
+  align-content:start!important;touch-action:pan-y!important;
+}
+#viewLeaderboard #leaderboard>.card,
+#viewLeaderboard #leaderboard>.kp-leaderboard-card{
+  height:auto!important;min-height:0!important;max-height:none!important;
+  overflow:visible!important;overflow-y:visible!important;overscroll-behavior:initial!important;
+  touch-action:pan-y!important;
+}
+#viewLeaderboard #leaderboard .user-card,
+#viewLeaderboard #leaderboard .kp-leader-row{overflow:visible!important;max-height:none!important;touch-action:pan-y!important}
+.profile-modal.kp-public-profile .equipped-profile-frame{
+  display:grid!important;place-items:center!important;flex:0 0 116px!important;align-self:center!important;
+  margin:12px auto 13px!important;padding:5px!important;box-sizing:border-box!important;
+}
+.profile-modal.kp-public-profile .equipped-profile-frame>.big-avatar{
+  display:grid!important;place-items:center!important;width:100%!important;height:100%!important;
+  min-width:0!important;min-height:0!important;margin:0!important;padding:0!important;
+  overflow:hidden!important;box-sizing:border-box!important;border-radius:50%!important;
+}
+.profile-modal.kp-public-profile .equipped-profile-frame>.big-avatar img,
+#viewProfile .profile-settings-head>.big-avatar img{
+  display:block!important;width:100%!important;height:100%!important;min-width:0!important;min-height:0!important;
+  object-fit:cover!important;object-position:center!important;margin:0!important;border-radius:50%!important;
+}
+#viewProfile .profile-settings-head>.big-avatar{
+  display:grid!important;place-items:center!important;flex:0 0 106px!important;margin-left:auto!important;margin-right:auto!important;
+  padding:0!important;overflow:hidden!important;box-sizing:border-box!important;
+}
+.bot-join-chat-message{
+  display:flex!important;align-items:center!important;justify-content:center!important;
+  width:100%!important;max-width:100%!important;min-height:0!important;height:auto!important;
+  flex:0 0 auto!important;margin:14px 0!important;padding:0 8px!important;box-sizing:border-box!important;
+}
+.bot-join-chat-message .bot-welcome-bubble{
+  display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;
+  width:fit-content!important;max-width:96%!important;min-width:0!important;min-height:0!important;height:auto!important;
+  padding:16px 22px!important;gap:0!important;box-sizing:border-box!important;
+  border:1px solid rgba(210,122,82,.35)!important;background:linear-gradient(145deg,rgba(38,25,20,.98),rgba(19,13,11,.98))!important;
+  box-shadow:0 0 10px rgba(230,154,104,.20),inset 0 0 22px rgba(230,154,104,.05)!important;
+}
+.bot-join-chat-message .bot-welcome-byline{margin:0 0 9px!important;font-size:12px!important}
+.bot-join-chat-message .bot-welcome-glow{
+  display:block!important;max-width:100%!important;margin:0!important;
+  font-size:clamp(18px,4.8vw,27px)!important;line-height:1.2!important;text-align:center!important;
+  overflow-wrap:anywhere!important;
+}
+/* Scrapbook is retired from the profile UI; existing saved data is left intact. */
+.profile-tab[data-tab="scrapbook"],.scrapbook,.scrapbook-settings,.scrapbook-note-form,.scrapbook-entry-grid{display:none!important}
