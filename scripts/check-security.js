@@ -502,4 +502,11 @@ assert.match(mediaValidation, /detectMediaMime[\s\S]*validateMediaFile/,
   "upload validation must inspect actual file signatures");
 assert.doesNotMatch(mediaValidation, /image\/svg\+xml|image\/svg/,
   "SVG must not be included in accepted uploaded media");
+
+assert.ok(indexHtml.includes('id="onlineUsers"') && !activeClient.includes('$("userSearch").oninput'),
+  "the retired Users search binding must not crash startup when the People panel is used");
+assert.match(activeClient,/if\(state\.view==="users"\)[\s\S]*?renderOnline\("all"\)/,
+  "Find People navigation must open the current People panel");
+assert.match(activeClient,/const requestPremiumButton=\$\('requestPremium'\);if\(requestPremiumButton\)/,
+  "rank-restricted shop views must not dereference a missing Premium request button");
 console.log("Session revocation, upload validation, TLS and social privacy checks passed.");
