@@ -6832,7 +6832,7 @@ if(!window.__mcNotificationBadgeResumeBound){
 // transport. Polling five APIs every 5 seconds was creating needless load.
 // Opening notification views and socket reconnects refresh immediately.
 setInterval(()=>{if(state.user)loadNotifications();},15000);
-setInterval(()=>{if(state.user)refreshTopDMUnreadBadge();},5000);
+setInterval(()=>{if(state.user)refreshTopDMUnreadBadge();},15000);
 setTimeout(()=>{if(state.user){loadNotifications();refreshTopDMUnreadBadge();}},1200);
 
 async function openNotificationCenter(){
