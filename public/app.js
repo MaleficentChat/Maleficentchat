@@ -1297,8 +1297,12 @@ function updateNav() {
 document
   .querySelectorAll(".nav[data-view]")
   .forEach(button => {
-    button.onclick = async () => {
-      state.view = button.dataset.view;
+    button.onclick = async event => {
+      event.preventDefault();
+      event.stopPropagation();
+      const requestedView = button.dataset.view;
+      if (!requestedView) return;
+      state.view = requestedView;
 
       // Close the mobile navigation immediately so it cannot cover the selected view
       // while profile/settings data is loading.
