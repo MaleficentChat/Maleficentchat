@@ -170,8 +170,17 @@
     host.querySelectorAll(".ai-avatar-controls input[type=radio]").forEach(el=>el.addEventListener("change",update));
     host.querySelectorAll(".ai-avatar-controls input[type=url]").forEach(el=>el.addEventListener("input",()=>{
       const stage=host.querySelector("#aiAvatarStage"); if(!stage)return;
-      if(el.value.trim()){stage.innerHTML='<img class="ai-avatar-photo-preview" src="'+esc(el.value.trim())+'" alt="Avatar preview" onerror="this.style.display=\'none\'">';}
-      else update();
+      let photo=stage.querySelector(".ai-avatar-photo-preview");
+      const canvas=stage.querySelector(".ai-3d-canvas");
+      if(el.value.trim()){
+        if(!photo){photo=document.createElement("img");photo.className="ai-avatar-photo-preview";photo.alt="Avatar preview";stage.appendChild(photo);}
+        photo.src=el.value.trim();photo.style.display="block";
+        if(canvas)canvas.style.display="none";
+      }else{
+        if(photo)photo.remove();
+        if(canvas)canvas.style.display="block";
+        update();
+      }
     }));
   }
   function readAppearance(form, initial) {
