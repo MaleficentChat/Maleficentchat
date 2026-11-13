@@ -1,5 +1,5 @@
 "use strict";
-const ELIGIBLE = new Set(["PREMIUM","ROYAL","MOD","ADMIN","SUPER_ADMIN","COMMISSOR","INSTRUCTOR","COOWNER","OWNER","DEVELOPER"]);
+const ELIGIBLE = new Set(["PREMIUM","MODERATOR","MOD","ADMIN","SUPER_ADMIN","COMMISSOR","CHIEF_COMMISSOR","COOWNER","ELITE","OWNER"]);
 const DAILY_LIMIT = Math.max(1, Math.min(500, Number(process.env.AI_COMPANION_DAILY_TEXT_LIMIT) || 80));
 const rank = user => String(user?.rank || "").toUpperCase().replace(/[\s-]+/g,"_");
 const allowed = user => ELIGIBLE.has(rank(user));
