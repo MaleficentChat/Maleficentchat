@@ -172,7 +172,14 @@
   function bindAvatarEditor(host, initial) {
     const update=()=>{
       const form=host.querySelector(".ai-avatar-controls"); if(!form)return;
-      const a={...initial}; new FormData(form).forEach((v,k)=>{if(k!=="avatarUrl")a[k]=v;});
+      const a={...initial};
+      // .ai-avatar-controls is a DIV, not a form. FormData(div) throws and
+      // prevented every avatar choice/colour change from reaching the preview.
+      form.querySelectorAll("[name]").forEach(el=>{
+        if(el.name==="avatarUrl"||el.disabled)return;
+        if((el.type==="radio"||el.type==="checkbox")&&!el.checked)return;
+        a[el.name]=el.value;
+      });
       const stage=host.querySelector("#aiAvatarStage"); if(stage)update3DAvatar(stage,a);
       host.querySelectorAll(".ai-swatch").forEach(s=>s.classList.toggle("selected",!!s.querySelector("input:checked")));
       host.querySelectorAll("[data-avatar-choice]").forEach(b=>b.classList.toggle("selected",b.dataset.value===a[b.dataset.avatarChoice]));
