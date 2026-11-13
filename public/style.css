@@ -7744,3 +7744,8 @@ body.parallel-embed.parallel-embed-error:after{content:"This room could not be o
   #viewLeaderboard{max-height:none!important;overflow:visible!important}
   #leaderboard>.card{max-height:none!important;overflow:visible!important}
 }
+
+
+/* Clickable member names in Aurora room-join announcements. */
+.system-message-user-link{display:inline;padding:0;border:0;background:transparent;color:var(--accent,#c9a5ff);font:inherit;font-weight:800;text-decoration:underline;text-decoration-color:currentColor;text-underline-offset:2px;cursor:pointer;}
+.system-message-user-link:hover,.system-message-user-link:focus-visible{color:var(--text,#fff);outline:none;text-shadow:0 0 10px currentColor;}
