@@ -20,7 +20,7 @@ function registerAICompanionRoutes({app,auth,current,pool}) {
     return !!r.rows[0]?.name;
   };
   const guard = async (req,res,next) => {
-    if(process.env.AI_COMPANION_ENABLED!=="true") return res.status(503).json({error:"AI Companions are being prepared and are not enabled yet."});
+    if(!["true","1","yes"].includes(String(process.env.AI_COMPANION_ENABLED||"").trim().toLowerCase())) return res.status(503).json({error:"AI Companions are being prepared and are not enabled yet."});
     try { if(!(await ready())) return res.status(503).json({error:"AI Companion database migration has not been applied."}); next(); }
     catch(e){ console.error("AI Companion readiness check failed:",e?.message||e); return res.status(503).json({error:"AI Companion service is unavailable."}); }
   };
@@ -208,12 +208,12 @@ function registerAICompanionRoutes({app,auth,current,pool}) {
       chatMessages.push({role:"user",content:message});
       let endpoint,payload,headers={"Content-Type":"application/json"};
       if(isGeminiNative){
-        if(!endpointUrl.pathname.includes("/models/")) endpointUrl.pathname=endpointUrl.pathname.replace(/\\/+$/,"")+"/models/"+encodeURIComponent(model)+":generateContent";
+        while(endpointUrl.pathname.endsWith("/")) endpointUrl.pathname=endpointUrl.pathname.slice(0,-1); endpointUrl.pathname+="/models/"+encodeURIComponent(model)+":generateContent";
         endpoint=endpointUrl.toString();
         headers["x-goog-api-key"]=key;
         payload={systemInstruction:{parts:[{text:system}]},contents:chatMessages.map(x=>({role:x.role==="assistant"?"model":"user",parts:[{text:x.content}]})),generationConfig:{temperature:0.8,maxOutputTokens:600}};
       }else{
-        if(!endpointUrl.pathname.endsWith("/chat/completions")) endpointUrl.pathname=endpointUrl.pathname.replace(/\\/+$/,"")+"/chat/completions";
+        while(endpointUrl.pathname.endsWith("/")) endpointUrl.pathname=endpointUrl.pathname.slice(0,-1); endpointUrl.pathname+="/chat/completions";
         endpoint=endpointUrl.toString();
         headers.Authorization="Bearer "+key;
         payload={model,messages:[{role:"system",content:system},...chatMessages],temperature:0.8,max_tokens:600};
