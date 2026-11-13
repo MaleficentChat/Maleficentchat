@@ -74,7 +74,15 @@
     const palette=["#c58b9c","#b98b65","#8d91b9","#739b91","#d1b77c","#7c668e"];
     const c=palette[index%palette.length], skin="#f0c8b2", hair="#423142";
     let art="";
-    if(name==="outfitStyle") {
+    if(name==="topStyle") {
+      const jacket=["Cardigan","Leather jacket","Oversized hoodie"].includes(value);
+      art='<path d="M19 16 Q32 8 45 16 L53 49 H11Z" fill="'+c+'" stroke="rgba(255,255,255,.55)" stroke-width="1.5"/>'+(jacket?'<path d="M32 15 L32 49 M23 18 L32 27 L41 18" stroke="#f4e7dc" stroke-width="2" fill="none"/>':value==="Off-shoulder"?'<path d="M19 22 Q32 31 45 22" stroke="#f4d6df" stroke-width="4" fill="none"/>':value==="Ruffle blouse"?'<path d="M24 18 Q32 28 40 18 M24 25 Q32 35 40 25" stroke="#f4e7dc" stroke-width="2" fill="none"/>':'<path d="M26 17 L32 27 L38 17" fill="none" stroke="#f4e7dc" stroke-width="2"/>');
+    } else if(name==="bottomStyle") {
+      const skirt=["Pleated skirt","Mini skirt","Flowy maxi skirt"].includes(value);
+      art=skirt?'<path d="M21 9 L43 9 L56 50 H8Z" fill="'+c+'" stroke="rgba(255,255,255,.55)" stroke-width="1.5"/><path d="M25 14 L18 46 M32 14 L32 48 M39 14 L46 46" stroke="#f4e7dc" stroke-width="1.5"/>':'<path d="M18 9 L46 9 L43 50 H31 L30 23 L28 50 H16Z" fill="'+c+'" stroke="rgba(255,255,255,.55)" stroke-width="1.5"/>'+(value==="Cargo pants"?'<rect x="35" y="27" width="9" height="10" rx="2" fill="#f4e7dc"/>':'');
+    } else if(name==="footwear") {
+      art='<path d="M10 30 Q19 29 24 36 L26 46 H8Z M38 36 Q44 29 54 30 L56 46 H38Z" fill="'+c+'" stroke="rgba(255,255,255,.55)" stroke-width="1.5"/><path d="M8 46 H26 M38 46 H56" stroke="#f4e7dc" stroke-width="3"/>';
+    } else if(name==="outfitStyle") {
       const isDress=["Fantasy","Elegant","Summer dress","Gothic"].includes(value);
       const body=isDress?'<path d="M20 18 Q32 12 44 18 L57 51 H7Z" fill="'+c+'" stroke="rgba(255,255,255,.5)" stroke-width="1.5"/>':'<path d="M20 17 L44 17 L51 49 H13Z" fill="'+c+'" stroke="rgba(255,255,255,.5)" stroke-width="1.5"/>';
       const detail=value==="Academy"?'<path d="M27 18 L37 18 L32 37Z" fill="#f4e7dc"/><path d="M32 21 L29 29 L32 38 L35 29Z" fill="#493b59"/>':value==="Hoodie"?'<path d="M24 17 Q32 4 40 17" fill="none" stroke="'+c+'" stroke-width="5"/><rect x="24" y="33" width="16" height="7" rx="3" fill="rgba(0,0,0,.2)"/>':value==="Gothic"?'<path d="M18 32 L46 32 L57 51 H7Z" fill="#302536"/><path d="M32 18 L28 28 L32 33 L36 28Z" fill="#e8cf93"/>':value==="Fantasy"?'<path d="M18 19 L8 48 M46 19 L56 48" stroke="#e8cf93" stroke-width="4"/>':value==="Streetwear"||value==="Denim jacket"||value==="Punk"?'<path d="M23 20 L15 39 M41 20 L49 39" stroke="#e8cf93" stroke-width="3"/>':isDress?'<path d="M19 34 Q32 42 45 34" stroke="#f4d6df" stroke-width="3" fill="none"/>':'<path d="M25 18 L32 27 L39 18" fill="none" stroke="#f4e7dc" stroke-width="2"/>';
