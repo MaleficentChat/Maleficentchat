@@ -67,5 +67,26 @@
     try { const data=await api("/api/ai-companion"); if(data.companion)render(data); else create(); }
     catch(error) { root().innerHTML='<div class="ai-unavailable"><h3>AI Companion</h3><p>'+esc(error.message)+'</p><p class="muted">MC access begins at Premium rank. Database migration and dedicated provider configuration are also required.</p></div>'; }
   }
-  document.addEventListener("mc:open-ai-companion",load);
+  // The app navigation emits this event when the view opens. Also observe the
+  // view itself as a fallback so the panel cannot remain on its static
+  // "Loading your companion…" placeholder if navigation fires before this
+  // script has attached its listener.
+  let loading = false;
+  const originalLoad = load;
+  load = async function() {
+    if (loading) return;
+    loading = true;
+    try { await originalLoad(); }
+    finally { loading = false; }
+  };
+  window.loadAICompanion = load;
+  document.addEventListener("mc:open-ai-companion", load);
+  const view = document.getElementById("viewAiCompanion");
+  if (view && !view.classList.contains("hidden")) load();
+  if (view && typeof MutationObserver !== "undefined") {
+    const observer = new MutationObserver(() => {
+      if (!view.classList.contains("hidden") && root()?.textContent?.includes("Loading your companion")) load();
+    });
+    observer.observe(view, { attributes: true, attributeFilter: ["class"] });
+  }
 })();
