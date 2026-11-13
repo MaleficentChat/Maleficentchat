@@ -155,6 +155,19 @@ function registerAICompanionRoutes({app,auth,current,pool}) {
     const limit=Math.floor(Number(req.body?.dailyTextLimit)||0); if(limit<1||limit>500)return res.status(400).json({error:"Daily text limit must be between 1 and 500."});
     await pool.query("INSERT INTO ai_settings(setting_key,setting_value,updated_by,updated_at) VALUES($1,$2::jsonb,$3,NOW()) ON CONFLICT(setting_key) DO UPDATE SET setting_value=EXCLUDED.setting_value,updated_by=EXCLUDED.updated_by,updated_at=NOW()",["daily_text_limit",JSON.stringify({value:limit}),u.id]); res.json({dailyTextLimit:limit});
   });
+  app.post("/api/ai-companion/staff/:ownerId/create",auth,guard,async(req,res)=>{
+    const actor=current(req); if(rank(actor)!=="OWNER") return res.status(403).json({error:"Owner rank only."});
+    const ownerId=Number(req.params.ownerId), name=String(req.body?.name||"").trim().slice(0,60);
+    if(!Number.isInteger(ownerId)||ownerId<1||!name)return res.status(400).json({error:"A valid account and companion name are required."});
+    const client=await pool.connect();
+    try {
+      await client.query("BEGIN");
+      const r=await client.query("INSERT INTO ai_companions(owner_id,name,bio,personality_type,personality_preset) VALUES($1,$2,$3,$4,$5) RETURNING id,name",[ownerId,name,String(req.body?.bio||"").slice(0,500),req.body?.personalityType==="custom"?"custom":"preset",String(req.body?.personalityPreset||"gentle-anime-friend").slice(0,80)]);
+      await client.query("INSERT INTO ai_companion_relationships(companion_id) VALUES($1)",[r.rows[0].id]);
+      await conversation(client,r.rows[0].id,ownerId); await client.query("COMMIT"); res.status(201).json({companion:r.rows[0]});
+    } catch(e) { await client.query("ROLLBACK"); if(e.code==="23505")return res.status(409).json({error:"That account already has a companion."}); throw e; }
+    finally { client.release(); }
+  });
   app.post("/api/ai-companion/chat",auth,guard,async(req,res)=>{
     const u=current(req); if(!allowed(u)) return res.status(403).json({error:"MC Premium rank or higher is required."});
     const key=String(process.env.AI_COMPANION_API_KEY||""); if(!key) return res.status(503).json({error:"AI Companion is waiting for its dedicated provider key."});
