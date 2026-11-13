@@ -65,7 +65,7 @@
     return '<fieldset class="ai-choice-field"><legend>'+label+'</legend><div class="ai-option-tiles">'+values.map((v,i)=>'<button type="button" class="ai-option-tile '+(v===selected?'selected':'')+'" data-avatar-choice="'+name+'" data-value="'+esc(v)+'"><span class="ai-option-glyph">'+(["✦","◈","❋","◇","✧","☾","❀","♡"][i%8])+'</span><span>'+esc(v)+'</span></button>').join("")+'</div></fieldset>';
   }
   function colorField(label,name,values,selected) {
-    return '<div class="ai-color-field"><span>'+label+'</span><div class="ai-swatches">'+values.map(v=>'<label class="ai-swatch '+(v===selected?'selected':'')+'" style="--swatch:'+v+'"><input type="radio" name="'+name+'" value="'+v+'" '+(v===selected?'checked':'')+' aria-label="'+v+'"><i></i></label>').join("")+'<label class="ai-custom-swatch" title="Choose a custom colour"><input type="color" name="'+name+'" value="'+(/^#[0-9a-f]{6}$/i.test(selected||"")?selected:values[0])+'" aria-label="Custom '+label+'"></label></div></div>';
+    return '<div class="ai-color-field"><span>'+label+'</span><div class="ai-swatches">'+values.map(v=>'<label class="ai-swatch '+(v===selected?'selected':'')+'" style="--swatch:'+v+'"><input type="radio" name="'+name+'" value="'+v+'" '+(v===selected?'checked':'')+' aria-label="'+v+'"><i></i></label>').join("")+'<label class="ai-custom-swatch" title="Choose a custom colour"><input type="color" data-color-for="'+name+'" value="'+(/^#[0-9a-f]{6}$/i.test(selected||"")?selected:values[0])+'" aria-label="Custom '+label+'"></label></div></div>';
   }
   let threeLoaderPromise=null;
   const threeScenes=new WeakMap();
@@ -178,7 +178,8 @@
       if(!input){input=document.createElement("input");input.type="hidden";input.name=name;form.appendChild(input);}
       input.value=btn.dataset.value;update();
     }));
-    host.querySelectorAll(".ai-avatar-controls input[type=radio],.ai-avatar-controls input[type=color]").forEach(el=>el.addEventListener("input",update));
+    host.querySelectorAll(".ai-avatar-controls input[type=radio]").forEach(el=>el.addEventListener("change",()=>{host.querySelector('.ai-avatar-controls input[type=hidden][data-custom-for="'+el.name+'"]')?.remove();update();}));
+    host.querySelectorAll(".ai-avatar-controls input[type=color][data-color-for]").forEach(el=>el.addEventListener("input",()=>{const name=el.dataset.colorFor;let hidden=host.querySelector('.ai-avatar-controls input[type=hidden][data-custom-for="'+name+'"]');if(!hidden){hidden=document.createElement("input");hidden.type="hidden";hidden.name=name;hidden.dataset.customFor=name;host.querySelector(".ai-avatar-controls").appendChild(hidden);}hidden.value=el.value;update();}));
     host.querySelectorAll(".ai-avatar-controls input[type=url]").forEach(el=>el.addEventListener("input",()=>{
       const stage=host.querySelector("#aiAvatarStage"); if(!stage)return;
       let photo=stage.querySelector(".ai-avatar-photo-preview");
