@@ -67,5 +67,25 @@
     try { const data=await api("/api/ai-companion"); if(data.companion)render(data); else create(); }
     catch(error) { root().innerHTML='<div class="ai-unavailable"><h3>AI Companion</h3><p>'+esc(error.message)+'</p><p class="muted">MC access begins at Premium rank. Database migration and dedicated provider configuration are also required.</p></div>'; }
   }
-  document.addEventListener("mc:open-ai-companion",load);
+  // Load on the navigation event and also whenever the view becomes visible.
+  // The observer covers first-load timing races where navigation happened before
+  // this file finished loading.
+  let loadInProgress = false;
+  async function loadWhenVisible() {
+    if (loadInProgress) return;
+    loadInProgress = true;
+    try { await load(); }
+    finally { loadInProgress = false; }
+  }
+  document.addEventListener("mc:open-ai-companion", loadWhenVisible);
+  const companionView = document.getElementById("viewAiCompanion");
+  if (companionView && typeof MutationObserver !== "undefined") {
+    const observer = new MutationObserver(() => {
+      if (!companionView.classList.contains("hidden")) loadWhenVisible();
+    });
+    observer.observe(companionView, {attributes:true, attributeFilter:["class"]});
+    if (!companionView.classList.contains("hidden")) loadWhenVisible();
+  } else if (companionView && !companionView.classList.contains("hidden")) {
+    loadWhenVisible();
+  }
 })();
