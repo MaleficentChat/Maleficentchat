@@ -31,3 +31,10 @@
 .ai-hero-avatar-stage .ai-3d-view-controls{display:none}
 .ai-hero-copy{align-self:center}
 @media(max-width:720px){.ai-companion-hero{display:grid;grid-template-columns:112px minmax(0,1fr);align-items:center;gap:14px}.ai-hero-avatar.ai-hero-avatar-stage{grid-column:1/-1;width:100%;height:280px;min-width:0;max-width:none;flex:none}.ai-hero-3d-stage{min-height:280px}.ai-hero-3d-stage .ai-3d-canvas{height:280px!important}.ai-hero-copy{grid-column:1/-1}.ai-talk-jump{grid-column:1/-1}}
+
+/* Companion avatar custom colour picker and memory preferences */
+.ai-custom-swatch{display:inline-grid;place-items:center;width:32px;height:32px;border:2px solid var(--border-color,rgba(184,130,106,.35));border-radius:50%;overflow:hidden;cursor:pointer;background:rgba(255,255,255,.06)}
+.ai-custom-swatch input{width:42px;height:42px;padding:0;border:0;background:transparent;cursor:pointer}
+#aiMemory{display:grid;grid-template-columns:minmax(0,1fr) auto auto auto;gap:8px;align-items:center}
+#aiMemory select{min-width:0;max-width:150px;padding:10px;border:1px solid var(--border-color,rgba(184,130,106,.25));border-radius:10px;background:rgba(0,0,0,.18);color:inherit}
+@media(max-width:640px){#aiMemory{grid-template-columns:1fr 1fr}#aiMemory input{grid-column:1/-1}#aiMemory button{grid-column:1/-1}#aiMemory select{max-width:none;width:100%}}
