@@ -13,12 +13,33 @@
   function fail(error) { root().insertAdjacentHTML("afterbegin", '<p class="ai-error">' + esc(error.message) + '</p>'); }
   function create() {
     root().innerHTML = '<form id="aiCreateForm" class="ai-create-card"><h3>Meet your companion</h3><p class="muted">One companion per account. Personality edits will not erase memories or relationship progress.</p><label>Name<input name="name" maxlength="60" required></label><label>Personality<select name="personalityType"><option value="preset">Premade</option><option value="custom">Custom</option></select></label><label>Preset<select name="personalityPreset"><option value="gentle-anime-friend">Gentle anime friend</option><option value="cheerful-adventurer">Cheerful adventurer</option><option value="calm-and-wise">Calm and wise</option><option value="playful-rival">Playful rival</option></select></label><label>Anime avatar URL<input name="avatarUrl" type="url" placeholder="https://…"></label><label>Bio<textarea name="bio" maxlength="500"></textarea></label><label>Backstory<textarea name="backstory" maxlength="2500"></textarea></label><label>Speaking style<textarea name="speakingStyle" maxlength="800"></textarea></label><label>Likes<input name="likes" placeholder="Comma-separated"></label><label>Dislikes<input name="dislikes" placeholder="Comma-separated"></label><button class="primary">Create my companion</button></form>';
-    root().querySelector("form").onsubmit = async event => {
+    root().querySelector("#aiCreateForm").onsubmit = async event => {
       event.preventDefault();
-      const form = event.currentTarget, data = Object.fromEntries(new FormData(form));
+      const form = event.currentTarget;
+      const submit = form.querySelector('button[type="submit"], button:not([type])');
+      const nameInput = form.elements.namedItem("name");
+      const name = String(nameInput?.value ?? "").trim();
+      root().querySelectorAll(".ai-error").forEach(node => node.remove());
+      if (!name) {
+        const message = document.createElement("p");
+        message.className = "ai-error";
+        message.textContent = "Please enter your companion's name in the Name field.";
+        form.insertBefore(message, form.querySelector("button"));
+        nameInput?.focus();
+        return;
+      }
+      const data = Object.fromEntries(new FormData(form));
+      data.name = name;
       data.likes = String(data.likes || "").split(",").map(x => x.trim()).filter(Boolean);
       data.dislikes = String(data.dislikes || "").split(",").map(x => x.trim()).filter(Boolean);
-      try { await api("/api/ai-companion", {method:"POST", body:data}); await load(); } catch (error) { fail(error); }
+      if (submit) { submit.disabled = true; submit.textContent = "Creating…"; }
+      try {
+        await api("/api/ai-companion", {method:"POST", body:data});
+        await load();
+      } catch (error) {
+        fail(error);
+        if (submit) { submit.disabled = false; submit.textContent = "Create my companion"; }
+      }
     };
   }
   function render(data) {
