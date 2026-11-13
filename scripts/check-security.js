@@ -56,7 +56,8 @@ assert.match(server, /const isAgeRoom=\/\^\(teen chat\|adult chat\)\$\/i\.test\(
   "Teen Chat and Adult Chat must remain the only age-room join-grant exemptions");
 assert.match(server, /if\(!isAgeRoom&&!isStaffAccount&&!hasFeature\(u,"join_rooms"\)\)/,
   "custom rooms must continue to enforce the room-join grant");
-const systemNoticeStart = server.indexOf("function systemNotice(text, roomId=null){");
+const systemNoticeMatch = server.match(/function systemNotice\(text, roomId=null(?:, profileTarget=null)?\)\{/);
+const systemNoticeStart = systemNoticeMatch ? systemNoticeMatch.index : -1;
 const systemNoticeEnd = server.indexOf("\n}", systemNoticeStart);
 assert.ok(systemNoticeStart >= 0 && systemNoticeEnd > systemNoticeStart,
   "system notices must have a dedicated routing function");
