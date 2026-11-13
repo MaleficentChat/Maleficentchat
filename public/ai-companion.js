@@ -50,8 +50,11 @@
   }
   const avatarChoices = {
     hairStyle:["Long flow","Soft bob","High ponytail","Twin tails","Short cut","Wavy layers","Side braid","Hime cut"],
-    faceShape:["Soft oval","Round","Heart","Angular"],
-    eyeStyle:["Sparkle","Soft round","Sharp","Dreamy","Bold"],
+    faceShape:["Soft oval","Round","Heart","Angular","Diamond","Long"],
+    eyeStyle:["Sparkle","Soft round","Sharp","Dreamy","Bold","Wide"],
+    noseStyle:["Button","Soft","Defined"],
+    mouthStyle:["Gentle smile","Small smile","Open smile","Pout"],
+    bodyType:["Petite","Balanced","Curvy"],
     brows:["Natural","Arched","Straight"],
     expression:["Gentle smile","Confident","Shy","Playful"],
     outfitStyle:["Academy","Casual","Fantasy","Streetwear","Elegant","Gothic"],
@@ -62,7 +65,7 @@
     return '<fieldset class="ai-choice-field"><legend>'+label+'</legend><div class="ai-option-tiles">'+values.map((v,i)=>'<button type="button" class="ai-option-tile '+(v===selected?'selected':'')+'" data-avatar-choice="'+name+'" data-value="'+esc(v)+'"><span class="ai-option-glyph">'+(["✦","◈","❋","◇","✧","☾","❀","♡"][i%8])+'</span><span>'+esc(v)+'</span></button>').join("")+'</div></fieldset>';
   }
   function colorField(label,name,values,selected) {
-    return '<div class="ai-color-field"><span>'+label+'</span><div class="ai-swatches">'+values.map(v=>'<label class="ai-swatch '+(v===selected?'selected':'')+'" style="--swatch:'+v+'"><input type="radio" name="'+name+'" value="'+v+'" '+(v===selected?'checked':'')+' aria-label="'+v+'"><i></i></label>').join("")+'</div></div>';
+    return '<div class="ai-color-field"><span>'+label+'</span><div class="ai-swatches">'+values.map(v=>'<label class="ai-swatch '+(v===selected?'selected':'')+'" style="--swatch:'+v+'"><input type="radio" name="'+name+'" value="'+v+'" '+(v===selected?'checked':'')+' aria-label="'+v+'"><i></i></label>').join("")+'<label class="ai-custom-swatch" title="Choose a custom colour"><input type="color" name="'+name+'" value="'+(/^#[0-9a-f]{6}$/i.test(selected||"")?selected:values[0])+'" aria-label="Custom '+label+'"></label></div></div>';
   }
   let threeLoaderPromise=null;
   const threeScenes=new WeakMap();
@@ -84,7 +87,9 @@
     const skin=mat(a.skin), hair=mat(a.hair,.48), outfit=mat(a.outfit,.62), eye=mat(a.eyes,.25), white=mat('#fff',.24), dark=mat('#302535'), blush=mat('#e98e9d');
     const sphere=(parent,m,pos,scale,seg=32)=>{const mesh=new THREE.Mesh(new THREE.SphereGeometry(1,seg,Math.max(16,seg/2)),m);mesh.position.set(...pos);mesh.scale.set(...scale);parent.add(mesh);return mesh;};
     const cylinder=(parent,m,pos,rt,rb,h)=>{const mesh=new THREE.Mesh(new THREE.CylinderGeometry(rt,rb,h,40),m);mesh.position.set(...pos);parent.add(mesh);return mesh;};
-    const torso=cylinder(group,outfit,[0,-1.12,0],.68,.84,1.25);torso.scale.x=1.06;
+    const torso=cylinder(group,outfit,[0,-1.12,0],.68,.84,1.25);
+    torso.scale.x=a.bodyType==="Petite"?.88:a.bodyType==="Curvy"?1.18:1.06;
+    torso.scale.y=a.bodyType==="Petite"?1.06:1;
     sphere(group,outfit,[-.48,-.72,0],[.42,.38,.38]);sphere(group,outfit,[.48,-.72,0],[.42,.38,.38]);
     const limb=(parent,material,start,end,radius)=>{const a=new THREE.Vector3(...start),b=new THREE.Vector3(...end),delta=b.clone().sub(a);const mesh=new THREE.Mesh(new THREE.CylinderGeometry(radius*.78,radius,delta.length(),24),material);mesh.position.copy(a).add(b).multiplyScalar(.5);mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),delta.normalize());parent.add(mesh);return mesh;};
     const sleeve=mat(a.outfit,.68), shoe=mat('#29242d',.52), skinDetail=skin;
@@ -96,7 +101,8 @@
     sphere(group,mat('#fff',.8),[-.36,-2.39,.34],[.16,.055,.06]);sphere(group,mat('#fff',.8),[.36,-2.39,.34],[.16,.055,.06]);
     cylinder(group,skin,[0,-.34,0],.23,.25,.48);
     const head=new THREE.Group();group.add(head);head.position.set(0,.62,0);
-    const face=sphere(head,skin,[0,0,0],a.faceShape==='Round'?[.76,.84,.58]:a.faceShape==='Heart'?[.72,.84,.57]:a.faceShape==='Angular'?[.72,.86,.59]:[.72,.88,.58],48);
+    const faceScale=a.faceShape==="Round"?[.78,.82,.6]:a.faceShape==="Heart"?[.72,.84,.57]:a.faceShape==="Angular"?[.72,.86,.59]:a.faceShape==="Diamond"?[.69,.9,.57]:a.faceShape==="Long"?[.69,.98,.57]:[.72,.88,.58];
+    const face=sphere(head,skin,[0,0,0],faceScale,48);
     sphere(head,skin,[-.72,-.05,0],[.14,.22,.13]);sphere(head,skin,[.72,-.05,0],[.14,.22,.13]);
     sphere(head,hair,[0,.58,-.02],[.79,.48,.62],40);
     const bangMat=hair;
@@ -106,11 +112,16 @@
     if(a.hairStyle==='Twin tails'){sphere(head,hair,[-.9,.15,-.08],[.24,.72,.24]);sphere(head,hair,[.9,.15,-.08],[.24,.72,.24]);}
     if(a.hairStyle==='High ponytail'){const pony=sphere(head,hair,[.02,.82,-.55],[.28,.78,.25]);pony.rotation.x=-.45;}
     if(a.hairStyle==='Side braid'){for(let i=0;i<7;i++)sphere(head,hair,[.78,-.18-i*.15,.05],[.13,.15,.14],20);}
-    for(const x of [-.29,.29]){sphere(head,white,[x,-.06,.51],[.205,.145,.09]);sphere(head,eye,[x,-.06,.588],[.095,.112,.035]);sphere(head,dark,[x,-.06,.615],[.045,.075,.022]);sphere(head,white,[x-.025,.005,.635],[.027,.03,.012]);}
-    for(const x of [-.29,.29]){const brow=sphere(head,hair,[x,.16,.5],[.19,.045,.035],20);brow.rotation.z=x<0?.1:-.1;}
-    sphere(head,skin,[0,-.2,.57],[.045,.07,.035],16);
+    const eyeScale=a.eyeStyle==="Wide"?[.22,.17,.095]:a.eyeStyle==="Sharp"?[.22,.105,.075]:a.eyeStyle==="Soft round"?[.18,.17,.09]:a.eyeStyle==="Bold"?[.22,.18,.11]:[.205,.145,.09];
+    for(const x of [-.29,.29]){sphere(head,white,[x,-.06,.51],eyeScale);sphere(head,eye,[x,-.06,.588],[.095,.112,.035]);sphere(head,dark,[x,-.06,.615],[.045,.075,.022]);sphere(head,white,[x-.025,.005,.635],[.027,.03,.012]);}
+    for(const x of [-.29,.29]){const brow=sphere(head,hair,[x,.16,.5],a.brows==="Arched"?[.19,.055,.035]:[.19,.035,.035],20);brow.rotation.z=a.brows==="Straight"?0:(x<0?.1:-.1);}
+    const noseScale=a.noseStyle==="Defined"?[.055,.105,.055]:a.noseStyle==="Soft"?[.045,.075,.035]:[.04,.055,.03];
+    sphere(head,skin,[0,-.2,.57],noseScale,16);
     if(a.makeup==='Rosy cheeks'){sphere(head,blush,[-.48,-.29,.47],[.13,.07,.025],20);sphere(head,blush,[.48,-.29,.47],[.13,.07,.025],20);}
-    const mouthMat=mat('#9d5865');const mouthCurve=new THREE.CatmullRomCurve3([new THREE.Vector3(-.105,-.39,.55),new THREE.Vector3(0,-.43,.58),new THREE.Vector3(.105,-.39,.55)]);head.add(new THREE.Mesh(new THREE.TubeGeometry(mouthCurve,16,.018,8,false),mouthMat));
+    const mouthMat=mat('#9d5865');
+    const mouthPoints=a.mouthStyle==="Pout"?[[-.09,-.4,.56],[0,-.37,.59],[.09,-.4,.56]]:a.mouthStyle==="Open smile"?[[-.11,-.38,.55],[0,-.47,.58],[.11,-.38,.55]]:a.expression==="Confident"?[[-.1,-.4,.56],[0,-.42,.58],[.1,-.4,.56]]:a.expression==="Shy"?[[-.08,-.41,.56],[0,-.44,.58],[.08,-.41,.56]]:[[-.105,-.39,.55],[0,-.43,.58],[.105,-.39,.55]];
+    const mouthCurve=new THREE.CatmullRomCurve3(mouthPoints.map(p=>new THREE.Vector3(...p)));head.add(new THREE.Mesh(new THREE.TubeGeometry(mouthCurve,16,.018,8,false),mouthMat));
+    if(a.makeup==="Winged liner"){for(const x of [-.29,.29]){const wing=sphere(head,dark,[x+(x<0?-.17:.17),-.02,.51],[.07,.025,.018],16);wing.rotation.z=x<0?.3:-.3;}}
     if(a.accessory==='Round glasses'){for(const x of [-.29,.29]){const ring=new THREE.Mesh(new THREE.TorusGeometry(.19,.018,10,40),dark);ring.position.set(x,-.06,.61);head.add(ring);}const bridge=new THREE.Mesh(new THREE.CylinderGeometry(.014,.014,.17,12),dark);bridge.rotation.z=Math.PI/2;bridge.position.set(0,-.06,.61);head.add(bridge);}
     if(a.accessory==='Headphones'){const band=new THREE.Mesh(new THREE.TorusGeometry(.76,.055,12,48,Math.PI),mat('#d8b8ef'));band.rotation.z=Math.PI;band.position.set(0,.22,-.03);head.add(band);sphere(head,mat('#d8b8ef'),[-.76,-.08,0],[.13,.25,.16]);sphere(head,mat('#d8b8ef'),[.76,-.08,0],[.13,.25,.16]);}
     if(a.accessory==='Star clips'||a.accessory==='Flower pin'||a.accessory==='Crescent crown'){const pinMat=mat('#f0d18e',.3,.35);sphere(head,pinMat,[.57,.48,.48],[.12,.12,.06],20);}
@@ -150,7 +161,7 @@
     }).catch(error=>{if(stage.isConnected){const msg=stage.querySelector('.ai-3d-loading');if(msg){msg.outerHTML=avatarSvg(a,280);stage.classList.add('is-3d-fallback');}const note=stage.parentElement?.querySelector('.ai-preview-caption');if(note)note.textContent='2D PREVIEW · 3D ENGINE UNAVAILABLE';}});
   }
   function avatarEditor(a) {
-    return '<div class="ai-avatar-studio"><div class="ai-avatar-preview-column"><div class="ai-avatar-stage ai-3d-stage" id="aiAvatarStage"><div class="ai-3d-loading">Loading interactive 3D character…</div><div class="ai-3d-view-controls"><button type="button" data-3d-view="front" class="active">Front</button><button type="button" data-3d-view="side">Side</button><button type="button" data-3d-view="back">Back</button></div></div><div class="ai-preview-caption"><span>LIVE PREVIEW</span><span>✦ YOUR ORIGINAL CHARACTER</span></div></div><div class="ai-avatar-controls"><div class="ai-studio-heading"><span class="ai-step">CHARACTER CREATOR · 01</span><h3>Design every detail</h3><p>Choose a look, layer on details and watch your character change instantly.</p></div><div class="ai-editor-section"><h4>Face & features</h4>'+choiceTiles("Face shape","faceShape",avatarChoices.faceShape,a.faceShape)+choiceTiles("Eye design","eyeStyle",avatarChoices.eyeStyle,a.eyeStyle)+choiceTiles("Brows","brows",avatarChoices.brows,a.brows)+choiceTiles("Expression","expression",avatarChoices.expression,a.expression)+'</div><div class="ai-editor-section"><h4>Hair & styling</h4>'+choiceTiles("Hairstyle","hairStyle",avatarChoices.hairStyle,a.hairStyle)+colorField("Hair colour","hair",palettes.hair,a.hair)+'</div><div class="ai-editor-section"><h4>Outfit & extras</h4>'+choiceTiles("Outfit style","outfitStyle",avatarChoices.outfitStyle,a.outfitStyle)+choiceTiles("Accessory","accessory",avatarChoices.accessory,a.accessory)+choiceTiles("Makeup","makeup",avatarChoices.makeup,a.makeup)+colorField("Outfit colour","outfit",palettes.outfit,a.outfit)+'</div><div class="ai-editor-section ai-editor-colours"><h4>Finishing touches</h4>'+colorField("Skin tone","skin",palettes.skin,a.skin)+colorField("Eye colour","eyes",palettes.eyes,a.eyes)+colorField("Scene","background",palettes.bg,a.background)+'</div><label class="ai-image-url">Or use your own avatar image (HTTPS URL)<input name="avatarUrl" type="url" maxlength="1000" placeholder="https://…"></label></div></div>';
+    return '<div class="ai-avatar-studio"><div class="ai-avatar-preview-column"><div class="ai-avatar-stage ai-3d-stage" id="aiAvatarStage"><div class="ai-3d-loading">Loading interactive 3D character…</div><div class="ai-3d-view-controls"><button type="button" data-3d-view="front" class="active">Front</button><button type="button" data-3d-view="side">Side</button><button type="button" data-3d-view="back">Back</button></div></div><div class="ai-preview-caption"><span>LIVE PREVIEW</span><span>✦ YOUR ORIGINAL CHARACTER</span></div></div><div class="ai-avatar-controls"><div class="ai-studio-heading"><span class="ai-step">CHARACTER CREATOR · 01</span><h3>Design every detail</h3><p>Choose a look, layer on details and watch your character change instantly.</p></div><div class="ai-editor-section"><h4>Face & features</h4>'+choiceTiles("Face shape","faceShape",avatarChoices.faceShape,a.faceShape)+choiceTiles("Eye design","eyeStyle",avatarChoices.eyeStyle,a.eyeStyle)+choiceTiles("Brows","brows",avatarChoices.brows,a.brows)+choiceTiles("Nose","noseStyle",avatarChoices.noseStyle,a.noseStyle)+choiceTiles("Mouth","mouthStyle",avatarChoices.mouthStyle,a.mouthStyle)+choiceTiles("Expression","expression",avatarChoices.expression,a.expression)+choiceTiles("Body proportions","bodyType",avatarChoices.bodyType,a.bodyType)+'</div><div class="ai-editor-section"><h4>Hair & styling</h4>'+choiceTiles("Hairstyle","hairStyle",avatarChoices.hairStyle,a.hairStyle)+colorField("Hair colour","hair",palettes.hair,a.hair)+'</div><div class="ai-editor-section"><h4>Outfit & extras</h4>'+choiceTiles("Outfit style","outfitStyle",avatarChoices.outfitStyle,a.outfitStyle)+choiceTiles("Accessory","accessory",avatarChoices.accessory,a.accessory)+choiceTiles("Makeup","makeup",avatarChoices.makeup,a.makeup)+colorField("Outfit colour","outfit",palettes.outfit,a.outfit)+'</div><div class="ai-editor-section ai-editor-colours"><h4>Finishing touches</h4>'+colorField("Skin tone","skin",palettes.skin,a.skin)+colorField("Eye colour","eyes",palettes.eyes,a.eyes)+colorField("Scene","background",palettes.bg,a.background)+'</div><label class="ai-image-url">Or use your own avatar image (HTTPS URL)<input name="avatarUrl" type="url" maxlength="1000" placeholder="https://…"></label></div></div>';
   }
   function bindAvatarEditor(host, initial) {
     const update=()=>{
@@ -167,7 +178,7 @@
       if(!input){input=document.createElement("input");input.type="hidden";input.name=name;form.appendChild(input);}
       input.value=btn.dataset.value;update();
     }));
-    host.querySelectorAll(".ai-avatar-controls input[type=radio]").forEach(el=>el.addEventListener("change",update));
+    host.querySelectorAll(".ai-avatar-controls input[type=radio],.ai-avatar-controls input[type=color]").forEach(el=>el.addEventListener("input",update));
     host.querySelectorAll(".ai-avatar-controls input[type=url]").forEach(el=>el.addEventListener("input",()=>{
       const stage=host.querySelector("#aiAvatarStage"); if(!stage)return;
       let photo=stage.querySelector(".ai-avatar-photo-preview");
@@ -184,7 +195,7 @@
     }));
   }
   function readAppearance(form, initial) {
-    const a={...initial}; const allowed=["hairStyle","faceShape","eyeStyle","brows","expression","outfitStyle","accessory","makeup","skin","hair","eyes","outfit","background"]; new FormData(form).forEach((v,k)=>{if(allowed.includes(k))a[k]=v;}); return a;
+    const a={...initial}; const allowed=["hairStyle","faceShape","eyeStyle","brows","expression","noseStyle","mouthStyle","bodyType","outfitStyle","accessory","makeup","skin","hair","eyes","outfit","background"]; new FormData(form).forEach((v,k)=>{if(allowed.includes(k))a[k]=v;}); return a;
   }
   function create() {
     const a=defaultAppearance();
