@@ -72,12 +72,16 @@
     const c=palette[index%palette.length], skin="#f0c8b2", hair="#423142";
     let art="";
     if(name==="outfitStyle") {
-      const lower=value==="Fantasy"||value==="Elegant"||value==="Summer dress"||value==="Gothic";
-      art='<path d="M21 18 Q32 11 43 18 L52 48 H12Z" fill="'+c+'" stroke="rgba(255,255,255,.5)" stroke-width="1.5"/>'+(lower?'<path d="M19 31 L45 31 L54 52 H10Z" fill="'+c+'" opacity=".8"/>':'<path d="M22 20 L15 35 M42 20 L49 35" stroke="'+c+'" stroke-width="6" stroke-linecap="round"/>');
+      const isDress=["Fantasy","Elegant","Summer dress","Gothic"].includes(value);
+      const body=isDress?'<path d="M20 18 Q32 12 44 18 L57 51 H7Z" fill="'+c+'" stroke="rgba(255,255,255,.5)" stroke-width="1.5"/>':'<path d="M20 17 L44 17 L51 49 H13Z" fill="'+c+'" stroke="rgba(255,255,255,.5)" stroke-width="1.5"/>';
+      const detail=value==="Academy"?'<path d="M27 18 L37 18 L32 37Z" fill="#f4e7dc"/><path d="M32 21 L29 29 L32 38 L35 29Z" fill="#493b59"/>':value==="Hoodie"?'<path d="M24 17 Q32 4 40 17" fill="none" stroke="'+c+'" stroke-width="5"/><rect x="24" y="33" width="16" height="7" rx="3" fill="rgba(0,0,0,.2)"/>':value==="Gothic"?'<path d="M18 32 L46 32 L57 51 H7Z" fill="#302536"/><path d="M32 18 L28 28 L32 33 L36 28Z" fill="#e8cf93"/>':value==="Fantasy"?'<path d="M18 19 L8 48 M46 19 L56 48" stroke="#e8cf93" stroke-width="4"/>':value==="Streetwear"||value==="Denim jacket"||value==="Punk"?'<path d="M23 20 L15 39 M41 20 L49 39" stroke="#e8cf93" stroke-width="3"/>':isDress?'<path d="M19 34 Q32 42 45 34" stroke="#f4d6df" stroke-width="3" fill="none"/>':'<path d="M25 18 L32 27 L39 18" fill="none" stroke="#f4e7dc" stroke-width="2"/>';
+      art=body+detail;
     } else if(name==="hairStyle") {
-      art='<path d="M15 44 Q8 5 32 5 Q56 5 49 44 L44 32 Q32 24 20 32Z" fill="'+c+'"/><ellipse cx="32" cy="25" rx="14" ry="17" fill="'+skin+'"/><path d="M18 22 Q32 4 46 22" fill="none" stroke="'+hair+'" stroke-width="4"/>';
-    } else if(name==="faceShape"||name==="eyeStyle"||name==="noseStyle"||name==="mouthStyle"||name==="brows"||name==="expression") {
-      art='<ellipse cx="32" cy="28" rx="'+(value==="Long"?11:14)+'" ry="'+(value==="Long"?20:17)+'" fill="'+skin+'" stroke="rgba(255,255,255,.5)"/><path d="M23 26 Q27 23 30 26 M35 26 Q39 23 42 26" stroke="'+hair+'" stroke-width="2" fill="none"/><circle cx="27" cy="29" r="2" fill="#493447"/><circle cx="38" cy="29" r="2" fill="#493447"/><path d="M29 39 Q32 42 36 39" stroke="#a75d69" stroke-width="2" fill="none"/>';
+      const hairShape=value==="Soft bob"||value==="Bob"?"M14 30 Q10 4 32 5 Q54 4 50 30 L45 39 Q32 33 19 39Z":value==="High ponytail"||value==="Ponytail"?"M15 27 Q11 4 32 5 Q54 4 49 27 L57 42 L48 38 L44 18Z":value==="Twin tails"||value==="Twin tails"?"M15 26 Q10 4 32 5 Q54 4 49 26 L58 48 L48 42 L16 42 L6 48Z":value==="Short cut"||value==="Short"?"M15 27 Q11 4 32 5 Q54 4 49 27 L44 31 L20 31Z":value==="Side braid"?"M15 27 Q10 4 32 5 Q54 4 49 27 L53 47 L45 43 L20 39Z":"M14 29 Q8 4 32 5 Q56 4 50 29 L53 50 L44 46 L20 46 L11 50Z";
+      art=hairShape+'<ellipse cx="32" cy="26" rx="14" ry="17" fill="'+skin+'"/><path d="M18 22 Q32 4 46 22" fill="none" stroke="'+hair+'" stroke-width="4"/>';
+    } else if(["faceShape","eyeStyle","noseStyle","mouthStyle","brows","expression"].includes(name)) {
+      const rx=value==="Long"?11:value==="Round"?17:value==="Angular"||value==="Diamond"?12:14;
+      art='<ellipse cx="32" cy="28" rx="'+rx+'" ry="'+(value==="Long"?20:17)+'" fill="'+skin+'" stroke="rgba(255,255,255,.5)"/><path d="M23 26 Q27 23 30 26 M35 26 Q39 23 42 26" stroke="'+hair+'" stroke-width="2" fill="none"/><circle cx="27" cy="29" r="2" fill="#493447"/><circle cx="38" cy="29" r="2" fill="#493447"/><path d="M29 39 Q32 42 36 39" stroke="#a75d69" stroke-width="2" fill="none"/>';
     } else {
       art='<circle cx="32" cy="27" r="16" fill="'+skin+'"/><path d="M15 27 Q13 6 32 7 Q52 7 49 27" fill="'+c+'"/><path d="M17 48 Q32 37 47 48" stroke="'+c+'" stroke-width="7" fill="none"/>';
     }
