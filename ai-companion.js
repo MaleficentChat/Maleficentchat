@@ -208,12 +208,18 @@ function registerAICompanionRoutes({app,auth,current,pool}) {
       chatMessages.push({role:"user",content:message});
       let endpoint,payload,headers={"Content-Type":"application/json"};
       if(isGeminiNative){
-        while(endpointUrl.pathname.endsWith("/")) endpointUrl.pathname=endpointUrl.pathname.slice(0,-1); endpointUrl.pathname+="/models/"+encodeURIComponent(model)+":generateContent";
+        if(!endpointUrl.pathname.includes("/models/")) {
+          while(endpointUrl.pathname.endsWith("/")) endpointUrl.pathname=endpointUrl.pathname.slice(0,-1);
+          endpointUrl.pathname+="/models/"+encodeURIComponent(model)+":generateContent";
+        }
         endpoint=endpointUrl.toString();
         headers["x-goog-api-key"]=key;
         payload={systemInstruction:{parts:[{text:system}]},contents:chatMessages.map(x=>({role:x.role==="assistant"?"model":"user",parts:[{text:x.content}]})),generationConfig:{temperature:0.8,maxOutputTokens:600}};
       }else{
-        while(endpointUrl.pathname.endsWith("/")) endpointUrl.pathname=endpointUrl.pathname.slice(0,-1); endpointUrl.pathname+="/chat/completions";
+        if(!endpointUrl.pathname.endsWith("/chat/completions")) {
+          while(endpointUrl.pathname.endsWith("/")) endpointUrl.pathname=endpointUrl.pathname.slice(0,-1);
+          endpointUrl.pathname+="/chat/completions";
+        }
         endpoint=endpointUrl.toString();
         headers.Authorization="Bearer "+key;
         payload={model,messages:[{role:"system",content:system},...chatMessages],temperature:0.8,max_tokens:600};
