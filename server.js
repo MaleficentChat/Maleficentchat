@@ -1108,6 +1108,7 @@ async function auth(req,res,next){
 }
 
 
+require("./ai-companion").registerAICompanionRoutes({app,auth,current,pool});
 require("./entertainment").registerEntertainmentRoutes({app,auth,current,pool,uploadRoot:UP,persistUploadedMedia});
 registerSocialFeatureRoutes({app,auth,current,pool,storeMediaBuffer,hasFeature,getState:()=>db});
 
