@@ -139,6 +139,22 @@ function registerAICompanionRoutes({app,auth,current,pool}) {
     const r=await pool.query("UPDATE ai_companions SET is_disabled=$1,disabled_reason=$2,disabled_by=$3,updated_at=NOW() WHERE owner_id=$4 RETURNING id,is_disabled",[req.body?.disabled!==false,String(req.body?.reason||"Staff moderation").slice(0,500),u.id,Number(req.params.ownerId)]);
     if(!r.rowCount)return res.status(404).json({error:"Companion not found."}); res.json({ok:true,isDisabled:r.rows[0].is_disabled});
   });
+  app.patch("/api/ai-companion/staff/:ownerId/personality",auth,guard,async(req,res)=>{
+    const u=current(req); if(!SUPERADMIN_PLUS.has(rank(u))) return res.status(403).json({error:"Super Admin or higher is required."});
+    const b=req.body||{}, ownerId=Number(req.params.ownerId);
+    const r=await pool.query("UPDATE ai_companions SET name=COALESCE($1,name),bio=COALESCE($2,bio),personality_type=COALESCE($3,personality_type),personality_preset=COALESCE($4,personality_preset),backstory=COALESCE($5,backstory),speaking_style=COALESCE($6,speaking_style),likes=COALESCE($7::jsonb,likes),dislikes=COALESCE($8::jsonb,dislikes),behaviour_config=COALESCE($9::jsonb,behaviour_config),updated_at=NOW() WHERE owner_id=$10 RETURNING id,name,owner_id",[b.name===undefined?null:String(b.name).slice(0,60),b.bio===undefined?null:String(b.bio).slice(0,500),["preset","custom"].includes(b.personalityType)?b.personalityType:null,b.personalityPreset===undefined?null:String(b.personalityPreset).slice(0,80),b.backstory===undefined?null:String(b.backstory).slice(0,2500),b.speakingStyle===undefined?null:String(b.speakingStyle).slice(0,800),Array.isArray(b.likes)?JSON.stringify(b.likes.slice(0,20)):null,Array.isArray(b.dislikes)?JSON.stringify(b.dislikes.slice(0,20)):null,b.behaviourConfig&&typeof b.behaviourConfig==="object"?JSON.stringify(b.behaviourConfig):null,ownerId]);
+    if(!r.rowCount)return res.status(404).json({error:"Companion not found."}); res.json({companion:r.rows[0],memoriesPreserved:true,relationshipPreserved:true});
+  });
+  app.get("/api/ai-companion/staff/settings",auth,guard,async(req,res)=>{
+    const u=current(req); if(rank(u)!=="OWNER") return res.status(403).json({error:"Owner rank only."});
+    const r=await pool.query("SELECT setting_value FROM ai_settings WHERE setting_key=$1 LIMIT 1",["daily_text_limit"]);
+    res.json({dailyTextLimit:Number(r.rows[0]?.setting_value?.value)||DEFAULT_DAILY_LIMIT});
+  });
+  app.put("/api/ai-companion/staff/settings",auth,guard,async(req,res)=>{
+    const u=current(req); if(rank(u)!=="OWNER") return res.status(403).json({error:"Owner rank only."});
+    const limit=Math.floor(Number(req.body?.dailyTextLimit)||0); if(limit<1||limit>500)return res.status(400).json({error:"Daily text limit must be between 1 and 500."});
+    await pool.query("INSERT INTO ai_settings(setting_key,setting_value,updated_by,updated_at) VALUES($1,$2::jsonb,$3,NOW()) ON CONFLICT(setting_key) DO UPDATE SET setting_value=EXCLUDED.setting_value,updated_by=EXCLUDED.updated_by,updated_at=NOW()",["daily_text_limit",JSON.stringify({value:limit}),u.id]); res.json({dailyTextLimit:limit});
+  });
   app.post("/api/ai-companion/chat",auth,guard,async(req,res)=>{
     const u=current(req); if(!allowed(u)) return res.status(403).json({error:"MC Premium rank or higher is required."});
     const key=String(process.env.AI_COMPANION_API_KEY||""); if(!key) return res.status(503).json({error:"AI Companion is waiting for its dedicated provider key."});
