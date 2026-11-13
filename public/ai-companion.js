@@ -18,7 +18,13 @@
   async function api(url, options = {}) {
     const headers = {"Content-Type":"application/json"};
     if (token()) headers["x-auth-token"] = token();
-    const response = await fetch(url, {...options, headers, body: options.body === undefined ? undefined : JSON.stringify(options.body)});
+    let response;
+    try {
+      response = await fetch(url, {...options, headers, body: options.body === undefined ? undefined : JSON.stringify(options.body), signal: options.signal || AbortSignal.timeout(45000)});
+    } catch(error) {
+      if(error?.name==="TimeoutError"||error?.name==="AbortError") throw new Error("This request took too long. Check your connection and try again.");
+      throw error;
+    }
     const data = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(data.error || "Request failed.");
     return data;
@@ -254,7 +260,7 @@
   async function load(){
     if(!root())return;root().innerHTML='<p class="muted">Loading your companion…</p>';
     try{const data=await api("/api/ai-companion");if(data.companion)render(data);else create();}
-    catch(error){root().innerHTML='<div class="ai-unavailable"><h3>AI Companion</h3><p>'+esc(error.message)+'</p><p class="muted">MC access begins at Premium rank. The AI provider key and database setup must be configured before conversations can generate replies.</p></div>';}
+    catch(error){root().innerHTML='<div class="ai-unavailable"><h3>AI Companion</h3><p>'+esc(error.message)+'</p><p class="muted">Your companion could not be loaded. Your saved companion and memories have not been deleted.</p><button type="button" class="primary" id="aiRetryLoad">Try again</button></div>';const retry=root().querySelector("#aiRetryLoad");if(retry)retry.onclick=loadWhenVisible;}
   }
   let loadInProgress=false;
   async function loadWhenVisible(){if(loadInProgress)return;loadInProgress=true;try{await load();}finally{loadInProgress=false;}}
