@@ -35,7 +35,7 @@
     const p=document.createElement("p"); p.className="ai-error"; p.textContent=error.message || "Something went wrong.";
     host.prepend(p);
   }
-  const defaultAppearance = () => ({hairStyle:"Long",faceShape:"Soft oval",eyeStyle:"Sparkle",outfitStyle:"Academy",skin:"#f8d9c5",hair:"#24202d",eyes:"#5b8fc9",outfit:"#4e3d70",background:"#29213b"});
+  const defaultAppearance = () => ({hairStyle:"Long flow",faceShape:"Soft oval",eyeStyle:"Sparkle",outfitStyle:"Academy",topStyle:"Academy blouse",bottomStyle:"Pleated skirt",footwear:"Ankle boots",skin:"#f8d9c5",hair:"#24202d",eyes:"#5b8fc9",outfit:"#4e3d70",background:"#29213b"});
   function appearanceFrom(companion) {
     const stored=companion?.behaviourConfig?.avatarAppearance;
     return {...defaultAppearance(),...(stored && typeof stored==="object"?stored:{})};
@@ -64,6 +64,9 @@
     brows:["Natural","Arched","Straight"],
     expression:["Gentle smile","Confident","Shy","Playful"],
     outfitStyle:["Academy","Casual","Fantasy","Streetwear","Elegant","Gothic","Hoodie","Summer dress","Denim jacket","Punk"],
+    topStyle:["Academy blouse","Crop top","Oversized hoodie","Cardigan","Off-shoulder","Leather jacket","Ruffle blouse","Knit sweater"],
+    bottomStyle:["Pleated skirt","Mini skirt","Wide-leg trousers","Skinny jeans","Shorts","Flowy maxi skirt","Cargo pants"],
+    footwear:["Ankle boots","High-top sneakers","Mary Janes","Platform boots","Heels","Knee-high boots"],
     accessory:["None","Round glasses","Star clips","Headphones","Flower pin","Crescent crown"],
     makeup:["Natural","Rosy cheeks","Winged liner"]
   };
@@ -207,7 +210,22 @@
       const pocket=new THREE.Mesh(new THREE.BoxGeometry(.52,.24,.07),outfit);pocket.position.set(0,-1.45,.43);group.add(pocket);
       const strings=mat('#eee0d8');for(const x of [-.09,.09])limb(group,strings,[x,-.72,.47],[x,-1.02,.47],.018);
     }
-    const bootMat=mat(a.outfitStyle==='Punk'?'#211c27':'#3a303b',.42);
+    // Separate wardrobe layers: top, bottom and footwear can be mixed independently.
+    const top=a.topStyle||({Academy:'Academy blouse',Hoodie:'Oversized hoodie',Gothic:'Ruffle blouse',Fantasy:'Off-shoulder',Streetwear:'Leather jacket'}[a.outfitStyle]||'Academy blouse');
+    const bottom=a.bottomStyle||(['Fantasy','Elegant','Gothic','Summer dress'].includes(a.outfitStyle)?'Flowy maxi skirt':'Pleated skirt');
+    const topTrim=mat('#f0d8d0',.72),topMat=outfit;
+    if(top==='Oversized hoodie'){sphere(group,topMat,[0,-.88,.05],[.73,.63,.46]);const pocket=new THREE.Mesh(new THREE.BoxGeometry(.62,.22,.08),topMat);pocket.position.set(0,-1.25,.47);group.add(pocket);}
+    if(top==='Crop top'){const hem=new THREE.Mesh(new THREE.TorusGeometry(.47,.025,8,40),trim);hem.position.set(0,-1.42,.02);hem.rotation.x=Math.PI/2;group.add(hem);}
+    if(top==='Cardigan'||top==='Leather jacket'){for(const x of [-1,1]){const panel=new THREE.Mesh(new THREE.BoxGeometry(.23,.78,.09),topMat);panel.position.set(x*.22,-.98,.45);group.add(panel);}for(let i=0;i<4;i++)sphere(group,trim,[.08,-.78-i*.16,.51],[.025,.025,.018],12);}
+    if(top==='Off-shoulder'){const band=new THREE.Mesh(new THREE.TorusGeometry(.48,.07,10,48,Math.PI),topMat);band.position.set(0,-.53,.05);band.rotation.x=Math.PI/2;group.add(band);}
+    if(top==='Ruffle blouse'){for(let i=0;i<3;i++){const r=new THREE.Mesh(new THREE.TorusGeometry(.19+i*.035,.025,8,32,Math.PI),topTrim);r.position.set(0,-.57-i*.09,.45);r.rotation.x=Math.PI/2;group.add(r);}}
+    if(top==='Knit sweater'){for(let i=0;i<5;i++)seam([[-.38,-.72-i*.12,.4],[0,-.76-i*.12,.49],[.38,-.72-i*.12,.4]],.009);}
+    if(top==='Academy blouse'){const collarL=new THREE.Mesh(new THREE.ConeGeometry(.13,.3,3),topTrim);collarL.position.set(-.12,-.59,.48);collarL.rotation.z=-.2;group.add(collarL);const collarR=collarL.clone();collarR.position.x=.12;collarR.rotation.z=.2;group.add(collarR);}
+    if(bottom==='Pleated skirt'||bottom==='Mini skirt'||bottom==='Flowy maxi skirt'){const length=bottom==='Mini skirt'?.38:bottom==='Flowy maxi skirt'?.88:.62;const skirtMesh=new THREE.Mesh(new THREE.CylinderGeometry(bottom==='Mini skirt'?.5:.68,bottom==='Flowy maxi skirt'?.82:.76,length,48,1,true),outfit);skirtMesh.position.set(0,-1.58,.02);group.add(skirtMesh);for(let i=0;i<12;i++){const angle=i*Math.PI/6;const pleat=limb(group,trim,[Math.sin(angle)*.47,-1.34,.02+Math.cos(angle)*.35],[Math.sin(angle)*.7,-1.95,.02+Math.cos(angle)*.45],.009);}}
+    if(['Wide-leg trousers','Skinny jeans','Cargo pants','Shorts'].includes(bottom)){const width=bottom==='Wide-leg trousers'?.25:bottom==='Cargo pants'?.23:bottom==='Shorts'?.22:.17;for(const x of [-.36,.36]){const legMesh=new THREE.Mesh(new THREE.CylinderGeometry(width,width*.9,bottom==='Shorts'?.48:1.02,24),outfit);legMesh.position.set(x,-1.92,.02);group.add(legMesh);}if(bottom==='Cargo pants'){for(const x of [-.56,.56]){const pocket=new THREE.Mesh(new THREE.BoxGeometry(.16,.22,.08),trim);pocket.position.set(x,-1.8,.17);group.add(pocket);}}}
+    const footwear=a.footwear||'Ankle boots';
+    const shoeColour=footwear==='Mary Janes'||footwear==='Heels'?'#211b29':footwear==='High-top sneakers'?'#f2e8e4':'#3a303b';
+    const bootMat=mat(shoeColour,.42);
     for(const x of [-.36,.36]){
       const sole=new THREE.Mesh(new THREE.BoxGeometry(.48,.055,.65),mat('#17151b',.65));sole.position.set(x,-2.52,.12);group.add(sole);
       sphere(group,bootMat,[x,-2.43,.27],[.22,.12,.22],24);
@@ -251,7 +269,7 @@
     }).catch(error=>{if(stage.isConnected){const msg=stage.querySelector('.ai-3d-loading');if(msg){msg.outerHTML=avatarSvg(a,280);stage.classList.add('is-3d-fallback');}const note=stage.parentElement?.querySelector('.ai-preview-caption');if(note)note.textContent='2D PREVIEW · 3D ENGINE UNAVAILABLE';}});
   }
   function avatarEditor(a) {
-    return '<div class="ai-avatar-studio"><div class="ai-avatar-preview-column"><div class="ai-avatar-stage ai-3d-stage" id="aiAvatarStage"><div class="ai-3d-loading">Loading interactive 3D character…</div><div class="ai-3d-view-controls"><button type="button" data-3d-view="front" class="active">Front</button><button type="button" data-3d-view="side">Side</button><button type="button" data-3d-view="back">Back</button></div></div><div class="ai-preview-caption"><span>LIVE PREVIEW</span><span>✦ YOUR ORIGINAL CHARACTER</span></div></div><div class="ai-avatar-controls"><div class="ai-studio-heading"><span class="ai-step">CHARACTER CREATOR · 01</span><h3>Design every detail</h3><p>Choose a look, layer on details and watch your character change instantly.</p></div><div class="ai-editor-section"><h4>Face & features</h4>'+choiceTiles("Face shape","faceShape",avatarChoices.faceShape,a.faceShape)+choiceTiles("Eye design","eyeStyle",avatarChoices.eyeStyle,a.eyeStyle)+choiceTiles("Brows","brows",avatarChoices.brows,a.brows)+choiceTiles("Nose","noseStyle",avatarChoices.noseStyle,a.noseStyle)+choiceTiles("Mouth","mouthStyle",avatarChoices.mouthStyle,a.mouthStyle)+choiceTiles("Expression","expression",avatarChoices.expression,a.expression)+choiceTiles("Body proportions","bodyType",avatarChoices.bodyType,a.bodyType)+'</div><div class="ai-editor-section"><h4>Hair & styling</h4>'+choiceTiles("Hairstyle","hairStyle",avatarChoices.hairStyle,a.hairStyle)+colorField("Hair colour","hair",palettes.hair,a.hair)+'</div><div class="ai-editor-section"><h4>Clothing & accessories</h4>'+choiceTiles("Outfit style","outfitStyle",avatarChoices.outfitStyle,a.outfitStyle)+choiceTiles("Accessory","accessory",avatarChoices.accessory,a.accessory)+choiceTiles("Makeup","makeup",avatarChoices.makeup,a.makeup)+colorField("Outfit colour","outfit",palettes.outfit,a.outfit)+'</div><div class="ai-editor-section ai-editor-colours"><h4>Finishing touches</h4>'+colorField("Skin tone","skin",palettes.skin,a.skin)+colorField("Eye colour","eyes",palettes.eyes,a.eyes)+colorField("Scene","background",palettes.bg,a.background)+'</div><label class="ai-image-url">Or use your own avatar image (HTTPS URL)<input name="avatarUrl" type="url" maxlength="1000" placeholder="https://…"></label></div></div>';
+    return '<div class="ai-avatar-studio"><div class="ai-avatar-preview-column"><div class="ai-avatar-stage ai-3d-stage" id="aiAvatarStage"><div class="ai-3d-loading">Loading interactive 3D character…</div><div class="ai-3d-view-controls"><button type="button" data-3d-view="front" class="active">Front</button><button type="button" data-3d-view="side">Side</button><button type="button" data-3d-view="back">Back</button></div></div><div class="ai-preview-caption"><span>LIVE PREVIEW</span><span>✦ YOUR ORIGINAL CHARACTER</span></div></div><div class="ai-avatar-controls"><div class="ai-studio-heading"><span class="ai-step">CHARACTER CREATOR · 01</span><h3>Design every detail</h3><p>Choose a look, layer on details and watch your character change instantly.</p></div><div class="ai-editor-section"><h4>Face & features</h4>'+choiceTiles("Face shape","faceShape",avatarChoices.faceShape,a.faceShape)+choiceTiles("Eye design","eyeStyle",avatarChoices.eyeStyle,a.eyeStyle)+choiceTiles("Brows","brows",avatarChoices.brows,a.brows)+choiceTiles("Nose","noseStyle",avatarChoices.noseStyle,a.noseStyle)+choiceTiles("Mouth","mouthStyle",avatarChoices.mouthStyle,a.mouthStyle)+choiceTiles("Expression","expression",avatarChoices.expression,a.expression)+choiceTiles("Body proportions","bodyType",avatarChoices.bodyType,a.bodyType)+'</div><div class="ai-editor-section"><h4>Hair & styling</h4>'+choiceTiles("Hairstyle","hairStyle",avatarChoices.hairStyle,a.hairStyle)+colorField("Hair colour","hair",palettes.hair,a.hair)+'</div><div class="ai-editor-section"><h4>Clothing & accessories</h4>'+choiceTiles("Outfit theme","outfitStyle",avatarChoices.outfitStyle,a.outfitStyle)+choiceTiles("Top / jacket","topStyle",avatarChoices.topStyle,a.topStyle)+choiceTiles("Bottoms","bottomStyle",avatarChoices.bottomStyle,a.bottomStyle)+choiceTiles("Shoes","footwear",avatarChoices.footwear,a.footwear)+choiceTiles("Accessory","accessory",avatarChoices.accessory,a.accessory)+choiceTiles("Makeup","makeup",avatarChoices.makeup,a.makeup)+colorField("Outfit colour","outfit",palettes.outfit,a.outfit)+'</div><div class="ai-editor-section ai-editor-colours"><h4>Finishing touches</h4>'+colorField("Skin tone","skin",palettes.skin,a.skin)+colorField("Eye colour","eyes",palettes.eyes,a.eyes)+colorField("Scene","background",palettes.bg,a.background)+'</div><label class="ai-image-url">Or use your own avatar image (HTTPS URL)<input name="avatarUrl" type="url" maxlength="1000" placeholder="https://…"></label></div></div>';
   }
   function bindAvatarEditor(host, initial) {
     const update=()=>{
@@ -296,7 +314,7 @@
     }));
   }
   function readAppearance(form, initial) {
-    const a={...initial}; const allowed=["hairStyle","faceShape","eyeStyle","brows","expression","noseStyle","mouthStyle","bodyType","outfitStyle","accessory","makeup","skin","hair","eyes","outfit","background"]; new FormData(form).forEach((v,k)=>{if(allowed.includes(k))a[k]=v;}); return a;
+    const a={...initial}; const allowed=["hairStyle","faceShape","eyeStyle","brows","expression","noseStyle","mouthStyle","bodyType","outfitStyle","topStyle","bottomStyle","footwear","accessory","makeup","skin","hair","eyes","outfit","background"]; new FormData(form).forEach((v,k)=>{if(allowed.includes(k))a[k]=v;}); return a;
   }
   function create() {
     const a=defaultAppearance();
