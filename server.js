@@ -7732,11 +7732,26 @@ app.get('/api/me/account',auth,async(req,res)=>{
 
 
 
+// Additive AI Companion schema bootstrap. This creates only the dedicated ai_* tables;
+// it never alters or copies existing account, chat, wallet, session, or media records.
+async function initAICompanionTables(){
+  const found=await pool.query("SELECT to_regclass('public.ai_companion_schema_migrations') AS name");
+  if(found.rows[0]?.name){
+    const applied=await pool.query("SELECT 1 FROM ai_companion_schema_migrations WHERE version='001' LIMIT 1");
+    if(applied.rowCount)return;
+  }
+  const migrationPath=path.join(__dirname,"migrations","ai_companion","001_create_ai_companion_core.sql");
+  const migrationSql=fs.readFileSync(migrationPath,"utf8");
+  await pool.query(migrationSql);
+  console.log("AI Companion schema migration 001 applied (additive tables only).");
+}
+
 // Render/production bootstrap: initialize PostgreSQL state before accepting traffic,
 // then bind to Render's assigned PORT (or 3000 locally).
 (async function bootstrap(){
   try {
     await initDB();
+    await initAICompanionTables();
     await initSocialFeatureTables(pool);
     await migrateExistingUploads();
     await pool.query('CREATE TABLE IF NOT EXISTS push_subscriptions(id BIGSERIAL PRIMARY KEY,user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,endpoint TEXT NOT NULL UNIQUE,p256dh TEXT NOT NULL,auth TEXT NOT NULL,created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),last_used_at TIMESTAMPTZ)');
