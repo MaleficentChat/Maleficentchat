@@ -3,6 +3,7 @@ const ELIGIBLE = new Set(["PREMIUM","MODERATOR","MOD","ADMIN","SUPER_ADMIN","COM
 const DEFAULT_DAILY_LIMIT = Math.max(1, Math.min(500, Number(process.env.AI_COMPANION_DAILY_TEXT_LIMIT) || 80));
 const rank = user => String(user?.rank || "").toUpperCase().replace(/[\s-]+/g,"_");
 const allowed = user => ELIGIBLE.has(rank(user));
+const cleanAvatar = value => { const raw=String(value||"").trim().slice(0,1000); if(raw.startsWith("/uploads/")) return raw; try { const url=new URL(raw); return url.protocol==="https:"?url.href:""; } catch { return ""; } };
 const safe = row => row && ({
   id:String(row.id), name:row.name, avatarUrl:row.avatar_url||"", bio:row.bio||"",
   personalityType:row.personality_type, personalityPreset:row.personality_preset||"",
@@ -47,8 +48,8 @@ function registerAICompanionRoutes({app,auth,current,pool}) {
     const client=await pool.connect();
     try {
       await client.query("BEGIN");
-      const r=await client.query("INSERT INTO ai_companions(owner_id,name,bio,personality_type,personality_preset,backstory,speaking_style,likes,dislikes,behaviour_config) VALUES($1,$2,$3,$4,$5,$6,$7,$8::jsonb,$9::jsonb,$10::jsonb) RETURNING *",[
-        u.id,name,String(req.body?.bio||"").slice(0,500),req.body?.personalityType==="custom"?"custom":"preset",
+      const r=await client.query("INSERT INTO ai_companions(owner_id,name,avatar_url,bio,personality_type,personality_preset,backstory,speaking_style,likes,dislikes,behaviour_config) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb,$10::jsonb,$11::jsonb) RETURNING *",[
+        u.id,name,cleanAvatar(req.body?.avatarUrl),String(req.body?.bio||"").slice(0,500),req.body?.personalityType==="custom"?"custom":"preset",
         String(req.body?.personalityPreset||"gentle-anime-friend").slice(0,80),String(req.body?.backstory||"").slice(0,2500),
         String(req.body?.speakingStyle||"").slice(0,800),
         JSON.stringify(Array.isArray(req.body?.likes)?req.body.likes.slice(0,20).map(x=>String(x).slice(0,80)):[]),
@@ -65,7 +66,7 @@ function registerAICompanionRoutes({app,auth,current,pool}) {
     const u=current(req); if(!allowed(u)) return res.status(403).json({error:"MC Premium rank or higher is required."});
     const c=await getCompanion(u.id); if(!c) return res.status(404).json({error:"Create your companion first."});
     const b=req.body||{}, v=[
-      String(b.name??c.name).trim().slice(0,60),String(b.bio??c.bio).slice(0,500),
+      String(b.name??c.name).trim().slice(0,60),b.avatarUrl===undefined?c.avatar_url:cleanAvatar(b.avatarUrl),String(b.bio??c.bio).slice(0,500),
       ["custom","preset"].includes(b.personalityType)?b.personalityType:c.personality_type,
       String(b.personalityPreset??c.personality_preset??"").slice(0,80),String(b.backstory??c.backstory).slice(0,2500),
       String(b.speakingStyle??c.speaking_style).slice(0,800),
@@ -75,7 +76,7 @@ function registerAICompanionRoutes({app,auth,current,pool}) {
       JSON.stringify(b.quietHours&&typeof b.quietHours==="object"?b.quietHours:c.quiet_hours),u.id
     ];
     if(!v[0]) return res.status(400).json({error:"Companion name cannot be empty."});
-    const r=await pool.query("UPDATE ai_companions SET name=$1,bio=$2,personality_type=$3,personality_preset=$4,backstory=$5,speaking_style=$6,likes=$7::jsonb,dislikes=$8::jsonb,behaviour_config=$9::jsonb,proactive_enabled=$10,quiet_hours=$11::jsonb,updated_at=NOW() WHERE owner_id=$12 RETURNING *",v);
+    const r=await pool.query("UPDATE ai_companions SET name=$1,avatar_url=$2,bio=$3,personality_type=$4,personality_preset=$5,backstory=$6,speaking_style=$7,likes=$8::jsonb,dislikes=$9::jsonb,behaviour_config=$10::jsonb,proactive_enabled=$11,quiet_hours=$12::jsonb,updated_at=NOW() WHERE owner_id=$13 RETURNING *",v);
     res.json({companion:safe(r.rows[0])});
   });
   app.delete("/api/ai-companion",auth,guard,async(req,res)=>{
