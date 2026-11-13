@@ -134,16 +134,36 @@
     const bangMat=hair;
     for(let i=0;i<5;i++){const x=-.53+i*.265;const lock=sphere(head,bangMat,[x,.49+Math.sin(i*.9)*.08,.43],[.22,.46,.17],24);lock.rotation.z=(i-2)*-.12;}
     const longHair=a.hairStyle==='Short cut'?false:true;
-    if(longHair){sphere(head,hair,[-.65,-.38,-.02],[.2,.92,.28],28);sphere(head,hair,[.65,-.38,-.02],[.2,.92,.28],28);}
-    if(a.hairStyle==='Twin tails'){sphere(head,hair,[-.9,.15,-.08],[.24,.72,.24]);sphere(head,hair,[.9,.15,-.08],[.24,.72,.24]);}
-    if(a.hairStyle==='High ponytail'){const pony=sphere(head,hair,[.02,.82,-.55],[.28,.78,.25]);pony.rotation.x=-.45;}
-    if(a.hairStyle==='Side braid'){for(let i=0;i<7;i++)sphere(head,hair,[.78,-.18-i*.15,.05],[.13,.15,.14],20);}
+    if(longHair){
+      const left=sphere(head,hair,[-.66,-.38,-.02],[.22,.94,.29],36),right=sphere(head,hair,[.66,-.38,-.02],[.22,.94,.29],36);
+      left.rotation.z=-.05;right.rotation.z=.05;
+      if(a.hairStyle==='Wavy layers'){for(const side of [-1,1])for(let i=0;i<3;i++){const strand=sphere(head,hair,[side*(.69+i*.045),-.48-i*.17,.12],[.095,.25,.11],20);strand.rotation.z=side*(.12+i*.08);}}
+      if(a.hairStyle==='Hime cut'){for(const side of [-1,1]){const panel=sphere(head,hair,[side*.69,-.28,.23],[.15,.56,.14],28);panel.rotation.z=side*.02;}}
+    }
+    if(a.hairStyle==='Twin tails'){for(const side of [-1,1]){const tail=sphere(head,hair,[side*.91,.05,-.08],[.24,.74,.25],32);tail.rotation.z=side*.12;sphere(head,mat('#e8cf93',.35,.3),[side*.91,.57,.04],[.16,.09,.15],20);}}
+    if(a.hairStyle==='High ponytail'){const pony=sphere(head,hair,[.02,.82,-.55],[.28,.78,.25],32);pony.rotation.x=-.45;sphere(head,hair,[.02,.25,-.5],[.18,.2,.18],24);}
+    if(a.hairStyle==='Side braid'){for(let i=0;i<9;i++){const bead=sphere(head,hair,[.78,-.12-i*.14,.12],[.13,.16,.14],24);bead.rotation.z=-.12;}sphere(head,mat('#e8cf93',.35,.3),[.78,-1.32,.12],[.13,.07,.12],20);}
+    if(a.hairStyle==='Soft bob'){for(const side of [-1,1]){const curl=sphere(head,hair,[side*.62,-.48,.08],[.22,.28,.2],28);curl.rotation.z=side*.2;}}
+    const hairHighlight=mat(a.hair,.34),hairCurve=(points,r=.012)=>{const curve=new THREE.CatmullRomCurve3(points.map(p=>new THREE.Vector3(...p)));head.add(new THREE.Mesh(new THREE.TubeGeometry(curve,20,r,6,false),hairHighlight));};
+    for(let i=0;i<5;i++){const x=-.42+i*.21;hairCurve([[x,.78,.37],[x-.04,.58,.52],[x+.02,.28,.55],[x+.08,.05,.48]],.009);}
     const eyeScale=a.eyeStyle==="Wide"?[.22,.17,.095]:a.eyeStyle==="Sharp"?[.22,.105,.075]:a.eyeStyle==="Soft round"?[.18,.17,.09]:a.eyeStyle==="Bold"?[.22,.18,.11]:[.205,.145,.09];
-    for(const x of [-.29,.29]){sphere(head,white,[x,-.06,.51],eyeScale);sphere(head,eye,[x,-.06,.588],[.095,.112,.035]);sphere(head,dark,[x,-.06,.615],[.045,.075,.022]);sphere(head,white,[x-.025,.005,.635],[.027,.03,.012]);}
+    for(const x of [-.29,.29]){
+      sphere(head,mat('#b77d83',.8),[x,-.055,.493],[eyeScale[0]*1.12,eyeScale[1]*1.18,.045]);
+      sphere(head,white,[x,-.06,.525],eyeScale);
+      sphere(head,eye,[x,-.065,.608],[.098,.118,.038]);
+      sphere(head,mat('#17202d',.22),[x,-.065,.637],[.054,.082,.022]);
+      sphere(head,white,[x-.028,.005,.657],[.029,.034,.014]);
+      sphere(head,white,[x+.035,-.11,.653],[.012,.014,.009]);
+      const lid=new THREE.Mesh(new THREE.TorusGeometry(eyeScale[0]*.92,.018,8,32,Math.PI),hair);lid.position.set(x,-.045,.548);lid.rotation.z=Math.PI;head.add(lid);
+      if(a.eyeStyle==='Sparkle'||a.eyeStyle==='Dreamy'){const star=mat('#fff0c7',.2,.15);sphere(head,star,[x+.035,-.005,.65],[.022,.022,.012],16);sphere(head,star,[x-.045,-.12,.65],[.012,.012,.008],16);}
+      if(a.eyeStyle==='Sharp'||a.eyeStyle==='Bold'){for(let i=0;i<3;i++)limb(head,dark,[x+(x<0?-.13:.13),.01+i*.025,.54],[x+(x<0?-.19:.19),.08+i*.025,.52],.012);}
+    }
     for(const x of [-.29,.29]){const brow=sphere(head,hair,[x,.16,.5],a.brows==="Arched"?[.19,.055,.035]:[.19,.035,.035],20);brow.rotation.z=a.brows==="Straight"?0:(x<0?.1:-.1);}
     const noseScale=a.noseStyle==="Defined"?[.055,.105,.055]:a.noseStyle==="Soft"?[.045,.075,.035]:[.04,.055,.03];
-    sphere(head,skin,[0,-.2,.57],noseScale,16);
-    if(a.makeup==='Rosy cheeks'){sphere(head,blush,[-.48,-.29,.47],[.13,.07,.025],20);sphere(head,blush,[.48,-.29,.47],[.13,.07,.025],20);}
+    sphere(head,skin,[0,-.2,.57],noseScale,20);
+    const noseShade=mat('#b77d83',.9);sphere(head,noseShade,[.025,-.235,.585],[.025,.018,.012],12);
+    if(a.makeup==='Rosy cheeks'){sphere(head,blush,[-.48,-.29,.47],[.15,.075,.025],24);sphere(head,blush,[.48,-.29,.47],[.15,.075,.025],24);}
+    if(a.makeup==='Natural'||a.makeup==='Rosy cheeks'){for(const side of [-1,1])for(let i=0;i<3;i++)sphere(head,mat('#b77d83',.95),[side*(.43+(i%2)*.045),-.24-Math.floor(i/2)*.045,.493],[.009,.009,.006],8);}
     const mouthMat=mat('#9d5865');
     const mouthPoints=a.mouthStyle==="Pout"?[[-.09,-.4,.56],[0,-.37,.59],[.09,-.4,.56]]:a.mouthStyle==="Open smile"?[[-.11,-.38,.55],[0,-.47,.58],[.11,-.38,.55]]:a.expression==="Confident"?[[-.1,-.4,.56],[0,-.42,.58],[.1,-.4,.56]]:a.expression==="Shy"?[[-.08,-.41,.56],[0,-.44,.58],[.08,-.41,.56]]:[[-.105,-.39,.55],[0,-.43,.58],[.105,-.39,.55]];
     const mouthCurve=new THREE.CatmullRomCurve3(mouthPoints.map(p=>new THREE.Vector3(...p)));head.add(new THREE.Mesh(new THREE.TubeGeometry(mouthCurve,16,.018,8,false),mouthMat));
@@ -151,7 +171,12 @@
     if(a.accessory==='Round glasses'){for(const x of [-.29,.29]){const ring=new THREE.Mesh(new THREE.TorusGeometry(.19,.018,10,40),dark);ring.position.set(x,-.06,.61);head.add(ring);}const bridge=new THREE.Mesh(new THREE.CylinderGeometry(.014,.014,.17,12),dark);bridge.rotation.z=Math.PI/2;bridge.position.set(0,-.06,.61);head.add(bridge);}
     if(a.accessory==='Headphones'){const band=new THREE.Mesh(new THREE.TorusGeometry(.76,.055,12,48,Math.PI),mat('#d8b8ef'));band.rotation.z=Math.PI;band.position.set(0,.22,-.03);head.add(band);sphere(head,mat('#d8b8ef'),[-.76,-.08,0],[.13,.25,.16]);sphere(head,mat('#d8b8ef'),[.76,-.08,0],[.13,.25,.16]);}
     if(a.accessory==='Star clips'||a.accessory==='Flower pin'||a.accessory==='Crescent crown'){const pinMat=mat('#f0d18e',.3,.35);sphere(head,pinMat,[.57,.48,.48],[.12,.12,.06],20);}
-    const trim=mat('#e8cf93',.35,.3), accent=mat('#35263d',.62);
+    const trim=mat('#e8cf93',.35,.3), accent=mat('#35263d',.62),stitch=mat('#f4d9c8',.75);
+    const seam=(points,r=.012)=>{const curve=new THREE.CatmullRomCurve3(points.map(p=>new THREE.Vector3(...p)));group.add(new THREE.Mesh(new THREE.TubeGeometry(curve,24,r,6,false),stitch));};
+    seam([[-.48,-.72,.39],[-.32,-.92,.47],[0,-1.02,.49],[.32,-.92,.47],[.48,-.72,.39]],.014);
+    for(const x of [-.52,.52]){const cuff=new THREE.Mesh(new THREE.TorusGeometry(.17,.035,8,24),trim);cuff.position.set(x,-1.36,.02);cuff.rotation.x=Math.PI/2;group.add(cuff);}
+    const belt=new THREE.Mesh(new THREE.BoxGeometry(.72,.075,.06),trim);belt.position.set(0,-1.48,.43);group.add(belt);
+    const buckle=new THREE.Mesh(new THREE.BoxGeometry(.12,.11,.045),accent);buckle.position.set(0,-1.48,.47);group.add(buckle);
     const badge=(x,y,z,scale)=>sphere(group,trim,[x,y,z],scale,20);
     const skirt=(color,top,bottom)=>{const mesh=new THREE.Mesh(new THREE.CylinderGeometry(bottom,top,.62,48,1,true),color);mesh.position.set(0,-1.67,.015);group.add(mesh);};
     if(a.outfitStyle==='Academy'){
@@ -181,6 +206,12 @@
       const hood=sphere(group,outfit,[0,-.38,-.34],[.42,.46,.22],24);
       const pocket=new THREE.Mesh(new THREE.BoxGeometry(.52,.24,.07),outfit);pocket.position.set(0,-1.45,.43);group.add(pocket);
       const strings=mat('#eee0d8');for(const x of [-.09,.09])limb(group,strings,[x,-.72,.47],[x,-1.02,.47],.018);
+    }
+    const bootMat=mat(a.outfitStyle==='Punk'?'#211c27':'#3a303b',.42);
+    for(const x of [-.36,.36]){
+      const sole=new THREE.Mesh(new THREE.BoxGeometry(.48,.055,.65),mat('#17151b',.65));sole.position.set(x,-2.52,.12);group.add(sole);
+      sphere(group,bootMat,[x,-2.43,.27],[.22,.12,.22],24);
+      for(let i=0;i<3;i++)limb(group,trim,[x-.07,-2.38+i*.035,.43],[x+.07,-2.38+i*.035,.43],.008);
     }
     group.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;}});
     return group;
