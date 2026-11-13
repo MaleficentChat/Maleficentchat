@@ -118,6 +118,27 @@ function registerAICompanionRoutes({app,auth,current,pool}) {
     const client=await pool.connect(); try {await client.query("BEGIN"); const id=await conversation(client,c.id,u.id); await client.query("DELETE FROM ai_messages WHERE conversation_id=$1",[id]); await client.query("COMMIT"); res.json({ok:true});}
     catch(e){await client.query("ROLLBACK"); throw e;} finally{client.release();}
   });
+  app.post("/api/ai-companion/report",auth,guard,async(req,res)=>{
+    const u=current(req); if(!allowed(u)) return res.status(403).json({error:"MC Premium rank or higher is required."});
+    const c=await getCompanion(u.id); if(!c) return res.status(404).json({error:"No companion to report."});
+    const reason=String(req.body?.reason||"").slice(0,80), description=String(req.body?.description||"").slice(0,1500);
+    if(!reason) return res.status(400).json({error:"Choose a report reason."});
+    await pool.query("INSERT INTO ai_companion_reports(companion_id,reporter_user_id,reason,description) VALUES($1,$2,$3,$4)",[c.id,u.id,reason,description]); res.status(201).json({ok:true});
+  });
+  app.get("/api/ai-companion/staff/reports",auth,guard,async(req,res)=>{
+    const u=current(req); if(!["COOWNER","ELITE","OWNER"].includes(rank(u))) return res.status(403).json({error:"Coowner or higher is required."});
+    const r=await pool.query("SELECT r.id,r.reason,r.description,r.status,r.created_at,c.name AS companion_name,c.owner_id FROM ai_companion_reports r JOIN ai_companions c ON c.id=r.companion_id ORDER BY r.created_at DESC LIMIT 100"); res.json({reports:r.rows});
+  });
+  app.patch("/api/ai-companion/staff/reports/:id",auth,guard,async(req,res)=>{
+    const u=current(req); if(!["COOWNER","ELITE","OWNER"].includes(rank(u))) return res.status(403).json({error:"Coowner or higher is required."});
+    const status=String(req.body?.status||""); if(!["reviewing","resolved","dismissed"].includes(status)) return res.status(400).json({error:"Invalid report status."});
+    const r=await pool.query("UPDATE ai_companion_reports SET status=$1,assigned_staff_id=$2,updated_at=NOW() WHERE id=$3 RETURNING id,status",[status,u.id,Number(req.params.id)]); if(!r.rowCount)return res.status(404).json({error:"Report not found."}); res.json({report:r.rows[0]});
+  });
+  app.post("/api/ai-companion/staff/:ownerId/disable",auth,guard,async(req,res)=>{
+    const u=current(req); if(!["COOWNER","ELITE","OWNER"].includes(rank(u))) return res.status(403).json({error:"Coowner or higher is required."});
+    const r=await pool.query("UPDATE ai_companions SET is_disabled=$1,disabled_reason=$2,disabled_by=$3,updated_at=NOW() WHERE owner_id=$4 RETURNING id,is_disabled",[req.body?.disabled!==false,String(req.body?.reason||"Staff moderation").slice(0,500),u.id,Number(req.params.ownerId)]);
+    if(!r.rowCount)return res.status(404).json({error:"Companion not found."}); res.json({ok:true,isDisabled:r.rows[0].is_disabled});
+  });
   app.post("/api/ai-companion/chat",auth,guard,async(req,res)=>{
     const u=current(req); if(!allowed(u)) return res.status(403).json({error:"MC Premium rank or higher is required."});
     const key=String(process.env.AI_COMPANION_API_KEY||""); if(!key) return res.status(503).json({error:"AI Companion is waiting for its dedicated provider key."});
