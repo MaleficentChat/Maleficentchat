@@ -177,7 +177,7 @@ function registerAICompanionRoutes({app,auth,current,pool}) {
     if(c.is_disabled) return res.status(403).json({error:"This companion has been disabled by staff."});
     const message=String(req.body?.message||"").trim().slice(0,1200); if(!message) return res.status(400).json({error:"Write a message first."});
     const client=await pool.connect();
-    let inTransaction=false;
+    let inTransaction=false, usageCharged=false;
     try {
       await client.query("BEGIN"); inTransaction=true;
       const conv=await conversation(client,c.id,u.id);
@@ -185,10 +185,9 @@ function registerAICompanionRoutes({app,auth,current,pool}) {
       const dailyLimit=Math.max(1,Math.min(500,Number(setting.rows[0]?.setting_value?.value)||DEFAULT_DAILY_LIMIT));
       const quota=await client.query("INSERT INTO ai_usage_daily(companion_id,usage_date,text_units) VALUES($1,CURRENT_DATE,1) ON CONFLICT(companion_id,usage_date) DO UPDATE SET text_units=ai_usage_daily.text_units+1,updated_at=NOW() WHERE ai_usage_daily.text_units<$2 RETURNING text_units",[c.id,dailyLimit]);
       if(!quota.rowCount){await client.query("ROLLBACK");inTransaction=false;return res.status(429).json({error:"Your daily text allowance has been used."});}
-      await client.query("INSERT INTO ai_messages(conversation_id,sender_type,message_content) VALUES($1,'owner',$2)",[conv,message]);
-      const history=await client.query("SELECT sender_type,message_content FROM ai_messages WHERE conversation_id=$1 ORDER BY created_at DESC LIMIT 16",[conv]);
+      const history=await client.query("SELECT sender_type,message_content FROM ai_messages WHERE conversation_id=$1 ORDER BY created_at DESC LIMIT 15",[conv]);
       const memories=await client.query("SELECT memory_content FROM ai_companion_memories WHERE companion_id=$1 AND owner_approved=true ORDER BY importance DESC,updated_at DESC LIMIT 12",[c.id]);
-      await client.query("COMMIT"); inTransaction=false;
+      await client.query("COMMIT"); inTransaction=false; usageCharged=true;
 
       // Never hold a database transaction open while waiting for the external AI provider.
       const system=[
@@ -202,20 +201,40 @@ function registerAICompanionRoutes({app,auth,current,pool}) {
         "Respect boundaries. Do not claim to perform external actions."
       ].join("\\n");
       const configuredEndpoint=String(process.env.AI_COMPANION_API_URL||"https://api.openai.com/v1/chat/completions").trim();
-      let normalizedEndpoint=configuredEndpoint;
-      while(normalizedEndpoint.endsWith("/")) normalizedEndpoint=normalizedEndpoint.slice(0,-1);
-      const endpoint=normalizedEndpoint.endsWith("/chat/completions")?normalizedEndpoint:normalizedEndpoint+"/chat/completions";
-      const response=await fetch(endpoint,{method:"POST",headers:{"Authorization":"Bearer "+key,"Content-Type":"application/json"},body:JSON.stringify({model:String(process.env.AI_COMPANION_MODEL||(configuredEndpoint.includes("generativelanguage.googleapis.com")?"gemini-3.8-flash":"gpt-4o-mini")),messages:[{role:"system",content:system},...history.rows.reverse().map(x=>({role:x.sender_type==="owner"?"user":"assistant",content:x.message_content}))],temperature:0.8,max_tokens:500}),signal:AbortSignal.timeout(30000)});
-      if(!response.ok) throw new Error("AI provider HTTP "+response.status);
-      const data=await response.json(), answer=String(data?.choices?.[0]?.message?.content||"").trim().slice(0,5000);
+      const endpointUrl=new URL(configuredEndpoint);
+      const isGeminiNative=endpointUrl.hostname==="generativelanguage.googleapis.com"&&!endpointUrl.pathname.includes("/openai");
+      const model=String(process.env.AI_COMPANION_MODEL||(endpointUrl.hostname==="generativelanguage.googleapis.com"?"gemini-2.5-flash":"gpt-4o-mini")).trim();
+      const chatMessages=history.rows.reverse().map(x=>({role:x.sender_type==="owner"?"user":"assistant",content:x.message_content}));
+      chatMessages.push({role:"user",content:message});
+      let endpoint,payload,headers={"Content-Type":"application/json"};
+      if(isGeminiNative){
+        if(!endpointUrl.pathname.includes("/models/")) endpointUrl.pathname=endpointUrl.pathname.replace(/\\/+$/,"")+"/models/"+encodeURIComponent(model)+":generateContent";
+        endpoint=endpointUrl.toString();
+        headers["x-goog-api-key"]=key;
+        payload={systemInstruction:{parts:[{text:system}]},contents:chatMessages.map(x=>({role:x.role==="assistant"?"model":"user",parts:[{text:x.content}]})),generationConfig:{temperature:0.8,maxOutputTokens:600}};
+      }else{
+        if(!endpointUrl.pathname.endsWith("/chat/completions")) endpointUrl.pathname=endpointUrl.pathname.replace(/\\/+$/,"")+"/chat/completions";
+        endpoint=endpointUrl.toString();
+        headers.Authorization="Bearer "+key;
+        payload={model,messages:[{role:"system",content:system},...chatMessages],temperature:0.8,max_tokens:600};
+      }
+      const response=await fetch(endpoint,{method:"POST",headers,body:JSON.stringify(payload),signal:AbortSignal.timeout(45000)});
+      const responseText=await response.text();
+      if(!response.ok) throw new Error("AI provider HTTP "+response.status+": "+responseText.slice(0,400));
+      let data;try{data=JSON.parse(responseText);}catch{throw new Error("AI provider returned invalid JSON.");}
+      const answer=String(isGeminiNative?(data?.candidates?.[0]?.content?.parts||[]).map(p=>p.text||"").join(""):(typeof data?.choices?.[0]?.message?.content==="string"?data.choices[0].message.content:(data?.choices?.[0]?.message?.content||[]).map(p=>p.text||"").join(""))).trim().slice(0,5000);
       if(!answer) throw new Error("Empty AI response.");
+      await client.query("BEGIN"); inTransaction=true;
+      await client.query("INSERT INTO ai_messages(conversation_id,sender_type,message_content) VALUES($1,'owner',$2)",[conv,message]);
       await client.query("INSERT INTO ai_messages(conversation_id,sender_type,message_content) VALUES($1,'companion',$2)",[conv,answer]);
       await client.query("UPDATE ai_conversations SET updated_at=NOW() WHERE id=$1",[conv]);
+      await client.query("COMMIT"); inTransaction=false; usageCharged=false;
       res.json({reply:answer,remaining:Math.max(0,dailyLimit-Number(quota.rows[0].text_units))});
     } catch(e){
       if(inTransaction){try{await client.query("ROLLBACK");}catch{}}
+      if(usageCharged){try{await client.query("UPDATE ai_usage_daily SET text_units=GREATEST(0,text_units-1),updated_at=NOW() WHERE companion_id=$1 AND usage_date=CURRENT_DATE",[c.id]);}catch(refundError){console.error("AI Companion quota refund failed:",refundError?.message||refundError);}}
       console.error("AI Companion chat failed:",e?.message||e);
-      res.status(502).json({error:"Your companion could not reply right now."});
+      res.status(502).json({error:"Your companion could not reply right now. Please try again."});
     } finally{client.release();}
   });
 }
