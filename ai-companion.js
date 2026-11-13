@@ -45,7 +45,7 @@ function registerAICompanionRoutes({app,auth,current,pool}) {
   app.post("/api/ai-companion",auth,guard,async(req,res)=>{
     const u=current(req); if(!allowed(u)) return res.status(403).json({error:"MC Premium rank or higher is required."});
     if(await getCompanion(u.id)) return res.status(409).json({error:"Each account can have only one companion."});
-    const name=String(req.body?.name||"").trim().slice(0,60); if(!name) return res.status(400).json({error:"Give your companion a name."});
+    const name=String(req.body?.name||"").trim().slice(0,60)||"Your Companion";
     const client=await pool.connect();
     try {
       await client.query("BEGIN");
