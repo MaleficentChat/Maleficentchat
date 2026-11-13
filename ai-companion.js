@@ -8,7 +8,7 @@ const safe = row => row && ({
   personalityType:row.personality_type, personalityPreset:row.personality_preset||"",
   backstory:row.backstory||"", speakingStyle:row.speaking_style||"",
   likes:Array.isArray(row.likes)?row.likes:[], dislikes:Array.isArray(row.dislikes)?row.dislikes:[],
-  behaviourConfig:row.behaviour_config||{}, status:row.status,
+  behaviourConfig:row.behaviour_config||{}, status:row.status, isDisabled:!!row.is_disabled, disabledReason:row.disabled_reason||"",
   proactiveEnabled:!!row.proactive_enabled, quietHours:row.quiet_hours||{},
   relationship:row.relationship_stage||"stranger", progress:Number(row.progress_score||0)
 });
@@ -122,6 +122,7 @@ function registerAICompanionRoutes({app,auth,current,pool}) {
     const u=current(req); if(!allowed(u)) return res.status(403).json({error:"MC Premium rank or higher is required."});
     const key=String(process.env.AI_COMPANION_API_KEY||""); if(!key) return res.status(503).json({error:"AI Companion is waiting for its dedicated provider key."});
     const c=await getCompanion(u.id); if(!c) return res.status(404).json({error:"Create your companion first."});
+    if(c.is_disabled) return res.status(403).json({error:"This companion has been disabled by staff."});
     const message=String(req.body?.message||"").trim().slice(0,1200); if(!message) return res.status(400).json({error:"Write a message first."});
     const client=await pool.connect();
     try {
