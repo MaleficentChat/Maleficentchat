@@ -228,8 +228,11 @@
         stage.querySelector('.ai-3d-loading')?.remove();stage.prepend(renderer.domElement);renderer.domElement.className='ai-3d-canvas';
         scene.add(new THREE.HemisphereLight('#fff0e8','#392c48',2.0));
         const key=new THREE.DirectionalLight('#fff4e9',2.5);key.position.set(3,5,6);scene.add(key);
-        const rim=new THREE.DirectionalLight('#d8b8ff',1.5);rim.position.set(-4,2,-3);scene.add(rim);
-        const floor=new THREE.Mesh(new THREE.CircleGeometry(1.35,48),new THREE.MeshBasicMaterial({color:a.background,transparent:true,opacity:.55}));floor.rotation.x=-Math.PI/2;floor.position.set(0,-2.58,0);scene.add(floor);
+        const rim=new THREE.DirectionalLight('#d8b8ff',1.9);rim.position.set(-4,2,-3);scene.add(rim);
+        const fill=new THREE.DirectionalLight('#f5c6b5',.9);fill.position.set(0,-2,5);scene.add(fill);
+        const floor=new THREE.Mesh(new THREE.CircleGeometry(1.42,64),new THREE.MeshBasicMaterial({color:a.background,transparent:true,opacity:.42}));floor.rotation.x=-Math.PI/2;floor.position.set(0,-2.58,0);scene.add(floor);
+        const halo=new THREE.Mesh(new THREE.TorusGeometry(1.05,.012,8,96),new THREE.MeshBasicMaterial({color:'#e8c7dc',transparent:true,opacity:.52}));halo.rotation.x=Math.PI/2;halo.position.set(0,-2.54,0);scene.add(halo);
+        const pedestal=new THREE.Mesh(new THREE.CylinderGeometry(.78,.92,.12,64),new THREE.MeshStandardMaterial({color:'#49374d',metalness:.35,roughness:.42}));pedestal.position.set(0,-2.63,0);scene.add(pedestal);
         state={scene,camera,renderer,group:null,rotation:0,drag:false,lastX:0,resize:null};threeScenes.set(stage,state);
         const resize=()=>{if(!stage.isConnected)return;const w=Math.max(1,stage.clientWidth),h=Math.max(1,stage.clientHeight);renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();};
         if(typeof ResizeObserver!=='undefined'){state.resize=new ResizeObserver(resize);state.resize.observe(stage);}else window.addEventListener('resize',resize);
@@ -238,7 +241,7 @@
         renderer.domElement.addEventListener('pointerdown',e=>{activePointers.set(e.pointerId,{x:e.clientX,y:e.clientY});renderer.domElement.setPointerCapture?.(e.pointerId);if(activePointers.size===1){state.drag=true;state.lastX=e.clientX;}if(activePointers.size===2){const p=[...activePointers.values()];pinchStart=Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y);pinchZoom=camera.position.z;state.drag=false;}});
         renderer.domElement.addEventListener('pointermove',e=>{if(!activePointers.has(e.pointerId))return;const previous=activePointers.get(e.pointerId);activePointers.set(e.pointerId,{x:e.clientX,y:e.clientY});if(activePointers.size===2){const p=[...activePointers.values()],distance=Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y);if(pinchStart>0)camera.position.z=Math.max(5.4,Math.min(11.5,pinchZoom*pinchStart/Math.max(1,distance)));return;}if(state.drag){state.rotation+=(e.clientX-previous.x)*.012;state.lastX=e.clientX;if(state.group)state.group.rotation.y=state.rotation;}});
         const end=e=>{activePointers.delete(e.pointerId);state.drag=activePointers.size===1;if(state.drag)state.lastX=[...activePointers.values()][0].x;else pinchStart=0;};renderer.domElement.addEventListener('pointerup',end);renderer.domElement.addEventListener('pointercancel',end);
-        const animate=()=>{if(!stage.isConnected){state.resize?.disconnect();renderer.dispose();threeScenes.delete(stage);return;}state.frame=requestAnimationFrame(animate);renderer.render(scene,camera);};animate();resize();
+        const animate=()=>{if(!stage.isConnected){state.resize?.disconnect();renderer.dispose();threeScenes.delete(stage);return;}state.frame=requestAnimationFrame(animate);if(state.group&&!state.drag)state.group.position.y=-.05+Math.sin(Date.now()/950)*.018;renderer.render(scene,camera);};animate();resize();
         stage.querySelectorAll('[data-3d-view]').forEach(btn=>btn.addEventListener('click',()=>{const view=btn.dataset['3dView'];state.rotation=view==='side'?Math.PI/2:view==='back'?Math.PI:0;if(state.group)state.group.rotation.y=state.rotation;stage.querySelectorAll('[data-3d-view]').forEach(x=>x.classList.toggle('active',x===btn));}));
       }
       if(state.group){state.scene.remove(state.group);state.group.traverse(o=>{if(o.isMesh){o.geometry.dispose();if(Array.isArray(o.material))o.material.forEach(m=>m.dispose());else o.material.dispose();}});}
