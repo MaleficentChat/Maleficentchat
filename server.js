@@ -2928,7 +2928,7 @@ app.post(
       });
     }
 
-    if(!u.hideMode&&!u.invisible)systemNotice(`${u.displayName||u.username} has joined the room ${r.name}.`,r.id);
+    if(!u.hideMode&&!u.invisible)systemNotice(`${u.displayName||u.username} has joined the room ${r.name}.`,r.id,{userId:u.id,username:u.username,displayName:u.displayName||u.username});
     res.json({
       ok:true,
       joinToken:makeRoomJoinToken(u.id,r),
@@ -4257,17 +4257,18 @@ app.post(
   }
 );
 
-async function auroraRoomMessage(text, roomId){
+async function auroraRoomMessage(text, roomId, profileTarget=null){
   const notice={id:id(),system:true,username:'Aurora',displayName:'Aurora',rank:'BOT',text:String(text),roomId:String(roomId),time:Date.now(),reactions:{},pinned:false,deleted:false};
+  if(profileTarget?.userId!=null){notice.profileUserId=String(profileTarget.userId);notice.profileDisplayName=String(profileTarget.displayName||profileTarget.username||'Member');}
   try{await pool.query(`INSERT INTO room_messages(id,room_id,data,created_at) VALUES($1,$2,$3::jsonb,NOW())`,[notice.id,Number(roomId),JSON.stringify(notice)]);}catch(err){console.error("Aurora message persistence failed:",err.message);}
   db.messages.push(notice); save(); io.to('room:'+roomId).emit('message',notice); return notice;
 }
-function systemNotice(text, roomId=null){
+function systemNotice(text, roomId=null, profileTarget=null){
   // Room-scoped announcements go only to the room explicitly supplied by the
   // caller. Site-wide account notices must never fall back to a retired room
   // or whichever room happens to be first in the database.
   if(roomId){
-    auroraRoomMessage(text,roomId).catch(err=>console.error("Aurora notice failed:",err.message));
+    auroraRoomMessage(text,roomId,profileTarget).catch(err=>console.error("Aurora notice failed:",err.message));
     return;
   }
   const notice={id:id(),system:true,username:'Aurora',displayName:'Aurora',rank:'BOT',text:String(text),roomId:null,time:Date.now(),reactions:{},pinned:false,deleted:false};
