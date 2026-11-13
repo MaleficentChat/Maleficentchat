@@ -56,14 +56,15 @@ assert.match(server, /const isAgeRoom=\/\^\(teen chat\|adult chat\)\$\/i\.test\(
   "Teen Chat and Adult Chat must remain the only age-room join-grant exemptions");
 assert.match(server, /if\(!isAgeRoom&&!isStaffAccount&&!hasFeature\(u,"join_rooms"\)\)/,
   "custom rooms must continue to enforce the room-join grant");
-const systemNoticeStart = server.indexOf("function systemNotice(text, roomId=null){");
+const systemNoticeMatch = server.match(/function systemNotice\(text, roomId=null(?:, profileTarget=null)?\)\{/);
+const systemNoticeStart = systemNoticeMatch ? systemNoticeMatch.index : -1;
 const systemNoticeEnd = server.indexOf("\n}", systemNoticeStart);
 assert.ok(systemNoticeStart >= 0 && systemNoticeEnd > systemNoticeStart,
   "system notices must have a dedicated routing function");
 const systemNoticeSource = server.slice(systemNoticeStart, systemNoticeEnd);
 assert.doesNotMatch(systemNoticeSource, /main room|db\.rooms\[0\]/i,
   "site-wide notices must never fall back to the retired Main Room or the first database room");
-assert.match(systemNoticeSource, /if\(roomId\)[\s\S]*auroraRoomMessage\(text,roomId\)/,
+assert.match(systemNoticeSource, /if\(roomId\)[\s\S]*auroraRoomMessage\(text,roomId(?:,profileTarget)?\)/,
   "room-scoped notices must be delivered only to their explicitly selected room");
 assert.match(server, /roomDelivery\.emit\("message",m\)/,
   "persisted room messages must be pushed through Socket.IO");

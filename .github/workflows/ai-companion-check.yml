@@ -1,0 +1,36 @@
+name: AI Companion branch checks
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [feature/ai-companion-foundation]
+
+jobs:
+  syntax-and-security:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: mc_test
+          POSTGRES_PASSWORD: mc_test_password
+          POSTGRES_DB: mc_ai_companion_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U mc_test -d mc_ai_companion_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://mc_test:mc_test_password@localhost:5432/mc_ai_companion_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm install
+      - run: npm run check
+      - name: Test AI Companion PostgreSQL migration in isolated database
+        run: node scripts/test-ai-companion-migration.js

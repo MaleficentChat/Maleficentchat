@@ -1258,7 +1258,9 @@ function updateNav() {
   }
 
   const staffSpaceLabels={MOD:"Moderator Space",ADMIN:"Admin Space",SUPER_ADMIN:"Superadmin Space",COMMISSOR:"Commissor Space",INSTRUCTOR:"Instructor Space",COOWNER:"Coowner Space",OWNER:"Owner Space",DEVELOPER:"Developer Space"};
-  const currentStaffRank=String(state.user?.rank||"").toUpperCase();
+  const currentStaffRank=String(state.user?.rank||"").toUpperCase().replaceAll(" ","_").replaceAll("-","_");
+  const aiCompanionRanks=["PREMIUM","MODERATOR","MOD","ADMIN","SUPER_ADMIN","SUPERADMIN","COMMISSOR","CHIEF_COMMISSOR","COOWNER","ELITE","OWNER"];
+  document.querySelectorAll("#aiCompanionNav").forEach(el=>el.classList.toggle("hidden",!aiCompanionRanks.includes(currentStaffRank)));
   const canOpenStaffSpace=Object.prototype.hasOwnProperty.call(staffSpaceLabels,currentStaffRank)||canFeature("view_staff_dashboard");
   document.querySelectorAll(".staff-only").forEach(el =>
     el.classList.toggle("hidden", !canOpenStaffSpace)
@@ -1402,6 +1404,10 @@ async function renderView() {
 
     case "guide":
       return loadGuide();
+
+    case "aiCompanion":
+      window.dispatchEvent(new Event("mc:open-ai-companion"));
+      return;
 
     case "leaderboard":
       return loadLeaderboard();
