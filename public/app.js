@@ -604,19 +604,26 @@ async function acknowledgePersistentWarning(){
 }
 function closeModal() {
   if(activeWarningNotificationId)return;
-  const overlay = $("modal");
+  const overlay=$("modal");
+  const body=$("modalBody");
+  if(!overlay)return;
+  // Stop profile media immediately, then hide the dialog before doing any DOM cleanup.
+  // Deferring the heavier subtree teardown keeps the close control responsive on mobile.
+  body?.querySelectorAll('audio,video').forEach(media=>{try{media.pause();media.removeAttribute('src');media.load();}catch{}});
+  const closingContent=body?.firstElementChild||null;
   overlay.classList.remove("warning-modal");
   overlay.classList.add("hidden");
-  // Tear down file inputs, image previews and temporary controls when a dialog
-  // closes so an upload/crop preview cannot linger over the chat viewport.
-  const body = $("modalBody");
-  if (body) body.replaceChildren();
+  overlay.setAttribute("aria-hidden","true");
+  requestAnimationFrame(()=>{
+    if(overlay.classList.contains("hidden")&&body&&body.firstElementChild===closingContent)body.replaceChildren();
+  });
 }
 
 function modal(html) {
   if(activeWarningNotificationId&&!renderingPersistentWarning)return;
   $("modalBody").innerHTML = html;
   $("modal").classList.remove("hidden");
+  $("modal").setAttribute("aria-hidden","false");
 }
 
 function avatar(u, cls = "avatar") {
@@ -2389,7 +2396,16 @@ function messageHTML(message) {
     </div>`;
   }
   if(message.system){
-    return `<div class="system-message" data-mid="${esc(message.id)}"><span>✦</span><b>${esc(message.text||'')}</b><small>${fmt(message.time)}</small></div>`;
+    let systemBody=esc(message.text||'');
+    if(message.profileUserId!=null){
+      const announcement=String(message.text||'');
+      const joinPhrase=' has joined the room ';
+      const phraseAt=announcement.indexOf(joinPhrase);
+      const roomSuffix=phraseAt>=0?announcement.slice(phraseAt):'';
+      const profileName=String(message.profileDisplayName||announcement.slice(0,phraseAt>=0?phraseAt:announcement.length)||'Member');
+      systemBody=`<button class="system-message-user-link" type="button" onclick="openUser('${esc(message.profileUserId)}')" aria-label="Open ${esc(profileName)}'s profile">${esc(profileName)}</button>${esc(roomSuffix)}`;
+    }
+    return `<div class="system-message" data-mid="${esc(message.id)}"><span>✦</span><b>${systemBody}</b><small>${fmt(message.time)}</small></div>`;
   }
   const user = {
     id: message.userId,
