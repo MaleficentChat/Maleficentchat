@@ -1065,3 +1065,75 @@ html,body,#app,.main{background-color:#100c0a!important;color:#fff4e9!important}
   margin:0!important;object-fit:cover!important;object-position:center center!important;border-radius:50%!important;
 }
 .profile-modal .profile-tabs{display:flex!important;flex-wrap:nowrap!important;align-items:center!important}
+
+
+/* 2026-11-13 shared profile + view visibility repair (MC and KnightPulse). */
+/* The leaderboard view has its own display styling; hidden must win over its ID rule. */
+#viewLeaderboard.view.hidden,
+#viewLeaderboard.hidden{
+  display:none!important;
+  visibility:hidden!important;
+  pointer-events:none!important;
+}
+/* Keep the profile tab order: Scrapbook immediately before More. */
+.profile-modal .profile-tabs{display:flex!important;flex-wrap:nowrap!important;align-items:center!important}
+.profile-modal .profile-tabs .profile-tab[data-tab="scrapbook"]{order:98!important}
+.profile-modal .profile-tabs .profile-tab[data-tab="more"]{order:99!important}
+/* Centre the avatar frame and the actual image as one fixed circular unit. */
+.profile-modal .profile-banner{
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:center!important;
+}
+.profile-modal .equipped-profile-frame{
+  position:relative!important;
+  display:grid!important;
+  place-items:center!important;
+  align-self:center!important;
+  flex:0 0 116px!important;
+  width:116px!important;
+  min-width:116px!important;
+  max-width:116px!important;
+  height:116px!important;
+  min-height:116px!important;
+  max-height:116px!important;
+  margin:12px auto 13px!important;
+  padding:5px!important;
+  box-sizing:border-box!important;
+  overflow:hidden!important;
+  border-radius:50%!important;
+}
+.profile-modal .equipped-profile-frame>.big-avatar{
+  display:grid!important;
+  place-items:center!important;
+  position:relative!important;
+  flex:none!important;
+  width:100%!important;
+  min-width:0!important;
+  max-width:100%!important;
+  height:100%!important;
+  min-height:0!important;
+  max-height:100%!important;
+  margin:0!important;
+  padding:0!important;
+  box-sizing:border-box!important;
+  overflow:hidden!important;
+  border-radius:50%!important;
+}
+.profile-modal .equipped-profile-frame>.big-avatar img,
+.profile-modal .equipped-profile-frame>.big-avatar video{
+  display:block!important;
+  position:static!important;
+  flex:none!important;
+  width:100%!important;
+  min-width:0!important;
+  max-width:100%!important;
+  height:100%!important;
+  min-height:0!important;
+  max-height:100%!important;
+  margin:0!important;
+  padding:0!important;
+  object-fit:cover!important;
+  object-position:center!important;
+  border-radius:50%!important;
+}
