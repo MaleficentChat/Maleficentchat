@@ -240,7 +240,7 @@ function registerAICompanionRoutes({app,auth,current,pool}) {
       if(inTransaction){try{await client.query("ROLLBACK");}catch{}}
       if(usageCharged){try{await client.query("UPDATE ai_usage_daily SET text_units=GREATEST(0,text_units-1),updated_at=NOW() WHERE companion_id=$1 AND usage_date=CURRENT_DATE",[c.id]);}catch(refundError){console.error("AI Companion quota refund failed:",refundError?.message||refundError);}}
       console.error("AI Companion chat failed:",e?.message||e);
-      res.status(502).json({error:"Your companion could not reply right now. Please try again."});
+      const diagnostic=String(e?.message||"Provider request failed").replace(/https?:\\/\\/\\S+/g,"provider endpoint").slice(0,180); res.status(502).json({error:"AI reply failed: "+diagnostic});
     } finally{client.release();}
   });
 }
