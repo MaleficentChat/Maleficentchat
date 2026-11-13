@@ -63,12 +63,28 @@
     bodyType:["Petite","Balanced","Curvy"],
     brows:["Natural","Arched","Straight"],
     expression:["Gentle smile","Confident","Shy","Playful"],
-    outfitStyle:["Academy","Casual","Fantasy","Streetwear","Elegant","Gothic"],
+    outfitStyle:["Academy","Casual","Fantasy","Streetwear","Elegant","Gothic","Hoodie","Summer dress","Denim jacket","Punk"],
     accessory:["None","Round glasses","Star clips","Headphones","Flower pin","Crescent crown"],
     makeup:["Natural","Rosy cheeks","Winged liner"]
   };
+  function optionPreview(name,value,index) {
+    const palette=["#c58b9c","#b98b65","#8d91b9","#739b91","#d1b77c","#7c668e"];
+    const c=palette[index%palette.length], skin="#f0c8b2", hair="#423142";
+    let art="";
+    if(name==="outfitStyle") {
+      const lower=value==="Fantasy"||value==="Elegant"||value==="Summer dress"||value==="Gothic";
+      art='<path d="M21 18 Q32 11 43 18 L52 48 H12Z" fill="'+c+'" stroke="rgba(255,255,255,.5)" stroke-width="1.5"/>'+(lower?'<path d="M19 31 L45 31 L54 52 H10Z" fill="'+c+'" opacity=".8"/>':'<path d="M22 20 L15 35 M42 20 L49 35" stroke="'+c+'" stroke-width="6" stroke-linecap="round"/>');
+    } else if(name==="hairStyle") {
+      art='<path d="M15 44 Q8 5 32 5 Q56 5 49 44 L44 32 Q32 24 20 32Z" fill="'+c+'"/><ellipse cx="32" cy="25" rx="14" ry="17" fill="'+skin+'"/><path d="M18 22 Q32 4 46 22" fill="none" stroke="'+hair+'" stroke-width="4"/>';
+    } else if(name==="faceShape"||name==="eyeStyle"||name==="noseStyle"||name==="mouthStyle"||name==="brows"||name==="expression") {
+      art='<ellipse cx="32" cy="28" rx="'+(value==="Long"?11:14)+'" ry="'+(value==="Long"?20:17)+'" fill="'+skin+'" stroke="rgba(255,255,255,.5)"/><path d="M23 26 Q27 23 30 26 M35 26 Q39 23 42 26" stroke="'+hair+'" stroke-width="2" fill="none"/><circle cx="27" cy="29" r="2" fill="#493447"/><circle cx="38" cy="29" r="2" fill="#493447"/><path d="M29 39 Q32 42 36 39" stroke="#a75d69" stroke-width="2" fill="none"/>';
+    } else {
+      art='<circle cx="32" cy="27" r="16" fill="'+skin+'"/><path d="M15 27 Q13 6 32 7 Q52 7 49 27" fill="'+c+'"/><path d="M17 48 Q32 37 47 48" stroke="'+c+'" stroke-width="7" fill="none"/>';
+    }
+    return '<svg class="ai-option-preview" viewBox="0 0 64 54" aria-hidden="true">'+art+'</svg>';
+  }
   function choiceTiles(label,name,values,selected) {
-    return '<fieldset class="ai-choice-field"><legend>'+label+'</legend><div class="ai-option-tiles">'+values.map((v,i)=>'<button type="button" class="ai-option-tile '+(v===selected?'selected':'')+'" data-avatar-choice="'+name+'" data-value="'+esc(v)+'"><span class="ai-option-glyph">'+(["✦","◈","❋","◇","✧","☾","❀","♡"][i%8])+'</span><span>'+esc(v)+'</span></button>').join("")+'</div></fieldset>';
+    return '<fieldset class="ai-choice-field"><legend>'+label+'</legend><div class="ai-option-tiles">'+values.map((v,i)=>'<button type="button" class="ai-option-tile '+(v===selected?'selected':'')+'" data-avatar-choice="'+name+'" data-value="'+esc(v)+'">'+optionPreview(name,v,i)+'<span>'+esc(v)+'</span></button>').join("")+'</div></fieldset>';
   }
   function colorField(label,name,values,selected) {
     return '<div class="ai-color-field"><span>'+label+'</span><div class="ai-swatches">'+values.map(v=>'<label class="ai-swatch '+(v===selected?'selected':'')+'" style="--swatch:'+v+'"><input type="radio" name="'+name+'" value="'+v+'" '+(v===selected?'checked':'')+' aria-label="'+v+'"><i></i></label>').join("")+'<label class="ai-custom-swatch" title="Choose a custom colour"><input type="color" data-color-for="'+name+'" value="'+(/^#[0-9a-f]{6}$/i.test(selected||"")?selected:values[0])+'" aria-label="Custom '+label+'"></label></div></div>';
@@ -177,7 +193,8 @@
       // prevented every avatar choice/colour change from reaching the preview.
       form.querySelectorAll("[name]").forEach(el=>{
         if(el.name==="avatarUrl"||el.disabled)return;
-        if((el.type==="radio"||el.type==="checkbox")&&!el.checked)return;
+        if(el.type==="radio"||el.type==="checkbox"){if(!el.checked)return;}
+        if(el.type==="hidden"&&el.dataset.choiceFor&&!el.value)return;
         a[el.name]=el.value;
       });
       const stage=host.querySelector("#aiAvatarStage"); if(stage)update3DAvatar(stage,a);
@@ -187,9 +204,11 @@
     host.querySelectorAll("[data-avatar-choice]").forEach(btn=>btn.addEventListener("click",()=>{
       const form=host.querySelector(".ai-avatar-controls"); if(!form)return;
       const name=btn.dataset.avatarChoice;
-      let input=form.querySelector('input[name="'+name+'"]');
-      if(!input){input=document.createElement("input");input.type="hidden";input.name=name;form.appendChild(input);}
-      input.value=btn.dataset.value;update();
+      let input=form.querySelector('input[type="hidden"][data-choice-for="'+name+'"]');
+      if(!input){input=document.createElement("input");input.type="hidden";input.name=name;input.dataset.choiceFor=name;form.appendChild(input);}
+      input.value=btn.dataset.value;
+      form.querySelectorAll('input[type="radio"][name="'+name+'"]').forEach(r=>r.checked=false);
+      update();
     }));
     host.querySelectorAll(".ai-avatar-controls input[type=radio]").forEach(el=>el.addEventListener("change",()=>{host.querySelector('.ai-avatar-controls input[type=hidden][data-custom-for="'+el.name+'"]')?.remove();update();}));
     host.querySelectorAll(".ai-avatar-controls input[type=color][data-color-for]").forEach(el=>el.addEventListener("input",()=>{const name=el.dataset.colorFor;let hidden=host.querySelector('.ai-avatar-controls input[type=hidden][data-custom-for="'+name+'"]');if(!hidden){hidden=document.createElement("input");hidden.type="hidden";hidden.name=name;hidden.dataset.customFor=name;host.querySelector(".ai-avatar-controls").appendChild(hidden);}hidden.value=el.value;update();}));
