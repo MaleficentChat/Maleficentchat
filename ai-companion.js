@@ -1,6 +1,6 @@
 "use strict";
-const ELIGIBLE = new Set(["PREMIUM","MODERATOR","MOD","ADMIN","SUPER_ADMIN","COMMISSOR","CHIEF_COMMISSOR","COOWNER","ELITE","OWNER"]);
-const SUPERADMIN_PLUS = new Set(["SUPER_ADMIN","COMMISSOR","CHIEF_COMMISSOR","COOWNER","ELITE","OWNER"]);
+const ELIGIBLE = new Set(["PREMIUM","MODERATOR","MOD","ADMIN","SUPER_ADMIN","COMMISSOR","CHIEF_COMMISSOR","COOWNER","ELITE","OWNER","DEVELOPER"]);
+const SUPERADMIN_PLUS = new Set(["SUPER_ADMIN","COMMISSOR","CHIEF_COMMISSOR","COOWNER","ELITE","OWNER","DEVELOPER"]);
 const DEFAULT_DAILY_LIMIT = Math.max(1, Math.min(500, Number(process.env.AI_COMPANION_DAILY_TEXT_LIMIT) || 80));
 const rank = user => { const value=String(user?.rank || "").toUpperCase().replace(/[\s-]+/g,"_"); return value==="SUPERADMIN"?"SUPER_ADMIN":value; };
 const allowed = user => ELIGIBLE.has(rank(user));
@@ -128,16 +128,16 @@ function registerAICompanionRoutes({app,auth,current,pool}) {
     await pool.query("INSERT INTO ai_companion_reports(companion_id,reporter_user_id,reason,description) VALUES($1,$2,$3,$4)",[c.id,u.id,reason,description]); res.status(201).json({ok:true});
   });
   app.get("/api/ai-companion/staff/reports",auth,guard,async(req,res)=>{
-    const u=current(req); if(!["COOWNER","ELITE","OWNER"].includes(rank(u))) return res.status(403).json({error:"Coowner or higher is required."});
+    const u=current(req); if(!["COOWNER","ELITE","OWNER","DEVELOPER"].includes(rank(u))) return res.status(403).json({error:"Coowner or higher is required."});
     const r=await pool.query("SELECT r.id,r.reason,r.description,r.status,r.created_at,c.name AS companion_name,c.owner_id FROM ai_companion_reports r JOIN ai_companions c ON c.id=r.companion_id ORDER BY r.created_at DESC LIMIT 100"); res.json({reports:r.rows});
   });
   app.patch("/api/ai-companion/staff/reports/:id",auth,guard,async(req,res)=>{
-    const u=current(req); if(!["COOWNER","ELITE","OWNER"].includes(rank(u))) return res.status(403).json({error:"Coowner or higher is required."});
+    const u=current(req); if(!["COOWNER","ELITE","OWNER","DEVELOPER"].includes(rank(u))) return res.status(403).json({error:"Coowner or higher is required."});
     const status=String(req.body?.status||""); if(!["reviewing","resolved","dismissed"].includes(status)) return res.status(400).json({error:"Invalid report status."});
     const r=await pool.query("UPDATE ai_companion_reports SET status=$1,assigned_staff_id=$2,updated_at=NOW() WHERE id=$3 RETURNING id,status",[status,u.id,Number(req.params.id)]); if(!r.rowCount)return res.status(404).json({error:"Report not found."}); res.json({report:r.rows[0]});
   });
   app.post("/api/ai-companion/staff/:ownerId/disable",auth,guard,async(req,res)=>{
-    const u=current(req); if(!["COOWNER","ELITE","OWNER"].includes(rank(u))) return res.status(403).json({error:"Coowner or higher is required."});
+    const u=current(req); if(!["COOWNER","ELITE","OWNER","DEVELOPER"].includes(rank(u))) return res.status(403).json({error:"Coowner or higher is required."});
     const r=await pool.query("UPDATE ai_companions SET is_disabled=$1,disabled_reason=$2,disabled_by=$3,updated_at=NOW() WHERE owner_id=$4 RETURNING id,is_disabled",[req.body?.disabled!==false,String(req.body?.reason||"Staff moderation").slice(0,500),u.id,Number(req.params.ownerId)]);
     if(!r.rowCount)return res.status(404).json({error:"Companion not found."}); res.json({ok:true,isDisabled:r.rows[0].is_disabled});
   });
@@ -148,12 +148,12 @@ function registerAICompanionRoutes({app,auth,current,pool}) {
     if(!r.rowCount)return res.status(404).json({error:"Companion not found."}); res.json({companion:r.rows[0],memoriesPreserved:true,relationshipPreserved:true});
   });
   app.get("/api/ai-companion/staff/settings",auth,guard,async(req,res)=>{
-    const u=current(req); if(rank(u)!=="OWNER") return res.status(403).json({error:"Owner rank only."});
+    const u=current(req); if(!["OWNER","DEVELOPER"].includes(rank(u))) return res.status(403).json({error:"Owner rank only."});
     const r=await pool.query("SELECT setting_value FROM ai_settings WHERE setting_key=$1 LIMIT 1",["daily_text_limit"]);
     res.json({dailyTextLimit:Number(r.rows[0]?.setting_value?.value)||DEFAULT_DAILY_LIMIT});
   });
   app.put("/api/ai-companion/staff/settings",auth,guard,async(req,res)=>{
-    const u=current(req); if(rank(u)!=="OWNER") return res.status(403).json({error:"Owner rank only."});
+    const u=current(req); if(!["OWNER","DEVELOPER"].includes(rank(u))) return res.status(403).json({error:"Owner rank only."});
     const limit=Math.floor(Number(req.body?.dailyTextLimit)||0); if(limit<1||limit>500)return res.status(400).json({error:"Daily text limit must be between 1 and 500."});
     await pool.query("INSERT INTO ai_settings(setting_key,setting_value,updated_by,updated_at) VALUES($1,$2::jsonb,$3,NOW()) ON CONFLICT(setting_key) DO UPDATE SET setting_value=EXCLUDED.setting_value,updated_by=EXCLUDED.updated_by,updated_at=NOW()",["daily_text_limit",JSON.stringify({value:limit}),u.id]); res.json({dailyTextLimit:limit});
   });
