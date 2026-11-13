@@ -164,7 +164,9 @@ function registerAICompanionRoutes({app,auth,current,pool}) {
     const client=await pool.connect();
     try {
       await client.query("BEGIN"); const conv=await conversation(client,c.id,u.id);
-      const quota=await client.query("INSERT INTO ai_usage_daily(companion_id,usage_date,text_units) VALUES($1,CURRENT_DATE,1) ON CONFLICT(companion_id,usage_date) DO UPDATE SET text_units=ai_usage_daily.text_units+1,updated_at=NOW() WHERE ai_usage_daily.text_units<$2 RETURNING text_units",[c.id,DAILY_LIMIT]);
+      const setting=await client.query("SELECT setting_value FROM ai_settings WHERE setting_key=$1 LIMIT 1",["daily_text_limit"]);
+      const dailyLimit=Math.max(1,Math.min(500,Number(setting.rows[0]?.setting_value?.value)||DEFAULT_DAILY_LIMIT));
+      const quota=await client.query("INSERT INTO ai_usage_daily(companion_id,usage_date,text_units) VALUES($1,CURRENT_DATE,1) ON CONFLICT(companion_id,usage_date) DO UPDATE SET text_units=ai_usage_daily.text_units+1,updated_at=NOW() WHERE ai_usage_daily.text_units<$2 RETURNING text_units",[c.id,dailyLimit]);
       if(!quota.rowCount){await client.query("ROLLBACK");return res.status(429).json({error:"Your daily text allowance has been used."});}
       await client.query("INSERT INTO ai_messages(conversation_id,sender_type,message_content) VALUES($1,'owner',$2)",[conv,message]);
       const history=await client.query("SELECT sender_type,message_content FROM ai_messages WHERE conversation_id=$1 ORDER BY created_at DESC LIMIT 16",[conv]);
@@ -187,7 +189,7 @@ function registerAICompanionRoutes({app,auth,current,pool}) {
       await client.query("INSERT INTO ai_messages(conversation_id,sender_type,message_content) VALUES($1,'companion',$2)",[conv,answer]);
       await client.query("UPDATE ai_conversations SET updated_at=NOW() WHERE id=$1",[conv]);
       await client.query("UPDATE ai_companion_relationships SET progress_score=LEAST(100,progress_score+1),relationship_stage=CASE WHEN progress_score>=80 THEN 'trusted_companion' WHEN progress_score>=50 THEN 'close_friend' WHEN progress_score>=20 THEN 'friend' WHEN progress_score>=5 THEN 'acquaintance' ELSE 'stranger' END,updated_at=NOW() WHERE companion_id=$1",[c.id]);
-      await client.query("COMMIT"); res.json({reply:answer,remaining:Math.max(0,DAILY_LIMIT-Number(quota.rows[0].text_units))});
+      await client.query("COMMIT"); res.json({reply:answer,remaining:Math.max(0,dailyLimit-Number(quota.rows[0].text_units))});
     } catch(e){await client.query("ROLLBACK"); console.error("AI Companion chat failed:",e?.message||e); res.status(502).json({error:"Your companion could not reply right now."});}
     finally{client.release();}
   });
