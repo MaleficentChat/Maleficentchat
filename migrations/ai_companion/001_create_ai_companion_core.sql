@@ -153,8 +153,7 @@ CREATE TABLE ai_group_messages (
     CHECK (jsonb_typeof(message_metadata) = 'object'),
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   CHECK (
-    (sender_user_id IS NOT NULL AND sender_companion_id IS NULL) OR
-    (sender_user_id IS NULL AND sender_companion_id IS NOT NULL)
+    sender_user_id IS NULL OR sender_companion_id IS NULL
   )
 );
 
