@@ -48,3 +48,24 @@
 .ai-color-field>span{font-weight:650}
 .ai-custom-swatch:focus-within{outline:2px solid var(--accent,#c49a80);outline-offset:3px}
 @media(max-width:420px){.ai-option-tiles{grid-template-columns:repeat(2,minmax(0,1fr))}.ai-option-tile{min-height:90px}}
+
+/* Premium avatar studio presentation */
+.ai-avatar-preview-column{min-width:0}
+.ai-avatar-stage{min-height:430px;isolation:isolate;background:radial-gradient(ellipse at 50% 28%,rgba(255,224,232,.19),transparent 46%),radial-gradient(ellipse at 50% 88%,rgba(180,133,173,.17),transparent 42%),linear-gradient(155deg,#17131f 0%,#2d2034 52%,#17141f 100%);border:1px solid rgba(235,202,210,.28);box-shadow:0 18px 55px rgba(0,0,0,.28),inset 0 0 55px rgba(255,255,255,.045)}
+.ai-avatar-stage:after{content:"";position:absolute;inset:10% 12% 12%;border:1px solid rgba(244,220,224,.07);border-radius:48% 48% 24% 24%;pointer-events:none}
+.ai-3d-canvas{position:relative;z-index:1;touch-action:pan-y}
+.ai-3d-view-controls{z-index:3;position:absolute;bottom:12px;left:50%;transform:translateX(-50%);display:flex;gap:5px;padding:5px;border:1px solid rgba(255,255,255,.13);border-radius:30px;background:rgba(18,14,24,.72);backdrop-filter:blur(12px)}
+.ai-3d-view-controls button{border:0;border-radius:20px;padding:7px 12px;background:transparent;color:#f4e9ef;font-size:11px}
+.ai-3d-view-controls button.active{background:rgba(218,177,192,.24);color:#fff}
+.ai-preview-caption{font-size:9px;opacity:.8}
+.ai-editor-section{background:linear-gradient(145deg,rgba(255,255,255,.035),rgba(255,255,255,.012));border-color:rgba(220,180,190,.2);box-shadow:0 8px 22px rgba(0,0,0,.08)}
+.ai-editor-section h4{font-size:15px;color:var(--accent,#d9b0a2)}
+.ai-option-tiles{grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}
+.ai-option-tile{min-height:92px;border-radius:14px;background:rgba(10,8,15,.25);border-color:rgba(235,205,211,.16);font-size:11px}
+.ai-option-tile.selected{background:linear-gradient(145deg,rgba(197,139,156,.24),rgba(111,81,118,.2));border-color:#d5aebc;box-shadow:0 0 0 1px rgba(213,174,188,.4),0 5px 16px rgba(0,0,0,.16)}
+.ai-option-preview{height:58px;max-width:82px}
+.ai-swatch{width:34px;height:34px}
+.ai-swatch i{width:24px;height:24px}
+.ai-studio-heading{padding:4px 2px 8px}
+.ai-studio-heading h3{font-size:23px}
+@media(max-width:720px){.ai-avatar-stage{min-height:390px}.ai-option-tiles{grid-template-columns:repeat(2,minmax(0,1fr))}.ai-option-tile{min-height:96px}}
