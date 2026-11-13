@@ -1259,6 +1259,8 @@ function updateNav() {
 
   const staffSpaceLabels={MOD:"Moderator Space",ADMIN:"Admin Space",SUPER_ADMIN:"Superadmin Space",COMMISSOR:"Commissor Space",INSTRUCTOR:"Instructor Space",COOWNER:"Coowner Space",OWNER:"Owner Space",DEVELOPER:"Developer Space"};
   const currentStaffRank=String(state.user?.rank||"").toUpperCase();
+  const aiCompanionRanks=["PREMIUM","ROYAL","MOD","ADMIN","SUPER_ADMIN","COMMISSOR","INSTRUCTOR","COOWNER","OWNER","DEVELOPER"];
+  document.querySelectorAll("#aiCompanionNav").forEach(el=>el.classList.toggle("hidden",!aiCompanionRanks.includes(currentStaffRank)));
   const canOpenStaffSpace=Object.prototype.hasOwnProperty.call(staffSpaceLabels,currentStaffRank)||canFeature("view_staff_dashboard");
   document.querySelectorAll(".staff-only").forEach(el =>
     el.classList.toggle("hidden", !canOpenStaffSpace)
