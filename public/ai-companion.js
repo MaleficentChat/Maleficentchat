@@ -63,12 +63,32 @@
     bodyType:["Petite","Balanced","Curvy"],
     brows:["Natural","Arched","Straight"],
     expression:["Gentle smile","Confident","Shy","Playful"],
-    outfitStyle:["Academy","Casual","Fantasy","Streetwear","Elegant","Gothic"],
+    outfitStyle:["Academy","Casual","Fantasy","Streetwear","Elegant","Gothic","Hoodie","Summer dress","Denim jacket","Punk"],
     accessory:["None","Round glasses","Star clips","Headphones","Flower pin","Crescent crown"],
     makeup:["Natural","Rosy cheeks","Winged liner"]
   };
+  function optionPreview(name,value,index) {
+    const palette=["#c58b9c","#b98b65","#8d91b9","#739b91","#d1b77c","#7c668e"];
+    const c=palette[index%palette.length], skin="#f0c8b2", hair="#423142";
+    let art="";
+    if(name==="outfitStyle") {
+      const isDress=["Fantasy","Elegant","Summer dress","Gothic"].includes(value);
+      const body=isDress?'<path d="M20 18 Q32 12 44 18 L57 51 H7Z" fill="'+c+'" stroke="rgba(255,255,255,.5)" stroke-width="1.5"/>':'<path d="M20 17 L44 17 L51 49 H13Z" fill="'+c+'" stroke="rgba(255,255,255,.5)" stroke-width="1.5"/>';
+      const detail=value==="Academy"?'<path d="M27 18 L37 18 L32 37Z" fill="#f4e7dc"/><path d="M32 21 L29 29 L32 38 L35 29Z" fill="#493b59"/>':value==="Hoodie"?'<path d="M24 17 Q32 4 40 17" fill="none" stroke="'+c+'" stroke-width="5"/><rect x="24" y="33" width="16" height="7" rx="3" fill="rgba(0,0,0,.2)"/>':value==="Gothic"?'<path d="M18 32 L46 32 L57 51 H7Z" fill="#302536"/><path d="M32 18 L28 28 L32 33 L36 28Z" fill="#e8cf93"/>':value==="Fantasy"?'<path d="M18 19 L8 48 M46 19 L56 48" stroke="#e8cf93" stroke-width="4"/>':value==="Streetwear"||value==="Denim jacket"||value==="Punk"?'<path d="M23 20 L15 39 M41 20 L49 39" stroke="#e8cf93" stroke-width="3"/>':isDress?'<path d="M19 34 Q32 42 45 34" stroke="#f4d6df" stroke-width="3" fill="none"/>':'<path d="M25 18 L32 27 L39 18" fill="none" stroke="#f4e7dc" stroke-width="2"/>';
+      art=body+detail;
+    } else if(name==="hairStyle") {
+      const hairShape=value==="Soft bob"||value==="Bob"?"M14 30 Q10 4 32 5 Q54 4 50 30 L45 39 Q32 33 19 39Z":value==="High ponytail"||value==="Ponytail"?"M15 27 Q11 4 32 5 Q54 4 49 27 L57 42 L48 38 L44 18Z":value==="Twin tails"||value==="Twin tails"?"M15 26 Q10 4 32 5 Q54 4 49 26 L58 48 L48 42 L16 42 L6 48Z":value==="Short cut"||value==="Short"?"M15 27 Q11 4 32 5 Q54 4 49 27 L44 31 L20 31Z":value==="Side braid"?"M15 27 Q10 4 32 5 Q54 4 49 27 L53 47 L45 43 L20 39Z":"M14 29 Q8 4 32 5 Q56 4 50 29 L53 50 L44 46 L20 46 L11 50Z";
+      art=hairShape+'<ellipse cx="32" cy="26" rx="14" ry="17" fill="'+skin+'"/><path d="M18 22 Q32 4 46 22" fill="none" stroke="'+hair+'" stroke-width="4"/>';
+    } else if(["faceShape","eyeStyle","noseStyle","mouthStyle","brows","expression"].includes(name)) {
+      const rx=value==="Long"?11:value==="Round"?17:value==="Angular"||value==="Diamond"?12:14;
+      art='<ellipse cx="32" cy="28" rx="'+rx+'" ry="'+(value==="Long"?20:17)+'" fill="'+skin+'" stroke="rgba(255,255,255,.5)"/><path d="M23 26 Q27 23 30 26 M35 26 Q39 23 42 26" stroke="'+hair+'" stroke-width="2" fill="none"/><circle cx="27" cy="29" r="2" fill="#493447"/><circle cx="38" cy="29" r="2" fill="#493447"/><path d="M29 39 Q32 42 36 39" stroke="#a75d69" stroke-width="2" fill="none"/>';
+    } else {
+      art='<circle cx="32" cy="27" r="16" fill="'+skin+'"/><path d="M15 27 Q13 6 32 7 Q52 7 49 27" fill="'+c+'"/><path d="M17 48 Q32 37 47 48" stroke="'+c+'" stroke-width="7" fill="none"/>';
+    }
+    return '<svg class="ai-option-preview" viewBox="0 0 64 54" aria-hidden="true">'+art+'</svg>';
+  }
   function choiceTiles(label,name,values,selected) {
-    return '<fieldset class="ai-choice-field"><legend>'+label+'</legend><div class="ai-option-tiles">'+values.map((v,i)=>'<button type="button" class="ai-option-tile '+(v===selected?'selected':'')+'" data-avatar-choice="'+name+'" data-value="'+esc(v)+'"><span class="ai-option-glyph">'+(["✦","◈","❋","◇","✧","☾","❀","♡"][i%8])+'</span><span>'+esc(v)+'</span></button>').join("")+'</div></fieldset>';
+    return '<fieldset class="ai-choice-field"><legend>'+label+'</legend><div class="ai-option-tiles">'+values.map((v,i)=>'<button type="button" class="ai-option-tile '+(v===selected?'selected':'')+'" data-avatar-choice="'+name+'" data-value="'+esc(v)+'">'+optionPreview(name,v,i)+'<span>'+esc(v)+'</span></button>').join("")+'</div></fieldset>';
   }
   function colorField(label,name,values,selected) {
     return '<div class="ai-color-field"><span>'+label+'</span><div class="ai-swatches">'+values.map(v=>'<label class="ai-swatch '+(v===selected?'selected':'')+'" style="--swatch:'+v+'"><input type="radio" name="'+name+'" value="'+v+'" '+(v===selected?'checked':'')+' aria-label="'+v+'"><i></i></label>').join("")+'<label class="ai-custom-swatch" title="Choose a custom colour"><input type="color" data-color-for="'+name+'" value="'+(/^#[0-9a-f]{6}$/i.test(selected||"")?selected:values[0])+'" aria-label="Custom '+label+'"></label></div></div>';
@@ -131,7 +151,37 @@
     if(a.accessory==='Round glasses'){for(const x of [-.29,.29]){const ring=new THREE.Mesh(new THREE.TorusGeometry(.19,.018,10,40),dark);ring.position.set(x,-.06,.61);head.add(ring);}const bridge=new THREE.Mesh(new THREE.CylinderGeometry(.014,.014,.17,12),dark);bridge.rotation.z=Math.PI/2;bridge.position.set(0,-.06,.61);head.add(bridge);}
     if(a.accessory==='Headphones'){const band=new THREE.Mesh(new THREE.TorusGeometry(.76,.055,12,48,Math.PI),mat('#d8b8ef'));band.rotation.z=Math.PI;band.position.set(0,.22,-.03);head.add(band);sphere(head,mat('#d8b8ef'),[-.76,-.08,0],[.13,.25,.16]);sphere(head,mat('#d8b8ef'),[.76,-.08,0],[.13,.25,.16]);}
     if(a.accessory==='Star clips'||a.accessory==='Flower pin'||a.accessory==='Crescent crown'){const pinMat=mat('#f0d18e',.3,.35);sphere(head,pinMat,[.57,.48,.48],[.12,.12,.06],20);}
-    if(a.outfitStyle==='Fantasy'||a.outfitStyle==='Elegant'){sphere(group,mat('#e8cf93',.35,.3),[0,-.65,.38],[.28,.07,.04]);}
+    const trim=mat('#e8cf93',.35,.3), accent=mat('#35263d',.62);
+    const badge=(x,y,z,scale)=>sphere(group,trim,[x,y,z],scale,20);
+    const skirt=(color,top,bottom)=>{const mesh=new THREE.Mesh(new THREE.CylinderGeometry(bottom,top,.62,48,1,true),color);mesh.position.set(0,-1.67,.015);group.add(mesh);};
+    if(a.outfitStyle==='Academy'){
+      // Crisp academy jacket, collar and tie.
+      const lapelL=new THREE.Mesh(new THREE.ConeGeometry(.22,.58,4),trim);lapelL.position.set(-.19,-.84,.47);lapelL.rotation.z=-.25;group.add(lapelL);
+      const lapelR=new THREE.Mesh(new THREE.ConeGeometry(.22,.58,4),trim);lapelR.position.set(.19,-.84,.47);lapelR.rotation.z=.25;group.add(lapelR);
+      const tie=new THREE.Mesh(new THREE.ConeGeometry(.105,.62,4),accent);tie.position.set(0,-1.03,.49);tie.rotation.x=Math.PI;group.add(tie);
+      for(let i=0;i<3;i++)badge(.36,-.9-i*.17,.47,[.035,.035,.025]);
+    } else if(a.outfitStyle==='Casual'){
+      const collar=new THREE.Mesh(new THREE.TorusGeometry(.22,.07,8,24,Math.PI),trim);collar.position.set(0,-.52,.18);collar.rotation.x=Math.PI/2;group.add(collar);
+    } else if(a.outfitStyle==='Fantasy'){
+      const cape=new THREE.Mesh(new THREE.ConeGeometry(.72,1.5,4,1,true),accent);cape.position.set(0,-1.25,-.38);cape.rotation.x=Math.PI;group.add(cape);
+      skirt(trim,.38,.72);badge(0,-.68,.48,[.16,.16,.07]);
+    } else if(a.outfitStyle==='Streetwear'||a.outfitStyle==='Denim jacket'||a.outfitStyle==='Punk'){
+      const jacket=mat(a.outfitStyle==='Punk'?'#302b37':a.outfit,.55);
+      for(const x of [-.52,.52]){const panel=new THREE.Mesh(new THREE.BoxGeometry(.24,.9,.12),jacket);panel.position.set(x,-1.05,.39);panel.rotation.z=x<0?-.08:.08;group.add(panel);}
+      if(a.outfitStyle==='Punk'){for(let i=0;i<4;i++)badge(-.42+i*.28,-.72,.5,[.035,.035,.035]);}
+    } else if(a.outfitStyle==='Elegant'||a.outfitStyle==='Summer dress'){
+      skirt(outfit,.4,.78);
+      const sash=new THREE.Mesh(new THREE.BoxGeometry(.72,.1,.06),trim);sash.position.set(0,-1.15,.43);group.add(sash);
+      if(a.outfitStyle==='Elegant')badge(0,-.59,.49,[.1,.13,.05]);
+    } else if(a.outfitStyle==='Gothic'){
+      skirt(accent,.4,.82);
+      const collar=new THREE.Mesh(new THREE.ConeGeometry(.18,.36,3),trim);collar.position.set(0,-.58,.43);collar.rotation.x=Math.PI;group.add(collar);
+      for(let i=0;i<3;i++)badge(0,-1.3-i*.16,.46,[.025,.025,.02]);
+    } else if(a.outfitStyle==='Hoodie'){
+      const hood=sphere(group,outfit,[0,-.38,-.34],[.42,.46,.22],24);
+      const pocket=new THREE.Mesh(new THREE.BoxGeometry(.52,.24,.07),outfit);pocket.position.set(0,-1.45,.43);group.add(pocket);
+      const strings=mat('#eee0d8');for(const x of [-.09,.09])limb(group,strings,[x,-.72,.47],[x,-1.02,.47],.018);
+    }
     group.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;}});
     return group;
   }
@@ -167,7 +217,7 @@
     }).catch(error=>{if(stage.isConnected){const msg=stage.querySelector('.ai-3d-loading');if(msg){msg.outerHTML=avatarSvg(a,280);stage.classList.add('is-3d-fallback');}const note=stage.parentElement?.querySelector('.ai-preview-caption');if(note)note.textContent='2D PREVIEW · 3D ENGINE UNAVAILABLE';}});
   }
   function avatarEditor(a) {
-    return '<div class="ai-avatar-studio"><div class="ai-avatar-preview-column"><div class="ai-avatar-stage ai-3d-stage" id="aiAvatarStage"><div class="ai-3d-loading">Loading interactive 3D character…</div><div class="ai-3d-view-controls"><button type="button" data-3d-view="front" class="active">Front</button><button type="button" data-3d-view="side">Side</button><button type="button" data-3d-view="back">Back</button></div></div><div class="ai-preview-caption"><span>LIVE PREVIEW</span><span>✦ YOUR ORIGINAL CHARACTER</span></div></div><div class="ai-avatar-controls"><div class="ai-studio-heading"><span class="ai-step">CHARACTER CREATOR · 01</span><h3>Design every detail</h3><p>Choose a look, layer on details and watch your character change instantly.</p></div><div class="ai-editor-section"><h4>Face & features</h4>'+choiceTiles("Face shape","faceShape",avatarChoices.faceShape,a.faceShape)+choiceTiles("Eye design","eyeStyle",avatarChoices.eyeStyle,a.eyeStyle)+choiceTiles("Brows","brows",avatarChoices.brows,a.brows)+choiceTiles("Nose","noseStyle",avatarChoices.noseStyle,a.noseStyle)+choiceTiles("Mouth","mouthStyle",avatarChoices.mouthStyle,a.mouthStyle)+choiceTiles("Expression","expression",avatarChoices.expression,a.expression)+choiceTiles("Body proportions","bodyType",avatarChoices.bodyType,a.bodyType)+'</div><div class="ai-editor-section"><h4>Hair & styling</h4>'+choiceTiles("Hairstyle","hairStyle",avatarChoices.hairStyle,a.hairStyle)+colorField("Hair colour","hair",palettes.hair,a.hair)+'</div><div class="ai-editor-section"><h4>Outfit & extras</h4>'+choiceTiles("Outfit style","outfitStyle",avatarChoices.outfitStyle,a.outfitStyle)+choiceTiles("Accessory","accessory",avatarChoices.accessory,a.accessory)+choiceTiles("Makeup","makeup",avatarChoices.makeup,a.makeup)+colorField("Outfit colour","outfit",palettes.outfit,a.outfit)+'</div><div class="ai-editor-section ai-editor-colours"><h4>Finishing touches</h4>'+colorField("Skin tone","skin",palettes.skin,a.skin)+colorField("Eye colour","eyes",palettes.eyes,a.eyes)+colorField("Scene","background",palettes.bg,a.background)+'</div><label class="ai-image-url">Or use your own avatar image (HTTPS URL)<input name="avatarUrl" type="url" maxlength="1000" placeholder="https://…"></label></div></div>';
+    return '<div class="ai-avatar-studio"><div class="ai-avatar-preview-column"><div class="ai-avatar-stage ai-3d-stage" id="aiAvatarStage"><div class="ai-3d-loading">Loading interactive 3D character…</div><div class="ai-3d-view-controls"><button type="button" data-3d-view="front" class="active">Front</button><button type="button" data-3d-view="side">Side</button><button type="button" data-3d-view="back">Back</button></div></div><div class="ai-preview-caption"><span>LIVE PREVIEW</span><span>✦ YOUR ORIGINAL CHARACTER</span></div></div><div class="ai-avatar-controls"><div class="ai-studio-heading"><span class="ai-step">CHARACTER CREATOR · 01</span><h3>Design every detail</h3><p>Choose a look, layer on details and watch your character change instantly.</p></div><div class="ai-editor-section"><h4>Face & features</h4>'+choiceTiles("Face shape","faceShape",avatarChoices.faceShape,a.faceShape)+choiceTiles("Eye design","eyeStyle",avatarChoices.eyeStyle,a.eyeStyle)+choiceTiles("Brows","brows",avatarChoices.brows,a.brows)+choiceTiles("Nose","noseStyle",avatarChoices.noseStyle,a.noseStyle)+choiceTiles("Mouth","mouthStyle",avatarChoices.mouthStyle,a.mouthStyle)+choiceTiles("Expression","expression",avatarChoices.expression,a.expression)+choiceTiles("Body proportions","bodyType",avatarChoices.bodyType,a.bodyType)+'</div><div class="ai-editor-section"><h4>Hair & styling</h4>'+choiceTiles("Hairstyle","hairStyle",avatarChoices.hairStyle,a.hairStyle)+colorField("Hair colour","hair",palettes.hair,a.hair)+'</div><div class="ai-editor-section"><h4>Clothing & accessories</h4>'+choiceTiles("Outfit style","outfitStyle",avatarChoices.outfitStyle,a.outfitStyle)+choiceTiles("Accessory","accessory",avatarChoices.accessory,a.accessory)+choiceTiles("Makeup","makeup",avatarChoices.makeup,a.makeup)+colorField("Outfit colour","outfit",palettes.outfit,a.outfit)+'</div><div class="ai-editor-section ai-editor-colours"><h4>Finishing touches</h4>'+colorField("Skin tone","skin",palettes.skin,a.skin)+colorField("Eye colour","eyes",palettes.eyes,a.eyes)+colorField("Scene","background",palettes.bg,a.background)+'</div><label class="ai-image-url">Or use your own avatar image (HTTPS URL)<input name="avatarUrl" type="url" maxlength="1000" placeholder="https://…"></label></div></div>';
   }
   function bindAvatarEditor(host, initial) {
     const update=()=>{
@@ -177,7 +227,8 @@
       // prevented every avatar choice/colour change from reaching the preview.
       form.querySelectorAll("[name]").forEach(el=>{
         if(el.name==="avatarUrl"||el.disabled)return;
-        if((el.type==="radio"||el.type==="checkbox")&&!el.checked)return;
+        if(el.type==="radio"||el.type==="checkbox"){if(!el.checked)return;}
+        if(el.type==="hidden"&&el.dataset.choiceFor&&!el.value)return;
         a[el.name]=el.value;
       });
       const stage=host.querySelector("#aiAvatarStage"); if(stage)update3DAvatar(stage,a);
@@ -187,9 +238,11 @@
     host.querySelectorAll("[data-avatar-choice]").forEach(btn=>btn.addEventListener("click",()=>{
       const form=host.querySelector(".ai-avatar-controls"); if(!form)return;
       const name=btn.dataset.avatarChoice;
-      let input=form.querySelector('input[name="'+name+'"]');
-      if(!input){input=document.createElement("input");input.type="hidden";input.name=name;form.appendChild(input);}
-      input.value=btn.dataset.value;update();
+      let input=form.querySelector('input[type="hidden"][data-choice-for="'+name+'"]');
+      if(!input){input=document.createElement("input");input.type="hidden";input.name=name;input.dataset.choiceFor=name;form.appendChild(input);}
+      input.value=btn.dataset.value;
+      form.querySelectorAll('input[type="radio"][name="'+name+'"]').forEach(r=>r.checked=false);
+      update();
     }));
     host.querySelectorAll(".ai-avatar-controls input[type=radio]").forEach(el=>el.addEventListener("change",()=>{host.querySelector('.ai-avatar-controls input[type=hidden][data-custom-for="'+el.name+'"]')?.remove();update();}));
     host.querySelectorAll(".ai-avatar-controls input[type=color][data-color-for]").forEach(el=>el.addEventListener("input",()=>{const name=el.dataset.colorFor;let hidden=host.querySelector('.ai-avatar-controls input[type=hidden][data-custom-for="'+name+'"]');if(!hidden){hidden=document.createElement("input");hidden.type="hidden";hidden.name=name;hidden.dataset.customFor=name;host.querySelector(".ai-avatar-controls").appendChild(hidden);}hidden.value=el.value;update();}));
