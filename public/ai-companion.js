@@ -86,6 +86,14 @@
     const cylinder=(parent,m,pos,rt,rb,h)=>{const mesh=new THREE.Mesh(new THREE.CylinderGeometry(rt,rb,h,40),m);mesh.position.set(...pos);parent.add(mesh);return mesh;};
     const torso=cylinder(group,outfit,[0,-1.12,0],.68,.84,1.25);torso.scale.x=1.06;
     sphere(group,outfit,[-.48,-.72,0],[.42,.38,.38]);sphere(group,outfit,[.48,-.72,0],[.42,.38,.38]);
+    const limb=(parent,material,start,end,radius)=>{const a=new THREE.Vector3(...start),b=new THREE.Vector3(...end),delta=b.clone().sub(a);const mesh=new THREE.Mesh(new THREE.CylinderGeometry(radius*.78,radius,delta.length(),24),material);mesh.position.copy(a).add(b).multiplyScalar(.5);mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),delta.normalize());parent.add(mesh);return mesh;};
+    const sleeve=mat(a.outfit,.68), shoe=mat('#29242d',.52), skinDetail=skin;
+    // Full-body silhouette: shoulders, articulated-looking arms, hands, legs and shoes.
+    limb(group,sleeve,[-.52,-.7,0],[-.82,-1.42,.02],.19);limb(group,sleeve,[.52,-.7,0],[.82,-1.42,.02],.19);
+    sphere(group,skinDetail,[-.82,-1.52,.03],[.14,.18,.14]);sphere(group,skinDetail,[.82,-1.52,.03],[.14,.18,.14]);
+    limb(group,mat(a.outfit,.78),[-.34,-1.62,0],[-.36,-2.38,0],.22);limb(group,mat(a.outfit,.78),[.34,-1.62,0],[.36,-2.38,0],.22);
+    sphere(group,shoe,[-.36,-2.43,.08],[.25,.15,.38]);sphere(group,shoe,[.36,-2.43,.08],[.25,.15,.38]);
+    sphere(group,mat('#fff',.8),[-.36,-2.39,.34],[.16,.055,.06]);sphere(group,mat('#fff',.8),[.36,-2.39,.34],[.16,.055,.06]);
     cylinder(group,skin,[0,-.34,0],.23,.25,.48);
     const head=new THREE.Group();group.add(head);head.position.set(0,.62,0);
     const face=sphere(head,skin,[0,0,0],a.faceShape==='Round'?[.76,.84,.58]:a.faceShape==='Heart'?[.72,.84,.57]:a.faceShape==='Angular'?[.72,.86,.59]:[.72,.88,.58],48);
@@ -117,19 +125,21 @@
       let state=threeScenes.get(stage);
       if(!state){
         const scene=new THREE.Scene();scene.background=null;
-        const camera=new THREE.PerspectiveCamera(32,1,.1,100);camera.position.set(0,.1,7.4);
+        const camera=new THREE.PerspectiveCamera(32,1,.1,100);camera.position.set(0,-.35,8.35);
         const renderer=new THREE.WebGLRenderer({antialias:true,alpha:true});renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,1.6));renderer.setSize(stage.clientWidth||320,stage.clientHeight||370);renderer.outputColorSpace=THREE.SRGBColorSpace;
         stage.querySelector('.ai-3d-loading')?.remove();stage.prepend(renderer.domElement);renderer.domElement.className='ai-3d-canvas';
         scene.add(new THREE.HemisphereLight('#fff0e8','#392c48',2.0));
         const key=new THREE.DirectionalLight('#fff4e9',2.5);key.position.set(3,5,6);scene.add(key);
         const rim=new THREE.DirectionalLight('#d8b8ff',1.5);rim.position.set(-4,2,-3);scene.add(rim);
-        const floor=new THREE.Mesh(new THREE.CircleGeometry(1.35,48),new THREE.MeshBasicMaterial({color:a.background,transparent:true,opacity:.55}));floor.rotation.x=-Math.PI/2;floor.position.set(0,-1.83,0);scene.add(floor);
+        const floor=new THREE.Mesh(new THREE.CircleGeometry(1.35,48),new THREE.MeshBasicMaterial({color:a.background,transparent:true,opacity:.55}));floor.rotation.x=-Math.PI/2;floor.position.set(0,-2.58,0);scene.add(floor);
         state={scene,camera,renderer,group:null,rotation:0,drag:false,lastX:0,resize:null};threeScenes.set(stage,state);
         const resize=()=>{if(!stage.isConnected)return;const w=Math.max(1,stage.clientWidth),h=Math.max(1,stage.clientHeight);renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();};
         if(typeof ResizeObserver!=='undefined'){state.resize=new ResizeObserver(resize);state.resize.observe(stage);}else window.addEventListener('resize',resize);
-        renderer.domElement.addEventListener('pointerdown',e=>{state.drag=true;state.lastX=e.clientX;renderer.domElement.setPointerCapture?.(e.pointerId);});
-        renderer.domElement.addEventListener('pointermove',e=>{if(!state.drag)return;state.rotation+=(e.clientX-state.lastX)*.012;state.lastX=e.clientX;if(state.group)state.group.rotation.y=state.rotation;});
-        const end=()=>{state.drag=false;};renderer.domElement.addEventListener('pointerup',end);renderer.domElement.addEventListener('pointercancel',end);
+        const activePointers=new Map();let pinchStart=0,pinchZoom=0;
+        renderer.domElement.addEventListener('wheel',e=>{e.preventDefault();camera.position.z=Math.max(5.4,Math.min(11.5,camera.position.z+e.deltaY*.008));},{passive:false});
+        renderer.domElement.addEventListener('pointerdown',e=>{activePointers.set(e.pointerId,{x:e.clientX,y:e.clientY});renderer.domElement.setPointerCapture?.(e.pointerId);if(activePointers.size===1){state.drag=true;state.lastX=e.clientX;}if(activePointers.size===2){const p=[...activePointers.values()];pinchStart=Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y);pinchZoom=camera.position.z;state.drag=false;}});
+        renderer.domElement.addEventListener('pointermove',e=>{if(!activePointers.has(e.pointerId))return;const previous=activePointers.get(e.pointerId);activePointers.set(e.pointerId,{x:e.clientX,y:e.clientY});if(activePointers.size===2){const p=[...activePointers.values()],distance=Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y);if(pinchStart>0)camera.position.z=Math.max(5.4,Math.min(11.5,pinchZoom*pinchStart/Math.max(1,distance)));return;}if(state.drag){state.rotation+=(e.clientX-previous.x)*.012;state.lastX=e.clientX;if(state.group)state.group.rotation.y=state.rotation;}});
+        const end=e=>{activePointers.delete(e.pointerId);state.drag=activePointers.size===1;if(state.drag)state.lastX=[...activePointers.values()][0].x;else pinchStart=0;};renderer.domElement.addEventListener('pointerup',end);renderer.domElement.addEventListener('pointercancel',end);
         const animate=()=>{if(!stage.isConnected){state.resize?.disconnect();renderer.dispose();threeScenes.delete(stage);return;}state.frame=requestAnimationFrame(animate);renderer.render(scene,camera);};animate();resize();
         stage.querySelectorAll('[data-3d-view]').forEach(btn=>btn.addEventListener('click',()=>{const view=btn.dataset['3dView'];state.rotation=view==='side'?Math.PI/2:view==='back'?Math.PI:0;if(state.group)state.group.rotation.y=state.rotation;stage.querySelectorAll('[data-3d-view]').forEach(x=>x.classList.toggle('active',x===btn));}));
       }
