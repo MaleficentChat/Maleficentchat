@@ -7749,3 +7749,40 @@ body.parallel-embed.parallel-embed-error:after{content:"This room could not be o
 /* Clickable member names in Aurora room-join announcements. */
 .system-message-user-link{display:inline;padding:0;border:0;background:transparent;color:var(--accent,#c9a5ff);font:inherit;font-weight:800;text-decoration:underline;text-decoration-color:currentColor;text-underline-offset:2px;cursor:pointer;}
 .system-message-user-link:hover,.system-message-user-link:focus-visible{color:var(--text,#fff);outline:none;text-shadow:0 0 10px currentColor;}
+
+
+/* Keep the profile modal's real close control aligned to the modal corner.
+   The profile action menu sits just to its left so the two controls never overlap. */
+#modal .modal-card:has(#modalBody .profile-modal) {
+  position:relative!important;
+}
+#modal .modal-card:has(#modalBody .profile-modal) > .modal-close {
+  position:absolute!important;
+  top:10px!important;
+  right:10px!important;
+  left:auto!important;
+  width:40px!important;
+  height:40px!important;
+  min-width:40px!important;
+  min-height:40px!important;
+  display:grid!important;
+  place-items:center!important;
+  padding:0!important;
+  margin:0!important;
+  border:1px solid rgba(255,255,255,.28)!important;
+  border-radius:50%!important;
+  background:rgba(15,10,8,.78)!important;
+  color:#fff!important;
+  font-size:27px!important;
+  line-height:1!important;
+  z-index:100!important;
+  cursor:pointer!important;
+  transform:none!important;
+}
+#modalBody .profile-hamburger {
+  right:58px!important;
+}
+#modal .modal-card:has(#modalBody .profile-modal) > .modal-close:hover {
+  background:rgba(45,29,22,.98)!important;
+  border-color:rgba(255,255,255,.55)!important;
+}
