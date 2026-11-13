@@ -5513,19 +5513,10 @@ async function loadStaff() {
     if(!["COOWNER","OWNER","DEVELOPER"].includes(String(state.user?.rank||"").toUpperCase()))staffRoot?.querySelector("#systemNotificationsDropdown")?.remove();
     const developerNetworkConsole=$("developerNetworkConsole");
     if(developerNetworkConsole&&!(String(state.user?.rank||"").toUpperCase()==="DEVELOPER"&&String(state.user?.username||"")==="Maleficent"))developerNetworkConsole.remove();
-    staffRoot?.querySelector("#staffGuideManagementDropdown")?.remove();
     staffRoot?.querySelector("#staffFilterManagementDropdown")?.remove();
     const canManageGuidesAndFilters=["COMMISSOR","INSTRUCTOR","COOWNER","OWNER","DEVELOPER"].includes(staffRank);
-    const canManageGuides=["COOWNER","OWNER","DEVELOPER"].includes(staffRank);
     if(canManageGuidesAndFilters&&staffRoot){
       const clearedSection=staffRoot.querySelector(".cleared-room-evidence-card")?.closest("details");
-      if(canManageGuides){
-        const guideDropdown=document.createElement("details");
-        guideDropdown.id="staffGuideManagementDropdown";guideDropdown.className="staff-compact-dropdown filter-words-details";
-        guideDropdown.innerHTML='<summary>📘 Guide Management <span class="muted">— click to open</span></summary><div class="owner-filter-management-content"><div id="staffGuideManagement" class="stack"></div></div>';
-        if(clearedSection)staffRoot.insertBefore(guideDropdown,clearedSection);else staffRoot.append(guideDropdown);
-        loadOwnerGuideManagement();
-      }
       const filterDropdown=document.createElement("details");
       filterDropdown.id="staffFilterManagementDropdown";filterDropdown.className="staff-compact-dropdown filter-words-details";
       filterDropdown.innerHTML='<summary>🧩 Filter Management <span class="muted">— click to open</span></summary><div class="owner-filter-management-content" id="staffFilterManagement"></div>';
@@ -5539,7 +5530,6 @@ async function loadStaff() {
       [staffRoot?.querySelector("#systemNotificationsDropdown"),"staff-order-2"],
       [staffRoot?.querySelector(".ip-inspection-card")?.closest("details"),"staff-order-3"],
       [filterCard,"staff-order-4"],
-      [staffRoot?.querySelector("#staffGuideManagementDropdown"),"staff-order-5"],
       [staffRoot?.querySelector("#staffFilterManagementDropdown"),"staff-order-6"],
       [staffRoot?.querySelector(".cleared-room-evidence-card")?.closest("details"),"staff-order-7"],
       [staffRoot?.querySelector(".under-construction-admin-card")?.closest("details"),"staff-order-8"],
@@ -5998,21 +5988,6 @@ async function loadGuide(){
     host.innerHTML='<div class="card guide-intro"><h3>'+esc(rankIcon[state.user?.rank]||"📘")+' '+esc(state.user?.rank||"MEMBER")+' Guide</h3><p class="muted">Guidance published for your current rank.</p></div>'+
       (entries.length?entries.map(item=>'<article class="card guide-entry"><h3>'+esc(item.title||"Guide")+'</h3><div class="guide-entry-content">'+esc(item.content||"").replace(/\n/g,"<br>")+'</div></article>').join(""):'<div class="card"><p class="muted">No guide content has been published for your rank yet.</p></div>');
   }catch(e){host.innerHTML='<div class="card"><p class="muted">Could not load the guide: '+esc(e.message||"Request failed")+'</p></div>';}
-}
-async function loadOwnerGuideManagement(){
-  const host=$("staffGuideManagement");if(!host)return;
-  const guideRanks=["MEMBER","VIP","PREMIUM","ROYAL","MOD","ADMIN","SUPER_ADMIN","COMMISSOR","INSTRUCTOR","COOWNER","OWNER","DEVELOPER"];
-  let selectedRank="MEMBER", guides=[];
-  const render=()=>{
-    const options=guideRanks.map(r=>'<option value="'+r+'" '+(r===selectedRank?"selected":"")+'>'+esc(rankIcon[r]||"📘")+' '+r+'</option>').join("");
-    host.innerHTML='<div class="card"><h3>📘 Guide Management</h3><p class="muted">Choose the exact rank that should see the content. Members only receive guides assigned to their own current rank.</p><label for="ownerGuideRank">Target rank</label><select id="ownerGuideRank">'+options+'</select><form id="ownerGuideForm" class="stack"><label for="ownerGuideTitle">Guide title</label><input id="ownerGuideTitle" maxlength="100" placeholder="e.g. Getting started" required><label for="ownerGuideBody">Guide content</label><textarea id="ownerGuideBody" rows="6" maxlength="12000" placeholder="Write the instructions for this rank…" required></textarea><div class="toolbar"><button class="primary" type="submit">＋ Add guide content</button></div></form><div class="guide-management-list">'+(guides.length?guides.map((g,i)=>'<article class="guide-management-row"><div><b>'+esc(g.title)+'</b><p class="muted">'+esc((g.content||"").slice(0,180))+(String(g.content||"").length>180?"…":"")+'</p></div><div class="toolbar"><button class="mini" type="button" data-guide-edit="'+i+'">Edit</button><button class="mini danger" type="button" data-guide-delete="'+esc(g.id)+'">Delete</button></div></article>').join(""):'<p class="muted">No guide entries for this rank yet.</p>')+'</div></div>';
-    $("ownerGuideRank").onchange=async e=>{selectedRank=e.target.value;await loadRank();render();};
-    $("ownerGuideForm").onsubmit=async e=>{e.preventDefault();const title=$("ownerGuideTitle").value.trim(),content=$("ownerGuideBody").value.trim();if(!title||!content){toast("Enter a title and guide content.");return;}try{const out=await api("/api/owner/guide",{method:"POST",body:JSON.stringify({rank:selectedRank,title,content})});guides=out.guides||[];render();toast("Guide content added for "+selectedRank+".");}catch(err){toast(err.message||"Could not add guide content.");}};
-    host.querySelectorAll("[data-guide-delete]").forEach(btn=>btn.onclick=async()=>{if(!confirm("Delete this guide entry?"))return;try{const out=await api("/api/owner/guide/"+encodeURIComponent(selectedRank)+"/"+encodeURIComponent(btn.dataset.guideDelete),{method:"DELETE"});guides=out.guides||[];render();toast("Guide entry deleted.");}catch(err){toast(err.message||"Could not delete guide entry.");}});
-    host.querySelectorAll("[data-guide-edit]").forEach(btn=>btn.onclick=()=>{const g=guides[Number(btn.dataset.guideEdit)];if(!g)return;modal('<h2>✏️ Edit guide content</h2><label>Title<input id="editGuideTitle" maxlength="100" value="'+esc(g.title)+'"></label><label>Content<textarea id="editGuideBody" rows="7" maxlength="12000">'+esc(g.content)+'</textarea></label><div class="toolbar"><button class="primary" id="saveEditedGuide">Save changes</button><button class="mini" type="button" onclick="closeModal()">Cancel</button></div>');$("saveEditedGuide").onclick=async()=>{const title=$("editGuideTitle").value.trim(),content=$("editGuideBody").value.trim();if(!title||!content){toast("Enter a title and content.");return;}try{const out=await api("/api/owner/guide/"+encodeURIComponent(selectedRank)+"/"+encodeURIComponent(g.id),{method:"PUT",body:JSON.stringify({title,content})});guides=out.guides||[];closeModal();render();toast("Guide entry updated.");}catch(err){toast(err.message||"Could not update guide entry.");}};});
-  };
-  const loadRank=async()=>{try{const out=await api("/api/owner/guide/"+encodeURIComponent(selectedRank));guides=out.guides||[];}catch(e){guides=[];toast(e.message||"Could not load guide management.");}};
-  await loadRank();render();
 }
 
 async function loadCommunityRules(){
@@ -6944,8 +6919,7 @@ document.addEventListener("click", async event => {
     const actions = [
       ["pinned","📌 Pinned messages"],
       ["youtube","▶️ YouTube"],
-      ["invite","🔐 Room code"],
-      ["theme","🎨 Site Theme"]
+      ["invite","🔐 Room code"]
     ];
     try { const announcementRank=String(state.user?.rank||"").toUpperCase().replace(/[\s_-]/g,""); if ((rankOrder[announcementRank]??-1)>=(rankOrder.COMMISSOR??7)) actions.unshift(["announcement","📢 Room announcement"]); } catch (_) {}
     try { if (canFeature("clear_room")) actions.unshift(["clear","🧹 Clear messages"]); } catch (_) {}
@@ -6957,7 +6931,6 @@ document.addEventListener("click", async event => {
         actions.push(["presence-settings","⚙️ Presence mode settings"]);
       }
     } catch (_) {}
-    try { if (canUsePartyMode()) actions.push(["party","🎉 Party Mode"]); } catch (_) {}
 
     const panel = document.getElementById("modal");
     const body = document.getElementById("modalBody");
@@ -6979,9 +6952,7 @@ document.addEventListener("click", async event => {
           else if (action==="pinned") showPinnedMessages();
           else if (action==="youtube") openYoutubePanel();
           else if (action==="invite") showInvite();
-          else if (action==="theme") openRoomThemePicker();
           else if (action==="presence-settings") openPresenceModes();
-          else if (action==="party") setPartyMode(!isPartyModeActive());
         } catch (error) {
           console.error("Room menu action failed:", error);
           toast("That room option could not be opened. Please try again.");
