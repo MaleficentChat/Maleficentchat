@@ -90,7 +90,7 @@
     }));
   }
   function readAppearance(form, initial) {
-    const a={...initial}; new FormData(form).forEach((v,k)=>{if(k!=="avatarUrl")a[k]=v;}); return a;
+    const a={...initial}; const allowed=["hairStyle","faceShape","eyeStyle","brows","expression","outfitStyle","accessory","makeup","skin","hair","eyes","outfit","background"]; new FormData(form).forEach((v,k)=>{if(allowed.includes(k))a[k]=v;}); return a;
   }
   function create() {
     const a=defaultAppearance();
