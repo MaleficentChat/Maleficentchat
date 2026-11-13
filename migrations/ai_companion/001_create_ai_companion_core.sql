@@ -29,6 +29,9 @@ CREATE TABLE ai_companions (
   status VARCHAR(12) NOT NULL DEFAULT 'offline'
     CHECK (status IN ('online', 'offline', 'busy', 'away')),
   proactive_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+  is_disabled BOOLEAN NOT NULL DEFAULT FALSE,
+  disabled_reason TEXT NOT NULL DEFAULT '',
+  disabled_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
   quiet_hours JSONB NOT NULL DEFAULT '{}'::jsonb
     CHECK (jsonb_typeof(quiet_hours) = 'object'),
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
