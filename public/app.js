@@ -840,7 +840,7 @@ function startRoomMessageBackgroundSync(){
     try{await refreshRoomMessageList(roomId);}
     catch(error){console.warn("Background room-message sync failed:",error?.message||error);}
     finally{roomMessageSyncInFlight=false;}
-  },2000);
+  },5000);
 }
 
 async function refreshActiveDMMessageList(peerId){
