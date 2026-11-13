@@ -64,7 +64,7 @@ assert.ok(systemNoticeStart >= 0 && systemNoticeEnd > systemNoticeStart,
 const systemNoticeSource = server.slice(systemNoticeStart, systemNoticeEnd);
 assert.doesNotMatch(systemNoticeSource, /main room|db\.rooms\[0\]/i,
   "site-wide notices must never fall back to the retired Main Room or the first database room");
-assert.match(systemNoticeSource, /if\(roomId\)[\s\S]*auroraRoomMessage\(text,roomId\)/,
+assert.match(systemNoticeSource, /if\(roomId\)[\s\S]*auroraRoomMessage\(text,roomId(?:,profileTarget)?\)/,
   "room-scoped notices must be delivered only to their explicitly selected room");
 assert.match(server, /roomDelivery\.emit\("message",m\)/,
   "persisted room messages must be pushed through Socket.IO");
