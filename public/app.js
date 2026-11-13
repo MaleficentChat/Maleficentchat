@@ -1403,6 +1403,10 @@ async function renderView() {
     case "guide":
       return loadGuide();
 
+    case "aiCompanion":
+      window.dispatchEvent(new Event("mc:open-ai-companion"));
+      return;
+
     case "leaderboard":
       return loadLeaderboard();
 
