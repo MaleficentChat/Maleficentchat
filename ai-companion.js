@@ -1,5 +1,6 @@
 "use strict";
 const ELIGIBLE = new Set(["PREMIUM","MODERATOR","MOD","ADMIN","SUPER_ADMIN","COMMISSOR","CHIEF_COMMISSOR","COOWNER","ELITE","OWNER"]);
+const SUPERADMIN_PLUS = new Set(["SUPER_ADMIN","COMMISSOR","CHIEF_COMMISSOR","COOWNER","ELITE","OWNER"]);
 const DEFAULT_DAILY_LIMIT = Math.max(1, Math.min(500, Number(process.env.AI_COMPANION_DAILY_TEXT_LIMIT) || 80));
 const rank = user => String(user?.rank || "").toUpperCase().replace(/[\s-]+/g,"_");
 const allowed = user => ELIGIBLE.has(rank(user));
@@ -202,7 +203,7 @@ function registerAICompanionRoutes({app,auth,current,pool}) {
       if(!answer) throw new Error("Empty AI response.");
       await client.query("INSERT INTO ai_messages(conversation_id,sender_type,message_content) VALUES($1,'companion',$2)",[conv,answer]);
       await client.query("UPDATE ai_conversations SET updated_at=NOW() WHERE id=$1",[conv]);
-      await client.query("UPDATE ai_companion_relationships SET progress_score=LEAST(100,progress_score+1),relationship_stage=CASE WHEN progress_score>=80 THEN 'trusted_companion' WHEN progress_score>=50 THEN 'close_friend' WHEN progress_score>=20 THEN 'friend' WHEN progress_score>=5 THEN 'acquaintance' ELSE 'stranger' END,updated_at=NOW() WHERE companion_id=$1",[c.id]);
+      // Relationship progression is intentionally not inferred from message count.
       await client.query("COMMIT"); res.json({reply:answer,remaining:Math.max(0,dailyLimit-Number(quota.rows[0].text_units))});
     } catch(e){await client.query("ROLLBACK"); console.error("AI Companion chat failed:",e?.message||e); res.status(502).json({error:"Your companion could not reply right now."});}
     finally{client.release();}
