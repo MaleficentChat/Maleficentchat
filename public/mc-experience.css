@@ -1042,5 +1042,26 @@ html,body,#app,.main{background-color:#100c0a!important;color:#fff4e9!important}
   font-size:clamp(18px,4.8vw,27px)!important;line-height:1.2!important;text-align:center!important;
   overflow-wrap:anywhere!important;
 }
-/* Scrapbook is retired from the profile UI; existing saved data is left intact. */
-.profile-tab[data-tab="scrapbook"],.scrapbook,.scrapbook-settings,.scrapbook-note-form,.scrapbook-entry-grid{display:none!important}
+/* Scrapbook remains available; keep its tab before More in profile navigation. */
+
+
+/* 2026-11-13: keep leaderboard confined to its own view and align profile avatars. */
+#viewLeaderboard.hidden{display:none!important}
+.profile-modal .profile-banner{display:flex!important;flex-direction:column!important;align-items:center!important}
+.profile-modal .equipped-profile-frame{
+  display:grid!important;place-items:center!important;align-self:center!important;
+  width:116px!important;height:116px!important;min-width:116px!important;min-height:116px!important;
+  flex:0 0 116px!important;margin:12px auto 13px!important;padding:5px!important;
+  box-sizing:border-box!important;overflow:hidden!important;border-radius:50%!important;
+}
+.profile-modal .equipped-profile-frame>.big-avatar{
+  display:grid!important;place-items:center!important;width:100%!important;height:100%!important;
+  min-width:0!important;min-height:0!important;margin:0!important;padding:0!important;
+  box-sizing:border-box!important;overflow:hidden!important;border-radius:50%!important;
+}
+.profile-modal .equipped-profile-frame>.big-avatar img,
+.profile-modal .equipped-profile-frame>.big-avatar video{
+  display:block!important;width:100%!important;height:100%!important;min-width:0!important;min-height:0!important;
+  margin:0!important;object-fit:cover!important;object-position:center center!important;border-radius:50%!important;
+}
+.profile-modal .profile-tabs{display:flex!important;flex-wrap:nowrap!important;align-items:center!important}
