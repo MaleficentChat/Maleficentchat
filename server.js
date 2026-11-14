@@ -5542,29 +5542,72 @@ const wallFeedFields = "SELECT w.*,u.username,u.avatar,u.rank,"+
   "(SELECT COUNT(*)::int FROM wall_comments wc WHERE wc.post_id=w.id) AS comment_count,";
 const wallFeedFrom = " FROM wall_posts w LEFT JOIN users u ON u.id=w.user_id ";
 const wallFeedOrder = " ORDER BY CASE WHEN w.status='pinned' THEN 0 ELSE 1 END,w.featured DESC,w.created_at DESC LIMIT 100";
+let closeFriendsTableReady=null;
+async function ensureCloseFriendsTable(){
+  if(!closeFriendsTableReady)closeFriendsTableReady=(async()=>{
+    await pool.query("ALTER TABLE wall_posts ADD COLUMN IF NOT EXISTS audience TEXT NOT NULL DEFAULT 'friends'");
+    await pool.query("CREATE TABLE IF NOT EXISTS wall_close_friends(owner_id BIGINT NOT NULL,friend_id BIGINT NOT NULL,created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),PRIMARY KEY(owner_id,friend_id),CHECK(owner_id<>friend_id))");
+  })().catch(error=>{closeFriendsTableReady=null;throw error;});
+  await closeFriendsTableReady;
+}
+async function closeFriendIds(userId){
+  await ensureCloseFriendsTable();
+  const {rows}=await pool.query('SELECT friend_id FROM wall_close_friends WHERE owner_id=$1',[Number(userId)]);
+  return rows.map(row=>Number(row.friend_id));
+}
+async function canViewWallPost(postId,userId){
+  await ensureCloseFriendsTable();
+  const {rows}=await pool.query('SELECT user_id,audience FROM wall_posts WHERE id=$1',[postId]);
+  if(!rows.length)return false;
+  const authorId=Number(rows[0].user_id),viewerId=Number(userId);
+  if(authorId===viewerId)return true;
+  if(!acceptedWallFriendIds(viewerId).includes(authorId))return false;
+  if(String(rows[0].audience||'friends')!=='close_friends')return true;
+  const {rowCount}=await pool.query('SELECT 1 FROM wall_close_friends WHERE owner_id=$1 AND friend_id=$2',[authorId,viewerId]);
+  return rowCount>0;
+}
+app.get('/api/close-friends',auth,async(req,res)=>{
+  await ensureCloseFriendsTable();
+  const u=current(req),accepted=acceptedWallFriendIds(u.id);
+  if(!accepted.length)return res.json({friends:[]});
+  const selected=await closeFriendIds(u.id);
+  const {rows}=await pool.query('SELECT id,username,avatar,rank FROM users WHERE id=ANY($1::bigint[]) ORDER BY username',[accepted]);
+  res.json({friends:rows.map(friend=>({...friend,isCloseFriend:selected.includes(Number(friend.id))}))});
+});
+app.put('/api/close-friends',auth,async(req,res)=>{
+  await ensureCloseFriendsTable();
+  const u=current(req),accepted=new Set(acceptedWallFriendIds(u.id));
+  const requested=Array.isArray(req.body?.friendIds)?[...new Set(req.body.friendIds.map(Number))]:[];
+  if(requested.some(id=>!Number.isSafeInteger(id)||!accepted.has(id)))return res.status(400).json({error:'Close Friends can include accepted friends only.'});
+  const client=await pool.connect();
+  try{
+    await client.query('BEGIN');
+    await client.query('DELETE FROM wall_close_friends WHERE owner_id=$1',[Number(u.id)]);
+    for(const friendId of requested)await client.query('INSERT INTO wall_close_friends(owner_id,friend_id) VALUES($1,$2) ON CONFLICT DO NOTHING',[Number(u.id),friendId]);
+    await client.query('COMMIT');
+  }catch(error){await client.query('ROLLBACK');throw error;}
+  finally{client.release();}
+  res.json({ok:true,friendIds:requested});
+});
 function acceptedWallFriendIds(userId){
   return [...new Set((db.friends||[])
     .filter(f=>String(f.status||'').toUpperCase()==='ACCEPTED'&&(String(f.a)===String(userId)||String(f.b)===String(userId)))
     .map(f=>Number(String(f.a)===String(userId)?f.b:f.a))
     .filter(id=>Number.isSafeInteger(id)&&id>0&&id!==Number(userId)))];
 }
-async function canViewWallPost(postId,userId){
-  const {rows}=await pool.query('SELECT user_id FROM wall_posts WHERE id=$1',[postId]);
-  if(!rows.length)return false;
-  const authorId=Number(rows[0].user_id),viewerId=Number(userId);
-  return authorId===viewerId||acceptedWallFriendIds(viewerId).includes(authorId);
-}
 app.get('/api/wall',auth,async(req,res)=>{
   const u=current(req),userId=Number(u.id),friendIds=acceptedWallFriendIds(userId);
+  await ensureCloseFriendsTable();
   const sql=wallFeedFields+"EXISTS(SELECT 1 FROM wall_post_saves s WHERE s.post_id=w.id AND s.user_id=$1) AS saved"+wallFeedFrom+
-    "WHERE w.status IN ('approved','pinned') AND (w.expires_at IS NULL OR w.expires_at>NOW()) AND (w.user_id=$1 OR w.user_id=ANY($2::int[]))"+wallFeedOrder;
+    "WHERE w.status IN ('approved','pinned') AND (w.expires_at IS NULL OR w.expires_at>NOW()) AND (w.user_id=$1 OR (w.user_id=ANY($2::int[]) AND (COALESCE(w.audience,'friends')<>'close_friends' OR EXISTS(SELECT 1 FROM wall_close_friends cf WHERE cf.owner_id=w.user_id AND cf.friend_id=$1))))"+wallFeedOrder;
   const {rows}=await pool.query(sql,[userId,friendIds]);
   res.json({posts:rows});
 });
 app.get('/api/wall/saved',auth,async(req,res)=>{
   const u=current(req),userId=Number(u.id),friendIds=acceptedWallFriendIds(userId);
+  await ensureCloseFriendsTable();
   const sql=wallFeedFields+"true AS saved FROM wall_post_saves s JOIN wall_posts w ON w.id=s.post_id LEFT JOIN users u ON u.id=w.user_id "+
-    "WHERE s.user_id=$1 AND w.status IN ('approved','pinned') AND (w.expires_at IS NULL OR w.expires_at>NOW()) AND (w.user_id=$1 OR w.user_id=ANY($2::int[])) ORDER BY s.created_at DESC LIMIT 100";
+    "WHERE s.user_id=$1 AND w.status IN ('approved','pinned') AND (w.expires_at IS NULL OR w.expires_at>NOW()) AND (w.user_id=$1 OR (w.user_id=ANY($2::int[]) AND (COALESCE(w.audience,'friends')<>'close_friends' OR EXISTS(SELECT 1 FROM wall_close_friends cf WHERE cf.owner_id=w.user_id AND cf.friend_id=$1)))) ORDER BY s.created_at DESC LIMIT 100";
   const {rows}=await pool.query(sql,[userId,friendIds]);
   res.json({posts:rows});
 });
@@ -5572,8 +5615,9 @@ app.get('/api/wall/friends',auth,async(req,res)=>{
   const u=current(req),userId=Number(u.id);
   const friendIds=acceptedWallFriendIds(userId);
   if(!friendIds.length)return res.json({posts:[]});
+  await ensureCloseFriendsTable();
   const sql=wallFeedFields+"EXISTS(SELECT 1 FROM wall_post_saves s WHERE s.post_id=w.id AND s.user_id=$2) AS saved"+wallFeedFrom+
-    "WHERE w.user_id=ANY($1::int[]) AND w.status IN ('approved','pinned') AND (w.expires_at IS NULL OR w.expires_at>NOW())"+wallFeedOrder;
+    "WHERE w.user_id=ANY($1::int[]) AND w.status IN ('approved','pinned') AND (w.expires_at IS NULL OR w.expires_at>NOW()) AND (COALESCE(w.audience,'friends')<>'close_friends' OR EXISTS(SELECT 1 FROM wall_close_friends cf WHERE cf.owner_id=w.user_id AND cf.friend_id=$2))"+wallFeedOrder;
   const {rows}=await pool.query(sql,[friendIds,userId]);
   res.json({posts:rows});
 });
@@ -5617,13 +5661,16 @@ async function wallPostHandler(req,res){
   if(await checkRestrictedMediaUpload(req,res,u,req.file))return;
   if(String(u.rank).toUpperCase()!=="DEVELOPER" && u.username!==DEFAULT_OWNER&&!grants.map(x=>String(x).toUpperCase()).includes(rank))return res.status(403).json({error:"Your rank cannot create wall posts."});
   const content=cleanText(req.body.content||"").trim().slice(0,5000), media=req.file;
+  const audience=String(req.body.audience||'friends')==='close_friends'?'close_friends':'friends';
+  await ensureCloseFriendsTable();
+  if(audience==='close_friends'&&!(await closeFriendIds(u.id)).length)return res.status(400).json({error:'Add at least one person to Close Friends before publishing to that audience.'});
   if(media&&!/^(image\/(png|jpe?g|gif|webp|avif)|video\/)/i.test(media.mimetype)){await discardUploadedMedia(media);return res.status(400).json({error:"Only image or video files are allowed."});}
   if(!content&&!media)return res.status(400).json({error:"Post cannot be empty."});
   const mediaUrl=media?`/uploads/${media.filename}`:null;
   const expiresInHours=Number(req.body.expiresInHours??0),allowedExpiries=[0,1,6,24,72,168];
   if(!allowedExpiries.includes(expiresInHours))return res.status(400).json({error:"Choose a supported post duration."});
   const expiresAt=expiresInHours?new Date(Date.now()+expiresInHours*3600000):null;
-  const {rows}=await pool.query(`INSERT INTO wall_posts(user_id,content,media_url,expires_at) VALUES($1,$2,$3,$4) RETURNING *`,[Number(u.id),content,mediaUrl,expiresAt]);
+  const {rows}=await pool.query(`INSERT INTO wall_posts(user_id,content,media_url,expires_at,audience) VALUES($1,$2,$3,$4,$5) RETURNING *`,[Number(u.id),content,mediaUrl,expiresAt,audience]);
   res.json({post:{...rows[0],username:u.username,avatar:u.avatar||"",rank:u.rank}});
 }
 app.post('/api/wall/post',auth,upload.single('file'),wallPostHandler);
