@@ -7986,3 +7986,21 @@ body.parallel-embed.parallel-embed-error:after{content:"This room could not be o
 .close-friend-option>span:last-child{display:grid;gap:2px}
 .close-friend-option small{opacity:.7}
 .close-friends-manager .toolbar{justify-content:flex-end;gap:8px}
+
+
+/* Header profile shortcuts and compact mood/status picker */
+.profile-quick-dropdown .profile-quick-item{display:flex;align-items:center;gap:9px;width:100%;text-align:left;padding:12px 14px;border:0;border-top:1px solid var(--border);background:transparent;color:var(--text);font-weight:650}
+.profile-quick-dropdown .profile-quick-item small{margin-left:auto;color:var(--muted);font-weight:500}
+.profile-quick-dropdown .profile-quick-item:hover,.my-status-option:hover{background:var(--panel-2)}
+.profile-quick-dropdown .profile-quick-item.danger{color:var(--danger)}
+.online-status-control{position:relative;display:flex;align-items:center;gap:9px;padding:8px 10px}
+.online-status-control label{font-size:12px;color:var(--muted);font-weight:700}
+.my-status-toggle{display:inline-flex;align-items:center;gap:8px;padding:7px 11px;border:1px solid var(--border-strong);border-radius:999px;background:var(--panel-2);color:var(--text)}
+.my-status-options{position:absolute;z-index:80;top:calc(100% - 2px);left:10px;right:10px;max-height:min(62vh,460px);overflow:auto;padding:6px;border:1px solid var(--border-strong);border-radius:13px;background:var(--panel);box-shadow:var(--shadow)}
+.my-status-options.hidden{display:none}
+.my-status-option{display:flex;align-items:center;gap:11px;width:100%;padding:10px 12px;border:0;border-radius:8px;background:transparent;color:var(--text);text-align:left}
+.my-status-option span{width:23px;text-align:center;font-size:17px}
+.user-mood-indicator{display:inline-flex;align-items:center;justify-content:center;flex:0 0 26px;width:26px;height:26px;margin-left:auto;border-radius:50%;background:var(--panel-2);font-size:15px}
+.profile-level-info .card{padding:18px;margin:14px 0}
+.profile-level-info h1{margin:6px 0;font-size:30px}
+@media(max-width:600px){.online-status-control{flex-wrap:wrap}.my-status-options{left:8px;right:8px}}
