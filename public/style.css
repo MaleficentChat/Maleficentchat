@@ -8004,3 +8004,22 @@ body.parallel-embed.parallel-embed-error:after{content:"This room could not be o
 .profile-level-info .card{padding:18px;margin:14px 0}
 .profile-level-info h1{margin:6px 0;font-size:30px}
 @media(max-width:600px){.online-status-control{flex-wrap:wrap}.my-status-options{left:8px;right:8px}}
+
+
+/* Compact status controls — align with the 39px avatar and user-name scale */
+.online-status-control{gap:7px;padding:5px 9px;margin-bottom:6px;min-height:0;font-size:12px}
+.online-status-control label{font-size:11px;line-height:1.2}
+.my-status-toggle{display:inline-flex;align-items:center;justify-content:center;gap:5px;min-height:28px;height:28px;padding:3px 8px;border:1px solid var(--border-strong);border-radius:8px;background:var(--panel-2);color:var(--text);font-size:12px;line-height:1;font-weight:600;box-shadow:none}
+.my-status-toggle span{font-size:13px;line-height:1}
+.my-status-toggle b{font-size:12px;font-weight:600;line-height:1}
+.my-status-options{top:calc(100% - 1px);left:9px;right:9px;max-height:min(55vh,390px);padding:4px;border-radius:10px}
+.my-status-option{display:flex;align-items:center;gap:8px;min-height:34px;height:34px;padding:4px 8px;border-radius:7px;font-size:13px;line-height:1.15}
+.my-status-option span{width:19px;font-size:14px;line-height:1}
+.online-user{position:relative;gap:8px;padding:8px 12px;min-height:55px}
+.online-user .avatar{width:39px;height:39px;flex:0 0 39px}
+.online-user-copy{min-width:0;flex:1}
+.online-user-copy b{font-size:13px;line-height:1.25}
+.online-user-copy small{font-size:10px;line-height:1.2;margin:2px 0 3px}
+.user-mood-indicator{position:absolute;left:10px;top:50%;transform:translateY(-50%);z-index:2;display:inline-flex;align-items:center;justify-content:center;flex:0 0 18px;width:18px;height:18px;margin:0;border:1px solid var(--panel);border-radius:50%;background:var(--panel-2);font-size:11px;line-height:1;box-shadow:0 1px 3px rgba(0,0,0,.16);pointer-events:none}
+.profile-quick-dropdown .profile-quick-item{min-height:38px;padding:8px 11px;gap:8px;font-size:13px;line-height:1.2}
+.profile-quick-dropdown .profile-quick-item small{font-size:10px}
