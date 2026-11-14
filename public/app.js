@@ -1545,7 +1545,7 @@ if ($("topProfile")) $("topProfile").onclick = () => {
 document.addEventListener("click",e=>{if(!e.target.closest("#topProfile")&&!e.target.closest("#topProfileDropdown"))$("topProfileDropdown")?.classList.add("hidden");});
 function openMyProfileFromHeader(){ $("topProfileDropdown")?.classList.add("hidden"); state.view="profile"; document.querySelectorAll(".nav[data-view]").forEach(x=>x.classList.toggle("active",x.dataset.view==="profile")); renderView(); }
 $("profileLevelInfo")?.addEventListener("click",()=>{ $("topProfileDropdown")?.classList.add("hidden"); const u=state.user||{}; modal(`<div class="profile-level-info"><h2>🏅 Level info</h2><div class="card"><small class="muted">CURRENT LEVEL</small><h1>Level ${Number(u.level||1).toLocaleString()}</h1><p><b>${Number(u.xp||0).toLocaleString()} XP</b> earned</p></div><p class="muted">Your level and experience progress.</p><button class="primary" type="button" onclick="closeModal();state.view='leaderboard';renderView()">View leaderboard</button></div>`); });
-$("profileWallet")?.addEventListener("click",()=>{ $("topProfileDropdown")?.classList.add("hidden"); state.view="wallet"; document.querySelectorAll(".nav[data-view]").forEach(x=>x.classList.toggle("active",x.dataset.view==="wallet")); renderView(); });
+$("profileWallet")?.addEventListener("click",()=>{ $("topProfileDropdown")?.classList.add("hidden"); const u=state.user||{}; modal(`<div class="profile-wallet-shortcut"><h2>💰 Wallet</h2><div class="wallet-balance-grid"><div class="card"><span>🪙 Gold</span><strong>${Number(u.gold||0).toLocaleString()}</strong></div><div class="card"><span>💎 Diamonds</span><strong>${Number(u.diamonds||0).toLocaleString()}</strong></div></div><button class="primary" type="button" id="openFullWallet">Open full wallet</button></div>`); $("openFullWallet")?.addEventListener("click",()=>{closeModal();state.view="wallet";document.querySelectorAll(".nav[data-view]").forEach(x=>x.classList.toggle("active",x.dataset.view==="wallet"));renderView();}); });
 $("profileEdit")?.addEventListener("click",()=>{ $("topProfileDropdown")?.classList.add("hidden"); openProfileEditMenu(); });
 $("profileLogout")?.addEventListener("click",()=>{ $("topProfileDropdown")?.classList.add("hidden"); $("logout")?.click(); });
 async function loadSuggestions(){
@@ -2245,13 +2245,12 @@ async function renderOnline(tab=onlinePanelTab,searchQuery=""){
     $("onlinePanelTitle").innerHTML=`${esc(title)} <span class="online-badge">${count}</span>`;
     $("onlineUsers").innerHTML=`<div class="online-status-control"><label>My status</label><button type="button" class="my-status-toggle" id="myStatusToggle" aria-haspopup="true" aria-expanded="false"><span id="myStatusGlyph">🟢</span><b id="myStatusLabel">Online</b><span>⌄</span></button><div class="my-status-options hidden" id="myStatusOptions" role="menu"></div></div><div class="online-user-grid">${list.map(user=>`
       <div class="online-user ${user.online?'is-online':'is-offline'}" onclick="openQuickUserCard('${esc(user.id)}')">
-        ${avatar(user)}
+        ${avatar(user)}<span class="user-mood-indicator" title="${esc(user.customStatus|| (user.online?'Online':'Away'))}">${statusEmoji(user.customStatus|| (user.online?'Online':'Away'))}</span>
         <div class="online-user-copy">
           <b>${esc(user.displayName)}</b>
           <small>@${esc(user.username)} ${invisibleDot(user)} ${moderationStatusTags(user)}${user.invisible?"":" · "+(user.customStatus||(user.online?"Available":"Away"))}</small>
           <span class="room-user-rank" title="${esc(roomRoleLabel[roomRoleByUser[String(user.id)]]||user.rank||'Member')}">${roomRoleByUser[String(user.id)] ? (roomRoleIcon[roomRoleByUser[String(user.id)]]||'✨') : (rankIcon[String(user.rank||'MEMBER').toUpperCase()]||'⚡')} ${esc(roomRoleLabel[roomRoleByUser[String(user.id)]]||String(user.rank||'MEMBER').replaceAll('_',' '))}</span>
         </div>
-        <span class="user-mood-indicator" title="${esc(user.customStatus|| (user.online?'Online':'Away'))}">${statusEmoji(user.customStatus|| (user.online?'Online':'Away'))}</span>
       </div>
     `).join("") || `<div class="online-empty"><div>${tab==="staff"?"🛡️":tab==="friends"?"💜":"👥"}</div><b>No users here</b><span>Try another tab.</span></div>`}</div>`;
     const sortSelect=$("onlineSortMode");if(sortSelect){sortSelect.value=onlineSortMode;sortSelect.onchange=()=>{onlineSortMode=sortSelect.value;renderOnline(onlinePanelTab);};}
