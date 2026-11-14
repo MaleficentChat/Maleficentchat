@@ -1544,6 +1544,10 @@ if ($("topProfile")) $("topProfile").onclick = () => {
 };
 document.addEventListener("click",e=>{if(!e.target.closest("#topProfile")&&!e.target.closest("#topProfileDropdown"))$("topProfileDropdown")?.classList.add("hidden");});
 function openMyProfileFromHeader(){ $("topProfileDropdown")?.classList.add("hidden"); state.view="profile"; document.querySelectorAll(".nav[data-view]").forEach(x=>x.classList.toggle("active",x.dataset.view==="profile")); renderView(); }
+$("profileLevelInfo")?.addEventListener("click",()=>{ $("topProfileDropdown")?.classList.add("hidden"); const u=state.user||{}; modal(`<div class="profile-level-info"><h2>🏅 Level info</h2><div class="card"><small class="muted">CURRENT LEVEL</small><h1>Level ${Number(u.level||1).toLocaleString()}</h1><p><b>${Number(u.xp||0).toLocaleString()} XP</b> earned</p></div><p class="muted">Your level and experience progress.</p><button class="primary" type="button" onclick="closeModal();state.view='leaderboard';renderView()">View leaderboard</button></div>`); });
+$("profileWallet")?.addEventListener("click",()=>{ $("topProfileDropdown")?.classList.add("hidden"); state.view="wallet"; document.querySelectorAll(".nav[data-view]").forEach(x=>x.classList.toggle("active",x.dataset.view==="wallet")); renderView(); });
+$("profileEdit")?.addEventListener("click",()=>{ $("topProfileDropdown")?.classList.add("hidden"); openProfileEditMenu(); });
+$("profileLogout")?.addEventListener("click",()=>{ $("topProfileDropdown")?.classList.add("hidden"); $("logout")?.click(); });
 async function loadSuggestions(){
   const list=$('suggestionsList'),form=$('suggestionForm');
   if(!list||!form)return;
@@ -2189,6 +2193,10 @@ $("messages").innerHTML =
 let onlinePanelTab="online";
 let onlinePanelCache=[];
 
+function statusEmoji(status){
+  const icons={"Online":"🟢","Available":"🟢","Away":"🕒","Busy":"⛔","Do Not Disturb":"⛔","Working":"⚙️","Happy":"😊","Sad":"😔","Angry":"🔥","Listening to music":"🎧","Birthday":"🎂","Friendly":"💬","Watching video":"▶️","Eating":"🍜","Gaming":"🎮"};
+  return icons[String(status||"Online")]||"💬";
+}
 function isStaffUser(user){
   return ["MOD","ADMIN","SUPER_ADMIN","COMMISSOR","INSTRUCTOR","COOWNER","OWNER","DEVELOPER"].includes(user.rank);
 }
@@ -2235,7 +2243,7 @@ async function renderOnline(tab=onlinePanelTab,searchQuery=""){
 
     const count=online.length;
     $("onlinePanelTitle").innerHTML=`${esc(title)} <span class="online-badge">${count}</span>`;
-    $("onlineUsers").innerHTML=`<div class="online-status-control"><label for="myCustomStatus">My status</label><select id="myCustomStatus"><option>Available</option><option>Busy</option><option>Away</option><option>Do Not Disturb</option></select></div><div class="online-user-grid">${list.map(user=>`
+    $("onlineUsers").innerHTML=`<div class="online-status-control"><label>My status</label><button type="button" class="my-status-toggle" id="myStatusToggle" aria-haspopup="true" aria-expanded="false"><span id="myStatusGlyph">🟢</span><b id="myStatusLabel">Online</b><span>⌄</span></button><div class="my-status-options hidden" id="myStatusOptions" role="menu"></div></div><div class="online-user-grid">${list.map(user=>`
       <div class="online-user ${user.online?'is-online':'is-offline'}" onclick="openQuickUserCard('${esc(user.id)}')">
         ${avatar(user)}
         <div class="online-user-copy">
@@ -2243,11 +2251,18 @@ async function renderOnline(tab=onlinePanelTab,searchQuery=""){
           <small>@${esc(user.username)} ${invisibleDot(user)} ${moderationStatusTags(user)}${user.invisible?"":" · "+(user.customStatus||(user.online?"Available":"Away"))}</small>
           <span class="room-user-rank" title="${esc(roomRoleLabel[roomRoleByUser[String(user.id)]]||user.rank||'Member')}">${roomRoleByUser[String(user.id)] ? (roomRoleIcon[roomRoleByUser[String(user.id)]]||'✨') : (rankIcon[String(user.rank||'MEMBER').toUpperCase()]||'⚡')} ${esc(roomRoleLabel[roomRoleByUser[String(user.id)]]||String(user.rank||'MEMBER').replaceAll('_',' '))}</span>
         </div>
-        <span class="status ${!user.invisible&&user.online?'on':''}"></span>
+        <span class="user-mood-indicator" title="${esc(user.customStatus|| (user.online?'Online':'Away'))}">${statusEmoji(user.customStatus|| (user.online?'Online':'Away'))}</span>
       </div>
     `).join("") || `<div class="online-empty"><div>${tab==="staff"?"🛡️":tab==="friends"?"💜":"👥"}</div><b>No users here</b><span>Try another tab.</span></div>`}</div>`;
     const sortSelect=$("onlineSortMode");if(sortSelect){sortSelect.value=onlineSortMode;sortSelect.onchange=()=>{onlineSortMode=sortSelect.value;renderOnline(onlinePanelTab);};}
-    const statusSelect=$("myCustomStatus");if(statusSelect){statusSelect.value=state.user?.customStatus||"Available";statusSelect.onchange=async()=>{try{const result=await api("/api/me/status",{method:"POST",body:JSON.stringify({status:statusSelect.value})});state.user.customStatus=result.status;toast("Status updated.");await renderOnline(onlinePanelTab);}catch(e){toast(e.message||"Could not update status.");}};}
+    const statusToggle=$("myStatusToggle"),statusOptions=$("myStatusOptions");
+    const statusChoices=[["Online","🟢"],["Away","🕒"],["Busy","⛔"],["Working","⚙️"],["Happy","😊"],["Sad","😔"],["Angry","🔥"],["Listening to music","🎧"],["Birthday","🎂"],["Friendly","💬"],["Watching video","▶️"],["Eating","🍜"],["Gaming","🎮"]];
+    if(statusToggle&&statusOptions){
+      const current=state.user?.customStatus||"Online";statusToggle.querySelector("#myStatusGlyph").textContent=statusEmoji(current);statusToggle.querySelector("#myStatusLabel").textContent=current;
+      statusOptions.innerHTML=statusChoices.map(([label,emoji])=>'<button type="button" class="my-status-option" role="menuitem" data-status="'+esc(label)+'"><span>'+emoji+'</span>'+esc(label)+'</button>').join("");
+      statusToggle.onclick=()=>{const opening=statusOptions.classList.contains("hidden");statusOptions.classList.toggle("hidden",!opening);statusToggle.setAttribute("aria-expanded",opening?"true":"false");};
+      statusOptions.querySelectorAll("[data-status]").forEach(button=>button.onclick=async()=>{try{const result=await api("/api/me/status",{method:"POST",body:JSON.stringify({status:button.dataset.status})});state.user.customStatus=result.status;statusOptions.classList.add("hidden");statusToggle.setAttribute("aria-expanded","false");toast("Status updated.");await renderOnline(onlinePanelTab);}catch(e){toast(e.message||"Could not update status.");}});
+    }
 
     $("onlineCount").textContent=`${count} online`;
     document.querySelectorAll("#onlineTabs [data-online-tab]").forEach(b=>b.classList.toggle("active",b.dataset.onlineTab===onlinePanelTab));
