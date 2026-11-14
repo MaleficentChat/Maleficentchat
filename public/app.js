@@ -1419,18 +1419,18 @@ async function renderView() {
       return loadSearchRooms();
 
     case "profile": {
-      // Recover the account object if a stale/partial session left the profile view empty.
-      if (!state.user) {
-        try {
-          const fresh = await api("/api/bootstrap");
-          if (fresh?.user) {
-            state.user = fresh.user;
-            state.featurePermissions = fresh.featurePermissions || state.featurePermissions || {};
-            state.userPermissions = fresh.userPermissions || state.userPermissions || {};
-          }
-        } catch (error) {
-          console.error("Could not reload account for My Profile", error);
+      // Always refresh the account record before rendering My Profile. The quick
+      // profile uses a fresh API record, while the old self-profile could retain
+      // a stale state.user object without the newly uploaded banner URL.
+      try {
+        const fresh = await api("/api/bootstrap");
+        if (fresh?.user) {
+          state.user = {...(state.user||{}), ...fresh.user};
+          state.featurePermissions = fresh.featurePermissions || state.featurePermissions || {};
+          state.userPermissions = fresh.userPermissions || state.userPermissions || {};
         }
+      } catch (error) {
+        console.error("Could not refresh account for My Profile", error);
       }
       if (!state.user) {
         const root = $("profile");
