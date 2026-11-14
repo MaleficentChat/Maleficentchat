@@ -7799,42 +7799,8 @@ async function initAICompanionTables(){
       );
     }
 
-    // Cross-promote KnightPulse in the two active age-based public rooms.
-    // Main Room is retired/hidden, so only Teen Chat and Adult Chat receive this.
-    let joinKCBroadcastInFlight = false;
-    setInterval(async () => {
-      if (joinKCBroadcastInFlight) return;
-      joinKCBroadcastInFlight = true;
-      try {
-        const targets = await pool.query(
-          "SELECT id,name FROM rooms WHERE is_public=true AND LOWER(BTRIM(name))=ANY($1::text[]) ORDER BY id",
-          [["teen chat", "adult chat"]]
-        );
-        for (const room of targets.rows) {
-          const message = {
-            id: id(), roomId: String(room.id), userId: null,
-            username: "Bot", displayName: "System Bot", rank: "BOT",
-            system: false, isBot: true, bot: "Bot",
-            joinChatPanel: true,
-            joinChatUrl: "https://knightpulse.up.railway.app/",
-            joinChatBrand: "KNIGHTPULSE",
-            text: "Join KnightPulse to meet the community, chat and take part in the fun.",
-            reactions: {}, edited: false, deleted: false, pinned: false,
-            time: Date.now(), delivered: true
-          };
-          await pool.query(
-            "INSERT INTO room_messages(id,room_id,user_id,data,created_at) VALUES($1,$2,NULL,$3::jsonb,NOW())",
-            [message.id, Number(room.id), JSON.stringify(message)]
-          );
-          db.messages.push(message);
-          io.to("room:" + room.id).emit("message", message);
-        }
-      } catch (error) {
-        console.error("[SYSTEM BOT] Join KnightPulse broadcast failed:", error?.message || error);
-      } finally {
-        joinKCBroadcastInFlight = false;
-      }
-    }, 10 * 60 * 1000);
+    // MC -> KP cross-promotion is intentionally disabled at the owner's request.
+    // The separate KP -> MC promotion remains enabled in the KnightPulse service.
 
     
 // Master repair APIs: privacy-aware admin controls and persistent records.
