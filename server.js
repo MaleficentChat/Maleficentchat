@@ -2327,7 +2327,7 @@ app.get(
 app.get("/api/me/status",auth,(req,res)=>res.json({status:current(req).customStatus||"Available"}));
 app.post("/api/me/status",auth,(req,res)=>{
   const u=current(req),status=String(req.body?.status||"Available");
-  if(!["Available","Busy","Away","Do Not Disturb"].includes(status))return res.status(400).json({error:"Choose a valid status."});
+  if(!["Online","Available","Busy","Away","Do Not Disturb","Working","Happy","Sad","Angry","Listening to music","Birthday","Friendly","Watching video","Eating","Gaming"].includes(status))return res.status(400).json({error:"Choose a valid status."});
   u.customStatus=status;u.statusUpdatedAt=Date.now();save();io.emit("presence");
   log(u,"CUSTOM_STATUS",u.username,{status});res.json({ok:true,status});
 });
