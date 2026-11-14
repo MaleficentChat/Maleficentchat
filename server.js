@@ -5536,26 +5536,35 @@ const wallFeedFields = "SELECT w.*,u.username,u.avatar,u.rank,"+
   "(SELECT COUNT(*)::int FROM wall_comments wc WHERE wc.post_id=w.id) AS comment_count,";
 const wallFeedFrom = " FROM wall_posts w LEFT JOIN users u ON u.id=w.user_id ";
 const wallFeedOrder = " ORDER BY CASE WHEN w.status='pinned' THEN 0 ELSE 1 END,w.featured DESC,w.created_at DESC LIMIT 100";
+function acceptedWallFriendIds(userId){
+  return [...new Set((db.friends||[])
+    .filter(f=>String(f.status||'').toUpperCase()==='ACCEPTED'&&(String(f.a)===String(userId)||String(f.b)===String(userId)))
+    .map(f=>Number(String(f.a)===String(userId)?f.b:f.a))
+    .filter(id=>Number.isSafeInteger(id)&&id>0&&id!==Number(userId)))];
+}
+async function canViewWallPost(postId,userId){
+  const {rows}=await pool.query('SELECT user_id FROM wall_posts WHERE id=$1',[postId]);
+  if(!rows.length)return false;
+  const authorId=Number(rows[0].user_id),viewerId=Number(userId);
+  return authorId===viewerId||acceptedWallFriendIds(viewerId).includes(authorId);
+}
 app.get('/api/wall',auth,async(req,res)=>{
-  const u=current(req);
+  const u=current(req),userId=Number(u.id),friendIds=acceptedWallFriendIds(userId);
   const sql=wallFeedFields+"EXISTS(SELECT 1 FROM wall_post_saves s WHERE s.post_id=w.id AND s.user_id=$1) AS saved"+wallFeedFrom+
-    "WHERE w.status IN ('approved','pinned') AND (w.expires_at IS NULL OR w.expires_at>NOW())"+wallFeedOrder;
-  const {rows}=await pool.query(sql,[Number(u.id)]);
+    "WHERE w.status IN ('approved','pinned') AND (w.expires_at IS NULL OR w.expires_at>NOW()) AND (w.user_id=$1 OR w.user_id=ANY($2::int[]))"+wallFeedOrder;
+  const {rows}=await pool.query(sql,[userId,friendIds]);
   res.json({posts:rows});
 });
 app.get('/api/wall/saved',auth,async(req,res)=>{
-  const u=current(req);
+  const u=current(req),userId=Number(u.id),friendIds=acceptedWallFriendIds(userId);
   const sql=wallFeedFields+"true AS saved FROM wall_post_saves s JOIN wall_posts w ON w.id=s.post_id LEFT JOIN users u ON u.id=w.user_id "+
-    "WHERE s.user_id=$1 AND w.status IN ('approved','pinned') AND (w.expires_at IS NULL OR w.expires_at>NOW()) ORDER BY s.created_at DESC LIMIT 100";
-  const {rows}=await pool.query(sql,[Number(u.id)]);
+    "WHERE s.user_id=$1 AND w.status IN ('approved','pinned') AND (w.expires_at IS NULL OR w.expires_at>NOW()) AND (w.user_id=$1 OR w.user_id=ANY($2::int[])) ORDER BY s.created_at DESC LIMIT 100";
+  const {rows}=await pool.query(sql,[userId,friendIds]);
   res.json({posts:rows});
 });
 app.get('/api/wall/friends',auth,async(req,res)=>{
   const u=current(req),userId=Number(u.id);
-  const friendIds=[...new Set((db.friends||[])
-    .filter(f=>String(f.status||'').toUpperCase()==='ACCEPTED'&&(String(f.a)===String(u.id)||String(f.b)===String(u.id)))
-    .map(f=>Number(String(f.a)===String(u.id)?f.b:f.a))
-    .filter(id=>Number.isSafeInteger(id)&&id>0&&id!==userId))];
+  const friendIds=acceptedWallFriendIds(userId);
   if(!friendIds.length)return res.json({posts:[]});
   const sql=wallFeedFields+"EXISTS(SELECT 1 FROM wall_post_saves s WHERE s.post_id=w.id AND s.user_id=$2) AS saved"+wallFeedFrom+
     "WHERE w.user_id=ANY($1::int[]) AND w.status IN ('approved','pinned') AND (w.expires_at IS NULL OR w.expires_at>NOW())"+wallFeedOrder;
@@ -5567,6 +5576,7 @@ app.post('/api/wall/:id/save',auth,async(req,res)=>{
   if(!Number.isSafeInteger(postId)||postId<1)return res.status(400).json({error:'Invalid post id.'});
   const post=await pool.query('SELECT 1 FROM wall_posts WHERE id=$1 AND status IN (\'approved\',\'pinned\') AND (expires_at IS NULL OR expires_at>NOW())',[postId]);
   if(!post.rowCount)return res.status(404).json({error:'Post not found or expired.'});
+  if(!await canViewWallPost(postId,userId))return res.status(404).json({error:'Post not found.'});
   const existing=await pool.query('SELECT 1 FROM wall_post_saves WHERE post_id=$1 AND user_id=$2',[postId,userId]);
   if(existing.rowCount)await pool.query('DELETE FROM wall_post_saves WHERE post_id=$1 AND user_id=$2',[postId,userId]);
   else await pool.query('INSERT INTO wall_post_saves(post_id,user_id) VALUES($1,$2) ON CONFLICT DO NOTHING',[postId,userId]);
@@ -5577,6 +5587,7 @@ app.post('/api/wall/:id/feature',auth,async(req,res)=>{
   if(!hasFeature(u,'pin_news')&&!['OWNER','DEVELOPER'].includes(rank))return res.status(403).json({error:'Only authorized staff can feature community posts.'});
   const postId=Number(req.params.id),featured=req.body?.featured===true;
   if(!Number.isSafeInteger(postId)||postId<1)return res.status(400).json({error:'Invalid post id.'});
+  if(!await canViewWallPost(postId,u.id))return res.status(404).json({error:'Post not found.'});
   const result=await pool.query('UPDATE wall_posts SET featured=$2 WHERE id=$1 RETURNING id,featured',[postId,featured]);
   if(!result.rowCount)return res.status(404).json({error:'Post not found.'});
   log(u,'WALL_POST_FEATURE',String(postId),{featured});
@@ -5586,9 +5597,10 @@ app.post('/api/wall/:id/reaction',auth,async(req,res)=>{
   const emoji=String(req.body?.emoji||'👍'),allowed=['👍','❤️','😂','😮','🔥','👏'];
   if(!allowed.includes(emoji))return res.status(400).json({error:'Unsupported reaction.'});
   await pool.query(`CREATE TABLE IF NOT EXISTS wall_post_reactions(post_id BIGINT NOT NULL,user_id BIGINT NOT NULL,emoji TEXT NOT NULL,created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),PRIMARY KEY(post_id,user_id,emoji))`);
-  const post=await pool.query('SELECT id FROM wall_posts WHERE id=$1',[req.params.id]);
-  if(!post.rowCount)return res.status(404).json({error:'Wall post not found.'});
   const uid=Number(current(req).id),pid=Number(req.params.id);
+  if(!await canViewWallPost(pid,uid))return res.status(404).json({error:'Wall post not found.'});
+  const post=await pool.query('SELECT id FROM wall_posts WHERE id=$1',[pid]);
+  if(!post.rowCount)return res.status(404).json({error:'Wall post not found.'});
   const existing=await pool.query('SELECT 1 FROM wall_post_reactions WHERE post_id=$1 AND user_id=$2 AND emoji=$3',[pid,uid,emoji]);
   if(existing.rowCount)await pool.query('DELETE FROM wall_post_reactions WHERE post_id=$1 AND user_id=$2 AND emoji=$3',[pid,uid,emoji]);
   else await pool.query('INSERT INTO wall_post_reactions(post_id,user_id,emoji) VALUES($1,$2,$3) ON CONFLICT DO NOTHING',[pid,uid,emoji]);
@@ -5611,11 +5623,13 @@ async function wallPostHandler(req,res){
 app.post('/api/wall/post',auth,upload.single('file'),wallPostHandler);
 app.post('/api/wall',auth,upload.single('file'),wallPostHandler);
 app.post('/api/wall/:id/like',auth,async(req,res)=>{
+  if(!await canViewWallPost(req.params.id,current(req).id))return res.status(404).json({error:'Post not found.'});
   const r=await pool.query(`UPDATE wall_posts SET likes=likes+1 WHERE id=$1 RETURNING likes`,[req.params.id]);
   if(!r.rowCount) return res.status(404).json({error:"Post not found"});
   res.json({likes:r.rows[0].likes});
 });
 app.get('/api/wall/:id/comments',auth,async(req,res)=>{
+  if(!await canViewWallPost(req.params.id,current(req).id))return res.status(404).json({error:'Post not found.'});
   const {rows}=await pool.query(`SELECT c.*,u.username,u.avatar,u.rank FROM wall_comments c LEFT JOIN users u ON u.id=c.user_id WHERE c.post_id=$1 ORDER BY c.created_at ASC`,[req.params.id]);
   res.json({comments:rows});
 });
@@ -5623,6 +5637,7 @@ app.post('/api/wall/:id/comments',auth,async(req,res)=>{
   const text=cleanText(req.body.content||"").trim().slice(0,1000);
   if(!text) return res.status(400).json({error:"Comment cannot be empty."});
   const u=current(req);
+  if(!await canViewWallPost(req.params.id,u.id))return res.status(404).json({error:'Post not found.'});
   const {rows}=await pool.query(`INSERT INTO wall_comments(post_id,user_id,content) VALUES($1,$2,$3) RETURNING *`,[req.params.id,Number(u.id),text]);
   res.json({comment:{...rows[0],username:u.username,avatar:u.avatar||"",rank:u.rank}});
 });
@@ -5636,6 +5651,7 @@ app.delete('/api/wall/:id/comments/:commentId',auth,async(req,res)=>{
   );
   if(!rows.length)return res.status(404).json({error:"Comment not found."});
   const comment=rows[0];
+  if(!await canViewWallPost(postId,u.id))return res.status(404).json({error:'Post not found.'});
   const isCommentAuthor=Number(comment.user_id)===Number(u.id);
   const isPostAuthor=Number(comment.post_user_id)===Number(u.id);
   if(!isCommentAuthor&&!isPostAuthor)return res.status(403).json({error:"Only the comment author or post author can delete this comment."});
@@ -5656,10 +5672,12 @@ app.delete('/api/wall/:id',auth,async(req,res)=>{
   res.json({ok:true});
 });
 app.post('/api/wall/:id/report',auth,async(req,res)=>{
+  if(!await canViewWallPost(req.params.id,current(req).id))return res.status(404).json({error:'Post not found.'});
   await pool.query(`INSERT INTO history(user_id,action,details) VALUES($1,'wall_report',$2::jsonb)`,[Number(current(req).id),JSON.stringify({postId:req.params.id,reason:cleanText(req.body.reason||"Reported wall post")})]);
   res.json({ok:true});
 });
 app.post('/api/wall/:id/pin',ownerOnly,async(req,res)=>{
+  if(!await canViewWallPost(req.params.id,current(req).id))return res.status(404).json({error:'Post not found.'});
   await pool.query(`UPDATE wall_posts SET status=CASE WHEN id=$1 THEN 'pinned' ELSE 'approved' END`,[req.params.id]);
   res.json({ok:true});
 });
