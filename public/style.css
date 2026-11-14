@@ -8023,3 +8023,53 @@ body.parallel-embed.parallel-embed-error:after{content:"This room could not be o
 .user-mood-indicator{position:absolute;left:10px;top:50%;transform:translateY(-50%);z-index:2;display:inline-flex;align-items:center;justify-content:center;flex:0 0 18px;width:18px;height:18px;margin:0;border:1px solid var(--panel);border-radius:50%;background:var(--panel-2);font-size:11px;line-height:1;box-shadow:0 1px 3px rgba(0,0,0,.16);pointer-events:none}
 .profile-quick-dropdown .profile-quick-item{min-height:38px;padding:8px 11px;gap:8px;font-size:13px;line-height:1.2}
 .profile-quick-dropdown .profile-quick-item small{font-size:10px}
+
+
+/* Match the reference people-list proportions: larger portrait with a small
+   mood badge anchored over its lower-left corner. */
+#onlineUsers .online-user-grid .online-user{
+  position:relative!important;display:flex!important;align-items:center!important;
+  gap:12px!important;min-height:72px!important;padding:8px 12px 8px 12px!important;
+}
+#onlineUsers .online-user-grid .online-user>.avatar{
+  position:relative!important;display:grid!important;flex:0 0 56px!important;
+  width:56px!important;height:56px!important;min-width:56px!important;
+  border-radius:50%!important;overflow:hidden!important;
+}
+#onlineUsers .online-user-grid .online-user>.avatar img{
+  display:block!important;width:100%!important;height:100%!important;object-fit:cover!important;
+}
+#onlineUsers .online-user-grid .user-mood-indicator{
+  position:absolute!important;left:9px!important;top:auto!important;bottom:7px!important;
+  transform:none!important;z-index:4!important;display:inline-flex!important;
+  align-items:center!important;justify-content:center!important;
+  width:23px!important;height:23px!important;min-width:23px!important;
+  padding:0!important;margin:0!important;border:2px solid var(--panel)!important;
+  border-radius:50%!important;background:var(--panel-2)!important;
+  font-size:13px!important;line-height:1!important;box-shadow:0 1px 3px rgba(0,0,0,.2)!important;
+  pointer-events:none!important;
+}
+#onlineUsers .online-user-grid .online-user-copy{flex:1 1 auto!important;min-width:0!important}
+#onlineUsers .online-user-grid .online-user-copy b{font-size:14px!important;line-height:1.25!important}
+#onlineUsers .online-user-grid .online-user-copy small{font-size:11px!important;line-height:1.25!important}
+#onlineUsers .online-status-control{
+  display:flex!important;align-items:center!important;justify-content:space-between!important;
+  gap:8px!important;min-height:0!important;padding:5px 9px!important;margin:0 0 7px!important;
+}
+#onlineUsers .my-status-toggle{
+  display:inline-flex!important;align-items:center!important;justify-content:center!important;
+  gap:0!important;width:30px!important;height:30px!important;min-width:30px!important;
+  min-height:30px!important;padding:0!important;border-radius:50%!important;
+  font-size:0!important;line-height:1!important;box-shadow:none!important;
+}
+#onlineUsers .my-status-toggle #myStatusGlyph{display:block!important;font-size:15px!important;line-height:1!important}
+#onlineUsers .my-status-toggle #myStatusLabel,#onlineUsers .my-status-toggle>span:last-child{display:none!important}
+#onlineUsers .my-status-options{left:auto!important;right:8px!important;width:min(230px,calc(100vw - 40px))!important}
+@media(max-width:700px){
+  #viewRooms.chatting .online-panel #onlineUsers .online-user-grid .online-user>.avatar{
+    width:56px!important;height:56px!important;flex:0 0 56px!important;min-width:56px!important;
+  }
+  #viewRooms.chatting .online-panel #onlineUsers .online-user-grid .user-mood-indicator{
+    left:9px!important;bottom:7px!important;width:23px!important;height:23px!important;min-width:23px!important;
+  }
+}
