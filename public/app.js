@@ -3501,8 +3501,9 @@ async function openQuickUserCard(id){
   if(!user){toast("User details are not available in this chat.");return;}
   const isSelf=String(user.id)===String(state.user.id);
   const countryFlag=user.countryFlag||user.flag||"";
+  const quickBannerStyle=user.banner?`style="background-image:linear-gradient(180deg,rgba(0,0,0,.10),rgba(20,12,8,.78)),url('${esc(user.banner)}')!important;background-size:cover!important;background-position:center!important"`:'style="background-image:linear-gradient(160deg,#442d22,#35231a)"';
   modal(`<div class="quick-user-card">
-    <div class="quick-user-top"><span class="quick-user-level">⭐ ${Number(user.level||1)}</span><button class="quick-user-close" onclick="closeModal()" aria-label="Close">×</button>
+    <div class="quick-user-top" ${quickBannerStyle}><span class="quick-user-level">⭐ ${Number(user.level||1)}</span><button class="quick-user-close" onclick="closeModal()" aria-label="Close">×</button>
     <div class="quick-user-avatar">${avatar(user)}</div><h2>${esc(user.displayName||user.username)}</h2>
     <p>${esc(user.age?user.age+" years":(user.dateOfBirth?"Member":""))}${user.gender?" · "+esc(user.gender):""}</p>${countryFlag?`<div class="quick-user-flag">${esc(countryFlag)}</div>`:""}
     <small>@${esc(user.username)}</small></div>
