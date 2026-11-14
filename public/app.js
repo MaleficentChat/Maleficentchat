@@ -4883,6 +4883,7 @@ async function loadProfile(user){
   const banner=user.banner?`style="background-image:linear-gradient(180deg,rgba(0,0,0,.05),rgba(0,0,0,.72)),url('${esc(user.banner)}')"`:'';
   $('profile').innerHTML=`<div class="my-profile-wrap"><div class="profile-settings-card ${profileTheme?esc(profileTheme.id):''} profile-theme-${['obsidian','midnight','rose','emerald'].includes(user.theme)?esc(user.theme):'obsidian'}">
     <div class="profile-settings-head" ${banner}>
+      ${user.banner?'<img class="profile-cover-image" src="'+esc(user.banner)+'" alt="" aria-hidden="true" loading="eager">':''}
       <div class="profile-settings-top"><span>⭐ ${user.level||1}</span><span>❤️ ${user.profileLikes||0}</span><button class="mini profile-edit-launch" onclick="openProfileEditMenu()" title="Edit account">✏️ Edit</button><button class="mini" id="myProfileMenuBtn" title="More">☰</button></div>
       <div class="profile-media-actions"><button class="mini profile-media-action" type="button" onclick="uploadAvatar()">📷 Change picture</button>${user.avatar?'<button class="mini danger profile-media-action" type="button" onclick="deleteAvatar()">Remove picture</button>':''}<button class="mini profile-media-action" type="button" onclick="uploadBanner()">🖼️ Change background</button>${user.banner?'<button class="mini danger profile-media-action" type="button" onclick="deleteBanner()">Remove background</button>':''}</div>
       ${avatar(user,'big-avatar')}
