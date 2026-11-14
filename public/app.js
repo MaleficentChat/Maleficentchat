@@ -4333,22 +4333,33 @@ async function loadNews() {
   try {
     const data=await api("/api/news");
     $("news").innerHTML=(data.news||[]).map(n=>{
-      const comments=n.comments||[], rx=n.reactions||{};
-      const reactionKeys=[["👍","like"],["👎","dislike"],["💗","love"],["😆","laugh"]];
-      const reactions=reactionKeys.map(([emoji,legacy])=>{const users=Array.isArray(rx[emoji])?rx[emoji]:[];const old=Number(rx[legacy]||rx[legacy+'s']||0);return [emoji,users.length||old,users.map(String).includes(String(state.user?.id))]});
-      return `<article class="card news-card social-feed-card" data-news-id="${esc(n.id)}">
-        <div class="news-card-top"><div class="social-author"><div class="social-author-avatar">${n.avatar?`<img src="${esc(n.avatar)}" alt="">`:'📰'}</div><div><h3>${esc(n.author||'Maleficent Chat')}</h3><div class="muted">${fmt(n.time)}</div></div></div><button class="social-more" data-news-more="${esc(n.id)}" aria-label="Post options">•••</button></div>
+      const comments=n.comments||[], likes=Array.isArray(n.likes)?n.likes.map(String):[];
+      const liked=likes.includes(String(state.user?.id));
+      const authorButton=n.authorId? `<button type="button" class="news-author-link" data-news-author="${esc(n.authorId)}"><span class="news-author-avatar">${n.avatar?`<img src="${esc(n.avatar)}" alt="">`:'📰'}</span><span><b>${esc(n.author||'Maleficent Chat')}</b><small>${fmt(n.time)}</small></span></button>`:`<div class="news-author-link"><span class="news-author-avatar">${n.avatar?`<img src="${esc(n.avatar)}" alt="">`:'📰'}</span><span><b>${esc(n.author||'Maleficent Chat')}</b><small>${fmt(n.time)}</small></span></div>`;
+      return `<article class="card news-card news-card-premium" data-news-id="${esc(n.id)}">
+        <header class="news-card-top">${authorButton}<button class="social-more" data-news-more="${esc(n.id)}" aria-label="Post options">•••</button></header>
         <div class="news-post-content">${n.title?'<h3 class="news-post-title">'+esc(n.title)+'</h3>':''}<div class="news-body">${esc(n.body||'')}</div></div>
-        ${n.attachment?.type?.startsWith('image/')?`<img class="news-attachment" src="${esc(n.attachment.url)}" alt="News photo">`:''}
-        <div class="social-reaction-summary">${reactions.map(([emoji,count])=>`<span>${emoji} <b>${count}</b></span>`).join('')}<button class="social-comments-shortcut" onclick="openNewsComments('${esc(n.id)}')">${comments.length} 💬</button></div>
-        <div class="news-actions social-reaction-actions">${reactions.map(([emoji,count,reacted])=>`<button class="mini ${reacted?'reacted':''}" type="button" data-news-reaction="${emoji}" data-news-id="${esc(n.id)}">${emoji} <b>${count}</b></button>`).join('')}<button class="mini" onclick="openNewsComments('${esc(n.id)}')">💬 <b>${comments.length}</b></button>${canFeature('delete_news')?`<button class="mini danger" onclick="deleteNews('${esc(n.id)}')">🗑 Delete</button>`:""}</div>
+        ${n.attachment?.type?.startsWith('image/')?`<img class="news-attachment" src="${esc(n.attachment.url)}" alt="News photo" loading="lazy">`:''}
+        <div class="news-social-stats"><button type="button" data-news-likes="${esc(n.id)}"><span>♥</span> ${likes.length} likes</button><button type="button" data-news-comments="${esc(n.id)}">${comments.length} comments</button></div>
+        <div class="news-actions news-actions-clean"><button class="mini news-like-button ${liked?'is-liked':''}" type="button" data-news-like="${esc(n.id)}" aria-pressed="${liked}"><span>♥</span> ${liked?'Liked':'Like'}</button><button class="mini" type="button" data-news-comments="${esc(n.id)}">Comment</button>${canFeature('delete_news')?`<button class="mini danger" type="button" onclick="deleteNews('${esc(n.id)}')">Delete</button>`:""}</div>
         <div class="social-post-options hidden" id="newsOptions-${esc(n.id)}"><button type="button" data-news-report="${esc(n.id)}">⚑ Report</button></div>
       </article>`;
-    }).join("")||`<div class="room-empty"><div>📰</div><b>No news yet</b><span>Community announcements will appear here.</span></div>`;
+    }).join("")||`<div class="news-empty-state"><span>✦</span><b>Nothing new just yet</b><p>Community announcements will appear here.</p></div>`;
     document.querySelectorAll('[data-news-more]').forEach(b=>b.onclick=()=>{$('newsOptions-'+b.dataset.newsMore)?.classList.toggle('hidden')});
     document.querySelectorAll('[data-news-report]').forEach(b=>b.onclick=async()=>{const id=b.dataset.newsReport;try{await api('/api/news/'+encodeURIComponent(id)+'/report',{method:'POST',body:JSON.stringify({reason:'Reported by community member'})});toast('Report submitted.')}catch(e){toast(e.message||'Reporting is unavailable for this post.')}});
-    document.querySelectorAll('[data-news-reaction]').forEach(b=>b.onclick=async()=>{try{await api('/api/news/'+encodeURIComponent(b.dataset.newsId)+'/reaction',{method:'POST',body:JSON.stringify({emoji:b.dataset.newsReaction})});await loadNews()}catch(e){toast(e.message||'Could not send reaction.')}});
+    document.querySelectorAll('[data-news-like]').forEach(b=>b.onclick=async()=>{b.disabled=true;try{await api('/api/news/'+encodeURIComponent(b.dataset.newsLike)+'/like',{method:'POST',body:JSON.stringify({})});await loadNews()}catch(e){toast(e.message||'Could not like this post.')}finally{b.disabled=false}});
+    document.querySelectorAll('[data-news-likes]').forEach(b=>b.onclick=()=>openNewsLikes(b.dataset.newsLikes));
+    document.querySelectorAll('[data-news-comments]').forEach(b=>b.onclick=()=>openNewsComments(b.dataset.newsComments));
+    document.querySelectorAll('[data-news-author]').forEach(b=>b.onclick=()=>openUser(b.dataset.newsAuthor));
   } catch (error) { toast(error.message); }
+}
+async function openNewsLikes(id){
+  try{
+    const data=await api('/api/news/'+encodeURIComponent(id)+'/likes');
+    const users=data.users||[];
+    modal(`<div class="news-likes-modal"><h2>People who liked this</h2><div class="news-likes-list">${users.map(u=>`<button type="button" class="news-liker-row" data-news-liker="${esc(u.id)}">${avatar(u)}<span><b>${esc(u.displayName||u.username)}</b><small>@${esc(u.username||'member')}</small></span></button>`).join('')||'<p class="muted">No likes yet.</p>'}</div></div>`);
+    document.querySelectorAll('[data-news-liker]').forEach(b=>b.onclick=()=>{closeModal();openUser(b.dataset.newsLiker)});
+  }catch(e){toast(e.message||'Could not load likes.')}
 }
 
 
