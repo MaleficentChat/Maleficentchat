@@ -7821,3 +7821,79 @@ body.parallel-embed.parallel-embed-error:after{content:"This room could not be o
   background-position:center center!important;
   background-repeat:no-repeat!important;
 }
+
+
+/* Definitive main-profile cover and avatar alignment fix */
+#profile .profile-settings-head{
+  position:relative!important;
+  isolation:isolate;
+  overflow:hidden!important;
+  background-image:none!important;
+}
+#profile .profile-settings-head .profile-cover-image{
+  position:absolute!important;
+  inset:0!important;
+  z-index:0!important;
+  display:block!important;
+  width:100%!important;
+  height:100%!important;
+  max-width:none!important;
+  max-height:none!important;
+  object-fit:cover!important;
+  object-position:center center!important;
+  pointer-events:none!important;
+}
+#profile .profile-settings-head::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  z-index:0;
+  pointer-events:none;
+  background:linear-gradient(180deg,rgba(0,0,0,.10),rgba(20,12,8,.70));
+}
+#profile .profile-settings-head>*:not(.profile-cover-image){
+  position:relative;
+  z-index:1;
+}
+#profile .profile-settings-head .big-avatar{
+  position:relative!important;
+  left:auto!important;
+  right:auto!important;
+  transform:none!important;
+  align-self:center!important;
+  margin-left:auto!important;
+  margin-right:auto!important;
+  flex:0 0 104px!important;
+  width:104px!important;
+  height:104px!important;
+  min-width:104px!important;
+  min-height:104px!important;
+  aspect-ratio:1/1!important;
+  border-radius:50%!important;
+  overflow:hidden!important;
+  display:grid!important;
+  place-items:center!important;
+  box-sizing:border-box!important;
+}
+#profile .profile-settings-head .big-avatar img{
+  display:block!important;
+  width:100%!important;
+  height:100%!important;
+  min-width:100%!important;
+  min-height:100%!important;
+  max-width:none!important;
+  max-height:none!important;
+  object-fit:cover!important;
+  object-position:50% 50%!important;
+  border-radius:50%!important;
+  margin:0!important;
+}
+@media(max-width:700px){
+  #profile .profile-settings-head .big-avatar{
+    flex-basis:84px!important;
+    width:84px!important;
+    height:84px!important;
+    min-width:84px!important;
+    min-height:84px!important;
+  }
+}
