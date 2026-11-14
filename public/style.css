@@ -7975,3 +7975,14 @@ body.parallel-embed.parallel-embed-error:after{content:"This room could not be o
 #viewWall .wall-post .social-post-options,#viewWall .wall-post .wall-comments{margin:0;padding:12px 16px;border-top:1px solid var(--border);border-radius:0;background:var(--panel)}
 #viewWall .wall-post .wall-comments{padding-bottom:16px}
 @media(max-width:600px){#viewWall .wall-post .news-card-top{padding:13px 13px 0}#viewWall .wall-post .wall-content{padding:0 13px 13px}#viewWall .wall-post .wall-media{width:calc(100% + 26px);max-width:calc(100% + 26px);margin-left:-13px;margin-right:-13px}#viewWall .wall-post .news-actions{padding:10px 12px;gap:6px}#viewWall .wall-post .news-actions button{font-size:12px;padding:7px 10px!important}}
+
+/* Close Friends audience controls */
+.close-friends-manager{max-width:560px}
+.close-friends-list{display:grid;gap:8px;max-height:min(52vh,460px);overflow:auto;margin:16px 0}
+.close-friend-option{display:flex;align-items:center;gap:12px;padding:10px 12px;border:1px solid var(--border,rgba(255,255,255,.12));border-radius:13px;background:var(--panel,rgba(255,255,255,.035));cursor:pointer}
+.close-friend-option input{width:18px;height:18px;accent-color:#42b883;flex:0 0 auto}
+.close-friend-avatar{width:38px;height:38px;border-radius:50%;overflow:hidden;display:grid;place-items:center;background:rgba(66,184,131,.12);flex:0 0 auto}
+.close-friend-avatar img{width:100%;height:100%;object-fit:cover}
+.close-friend-option>span:last-child{display:grid;gap:2px}
+.close-friend-option small{opacity:.7}
+.close-friends-manager .toolbar{justify-content:flex-end;gap:8px}
