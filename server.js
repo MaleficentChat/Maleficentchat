@@ -6567,6 +6567,7 @@ app.post("/api/news",auth,upload.single("file"),featureAllowed("publish_news"),a
 
       time:Date.now(),
       author:u.displayName||u.username,
+      authorId:u.id,
       avatar:u.avatar||"",
       comments:[],
       attachment:req.file?{url:"/uploads/"+req.file.filename,type:req.file.mimetype,name:req.file.originalname}:null
@@ -6584,6 +6585,21 @@ app.post("/api/news",auth,upload.single("file"),featureAllowed("publish_news"),a
   }
 );
 
+app.post('/api/news/:id/like',auth,(req,res)=>{
+  const u=current(req),n=(db.news||[]).find(x=>String(x.id)===String(req.params.id));
+  if(!n)return res.status(404).json({error:'News item not found.'});
+  n.likes=Array.isArray(n.likes)?n.likes.map(String):[];
+  const uid=String(u.id),liked=n.likes.includes(uid);
+  n.likes=liked?n.likes.filter(x=>x!==uid):[...n.likes,uid];
+  save();io.emit('news');res.json({ok:true,liked:!liked,likes:n.likes.length});
+});
+app.get('/api/news/:id/likes',auth,(req,res)=>{
+  const n=(db.news||[]).find(x=>String(x.id)===String(req.params.id));
+  if(!n)return res.status(404).json({error:'News item not found.'});
+  const ids=new Set((Array.isArray(n.likes)?n.likes:[]).map(String));
+  const users=(db.users||[]).filter(u=>ids.has(String(u.id))).map(u=>({id:u.id,username:u.username,displayName:u.displayName,avatar:u.avatar,rank:u.rank}));
+  res.json({users});
+});
 app.post('/api/news/:id/reaction',auth,(req,res)=>{
   const u=current(req),emoji=String(req.body?.emoji||'👍'),allowed=['👍','👎','💗','😆'];
   if(!allowed.includes(emoji))return res.status(400).json({error:'Unsupported reaction.'});
