@@ -7786,3 +7786,38 @@ body.parallel-embed.parallel-embed-error:after{content:"This room could not be o
   background:rgba(45,29,22,.98)!important;
   border-color:rgba(255,255,255,.55)!important;
 }
+
+
+/* Profile media rendering: preserve uploaded cover images and keep avatars centred. */
+#profile .profile-settings-head[style*="background-image"],
+#viewProfile .profile-settings-head[style*="background-image"]{
+  background-size:cover!important;
+  background-position:center center!important;
+  background-repeat:no-repeat!important;
+}
+#profile .profile-settings-head .big-avatar,
+#viewProfile .profile-settings-head .big-avatar,
+.profile-banner .big-avatar,
+.quick-user-avatar{
+  overflow:hidden!important;
+  border-radius:50%!important;
+  flex:0 0 auto!important;
+}
+#profile .profile-settings-head .big-avatar img,
+#viewProfile .profile-settings-head .big-avatar img,
+.profile-banner .big-avatar img,
+.quick-user-avatar img,
+.quick-user-avatar .avatar-img{
+  display:block!important;
+  width:100%!important;
+  height:100%!important;
+  max-width:none!important;
+  max-height:none!important;
+  object-fit:cover!important;
+  object-position:center center!important;
+}
+.quick-user-top{
+  background-size:cover!important;
+  background-position:center center!important;
+  background-repeat:no-repeat!important;
+}
