@@ -7897,3 +7897,39 @@ body.parallel-embed.parallel-embed-error:after{content:"This room could not be o
     min-height:84px!important;
   }
 }
+
+
+/* Public profile banner: render the uploaded cover as a real image layer,
+   matching the editable My Profile header without changing its controls. */
+.profile-modal .profile-banner{
+  position:relative!important;
+  isolation:isolate;
+  overflow:hidden;
+  background-size:cover!important;
+  background-position:center center!important;
+}
+.profile-modal .profile-banner .public-profile-cover-image{
+  position:absolute!important;
+  inset:0!important;
+  z-index:0!important;
+  display:block!important;
+  width:100%!important;
+  height:100%!important;
+  max-width:none!important;
+  max-height:none!important;
+  object-fit:cover!important;
+  object-position:center center!important;
+  pointer-events:none!important;
+}
+.profile-modal .profile-banner::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  z-index:1;
+  pointer-events:none;
+  background:linear-gradient(180deg,rgba(0,0,0,.10),rgba(20,12,8,.72));
+}
+.profile-modal .profile-banner>*:not(.public-profile-cover-image){
+  position:relative;
+  z-index:2;
+}
