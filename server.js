@@ -1562,6 +1562,12 @@ app.get("/uploads/*",async(req,res,next)=>{
         }
       }
     }
+    const wallMedia=await pool.query("SELECT id FROM wall_posts WHERE media_url=$1 LIMIT 1",["/uploads/"+mediaKey]);
+    if(wallMedia.rowCount){
+      const viewer=current(req);
+      if(!viewer)return res.sendStatus(401);
+      if(!await canViewWallPost(wallMedia.rows[0].id,viewer.id))return res.sendStatus(404);
+    }
     let found=await pool.query("SELECT mime_type,original_name,content FROM stored_media WHERE media_key=$1",[mediaKey]);
     if(!found.rowCount){
       const localPath=path.resolve(UP,...mediaKey.split("/"));
