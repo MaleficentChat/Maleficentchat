@@ -8073,3 +8073,11 @@ body.parallel-embed.parallel-embed-error:after{content:"This room could not be o
     left:9px!important;bottom:7px!important;width:23px!important;height:23px!important;min-width:23px!important;
   }
 }
+
+ 
+/* People cards: display name + optional mood, with rank icon on the far right. */
+#onlineUsers .online-user-grid .online-user{gap:12px!important}
+#onlineUsers .online-user-grid .online-user-copy{display:flex!important;flex-direction:column!important;align-items:flex-start!important;justify-content:center!important;gap:3px!important}
+#onlineUsers .online-user-grid .online-user-copy>b{display:block!important}
+#onlineUsers .online-user-grid .online-user-copy .online-user-mood{display:block!important;margin:0!important;font-size:16px!important;line-height:1!important}
+#onlineUsers .online-user-grid .room-user-rank-icon{display:inline-flex!important;align-items:center!important;justify-content:center!important;flex:0 0 30px!important;width:30px!important;height:30px!important;margin-left:auto!important;font-size:22px!important;line-height:1!important}
