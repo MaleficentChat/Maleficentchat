@@ -3602,15 +3602,21 @@ function renderUserProfileModal(user,data={}){
     </div>
     <div id="profileTabContent" class="profile-info"></div>
   </div>`);
-  // Let members open the profile photo in a focused, full-screen viewer.
+  // Public profile avatar: bind to the frame itself, and resolve the image URL
+  // at click time so lazy-loaded images and framed avatars both open reliably.
   const profileAvatarFrame=document.querySelector('#modal .profile-modal .equipped-profile-frame');
-  const profileAvatarImage=profileAvatarFrame?.querySelector('.big-avatar img');
-  if(profileAvatarFrame&&profileAvatarImage?.src){
+  if(profileAvatarFrame){
     profileAvatarFrame.setAttribute('role','button');
     profileAvatarFrame.setAttribute('tabindex','0');
     profileAvatarFrame.setAttribute('aria-label','Open profile picture');
-    const openProfileAvatar=()=>{
+    profileAvatarFrame.style.cursor='zoom-in';
+    const openProfileAvatar=(event)=>{
+      event?.preventDefault?.();
+      event?.stopPropagation?.();
       if(document.getElementById('profileAvatarViewer'))return;
+      const profileAvatarImage=profileAvatarFrame.querySelector('.big-avatar img');
+      const imageUrl=String(user.avatar||profileAvatarImage?.currentSrc||profileAvatarImage?.src||'').trim();
+      if(!imageUrl){toast('This profile has no picture to open.');return;}
       const viewer=document.createElement('div');
       viewer.id='profileAvatarViewer';
       viewer.className='profile-avatar-viewer';
@@ -3618,8 +3624,10 @@ function renderUserProfileModal(user,data={}){
       viewer.setAttribute('aria-modal','true');
       viewer.setAttribute('aria-label','Profile picture');
       const image=document.createElement('img');
-      image.src=profileAvatarImage.currentSrc||profileAvatarImage.src;
-      image.alt=user.displayName||user.username||'Profile picture';
+      image.src=imageUrl;
+      image.alt=(user.displayName||user.username||'Profile picture')+' profile picture';
+      image.loading='eager';
+      image.decoding='async';
       const close=document.createElement('button');
       close.type='button';
       close.className='profile-avatar-viewer-close';
@@ -3631,9 +3639,11 @@ function renderUserProfileModal(user,data={}){
         document.body.style.overflow=previousOverflow;
         document.removeEventListener('keydown',onKeyDown);
       };
-      const onKeyDown=(event)=>{if(event.key==='Escape')dismiss();};
+      const onKeyDown=(keyEvent)=>{if(keyEvent.key==='Escape')dismiss();};
       close.addEventListener('click',dismiss);
-      viewer.addEventListener('click',(event)=>{if(event.target===viewer)dismiss();});
+      viewer.addEventListener('click',(clickEvent)=>{if(clickEvent.target===viewer)dismiss();});
+      image.addEventListener('click',(clickEvent)=>clickEvent.stopPropagation());
+      image.addEventListener('error',()=>{toast('Could not load this profile picture.');dismiss();});
       viewer.append(image,close);
       document.body.appendChild(viewer);
       document.body.style.overflow='hidden';
@@ -3642,7 +3652,7 @@ function renderUserProfileModal(user,data={}){
     };
     profileAvatarFrame.addEventListener('click',openProfileAvatar);
     profileAvatarFrame.addEventListener('keydown',(event)=>{
-      if(event.key==='Enter'||event.key===' '){event.preventDefault();openProfileAvatar();}
+      if(event.key==='Enter'||event.key===' '){openProfileAvatar(event);}
     });
   }
   const profileMusicAudio=$('profileMusicAudio'),profileMusicToggle=$('profileMusicToggle');
