@@ -8224,3 +8224,10 @@ body.parallel-embed.parallel-embed-error:after{content:"This room could not be o
 #viewRooms.chatting .online-panel #onlineUsers .online-user-grid .online-user-copy .room-user-rank{font-size:11px!important;line-height:1.2!important;margin-top:2px!important;}
 #viewRooms.chatting .online-panel #onlineUsers .online-user-grid .online-user .user-mood-indicator{width:17px!important;height:17px!important;min-width:17px!important;font-size:10px!important;left:8px!important;bottom:5px!important;}
 #viewRooms.chatting .online-panel #onlineUsers .online-user-grid .online-user .my-status-toggle{width:20px!important;height:20px!important;min-width:20px!important;min-height:20px!important;flex:0 0 20px!important;background:#fff!important;color:#24170f!important;border-radius:50%!important;}
+
+
+/* Slightly taller compact People cards for more balanced vertical breathing room. */
+#viewRooms.chatting .online-panel #onlineUsers .online-user-grid .online-user{
+  min-height:76px!important;height:76px!important;max-height:76px!important;
+  padding:10px 12px!important;
+}
