@@ -8231,3 +8231,12 @@ body.parallel-embed.parallel-embed-error:after{content:"This room could not be o
   min-height:76px!important;height:76px!important;max-height:76px!important;
   padding:10px 12px!important;
 }
+
+
+/* Final profile-row proportions: shorter vertically and almost full panel width. */
+#viewRooms.chatting .online-panel #onlineUsers .online-user-grid .online-user{
+  width:calc(100% - 4px)!important;
+  min-height:64px!important;height:64px!important;max-height:64px!important;
+  margin:5px 2px!important;padding:8px 10px!important;
+  box-sizing:border-box!important;
+}
