@@ -637,6 +637,19 @@ function closeModal() {
   });
 }
 
+// A chat quick-profile popup is a floating panel: tapping anywhere outside
+// its card dismisses only that popup, while taps inside it keep working normally.
+if(!window.__quickUserOutsideDismissBound){
+  window.__quickUserOutsideDismissBound=true;
+  document.addEventListener("pointerdown",event=>{
+    const overlay=$("modal");
+    const body=$("modalBody");
+    const quickCard=body?.querySelector(".quick-user-card");
+    if(!overlay||overlay.classList.contains("hidden")||!quickCard)return;
+    if(!quickCard.contains(event.target))closeModal();
+  },true);
+}
+
 function modal(html) {
   if(activeWarningNotificationId&&!renderingPersistentWarning)return;
   const overlay=$("modal");
