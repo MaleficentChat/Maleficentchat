@@ -8196,3 +8196,31 @@ body.parallel-embed.parallel-embed-error:after{content:"This room could not be o
 #onlineUsers .online-user-grid .my-status-toggle #myStatusGlyph{display:block!important;font-size:11px!important;line-height:1!important;}
 #onlineUsers .online-user-grid .my-status-toggle #myStatusLabel,#onlineUsers .online-user-grid .my-status-toggle>span:last-child{display:none!important;}
 #onlineUsers .online-user-grid .my-status-options{position:absolute!important;z-index:100!important;top:calc(100% + 4px)!important;left:56px!important;right:auto!important;width:min(230px,calc(100vw - 100px))!important;}
+
+
+/* Match every People row to the compact reference card; override room-panel avatar rules. */
+#viewRooms.chatting .online-panel #onlineUsers .online-user-grid .online-user{
+  width:calc(100% - 16px)!important;
+  min-height:64px!important;height:64px!important;max-height:64px!important;
+  padding:8px 10px!important;margin:6px 8px!important;gap:9px!important;
+  display:flex!important;flex-direction:row!important;align-items:center!important;
+  justify-content:flex-start!important;aspect-ratio:auto!important;overflow:hidden!important;
+  border-radius:13px!important;box-sizing:border-box!important;
+}
+#viewRooms.chatting .online-panel #onlineUsers .online-user-grid .online-user>.avatar,
+#viewRooms.chatting .online-panel #onlineUsers .online-user-grid .online-user>img.avatar,
+#viewRooms.chatting .online-panel #onlineUsers .online-user-grid .online-user .avatar{
+  width:44px!important;height:44px!important;min-width:44px!important;min-height:44px!important;
+  max-width:44px!important;max-height:44px!important;flex:0 0 44px!important;
+  border-radius:50%!important;overflow:hidden!important;object-fit:cover!important;
+}
+#viewRooms.chatting .online-panel #onlineUsers .online-user-grid .online-user .avatar img{
+  width:100%!important;height:100%!important;max-width:100%!important;max-height:100%!important;
+  object-fit:cover!important;border-radius:50%!important;
+}
+#viewRooms.chatting .online-panel #onlineUsers .online-user-grid .online-user-copy{min-width:0!important;flex:1 1 auto!important;text-align:left!important;}
+#viewRooms.chatting .online-panel #onlineUsers .online-user-grid .online-user-copy b{font-size:13px!important;line-height:1.2!important;}
+#viewRooms.chatting .online-panel #onlineUsers .online-user-grid .online-user-copy small{font-size:10px!important;line-height:1.2!important;margin:2px 0!important;}
+#viewRooms.chatting .online-panel #onlineUsers .online-user-grid .online-user-copy .room-user-rank{font-size:11px!important;line-height:1.2!important;margin-top:2px!important;}
+#viewRooms.chatting .online-panel #onlineUsers .online-user-grid .online-user .user-mood-indicator{width:17px!important;height:17px!important;min-width:17px!important;font-size:10px!important;left:8px!important;bottom:5px!important;}
+#viewRooms.chatting .online-panel #onlineUsers .online-user-grid .online-user .my-status-toggle{width:20px!important;height:20px!important;min-width:20px!important;min-height:20px!important;flex:0 0 20px!important;background:#fff!important;color:#24170f!important;border-radius:50%!important;}
