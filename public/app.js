@@ -2245,10 +2245,13 @@ async function renderOnline(tab=onlinePanelTab,searchQuery=""){
     $("onlinePanelTitle").innerHTML=`${esc(title)} <span class="online-badge">${count}</span>`;
     $("onlineUsers").innerHTML=`<div class="online-status-control"><label>My status</label><button type="button" class="my-status-toggle" id="myStatusToggle" aria-haspopup="true" aria-expanded="false"><span id="myStatusGlyph">🟢</span><b id="myStatusLabel">Online</b><span>⌄</span></button><div class="my-status-options hidden" id="myStatusOptions" role="menu"></div></div><div class="online-user-grid">${list.map(user=>`
       <div class="online-user ${user.online?'is-online':'is-offline'}" onclick="openQuickUserCard('${esc(user.id)}')">
-        ${avatar(user)}
+        <div class="people-avatar-wrap">
+          ${avatar(user)}
+          ${String(user.id)===String(state.user?.id) ? `<button type="button" class="people-status-dot" aria-label="Change my status" title="Change my status" onclick="event.stopPropagation();document.getElementById('myStatusToggle')?.click()">●</button>` : ""}
+        </div>
         <div class="online-user-copy">
           <b>${esc(user.displayName)}</b>
-          ${user.customStatus ? `<small class="online-user-mood" title="Mood">${statusEmoji(user.customStatus)}</small>` : ""}
+          ${user.customStatus && !["Online","Available","Away","Busy","Do Not Disturb"].includes(String(user.customStatus)) ? `<small class="online-user-mood" title="Mood">${statusEmoji(user.customStatus)}</small>` : ""}
         </div>
         <span class="room-user-rank-icon" aria-label="${esc(roomRoleLabel[roomRoleByUser[String(user.id)]]||user.rank||'Member')}" title="${esc(roomRoleLabel[roomRoleByUser[String(user.id)]]||user.rank||'Member')}">${roomRoleByUser[String(user.id)] ? (roomRoleIcon[roomRoleByUser[String(user.id)]]||'✨') : (rankIcon[String(user.rank||'MEMBER').toUpperCase()]||'⚡')}</span>
       </div>
