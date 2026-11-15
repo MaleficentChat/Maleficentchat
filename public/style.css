@@ -8074,3 +8074,26 @@ body.parallel-embed.parallel-embed-error:after{content:"This room could not be o
   }
 }
 
+
+
+/* Keep the personal status control beside a compact profile avatar. */
+#onlineUsers .online-status-control{
+  display:flex!important;align-items:center!important;justify-content:flex-start!important;
+  gap:8px!important;padding:5px 9px!important;margin:0 0 7px!important;min-height:0!important;
+}
+#onlineUsers .my-status-avatar{
+  display:grid!important;flex:0 0 44px!important;width:44px!important;height:44px!important;
+  min-width:44px!important;border-radius:50%!important;overflow:hidden!important;
+}
+#onlineUsers .my-status-avatar img{display:block!important;width:100%!important;height:100%!important;object-fit:cover!important}
+#onlineUsers .my-status-toggle{
+  display:inline-flex!important;align-items:center!important;justify-content:center!important;
+  width:24px!important;height:24px!important;min-width:24px!important;min-height:24px!important;
+  padding:0!important;border:1px solid var(--panel)!important;border-radius:50%!important;
+  background:#df168b!important;color:#fff!important;font-size:0!important;line-height:1!important;
+  box-shadow:0 1px 3px rgba(0,0,0,.25)!important;
+}
+#onlineUsers .my-status-toggle #myStatusGlyph{display:block!important;font-size:12px!important;line-height:1!important}
+#onlineUsers .my-status-toggle #myStatusLabel,
+#onlineUsers .my-status-toggle>span:last-child{display:none!important}
+#onlineUsers .my-status-options{left:54px!important;right:auto!important;width:min(230px,calc(100vw - 70px))!important}
