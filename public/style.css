@@ -8081,3 +8081,11 @@ body.parallel-embed.parallel-embed-error:after{content:"This room could not be o
 #onlineUsers .online-user-grid .online-user-copy>b{display:block!important}
 #onlineUsers .online-user-grid .online-user-copy .online-user-mood{display:block!important;margin:0!important;font-size:16px!important;line-height:1!important}
 #onlineUsers .online-user-grid .room-user-rank-icon{display:inline-flex!important;align-items:center!important;justify-content:center!important;flex:0 0 30px!important;width:30px!important;height:30px!important;margin-left:auto!important;font-size:22px!important;line-height:1!important}
+
+
+/* Final People panel card details from the supplied reference */
+#onlineUsers .people-avatar-wrap{position:relative!important;flex:0 0 56px!important;width:56px!important;height:56px!important}
+#onlineUsers .people-avatar-wrap>.avatar{width:56px!important;height:56px!important;flex:0 0 56px!important;border:3px solid #ff8a3d!important;box-shadow:0 0 0 2px rgba(255,138,61,.18)!important;box-sizing:border-box!important}
+#onlineUsers .people-status-dot{position:absolute!important;left:-2px!important;bottom:-1px!important;z-index:6!important;width:24px!important;height:24px!important;min-width:24px!important;padding:0!important;border:2px solid var(--panel)!important;border-radius:50%!important;background:#df168b!important;color:#fff!important;font-size:0!important;line-height:1!important;cursor:pointer!important;box-shadow:0 1px 4px rgba(0,0,0,.35)!important}
+#onlineUsers .people-status-dot:after{content:"";display:block;width:7px;height:7px;margin:auto;border:2px solid #fff;border-radius:50%}
+#onlineUsers .online-user-copy .online-user-mood{margin:0!important;font-size:17px!important;line-height:1!important}
