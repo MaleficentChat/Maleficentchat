@@ -8097,3 +8097,12 @@ body.parallel-embed.parallel-embed-error:after{content:"This room could not be o
 #onlineUsers .my-status-toggle #myStatusLabel,
 #onlineUsers .my-status-toggle>span:last-child{display:none!important}
 #onlineUsers .my-status-options{left:54px!important;right:auto!important;width:min(230px,calc(100vw - 70px))!important}
+
+
+/* Small profile avatar and single white status toggle. */
+#onlineUsers .online-status-control{display:flex!important;align-items:center!important;justify-content:flex-start!important;gap:8px!important;}
+#onlineUsers .my-status-avatar{width:44px!important;height:44px!important;min-width:44px!important;flex:0 0 44px!important;}
+#onlineUsers .my-status-toggle{width:24px!important;height:24px!important;min-width:24px!important;min-height:24px!important;padding:0!important;border:1px solid rgba(255,255,255,.85)!important;border-radius:50%!important;background:#fff!important;color:#24170f!important;font-size:0!important;line-height:1!important;}
+#onlineUsers .my-status-toggle #myStatusGlyph{font-size:12px!important;line-height:1!important;}
+#onlineUsers .my-status-toggle #myStatusLabel,#onlineUsers .my-status-toggle>span:last-child{display:none!important;}
+#onlineUsers .online-user.is-current-user>.avatar,#onlineUsers .online-user.is-current-user>.user-mood-indicator{display:none!important;}
