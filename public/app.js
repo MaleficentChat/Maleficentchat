@@ -642,11 +642,22 @@ function closeModal() {
 if(!window.__quickUserOutsideDismissBound){
   window.__quickUserOutsideDismissBound=true;
   document.addEventListener("pointerdown",event=>{
+    const target=event.target;
+    // The People drawer and the floating quick-profile card are independent
+    // panels. Dismiss each only when the tap lands outside that panel.
+    const peoplePanel=$("onlinePanel");
+    const peopleIsOpen=!!peoplePanel?.classList.contains("mobile-open");
+    const peopleTriggers=target?.closest?.("#floatingPeopleBtn,#openOnlinePanel,#closeOnlinePanel");
+    if(peopleIsOpen&&!peopleTriggers&&!peoplePanel.contains(target)){
+      peoplePanel.classList.remove("mobile-open");
+    }
+
     const overlay=$("modal");
     const body=$("modalBody");
     const quickCard=body?.querySelector(".quick-user-card");
-    if(!overlay||overlay.classList.contains("hidden")||!quickCard)return;
-    if(!quickCard.contains(event.target))closeModal();
+    if(overlay&&!overlay.classList.contains("hidden")&&quickCard&&!quickCard.contains(target)){
+      closeModal();
+    }
   },true);
 }
 
