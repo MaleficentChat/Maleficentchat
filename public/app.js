@@ -1711,7 +1711,7 @@ async function openCloseFriendsManager(){
 }
 $('manageCloseFriends')?.addEventListener('click',openCloseFriendsManager);
 
-if($('newWallAdd'))$('newWallAdd').addEventListener('click',()=>{modal('<div class="shadow-add-picker"><h2>＋ Add to Shadow</h2><p class="muted">What would you like to share?</p><div class="shadow-add-options"><button type="button" class="primary" id="shadowAddPost">✍️ Shadow Post</button><button type="button" class="primary" id="shadowAddReel">🎬 Shadow Reel</button></div></div>');$('shadowAddPost')?.addEventListener('click',()=>{closeModal();$('newWallPost')?.click();});$('shadowAddReel')?.addEventListener('click',()=>{closeModal();$('newWallReel')?.click();});});
+if($('newWallAdd'))$('newWallAdd').addEventListener('click',()=>{modal('<div class="shadow-add-picker"><h2>＋ Add to Shadow</h2><p class="muted">What would you like to share?</p><div class="shadow-add-options"><button type="button" class="primary" id="shadowAddPost">✍️ Shadow Post</button><button type="button" class="primary" id="shadowAddReel">🎬 Shadow Reel</button></div></div>');$('shadowAddPost')?.addEventListener('click',()=>$('newWallPost')?.click());$('shadowAddReel')?.addEventListener('click',()=>$('newWallReel')?.click());});
 if($('newWallPost'))$('newWallPost').onclick=async()=>{
   modal(`<h2>New Shadow Feed Post</h2><textarea id="wallPostText" maxlength="5000" placeholder="Share something with the community…"></textarea><label class="stack">Who can see this post?<select id="wallPostAudience"><option value="friends">All accepted friends</option><option value="close_friends">💚 Close Friends only</option></select></label><label class="stack">Post duration<select id="wallPostExpiry"><option value="0">Keep on Shadow Feed</option><option value="1">Disappear after 1 hour</option><option value="6">Disappear after 6 hours</option><option value="24">Disappear after 24 hours</option><option value="72">Disappear after 3 days</option><option value="168">Disappear after 7 days</option></select></label><input id="wallPostFile" type="file" accept="image/*,video/*"><div id="wallPreview" class="media-preview"></div><button class="primary" id="wallPostSend">Upload & Publish</button>`);
   $('wallPostFile')?.addEventListener('change',()=>{const f=$('wallPostFile').files?.[0],box=$('wallPreview');if(!f){box.innerHTML='';return}const u=URL.createObjectURL(f);box.innerHTML=f.type.startsWith('video/')?`<video controls src="${u}"></video>`:`<img src="${u}">`;});
@@ -3575,9 +3575,9 @@ async function openQuickUserCard(id){
     <button class="quick-user-row" id="quickViewProfile"><span>👤</span><b>View profile</b><i>›</i></button>
     ${!isSelf?`<button class="quick-user-row" id="quickPrivate"><span>🟢</span><b>Private</b><i>›</i></button><button class="quick-user-row" id="quickAction"><span>✔️</span><b>Action</b><i>›</i></button>`:`<button class="quick-user-row" id="quickAction"><span>⚙️</span><b>Account actions</b><i>›</i></button>`}
   </div>`);
-  $('quickViewProfile')?.addEventListener('click',()=>{closeModal();openUser(user.id)});
+  $('quickViewProfile')?.addEventListener('click',()=>{openUser(user.id)});
   $('quickPrivate')?.addEventListener('click',()=>{closeModal();openDM(user.id)});
-  $('quickAction')?.addEventListener('click',()=>{closeModal();openProfileActionDrawer(user,data)});
+  $('quickAction')?.addEventListener('click',()=>{openProfileActionDrawer(user,data)});
 }
 
 async function openUser(id) {
@@ -4955,7 +4955,7 @@ async function openProfileActionDrawer(user,data={}){
    </div>`);
   $('drawerAddFriend')?.addEventListener('click',async()=>{try{await friend(id);closeModal();}catch(e){toast(e.message)}});
   $('drawerBlock')?.addEventListener('click',async()=>{try{await block(id);closeModal();}catch(e){toast(e.message)}});
-  $('drawerWallet')?.addEventListener('click',event=>{event.preventDefault();event.stopPropagation();closeModal();shareWalletModal(user);});
+  $('drawerWallet')?.addEventListener('click',event=>{event.preventDefault();event.stopPropagation();shareWalletModal(user);});
   $('drawerRoomAction')?.addEventListener('click',()=>roomActionModal(user,{canRoomRank,canRoomModerate}));
   $('drawerModerateUser')?.addEventListener('click',()=>moderate(id));
   $('drawerStaffPoints')?.addEventListener('click',()=>modal(`<div class="profile-drawer"><h2>🏅 Staff Points · @${esc(user.username)}</h2><div class="profile-info-row"><b>Total points</b><strong>${Number(staffPointInfo?.staffPoints||0).toLocaleString()}</strong></div></div>`));
