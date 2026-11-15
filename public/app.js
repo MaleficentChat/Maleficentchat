@@ -2243,7 +2243,7 @@ async function renderOnline(tab=onlinePanelTab,searchQuery=""){
 
     const count=online.length;
     $("onlinePanelTitle").innerHTML=`${esc(title)} <span class="online-badge">${count}</span>`;
-    $("onlineUsers").innerHTML=`<div class="online-status-control"><label>My status</label><button type="button" class="my-status-toggle" id="myStatusToggle" aria-haspopup="true" aria-expanded="false"><span id="myStatusGlyph">🟢</span><b id="myStatusLabel">Online</b><span>⌄</span></button><div class="my-status-options hidden" id="myStatusOptions" role="menu"></div></div><div class="online-user-grid">${list.map(user=>`
+    $("onlineUsers").innerHTML=`<div class="online-status-control">${avatar(state.user,"my-status-avatar")}<button type="button" class="my-status-toggle" id="myStatusToggle" aria-haspopup="true" aria-expanded="false"><span id="myStatusGlyph">🟢</span><b id="myStatusLabel">Online</b><span>⌄</span></button><div class="my-status-options hidden" id="myStatusOptions" role="menu"></div></div><div class="online-user-grid">${list.map(user=>`
       <div class="online-user ${user.online?'is-online':'is-offline'}" onclick="openQuickUserCard('${esc(user.id)}')">
         ${avatar(user)}<span class="user-mood-indicator" title="${esc(user.customStatus|| (user.online?'Online':'Away'))}">${statusEmoji(user.customStatus|| (user.online?'Online':'Away'))}</span>
         <div class="online-user-copy">
