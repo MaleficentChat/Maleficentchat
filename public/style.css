@@ -8119,3 +8119,54 @@ body.parallel-embed.parallel-embed-error:after{content:"This room could not be o
 #onlineUsers .online-status-control .self-profile-copy small{display:block!important;font-size:11px!important;line-height:1.2!important;margin:2px 0!important;}
 #onlineUsers .online-status-control .self-profile-copy .room-user-rank{display:block!important;font-size:11px!important;line-height:1.2!important;}
 #onlineUsers .online-user.is-current-user{display:none!important;}
+
+
+/* Unified People cards: every account uses the same compact horizontal layout. */
+#onlineUsers .online-status-control,
+#onlineUsers .online-user-grid .online-user{
+  display:flex!important;flex-direction:row!important;align-items:center!important;
+  justify-content:flex-start!important;gap:9px!important;box-sizing:border-box!important;
+  width:calc(100% - 16px)!important;min-height:64px!important;height:auto!important;
+  aspect-ratio:auto!important;margin:8px!important;padding:9px 12px!important;
+  border:1px solid var(--border)!important;border-radius:14px!important;
+  background:var(--panel)!important;text-align:left!important;overflow:visible!important;
+}
+#onlineUsers .my-status-avatar,
+#onlineUsers .online-user-grid .online-user>.avatar{
+  display:grid!important;position:relative!important;flex:0 0 44px!important;
+  width:44px!important;height:44px!important;min-width:44px!important;
+  min-height:44px!important;border-radius:50%!important;overflow:hidden!important;
+}
+#onlineUsers .my-status-avatar img,
+#onlineUsers .online-user-grid .online-user>.avatar img{
+  display:block!important;width:100%!important;height:100%!important;object-fit:cover!important;
+}
+#onlineUsers .online-user-grid .online-user-copy,
+#onlineUsers .online-status-control .self-profile-copy{
+  display:block!important;flex:1 1 auto!important;min-width:0!important;
+  max-width:none!important;text-align:left!important;
+}
+#onlineUsers .online-user-grid .online-user-copy b,
+#onlineUsers .online-status-control .self-profile-copy b{
+  display:block!important;font-size:14px!important;line-height:1.2!important;
+  white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;
+}
+#onlineUsers .online-user-grid .online-user-copy small,
+#onlineUsers .online-status-control .self-profile-copy small{
+  display:block!important;font-size:11px!important;line-height:1.2!important;
+  white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;
+  margin:2px 0!important;
+}
+#onlineUsers .online-user-grid .online-user-copy .room-user-rank,
+#onlineUsers .online-status-control .self-profile-copy .room-user-rank{
+  display:block!important;font-size:11px!important;line-height:1.2!important;margin-top:2px!important;
+}
+#onlineUsers .online-user-grid .user-mood-indicator{
+  left:9px!important;bottom:7px!important;top:auto!important;width:18px!important;
+  height:18px!important;min-width:18px!important;font-size:10px!important;
+}
+#onlineUsers .my-status-toggle{
+  flex:0 0 20px!important;width:20px!important;height:20px!important;
+  min-width:20px!important;min-height:20px!important;background:#fff!important;color:#24170f!important;
+}
+#onlineUsers .online-user.is-current-user{display:flex!important;}
