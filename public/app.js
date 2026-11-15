@@ -2252,7 +2252,7 @@ async function renderOnline(tab=onlinePanelTab,searchQuery=""){
           <span class="room-user-rank" title="${esc(roomRoleLabel[roomRoleByUser[String(user.id)]]||user.rank||'Member')}">${roomRoleByUser[String(user.id)] ? (roomRoleIcon[roomRoleByUser[String(user.id)]]||'✨') : (rankIcon[String(user.rank||'MEMBER').toUpperCase()]||'⚡')} ${esc(roomRoleLabel[roomRoleByUser[String(user.id)]]||String(user.rank||'MEMBER').replaceAll('_',' '))}</span>
         </div>
       </div>
-    `).join("") || `<div class="online-empty"><div>${tab==="staff"?"🛡️":tab==="friends"?"💜":"👥"}</div><b>No users here</b><span>Try another tab.</span></div>`}</div>`;    `).join("") || `<div class="online-empty"><div>${tab==="staff"?"🛡️":tab==="friends"?"💜":"👥"}</div><b>No users here</b><span>Try another tab.</span></div>`}</div>`;
+    `).join("") || `<div class="online-empty"><div>${tab==="staff"?"🛡️":tab==="friends"?"💜":"👥"}</div><b>No users here</b><span>Try another tab.</span></div>`}</div>`;
     const sortSelect=$("onlineSortMode");if(sortSelect){sortSelect.value=onlineSortMode;sortSelect.onchange=()=>{onlineSortMode=sortSelect.value;renderOnline(onlinePanelTab);};}
     const statusToggle=$("myStatusToggle"),statusOptions=$("myStatusOptions");
     const statusChoices=[["Online","🟢"],["Away","🕒"],["Busy","⛔"],["Working","⚙️"],["Happy","😊"],["Sad","😔"],["Angry","🔥"],["Listening to music","🎧"],["Birthday","🎂"],["Friendly","💬"],["Watching video","▶️"],["Eating","🍜"],["Gaming","🎮"]];
