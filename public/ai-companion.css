@@ -69,3 +69,14 @@
 .ai-studio-heading{padding:4px 2px 8px}
 .ai-studio-heading h3{font-size:23px}
 @media(max-width:720px){.ai-avatar-stage{min-height:390px}.ai-option-tiles{grid-template-columns:repeat(2,minmax(0,1fr))}.ai-option-tile{min-height:96px}}
+
+
+/* Full-body Bitmoji-style male/female character presentation */
+.ai-avatar-stage{min-height:500px}
+.ai-3d-stage{min-height:500px}
+.ai-3d-canvas{height:470px}
+.ai-avatar-stage .ai-avatar-svg{width:auto;max-width:100%;max-height:470px;height:auto;object-fit:contain}
+.ai-hero-3d-stage .ai-3d-canvas{height:260px!important}
+.ai-editor-section [data-male-only][hidden]{display:none!important}
+.ai-option-tile[data-value="Male"],.ai-option-tile[data-value="Female"]{min-height:104px;font-size:13px;font-weight:750}
+@media(max-width:720px){.ai-avatar-stage,.ai-3d-stage{min-height:450px}.ai-3d-canvas{height:430px}.ai-avatar-stage .ai-avatar-svg{max-height:420px}}
