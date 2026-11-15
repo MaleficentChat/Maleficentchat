@@ -8240,3 +8240,64 @@ body.parallel-embed.parallel-embed-error:after{content:"This room could not be o
   margin:5px 2px!important;padding:8px 10px!important;
   box-sizing:border-box!important;
 }
+
+
+/* Profile modal polish: correctly crop the avatar and keep the menu clear of Close. */
+#modal:has(.profile-modal) .profile-banner .equipped-profile-frame{
+  position:relative!important;
+  display:block!important;
+  flex:0 0 76px!important;
+  width:76px!important;height:76px!important;
+  min-width:76px!important;min-height:76px!important;
+  aspect-ratio:1/1!important;
+  overflow:hidden!important;
+  border-radius:50%!important;
+  box-sizing:border-box!important;
+  cursor:zoom-in!important;
+  isolation:isolate!important;
+}
+#modal:has(.profile-modal) .equipped-profile-frame>.big-avatar{
+  position:relative!important;
+  display:block!important;
+  width:100%!important;height:100%!important;
+  min-width:0!important;min-height:0!important;
+  margin:0!important;padding:0!important;
+  overflow:hidden!important;
+  border-radius:50%!important;
+  box-sizing:border-box!important;
+}
+#modal:has(.profile-modal) .equipped-profile-frame>.big-avatar img{
+  position:absolute!important;inset:0!important;
+  display:block!important;width:100%!important;height:100%!important;
+  min-width:100%!important;min-height:100%!important;
+  max-width:none!important;max-height:none!important;
+  object-fit:cover!important;object-position:center center!important;
+  border-radius:50%!important;
+}
+#modal:has(.profile-modal) .profile-stats{
+  padding-right:44px!important;
+}
+#modal:has(.profile-modal) .profile-hamburger{
+  margin-left:auto!important;
+  margin-right:0!important;
+}
+.profile-avatar-viewer{
+  position:fixed;inset:0;z-index:1000000;
+  display:flex;align-items:center;justify-content:center;
+  padding:24px;box-sizing:border-box;
+  background:rgba(0,0,0,.94);
+  -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);
+}
+.profile-avatar-viewer>img{
+  display:block;width:auto;height:auto;
+  max-width:92vw;max-height:86dvh;
+  object-fit:contain;border-radius:12px;
+  box-shadow:0 18px 70px rgba(0,0,0,.55);
+}
+.profile-avatar-viewer-close{
+  position:absolute;top:max(16px,env(safe-area-inset-top));
+  right:max(16px,env(safe-area-inset-right));
+  width:44px;height:44px;border:1px solid rgba(255,255,255,.3);
+  border-radius:50%;background:rgba(35,35,35,.8);
+  color:#fff;font-size:30px;line-height:1;cursor:pointer;
+}
