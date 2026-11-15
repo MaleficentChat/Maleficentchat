@@ -8106,3 +8106,16 @@ body.parallel-embed.parallel-embed-error:after{content:"This room could not be o
 #onlineUsers .my-status-toggle #myStatusGlyph{font-size:12px!important;line-height:1!important;}
 #onlineUsers .my-status-toggle #myStatusLabel,#onlineUsers .my-status-toggle>span:last-child{display:none!important;}
 #onlineUsers .online-user.is-current-user>.avatar,#onlineUsers .online-user.is-current-user>.user-mood-indicator{display:none!important;}
+
+
+/* Keep the own profile and status in one compact People card. */
+#onlineUsers .online-status-control{display:flex!important;align-items:center!important;gap:9px!important;min-height:64px!important;padding:9px 12px!important;margin:8px!important;border:1px solid var(--border)!important;border-radius:14px!important;background:var(--panel)!important;box-sizing:border-box!important;}
+#onlineUsers .my-status-avatar{width:44px!important;height:44px!important;min-width:44px!important;flex:0 0 44px!important;border-radius:50%!important;}
+#onlineUsers .my-status-toggle{width:20px!important;height:20px!important;min-width:20px!important;min-height:20px!important;flex:0 0 20px!important;padding:0!important;border:1px solid rgba(255,255,255,.9)!important;border-radius:50%!important;background:#fff!important;color:#24170f!important;font-size:0!important;line-height:1!important;}
+#onlineUsers .my-status-toggle #myStatusGlyph{font-size:11px!important;line-height:1!important;}
+#onlineUsers .my-status-toggle #myStatusLabel,#onlineUsers .my-status-toggle>span:last-child{display:none!important;}
+#onlineUsers .online-status-control .self-profile-copy{display:block!important;flex:1 1 auto!important;min-width:0!important;text-align:left!important;}
+#onlineUsers .online-status-control .self-profile-copy b{display:block!important;font-size:14px!important;line-height:1.2!important;}
+#onlineUsers .online-status-control .self-profile-copy small{display:block!important;font-size:11px!important;line-height:1.2!important;margin:2px 0!important;}
+#onlineUsers .online-status-control .self-profile-copy .room-user-rank{display:block!important;font-size:11px!important;line-height:1.2!important;}
+#onlineUsers .online-user.is-current-user{display:none!important;}
