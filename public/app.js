@@ -2247,7 +2247,9 @@ async function renderOnline(tab=onlinePanelTab,searchQuery=""){
       <div class="online-user ${user.online?'is-online':'is-offline'}" onclick="openQuickUserCard('${esc(user.id)}')">
         <div class="people-avatar-wrap">
           ${avatar(user)}
-          ${String(user.id)===String(state.user?.id) ? `<button type="button" class="people-status-dot" aria-label="Change my status" title="Change my status" onclick="event.stopPropagation();document.getElementById('myStatusToggle')?.click()">●</button>` : ""}
+          ${String(user.id)===String(state.user?.id)
+            ? `<button type="button" class="people-status-dot" aria-label="Change my status" title="Change my status" onclick="event.stopPropagation();document.getElementById('myStatusToggle')?.click()">${statusEmoji(state.user?.customStatus||"Online")}</button>`
+            : `<span class="people-status-dot people-status-indicator" title="${esc(user.customStatus||"Online")}">${statusEmoji(user.customStatus||"Online")}</span>`}
         </div>
         <div class="online-user-copy">
           <b>${esc(user.displayName)}</b>
