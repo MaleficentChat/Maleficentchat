@@ -8170,3 +8170,29 @@ body.parallel-embed.parallel-embed-error:after{content:"This room could not be o
   min-width:20px!important;min-height:20px!important;background:#fff!important;color:#24170f!important;
 }
 #onlineUsers .online-user.is-current-user{display:flex!important;}
+
+
+/* Final unified People list: every account, including the signed-in account, is one matching card. */
+#onlineUsers .online-status-control{display:none!important;}
+#onlineUsers .online-user-grid{display:flex!important;flex-direction:column!important;gap:0!important;}
+#onlineUsers .online-user-grid .online-user{
+ display:flex!important;flex-direction:row!important;align-items:center!important;justify-content:flex-start!important;
+ position:relative!important;box-sizing:border-box!important;width:calc(100% - 16px)!important;
+ min-height:64px!important;height:auto!important;margin:8px!important;padding:9px 12px!important;gap:9px!important;
+ border:1px solid var(--border)!important;border-radius:14px!important;background:var(--panel)!important;
+ text-align:left!important;overflow:visible!important;aspect-ratio:auto!important;
+}
+#onlineUsers .online-user-grid .online-user>.avatar{
+ display:grid!important;position:relative!important;flex:0 0 44px!important;width:44px!important;height:44px!important;
+ min-width:44px!important;min-height:44px!important;border-radius:50%!important;overflow:hidden!important;
+}
+#onlineUsers .online-user-grid .online-user>.avatar img{display:block!important;width:100%!important;height:100%!important;object-fit:cover!important;}
+#onlineUsers .online-user-grid .online-user-copy{display:block!important;flex:1 1 auto!important;min-width:0!important;text-align:left!important;}
+#onlineUsers .online-user-grid .online-user-copy b{display:block!important;font-size:14px!important;line-height:1.2!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;}
+#onlineUsers .online-user-grid .online-user-copy small{display:block!important;font-size:11px!important;line-height:1.2!important;margin:2px 0!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;}
+#onlineUsers .online-user-grid .online-user-copy .room-user-rank{display:block!important;font-size:11px!important;line-height:1.2!important;margin-top:2px!important;}
+#onlineUsers .online-user-grid .user-mood-indicator{position:absolute!important;left:9px!important;top:auto!important;bottom:7px!important;transform:none!important;width:18px!important;height:18px!important;min-width:18px!important;font-size:10px!important;}
+#onlineUsers .online-user-grid .my-status-toggle{position:relative!important;display:inline-flex!important;flex:0 0 20px!important;align-items:center!important;justify-content:center!important;width:20px!important;height:20px!important;min-width:20px!important;min-height:20px!important;padding:0!important;border:1px solid rgba(255,255,255,.9)!important;border-radius:50%!important;background:#fff!important;color:#24170f!important;font-size:0!important;line-height:1!important;}
+#onlineUsers .online-user-grid .my-status-toggle #myStatusGlyph{display:block!important;font-size:11px!important;line-height:1!important;}
+#onlineUsers .online-user-grid .my-status-toggle #myStatusLabel,#onlineUsers .online-user-grid .my-status-toggle>span:last-child{display:none!important;}
+#onlineUsers .online-user-grid .my-status-options{position:absolute!important;z-index:100!important;top:calc(100% + 4px)!important;left:56px!important;right:auto!important;width:min(230px,calc(100vw - 100px))!important;}
