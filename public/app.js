@@ -3602,6 +3602,49 @@ function renderUserProfileModal(user,data={}){
     </div>
     <div id="profileTabContent" class="profile-info"></div>
   </div>`);
+  // Let members open the profile photo in a focused, full-screen viewer.
+  const profileAvatarFrame=document.querySelector('#modal .profile-modal .equipped-profile-frame');
+  const profileAvatarImage=profileAvatarFrame?.querySelector('.big-avatar img');
+  if(profileAvatarFrame&&profileAvatarImage?.src){
+    profileAvatarFrame.setAttribute('role','button');
+    profileAvatarFrame.setAttribute('tabindex','0');
+    profileAvatarFrame.setAttribute('aria-label','Open profile picture');
+    const openProfileAvatar=()=>{
+      if(document.getElementById('profileAvatarViewer'))return;
+      const viewer=document.createElement('div');
+      viewer.id='profileAvatarViewer';
+      viewer.className='profile-avatar-viewer';
+      viewer.setAttribute('role','dialog');
+      viewer.setAttribute('aria-modal','true');
+      viewer.setAttribute('aria-label','Profile picture');
+      const image=document.createElement('img');
+      image.src=profileAvatarImage.currentSrc||profileAvatarImage.src;
+      image.alt=user.displayName||user.username||'Profile picture';
+      const close=document.createElement('button');
+      close.type='button';
+      close.className='profile-avatar-viewer-close';
+      close.setAttribute('aria-label','Close profile picture');
+      close.textContent='×';
+      const previousOverflow=document.body.style.overflow;
+      const dismiss=()=>{
+        viewer.remove();
+        document.body.style.overflow=previousOverflow;
+        document.removeEventListener('keydown',onKeyDown);
+      };
+      const onKeyDown=(event)=>{if(event.key==='Escape')dismiss();};
+      close.addEventListener('click',dismiss);
+      viewer.addEventListener('click',(event)=>{if(event.target===viewer)dismiss();});
+      viewer.append(image,close);
+      document.body.appendChild(viewer);
+      document.body.style.overflow='hidden';
+      document.addEventListener('keydown',onKeyDown);
+      close.focus();
+    };
+    profileAvatarFrame.addEventListener('click',openProfileAvatar);
+    profileAvatarFrame.addEventListener('keydown',(event)=>{
+      if(event.key==='Enter'||event.key===' '){event.preventDefault();openProfileAvatar();}
+    });
+  }
   const profileMusicAudio=$('profileMusicAudio'),profileMusicToggle=$('profileMusicToggle');
   if(profileMusicAudio&&profileMusicToggle){
     const syncMusic=()=>{const playing=!profileMusicAudio.paused&&!profileMusicAudio.ended;profileMusicToggle.textContent=playing?'Ⅱ':'▶';profileMusicToggle.setAttribute('aria-label',playing?'Pause profile music':'Play profile music');profileMusicToggle.classList.toggle('playing',playing);};
