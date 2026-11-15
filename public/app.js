@@ -1045,11 +1045,18 @@ async function start() {
   state.socket.on("connect",()=>{loadRooms().catch(()=>{});});
 
   state.socket.on("presence", () => {
-    // Refresh room counts after joins/leaves and logins; debounce bursts of presence events.
-    if(state.view==="rooms"&&!$("viewRooms")?.classList.contains("chatting")){
-      clearTimeout(window.__mcRoomPresenceTimer);
-      window.__mcRoomPresenceTimer=setTimeout(()=>loadRooms().catch(()=>renderRooms()),350);
-    }
+    // Room occupancy affects both the room list and the horizontal room shortcuts,
+    // including while the user is already chatting inside a room.
+    clearTimeout(window.__mcRoomPresenceTimer);
+    window.__mcRoomPresenceTimer=setTimeout(async()=>{
+      try{
+        const data=await api("/api/rooms");
+        if(Array.isArray(data.rooms)){
+          state.rooms=sanitizeRoomList(data.rooms);
+          renderRooms();
+        }else renderRoomQuickNav();
+      }catch{renderRoomQuickNav();}
+    },450);
     const onlinePanel=$("onlinePanel");
     if(onlinePanel && !onlinePanel.classList.contains("hidden")) renderOnline(onlinePanelTab);
     if(state.view==="users")loadUsers().catch(()=>{});
@@ -1981,9 +1988,28 @@ async function loadRooms() {
 function joinedRoomIds(){
   try{return new Set(JSON.parse(safeStorage.getItem("mc_my_rooms_"+(state.user?.id||"guest"))||"[]").map(String));}catch{return new Set();}
 }
+function roomVisitTimes(){
+  try{return JSON.parse(safeStorage.getItem("mc_room_visit_times_"+(state.user?.id||"guest"))||"{}")||{};}catch{return {};}
+}
 function rememberMyRoom(id){
-  const ids=joinedRoomIds();ids.add(String(id));safeStorage.setItem("mc_my_rooms_"+(state.user?.id||"guest"),JSON.stringify([...ids]));
-  safeStorage.setItem("mc_last_room_"+(state.user?.id||"guest"),String(id));
+  const key=String(id),userKey=state.user?.id||"guest";
+  const ids=joinedRoomIds();ids.add(key);safeStorage.setItem("mc_my_rooms_"+userKey,JSON.stringify([...ids]));
+  safeStorage.setItem("mc_last_room_"+userKey,key);
+  const visits=roomVisitTimes();visits[key]=Date.now();
+  const trimmed=Object.fromEntries(Object.entries(visits).sort((a,b)=>Number(b[1])-Number(a[1])).slice(0,80));
+  safeStorage.setItem("mc_room_visit_times_"+userKey,JSON.stringify(trimmed));
+}
+function sortRoomsForNavigation(input){
+  const visits=roomVisitTimes();
+  return (Array.isArray(input)?input:[]).map((room,index)=>({room,index})).sort((a,b)=>{
+    const pinned=Number(!!b.room.pinned)-Number(!!a.room.pinned);
+    if(pinned)return pinned;
+    const occupancy=Number(b.room.onlineCount||0)-Number(a.room.onlineCount||0);
+    if(occupancy)return occupancy;
+    const recent=Number(visits[String(b.room.id)]||0)-Number(visits[String(a.room.id)]||0);
+    if(recent)return recent;
+    return a.index-b.index;
+  }).map(item=>item.room);
 }
 function isParallelSplitRoom(room){return !!(room&&(room.splitParentId!=null||String(room.category||"").toLowerCase()==="parallel"||String(room.name||"").trim().startsWith("⧉")));}
 
@@ -1993,7 +2019,7 @@ function renderRooms() {
   const normalizedRoomRank=String(state.user?.rank||"").toUpperCase().replace(/[\s_-]/g,"");
   const canSeeRoomPins=["COOWNER","OWNER","DEVELOPER"].includes(normalizedRoomRank);
   const canPinRooms=canSeeRoomPins;
-  const allRooms=(Array.isArray(state.rooms)?state.rooms:[]).filter(room=>!isParallelSplitRoom(room)).slice().sort((a,b)=>canSeeRoomPins?(Number(!!b.pinned)-Number(!!a.pinned)):0);
+  const allRooms=sortRoomsForNavigation((Array.isArray(state.rooms)?state.rooms:[]).filter(room=>!isParallelSplitRoom(room)));
   const canViewHiddenRooms=["OWNER","DEVELOPER"].includes(String(state.user?.rank||"").toUpperCase());
   const hiddenRooms=allRooms.filter(room=>room.public===false);
   const hiddenToggle=$("hiddenRoomsToggle");
@@ -2081,7 +2107,7 @@ window.toggleHiddenRoomsView=toggleHiddenRoomsView;
 function renderRoomQuickNav() {
   const nav = $('roomQuickNav');
   if (!nav) return;
-  const rooms = (Array.isArray(state.rooms) ? state.rooms : []).filter(room=>!isParallelSplitRoom(room));
+  const rooms = sortRoomsForNavigation((Array.isArray(state.rooms) ? state.rooms : []).filter(room=>!isParallelSplitRoom(room)));
   if (!rooms.length) {
     nav.innerHTML = '<span class="room-quick-empty">Loading rooms…</span>';
     return;
