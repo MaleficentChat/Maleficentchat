@@ -602,28 +602,56 @@ async function acknowledgePersistentWarning(){
     toast(error.message||"Could not acknowledge this warning. It will remain on screen.");
   }
 }
+// Preserve previous modal layers so closing a nested option returns to the
+// exact screen beneath it, including its live DOM and event handlers.
+const modalHistory=[];
+
+function stopModalMedia(root){
+  root?.querySelectorAll('audio,video').forEach(media=>{
+    try{media.pause();media.removeAttribute('src');media.load();}catch{}
+  });
+}
+
 function closeModal() {
   if(activeWarningNotificationId)return;
   const overlay=$("modal");
   const body=$("modalBody");
   if(!overlay)return;
-  // Stop profile media immediately, then hide the dialog before doing any DOM cleanup.
-  // Deferring the heavier subtree teardown keeps the close control responsive on mobile.
-  body?.querySelectorAll('audio,video').forEach(media=>{try{media.pause();media.removeAttribute('src');media.load();}catch{}});
+  stopModalMedia(body);
+  if(modalHistory.length&&body){
+    const previousNodes=modalHistory.pop();
+    body.replaceChildren(...previousNodes);
+    overlay.classList.remove("hidden");
+    overlay.setAttribute("aria-hidden","false");
+    return;
+  }
   const closingContent=body?.firstElementChild||null;
   overlay.classList.remove("warning-modal");
   overlay.classList.add("hidden");
   overlay.setAttribute("aria-hidden","true");
   requestAnimationFrame(()=>{
-    if(overlay.classList.contains("hidden")&&body&&body.firstElementChild===closingContent)body.replaceChildren();
+    if(overlay.classList.contains("hidden")&&body&&body.firstElementChild===closingContent){
+      body.replaceChildren();
+      modalHistory.length=0;
+    }
   });
 }
 
 function modal(html) {
   if(activeWarningNotificationId&&!renderingPersistentWarning)return;
-  $("modalBody").innerHTML = html;
-  $("modal").classList.remove("hidden");
-  $("modal").setAttribute("aria-hidden","false");
+  const overlay=$("modal");
+  const body=$("modalBody");
+  if(!body)return;
+  if(!overlay.classList.contains("hidden")){
+    // Detach, rather than serialize, so previously attached handlers and form
+    // state survive while a child option is open.
+    if(body.childNodes.length)modalHistory.push(Array.from(body.childNodes));
+  }else{
+    modalHistory.length=0;
+  }
+  body.innerHTML=html;
+  overlay.classList.remove("hidden");
+  overlay.setAttribute("aria-hidden","false");
 }
 
 function avatar(u, cls = "avatar") {
