@@ -11,11 +11,12 @@
   style.textContent = `
     .mc-nav-panel-overlay{position:fixed;inset:var(--header-h,52px) 0 0 0;z-index:1200;display:flex;justify-content:flex-end;background:rgba(4,5,12,.56);backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px);animation:mcNavFade .16s ease-out}
     .mc-nav-panel{width:min(900px,calc(100vw - 76px));height:100%;display:flex;flex-direction:column;min-width:0;overflow:hidden;background:var(--panel-bg,var(--card-bg,#171522));border-left:1px solid var(--border,rgba(255,255,255,.12));box-shadow:-18px 0 55px rgba(0,0,0,.32);animation:mcNavSlide .2s ease-out}
-    .mc-nav-panel-head{height:58px;flex:0 0 58px;display:flex;align-items:center;justify-content:space-between;gap:14px;padding:0 18px;border-bottom:1px solid var(--border,rgba(255,255,255,.1));background:var(--panel-head-bg,rgba(255,255,255,.035))}
+    .mc-nav-panel-head{height:58px;flex:0 0 58px;display:flex;align-items:center;justify-content:space-between;gap:14px;padding:0 18px;border-bottom:1px solid var(--border,rgba(255,255,255,.1));background:var(--panel-head-bg,rgba(255,255,255,.035));position:relative;z-index:2}
     .mc-nav-panel-title{font-size:16px;font-weight:750;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text,#fff)}
-    .mc-nav-panel-close{width:36px;height:36px;flex:0 0 36px;border:1px solid var(--border,rgba(255,255,255,.16));border-radius:10px;background:rgba(255,255,255,.06);color:var(--text,#fff);font-size:23px;line-height:1;cursor:pointer}
-    .mc-nav-panel-close:hover{background:rgba(255,255,255,.14)}
-    .mc-nav-panel-body{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain}
+    .mc-nav-panel-close{width:38px;height:38px;flex:0 0 38px;border:1px solid var(--border,rgba(255,255,255,.2));border-radius:11px;background:var(--card-bg,rgba(255,255,255,.09));color:var(--text,#fff);font-size:25px;line-height:1;cursor:pointer;display:grid;place-items:center;visibility:visible;opacity:1}
+    .mc-nav-panel-close:hover{background:rgba(255,255,255,.16)}
+    .mc-nav-panel-body{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;position:relative}
+    .mc-nav-panel-loading{padding:24px;color:var(--muted,#aaa);font-size:14px}
     .mc-nav-panel-body>.view{display:block!important;height:100%!important;min-height:100%;overflow:auto}
     @keyframes mcNavFade{from{opacity:0}to{opacity:1}}
     @keyframes mcNavSlide{from{transform:translateX(22px);opacity:.7}to{transform:translateX(0);opacity:1}}
@@ -55,21 +56,8 @@
     event.stopImmediatePropagation();
     if (active) closePanel();
 
-    // Run the existing destination handler unchanged so its data loaders and
-    // permission checks continue to work. Only its presentation is changed.
-    try {
-      await original.call(button, event);
-    } catch (error) {
-      console.error("Navigation panel could not load:", error);
-      return;
-    }
-
-    var view = getView(name);
-    if (!view || !view.parentNode) return;
-
-    var placeholder = document.createComment("navigation-panel-view-" + name);
-    view.parentNode.insertBefore(placeholder, view);
-
+    // Mount the panel shell before starting async loading so the close control
+    // is visible immediately, even when the destination takes time to fetch.
     var overlay = document.createElement("div");
     overlay.className = "mc-nav-panel-overlay";
     overlay.setAttribute("role", "presentation");
@@ -94,20 +82,20 @@
 
     var body = document.createElement("div");
     body.className = "mc-nav-panel-body";
+    body.innerHTML = '<div class="mc-nav-panel-loading" role="status">Loading…</div>';
     panel.append(head, body);
     overlay.appendChild(panel);
     document.body.appendChild(overlay);
-    body.appendChild(view);
-    view.classList.remove("hidden");
     document.body.classList.add("mc-nav-panel-open");
 
-    active = { overlay: overlay, view: view, placeholder: placeholder };
+    var panelState = { overlay: overlay, view: null, placeholder: null };
+    active = panelState;
     close.addEventListener("click", closePanel);
     overlay.addEventListener("click", function (e) {
       if (e.target === overlay) closePanel();
     });
-    document.addEventListener("keydown", function onKey(e) {
-      if (!active || active.overlay !== overlay) {
+    function onKey(e) {
+      if (active !== panelState) {
         document.removeEventListener("keydown", onKey);
         return;
       }
@@ -115,8 +103,37 @@
         document.removeEventListener("keydown", onKey);
         closePanel();
       }
-    });
+    }
+    document.addEventListener("keydown", onKey);
     close.focus({ preventScroll: true });
+
+    try {
+      await original.call(button, event);
+    } catch (error) {
+      console.error("Navigation panel could not load:", error);
+      if (active === panelState) body.innerHTML = '<div class="mc-nav-panel-loading" role="alert">This section could not be loaded. Close this panel and try again.</div>';
+      return;
+    }
+
+    if (active !== panelState) {
+      // The user closed the panel while its content was loading.
+      if (!active) document.querySelector('.nav[data-view="rooms"]')?.click();
+      return;
+    }
+
+    var view = getView(name);
+    if (!view || !view.parentNode) {
+      body.innerHTML = '<div class="mc-nav-panel-loading" role="alert">This section is unavailable in this version.</div>';
+      return;
+    }
+
+    var placeholder = document.createComment("navigation-panel-view-" + name);
+    view.parentNode.insertBefore(placeholder, view);
+    panelState.view = view;
+    panelState.placeholder = placeholder;
+    body.innerHTML = "";
+    body.appendChild(view);
+    view.classList.remove("hidden");
   }
 
   document.addEventListener("click", function (event) {
