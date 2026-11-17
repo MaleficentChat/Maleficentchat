@@ -11,28 +11,27 @@ function addNav(){
  const group=document.querySelector(".nav-group");
  if(group){
   if(!group.querySelector('[data-social-view="confessions"]')){
-   const conf=document.createElement("button");conf.className="nav";conf.type="button";conf.dataset.socialView="confessions";conf.innerHTML='🥀 <span>Confessions</span>';group.appendChild(conf);
+   const conf=document.createElement("button");conf.className="nav";conf.type="button";conf.dataset.view="confessions";conf.innerHTML='🥀 <span>Confessions</span>';group.appendChild(conf);
   }
  }
  const main=document.querySelector(".main");if(!main)return;
  if(!el("sfConfessionsView")){
-  const conf=document.createElement("section");conf.id="sfConfessionsView";conf.className="view hidden sf-view";
+  const conf=document.createElement("section");conf.id="viewConfessions";conf.className="view hidden sf-view";
   conf.innerHTML='<div class="topbar"><div><h2>🥀 Anonymous Confessions</h2><p class="muted">Share thoughts without showing your public identity.</p></div><div class="toolbar"><button class="mini" id="sfConfLatest">Latest</button><button class="mini" id="sfConfPopular">Popular</button><button class="mini" id="sfConfMine">My submissions</button></div></div><div class="sf-content" id="sfConfContent"></div>';
   main.appendChild(conf);
  }
- document.querySelectorAll("[data-social-view]").forEach(b=>{
-  if(b.dataset.socialBound==="true")return;
-  b.dataset.socialBound="true";
-  b.addEventListener("click",()=>openSocialView(b.dataset.socialView));
- });
-}
-function openSocialView(which){
- state.view=which;
- document.querySelectorAll(".view").forEach(v=>v.classList.add("hidden"));
- document.querySelectorAll(".nav[data-view],.nav[data-social-view]").forEach(v=>v.classList.remove("active"));
- const button=document.querySelector('[data-social-view="'+which+'"]');button?.classList.add("active");
- const view=el("sfConfessionsView");view?.classList.remove("hidden");
- loadConfessions("latest");
+ const confButton=group?.querySelector('[data-view="confessions"]');
+ if(confButton&&!confButton.dataset.socialBound){
+  confButton.dataset.socialBound="true";
+  confButton.onclick=async event=>{
+   event.preventDefault();event.stopPropagation();
+   state.view="confessions";
+   document.querySelectorAll(".nav[data-view]").forEach(item=>item.classList.toggle("active",item===confButton));
+   document.querySelectorAll(".view").forEach(view=>view.classList.add("hidden"));
+   el("viewConfessions")?.classList.remove("hidden");
+   loadConfessions("latest");
+  };
+ }
 }
 async function loadConfessions(mode,category){
  const root=el("sfConfContent");if(!root)return;root.innerHTML='<p class="muted">Loading confessions…</p>';
