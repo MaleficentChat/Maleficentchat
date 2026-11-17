@@ -10,7 +10,7 @@ function mediaUrl(key){return "/uploads/"+String(key||"").split("/").map(encodeU
 function addNav(){
  const group=document.querySelector(".nav-group");
  if(group){
-  if(!group.querySelector('[data-social-view="confessions"]')){
+  if(!group.querySelector('[data-view="confessions"]')){
    const conf=document.createElement("button");conf.className="nav";conf.type="button";conf.dataset.view="confessions";conf.innerHTML='🥀 <span>Confessions</span>';group.appendChild(conf);
   }
  }
