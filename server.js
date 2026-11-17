@@ -7440,7 +7440,6 @@ app.get('/api/users/:id/guestbook',auth,async(req,res)=>{
     const isOwner=String(viewer.id)===String(target.id);
     const hidden=target.privacy?.showGuestbook===false;
     if(hidden&&!isOwner)return res.json({hidden:true,entries:[],isOwner:false,canPost:false});
-    const friendship=db.friends.find(f=>f.status==='ACCEPTED'&&((String(f.a)===String(viewer.id)&&String(f.b)===String(target.id))||(String(f.a)===String(target.id)&&String(f.b)===String(viewer.id))));
     const result=await pool.query(
       `SELECT g.id,g.author_id,g.message,g.status,g.created_at,author.username AS author_username,author.avatar AS author_avatar,COALESCE(NULLIF(author.profile_data->>'displayName',''),author.username,'Former member') AS author_display_name
        FROM profile_guestbook g LEFT JOIN users author ON author.id=g.author_id
@@ -7457,8 +7456,6 @@ app.post('/api/users/:id/guestbook',auth,async(req,res)=>{
     const author=current(req),target=findUser(req.params.id);
     if(!target||(target.hideMode&&String(target.id)!==String(author.id)))return res.status(404).json({error:'User not found'});
     if(String(target.id)===String(author.id))return res.status(400).json({error:'You cannot leave a message on your own guestbook.'});
-    const friendship=db.friends.find(f=>f.status==='ACCEPTED'&&((String(f.a)===String(author.id)&&String(f.b)===String(target.id))||(String(f.a)===String(target.id)&&String(f.b)===String(author.id))));
-    if(!friendship)return res.status(403).json({error:'Only accepted friends can leave guestbook messages.'});
     const message=cleanText(String(req.body?.message||'')).trim().slice(0,500);
     if(!message)return res.status(400).json({error:'Write a message first.'});
     const recent=await pool.query("SELECT COUNT(*)::int AS count FROM profile_guestbook WHERE author_id=$1 AND created_at>NOW()-INTERVAL '1 hour'",[Number(author.id)]);
