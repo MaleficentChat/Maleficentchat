@@ -7444,7 +7444,7 @@ app.get('/api/users/:id/guestbook',auth,async(req,res)=>{
        ORDER BY g.created_at DESC LIMIT 100`,
       [Number(target.id)]
     );
-    res.json({hidden:false,isOwner,canPost:!isOwner&&friendship?.status==='ACCEPTED',entries:result.rows.map(row=>({id:String(row.id),authorId:row.author_id===null?null:String(row.author_id),authorUsername:row.author_username||'Former member',authorDisplayName:row.author_display_name||'Former member',authorAvatar:row.author_avatar||'',message:row.message,status:row.status,createdAt:row.created_at}))});
+    res.json({hidden:false,isOwner,canPost:!isOwner,entries:result.rows.map(row=>({id:String(row.id),authorId:row.author_id===null?null:String(row.author_id),authorUsername:row.author_username||'Former member',authorDisplayName:row.author_display_name||'Former member',authorAvatar:row.author_avatar||'',message:row.message,status:row.status,createdAt:row.created_at}))});
   }catch(error){console.error('Guestbook load failed:',error);res.status(500).json({error:'Could not load this guestbook.'});}
 });
 
