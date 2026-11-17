@@ -6256,6 +6256,10 @@ app.post('/api/staff/user/:id/banner',auth,accountModificationAccess,upload.sing
 });
 
 
+app.delete('/api/staff/user/:id/banner',auth,accountModificationAccess,(req,res)=>{
+  const target=req.profileTarget;target.banner='';save();log(req.profileActor,'ACCOUNT_BANNER_MODIFY',target.username,{operation:'remove'});res.json({ok:true,user:safeUser(target)});
+});
+
 app.patch('/api/staff/user/:id/account',auth,(req,res)=>{
   const actor=current(req), target=findUser(req.params.id);
   if(!target) return res.status(404).json({error:'User not found'});
