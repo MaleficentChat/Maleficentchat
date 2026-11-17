@@ -8301,3 +8301,53 @@ body.parallel-embed.parallel-embed-error:after{content:"This room could not be o
   border-radius:50%;background:rgba(35,35,35,.8);
   color:#fff;font-size:30px;line-height:1;cursor:pointer;
 }
+
+
+/* Compact the self-profile hero and keep the two account tabs aligned to the card. */
+#profile .profile-settings-head{
+  min-height:0!important;
+  padding:12px 12px 14px!important;
+  gap:6px!important;
+}
+#profile .profile-settings-top{
+  margin:0 0 6px!important;
+  gap:6px!important;
+}
+#profile .profile-settings-head>.big-avatar{
+  width:clamp(92px,24vw,112px)!important;
+  height:clamp(92px,24vw,112px)!important;
+  max-width:112px!important;
+  max-height:112px!important;
+  margin:0 auto 2px!important;
+}
+#profile .profile-settings-head .profile-rank,
+#profile .profile-settings-head .profile-name,
+#profile .profile-settings-head .profile-handle,
+#profile .profile-settings-head .profile-extra{
+  margin-top:2px!important;
+  margin-bottom:2px!important;
+}
+#profile .settings-tabs{
+  display:grid!important;
+  grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  align-items:stretch!important;
+  justify-content:stretch!important;
+  gap:6px!important;
+  width:100%!important;
+  max-width:100%!important;
+  margin:0!important;
+  padding:5px!important;
+  box-sizing:border-box!important;
+  overflow:hidden!important;
+}
+#profile .settings-tabs>.settings-tab{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  width:100%!important;
+  min-width:0!important;
+  max-width:100%!important;
+  margin:0!important;
+  box-sizing:border-box!important;
+  border-radius:12px!important;
+}
