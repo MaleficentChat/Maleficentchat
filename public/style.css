@@ -8372,3 +8372,7 @@ html{scroll-behavior:smooth;}
 .view,.mc-nav-panel-body,.mc-nav-panel-body>.view,.mc-nav-panel-body .games-root,#leaderboard,.games-root,.news-comments-list,.comments-list,.notification-dropdown,.kp-rooms-panel{scroll-behavior:smooth;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;}
 @media(prefers-reduced-motion:reduce){html,.view,.mc-nav-panel-body,.mc-nav-panel-body>.view,.mc-nav-panel-body .games-root,#leaderboard,.games-root,.news-comments-list,.comments-list{scroll-behavior:auto!important;}}
 @media(max-width:700px){.news-comments-panel{border-radius:10px}.news-comments-panel-content{padding:8px}.news-comments-panel .news-comment-form{align-items:stretch;flex-direction:column}.news-comments-panel .news-comment-form .primary{width:100%;}}
+
+/* Apply smooth scrolling consistently to nested tabs and option lists. */
+*{scroll-behavior:smooth;}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;}}
