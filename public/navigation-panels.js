@@ -83,7 +83,7 @@
     head.className = "mc-nav-panel-head";
     var title = document.createElement("div");
     title.className = "mc-nav-panel-title";
-    title.textContent = button.textContent.trim().replace(/\\s+/g, " ");
+    title.textContent = button.textContent.trim();
     var close = document.createElement("button");
     close.type = "button";
     close.className = "mc-nav-panel-close";
