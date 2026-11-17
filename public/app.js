@@ -3650,7 +3650,7 @@ function renderUserProfileModal(user,data={}){
   const bannerStyle=user.banner?`style="--profile-cover:url('${esc(user.banner)}')"`:'';
   const isSelf=user.id===state.user.id;
   const liked=!!data.likedByMe;
-  modal(`<div class="profile-modal" data-sf-user-id="${esc(user.id)}" data-sf-is-self="${isSelf?'true':'false'}" data-sf-show-scrapbook="${user.privacy?.showScrapbook===false?'false':'true'}">
+  modal(`<div class="profile-modal" data-sf-user-id="${esc(user.id)}" data-sf-is-self="${isSelf?'true':'false'}" >
     <div class="profile-banner" ${bannerStyle}>
       ${user.banner?`<img class="public-profile-cover-image" src="${esc(user.banner)}" alt="" aria-hidden="true" loading="eager">`: ""}
       <div class="equipped-profile-frame ${frame?esc(frame.id):''}" title="${frame?esc(frame.name):'Profile avatar'}">${avatar(user,'big-avatar')}</div>
@@ -3667,7 +3667,6 @@ function renderUserProfileModal(user,data={}){
       </div>
       ${!isSelf?`<div class="profile-primary-actions"><button class="profile-social-button profile-message-button" id="profileSendPM"><span>✉</span> Send PM</button><button class="profile-social-button profile-friend-button" id="profileAddFriend"><span>＋</span> Add Friend</button></div>`:""}
     </div>
-    <div class="mc-profile-tabs-label"><span>PROFILE</span><small>Explore ${esc(user.displayName||user.username)}’s space</small></div>
     <div class="profile-tabs">
       <button class="profile-tab active" data-tab="info">Account</button>
       ${user.privacy?.bio!==false?'<button class="profile-tab" data-tab="about">About Me</button>':''}
