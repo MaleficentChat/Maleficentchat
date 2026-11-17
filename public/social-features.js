@@ -34,43 +34,6 @@ function openSocialView(which){
  const view=el("sfConfessionsView");view?.classList.remove("hidden");
  loadConfessions("latest");
 }
-function bookEntry(entry,ownerId,isOwner){
- const media=entry.media_key?'<div class="sf-memory-media">'+(String(entry.media_key).match(/\.(mp4|webm|mov)$/i)?'<video controls preload="metadata" src="'+esc(mediaUrl(entry.media_key))+'"></video>':'<img loading="lazy" src="'+esc(mediaUrl(entry.media_key))+'" alt="Scrapbook memory">')+'</div>':'';
- const sticker=entry.sticker?'<div class="sf-sticker">'+esc(entry.sticker)+'</div>':'';
- return '<article class="sf-entry"><div class="sf-entry-top"><b>'+esc(entry.title||"A memory")+'</b>'+(entry.pinned?'<span>📌</span>':'')+'</div>'+media+sticker+(entry.body?'<p>'+esc(entry.body)+'</p>':'')+'<div class="sf-entry-foot"><span>'+new Date(entry.created_at).toLocaleDateString()+'</span><span>♡ '+Number(entry.reaction_count||0)+'</span><span>◯ '+Number(entry.comment_count||0)+'</span></div><div class="sf-entry-actions"><button class="mini" data-sf-react="'+entry.id+'">🖤 React</button><button class="mini" data-sf-comments="'+entry.id+'">Comments</button>'+(isOwner?'<button class="mini danger" data-sf-delete="'+entry.id+'">Delete</button>':'')+'</div><div class="sf-comments" id="sfComments-'+entry.id+'"></div></article>';
-}
-async function loadScrapbook(userId,isOwner){
- const profileRoot=document.querySelector(".profile-modal #profileTabContent");const root=profileRoot||el("sfBookContent");if(!root||!userId)return;
- root.innerHTML='<p class="muted">Loading scrapbook…</p>';
- try{
-  const d=await request("/api/social/scrapbooks/"+encodeURIComponent(userId));
-  const book=d.scrapbook||{};
-  const ownerMode=!!isOwner&&String(state.user?.id)===String(userId);
-  root.innerHTML='<div class="sf-book sf-theme-'+esc(book.theme||"midnight")+'"><div class="sf-book-head"><div><h2>'+esc(book.title||"My Scrapbook")+'</h2><p class="muted">'+esc(d.owner?.username||"")+'’s memories</p></div>'+(ownerMode?(profileRoot?'<button class="primary" id="sfOpenScrapbookEditor">✏️ Edit scrapbook</button>':'<button class="primary" id="sfAddMemory">＋ Add memory</button>'):'')+'</div><div class="sf-entry-grid">'+(d.entries||[]).map(x=>bookEntry(x,userId,ownerMode)).join("")+'</div>'+(d.entries?.length?'':'<div class="sf-empty">🌙 No memories here yet.</div>')+'</div>';
-  if(ownerMode){el("sfAddMemory")?.addEventListener("click",addMemory);el("sfOpenScrapbookEditor")?.addEventListener("click",()=>openSocialView("scrapbook"));}
-  root.querySelectorAll("[data-sf-delete]").forEach(b=>b.addEventListener("click",async()=>{if(!confirm("Delete this scrapbook entry?"))return;try{await request("/api/social/scrapbooks/entries/"+b.dataset.sfDelete,{method:"DELETE"});loadScrapbook(userId,ownerMode);}catch(e){say(e.message);}}));
-  root.querySelectorAll("[data-sf-react]").forEach(b=>b.addEventListener("click",async()=>{try{await request("/api/social/scrapbooks/entries/"+b.dataset.sfReact+"/reactions",{method:"POST",body:JSON.stringify({emoji:"🖤"})});say("Reaction saved.");}catch(e){say(e.message);}}));
-  root.querySelectorAll("[data-sf-comments]").forEach(b=>b.addEventListener("click",()=>loadBookComments(b.dataset.sfComments)));
- }catch(e){root.innerHTML='<div class="sf-empty">'+esc(e.message)+'</div>';}
-}
-async function loadBookComments(id){
- const box=el("sfComments-"+id);if(!box)return;
- try{const d=await request("/api/social/scrapbooks/entries/"+id+"/comments");box.innerHTML=(d.comments||[]).map(c=>'<p><b>'+esc(c.author)+'</b> '+esc(c.body)+'</p>').join("")+'<form data-book-comment="'+id+'"><input maxlength="1000" placeholder="Write a comment…" required><button class="mini">Send</button></form>';box.querySelector("form")?.addEventListener("submit",async e=>{e.preventDefault();const input=e.currentTarget.querySelector("input");try{await request("/api/social/scrapbooks/entries/"+id+"/comments",{method:"POST",body:JSON.stringify({body:input.value})});loadBookComments(id);}catch(err){say(err.message);}});}catch(e){box.textContent=e.message;}
-}
-function addMemory(){
- const host=el("sfBookContent");if(!host)return;
- const form=document.createElement("form");form.className="sf-editor";form.innerHTML='<h3>Add to your scrapbook</h3><input name="title" maxlength="120" placeholder="Memory title"><textarea name="body" maxlength="4000" placeholder="Write a note or caption…"></textarea><label>Attach a photo or video <input name="file" type="file" accept="image/jpeg,image/png,image/gif,image/webp,image/avif,video/mp4,video/webm,video/quicktime"></label><div class="toolbar"><button type="button" class="mini" id="sfCancelMemory">Cancel</button><button class="primary">Save memory</button></div>';
- host.prepend(form);el("sfCancelMemory").onclick=()=>form.remove();
- form.addEventListener("submit",async e=>{e.preventDefault();const f=form.elements.file.files[0];try{if(f){const fd=new FormData();fd.append("file",f);fd.append("title",form.elements.title.value);fd.append("caption",form.elements.body.value);await request("/api/social/scrapbooks/media",{method:"POST",body:fd});}else await request("/api/social/scrapbooks/entries",{method:"POST",body:JSON.stringify({type:"note",title:form.elements.title.value,body:form.elements.body.value})});loadScrapbook(state.user.id,true);}catch(err){say(err.message);}});
-}
-async function bookSettings(){
- const current=await request("/api/social/scrapbooks/"+encodeURIComponent(state.user.id));
- const s=current.scrapbook||{};
- const form=document.createElement("div");form.className="sf-editor";form.innerHTML='<h3>Scrapbook settings</h3><label>Title<input id="sfBookTitle" maxlength="100" value="'+esc(s.title||"My Scrapbook")+'"></label><label>Layout<select id="sfBookLayout"><option value="polaroid">Polaroid wall</option><option value="journal">Journal</option><option value="collage">Collage</option><option value="timeline">Timeline</option><option value="minimal">Minimal</option></select></label><label>Who can view?<select id="sfBookVisibility"><option value="public">Everyone</option><option value="friends">Friends</option><option value="private">Only me</option></select></label><label class="sf-check"><input id="sfBookComments" type="checkbox"> Allow comments</label><div class="toolbar"><button class="mini" id="sfSettingsCancel">Cancel</button><button class="primary" id="sfSettingsSave">Save settings</button></div>';
- document.querySelector(".sf-modal")?.remove();const overlay=document.createElement("div");overlay.className="sf-modal";overlay.append(form);document.body.append(overlay);
- el("sfBookLayout").value=s.layout||"polaroid";el("sfBookVisibility").value=s.visibility||"public";el("sfBookComments").checked=s.allowComments!==false;
- el("sfSettingsCancel").onclick=()=>overlay.remove();el("sfSettingsSave").onclick=async()=>{try{await request("/api/social/scrapbooks/settings",{method:"PUT",body:JSON.stringify({title:el("sfBookTitle").value,theme:s.theme||"midnight",layout:el("sfBookLayout").value,visibility:el("sfBookVisibility").value,allowComments:el("sfBookComments").checked})});overlay.remove();loadScrapbook(state.user.id,true);}catch(e){say(e.message);}};
-}
 async function loadConfessions(mode,category){
  const root=el("sfConfContent");if(!root)return;root.innerHTML='<p class="muted">Loading confessions…</p>';
  try{
