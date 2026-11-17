@@ -8351,3 +8351,24 @@ body.parallel-embed.parallel-embed-error:after{content:"This room could not be o
   box-sizing:border-box!important;
   border-radius:12px!important;
 }
+
+
+/* 2026-11-18: news comments stay inside the News panel; account drawer closes on outside tap. */
+#viewNews{position:relative;min-height:0;}
+.news-comments-panel{position:absolute;inset:0;z-index:30;display:flex;flex-direction:column;min-height:0;overflow:hidden;background:var(--panel-bg,var(--card-bg,#171522));border:1px solid var(--border,rgba(255,255,255,.14));border-radius:14px;box-shadow:0 18px 48px rgba(0,0,0,.35);}
+.news-comments-panel.hidden{display:none!important;}
+.news-comments-panel-head{flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;border-bottom:1px solid var(--border,rgba(255,255,255,.14));background:var(--panel-head-bg,rgba(255,255,255,.045));}
+.news-comments-panel-head h2{margin:0;font-size:17px;overflow-wrap:anywhere;}
+.news-comments-panel-head p{margin:4px 0 0;}
+.news-comments-panel-actions{display:flex;align-items:center;gap:10px;flex:none;}
+.news-comments-panel-close{width:38px;height:38px;border:1px solid var(--border,rgba(255,255,255,.2));border-radius:10px;background:var(--card-bg,rgba(255,255,255,.08));color:var(--text,#fff);font-size:25px;line-height:1;cursor:pointer;}
+.news-comments-panel-content{display:flex;flex:1;flex-direction:column;min-height:0;padding:10px 14px;gap:10px;}
+.news-comments-panel .news-comments-list{flex:1;min-height:0;max-height:none;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;}
+.news-comments-panel .news-comment-form{flex:0 0 auto;display:flex;gap:8px;align-items:center;padding-top:8px;border-top:1px solid var(--border,rgba(255,255,255,.1));}
+.news-comments-panel .news-comment-form input{flex:1;min-width:0;}
+.leaderboard-category{min-width:0;overflow:visible;}
+#leaderboard>.leaderboard-category>h3{position:sticky;top:0;z-index:4;margin:-2px -2px 12px;padding:10px 12px;border-radius:10px;background:#352015;box-shadow:0 5px 12px rgba(0,0,0,.2);}
+html{scroll-behavior:smooth;}
+.view,.mc-nav-panel-body,.mc-nav-panel-body>.view,.mc-nav-panel-body .games-root,#leaderboard,.games-root,.news-comments-list,.comments-list,.notification-dropdown,.kp-rooms-panel{scroll-behavior:smooth;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;}
+@media(prefers-reduced-motion:reduce){html,.view,.mc-nav-panel-body,.mc-nav-panel-body>.view,.mc-nav-panel-body .games-root,#leaderboard,.games-root,.news-comments-list,.comments-list{scroll-behavior:auto!important;}}
+@media(max-width:700px){.news-comments-panel{border-radius:10px}.news-comments-panel-content{padding:8px}.news-comments-panel .news-comment-form{align-items:stretch;flex-direction:column}.news-comments-panel .news-comment-form .primary{width:100%;}}
