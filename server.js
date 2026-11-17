@@ -1,4 +1,5 @@
 const express=require("express");
+const compression=require("compression");
 const http=require("http");
 const path=require("path");
 const fs=require("fs");
@@ -53,6 +54,8 @@ async function sendNativePushToUser(userId,payload){
 
 
 const app=express(), server=http.createServer(app), io=new Server(server);
+// Compress text, JSON, CSS and JavaScript responses to reduce mobile transfer time.
+app.use(compression({threshold:1024}));
 registerCallSignaling({io,findUser,privateMessagesBlocked});
 // Express 4 does not automatically forward rejected async route handlers to
 // error middleware. Wrap route callbacks once so GET/API failures return a
