@@ -4711,11 +4711,18 @@ async function openNewsComments(id){
       <div class="news-comment-main"><div><b>${esc(c.displayName||c.username)}</b> ${rank(c.rank)} <span class="muted">${fmt(c.time)}</span></div><p>${esc(c.text)}</p></div>
       ${(c.userId===state.user.id||can("MOD"))?`<button class="mini danger" onclick="deleteNewsComment('${esc(id)}','${esc(c.id)}')">×</button>`:""}
     </div>`).join("")||`<div class="news-empty-comments">No comments yet. Be the first to comment.</div>`;
-    modal(`<div class="comments-modal"><div class="comments-modal-head"><div><h2>${esc(n.title)}</h2><p class="muted">Join the conversation</p></div><span class="news-count">💬 ${(data.comments||[]).length}</span></div><div class="comments-list" id="commentsList">${render(data.comments)}</div><form id="commentForm" class="comment-form"><input id="commentText" maxlength="1000" placeholder="Type your comment" required><button class="primary">Post</button></form></div>`);
+    const host=$("newsCommentsPanel");
+    if(!host)throw new Error("News comments panel is unavailable.");
+    host.innerHTML=`<div class="news-comments-panel-head"><div><h2>${esc(n.title)}</h2><p class="muted">Join the conversation</p></div><div class="news-comments-panel-actions"><span class="news-count">💬 ${(data.comments||[]).length}</span><button type="button" class="news-comments-panel-close" id="closeNewsComments" aria-label="Close comments">×</button></div></div><div class="news-comments-panel-content"><div class="news-comments-list" id="commentsList">${render(data.comments)}</div><form id="commentForm" class="news-comment-form"><input id="commentText" maxlength="1000" placeholder="Type your comment" required><button class="primary">Post</button></form></div>`;
+    host.classList.remove("hidden");
+    $("closeNewsComments")?.addEventListener("click",()=>{host.classList.add("hidden");host.innerHTML="";});
     $("commentForm").onsubmit=async e=>{
       e.preventDefault();
-      const text=$("commentText").value.trim(); if(!text)return;
-      try{await api(`/api/news/${encodeURIComponent(id)}/comments`,{method:"POST",body:JSON.stringify({text})});$("commentText").value="";const r=await api(`/api/news/${encodeURIComponent(id)}/comments`);$("commentsList").innerHTML=render(r.comments);await loadNews();}catch(err){toast(err.message)}
+      const input=$("commentText"),text=input?.value.trim(); if(!text)return;
+      const submit=e.submitter||$("commentForm").querySelector("button");if(submit){submit.disabled=true;submit.textContent="Posting…";}
+      try{await api(`/api/news/${encodeURIComponent(id)}/comments`,{method:"POST",body:JSON.stringify({text})});input.value="";const r=await api(`/api/news/${encodeURIComponent(id)}/comments`);$("commentsList").innerHTML=render(r.comments);host.querySelector(".news-count").textContent="💬 "+(r.comments||[]).length;await loadNews();}
+      catch(err){toast(err.message);}
+      finally{if(submit){submit.disabled=false;submit.textContent="Post";}}
     };
   }catch(e){toast(e.message)}
 }
@@ -4739,7 +4746,7 @@ async function loadLeaderboard() {
       data.users || [];
 
     $("leaderboard").innerHTML = `
-      <div class="card">
+      <section class="card leaderboard-category">
 
         <h3>Top XP</h3>
 
@@ -4765,9 +4772,9 @@ async function loadLeaderboard() {
           `).join("")
         }
 
-      </div>
+      </section>
 
-      <div class="card">
+      <section class="card leaderboard-category">
 
         <h3>Gold</h3>
 
@@ -4797,9 +4804,9 @@ async function loadLeaderboard() {
             .join("")
         }
 
-      </div>
+      </section>
 
-      <div class="card">
+      <section class="card leaderboard-category">
         <h3>Diamonds</h3>
         ${users.slice().sort((a,b)=>(Number(b.diamonds)||0)-(Number(a.diamonds)||0)).map(user=>`
           <div class="user-card">
@@ -4808,7 +4815,7 @@ async function loadLeaderboard() {
             <b>💎 ${Number(user.diamonds||0).toLocaleString()}</b>
           </div>
         `).join("")}
-      </div>
+      </section>
     `;
   } catch (error) {
     toast(error.message);
@@ -5003,6 +5010,20 @@ async function openProfileActionDrawer(user,data={}){
   $('drawerModerateUser')?.addEventListener('click',()=>moderate(id));
   $('drawerStaffPoints')?.addEventListener('click',()=>modal(`<div class="profile-drawer"><h2>🏅 Staff Points · @${esc(user.username)}</h2><div class="profile-info-row"><b>Total points</b><strong>${Number(staffPointInfo?.staffPoints||0).toLocaleString()}</strong></div></div>`));
    $('drawerEditStaffPoints')?.addEventListener('click',()=>openStaffPointsEditor(user,staffPointInfo?.staffPoints||0));
+}
+
+
+/* Close the account-action drawer on the very first outside tap. Do not let
+   modal history restore the quick-profile card underneath it. */
+if(!window.__mcAccountDrawerOutsideCloseBound){
+  window.__mcAccountDrawerOutsideCloseBound=true;
+  document.addEventListener("pointerdown",event=>{
+    const overlay=$("modal"),drawer=overlay?.querySelector(".profile-drawer");
+    if(!overlay||overlay.classList.contains("hidden")||!drawer)return;
+    if(drawer.contains(event.target))return;
+    modalHistory.length=0;
+    closeModal();
+  },true);
 }
 
 function openStaffPointsEditor(user,currentPoints=0){
