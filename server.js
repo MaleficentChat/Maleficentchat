@@ -683,8 +683,8 @@ async function notify(userId,type,title,text,url="/"){
     );
     const notificationId=inserted.rows?.[0]?.id;
     io.to("user:"+userId).emit("notification",{id:notificationId,type:String(type),title:String(title||type),message:String(text)});
-    return notificationId;
     await sendWebPushToUser(userId,{title:String(title||type||"Maleficent Chat"),body:String(text||"You have a new notification").slice(0,180),url:String(url||"/"),tag:"mc-alert-"+String(type||"notification"),kind:type==="private-message"?"private-message":"site-notification"});
+    return notificationId;
   }catch(err){console.error("Notification insert failed:",err);}
 }
 
@@ -4164,7 +4164,7 @@ app.post("/api/native/dm/reply",async(req,res)=>{
     const m={id:id(),from:u.id,to:v.id,text:message.slice(0,4000),attachment:null,replyTo:null,time:Date.now(),read:false,delivered:true};
     await pool.query("INSERT INTO private_messages(id,sender_id,receiver_id,message,data,created_at) VALUES($1,$2,$3,$4,$5::jsonb,NOW())",[m.id,Number(u.id),Number(v.id),m.text,JSON.stringify(m)]);
     db.privateMessages.push(m);
-    notify(v.id,"private-message",`💌 @${u.username}`,m.text.slice(0,180),`/?dm=${encodeURIComponent(u.id)}`);
+    notify(v.id,"private-message",`💌 @${u.username}`,`${u.displayName||u.username||"Someone"} has sent you a private message`,`/?dm=${encodeURIComponent(u.id)}`);
     io.to("user:"+u.id).emit("dm",m);io.to("user:"+v.id).emit("dm",m);
     await pool.query("UPDATE native_device_tokens SET last_used_at=NOW() WHERE credential_hash=$1",[hash]);
     res.json({ok:true,messageId:m.id});
@@ -4184,7 +4184,7 @@ app.post("/api/dm/:id",auth,featureAllowed("private_messages"),upload.single("fi
   // every user row and filter-word entry for each private message.
   db.privateMessages.push(m);
   const dmPreview=m.text?String(m.text).trim().slice(0,180):(m.attachment?"📎 Attachment":"New private message");
-  notify(v.id,"private-message",`💌 @${u.username}`,dmPreview,`/?dm=${encodeURIComponent(u.id)}`);
+  notify(v.id,"private-message",`💌 @${u.username}`,`${u.displayName||u.username||"Someone"} has sent you a private message`,`/?dm=${encodeURIComponent(u.id)}`);
   // Notify every active device for both participants. The client deduplicates
   // by message ID, so the sender can safely reconcile the optimistic/API copy.
   // Send separately to both authenticated user rooms so every active device
