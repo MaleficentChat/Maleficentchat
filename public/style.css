@@ -8907,3 +8907,16 @@ html{scroll-behavior:smooth;}
 #viewRooms.chatting .chat-side-actions .icon-btn,#viewRooms.chatting .chat-side-actions .panel-more{width:32px;height:32px;min-width:32px;padding:0;display:inline-flex;align-items:center;justify-content:center;border-radius:8px;font-size:17px}
 #viewRooms.chatting .online-panel .mobile-users-head{display:flex!important;align-items:center;justify-content:flex-start}
 @media(max-width:900px){#viewRooms.chatting .chat-people-hamburger{display:flex}#viewRooms.chatting .online-panel{display:none}#viewRooms.chatting .online-panel.mobile-open{display:block!important;position:fixed!important;top:60px!important;right:0!important;bottom:0!important;width:min(320px,88vw)!important;max-height:none!important;z-index:255!important;margin:0!important;box-shadow:-14px 0 36px rgba(0,0,0,.4)}#viewRooms.chatting .online-panel.mobile-open .chat-side-topbar{padding-right:8px}}
+
+
+/* Exact People-panel control placement requested: room menu on the left;
+   Alternate Dimensions at the right, with refresh immediately beside Close.
+   The obsolete room-switch button is removed. */
+#viewRooms.chatting .chat-side-topbar{justify-content:space-between!important}
+#viewRooms.chatting .chat-side-room{flex:1 1 auto!important}
+#viewRooms.chatting .chat-side-room>#roomMenu{flex:0 0 32px!important;order:0!important}
+#viewRooms.chatting .chat-side-room>div{order:1!important}
+#viewRooms.chatting .chat-side-actions{margin-left:auto!important;gap:4px!important}
+#viewRooms.chatting #openParallelSplits{order:0!important}
+#viewRooms.chatting #siteHardRefresh{order:1!important}
+#viewRooms.chatting #closeOnlinePanel{order:2!important}
