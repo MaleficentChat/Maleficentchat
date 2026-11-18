@@ -190,13 +190,7 @@
     </section>
     <div id="chatWrap" class="chat-wrap hidden">
 <section class="chat-card">
-        <div class="chat-head">
-          <div class="chat-title-wrap">
-            <button class="icon-btn room-switch" id="backRooms" title="Switch room">☷</button>
-            <div><b id="roomName">Chat</b><small id="roomDesc"></small></div>
-          </div>
-          <div class="chat-head-actions"><span id="onlineCount"></span><button class="icon-btn mobile-people-toggle" id="openOnlinePanel" type="button" title="Show people">♟</button><button class="icon-btn" id="siteHardRefresh" type="button" title="Refresh room messages" aria-label="Refresh room messages">⟳</button><button class="icon-btn" id="openParallelSplits" type="button" title="Parallel rooms" aria-label="Parallel rooms">⫶</button><button class="icon-btn" id="roomMenu" title="Room menu">⋯</button></div>
-        </div>
+        <button class="chat-people-hamburger" id="openOnlinePanel" type="button" title="Show people" aria-label="Show people">☰</button>
         <nav id="roomQuickNav" class="room-quick-nav" aria-label="Switch chat room"></nav>
         <div id="announcement" class="announcement hidden"></div>
         <div id="messages" class="messages"></div>
@@ -212,7 +206,16 @@
         </form>
       </section>
       <aside class="online-panel" id="onlinePanel">
-          <div class="panel-head mobile-users-head"><b>People</b><button class="panel-more" id="closeOnlinePanel" type="button">×</button></div>
+          <div class="chat-side-topbar">
+            <div class="chat-side-room"><button class="icon-btn room-switch" id="backRooms" title="Switch room" type="button">☷</button><div><b id="roomName">Chat</b><small id="roomDesc"></small></div></div>
+            <div class="chat-side-actions">
+              <button class="icon-btn" id="siteHardRefresh" type="button" title="Refresh room messages" aria-label="Refresh room messages">⟳</button>
+              <button class="icon-btn" id="openParallelSplits" type="button" title="Alternate Dimensions" aria-label="Alternate Dimensions">⫶</button>
+              <button class="icon-btn" id="roomMenu" type="button" title="Room options" aria-label="Room options">⋯</button>
+              <button class="panel-more" id="closeOnlinePanel" type="button" title="Close People panel" aria-label="Close People panel">×</button>
+            </div>
+          </div>
+          <div class="panel-head mobile-users-head"><b>People</b></div>
           <div class="online-tabs" id="onlineTabs">
             <button type="button" class="active" data-online-tab="online" title="Online users">♟</button>
             <button type="button" data-online-tab="offline" title="Offline users">◌</button>
