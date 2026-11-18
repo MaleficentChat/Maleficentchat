@@ -1479,11 +1479,7 @@ function renderSidebarRoomList(){
   const root=$("roomsNavList");
   if(!root)return;
   const rooms=sortRoomsForNavigation((Array.isArray(state.rooms)?state.rooms:[]).filter(room=>!isParallelSplitRoom(room)));
-  if(!rooms.length){
-    root.innerHTML='<div class="rooms-nav-empty">No rooms available</div>';
-    return;
-  }
-  root.innerHTML=rooms.map(room=>{
+  const roomItems=rooms.map(room=>{
     const active=String(state.currentRoom)===String(room.id);
     const locked=room.locked??!!room.passwordHash;
     return `<button type="button" class="rooms-nav-item ${active?'active':''}" data-sidebar-room-id="${esc(room.id)}" title="${esc(room.name)}">
@@ -1493,6 +1489,26 @@ function renderSidebarRoomList(){
       <span class="rooms-nav-item-count">${Number(room.onlineCount||0)}</span>
     </button>`;
   }).join("");
+  root.innerHTML=(roomItems||'<div class="rooms-nav-empty">No rooms available</div>')+
+    '<button type="button" class="rooms-nav-more" id="roomsNavMore" aria-haspopup="dialog" aria-controls="roomsMorePanel"><span>⋯</span><span>More</span></button>';
+}
+function openRoomsMorePanel(){
+  const panel=$("roomsMorePanel");
+  const content=$("roomsMoreContent");
+  if(!panel||!content)return;
+  ["mcRoomSearchRow","mcRoomAccess"].forEach(id=>{const el=$(id);if(el&&el.parentElement!==content)content.appendChild(el);});
+  const actions=document.querySelector("#viewRooms .discover-actions");
+  if(actions&&actions.parentElement!==content)content.appendChild(actions);
+  panel.classList.remove("hidden");
+  panel.setAttribute("aria-hidden","false");
+  $("closeRoomsMore")?.focus({preventScroll:true});
+}
+function closeRoomsMorePanel(){
+  const panel=$("roomsMorePanel");
+  if(!panel)return;
+  panel.classList.add("hidden");
+  panel.setAttribute("aria-hidden","true");
+  $("roomsNavMore")?.focus({preventScroll:true});
 }
 const roomsNavToggle=$("roomsNavToggle");
 roomsNavToggle?.addEventListener("click",async()=>{
@@ -1511,12 +1527,21 @@ roomsNavToggle?.addEventListener("click",async()=>{
   }
 });
 $("roomsNavList")?.addEventListener("click",event=>{
+  const more=event.target instanceof Element?event.target.closest("#roomsNavMore"):null;
+  if(more){event.preventDefault();event.stopPropagation();openRoomsMorePanel();return;}
   const button=event.target instanceof Element?event.target.closest("[data-sidebar-room-id]"):null;
   if(!button)return;
   const roomId=button.dataset.sidebarRoomId;
   if(!roomId)return;
   $("sidebar")?.classList.remove("open");
   joinRoom(roomId);
+});
+$("closeRoomsMore")?.addEventListener("click",closeRoomsMorePanel);
+$("roomsMorePanel")?.addEventListener("click",event=>{if(event.target===$("roomsMorePanel"))closeRoomsMorePanel();});
+document.addEventListener("keydown",event=>{if(event.key==="Escape"&&!$("roomsMorePanel")?.classList.contains("hidden"))closeRoomsMorePanel();});
+$("roomsMoreFilters")?.addEventListener("click",event=>{
+  const button=event.target instanceof Element?event.target.closest("[data-room-filter]"):null;
+  if(button)window.setDiscoverRoomFilter?.(button.dataset.roomFilter);
 });
 
 document
