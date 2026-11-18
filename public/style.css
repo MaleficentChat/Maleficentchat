@@ -8993,3 +8993,45 @@ html{scroll-behavior:smooth;}
 .rooms-more-content .discover-actions{display:flex;flex-wrap:wrap;gap:8px}
 .rooms-more-content .discover-actions>*{flex:1 1 130px}
 @media(max-width:600px){.rooms-more-overlay{align-items:flex-end;padding:8px}.rooms-more-panel{width:100%;max-height:82dvh;border-radius:18px 18px 12px 12px}}
+
+
+/* Restore the full-width navigation when the sidebar is opened.
+   Keep the compact rail only while it is collapsed. */
+@media(max-width:800px){
+  #sidebar.sidebar.open,
+  #sidebar.sidebar.mobile-open{
+    width:min(270px,82vw)!important;
+    min-width:min(270px,82vw)!important;
+    max-width:min(270px,82vw)!important;
+    align-items:stretch!important;
+    padding:12px 10px 10px!important;
+  }
+  #sidebar.sidebar.open .nav,
+  #sidebar.sidebar.mobile-open .nav{
+    width:100%!important;
+    min-width:0!important;
+    justify-content:flex-start!important;
+    text-align:left!important;
+    padding:10px 12px!important;
+  }
+  #sidebar.sidebar.open .nav span,
+  #sidebar.sidebar.mobile-open .nav span{display:inline!important}
+  #sidebar.sidebar.open .nav-group,
+  #sidebar.sidebar.mobile-open .nav-group{width:100%!important}
+  #sidebar.sidebar.open .nav-group>summary,
+  #sidebar.sidebar.mobile-open .nav-group>summary{justify-content:flex-start!important}
+  #sidebar.sidebar.open #roomsNavList,
+  #sidebar.sidebar.mobile-open #roomsNavList{width:100%!important;padding-left:12px!important;padding-right:4px!important}
+  #sidebar.sidebar.open #roomsNavList .rooms-nav-item,
+  #sidebar.sidebar.mobile-open #roomsNavList .rooms-nav-item,
+  #sidebar.sidebar.open #roomsNavList .rooms-nav-more,
+  #sidebar.sidebar.mobile-open #roomsNavList .rooms-nav-more{width:100%!important}
+}
+/* The More options dialog belongs near the top/center of the screen,
+   never as a bottom sheet tucked underneath the room list. */
+.rooms-more-overlay{align-items:center!important;justify-content:center!important;padding:12px!important}
+.rooms-more-panel{width:min(500px,calc(100vw - 24px))!important;max-height:min(82dvh,760px)!important;border-radius:18px!important}
+@media(max-width:600px){
+  .rooms-more-overlay{align-items:flex-start!important;justify-content:center!important;padding:7vh 10px 12px!important}
+  .rooms-more-panel{width:100%!important;max-height:86dvh!important;border-radius:18px!important}
+}
