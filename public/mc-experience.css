@@ -1147,7 +1147,7 @@ html,body,#app,.main{background-color:#100c0a!important;color:#fff4e9!important}
 /* MC navigation refinement: keep the expanded panel aligned to the People panel,
    restore every navigation label, and use compact icon sizing. */
 @media(min-width:701px){
-  #sidebar.sidebar{width:var(--online-w,292px)!important;min-width:var(--online-w,292px)!important;max-width:var(--online-w,292px)!important;align-items:stretch!important}
+  #sidebar.sidebar.open,#sidebar.sidebar.mobile-open{width:var(--online-w,292px)!important;min-width:var(--online-w,292px)!important;max-width:var(--online-w,292px)!important;align-items:stretch!important}
   #sidebar.sidebar .nav{width:100%!important;min-width:0!important;justify-content:flex-start!important;text-align:left!important}
   #sidebar.sidebar .nav span{display:inline!important}
   #sidebar.sidebar .nav-group{width:100%!important}
