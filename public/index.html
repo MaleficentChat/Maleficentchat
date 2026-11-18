@@ -176,13 +176,14 @@
         </div>
         <div class="discover-actions">
           <button class="discover-search-toggle" id="mcRoomSearchToggle" type="button" aria-label="Search rooms" aria-expanded="false">⌕</button>
+          <button class="discover-refresh" id="mcRoomRefresh" type="button" aria-label="Refresh rooms" title="Refresh rooms" onclick="refreshDiscoverRooms()">⟳</button>
           <button class="discover-create primary room-create-button hidden" id="newRoom" type="button">＋ Create a room</button>
         </div>
       </header>
       <nav class="room-filter-tabs" aria-label="Room filters">
-        <button type="button" class="room-filter active" data-room-filter="all" aria-pressed="true">All rooms</button>
-        <button type="button" class="room-filter" data-room-filter="active" aria-pressed="false">Active</button>
-        <button type="button" class="room-filter" data-room-filter="mine" aria-pressed="false">My rooms</button>
+        <button type="button" class="room-filter active" data-room-filter="all" aria-pressed="true" onclick="setDiscoverRoomFilter('all')">All rooms</button>
+        <button type="button" class="room-filter" data-room-filter="active" aria-pressed="false" onclick="setDiscoverRoomFilter('active')">Active</button>
+        <button type="button" class="room-filter" data-room-filter="mine" aria-pressed="false" onclick="setDiscoverRoomFilter('mine')">My rooms</button>
       </nav>
       <div class="mc-room-search-row" id="mcRoomSearchRow">
         <label class="mc-room-search"><span aria-hidden="true">⌕</span><input id="roomSearch" type="search" placeholder="Search rooms…" aria-label="Search rooms"></label>

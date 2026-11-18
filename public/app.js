@@ -2084,6 +2084,23 @@ window.setDiscoverRoomFilter=function(mode){
   renderRooms();
 };
 
+window.refreshDiscoverRooms=async function(){
+  const button=$("mcRoomRefresh");
+  if(button?.disabled)return;
+  const currentFilter=state.roomListMode||"all";
+  if(button){button.disabled=true;button.classList.add("is-refreshing");button.setAttribute("aria-busy","true");}
+  try{
+    await loadRooms();
+    state.roomListMode=currentFilter;
+    renderRooms();
+    if(button)button.title="Rooms refreshed";
+  }catch(error){
+    toast("Could not refresh rooms: "+(error?.message||"Please try again."));
+  }finally{
+    if(button){button.disabled=false;button.classList.remove("is-refreshing");button.removeAttribute("aria-busy");}
+  }
+};
+
 window.__mcRoomJoinTokens=window.__mcRoomJoinTokens||{};
 let lastResolvedRoomCode="";
 async function resolveSecretRoomCode(rawValue){

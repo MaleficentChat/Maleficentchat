@@ -7,8 +7,13 @@
 .discover-actions{display:flex;align-items:center;gap:8px}
 .discover-search-toggle,.discover-create{height:40px;min-width:40px;padding:0 13px;border:1px solid rgba(226,184,153,.2)!important;border-radius:11px!important;background:rgba(58,39,29,.72)!important;color:#f7e9df!important;font-size:13px;font-weight:750}
 .discover-search-toggle{font-size:22px!important}
+.discover-refresh{display:grid;place-items:center;width:40px;height:40px;padding:0;border:1px solid rgba(226,184,153,.2);border-radius:11px;background:rgba(58,39,29,.72);color:#f7e9df;font-size:21px;cursor:pointer;transition:background .18s,border-color .18s,transform .18s}
+.discover-refresh:hover{background:rgba(115,75,52,.45);border-color:rgba(226,184,153,.4)}
+.discover-refresh:disabled{opacity:.55;cursor:wait}
+.discover-refresh.is-refreshing{animation:discoverRoomSpin .8s linear infinite}
+@keyframes discoverRoomSpin{to{transform:rotate(360deg)}}
 .discover-create{background:linear-gradient(135deg,#87583e,#65412e)!important}
-.room-filter-tabs{display:flex;align-items:center;gap:7px;padding:0 0 16px;border-bottom:1px solid rgba(226,184,153,.13)}
+.room-filter-tabs{display:flex;align-items:center;justify-content:center;gap:7px;padding:0 0 16px;border-bottom:1px solid rgba(226,184,153,.13)}
 .room-filter{min-height:35px;padding:0 15px;border:1px solid transparent;border-radius:9px;background:transparent;color:#bda696;font-size:12px;font-weight:750;cursor:pointer}
 .room-filter.active{border-color:rgba(226,184,153,.23);background:rgba(115,75,52,.25);color:#fff3e9}
 .mc-room-search-row{display:none;align-items:center;gap:8px;margin:13px 0 0}
@@ -53,6 +58,7 @@
  .discover-head p{font-size:12px}
  .discover-create{height:36px;padding:0 9px;font-size:10px}
  .discover-search-toggle{height:36px;min-width:36px}
+ .discover-refresh{width:36px;height:36px}
  .room-filter-tabs{gap:4px;padding-bottom:12px}
  .room-filter{min-height:33px;padding:0 12px;font-size:11px}
  .room-shelf{margin-top:19px}
