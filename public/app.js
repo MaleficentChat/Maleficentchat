@@ -3119,15 +3119,7 @@ function toggleMessageMenu(id){
   closeMessageMenus();
   if(wasHidden)openMessageMenu(menu,id);
 }
-document.addEventListener("click",e=>{
-  const msg=e.target instanceof Element?e.target.closest(".msg[data-mid]"):null;
-  if(!msg||e.target.closest("button,a,input,textarea,audio,video,iframe,.message-actions-menu,.reaction-picker,.quoted"))return;
-  const menu=msg.querySelector(".message-actions-menu");
-  if(!menu)return;
-  const wasHidden=menu.classList.contains("hidden");
-  closeMessageMenus();
-  if(wasHidden)openMessageMenu(menu,msg.dataset.mid);
-});
+/* Message actions open only from the explicit ⋯ button in the message header. */
 document.addEventListener("click",e=>{
   if(!e.target.closest(".msg-actions,.msg[data-mid],.message-actions-menu"))closeMessageMenus();
 });
