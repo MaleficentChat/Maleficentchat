@@ -8857,3 +8857,38 @@ html{scroll-behavior:smooth;}
   margin-top:0!important;
   margin-bottom:40px!important;
 }
+
+/* Main-chat minimized private-chat avatars: compact 40px dock on the right. */
+#viewRooms.chatting .chat-card{position:relative!important;}
+#mainChatMinimizedDock{
+  position:absolute!important;
+  right:10px!important;
+  left:auto!important;
+  bottom:5px!important;
+  z-index:30!important;
+  display:flex!important;
+  flex-direction:row!important;
+  align-items:center!important;
+  justify-content:flex-end!important;
+  gap:6px!important;
+  max-width:calc(100% - 20px)!important;
+  max-height:44px!important;
+  overflow-x:auto!important;
+  overflow-y:hidden!important;
+  padding:2px!important;
+  margin:0!important;
+}
+#mainChatMinimizedDock .dm-minimized-avatar{
+  box-sizing:border-box!important;
+  flex:0 0 40px!important;
+  width:40px!important;
+  min-width:40px!important;
+  max-width:40px!important;
+  height:40px!important;
+  min-height:40px!important;
+  max-height:40px!important;
+  padding:2px!important;
+}
+#mainChatMinimizedDock .dm-minimized-avatar .avatar{
+  width:100%!important;height:100%!important;min-width:0!important;min-height:0!important;
+}
