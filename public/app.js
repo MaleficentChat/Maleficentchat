@@ -684,6 +684,9 @@ function renderMinimizedDMs(){
   fill(mainDock);
   fill(pmDock);
 }
+// Initialize the bottom controls in their new row as soon as the chat UI loads.
+if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",renderMinimizedDMs,{once:true});
+else renderMinimizedDMs();
 function minimizeActiveDM(){
   const overlay=$("modal"),body=$("modalBody");
   if(!overlay||overlay.classList.contains("hidden")||!body?.querySelector(".dm-chat-header")||!state.dmUserId)return;
