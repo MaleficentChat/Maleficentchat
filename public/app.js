@@ -6822,18 +6822,30 @@ async function toggleMessagesDropdown(refresh=false){
       return true;
     }).slice(0,20);
     const unreadCount=all.reduce((n,c)=>n+Number(c.unreadCount||0),0);
-    box.innerHTML=`<div class="notification-dropdown-head"><div><b>✉ Messages</b><small class="notification-unread-summary">${unreadCount} unread</small></div><button class="mini" id="refreshHeaderDM" type="button" title="Refresh conversations">↻</button></div>
-      <div class="dm-header-filters" role="group" aria-label="Filter conversations">${filters.map(([key,icon,label])=>`<button type="button" class="dm-header-filter ${activeFilter===key?'active':''}" data-header-filter="${key}" title="${label}" aria-label="${label}" aria-pressed="${activeFilter===key}"><span>${icon}</span><small>${label}</small></button>`).join("")}</div>
+    const filtersOpen=box.dataset.filtersOpen==="true";
+    box.innerHTML=`<div class="notification-dropdown-head"><div><b>✉ Messages</b><small class="notification-unread-summary">${unreadCount} unread</small></div><div class="dm-header-tools"><button class="mini" id="refreshHeaderDM" type="button" title="Refresh conversations">↻</button><button class="mini" id="toggleHeaderDMFilters" type="button" title="Conversation filters" aria-label="Conversation filters" aria-expanded="${filtersOpen}">⚙</button></div></div>
+      <div class="dm-header-filters ${filtersOpen?'':'hidden'}" id="dmHeaderFilters" role="group" aria-label="Filter conversations">${filters.map(([key,icon,label])=>`<button type="button" class="dm-header-filter ${activeFilter===key?'active':''}" data-header-filter="${key}" title="${label}" aria-label="${label}" aria-pressed="${activeFilter===key}"><span>${icon}</span><small>${label}</small></button>`).join("")}</div>
       <div class="dm-header-conversations">${visible.map(c=>{
         const u=c.user||{},id=String(u.id),last=c.lastMessage||{},preview=last.attachment?'📎 Attachment':(last.text||'Start a conversation');
         const pinned=!!prefs.pinned?.[id],muted=!!prefs.muted?.[id],archived=!!prefs.archived?.[id];
         return `<article class="dm-header-row">
+          <button type="button" class="dm-header-avatar" data-header-profile="${esc(id)}" title="Open ${esc(u.displayName||u.username||'user')}'s profile" aria-label="Open profile of ${esc(u.displayName||u.username||'user')}">${avatar(u)}</button>
           <button type="button" class="notification-dropdown-item dm-header-item ${Number(c.unreadCount||0)?'unread':''}" data-header-dm="${esc(id)}"><b>${esc(nicknames[id]||u.displayName||u.username||'User')} ${Number(c.unreadCount||0)?'<span class="dm-unread-badge">'+Number(c.unreadCount)+'</span>':''}</b><span>@${esc(u.username||'')} · ${esc(preview).slice(0,85)}</span><small>${last.time?fmt(last.time):''}</small></button>
           <div class="dm-header-actions"><button type="button" class="mini" data-header-pref="pinned" data-id="${esc(id)}" title="${pinned?'Unpin':'Pin'} conversation" aria-label="${pinned?'Unpin':'Pin'} conversation">${pinned?'📌':'＋'}</button><button type="button" class="mini" data-header-pref="muted" data-id="${esc(id)}" title="${muted?'Unmute':'Mute'} notifications" aria-label="${muted?'Unmute':'Mute'} notifications">${muted?'🔕':'🔔'}</button><button type="button" class="mini" data-header-pref="archived" data-id="${esc(id)}" title="${archived?'Unarchive':'Archive'} conversation" aria-label="${archived?'Unarchive':'Archive'} conversation">${archived?'↩':'▣'}</button></div>
         </article>`;
       }).join("")||'<p class="muted notification-empty">No conversations in this filter.</p>'}</div>`;
     box.classList.remove("hidden");
+    box.dataset.filtersOpen=String(filtersOpen);
     box.querySelector("#refreshHeaderDM")?.addEventListener("click",()=>toggleMessagesDropdown(true));
+    box.querySelector("#toggleHeaderDMFilters")?.addEventListener("click",()=>{
+      const panel=box.querySelector("#dmHeaderFilters"),button=box.querySelector("#toggleHeaderDMFilters");
+      const open=panel?.classList.toggle("hidden")===false;
+      box.dataset.filtersOpen=String(open);
+      button?.setAttribute("aria-expanded",String(open));
+    });
+    box.querySelectorAll("[data-header-profile]").forEach(b=>b.addEventListener("click",event=>{
+      event.stopPropagation();openUser(b.dataset.headerProfile);
+    }));
     box.querySelectorAll("[data-header-filter]").forEach(b=>b.addEventListener("click",()=>{safeStorage.setItem(filterKey,b.dataset.headerFilter);toggleMessagesDropdown(true);}));
     box.querySelectorAll("[data-header-dm]").forEach(b=>b.onclick=()=>{box.classList.add("hidden");openDM(b.dataset.headerDm)});
     box.querySelectorAll("[data-header-pref]").forEach(b=>b.addEventListener("click",()=>{const kind=b.dataset.headerPref,id=b.dataset.id,p=dmPrefs();dmSetPref(kind,id,!p[kind]?.[id]);toggleMessagesDropdown(true);}));
