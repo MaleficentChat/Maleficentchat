@@ -376,3 +376,12 @@
 #viewRooms:not(.chatting) .mc-room-code{flex-basis:100%!important}
 }
 @media(max-width:350px){#viewRooms:not(.chatting) .discover-room-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
+
+
+/* 18 Nov 2026 — keep the secret-room lookup collapsed and above the room list. */
+#viewRooms:not(.chatting) .mc-room-access.hidden{display:none!important}
+#viewRooms:not(.chatting) .mc-room-access:not(.hidden){display:flex!important;margin:0 auto 10px!important}
+#viewRooms:not(.chatting) > .mc-room-directory{padding-top:2px!important}
+#viewRooms:not(.chatting) .discover-head{padding-top:0!important;padding-bottom:4px!important}
+#viewRooms:not(.chatting) .discover-actions{margin-top:0!important}
+@media(max-width:620px){#viewRooms:not(.chatting) > .mc-room-directory{padding-top:2px!important}}
