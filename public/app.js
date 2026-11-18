@@ -6787,13 +6787,14 @@ async function toggleFriendsDropdown(refresh=false){
       <div class="toolbar"><button class="mini primary" data-friend-accept="${esc(u.id)}">Accept</button><button class="mini danger" data-friend-decline="${esc(u.id)}">Decline</button></div></article>`;
     const searchOpen=box.dataset.searchOpen==="true";
     box.innerHTML=`<div class="notification-dropdown-head"><div><b>💜 Friend requests</b><small class="notification-unread-summary">${incoming.length} incoming requests</small></div><div class="dm-header-tools"><button class="mini" id="refreshFriendsHub" type="button" title="Refresh">↻</button><button class="mini" id="toggleFriendHubSearch" type="button" title="Search requests" aria-label="Search requests" aria-expanded="${searchOpen}">⌕</button></div></div>
-      <input class="friend-hub-search ${searchOpen?'':'hidden'}" id="friendHubSearch" type="search" placeholder="Search requests…" aria-label="Search friend requests">
+      <input class="friend-hub-search" id="friendHubSearch" type="search" style="display:${searchOpen?'block':'none'}" placeholder="Search requests…" aria-label="Search friend requests">
       ${incoming.length?incoming.map(row).join(""):'<p class="muted notification-empty">No friend requests right now.</p>'}`;
     box.dataset.searchOpen=String(searchOpen);
     box.classList.remove("hidden");
     box.querySelector("#friendHubSearch")?.addEventListener("input",e=>{const q=e.target.value.trim().toLowerCase();box.querySelectorAll("[data-friend-hub-row]").forEach(el=>el.classList.toggle("hidden",!el.dataset.search.includes(q)));});
     box.querySelector("#toggleFriendHubSearch")?.addEventListener("click",()=>{
-      const input=box.querySelector("#friendHubSearch"),open=input?.classList.toggle("hidden")===false;
+      const input=box.querySelector("#friendHubSearch"),open=input?.style.display==="none";
+      if(input){input.style.display=open?"block":"none";input.classList.toggle("hidden",!open);}
       box.dataset.searchOpen=String(open);box.querySelector("#toggleFriendHubSearch")?.setAttribute("aria-expanded",String(open));
       if(open)input?.focus();else if(input){input.value="";input.dispatchEvent(new Event("input",{bubbles:true}));}
     });
@@ -6906,14 +6907,15 @@ async function toggleReportDropdown(refresh=false){
     };
     const filtersOpen=box.dataset.filtersOpen==="true";
     box.innerHTML=`<div class="notification-dropdown-head"><div><b>⚑ Report Management</b><small class="notification-unread-summary">${openCount} open · ${allReports.length} total</small></div><div class="dm-header-tools"><button class="mini" id="refreshReportManager" title="Refresh">↻ Refresh</button><button class="mini" id="toggleReportFilters" title="Report filters and search" aria-label="Report filters and search" aria-expanded="${filtersOpen}">⚙</button></div></div>
-      <div class="report-manager-tools ${filtersOpen?'':'hidden'}" id="reportManagerTools"><input type="search" id="reportManagerSearch" placeholder="Search reports, users, reasons…" aria-label="Search reports"><select id="reportManagerStatus" aria-label="Filter report status"><option value="OPEN">Open reports</option><option value="ALL">All reports</option><option value="RESOLVED">Resolved</option><option value="DISMISSED">Dismissed</option></select><small id="reportManagerCount"></small></div>
+      <div class="report-manager-tools" id="reportManagerTools" style="display:${filtersOpen?'grid':'none'}"><input type="search" id="reportManagerSearch" placeholder="Search reports, users, reasons…" aria-label="Search reports"><select id="reportManagerStatus" aria-label="Filter report status"><option value="OPEN">Open reports</option><option value="ALL">All reports</option><option value="RESOLVED">Resolved</option><option value="DISMISSED">Dismissed</option></select><small id="reportManagerCount"></small></div>
       <div id="reportManagerList" class="report-manager-list"></div>`;
     box.dataset.filtersOpen=String(filtersOpen);
     box.classList.remove("hidden");
     box.querySelector("#reportManagerSearch")?.addEventListener("input",e=>renderReports(e.target.value,box.querySelector("#reportManagerStatus")?.value||"OPEN"));
     box.querySelector("#reportManagerStatus")?.addEventListener("change",e=>renderReports(box.querySelector("#reportManagerSearch")?.value||"",e.target.value));
     box.querySelector("#toggleReportFilters")?.addEventListener("click",()=>{
-      const panel=box.querySelector("#reportManagerTools"),open=panel?.classList.toggle("hidden")===false;
+      const panel=box.querySelector("#reportManagerTools"),open=panel?.style.display==="none";
+      if(panel){panel.style.display=open?"grid":"none";panel.classList.toggle("hidden",!open);}
       box.dataset.filtersOpen=String(open);box.querySelector("#toggleReportFilters")?.setAttribute("aria-expanded",String(open));
     });
     box.querySelector("#refreshReportManager")?.addEventListener("click",()=>toggleReportDropdown(true));
