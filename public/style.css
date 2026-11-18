@@ -8631,3 +8631,60 @@ html{scroll-behavior:smooth;}
   }
   #sidebar .nav{width:48px!important;min-width:48px!important;justify-content:center!important}
 }
+
+
+/* Private messages — expanded, readable inbox and conversation layout */
+#viewDms{min-width:0}
+#viewDms #dmList.user-grid{width:100%;max-width:none;min-height:0;padding:clamp(12px,2vw,22px);gap:14px}
+#viewDms .dm-inbox-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,390px),1fr));gap:14px;align-content:start;width:100%}
+#viewDms .dm-contact-card{min-height:112px;grid-template-columns:58px minmax(0,1fr) auto;gap:15px;padding:16px 18px;border-radius:17px}
+#viewDms .dm-contact-card>.avatar{width:56px;height:56px;flex-basis:56px}
+#viewDms .dm-contact-copy{gap:5px}
+#viewDms .dm-inbox-title b{font-size:15px;line-height:1.3}
+#viewDms .dm-inbox-handle{font-size:11px;color:#c8ad9a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#viewDms .dm-inbox-handle i{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:4px;background:#777}
+#viewDms .dm-inbox-handle i.is-online{background:#6bc58b;box-shadow:0 0 7px #6bc58b}
+#viewDms .dm-inbox-preview{font-size:13px;line-height:1.4;color:#e0cfc2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
+#viewDms .dm-inbox-time{font-size:10px;color:#a89587}
+#viewDms .dm-inbox-actions{display:flex;align-items:center;justify-content:flex-end;gap:5px;flex-wrap:wrap}
+#viewDms .dm-inbox-actions .mini{min-width:34px;min-height:34px;padding:5px 8px}
+#viewDms .dm-inbox-actions .primary{min-width:66px;min-height:38px}
+#viewDms .dm-inbox-toolbar{position:sticky;top:0;z-index:3;display:flex;flex-direction:column;gap:10px;padding:4px 2px 12px;background:var(--panel,transparent)}
+#viewDms .dm-inbox-toolbar input{width:100%;min-height:46px;font-size:15px;padding:11px 14px!important;border-radius:12px}
+#viewDms .dm-inbox-tabs{display:flex;gap:7px;flex-wrap:wrap}
+#viewDms .dm-inbox-tabs .mini{min-height:35px;padding:7px 13px}
+.modal-card:has(.dm-chat-header){width:min(1120px,98vw);max-height:96dvh}
+.dm-message-list{height:min(62dvh,680px)!important;min-height:300px;padding:20px 24px}
+.dm-message-list .msg{margin:8px 0}
+.dm-message-list .msg .msg-body{max-width:min(78%,780px);padding:13px 17px;font-size:15px}
+.dm-message-list .msg-text{font-size:15px;line-height:1.6}
+.dm-chat-header{padding:19px 24px}
+.dm-chat-person>.avatar{width:54px;height:54px;flex-basis:54px}
+.dm-chat-person-copy h2{font-size:20px}
+.dm-composer{padding:13px 18px 17px;gap:10px}
+.dm-composer #dmText{min-height:48px;font-size:15px}
+.dm-composer .send,.dm-composer .dm-upload-btn{min-height:46px}
+@media(max-width:700px){
+ #viewDms #dmList.user-grid{padding:10px;gap:10px}
+ #viewDms .dm-inbox-list{grid-template-columns:minmax(0,1fr);gap:10px}
+ #viewDms .dm-contact-card{grid-template-columns:50px minmax(0,1fr);min-height:100px;padding:13px;gap:11px}
+ #viewDms .dm-contact-card>.avatar{width:48px;height:48px;flex-basis:48px}
+ #viewDms .dm-contact-copy{grid-column:2;grid-row:1}
+ #viewDms .dm-inbox-actions{grid-column:1/-1;justify-content:flex-end;padding-top:3px}
+ #viewDms .dm-inbox-actions .mini{min-width:38px;min-height:36px}
+ #viewDms .dm-inbox-actions .primary{min-width:78px}
+ #viewDms .dm-inbox-toolbar{padding-bottom:9px}
+ .modal-card:has(.dm-chat-header){width:calc(100vw - 8px);max-height:calc(100dvh - 8px);height:calc(100dvh - 8px);border-radius:14px}
+ .dm-chat-header{flex-direction:row;align-items:center;padding:12px 11px;gap:8px}
+ .dm-chat-person>.avatar{width:44px;height:44px;flex-basis:44px}
+ .dm-chat-person-copy h2{font-size:16px}
+ .dm-chat-actions{width:auto;padding-left:0;gap:5px}
+ .dm-chat-actions .mini{flex:0 0 auto;min-width:34px;min-height:34px;padding:6px}
+ .dm-message-search{margin:8px 9px 4px}
+ .dm-conversation-tools{padding:3px 11px 7px}
+ .dm-message-list{height:auto!important;min-height:0;flex:1 1 auto;padding:12px 9px}
+ .dm-message-list .msg .msg-body{max-width:88%;padding:11px 12px;font-size:14px}
+ .dm-message-list .msg-text{font-size:14px}
+ .dm-composer{flex:0 0 auto;padding:9px 9px max(11px,env(safe-area-inset-bottom));gap:6px}
+ .dm-composer #dmText{min-height:44px;font-size:14px}
+}
