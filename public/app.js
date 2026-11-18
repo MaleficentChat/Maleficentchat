@@ -1334,6 +1334,14 @@ async function start() {
     }
   });
 
+  // Keep the room directory completely out of view during sign-in. Members should
+  // land straight in their age-appropriate room, without an intermediate room-picker
+  // screen flashing while the room list and join request are loading.
+  state.view = "rooms";
+  document.querySelectorAll(".view").forEach(view => view.classList.add("hidden"));
+  $("viewRooms")?.classList.add("hidden");
+  document.querySelectorAll(".nav[data-view]").forEach(button => button.classList.toggle("active", button.dataset.view === "rooms"));
+
   await loadRooms();
 
   // Every member enters the correct age room immediately; staff always enter Teen Chat.
@@ -1343,12 +1351,6 @@ async function start() {
   let joined=false;
   const invite=roomInviteFromHash();
   if(invite?.roomId&&state.rooms.some(room=>String(room.id)===invite.roomId))joined=await joinRoom(invite.roomId);
-  // Every authenticated visit should land directly in the age-appropriate chat, not the room directory.
-  // Avoid renderView() here because it re-fetches the room list and briefly returns to the directory.
-  state.view = "rooms";
-  document.querySelectorAll(".view").forEach(view => view.classList.add("hidden"));
-  $("viewRooms")?.classList.remove("hidden");
-  document.querySelectorAll(".nav[data-view]").forEach(button => button.classList.toggle("active", button.dataset.view === "rooms"));
   for(let attempt=0;attempt<4&&!joined;attempt++){
     if(!mainRoom||attempt>0){
       try{
@@ -1364,7 +1366,14 @@ async function start() {
     if(mainRoom)joined=await joinRoom(String(mainRoom.id));
     if(!joined&&attempt<3)await new Promise(resolve=>setTimeout(resolve,500*(attempt+1)));
   }
-  if(!joined)toast("Your chat room could not open automatically. Please open Rooms and try again.");
+  if(joined){
+    $("viewRooms")?.classList.remove("hidden");
+  }else{
+    // Do not fall back to the manual room-selection directory. Keep the user out
+    // of the intermediate panel and explain that automatic age-room entry failed.
+    $("viewRooms")?.classList.add("hidden");
+    toast("Your age-appropriate chat could not be opened. Please check your date of birth and ask staff to verify Teen Chat / Adult Chat setup.");
+  }
   await loadNotifications();
   // Notification Reply/Open actions deep-link directly into the sender conversation.
   const notificationPeer=new URL(window.location.href).searchParams.get("dm");
