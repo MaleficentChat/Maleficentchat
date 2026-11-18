@@ -8553,3 +8553,21 @@ html{scroll-behavior:smooth;}
 #topFriendsDropdown .dm-header-tools,#reportDropdown .dm-header-tools{display:flex;align-items:center;gap:6px;flex:0 0 auto;}
 #topFriendsDropdown .dm-header-tools .mini,#reportDropdown .dm-header-tools .mini{width:34px;height:34px;min-width:34px;padding:0;display:inline-flex;align-items:center;justify-content:center;}
 #topFriendsDropdown .friend-hub-search.hidden,#reportDropdown .report-manager-tools.hidden{display:none!important;}
+
+/* Keep Friends, Reports and Messages dropdowns at the same compact panel dimensions. */
+#topFriendsDropdown,#reportDropdown,#topMessagesDropdown{
+  width:min(390px,calc(100vw - 24px))!important;
+  max-width:390px!important;
+  max-height:70vh!important;
+  overflow-y:auto!important;
+}
+#topFriendsDropdown #friendHubSearch[style*="display:none"],
+#reportDropdown #reportManagerTools[style*="display:none"]{display:none!important;}
+#topFriendsDropdown #friendHubSearch[style*="display:block"]{display:block!important;}
+#reportDropdown #reportManagerTools[style*="display:grid"]{display:grid!important;}
+@media(max-width:768px){
+ #topFriendsDropdown,#reportDropdown,#topMessagesDropdown{
+   width:min(340px,calc(100vw - 28px))!important;
+   max-width:340px!important;max-height:58vh!important;
+ }
+}
