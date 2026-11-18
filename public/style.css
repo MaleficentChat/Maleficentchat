@@ -8441,3 +8441,36 @@ html{scroll-behavior:smooth;}
   .news-comments-panel .news-comment{padding:5px 7px;}
   #modal .modal-card:has(.news-likes-modal){width:calc(100vw - 28px)!important;}
 }
+
+
+/* News comments: compact author row, profile links, and a true centered likes dialog. */
+.news-comment-profile-link,.news-comment-name-link{display:inline-flex;align-items:center;justify-content:center;padding:0;border:0;background:transparent;color:inherit;font:inherit;cursor:pointer;text-align:left;}
+.news-comment-profile-link{flex:0 0 auto;border-radius:50%;}
+.news-comment-name-link{font-weight:700;color:var(--text,#fff);}
+.news-comment-name-link:hover{text-decoration:underline;}
+.news-comment-profile-link:focus-visible,.news-comment-name-link:focus-visible{outline:2px solid var(--accent,#d9a56f);outline-offset:3px;}
+#viewNews #newsCommentsPanel{z-index:40;}
+#modal{z-index:100000!important;position:fixed!important;inset:0!important;display:flex;align-items:center!important;justify-content:center!important;}
+#modal.hidden{display:none!important;}
+#modal .modal-card:has(.news-likes-modal){position:relative!important;margin:auto!important;align-self:center!important;width:min(420px,calc(100vw - 28px))!important;max-width:calc(100vw - 28px)!important;max-height:min(70dvh,560px)!important;overflow:hidden!important;box-sizing:border-box!important;}
+#modal #modalBody:has(.news-likes-modal){width:100%;min-width:0;max-width:100%;max-height:inherit;overflow:hidden;box-sizing:border-box;}
+#modal .news-likes-modal{width:100%;min-width:0;max-height:inherit;box-sizing:border-box;}
+/* Keep each leaderboard title fixed while its own rows scroll, including mobile. */
+#viewLeaderboard #leaderboard{align-items:start!important;overflow:visible!important;}
+#viewLeaderboard #leaderboard>.card,
+#viewLeaderboard #leaderboard>.leaderboard-category{
+  display:flex!important;flex-direction:column!important;
+  height:min(68dvh,720px)!important;max-height:min(68dvh,720px)!important;min-height:220px!important;
+  overflow-y:auto!important;overflow-x:hidden!important;
+  -webkit-overflow-scrolling:touch!important;overscroll-behavior-y:contain!important;
+  touch-action:pan-y!important;scrollbar-width:thin!important;
+}
+#viewLeaderboard #leaderboard>.card>h3,
+#viewLeaderboard #leaderboard>.leaderboard-category>h3{
+  position:sticky!important;top:0!important;z-index:20!important;flex:0 0 auto!important;
+  margin:0 0 10px!important;padding:10px 12px!important;background:#271810!important;
+}
+@media(max-width:700px){
+  #viewLeaderboard #leaderboard>.card,
+  #viewLeaderboard #leaderboard>.leaderboard-category{height:68dvh!important;max-height:68dvh!important;}
+}
