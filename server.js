@@ -7430,18 +7430,13 @@ app.get('/api/users/:id/profile',auth,(req,res)=>{
     if(p.lastSeen===false)profile.lastSeen=null;
     if(p.online===false)profile.online=false;
   }
-  // Only disclose a room when the member's online presence is visible and a
-  // live authenticated socket is actually subscribed to that room.
+  // Show the current room to other members whenever the user's online
+  // presence is visible. Explicit privacy/hide modes still suppress it.
   profile.currentRoom=null;
   if(profile.online&&!v.invisible&&!v.hideMode&&!v.deadMode){
     const activeRoomId=String(v.roomId||'');
     const room=activeRoomId?db.rooms.find(item=>String(item.id)===activeRoomId):null;
-    const userSockets=io.sockets.adapter.rooms.get('user:'+String(v.id));
-    const hasLiveRoomSocket=!!(room&&userSockets&&[...userSockets].some(socketId=>{
-      const activeSocket=io.sockets.sockets.get(socketId);
-      return activeSocket&&String(activeSocket.data?.roomId||'')===activeRoomId&&activeSocket.rooms.has('room:'+activeRoomId);
-    }));
-    if(hasLiveRoomSocket){
+    if(room){
       const isPrivate=room.public===false;
       profile.currentRoom={name:isPrivate?'Private room':String(room.name||'Chat'),icon:isPrivate?'🔒':String(room.icon||'💬'),isPrivate};
     }
