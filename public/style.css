@@ -8762,3 +8762,86 @@ html{scroll-behavior:smooth;}
   .dm-minimized-avatar{width:42px;height:42px;min-width:42px;}
   #modal .modal-card:has(.dm-chat-header) #modalBody>.dm-composer{margin-top:40px!important;padding:5px 7px max(5px,env(safe-area-inset-bottom))!important;}
 }
+
+
+/* Corrected minimized-chat dock: reserve a real strip below the main composer. */
+#viewRooms.chatting .chat-card{
+  position:relative!important;
+  padding-bottom:58px!important;
+}
+#dmMinimizedDock{
+  position:fixed!important;
+  left:auto!important;
+  right:calc(var(--online-w) + 12px)!important;
+  top:auto!important;
+  bottom:7px!important;
+  transform:none!important;
+  z-index:2147482000!important;
+  display:flex!important;
+  flex-direction:row!important;
+  align-items:center!important;
+  gap:8px!important;
+  max-width:min(55vw,360px)!important;
+  max-height:52px!important;
+  overflow-x:auto!important;
+  overflow-y:hidden!important;
+  padding:4px 7px!important;
+}
+#dmMinimizedDock:empty{display:none!important}
+@media(max-width:800px){
+  #viewRooms.chatting .chat-card{padding-bottom:58px!important}
+  #dmMinimizedDock{
+    right:8px!important;
+    bottom:7px!important;
+    max-width:calc(100vw - 16px)!important;
+    max-height:50px!important;
+  }
+}
+
+/* Private-message modal uses the available height; the composer stays at its bottom. */
+#modal .modal-card:has(#modalBody .dm-chat-header){
+  display:flex!important;
+  flex-direction:column!important;
+  width:min(760px,96vw)!important;
+  height:min(88dvh,780px)!important;
+  max-height:calc(100dvh - 16px)!important;
+  padding:0!important;
+  overflow:hidden!important;
+}
+#modal #modalBody:has(.dm-chat-header){
+  display:flex!important;
+  flex:1 1 auto!important;
+  flex-direction:column!important;
+  min-height:0!important;
+  height:100%!important;
+  overflow:hidden!important;
+  padding:0!important;
+}
+#modal #modalBody .dm-chat-header{flex:0 0 auto!important}
+#modal #modalBody .dm-message-search{flex:0 0 auto!important}
+#modal #modalBody .dm-message-list{
+  flex:1 1 0!important;
+  height:auto!important;
+  min-height:0!important;
+  margin:0!important;
+  overflow-y:auto!important;
+}
+#modal #modalBody .dm-composer{
+  flex:0 0 auto!important;
+  position:static!important;
+  margin:0!important;
+  padding:7px 10px max(7px,env(safe-area-inset-bottom))!important;
+  border-top:1px solid rgba(240,195,165,.12)!important;
+}
+@media(max-width:700px){
+  #modal .modal-card:has(#modalBody .dm-chat-header){
+    width:calc(100vw - 8px)!important;
+    height:calc(100dvh - 8px)!important;
+    max-height:calc(100dvh - 8px)!important;
+  }
+  #modal #modalBody .dm-message-list{padding:8px!important}
+  #modal #modalBody .dm-composer{
+    margin:0!important;
+    padding:5px 7px max(5px,env(safe-area-inset-bottom))!important;
+  }
+}
