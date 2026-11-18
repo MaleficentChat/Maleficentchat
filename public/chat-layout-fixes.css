@@ -142,9 +142,10 @@
 }
 
 
-/* 18 Nov 2026 — remove the dead space below the composer while retaining the fixed icon dock. */
+/* Correction: preserve the intentional 58px bottom breathing room.
+   Keep the per-message ⋯ trigger visible, but never render its action panel inline. */
 #viewRooms.chatting .chat-card{
-  padding-bottom:0!important;
+  padding-bottom:58px!important;
 }
 #viewRooms.chatting .chat-card>.composer{
   position:relative!important;
@@ -153,23 +154,33 @@
   flex:0 0 auto!important;
   transform:none!important;
 }
+/* The wrapper also contains the ⋯ trigger, so do not hide the wrapper itself. */
 #viewRooms.chatting .msg-actions{
+  display:flex!important;
+  visibility:visible!important;
+  pointer-events:auto!important;
+}
+/* Hide the menu unless it has been deliberately opened and portaled as floating. */
+#viewRooms.chatting .msg-actions>.message-actions-menu,
+#viewRooms.chatting .msg-actions .message-actions-menu.hidden,
+#viewRooms.chatting .msg-actions .message-actions-menu:not(.is-floating),
+#viewRooms.chatting .msg-actions .message-more-submenu.hidden{
   display:none!important;
   visibility:hidden!important;
   pointer-events:none!important;
 }
-#viewRooms.chatting .message-actions-menu:not(.is-floating),
-#viewRooms.chatting .message-actions-menu.hidden{
+.message-actions-menu.hidden,
+.message-more-submenu.hidden{
   display:none!important;
   visibility:hidden!important;
   pointer-events:none!important;
 }
-#viewRooms.chatting .message-actions-menu.is-floating:not(.hidden){
+.message-actions-menu.is-floating:not(.hidden){
   display:flex!important;
   visibility:visible!important;
   pointer-events:auto!important;
 }
 @media(max-width:800px){
-  #viewRooms.chatting .chat-card{padding-bottom:0!important}
+  #viewRooms.chatting .chat-card{padding-bottom:58px!important}
   #viewRooms.chatting .chat-card>.composer{margin-bottom:0!important}
 }
