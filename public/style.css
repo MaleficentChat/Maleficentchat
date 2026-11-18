@@ -8849,3 +8849,11 @@ html{scroll-behavior:smooth;}
     padding:5px 7px max(5px,env(safe-area-inset-bottom))!important;
   }
 }
+
+
+/* Final chat spacing: keep the 40px clear area BELOW the main send composer. */
+#viewRooms.chatting .chat-card{padding-bottom:0!important;}
+#viewRooms.chatting .chat-card > .composer{
+  margin-top:0!important;
+  margin-bottom:40px!important;
+}
