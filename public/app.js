@@ -4707,14 +4707,15 @@ async function openNewsComments(id){
     if(!n) return;
     const data=await api(`/api/news/${encodeURIComponent(id)}/comments`);
     const render=comments=>(comments||[]).map(c=>`<div class="news-comment">
-      ${avatar({displayName:c.displayName,username:c.username,avatar:c.avatar})}
-      <div class="news-comment-main"><div><b>${esc(c.displayName||c.username)}</b> ${rank(c.rank)} <span class="muted">${fmt(c.time)}</span></div><p>${esc(c.text)}</p></div>
+      <button type="button" class="news-comment-profile-link" data-news-comment-user="${esc(c.userId||"")}" aria-label="Open ${esc(c.displayName||c.username||"commenter")}'s profile">${avatar({displayName:c.displayName,username:c.username,avatar:c.avatar})}</button>
+      <div class="news-comment-main"><div><button type="button" class="news-comment-name-link" data-news-comment-user="${esc(c.userId||"")}">${esc(c.displayName||c.username)}</button> <span class="muted">${c.time?esc(new Date(c.time).toLocaleDateString()):""}</span></div><p>${esc(c.text)}</p></div>
       ${(c.userId===state.user.id||can("MOD"))?`<button class="mini danger" onclick="deleteNewsComment('${esc(id)}','${esc(c.id)}')">×</button>`:""}
     </div>`).join("")||`<div class="news-empty-comments">No comments yet. Be the first to comment.</div>`;
     const host=$("newsCommentsPanel");
     if(!host)throw new Error("News comments panel is unavailable.");
     host.innerHTML=`<div class="news-comments-panel-head"><div><h2>${esc(n.title)}</h2><p class="muted">Join the conversation</p></div><div class="news-comments-panel-actions"><span class="news-count">💬 ${(data.comments||[]).length}</span><button type="button" class="news-comments-panel-close" id="closeNewsComments" aria-label="Close comments">×</button></div></div><div class="news-comments-panel-content"><div class="news-comments-list" id="commentsList">${render(data.comments)}</div><form id="commentForm" class="news-comment-form"><input id="commentText" maxlength="1000" placeholder="Type your comment" required><button class="primary">Post</button></form></div>`;
     host.classList.remove("hidden");
+    host.onclick=event=>{const profileLink=event.target.closest("[data-news-comment-user]");if(profileLink){const userId=profileLink.dataset.newsCommentUser;if(userId){event.preventDefault();openUser(userId);}}};
     $("closeNewsComments")?.addEventListener("click",()=>{host.classList.add("hidden");host.innerHTML="";});
     $("commentForm").onsubmit=async e=>{
       e.preventDefault();
