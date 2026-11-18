@@ -2902,6 +2902,7 @@ function messageHTML(message) {
             : ""
         }
         <div class="msg-actions">
+          <button type="button" class="message-more-button" aria-label="Message options" title="Message options" onclick="event.stopPropagation();toggleMessageMenu('${esc(message.id)}')">⋯</button>
           <div class="message-actions-menu hidden" id="message-menu-${esc(message.id)}" role="menu" aria-label="Message actions">
             <button class="message-menu-item" role="menuitem" onclick="replyMsg('${esc(message.id)}');closeMessageMenus()"><span class="menu-icon">↩</span><span><b>Quote</b><small>Reply to this message</small></span></button>
             <button class="message-menu-item" role="menuitem" onclick="hideMsg('${esc(message.id)}');closeMessageMenus()"><span class="menu-icon">◉</span><span><b>Hide</b><small>Hide from my screen</small></span></button>
