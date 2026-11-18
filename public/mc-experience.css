@@ -1142,3 +1142,28 @@ html,body,#app,.main{background-color:#100c0a!important;color:#fff4e9!important}
 /* Navigation rail: use the site initials instead of the decorative heart. */
 #sidebar .rail-logo{font-size:14px!important;}
 #sidebar .rail-logo:after{content:none!important;display:none!important;}
+
+
+/* MC navigation refinement: keep the expanded panel aligned to the People panel,
+   restore every navigation label, and use compact icon sizing. */
+@media(min-width:701px){
+  #sidebar.sidebar{width:var(--online-w,292px)!important;min-width:var(--online-w,292px)!important;max-width:var(--online-w,292px)!important;align-items:stretch!important}
+  #sidebar.sidebar .nav{width:100%!important;min-width:0!important;justify-content:flex-start!important;text-align:left!important}
+  #sidebar.sidebar .nav span{display:inline!important}
+  #sidebar.sidebar .nav-group{width:100%!important}
+  #sidebar.sidebar .nav-group>summary{justify-content:flex-start!important}
+}
+@media(max-width:800px){
+  #sidebar.sidebar.open,#sidebar.sidebar.mobile-open{
+    width:min(var(--online-w,292px),88vw)!important;
+    min-width:min(var(--online-w,292px),88vw)!important;
+    max-width:min(var(--online-w,292px),88vw)!important;
+  }
+  #sidebar.sidebar.open .nav span,#sidebar.sidebar.mobile-open .nav span{display:inline!important}
+}
+#sidebar .nav{font-size:13px!important;gap:9px!important}
+#sidebar .nav-group>summary{font-size:13px!important}
+#sidebar .nav-icon{display:inline-flex!important;align-items:center;justify-content:center;flex:0 0 20px;width:20px;font-size:16px!important;line-height:1}
+#sidebar .nav-group>summary .nav-icon{font-size:16px!important}
+#sidebar .rail-logo{font-size:13px!important}
+#sidebar .rail-logo:after{content:none!important;display:none!important}
