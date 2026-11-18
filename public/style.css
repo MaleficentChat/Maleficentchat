@@ -308,7 +308,14 @@ audio { max-width:280px; margin-top:7px; }
 
 
 /* ===== Functional profile + owner feature controls ===== */
-.profile-handle{font-size:12px;color:#d2b3a3;margin-top:2px}.about-card{background:rgba(30, 18, 12,.45);border:1px solid rgba(255, 255, 255,.07);border-radius:12px;padding:14px}.about-card h3{margin:0 0 10px}.tag-list{display:flex;gap:7px;flex-wrap:wrap;margin:12px 0}.tag{padding:5px 9px;border-radius:999px;background:#402a1f;color:#ebddd6;font-size:12px}.profile-tabs{padding:0;background:#f0f2f3;color:#2d1e16;gap:0;overflow-x:auto;justify-content:flex-start}.profile-tab{border:0;background:transparent;color:#402b20;padding:13px 16px;font-weight:800;white-space:nowrap}.profile-tab:hover,.profile-tab.active{background:#e9dad2}.profile-info{background:#604030}.feature-grant-modal h2{margin-top:0}.feature-grant-list{display:grid;gap:7px;max-height:58vh;overflow:auto;margin:14px 0}.feature-grant-row{display:grid;grid-template-columns:1fr 190px;gap:12px;align-items:center;padding:10px 12px;background:#1b1411;border:1px solid var(--border);border-radius:10px}.feature-grant-row small{display:block;color:var(--muted);margin-top:3px}.feature-grant-row select{margin:0}.profile-actions button{min-height:38px}
+.profile-handle{font-size:12px;color:#d2b3a3;margin-top:2px}
+.profile-current-room{display:inline-flex;align-items:center;gap:9px;margin:8px auto 0;padding:7px 12px;border:1px solid rgba(240,192,160,.2);border-radius:12px;background:rgba(24,16,12,.58);color:#f4e4da;text-align:left;max-width:100%}
+.profile-current-room>span:first-child{font-size:18px;line-height:1}
+.profile-current-room>span:last-child{display:flex;flex-direction:column;gap:2px;min-width:0}
+.profile-current-room small{font-size:10px;letter-spacing:.04em;text-transform:uppercase;color:#c5a995}
+.profile-current-room b{font-size:12px;overflow-wrap:anywhere}
+.profile-current-room.is-idle{opacity:.72}
+.about-card{background:rgba(30, 18, 12,.45);border:1px solid rgba(255, 255, 255,.07);border-radius:12px;padding:14px}.about-card h3{margin:0 0 10px}.tag-list{display:flex;gap:7px;flex-wrap:wrap;margin:12px 0}.tag{padding:5px 9px;border-radius:999px;background:#402a1f;color:#ebddd6;font-size:12px}.profile-tabs{padding:0;background:#f0f2f3;color:#2d1e16;gap:0;overflow-x:auto;justify-content:flex-start}.profile-tab{border:0;background:transparent;color:#402b20;padding:13px 16px;font-weight:800;white-space:nowrap}.profile-tab:hover,.profile-tab.active{background:#e9dad2}.profile-info{background:#604030}.feature-grant-modal h2{margin-top:0}.feature-grant-list{display:grid;gap:7px;max-height:58vh;overflow:auto;margin:14px 0}.feature-grant-row{display:grid;grid-template-columns:1fr 190px;gap:12px;align-items:center;padding:10px 12px;background:#1b1411;border:1px solid var(--border);border-radius:10px}.feature-grant-row small{display:block;color:var(--muted);margin-top:3px}.feature-grant-row select{margin:0}.profile-actions button{min-height:38px}
 @media (max-width:700px){
   :root{--header-h:52px;--rail-w:0px}
   .top-header{position:fixed;height:52px;padding:0 7px}
