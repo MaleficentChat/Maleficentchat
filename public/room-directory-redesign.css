@@ -238,3 +238,110 @@
   #viewRooms:not(.chatting) .discover-room-card{aspect-ratio:1 / 1!important;}
 }
 @media(max-width:350px){#viewRooms:not(.chatting) .discover-room-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;}}
+
+
+/* Final compact room-browser layout: landscape cards, left controls, centered search. */
+#viewRooms:not(.chatting) > .mc-room-directory{
+  max-width:760px!important;
+  padding:10px 12px 22px!important;
+}
+#viewRooms:not(.chatting) .discover-head{
+  justify-content:flex-start!important;
+  padding:0 0 9px!important;
+}
+#viewRooms:not(.chatting) .discover-actions{
+  width:auto!important;
+  justify-content:flex-start!important;
+  gap:7px!important;
+}
+#viewRooms:not(.chatting) .discover-refresh,
+#viewRooms:not(.chatting) .discover-create{
+  height:34px!important;
+  min-height:34px!important;
+}
+#viewRooms:not(.chatting) .mc-room-search-row{
+  display:flex!important;
+  justify-content:center!important;
+  width:100%!important;
+  margin:0 auto 12px!important;
+}
+#viewRooms:not(.chatting) .mc-room-search{
+  flex:0 1 460px!important;
+  width:min(460px,100%)!important;
+  min-width:0!important;
+  height:38px!important;
+  box-sizing:border-box!important;
+}
+#viewRooms:not(.chatting) .mc-room-search input{
+  min-width:0!important;
+  width:100%!important;
+}
+#viewRooms:not(.chatting) #mcRoomSearchToggle{display:none!important}
+#viewRooms:not(.chatting) .room-shelf{margin-top:0!important}
+#viewRooms:not(.chatting) .discover-room-grid{
+  grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  gap:9px!important;
+}
+#viewRooms:not(.chatting) .discover-room-card{
+  aspect-ratio:1.65 / 1!important;
+  min-height:88px!important;
+  max-height:118px!important;
+  height:auto!important;
+  border-radius:10px!important;
+}
+#viewRooms:not(.chatting) .discover-room-open{
+  min-height:0!important;
+  height:100%!important;
+  padding:9px 11px!important;
+}
+#viewRooms:not(.chatting) .discover-room-main{gap:4px!important}
+#viewRooms:not(.chatting) .room-title-row strong{font-size:12px!important}
+#viewRooms:not(.chatting) .room-desc{font-size:10px!important}
+#viewRooms:not(.chatting) .room-card-bottom{margin-top:3px!important}
+#viewRooms:not(.chatting) .room-presence,
+#viewRooms:not(.chatting) .room-join-label{font-size:9px!important}
+#viewRooms:not(.chatting) .mc-room-access{
+  width:100%!important;
+  min-width:0!important;
+  gap:8px!important;
+  margin-top:12px!important;
+  box-sizing:border-box!important;
+}
+#viewRooms:not(.chatting) .mc-room-code{
+  width:min(260px,58%)!important;
+  min-width:0!important;
+}
+#viewRooms:not(.chatting) .mc-room-code input{
+  display:block!important;
+  width:100%!important;
+  min-width:0!important;
+  max-width:100%!important;
+  box-sizing:border-box!important;
+  overflow:hidden!important;
+  text-overflow:clip!important;
+  letter-spacing:.02em!important;
+}
+.room-code-display{
+  display:block!important;
+  width:100%!important;
+  max-width:100%!important;
+  min-width:0!important;
+  box-sizing:border-box!important;
+  padding:12px 8px!important;
+  overflow-wrap:anywhere!important;
+  word-break:break-word!important;
+  white-space:normal!important;
+  text-align:center!important;
+}
+#viewRooms.main-room-chat .message-more-button,
+#viewRooms.main-room-chat .msg-actions{
+  display:none!important;
+}
+@media(max-width:620px){
+  #viewRooms:not(.chatting) > .mc-room-directory{max-width:560px!important;padding:9px 9px 20px!important}
+  #viewRooms:not(.chatting) .discover-room-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px!important}
+  #viewRooms:not(.chatting) .discover-room-card{aspect-ratio:1.48 / 1!important;min-height:84px!important;max-height:108px!important}
+  #viewRooms:not(.chatting) .discover-room-open{padding:8px 9px!important}
+  #viewRooms:not(.chatting) .mc-room-access{align-items:flex-start!important;flex-direction:column!important}
+  #viewRooms:not(.chatting) .mc-room-code{width:100%!important}
+}
