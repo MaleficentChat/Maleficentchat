@@ -1539,10 +1539,6 @@ $("roomsNavList")?.addEventListener("click",event=>{
 $("closeRoomsMore")?.addEventListener("click",closeRoomsMorePanel);
 $("roomsMorePanel")?.addEventListener("click",event=>{if(event.target===$("roomsMorePanel"))closeRoomsMorePanel();});
 document.addEventListener("keydown",event=>{if(event.key==="Escape"&&!$("roomsMorePanel")?.classList.contains("hidden"))closeRoomsMorePanel();});
-$("roomsMoreFilters")?.addEventListener("click",event=>{
-  const button=event.target instanceof Element?event.target.closest("[data-room-filter]"):null;
-  if(button)window.setDiscoverRoomFilter?.(button.dataset.roomFilter);
-});
 
 document
   .querySelectorAll(".nav[data-view]")
