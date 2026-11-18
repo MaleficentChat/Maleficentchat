@@ -8970,3 +8970,26 @@ html{scroll-behavior:smooth;}
 #roomsNavList .rooms-nav-item-lock{font-size:10px;flex:none}
 #roomsNavList .rooms-nav-item-count{min-width:20px;text-align:right;color:var(--muted,#9b9290);font-size:10px;font-variant-numeric:tabular-nums}
 #roomsNavList .rooms-nav-empty{padding:10px 12px;color:var(--muted,#9b9290);font-size:12px}
+
+
+/* More room options drawer opened from the final item in the inline room list. */
+#roomsNavList .rooms-nav-more{width:100%;display:flex;align-items:center;gap:9px;padding:9px 10px;margin-top:3px;border:1px solid rgba(220,194,181,.16);border-radius:10px;background:rgba(255,255,255,.035);color:var(--text);font:inherit;font-size:12px;text-align:left;cursor:pointer}
+#roomsNavList .rooms-nav-more>span:first-child{width:20px;text-align:center;font-size:19px;line-height:14px}
+#roomsNavList .rooms-nav-more:hover{background:rgba(255,255,255,.08)}
+.rooms-more-overlay{position:fixed;inset:0;z-index:2147482500;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(0,0,0,.62);backdrop-filter:blur(5px)}
+.rooms-more-overlay.hidden{display:none!important}
+.rooms-more-panel{width:min(460px,calc(100vw - 28px));max-height:min(78dvh,720px);overflow:auto;border:1px solid rgba(220,194,181,.22);border-radius:18px;background:var(--panel,#211813);color:var(--text,#f5e9df);box-shadow:0 24px 80px rgba(0,0,0,.5)}
+.rooms-more-header{position:sticky;top:0;z-index:2;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px 18px;border-bottom:1px solid rgba(220,194,181,.14);background:var(--panel,#211813)}
+.rooms-more-header>div{display:flex;flex-direction:column;gap:3px}.rooms-more-header b{font-size:16px}.rooms-more-header small{font-size:11px;opacity:.7}
+#closeRoomsMore{width:34px;height:34px;border:0;border-radius:9px;background:rgba(255,255,255,.08);color:inherit;font-size:25px;line-height:1;cursor:pointer}
+.rooms-more-content{display:flex;flex-direction:column;gap:13px;padding:16px}
+.rooms-more-filters{display:flex;gap:7px;flex-wrap:wrap}
+.rooms-more-filters button{padding:8px 12px;border:1px solid rgba(220,194,181,.18);border-radius:9px;background:rgba(255,255,255,.04);color:inherit;font:inherit;font-size:12px;cursor:pointer}
+.rooms-more-filters button.active{background:rgba(220,194,181,.16);border-color:rgba(220,194,181,.32)}
+.rooms-more-content #mcRoomSearchRow{display:flex;flex-direction:column;align-items:stretch;gap:9px;width:100%}
+.rooms-more-content #mcRoomSearchRow .mc-room-search{width:100%;box-sizing:border-box}
+.rooms-more-content #hiddenRoomsToggle{width:100%;min-height:40px}
+.rooms-more-content #mcRoomAccess{width:100%;box-sizing:border-box}
+.rooms-more-content .discover-actions{display:flex;flex-wrap:wrap;gap:8px}
+.rooms-more-content .discover-actions>*{flex:1 1 130px}
+@media(max-width:600px){.rooms-more-overlay{align-items:flex-end;padding:8px}.rooms-more-panel{width:100%;max-height:82dvh;border-radius:18px 18px 12px 12px}}
