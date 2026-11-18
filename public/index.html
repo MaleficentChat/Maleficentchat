@@ -515,5 +515,21 @@
   });
 })();
 </script>
+
+<script>
+(function(){
+  document.querySelectorAll("[data-room-filter]").forEach(function(button){
+    button.addEventListener("click",function(){
+      if(typeof window.setDiscoverRoomFilter==="function")window.setDiscoverRoomFilter(button.dataset.roomFilter);
+    });
+  });
+  var browse=document.getElementById("browseRoomDirectory");
+  if(browse)browse.addEventListener("click",function(){
+    if(typeof window.setDiscoverRoomFilter==="function")window.setDiscoverRoomFilter("all");
+    var section=document.getElementById("roomsAllSection");
+    if(section)section.scrollIntoView({behavior:"smooth",block:"start"});
+  });
+})();
+</script>
 </body>
 </html>
