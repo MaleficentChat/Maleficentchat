@@ -648,9 +648,12 @@ function renderMinimizedDMs(){
   const modalCard=$("modal")?.querySelector(".modal-card");
   if(!minimizedDMWindows.length){
     // Keep the bottom-row room controls available even before a DM is minimized.
-    const mainDock=$("mainChatMinimizedDock");
+    let mainDock=$("mainChatMinimizedDock");
+    if(!mainDock){mainDock=document.createElement("div");mainDock.id="mainChatMinimizedDock";mainDock.setAttribute("aria-label","Chat options and minimized private chats");}
+    if(roomCard&&mainDock.parentNode!==roomCard)roomCard.appendChild(mainDock);
     const roomOptions=$("roomMenu"), dimensions=$("openParallelSplits");
-    if(mainDock){if(roomOptions&&roomOptions.parentNode!==mainDock)mainDock.appendChild(roomOptions);if(dimensions&&dimensions.parentNode!==mainDock)mainDock.appendChild(dimensions);}
+    if(roomOptions&&roomOptions.parentNode!==mainDock)mainDock.appendChild(roomOptions);
+    if(dimensions&&dimensions.parentNode!==mainDock)mainDock.appendChild(dimensions);
     $("dmMinimizedDock")?.remove();
     return;
   }
