@@ -2039,10 +2039,12 @@ function renderRooms() {
   const renderCard=room=>{
     const locked=room.locked??!!room.passwordHash;
     const count=Number(room.onlineCount||0);
-    const isProtectedMainRoom=!!room.isDefault||/^main room$/i.test(String(room.name||"").trim());
+    const roomNameKey=String(room.name||"").trim().toLowerCase().replace(/[_-]+/g," ").replace(/\s+/g," ");
+    const roomIdKey=String(room.id||"").trim().toLowerCase();
+    const isProtectedMainRoom=!!(room.isDefault||room.isMain||room.isSystem||room.protected||String(room.type||"").toLowerCase()==="main"||roomNameKey==="main"||roomNameKey==="main room"||roomIdKey==="main"||roomIdKey==="main-room"||roomIdKey==="main_room");
     const canManage=!isProtectedMainRoom&&(canFeature("edit_room")||canFeature("delete_room")||room.ownerId===state.user?.id);
     return `
-      <article class="room room-list-card discover-room-card ${room.public===false?'secret-society':''} ${state.currentRoom===room.id?'selected':''}">
+      <article class="room room-list-card discover-room-card ${isProtectedMainRoom?'protected-main-room':''} ${room.public===false?'secret-society':''} ${state.currentRoom===room.id?'selected':''}">
         <button class="room-open discover-room-open" onclick="joinRoom('${esc(room.id)}')">
           <span class="room-main discover-room-main">
             <span class="room-title-row"><strong>${esc(room.name)}</strong>${room.public===false?'<span class="room-lock secret-society-label">♛ Private</span>':''}${locked?'<span class="room-lock">🔒</span>':''}</span>
