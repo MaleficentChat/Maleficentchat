@@ -160,3 +160,91 @@ button.success,.success{border-color:rgba(110,190,145,.28)!important}
   visibility:visible!important;
   pointer-events:auto!important;
 }
+
+
+/* Mobile/sidebar correction from the user's screenshot (18 Nov 2026). */
+#sidebar.sidebar{
+  width:min(292px,88vw)!important;
+  min-width:min(292px,88vw)!important;
+  max-width:min(292px,88vw)!important;
+  align-items:stretch!important;
+  overflow-x:hidden!important;
+}
+#sidebar .nav,
+#sidebar .nav-group .nav,
+#sidebar>.nav:not(#roomsNavToggle){
+  display:flex!important;
+  width:100%!important;
+  min-width:0!important;
+  min-height:42px!important;
+  align-items:center!important;
+  justify-content:flex-start!important;
+  gap:12px!important;
+  padding:9px 11px!important;
+  border:1px solid var(--mc-outline)!important;
+  border-radius:9px!important;
+  text-align:left!important;
+  box-sizing:border-box!important;
+}
+#sidebar .nav>span,
+#sidebar .nav-group .nav>span,
+#sidebar>.nav:not(#roomsNavToggle)>span,
+#sidebar .nav-group>summary>span,
+#sidebar #roomsNavToggle>span{
+  display:inline-flex!important;
+  visibility:visible!important;
+  opacity:1!important;
+  flex:1 1 auto!important;
+  min-width:0!important;
+  overflow:visible!important;
+  white-space:normal!important;
+  text-overflow:clip!important;
+  font-size:13px!important;
+  line-height:1.25!important;
+}
+#sidebar .nav-group{
+  width:100%!important;
+  min-width:0!important;
+  padding:0!important;
+  border:0!important;
+  background:transparent!important;
+}
+#sidebar .nav-group>summary{
+  display:flex!important;
+  width:100%!important;
+  min-height:40px!important;
+  align-items:center!important;
+  justify-content:flex-start!important;
+  gap:12px!important;
+  padding:9px 11px!important;
+  border:1px solid var(--mc-outline)!important;
+  border-radius:9px!important;
+  box-sizing:border-box!important;
+}
+#sidebar .nav-group>summary>i{margin-left:auto!important}
+#sidebar #roomsNavToggle{
+  width:100%!important;min-width:0!important;min-height:42px!important;
+  justify-content:flex-start!important;border:1px solid var(--mc-outline)!important;
+  border-radius:9px!important;padding:9px 11px!important;
+}
+#sidebar .nav-icon{display:inline-flex!important;flex:0 0 22px!important;width:22px!important;justify-content:center!important}
+#sidebar .rooms-nav-list{width:100%!important}
+
+/* These room-card management glyphs were appearing permanently in the page.
+   Remove the visible ✎ / 📌 / ⌫ row controls entirely from the site UI. */
+.room-list-actions,
+.room-action-icon,
+#rooms .room-list-actions,
+#pinnedRooms .room-list-actions{
+  display:none!important;
+  visibility:hidden!important;
+  pointer-events:none!important;
+}
+@media(max-width:800px){
+  #sidebar.sidebar{width:min(292px,88vw)!important;min-width:min(292px,88vw)!important;max-width:min(292px,88vw)!important}
+  #sidebar.sidebar.open,#sidebar.sidebar.mobile-open{width:min(292px,88vw)!important;min-width:min(292px,88vw)!important;max-width:min(292px,88vw)!important}
+  #sidebar .nav>span,#sidebar .nav-group .nav>span,
+  #sidebar>.nav:not(#roomsNavToggle)>span,
+  #sidebar .nav-group>summary>span,
+  #sidebar #roomsNavToggle>span{display:inline-flex!important}
+}
