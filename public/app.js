@@ -330,11 +330,50 @@ async function enableSiteNotifications(){
     if(!subscription)subscription=await registration.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:decodePushKey(keyData.publicKey)});
     await api("/api/push/subscribe",{method:"POST",body:JSON.stringify(subscription.toJSON())});
     siteNotificationRegistration=registration;
-    const btn=$("enableSiteNotifications");if(btn)btn.textContent="🔔 Background notifications enabled";
+    const btn=$("enableSiteNotifications");if(btn)btn.textContent="🔕 Disable background notifications";
     toast("Background notifications enabled on this device, including when the site is closed.");
   }catch(e){toast("Could not enable background notifications: "+(e.message||"check browser and site settings"));}
 }
-$("enableSiteNotifications")?.addEventListener("click",enableSiteNotifications);
+async function syncSiteNotificationState(){
+  const btn=$("enableSiteNotifications");
+  if(!btn||!state.user||!("serviceWorker" in navigator)||!("PushManager" in window))return;
+  try{
+    const registration=await registerSiteNotificationWorker();
+    const subscription=await registration?.pushManager?.getSubscription();
+    if(subscription){
+      // Re-associate an existing browser subscription with the account after login.
+      await api("/api/push/subscribe",{method:"POST",body:JSON.stringify(subscription.toJSON())});
+      siteNotificationRegistration=registration;
+      btn.textContent="🔕 Disable background notifications";
+    }else{
+      btn.textContent="🔔 Enable background notifications";
+    }
+  }catch(error){
+    console.warn("Could not restore background notification state:",error?.message||error);
+  }
+}
+async function toggleSiteNotifications(){
+  const btn=$("enableSiteNotifications");
+  if(!btn)return;
+  btn.disabled=true;
+  try{
+    const registration=siteNotificationRegistration||await registerSiteNotificationWorker();
+    const subscription=await registration?.pushManager?.getSubscription();
+    if(subscription){
+      await api("/api/push/subscribe",{method:"DELETE",body:JSON.stringify({endpoint:subscription.endpoint})});
+      await subscription.unsubscribe();
+      btn.textContent="🔔 Enable background notifications";
+      toast("Background notifications disabled on this device. You can enable them again anytime.");
+    }else{
+      await enableSiteNotifications();
+    }
+  }catch(error){
+    toast("Could not change background notification setting: "+(error.message||"please try again"));
+  }finally{
+    btn.disabled=false;
+  }
+}
+$("enableSiteNotifications")?.addEventListener("click",toggleSiteNotifications);
 async function testSiteNotifications(){
   const button=$("testSiteNotifications");
   if(button){button.disabled=true;button.textContent="Testing…";}
@@ -1021,6 +1060,8 @@ async function start() {
   $("auth").classList.add("hidden");
   $("app").classList.remove("hidden");
 
+  // Restore the saved device push subscription after every login/session restore.
+  syncSiteNotificationState().catch(error=>console.warn("Push notification state restore failed:",error?.message||error));
   // Restore any outstanding warning immediately on login, independent of socket state.
   loadPendingWarning().catch(error=>console.warn("Pending warning restore failed:",error?.message||error));
   updateNav();
