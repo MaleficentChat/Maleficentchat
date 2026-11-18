@@ -138,6 +138,18 @@
   <div class="logo"><div class="rail-logo">KP</div><div class="rail-brand"><b>Maleficent Chat</b><span>Community</span></div></div>
   <button type="button" class="nav rooms-nav-toggle" id="roomsNavToggle" aria-expanded="false" aria-controls="roomsNavList">🏠 <span>Rooms</span><i class="rooms-nav-chevron" aria-hidden="true">⌄</i></button>
   <div class="rooms-nav-list hidden" id="roomsNavList" aria-label="Available chat rooms"></div>
+  <div class="rooms-more-overlay hidden" id="roomsMorePanel" role="dialog" aria-modal="true" aria-labelledby="roomsMoreTitle" aria-hidden="true">
+    <section class="rooms-more-panel">
+      <header class="rooms-more-header"><div><b id="roomsMoreTitle">Room options</b><small>Search, discover and access private rooms</small></div><button type="button" id="closeRoomsMore" aria-label="Close room options">×</button></header>
+      <div class="rooms-more-content" id="roomsMoreContent">
+        <div class="rooms-more-filters" id="roomsMoreFilters" aria-label="Room filters">
+          <button type="button" data-room-filter="all" class="active" aria-pressed="true">All rooms</button>
+          <button type="button" data-room-filter="active" aria-pressed="false">Active</button>
+          <button type="button" data-room-filter="mine" aria-pressed="false">My rooms</button>
+        </div>
+      </div>
+    </section>
+  </div>
   <details class="nav-group" open><summary>✦ <span>Community</span><i>⌄</i></summary>
     <button type="button" class="nav" data-view="news">📰 <span>News & Announcements</span></button>
     <button type="button" class="nav" data-view="wall">🌘 <span>Shadow Feed</span></button>
