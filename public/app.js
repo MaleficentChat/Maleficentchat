@@ -4053,11 +4053,11 @@ async function loadDMList() {
     const activeTab=safeStorage.getItem("mc_dm_tab_"+String(state.user?.id||""))||"all";
     const card=c=>{
       const id=String(c.user.id),nick=privateNicknames[id],name=nick||c.user.displayName||c.user.username;
-      const last=c.lastMessage||{},preview=last.attachment?"📎 Attachment":(last.text||"Start a conversation");
+      const last=c.lastMessage||{},lastStamp=last.time||last.createdAt||last.created_at;
       const unread=Number(c.unreadCount||0),pinned=!!prefs.pinned?.[id],archived=!!prefs.archived?.[id],muted=!!prefs.muted?.[id];
       return `<div class="user-card dm-contact-card dm-inbox-card ${pinned?'dm-is-pinned':''}" data-dm-user="${esc(id)}">
         ${avatar(c.user)}<div class="dm-contact-copy"><div class="dm-inbox-title"><b>${esc(name)}</b>${unread?'<span class="dm-unread-badge">'+unread+'</span>':''}</div>
-        <small>@${esc(c.user.username)} ${c.user.online?'<i class="is-online"></i>':''}</small><small class="dm-preview">${esc(preview).slice(0,90)}</small>
+        ${lastStamp?'<small class="dm-inbox-time">'+esc(fmt(lastStamp))+'</small>':''}
         </div><div class="dm-inbox-actions"><button class="mini" data-dm-pref="pinned" data-id="${esc(id)}" title="Pin conversation">${pinned?'📌':'＋'}</button><button class="mini" data-dm-pref="muted" data-id="${esc(id)}" title="Mute notifications">${muted?'🔕':'🔔'}</button><button class="mini" data-dm-pref="archived" data-id="${esc(id)}" title="Archive conversation">${archived?'↩':'▣'}</button><button class="primary" onclick="openDM('${esc(id)}')">Chat</button></div>
       </div>`;
     };
@@ -6836,7 +6836,7 @@ async function toggleMessagesDropdown(refresh=false){
         const pinned=!!prefs.pinned?.[id],muted=!!prefs.muted?.[id],archived=!!prefs.archived?.[id];
         return `<article class="dm-header-row">
           <button type="button" class="dm-header-avatar" data-header-profile="${esc(id)}" title="Open ${esc(u.displayName||u.username||'user')}'s profile" aria-label="Open profile of ${esc(u.displayName||u.username||'user')}">${avatar(u)}</button>
-          <button type="button" class="notification-dropdown-item dm-header-item ${Number(c.unreadCount||0)?'unread':''}" data-header-dm="${esc(id)}"><b>${esc(nicknames[id]||u.displayName||u.username||'User')} ${Number(c.unreadCount||0)?'<span class="dm-unread-badge">'+Number(c.unreadCount)+'</span>':''}</b><span>@${esc(u.username||'')} · ${esc(preview).slice(0,85)}</span><small>${last.time?fmt(last.time):''}</small></button>
+          <button type="button" class="notification-dropdown-item dm-header-item ${Number(c.unreadCount||0)?'unread':''}" data-header-dm="${esc(id)}"><b>${esc(nicknames[id]||u.displayName||u.username||'User')} ${Number(c.unreadCount||0)?'<span class="dm-unread-badge">'+Number(c.unreadCount)+'</span>':''}</b>${last.time||last.createdAt||last.created_at?'<small>'+esc(fmt(last.time||last.createdAt||last.created_at))+'</small>':''}</button>
           <div class="dm-header-actions"><button type="button" class="mini" data-header-pref="pinned" data-id="${esc(id)}" title="${pinned?'Unpin':'Pin'} conversation" aria-label="${pinned?'Unpin':'Pin'} conversation">${pinned?'📌':'＋'}</button><button type="button" class="mini" data-header-pref="muted" data-id="${esc(id)}" title="${muted?'Unmute':'Mute'} notifications" aria-label="${muted?'Unmute':'Mute'} notifications">${muted?'🔕':'🔔'}</button><button type="button" class="mini" data-header-pref="archived" data-id="${esc(id)}" title="${archived?'Unarchive':'Archive'} conversation" aria-label="${archived?'Unarchive':'Archive'} conversation">${archived?'↩':'▣'}</button></div>
         </article>`;
       }).join("")||'<p class="muted notification-empty">No conversations in this filter.</p>'}</div>`;
