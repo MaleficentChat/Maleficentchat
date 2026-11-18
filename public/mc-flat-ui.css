@@ -118,3 +118,71 @@ button:focus-visible,[role="tab"]:focus-visible,[role="menuitem"]:focus-visible{
   outline:2px solid rgba(221,157,117,.72)!important;
   outline-offset:2px!important;
 }
+
+
+/* Screenshot-matched controls: subtle outlines make every interactive target legible. */
+button,a[role="button"],[role="button"],[role="tab"],[role="menuitem"],
+.settings-tab,.settings-tabs button,.auth-tabs button,
+.profile-tabs button,.room-view-tabs button,.hub-tabs button,
+.chat-tools-toggle,.message-more-button,.message-menu-item,
+#sidebar .nav,#sidebar #roomsNavToggle,#sidebar .nav-group>summary,
+#sidebar .rooms-nav-list button{
+  border:1px solid rgba(224,195,177,.22)!important;
+  border-radius:8px!important;
+  box-shadow:none!important;
+  background-image:none!important;
+}
+button:not(:disabled):hover,a[role="button"]:hover,[role="button"]:hover,
+[role="tab"]:hover,[role="menuitem"]:hover{
+  border-color:rgba(224,195,177,.38)!important;
+  background-color:rgba(255,255,255,.045)!important;
+  box-shadow:none!important;
+}
+button:focus-visible,[role="button"]:focus-visible,[role="tab"]:focus-visible{
+  outline:2px solid rgba(224,195,177,.62)!important;
+  outline-offset:2px!important;
+}
+#sidebar .nav-group{border:0!important;background:transparent!important}
+#sidebar .nav-group>summary{border-color:rgba(224,195,177,.16)!important}
+#sidebar .nav-group .nav,
+#sidebar>.nav:not(#roomsNavToggle){
+  display:flex!important;align-items:center!important;justify-content:flex-start!important;
+  width:100%!important;min-width:0!important;gap:12px!important;
+  border-color:rgba(224,195,177,.18)!important;
+  text-align:left!important;
+}
+#sidebar .nav-group .nav>span,
+#sidebar>.nav:not(#roomsNavToggle)>span{
+  display:inline!important;visibility:visible!important;opacity:1!important;
+  flex:1 1 auto!important;min-width:0!important;
+  overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important;
+}
+#sidebar #roomsNavToggle>span{display:inline!important;visibility:visible!important;opacity:1!important}
+@media(min-width:801px){
+  #sidebar.sidebar{width:224px!important;align-items:stretch!important}
+}
+@media(max-width:800px){
+  #sidebar.sidebar.open{width:250px!important;align-items:stretch!important}
+  #sidebar.sidebar.open .nav-group .nav,
+  #sidebar.sidebar.open>.nav:not(#roomsNavToggle){min-height:40px!important;padding:8px 10px!important}
+}
+
+/* Keep the requested 58px breathing room below the composer. */
+#viewRooms.chatting .chat-card{
+  padding-bottom:58px!important;
+  box-sizing:border-box!important;
+}
+#viewRooms.chatting .chat-card>.composer{
+  position:relative!important;inset:auto!important;
+  margin:0!important;transform:none!important;flex:0 0 auto!important;
+}
+
+/* Message action menus are hidden until the header's explicit ⋯ trigger opens them. */
+#viewRooms.chatting .msg-actions{display:flex!important;visibility:visible!important}
+#viewRooms.chatting .msg-actions>.message-actions-menu,
+.message-actions-menu.hidden,.message-more-submenu.hidden{
+  display:none!important;visibility:hidden!important;pointer-events:none!important;
+}
+.message-actions-menu.is-floating:not(.hidden){
+  display:flex!important;visibility:visible!important;pointer-events:auto!important;
+}
