@@ -8892,3 +8892,18 @@ html{scroll-behavior:smooth;}
 #mainChatMinimizedDock .dm-minimized-avatar .avatar{
   width:100%!important;height:100%!important;min-width:0!important;min-height:0!important;
 }
+
+
+/* Main chat: relocate room controls into the right-side People dock. */
+#viewRooms.chatting .chat-head{display:none!important}
+#viewRooms.chatting .chat-card{position:relative!important}
+#viewRooms.chatting .chat-people-hamburger{position:absolute;top:8px;right:8px;z-index:260;width:38px;height:38px;border:1px solid rgba(239,191,159,.22);border-radius:10px;background:rgba(25,16,11,.94);color:#f4d5c1;font-size:20px;display:none;align-items:center;justify-content:center;cursor:pointer}
+#viewRooms.chatting .chat-side-topbar{position:sticky;top:0;z-index:12;display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:54px;padding:7px 9px;background:rgba(31,20,15,.96);border-bottom:1px solid rgba(239,191,159,.15);box-sizing:border-box}
+#viewRooms.chatting .chat-side-room{display:flex;align-items:center;gap:7px;min-width:0;flex:1 1 auto}
+#viewRooms.chatting .chat-side-room>div{display:flex;flex-direction:column;min-width:0;overflow:hidden}
+#viewRooms.chatting .chat-side-room b{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#viewRooms.chatting .chat-side-room small{font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:.72}
+#viewRooms.chatting .chat-side-actions{display:flex;align-items:center;gap:3px;flex:0 0 auto}
+#viewRooms.chatting .chat-side-actions .icon-btn,#viewRooms.chatting .chat-side-actions .panel-more{width:32px;height:32px;min-width:32px;padding:0;display:inline-flex;align-items:center;justify-content:center;border-radius:8px;font-size:17px}
+#viewRooms.chatting .online-panel .mobile-users-head{display:flex!important;align-items:center;justify-content:flex-start}
+@media(max-width:900px){#viewRooms.chatting .chat-people-hamburger{display:flex}#viewRooms.chatting .online-panel{display:none}#viewRooms.chatting .online-panel.mobile-open{display:block!important;position:fixed!important;top:60px!important;right:0!important;bottom:0!important;width:min(320px,88vw)!important;max-height:none!important;z-index:255!important;margin:0!important;box-shadow:-14px 0 36px rgba(0,0,0,.4)}#viewRooms.chatting .online-panel.mobile-open .chat-side-topbar{padding-right:8px}}
