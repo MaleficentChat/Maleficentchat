@@ -4118,6 +4118,8 @@ async function loadDMList() {
       const unread=Number(c.unreadCount||0),pinned=!!prefs.pinned?.[id],archived=!!prefs.archived?.[id],muted=!!prefs.muted?.[id];
       return `<div class="user-card dm-contact-card dm-inbox-card ${pinned?'dm-is-pinned':''}" data-dm-user="${esc(id)}">
         ${avatar(c.user)}<div class="dm-contact-copy"><div class="dm-inbox-title"><b>${esc(name)}</b>${unread?'<span class="dm-unread-badge">'+unread+'</span>':''}</div>
+        <small class="dm-inbox-handle">@${esc(c.user.username||"member")} · <i class="${c.user.online?'is-online':'is-offline'}"></i> ${c.user.online?'Online':'Offline'}</small>
+        <div class="dm-inbox-preview">${esc(last.text||(last.attachment?'📎 Attachment':last.youtube?'▶ Shared video':'Start a conversation'))}</div>
         ${lastStamp?'<small class="dm-inbox-time">'+esc(fmt(lastStamp))+'</small>':''}
         </div><div class="dm-inbox-actions"><button class="mini" data-dm-pref="pinned" data-id="${esc(id)}" title="Pin conversation">${pinned?'📌':'＋'}</button><button class="mini" data-dm-pref="muted" data-id="${esc(id)}" title="Mute notifications">${muted?'🔕':'🔔'}</button><button class="mini" data-dm-pref="archived" data-id="${esc(id)}" title="Archive conversation">${archived?'↩':'▣'}</button><button class="primary" onclick="openDM('${esc(id)}')">Chat</button></div>
       </div>`;
