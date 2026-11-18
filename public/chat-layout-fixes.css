@@ -126,3 +126,17 @@
     width:100%!important;max-width:100%!important;padding-inline:12px!important;
   }
 }
+
+/* Remove the in-chat shortcut room-button strip entirely. Room access remains in the main Rooms area. */
+#viewRooms.chatting #roomQuickNav,
+#viewRooms.chatting .room-quick-nav{
+  display:none!important;
+  height:0!important;
+  min-height:0!important;
+  max-height:0!important;
+  flex:0 0 0!important;
+  margin:0!important;
+  padding:0!important;
+  border:0!important;
+  overflow:hidden!important;
+}
