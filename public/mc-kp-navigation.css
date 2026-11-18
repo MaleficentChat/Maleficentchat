@@ -81,3 +81,46 @@
   }
   #sidebar .me-mini-copy{display:block!important;min-width:0!important;text-align:left!important}
 }
+
+/* Flat, low-distraction navigation finish: no tiles, cards, borders or gradients. */
+@media (min-width:801px){
+  #sidebar .nav-group{
+    margin:5px 0!important;padding:0!important;border:0!important;
+    border-radius:0!important;background:transparent!important;gap:0!important;
+  }
+  #sidebar .nav-group>summary{
+    min-height:32px!important;padding:6px 10px!important;border:0!important;
+    border-radius:0!important;background:transparent!important;
+    color:#bba99f!important;font-size:11px!important;font-weight:650!important;
+    letter-spacing:.07em!important;
+  }
+  #sidebar .nav-group .nav,
+  #sidebar>.nav:not(#roomsNavToggle){
+    min-height:36px!important;padding:7px 10px!important;margin:0!important;
+    gap:11px!important;border:0!important;border-radius:7px!important;
+    background:transparent!important;box-shadow:none!important;
+    color:#d7c9c1!important;font-size:18px!important;
+    transition:color .12s ease,background-color .12s ease!important;
+  }
+  #sidebar .nav-group .nav>span,
+  #sidebar>.nav:not(#roomsNavToggle)>span{
+    font-size:13px!important;font-weight:450!important;letter-spacing:0!important;
+  }
+  #sidebar .nav-group .nav:hover,
+  #sidebar>.nav:not(#roomsNavToggle):hover{
+    background:rgba(255,255,255,.045)!important;
+    border:0!important;color:#fff!important;
+  }
+  #sidebar .nav-group .nav.active,
+  #sidebar>.nav:not(#roomsNavToggle).active{
+    background:rgba(255,255,255,.075)!important;
+    border:0!important;color:#fff!important;font-weight:600!important;
+    box-shadow:none!important;
+  }
+  #sidebar .nav-group .nav.active>span,
+  #sidebar>.nav:not(#roomsNavToggle).active>span{font-weight:600!important}
+  #sidebar .nav-group>summary:hover{background:rgba(255,255,255,.035)!important}
+  #sidebar .nav-group>summary>span{font-weight:650!important}
+  #sidebar .me-mini{background:transparent!important;border:0!important;box-shadow:none!important}
+  #sidebar .me-mini:hover{background:rgba(255,255,255,.045)!important}
+}
