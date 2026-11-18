@@ -559,9 +559,7 @@ function toast(text) {
 function showPrivateMessagePopup(message){
   const senderId=String(message?.from??message?.senderId??message?.fromId??"");
   const sender=senderId==="system-bot"?"System Bot":(message?.displayName||message?.username||message?.senderUsername||"New message");
-  const body=String(message?.text||message?.message||"📷 Attachment").trim();
-  const preview=body.length>110?body.slice(0,107)+"…":body;
-  toast("💌  @"+sender+"  ·  "+preview+"  ·  Tap to open");
+  toast("💌  "+sender+" has sent you a private message  ·  Tap to open");
   const el=$("toast");if(!el)return;
   el.style.cursor="pointer";el.onclick=()=>{openDM(senderId||"system-bot");el.style.display="none";};
   clearTimeout(toast.timer);toast.timer=setTimeout(()=>{el.style.display="none";},6500);
@@ -1183,7 +1181,7 @@ async function start() {
     const from=String(message?.from??message?.senderId??message?.fromId??"");
     const to=String(message?.to??message?.receiverId??message?.toId??"");
     const myId=String(state.user?.id??"");
-    if(from!==myId){const sender=from==="system-bot"?"System Bot":(message?.displayName||message?.username||"New private message");const preview=String(message?.text||message?.message||(message?.attachment?"📎 Attachment":"You received a private message")).slice(0,180);if(document.hidden)showSiteNotification("💌 @"+sender,preview,"messages",`/?dm=${encodeURIComponent(from)}`);else showPrivateMessagePopup(message);}
+    if(from!==myId){const sender=from==="system-bot"?"System Bot":(message?.displayName||message?.username||"Someone");const notice=sender+" has sent you a private message";if(document.hidden)showSiteNotification("💌 @"+sender,notice,"messages",`/?dm=${encodeURIComponent(from)}`);else showPrivateMessagePopup(message);}
     const peer=state.dmPeerUser;
     const activePeerId=String(state.dmUserId??"");
     if(message && peer && activePeerId && (from===activePeerId||to===activePeerId) && (from===myId||to===myId)){
@@ -6834,7 +6832,7 @@ async function toggleMessagesDropdown(refresh=false){
     box.innerHTML=`<div class="notification-dropdown-head"><div><b>✉ Messages</b><small class="notification-unread-summary">${unreadCount} unread</small></div><div class="dm-header-tools"><button class="mini" id="refreshHeaderDM" type="button" title="Refresh conversations">↻</button><button class="mini" id="toggleHeaderDMFilters" type="button" title="Conversation filters" aria-label="Conversation filters" aria-expanded="${filtersOpen}">⚙</button></div></div>
       <div class="dm-header-filters ${filtersOpen?'':'hidden'}" id="dmHeaderFilters" role="group" aria-label="Filter conversations">${filters.map(([key,icon,label])=>`<button type="button" class="dm-header-filter ${activeFilter===key?'active':''}" data-header-filter="${key}" title="${label}" aria-label="${label}" aria-pressed="${activeFilter===key}"><span>${icon}</span><small>${label}</small></button>`).join("")}</div>
       <div class="dm-header-conversations">${visible.map(c=>{
-        const u=c.user||{},id=String(u.id),last=c.lastMessage||{},preview=last.attachment?'📎 Attachment':(last.text||'Start a conversation');
+        const u=c.user||{},id=String(u.id),last=c.lastMessage||{},preview=c.lastMessage?"Private message":"Start a conversation";
         const pinned=!!prefs.pinned?.[id],muted=!!prefs.muted?.[id],archived=!!prefs.archived?.[id];
         return `<article class="dm-header-row">
           <button type="button" class="dm-header-avatar" data-header-profile="${esc(id)}" title="Open ${esc(u.displayName||u.username||'user')}'s profile" aria-label="Open profile of ${esc(u.displayName||u.username||'user')}">${avatar(u)}</button>
@@ -6906,7 +6904,7 @@ async function toggleReportDropdown(refresh=false){
       box.querySelectorAll("[data-report-delete-message]").forEach(b=>b.onclick=async()=>{box.classList.add("hidden");await deleteReportedMessage(b.dataset.reportDeleteMessage);await toggleReportDropdown(true);});
     };
     const filtersOpen=box.dataset.filtersOpen==="true";
-    box.innerHTML=`<div class="notification-dropdown-head"><div><b>⚑ Report Management</b><small class="notification-unread-summary">${openCount} open · ${allReports.length} total</small></div><div class="dm-header-tools"><button class="mini" id="refreshReportManager" title="Refresh">↻ Refresh</button><button class="mini" id="toggleReportFilters" title="Report filters and search" aria-label="Report filters and search" aria-expanded="${filtersOpen}">⚙</button></div></div>
+    box.innerHTML=`<div class="notification-dropdown-head"><div><b>⚑ Report Management</b><small class="notification-unread-summary">${openCount} open · ${allReports.length} total</small></div><div class="dm-header-tools"><button class="mini" id="refreshReportManager" title="Refresh reports" aria-label="Refresh reports">↻</button><button class="mini" id="toggleReportFilters" title="Report filters and search" aria-label="Report filters and search" aria-expanded="${filtersOpen}">⚙</button></div></div>
       <div class="report-manager-tools" id="reportManagerTools" style="display:${filtersOpen?'grid':'none'}"><input type="search" id="reportManagerSearch" placeholder="Search reports, users, reasons…" aria-label="Search reports"><select id="reportManagerStatus" aria-label="Filter report status"><option value="OPEN">Open reports</option><option value="ALL">All reports</option><option value="RESOLVED">Resolved</option><option value="DISMISSED">Dismissed</option></select><small id="reportManagerCount"></small></div>
       <div id="reportManagerList" class="report-manager-list"></div>`;
     box.dataset.filtersOpen=String(filtersOpen);
