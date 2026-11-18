@@ -104,25 +104,7 @@
   box-shadow:none!important;
 }
 
-/* No green separator bars in the chat shell or room strip. */
-#viewRooms.chatting .chat-card,
-#viewRooms.chatting .room-quick-nav,
-#viewRooms.chatting .chat-side-topbar{
-  border-color:rgba(220,194,181,.14)!important;
-  box-shadow:none!important;
-}
-#viewRooms.chatting .room-quick-nav:before,
-#viewRooms.chatting .room-quick-nav:after,
-#viewRooms.chatting .chat-card:before,
-#viewRooms.chatting .chat-card:after{
-  content:none!important;
-  display:none!important;
-}
-#viewRooms.chatting .room-quick-nav .active,
-#viewRooms.chatting .room-quick-nav [aria-current="page"]{
-  border-bottom-color:rgba(210,122,82,.7)!important;
-  box-shadow:none!important;
-}
+/* Room-button navigation and its original strip styling are intentionally untouched. */
 
 /* Message action controls live only in the message's opened ⋯ menu. */
 #viewRooms.chatting .msg-actions{display:none!important;opacity:0!important;pointer-events:none!important}
