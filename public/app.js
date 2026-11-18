@@ -3818,11 +3818,6 @@ function renderUserProfileModal(user,data={}){
   const bannerStyle=user.banner?`style="--profile-cover:url('${esc(user.banner)}')"`:'';
   const isSelf=user.id===state.user.id;
   const liked=!!data.likedByMe;
-  const roomStatusMarkup=user.online
-    ? (user.currentRoom
-      ? `<div class="profile-current-room" title="Current room"><span>${esc(user.currentRoom.icon||'💬')}</span><span><small>Current room</small><b>${esc(user.currentRoom.name||'Chat')}</b></span></div>`
-      : '<div class="profile-current-room is-idle"><span>💤</span><span><small>Current room</small><b>Not in a room</b></span></div>')
-    : '<div class="profile-current-room is-idle"><span>⚫</span><span><small>Current room</small><b>Offline</b></span></div>';
   modal(`<div class="profile-modal" data-sf-user-id="${esc(user.id)}" data-sf-is-self="${isSelf?'true':'false'}" >
     <div class="profile-banner" ${bannerStyle}>
       ${user.banner?`<img class="public-profile-cover-image" src="${esc(user.banner)}" alt="" aria-hidden="true" loading="eager">`: ""}
@@ -3832,7 +3827,6 @@ function renderUserProfileModal(user,data={}){
       <div class="profile-rank">${rank(user.rank)}${user.verified?' · ✓ Verified':''}${profileBadge?` <span class="equipped-profile-badge" title="${esc(profileBadge.name)}">${esc(profileBadge.icon)} ${esc(profileBadge.name)}</span>`:''}</div>
       <div class="profile-name">${esc(user.displayName)}${user._nickname?` <span class="nickname-badge">“${esc(user._nickname)}”</span>`:''}</div>
       <div class="profile-handle">@${esc(user.username)}</div>
-      ${roomStatusMarkup}
       <div class="profile-social-stats">
         <span class="profile-social-stat"><b>🪙 ${Number(user.gold||0).toLocaleString()}</b><small>Gold</small></span>
         <span class="profile-social-stat"><b>💎 ${Number(user.diamonds||0).toLocaleString()}</b><small>Diamonds</small></span>
@@ -3922,7 +3916,7 @@ function renderUserProfileModal(user,data={}){
       <div class="profile-info-row"><b>💎 Diamonds</b><span>${Number(user.diamonds||0).toLocaleString()}</span></div>
       <div class="profile-info-row"><b>🪙 Gold</b><span>${Number(user.gold||0).toLocaleString()}</span></div>
       <div class="profile-info-row"><b>📅 Member since</b><span>${esc(memberSince)}</span></div>
-      <div class="profile-info-row"><b>🏠 Status</b><span>${user.online?'Online':'Offline'}</span></div>
+      <div class="profile-info-row"><b>🏠 Status</b><span>${user.online?'Online'+(user.currentRoom?' · '+(user.currentRoom.icon?esc(user.currentRoom.icon)+' ':'')+esc(user.currentRoom.name||'Chat'):''):'Offline'}</span></div>
       <div class="profile-info-row"><b>◉ Last seen</b><span>${esc(lastSeen)}</span></div>
       <div class="profile-achievement-showcase" id="profileAchievementShowcase"></div><div class="profile-actions"><button class="mini" id="profileAchievementsBtn">🏆 Achievement Collection</button>${!isSelf&&canFeature('profile_note')?`<button class="mini" id="profileNoteBtn">📝 Add Note <span id="profileNoteDot" style="display:none">●</span></button>${canFeature('profile_note')?'<button class="mini" id="profileFeatureBlockBtn">🚫 Feature Block</button>':''}`:''}<div class="profile-action-hint">Tap ☰ above for profile actions.</div></div>`;
     if(user.privacy?.achievements!==false){
