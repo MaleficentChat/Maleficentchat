@@ -4164,15 +4164,9 @@ function dmMessageHTML(message, messages, user) {
             : ""
         }
 
-        <div class="msg-actions">
+        <div class="msg-actions dm-message-actions">
           ${message.text && !message.deleted ? `<button type="button" class="mini" onclick="translateMessageText(&quot;${esc(message.id)}&quot;,&quot;dm&quot;)">文 Translate</button>` : ""}
-          <button
-            type="button"
-            class="mini"
-            onclick="replyDMMsg('${esc(message.id)}','${esc(user.id)}')"
-          >
-            Quote
-          </button>
+          <button type="button" class="mini" onclick="replyDMMsg('${esc(message.id)}','${esc(user.id)}')">Quote</button>
           ${deleteAction}
         </div>
       </div>
@@ -4207,15 +4201,25 @@ async function openDM(id) {
     const privateNickname=nickData[String(user.id)]||'';
     modal(`
       <div class="dm-chat-header">
-        <div class="dm-chat-person">${avatar(user)}<div class="dm-chat-person-copy"><h2>${esc(privateNickname||user.displayName)}</h2><span>@${esc(user.username)} · <i class="${user.online?'is-online':'is-offline'}"></i> ${user.online?'Online':'Offline'}</span></div></div>
-        <div class="dm-chat-actions"><button type="button" class="mini dm-settings-toggle" id="dmChatSettingsBtn" title="Conversation settings" aria-expanded="false">⚙️</button><div class="dm-settings-menu hidden" id="dmChatSettingsMenu">
+        <div class="dm-chat-person">
+          <button type="button" class="dm-profile-link dm-profile-avatar" data-dm-open-profile="${esc(user.id)}" aria-label="Open ${esc(user.displayName)}'s profile">${avatar(user)}</button>
+          <div class="dm-chat-person-copy">
+            <button type="button" class="dm-profile-link dm-profile-name" data-dm-open-profile="${esc(user.id)}">${esc(privateNickname||user.displayName)}</button>
+            <span>@${esc(user.username)} · <i class="${user.online?'is-online':'is-offline'}"></i> ${user.online?'Online':'Offline'}</span>
+          </div>
+        </div>
+        <div class="dm-chat-actions">
+          <button type="button" class="mini dm-settings-toggle" id="dmChatSettingsBtn" title="Conversation settings" aria-expanded="false">⚙️</button>
+          <button type="button" class="mini dm-search-toggle" id="dmSearchToggle" title="Search conversation" aria-expanded="false" aria-controls="dmMessageSearchPanel">⌕</button>
+          <button type="button" class="mini dm-close-button" id="dmChatCloseBtn" title="Close conversation" aria-label="Close conversation">×</button>
+          <div class="dm-settings-menu hidden" id="dmChatSettingsMenu">
 <button type="button" data-dm-action="nickname">✏️ <span><b>Nickname</b><small>Set a private nickname</small></span></button>
 <button type="button" data-dm-action="ignore">🚫 <span><b>Ignore</b><small>Block this user</small></span></button>
 <button type="button" data-dm-action="mute">🔕 <span><b>Mute</b><small>Mute conversation notifications</small></span></button>
 <button type="button" data-dm-action="archive">▣ <span><b>Archive</b><small>Move conversation to Archived</small></span></button>
 <button type="button" data-dm-action="report">⚑ <span><b>Report</b><small>Report this conversation</small></span></button></div></div>
       </div>
-      <div class="dm-message-search"><span>⌕</span><input id="dmMessageSearch" placeholder="Search in this conversation…" autocomplete="off"><small id="dmSearchCount">${messages.length} messages</small></div>
+      <div class="dm-message-search hidden" id="dmMessageSearchPanel"><span>⌕</span><input id="dmMessageSearch" placeholder="Search in this conversation…" autocomplete="off"><small id="dmSearchCount">${messages.length} messages</small></div>
       <div
         id="dmMessages"
         class="messages dm-message-list"
@@ -4266,6 +4270,28 @@ async function openDM(id) {
 
     const dmTargetId=String(user.id),dmSettings=$('dmChatSettingsMenu'),dmSettingsBtn=$('dmChatSettingsBtn');
     dmSettingsBtn?.addEventListener('click',()=>{dmSettings?.classList.toggle('hidden');dmSettingsBtn.setAttribute('aria-expanded',String(!dmSettings?.classList.contains('hidden')));});
+    $('dmChatCloseBtn')?.addEventListener('click',closeModal);
+    $('dmSearchToggle')?.addEventListener('click',()=>{
+      const panel=$('dmMessageSearchPanel'),toggle=$('dmSearchToggle');
+      panel?.classList.toggle('hidden');
+      const opened=!!panel&&!panel.classList.contains('hidden');
+      toggle?.setAttribute('aria-expanded',String(opened));
+      if(opened)$('dmMessageSearch')?.focus();
+      else if($('dmMessageSearch')){$('dmMessageSearch').value='';$('dmMessageSearch').dispatchEvent(new Event('input',{bubbles:true}));}
+    });
+    $('dmMessages')?.addEventListener('click',event=>{
+      const profile=event.target.closest('[data-dm-open-profile]');
+      if(profile){event.preventDefault();openUser(profile.dataset.dmOpenProfile);return;}
+      if(event.target.closest('.dm-message-actions'))return;
+      const message=event.target.closest('.dm-msg');
+      if(!message)return;
+      const wasActive=message.classList.contains('dm-actions-open');
+      $('dmMessages')?.querySelectorAll('.dm-msg.dm-actions-open').forEach(node=>node.classList.remove('dm-actions-open'));
+      if(!wasActive)message.classList.add('dm-actions-open');
+    });
+    document.querySelectorAll('[data-dm-open-profile]').forEach(link=>link.addEventListener('click',event=>{
+      event.preventDefault();openUser(link.dataset.dmOpenProfile);
+    }));
     $('dmMessages')?.addEventListener("click",async event=>{
       const button=event.target?.closest?.("[data-dm-delete]");
       if(!button)return;
