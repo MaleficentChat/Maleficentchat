@@ -4121,14 +4121,6 @@ function dmMessageHTML(message, messages, user) {
     >
       <button type="button" class="message-avatar-button dm-message-avatar" onclick="openUser('${esc(senderId)}')" title="Open ${esc(sender?.displayName||"user")}'s profile" aria-label="Open ${esc(sender?.displayName||"user")}'s profile">${avatar(senderProfile)}</button>
       <div class="msg-body">
-        <div class="msg-top">
-          <b class="message-author" style="color:${esc(user.settings?.usernameColor||'var(--username-color)')}">${String(message.from) === String(state.user.id) ? "You" : esc(user.displayName)}</b>
-          <span class="msg-time">
-            ${fmt(message.time)}
-            ${message.read ? " · read" : " · delivered"}
-          </span>
-        </div>
-
         ${
           message.replyTo
             ? `
@@ -4169,6 +4161,11 @@ function dmMessageHTML(message, messages, user) {
             `
             : ""
         }
+
+        <div class="dm-message-meta">
+          ${(()=>{const d=new Date(message.time);return Number.isNaN(d.getTime())?"":String(d.getDate()).padStart(2,"0")+"/"+String(d.getMonth()+1).padStart(2,"0")+" · "+String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0");})()}
+          ${message.read ? " · read" : " · delivered"}
+        </div>
 
         <div class="msg-actions dm-message-actions">
           ${message.text && !message.deleted ? `<button type="button" class="mini" onclick="translateMessageText(&quot;${esc(message.id)}&quot;,&quot;dm&quot;)">文 Translate</button>` : ""}
