@@ -647,13 +647,21 @@ function renderMinimizedDMs(){
   const roomCard=$("viewRooms")?.querySelector(".chat-card");
   const modalCard=$("modal")?.querySelector(".modal-card");
   if(!minimizedDMWindows.length){
-    $("mainChatMinimizedDock")?.remove();
+    // Keep the bottom-row room controls available even before a DM is minimized.
+    const mainDock=$("mainChatMinimizedDock");
+    const roomOptions=$("roomMenu"), dimensions=$("openParallelSplits");
+    if(mainDock){if(roomOptions&&roomOptions.parentNode!==mainDock)mainDock.appendChild(roomOptions);if(dimensions&&dimensions.parentNode!==mainDock)mainDock.appendChild(dimensions);}
     $("dmMinimizedDock")?.remove();
     return;
   }
   let mainDock=$("mainChatMinimizedDock");
   if(!mainDock){mainDock=document.createElement("div");mainDock.id="mainChatMinimizedDock";mainDock.setAttribute("aria-label","Minimized private chats");}
   if(roomCard&&mainDock.parentNode!==roomCard)roomCard.appendChild(mainDock);
+  // Keep the two existing room controls beside the minimized-avatar row:
+  // horizontal ellipsis first, vertical dimensions control immediately after.
+  const roomOptions=$("roomMenu"), dimensions=$("openParallelSplits");
+  if(roomOptions&&roomOptions.parentNode!==mainDock)mainDock.appendChild(roomOptions);
+  if(dimensions&&dimensions.parentNode!==mainDock)mainDock.appendChild(dimensions);
   let pmDock=$("dmMinimizedDock");
   if(!pmDock){pmDock=document.createElement("div");pmDock.id="dmMinimizedDock";pmDock.setAttribute("aria-label","Switch between minimized private messages");}
   if(modalCard&&pmDock.parentNode!==modalCard)modalCard.appendChild(pmDock);
