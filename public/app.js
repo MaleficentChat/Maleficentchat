@@ -2030,7 +2030,7 @@ function renderRooms() {
     const hay=[room.name,room.description,room.category].join(" ").toLowerCase();
     return !search||hay.includes(search);
   });
-  const isPinned=room=>!!(room.pinned||room.isDefault||/^main room$/i.test(String(room.name||"").trim()));
+  const isPinned=room=>!!room.pinned;
   const pinned=baseRooms.filter(isPinned);
   let directory=baseRooms.filter(room=>!isPinned(room));
   const filter=state.roomListMode||"all";
