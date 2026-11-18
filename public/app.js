@@ -2079,6 +2079,11 @@ function renderRooms() {
   });
   renderRoomQuickNav();
 }
+window.setDiscoverRoomFilter=function(mode){
+  state.roomListMode=["all","active","mine"].includes(mode)?mode:"all";
+  renderRooms();
+};
+
 window.__mcRoomJoinTokens=window.__mcRoomJoinTokens||{};
 let lastResolvedRoomCode="";
 async function resolveSecretRoomCode(rawValue){
