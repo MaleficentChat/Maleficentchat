@@ -8376,3 +8376,68 @@ html{scroll-behavior:smooth;}
 /* Apply smooth scrolling consistently to nested tabs and option lists. */
 *{scroll-behavior:smooth;}
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;}}
+
+
+/* Follow-up polish: restore a compact comments window and keep all overlays
+   contained within their own panel. */
+.news-comments-panel{
+  inset:12px auto auto 50%;
+  transform:translateX(-50%);
+  width:min(620px,calc(100% - 24px));
+  height:min(560px,calc(100% - 24px));
+  max-height:calc(100% - 24px);
+  border-radius:12px;
+  box-shadow:0 12px 32px rgba(0,0,0,.3);
+}
+.news-comments-panel-head{padding:9px 12px;gap:8px;}
+.news-comments-panel-head h2{font-size:15px;}
+.news-comments-panel-head p{font-size:11px;margin-top:2px;}
+.news-comments-panel-close{width:30px;height:30px;font-size:20px;border-radius:8px;}
+.news-comments-panel-content{padding:7px 9px;gap:6px;}
+.news-comments-panel .news-comments-list{gap:5px;padding:2px 1px 6px;}
+.news-comments-panel .news-comment{
+  gap:7px;padding:6px 8px;border-radius:9px;
+}
+.news-comments-panel .news-comment-avatar{width:28px;height:28px;min-width:28px;}
+.news-comments-panel .news-comment-head{font-size:11px;line-height:1.2;}
+.news-comments-panel .news-comment-text{font-size:12px;line-height:1.3;margin-top:2px;}
+.news-comments-panel .news-comment-main p{font-size:12px;line-height:1.3;margin:2px 0 0;}
+.news-comments-panel .news-comment-form{gap:6px;padding-top:6px;}
+.news-comments-panel .news-comment-form input{min-height:36px;padding:7px 10px;font-size:13px;}
+.news-comments-panel .news-comment-form button{min-height:36px;padding:7px 12px;font-size:12px;}
+/* The likes dialog and its list remain inside the modal viewport. */
+#modal .modal-card:has(.news-likes-modal){
+  width:min(420px,calc(100vw - 28px))!important;
+  max-width:calc(100vw - 28px)!important;
+  max-height:min(70vh,560px)!important;
+  overflow:hidden!important;
+  box-sizing:border-box!important;
+}
+#modal .news-likes-modal{display:flex;flex-direction:column;min-width:0;max-height:inherit;overflow:hidden;}
+#modal .news-likes-modal h2{flex:0 0 auto;margin:0 0 10px;font-size:16px;}
+#modal .news-likes-list{width:100%;min-width:0;max-height:min(52vh,420px);overflow-y:auto;overflow-x:hidden;box-sizing:border-box;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;}
+#modal .news-liker-row{width:100%;min-width:0;box-sizing:border-box;overflow:hidden;}
+#modal .news-liker-row>span:last-child{min-width:0;overflow-wrap:anywhere;}
+/* Category titles stay anchored while their own leaderboard lists scroll. */
+#leaderboard>.leaderboard-category{
+  max-height:min(68vh,720px);
+  overflow-y:auto!important;
+  overflow-x:hidden!important;
+  overscroll-behavior:contain;
+  scrollbar-width:thin;
+}
+#leaderboard>.leaderboard-category>h3{
+  position:sticky!important;
+  top:0!important;
+  z-index:8!important;
+  flex:0 0 auto;
+  margin:0 0 10px!important;
+  padding:10px 12px!important;
+  background:#271810!important;
+  border-bottom:1px solid rgba(204,165,145,.18);
+}
+@media(max-width:700px){
+  .news-comments-panel{inset:10px auto auto 50%;width:calc(100% - 20px);height:min(500px,calc(100% - 20px));}
+  .news-comments-panel .news-comment{padding:5px 7px;}
+  #modal .modal-card:has(.news-likes-modal){width:calc(100vw - 28px)!important;}
+}
