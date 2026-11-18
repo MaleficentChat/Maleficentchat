@@ -1,0 +1,83 @@
+/* MC navigation: KnightPulse-style labeled option rows, while preserving MC's Rooms block. */
+@media (min-width:801px){
+  :root{--rail-w:224px!important}
+  #sidebar.sidebar{
+    width:var(--rail-w)!important;
+    padding:20px 12px 12px!important;
+    align-items:stretch!important;
+    gap:5px!important;
+    overflow-y:auto!important;
+    overflow-x:hidden!important;
+    background:rgba(29,16,9,.98)!important;
+  }
+  #sidebar .logo{
+    display:flex!important;
+    align-items:center!important;
+    justify-content:flex-start!important;
+    gap:12px!important;
+    padding:8px 12px 22px!important;
+  }
+  #sidebar .rail-logo{width:38px!important;height:38px!important;flex:0 0 38px!important}
+  #sidebar .rail-brand{display:flex!important;flex-direction:column!important;min-width:0!important;line-height:1.15!important}
+  #sidebar .rail-brand b{font-size:18px!important;letter-spacing:-.35px!important;color:#fff!important}
+  #sidebar .rail-brand span{font-size:10px!important;letter-spacing:1.5px!important;text-transform:uppercase!important;color:#b99582!important;margin-top:3px!important}
+
+  /* Do not restyle the MC Rooms toggle or its room list. */
+  #sidebar #roomsNavToggle{
+    width:46px!important;min-width:46px!important;height:43px!important;
+    justify-content:center!important;text-align:center!important;
+    padding:9px!important;gap:8px!important;font-size:20px!important;
+  }
+  #sidebar #roomsNavToggle>span{display:none!important}
+  #sidebar #roomsNavList{width:100%}
+
+  /* KnightPulse-style rows for every non-room navigation option. */
+  #sidebar .nav-group{
+    width:100%!important;margin:2px 0!important;padding:3px!important;
+    border:1px solid rgba(232,155,117,.14)!important;
+    border-radius:12px!important;background:rgba(255,255,255,.018)!important;
+    align-items:stretch!important;gap:2px!important;
+  }
+  #sidebar .nav-group>summary{
+    display:flex!important;align-items:center!important;justify-content:flex-start!important;
+    width:100%!important;min-height:34px!important;padding:7px 9px!important;
+    gap:10px!important;border-radius:8px!important;
+    color:#e7cec2!important;font-size:12px!important;font-weight:750!important;
+    letter-spacing:.04em!important;text-transform:none!important;
+  }
+  #sidebar .nav-group>summary>span{display:inline!important;flex:1 1 auto!important;min-width:0!important}
+  #sidebar .nav-group>summary>i{display:inline!important;margin-left:auto!important;font-style:normal!important}
+  #sidebar .nav-group .nav,
+  #sidebar>.nav:not(#roomsNavToggle){
+    display:flex!important;align-items:center!important;justify-content:flex-start!important;
+    width:100%!important;min-width:0!important;height:auto!important;min-height:38px!important;
+    flex:0 0 auto!important;padding:9px 11px!important;margin:1px 0!important;
+    gap:12px!important;border:1px solid transparent!important;border-radius:10px!important;
+    text-align:left!important;font-size:20px!important;line-height:1.2!important;
+    color:#e8d2c7!important;
+  }
+  #sidebar .nav-group .nav>span,
+  #sidebar>.nav:not(#roomsNavToggle)>span{
+    display:inline!important;min-width:0!important;flex:1 1 auto!important;
+    overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important;
+    font-size:13px!important;font-weight:550!important;letter-spacing:0!important;
+  }
+  #sidebar .nav-group .nav:hover,
+  #sidebar>.nav:not(#roomsNavToggle):hover{
+    background:rgba(205,112,66,.13)!important;border-color:rgba(232,155,117,.18)!important;color:#fff!important;
+  }
+  #sidebar .nav-group .nav.active,
+  #sidebar>.nav:not(#roomsNavToggle).active{
+    background:linear-gradient(100deg,rgba(205,112,66,.22),rgba(229,193,126,.055))!important;
+    border-color:rgba(232,155,117,.2)!important;color:#fff!important;
+    box-shadow:inset 3px 0 0 #d59b72!important;
+  }
+  #sidebar .nav-group .nav i,
+  #sidebar>.nav:not(#roomsNavToggle) i{margin-left:auto!important;flex:0 0 7px!important}
+  #sidebar .side-spacer{flex:1 0 12px!important;min-height:12px!important}
+  #sidebar .me-mini{
+    width:100%!important;justify-content:flex-start!important;padding:9px 11px!important;
+    border-radius:12px!important;gap:10px!important;
+  }
+  #sidebar .me-mini-copy{display:block!important;min-width:0!important;text-align:left!important}
+}
