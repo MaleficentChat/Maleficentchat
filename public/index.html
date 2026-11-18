@@ -136,7 +136,8 @@
 </header>
 <aside class="sidebar" id="sidebar">
   <div class="logo"><div class="rail-logo">KP</div><div class="rail-brand"><b>Maleficent Chat</b><span>Community</span></div></div>
-  <button type="button" class="nav active" data-view="rooms">🏠 <span>Rooms</span></button>
+  <button type="button" class="nav rooms-nav-toggle" id="roomsNavToggle" aria-expanded="false" aria-controls="roomsNavList">🏠 <span>Rooms</span><i class="rooms-nav-chevron" aria-hidden="true">⌄</i></button>
+  <div class="rooms-nav-list hidden" id="roomsNavList" aria-label="Available chat rooms"></div>
   <details class="nav-group" open><summary>✦ <span>Community</span><i>⌄</i></summary>
     <button type="button" class="nav" data-view="news">📰 <span>News & Announcements</span></button>
     <button type="button" class="nav" data-view="wall">🌘 <span>Shadow Feed</span></button>
