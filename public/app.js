@@ -626,12 +626,14 @@ function minimizeActiveDM(){
   renderMinimizedDMs();
 }
 function restoreMinimizedDM(id){
-  const index=minimizedDMWindows.findIndex(x=>x.id===String(id));if(index<0)return;
   const overlay=$("modal"),body=$("modalBody");if(!overlay||!body)return;
   if(!overlay.classList.contains("hidden")){
     if(body.querySelector(".dm-chat-header"))minimizeActiveDM();
     else {toast("Close the current window before reopening a minimized chat.");return;}
   }
+  // Recalculate after minimizing the currently open chat, since that adds it
+  // to the dock and can change the target chat's array index.
+  const index=minimizedDMWindows.findIndex(x=>x.id===String(id));if(index<0)return;
   const [item]=minimizedDMWindows.splice(index,1);
   body.replaceChildren(...item.nodes);state.dmUserId=item.id;state.dmPeerUser=item.user;
   overlay.classList.remove("hidden");overlay.setAttribute("aria-hidden","false");modalHistory.length=0;
@@ -4371,6 +4373,11 @@ async function openDM(id) {
     const dmTargetId=String(user.id),dmSettings=$('dmChatSettingsMenu'),dmSettingsBtn=$('dmChatSettingsBtn');
     dmSettingsBtn?.addEventListener('click',()=>{dmSettings?.classList.toggle('hidden');dmSettingsBtn.setAttribute('aria-expanded',String(!dmSettings?.classList.contains('hidden')));});
     $('dmChatCloseBtn')?.addEventListener('click',closeModal);
+    $('dmChatMinimizeBtn')?.addEventListener('click',event=>{
+      event.preventDefault();
+      event.stopPropagation();
+      minimizeActiveDM();
+    });
     $('dmSearchToggle')?.addEventListener('click',()=>{
       const panel=$('dmMessageSearchPanel'),toggle=$('dmSearchToggle');
       panel?.classList.toggle('hidden');
