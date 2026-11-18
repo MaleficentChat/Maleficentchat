@@ -2014,7 +2014,7 @@ function isParallelSplitRoom(room){return !!(room&&(room.splitParentId!=null||St
 function renderRooms() {
   const search=(($('roomSearch')?.value)||'').trim().toLowerCase();
   const visited=joinedRoomIds();
-  const normalizedRoomRank=String(state.user?.rank||"").toUpperCase().replace(/[\\s_-]/g,"");
+  const normalizedRoomRank=String(state.user?.rank||"").toUpperCase().replace(/[\s_-]/g,"");
   const canManagePins=["COOWNER","OWNER","DEVELOPER"].includes(normalizedRoomRank);
   const allRooms=sortRoomsForNavigation((Array.isArray(state.rooms)?state.rooms:[]).filter(room=>!isParallelSplitRoom(room)));
   const canViewHiddenRooms=["OWNER","DEVELOPER"].includes(String(state.user?.rank||"").toUpperCase());
