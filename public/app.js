@@ -2015,51 +2015,74 @@ function renderRooms() {
   const search=(($('roomSearch')?.value)||'').trim().toLowerCase();
   const visited=joinedRoomIds();
   const normalizedRoomRank=String(state.user?.rank||"").toUpperCase().replace(/[\s_-]/g,"");
-  const canSeeRoomPins=["COOWNER","OWNER","DEVELOPER"].includes(normalizedRoomRank);
-  const canPinRooms=canSeeRoomPins;
+  const canManagePins=["COOWNER","OWNER","DEVELOPER"].includes(normalizedRoomRank);
   const allRooms=sortRoomsForNavigation((Array.isArray(state.rooms)?state.rooms:[]).filter(room=>!isParallelSplitRoom(room)));
   const canViewHiddenRooms=["OWNER","DEVELOPER"].includes(String(state.user?.rank||"").toUpperCase());
   const hiddenRooms=allRooms.filter(room=>room.public===false);
   const hiddenToggle=$("hiddenRoomsToggle");
   if(hiddenToggle){
     hiddenToggle.classList.toggle("hidden",!canViewHiddenRooms);
-    hiddenToggle.textContent=state.showHiddenRoomsOnly?"← All rooms  ·  "+hiddenRooms.length+" hidden":"🔒 Hidden rooms  ·  "+hiddenRooms.length;
+    hiddenToggle.textContent=state.showHiddenRoomsOnly?"← All rooms · "+hiddenRooms.length+" hidden":"🔒 Hidden rooms · "+hiddenRooms.length;
     hiddenToggle.setAttribute("aria-pressed",state.showHiddenRoomsOnly?"true":"false");
   }
-  const rooms=allRooms.filter(room=>{
+  const baseRooms=allRooms.filter(room=>{
     if(canViewHiddenRooms&&state.showHiddenRoomsOnly&&room.public!==false)return false;
-    const hay=[room.name,room.description,room.category].join(' ').toLowerCase();
-    return !search || hay.includes(search);
+    const hay=[room.name,room.description,room.category].join(" ").toLowerCase();
+    return !search||hay.includes(search);
   });
-  $('rooms').innerHTML=rooms.map(room=>{
+  const isPinned=room=>!!(room.pinned||room.isDefault||/^main room$/i.test(String(room.name||"").trim()));
+  const pinned=baseRooms.filter(isPinned);
+  let directory=baseRooms.filter(room=>!isPinned(room));
+  const filter=state.roomListMode||"all";
+  if(filter==="active")directory=directory.filter(room=>Number(room.onlineCount||0)>0);
+  if(filter==="mine")directory=directory.filter(room=>visited.has(String(room.id)));
+  const renderCard=room=>{
     const locked=room.locked??!!room.passwordHash;
     const count=Number(room.onlineCount||0);
-    const isProtectedMainRoom = !!room.isDefault || /^main room$/i.test(String(room.name||"").trim());
-    const canManage = !isProtectedMainRoom && (canFeature("edit_room") || canFeature("delete_room") || room.ownerId===state.user?.id);
+    const isProtectedMainRoom=!!room.isDefault||/^main room$/i.test(String(room.name||"").trim());
+    const canManage=!isProtectedMainRoom&&(canFeature("edit_room")||canFeature("delete_room")||room.ownerId===state.user?.id);
     return `
-      <article class="room room-list-card ${room.public===false?'secret-society':''} ${state.currentRoom===room.id?'selected':''}">
-        <button class="room-open" onclick="joinRoom('${esc(room.id)}')">
-          <span class="room-icon-wrap">${esc(room.icon||'💬')}</span>
-          <span class="room-main">
-          <span class="room-title-row"><strong>${esc(room.name)}</strong>${canSeeRoomPins&&room.pinned?'<span class="room-pinned-badge" title="Pinned for senior staff">📌</span>':''}${room.public===false?'<span class="room-lock secret-society-label" title="Private Society">♛ Secret Society</span>':''}${locked?'<span class="room-lock">🔒</span>':''}</span>
-            <span class="room-desc">${esc(room.description||'No description has been written for this room')}</span>
-            <span class="room-subrow"><span>${esc(room.category||'Community')}</span><span>•</span><span>${esc(room.rankRequired||'MEMBER')}+</span>${room.announcement?'<span>• 📌 announcement</span>':''}</span>
+      <article class="room room-list-card discover-room-card ${room.public===false?'secret-society':''} ${state.currentRoom===room.id?'selected':''}">
+        <button class="room-open discover-room-open" onclick="joinRoom('${esc(room.id)}')">
+          <span class="room-main discover-room-main">
+            <span class="room-title-row"><strong>${esc(room.name)}</strong>${room.public===false?'<span class="room-lock secret-society-label">♛ Private</span>':''}${locked?'<span class="room-lock">🔒</span>':''}</span>
+            <span class="room-desc">${esc(room.description||"Community conversation")}</span>
+            <span class="room-card-bottom"><span class="room-presence"><i></i>${count} members online</span><span class="room-join-label">Join <b>→</b></span></span>
           </span>
-          <span class="room-count"><strong>${count}</strong><span>♟</span></span>
         </button>
-        ${(canManage && room.id!=="main") || canPinRooms ? `<div class="room-list-actions" aria-label="Room actions">
+        ${(canManage&&room.id!=="main")||canManagePins? `<div class="room-list-actions" aria-label="Room actions">
           <button class="mini room-action-icon ${canManage?'':'hidden'}" type="button" title="Edit room" aria-label="Edit room" onclick="event.stopPropagation();editRoomById('${esc(room.id)}')">✎</button>
-          ${canPinRooms ? `<button class="mini room-action-icon room-pin-toggle" type="button" title="Pin / unpin room" aria-label="Pin / unpin room" onclick="event.stopPropagation();toggleRoomPinById(&quot;${esc(room.id)}&quot;)">📌</button>` : ""}
+          ${canManagePins?`<button class="mini room-action-icon room-pin-toggle" type="button" title="Pin / unpin room" aria-label="Pin / unpin room" onclick="event.stopPropagation();toggleRoomPinById(&quot;${esc(room.id)}&quot;)">📌</button>`:""}
           ${canFeature("delete_room")?`<button class="mini danger room-action-icon" type="button" title="Delete room" aria-label="Delete room" onclick="event.stopPropagation();deleteRoomById('${esc(room.id)}')">⌫</button>`:""}
-        </div>` : ""}
+        </div>`:""}
       </article>`;
-  }).join('') || (search
-    ? '<div class="room-empty"><div>🔎</div><b>No matching rooms</b><span>Try a different search.</span><button class="mini" type="button" onclick="document.getElementById(\'roomSearch\').value=\'\';renderRooms()">Clear search</button></div>'
-    : state.roomListMode==='mine'
-      ? '<div class="room-empty"><div>🏠</div><b>No rooms in My rooms yet</b><span>Choose All rooms to see available rooms.</span><button class="mini" type="button" onclick="setRoomListMode(\'all\')">Show all rooms</button></div>'
-      : '<div class="room-empty"><div>🏠</div><b>Rooms are not loading yet</b><span>Retry loading the room list. If this continues, check the server logs and database connection.</span><button class="primary" type="button" onclick="loadRooms()">↻ Reload rooms</button></div>');
+  };
+  const pinnedRoot=$("pinnedRooms");
+  if(pinnedRoot)pinnedRoot.innerHTML=pinned.map(renderCard).join("");
+  const pinnedSection=$("roomsPinnedSection");
+  if(pinnedSection)pinnedSection.classList.toggle("hidden",pinned.length===0);
+  const pinnedCount=$("pinnedRoomCount");
+  if(pinnedCount)pinnedCount.textContent=pinned.length+" "+(pinned.length===1?"room":"rooms");
+  const roomsRoot=$("rooms");
+  if(roomsRoot)roomsRoot.innerHTML=directory.map(renderCard).join("")||(
+    search?'<div class="room-empty"><b>No matching rooms</b><span>Try a different search.</span></div>':
+    filter==="mine"?'<div class="room-empty"><b>No rooms in My rooms yet</b><span>Join a room to keep it in this list.</span></div>':
+    filter==="active"?'<div class="room-empty"><b>No active rooms right now</b><span>Check All rooms to discover a conversation.</span></div>':
+    '<div class="room-empty"><b>No other rooms available</b><span>New community rooms will appear here.</span></div>'
+  );
+  const allCount=$("allRoomCount");
+  if(allCount)allCount.textContent=directory.length+" "+(directory.length===1?"room":"rooms");
+  document.querySelectorAll("[data-room-filter]").forEach(button=>{
+    const active=button.dataset.roomFilter===filter;
+    button.classList.toggle("active",active);
+    button.setAttribute("aria-pressed",String(active));
+  });
   renderRoomQuickNav();
 }
+window.setDiscoverRoomFilter=function(mode){
+  state.roomListMode=["all","active","mine"].includes(mode)?mode:"all";
+  renderRooms();
+};
 
 window.__mcRoomJoinTokens=window.__mcRoomJoinTokens||{};
 let lastResolvedRoomCode="";
