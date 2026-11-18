@@ -1,0 +1,162 @@
+/* MC correction pass — match the user's thin-outline reference across the entire app. */
+:root{
+  --mc-outline:rgba(232,205,190,.22);
+  --mc-outline-strong:rgba(232,205,190,.38);
+  --mc-control-hover:rgba(232,205,190,.075);
+}
+
+/* A consistent, subtle outline makes every interactive control legible. */
+button,
+[role="button"],[role="tab"],[role="menuitem"],
+a.button,a.action,
+input,select,textarea,
+.chat-tools-toggle,.dm-upload-btn{
+  border-color:var(--mc-outline)!important;
+  box-shadow:none!important;
+  text-shadow:none!important;
+}
+button,
+[role="button"],[role="tab"],[role="menuitem"],
+a.button,a.action{
+  border-style:solid!important;
+  border-width:1px!important;
+  border-radius:7px!important;
+  background-image:none!important;
+  transition:background-color .12s ease,border-color .12s ease,color .12s ease!important;
+}
+button:not(:disabled):hover,
+[role="button"]:hover,[role="tab"]:hover,[role="menuitem"]:hover,
+a.button:hover,a.action:hover{
+  background-color:var(--mc-control-hover)!important;
+  border-color:var(--mc-outline-strong)!important;
+  box-shadow:none!important;
+  filter:none!important;
+}
+button:focus-visible,
+[role="button"]:focus-visible,[role="tab"]:focus-visible,[role="menuitem"]:focus-visible{
+  outline:2px solid rgba(232,205,190,.62)!important;
+  outline-offset:2px!important;
+}
+
+/* Keep the primary action distinct while retaining the same fine outline. */
+button.primary,.primary,button.send,.send{
+  border:1px solid rgba(232,205,190,.34)!important;
+  background-image:none!important;
+  box-shadow:none!important;
+}
+button.danger,.danger{border-color:rgba(235,120,120,.28)!important}
+button.success,.success{border-color:rgba(110,190,145,.28)!important}
+
+/* The reference uses thin separators between information groups. */
+.settings-tabs,.auth-tabs,.profile-tabs,.room-view-tabs,.hub-tabs,
+.online-tabs{
+  border-bottom:1px solid var(--mc-outline)!important;
+  box-shadow:none!important;
+}
+.settings-tabs button,.auth-tabs button,.profile-tabs button,
+.room-view-tabs button,.hub-tabs button{
+  border:1px solid transparent!important;
+  border-bottom-color:transparent!important;
+}
+.settings-tabs button.active,.auth-tabs button.active,
+.profile-tabs button.active,.room-view-tabs button.active,
+.hub-tabs button.active{
+  border-color:var(--mc-outline)!important;
+  background:rgba(232,205,190,.055)!important;
+}
+
+/* Navigation: always show icon + readable label, including compact/mobile layouts. */
+#sidebar.sidebar{
+  width:224px!important;
+  min-width:224px!important;
+  align-items:stretch!important;
+}
+#sidebar .nav,
+#sidebar .nav-group .nav,
+#sidebar>.nav:not(#roomsNavToggle){
+  display:flex!important;
+  width:100%!important;
+  min-width:0!important;
+  justify-content:flex-start!important;
+  align-items:center!important;
+  gap:11px!important;
+  text-align:left!important;
+}
+#sidebar .nav>span,
+#sidebar .nav-group .nav>span,
+#sidebar>.nav:not(#roomsNavToggle)>span{
+  display:inline-flex!important;
+  flex:1 1 auto!important;
+  min-width:0!important;
+  visibility:visible!important;
+  opacity:1!important;
+  overflow:hidden!important;
+  white-space:nowrap!important;
+  text-overflow:ellipsis!important;
+  font-size:13px!important;
+}
+#sidebar .nav-group>summary>span{
+  display:inline!important;
+  visibility:visible!important;
+  opacity:1!important;
+}
+#sidebar #roomsNavToggle{width:100%!important;min-width:0!important;justify-content:flex-start!important}
+#sidebar #roomsNavToggle>span{display:inline!important}
+@media(max-width:800px){
+  #sidebar.sidebar{width:250px!important;min-width:250px!important}
+  #sidebar .nav>span,#sidebar .nav-group .nav>span,
+  #sidebar>.nav:not(#roomsNavToggle)>span{display:inline-flex!important}
+}
+
+/* Guarantee an actual 58px breathing gap below the message composer. */
+#viewRooms.chatting .chat-card{
+  display:flex!important;
+  flex-direction:column!important;
+  min-height:0!important;
+  padding-bottom:0!important;
+  overflow:hidden!important;
+}
+#viewRooms.chatting .chat-card>.composer{
+  position:relative!important;
+  inset:auto!important;
+  flex:0 0 auto!important;
+  margin:0!important;
+  transform:none!important;
+}
+#viewRooms.chatting .chat-card::after{
+  content:""!important;
+  display:block!important;
+  flex:0 0 58px!important;
+  height:58px!important;
+  min-height:58px!important;
+  pointer-events:none!important;
+}
+
+/* Message controls: only the ⋯ trigger stays in the message row.
+   Edit/Delete/Pin/etc. appear only in the opened floating menu. */
+#viewRooms.chatting .msg-actions{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:flex-end!important;
+  min-height:26px!important;
+  opacity:1!important;
+  pointer-events:auto!important;
+}
+#viewRooms.chatting .msg-actions>.message-actions-menu,
+.message-actions-menu.hidden,
+.message-more-submenu.hidden,
+.message-actions-menu:not(.is-floating){
+  display:none!important;
+  visibility:hidden!important;
+  pointer-events:none!important;
+}
+.message-actions-menu.is-floating:not(.hidden){
+  display:flex!important;
+  visibility:visible!important;
+  pointer-events:auto!important;
+}
+.message-actions-menu.is-floating:not(.hidden) .message-menu-item{
+  display:flex!important;
+  visibility:visible!important;
+  pointer-events:auto!important;
+}
