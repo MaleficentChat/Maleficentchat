@@ -2032,7 +2032,7 @@ function renderRooms() {
   });
   const isPinned=room=>!!room.pinned;
   const pinned=baseRooms.filter(isPinned);
-  let directory=baseRooms.filter(room=>!isPinned(room));
+  let directory=baseRooms.slice();
   const filter=state.roomListMode||"all";
   if(filter==="active")directory=directory.filter(room=>Number(room.onlineCount||0)>0);
   if(filter==="mine")directory=directory.filter(room=>visited.has(String(room.id)));
@@ -2052,8 +2052,8 @@ function renderRooms() {
         </button>
         ${(canManage&&room.id!=="main")||canManagePins? `<div class="room-list-actions" aria-label="Room actions">
           <button class="mini room-action-icon ${canManage?'':'hidden'}" type="button" title="Edit room" aria-label="Edit room" onclick="event.stopPropagation();editRoomById('${esc(room.id)}')">✎</button>
-          ${canManagePins?`<button class="mini room-action-icon room-pin-toggle" type="button" title="Pin / unpin room" aria-label="Pin / unpin room" onclick="event.stopPropagation();toggleRoomPinById(&quot;${esc(room.id)}&quot;)">📌</button>`:""}
-          ${canFeature("delete_room")?`<button class="mini danger room-action-icon" type="button" title="Delete room" aria-label="Delete room" onclick="event.stopPropagation();deleteRoomById('${esc(room.id)}')">⌫</button>`:""}
+          ${canManagePins&&!isProtectedMainRoom?`<button class="mini room-action-icon room-pin-toggle" type="button" title="Pin / unpin room" aria-label="Pin / unpin room" onclick="event.stopPropagation();toggleRoomPinById(&quot;${esc(room.id)}&quot;)">📌</button>`:""}
+          ${canManage&&canFeature("delete_room")?`<button class="mini danger room-action-icon" type="button" title="Delete room" aria-label="Delete room" onclick="event.stopPropagation();deleteRoomById('${esc(room.id)}')">⌫</button>`:""}
         </div>`:""}
       </article>`;
   };
