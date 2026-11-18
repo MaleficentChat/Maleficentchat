@@ -9035,3 +9035,74 @@ html{scroll-behavior:smooth;}
   .rooms-more-overlay{align-items:flex-start!important;justify-content:center!important;padding:7vh 10px 12px!important}
   .rooms-more-panel{width:100%!important;max-height:86dvh!important;border-radius:18px!important}
 }
+
+
+/* MC expanded navigation: show each label beside its icon, matching the room list rows. */
+@media(min-width:701px){
+  html body #app #sidebar.sidebar.open,
+  html body #app #sidebar.sidebar.mobile-open{
+    align-items:stretch!important;
+  }
+  html body #app #sidebar.sidebar.open .nav,
+  html body #app #sidebar.sidebar.mobile-open .nav{
+    display:flex!important;
+    flex-direction:row!important;
+    align-items:center!important;
+    justify-content:flex-start!important;
+    gap:12px!important;
+    width:100%!important;
+    min-width:0!important;
+    max-width:none!important;
+    height:auto!important;
+    min-height:42px!important;
+    padding:10px 13px!important;
+    text-align:left!important;
+    font-size:16px!important;
+  }
+  html body #app #sidebar.sidebar.open .nav>span,
+  html body #app #sidebar.sidebar.mobile-open .nav>span{
+    display:inline!important;
+    flex:1 1 auto!important;
+    min-width:0!important;
+    visibility:visible!important;
+    opacity:1!important;
+    overflow:visible!important;
+    color:inherit!important;
+    font-size:13px!important;
+    line-height:1.25!important;
+    text-align:left!important;
+    white-space:normal!important;
+  }
+  html body #app #sidebar.sidebar.open .nav-group,
+  html body #app #sidebar.sidebar.mobile-open .nav-group{
+    display:flex!important;
+    flex-direction:column!important;
+    align-items:stretch!important;
+    width:100%!important;
+  }
+  html body #app #sidebar.sidebar.open .nav-group>summary,
+  html body #app #sidebar.sidebar.mobile-open .nav-group>summary{
+    width:100%!important;
+    min-width:0!important;
+    justify-content:flex-start!important;
+    gap:10px!important;
+    text-align:left!important;
+  }
+  html body #app #sidebar.sidebar.open .nav-group>summary>span,
+  html body #app #sidebar.sidebar.mobile-open .nav-group>summary>span,
+  html body #app #sidebar.sidebar.open .nav-group>summary>i,
+  html body #app #sidebar.sidebar.mobile-open .nav-group>summary>i{
+    display:inline!important;
+    visibility:visible!important;
+  }
+}
+@media(max-width:700px){
+  html body #app #sidebar.sidebar.open .nav>span,
+  html body #app #sidebar.sidebar.mobile-open .nav>span{
+    display:inline!important;
+    visibility:visible!important;
+    opacity:1!important;
+    color:inherit!important;
+    font-size:13px!important;
+  }
+}
