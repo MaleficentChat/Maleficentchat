@@ -172,3 +172,39 @@
     grid-template-columns:1fr!important;
   }
 }
+
+
+/* Actual room directory scroll surface: the app shell clips overflow, so the
+   directory itself (not #viewRooms) must own vertical scrolling. */
+#viewRooms:not(.chatting){
+  display:flex!important;
+  flex-direction:column!important;
+  width:100%!important;
+  max-width:none!important;
+  height:100%!important;
+  min-height:0!important;
+  padding:0!important;
+  overflow:hidden!important;
+}
+#viewRooms:not(.chatting) > .mc-room-directory{
+  flex:1 1 0%!important;
+  min-height:0!important;
+  height:100%!important;
+  max-height:100%!important;
+  width:100%!important;
+  max-width:1012px!important;
+  margin:0 auto!important;
+  padding:12px clamp(10px,2vw,24px) 28px!important;
+  box-sizing:border-box!important;
+  overflow-x:hidden!important;
+  overflow-y:auto!important;
+  -webkit-overflow-scrolling:touch;
+  overscroll-behavior-y:contain;
+  scrollbar-width:thin;
+}
+#viewRooms:not(.chatting) > #chatWrap{flex:0 0 auto}
+@media(max-width:620px){
+  #viewRooms:not(.chatting) > .mc-room-directory{
+    padding:10px 10px 24px!important;
+  }
+}
