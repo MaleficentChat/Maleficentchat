@@ -142,7 +142,7 @@ button.success,.success{border-color:rgba(110,190,145,.28)!important}
   opacity:1!important;
   pointer-events:auto!important;
 }
-#viewRooms.chatting .msg-actions>.message-actions-menu,
+#viewRooms.chatting .msg-actions>.message-actions-menu:not(.is-floating),
 .message-actions-menu.hidden,
 .message-more-submenu.hidden,
 .message-actions-menu:not(.is-floating){
