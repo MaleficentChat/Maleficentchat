@@ -178,14 +178,14 @@
       </header>
       <div class="mc-room-search-row" id="mcRoomSearchRow">
         <label class="mc-room-search"><span aria-hidden="true">⌕</span><input id="roomSearch" type="search" placeholder="Search rooms…" aria-label="Search rooms"></label>
-        <button class="kp-hidden-rooms mini hidden" id="hiddenRoomsToggle" type="button" onclick="toggleHiddenRoomsView()" aria-pressed="false">▣ Hidden</button>
+        <button class="kp-hidden-rooms mini" id="hiddenRoomsToggle" type="button" onclick="toggleRoomAccess()" aria-pressed="false" aria-expanded="false">♛ Secret rooms</button>
       </div>
       <section class="room-shelf room-directory-shelf" id="roomsAllSection">
         <div id="rooms" class="room-grid discover-room-grid"></div>
       </section>
-      <div class="mc-room-access">
-        <div class="mc-access-label"><span>♛</span><b>Secret room access</b></div>
-        <label class="mc-room-code"><input id="roomCodeSearch" inputmode="numeric" autocomplete="off" maxlength="11" placeholder="Enter room code" aria-label="Enter Secret Room code"><small id="roomCodeFeedback">Private room code</small></label>
+      <div class="mc-room-access hidden" id="mcRoomAccess">
+        <div class="mc-access-label"><span>♛</span><b>Find a secret room</b></div>
+        <label class="mc-room-code"><input id="roomCodeSearch" inputmode="numeric" autocomplete="off" maxlength="11" placeholder="Enter room code" aria-label="Enter Secret Room code"><small id="roomCodeFeedback">Enter the 10-digit private room code</small></label>
       </div>
     </section>
     <div id="chatWrap" class="chat-wrap hidden">
