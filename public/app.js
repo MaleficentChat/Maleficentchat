@@ -605,15 +605,34 @@ async function acknowledgePersistentWarning(){
 const modalHistory=[];
 const minimizedDMWindows=[];
 function renderMinimizedDMs(){
-  let dock=$("dmMinimizedDock");
-  if(!minimizedDMWindows.length){dock?.remove();return;}
-  if(!dock){dock=document.createElement("div");dock.id="dmMinimizedDock";dock.setAttribute("aria-label","Minimized private messages");document.body.appendChild(dock);}
-  dock.replaceChildren();
-  minimizedDMWindows.forEach(item=>{
-    const button=document.createElement("button");button.type="button";button.className="dm-minimized-avatar";button.title="Open private chat with "+(item.user?.displayName||item.user?.username||"user");button.setAttribute("aria-label",button.title);
-    button.innerHTML=avatar(item.user||{},"avatar");
-    button.addEventListener("click",()=>restoreMinimizedDM(item.id));dock.appendChild(button);
-  });
+  const roomCard=$("viewRooms")?.querySelector(".chat-card");
+  const modalCard=$("modal")?.querySelector(".modal-card");
+  if(!minimizedDMWindows.length){
+    $("mainChatMinimizedDock")?.remove();
+    $("dmMinimizedDock")?.remove();
+    return;
+  }
+  let mainDock=$("mainChatMinimizedDock");
+  if(!mainDock){mainDock=document.createElement("div");mainDock.id="mainChatMinimizedDock";mainDock.setAttribute("aria-label","Minimized private chats");}
+  if(roomCard&&mainDock.parentNode!==roomCard)roomCard.appendChild(mainDock);
+  let pmDock=$("dmMinimizedDock");
+  if(!pmDock){pmDock=document.createElement("div");pmDock.id="dmMinimizedDock";pmDock.setAttribute("aria-label","Switch between minimized private messages");}
+  if(modalCard&&pmDock.parentNode!==modalCard)modalCard.appendChild(pmDock);
+  const fill=dock=>{
+    dock.replaceChildren();
+    minimizedDMWindows.forEach(item=>{
+      const button=document.createElement("button");
+      button.type="button";
+      button.className="dm-minimized-avatar";
+      button.title="Switch to "+(item.user?.displayName||item.user?.username||"private chat");
+      button.setAttribute("aria-label",button.title);
+      button.innerHTML=avatar(item.user||{},"avatar");
+      button.addEventListener("click",()=>restoreMinimizedDM(item.id));
+      dock.appendChild(button);
+    });
+  };
+  fill(mainDock);
+  fill(pmDock);
 }
 function minimizeActiveDM(){
   const overlay=$("modal"),body=$("modalBody");
