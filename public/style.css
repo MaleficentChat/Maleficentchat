@@ -8532,3 +8532,19 @@ html{scroll-behavior:smooth;}
 }
 .dm-message-list .dm-msg.mine .dm-message-meta{text-align:right!important;}
 .dm-message-list .dm-msg .msg-top{display:none!important;}
+
+
+/* Message dropdown: sender avatar beside every conversation and filters tucked under gear. */
+#topMessagesDropdown .notification-dropdown-head{display:flex;align-items:center;justify-content:space-between;gap:10px;}
+#topMessagesDropdown .dm-header-tools{display:flex;align-items:center;gap:6px;flex:0 0 auto;}
+#topMessagesDropdown .dm-header-tools .mini{width:34px;height:34px;min-width:34px;padding:0;display:inline-flex;align-items:center;justify-content:center;}
+#topMessagesDropdown .dm-header-filters.hidden{display:none!important;}
+#topMessagesDropdown .dm-header-row{display:flex;align-items:center;gap:8px;min-width:0;}
+#topMessagesDropdown .dm-header-avatar{display:flex;align-items:center;justify-content:center;flex:0 0 42px;width:42px;height:42px;padding:0;border:0;background:transparent;border-radius:50%;cursor:pointer;overflow:hidden;}
+#topMessagesDropdown .dm-header-avatar .avatar{width:40px!important;height:40px!important;min-width:40px!important;min-height:40px!important;}
+#topMessagesDropdown .dm-header-avatar:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+#topMessagesDropdown .dm-header-item{min-width:0;}
+@media(max-width:700px){
+ #topMessagesDropdown .dm-header-avatar{flex-basis:38px;width:38px;height:38px;}
+ #topMessagesDropdown .dm-header-avatar .avatar{width:36px!important;height:36px!important;min-width:36px!important;min-height:36px!important;}
+}
