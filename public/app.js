@@ -603,6 +603,41 @@ async function acknowledgePersistentWarning(){
 // Preserve previous modal layers so closing a nested option returns to the
 // exact screen beneath it, including its live DOM and event handlers.
 const modalHistory=[];
+const minimizedDMWindows=[];
+function renderMinimizedDMs(){
+  let dock=$("dmMinimizedDock");
+  if(!minimizedDMWindows.length){dock?.remove();return;}
+  if(!dock){dock=document.createElement("div");dock.id="dmMinimizedDock";dock.setAttribute("aria-label","Minimized private messages");document.body.appendChild(dock);}
+  dock.replaceChildren();
+  minimizedDMWindows.forEach(item=>{
+    const button=document.createElement("button");button.type="button";button.className="dm-minimized-avatar";button.title="Open private chat with "+(item.user?.displayName||item.user?.username||"user");button.setAttribute("aria-label",button.title);
+    button.innerHTML=avatar(item.user||{},"avatar");
+    button.addEventListener("click",()=>restoreMinimizedDM(item.id));dock.appendChild(button);
+  });
+}
+function minimizeActiveDM(){
+  const overlay=$("modal"),body=$("modalBody");
+  if(!overlay||overlay.classList.contains("hidden")||!body?.querySelector(".dm-chat-header")||!state.dmUserId)return;
+  const id=String(state.dmUserId),existing=minimizedDMWindows.findIndex(x=>x.id===id);
+  const item={id,user:state.dmPeerUser||{},nodes:Array.from(body.childNodes)};
+  if(existing>=0)minimizedDMWindows.splice(existing,1);
+  minimizedDMWindows.push(item);body.replaceChildren();modalHistory.length=0;
+  overlay.classList.add("hidden");overlay.setAttribute("aria-hidden","true");
+  renderMinimizedDMs();
+}
+function restoreMinimizedDM(id){
+  const index=minimizedDMWindows.findIndex(x=>x.id===String(id));if(index<0)return;
+  const overlay=$("modal"),body=$("modalBody");if(!overlay||!body)return;
+  if(!overlay.classList.contains("hidden")){
+    if(body.querySelector(".dm-chat-header"))minimizeActiveDM();
+    else {toast("Close the current window before reopening a minimized chat.");return;}
+  }
+  const [item]=minimizedDMWindows.splice(index,1);
+  body.replaceChildren(...item.nodes);state.dmUserId=item.id;state.dmPeerUser=item.user;
+  overlay.classList.remove("hidden");overlay.setAttribute("aria-hidden","false");modalHistory.length=0;
+  renderMinimizedDMs();
+  requestAnimationFrame(()=>{const list=$("dmMessages");if(list)list.scrollTop=list.scrollHeight;});
+}
 
 function stopModalMedia(root){
   root?.querySelectorAll('audio,video').forEach(media=>{
@@ -4275,6 +4310,7 @@ async function openDM(id) {
         <div class="dm-chat-actions">
           <button type="button" class="mini dm-settings-toggle" id="dmChatSettingsBtn" title="Conversation settings" aria-expanded="false">⚙️</button>
           <button type="button" class="mini dm-search-toggle" id="dmSearchToggle" title="Search conversation" aria-expanded="false" aria-controls="dmMessageSearchPanel">⌕</button>
+          <button type="button" class="mini dm-minimize-button" id="dmChatMinimizeBtn" title="Minimize conversation" aria-label="Minimize conversation">—</button>
           <button type="button" class="mini dm-close-button" id="dmChatCloseBtn" title="Close conversation" aria-label="Close conversation">×</button>
           <div class="dm-settings-menu hidden" id="dmChatSettingsMenu">
 <button type="button" data-dm-action="nickname">✏️ <span><b>Nickname</b><small>Set a private nickname</small></span></button>
