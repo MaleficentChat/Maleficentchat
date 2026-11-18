@@ -7430,6 +7430,22 @@ app.get('/api/users/:id/profile',auth,(req,res)=>{
     if(p.lastSeen===false)profile.lastSeen=null;
     if(p.online===false)profile.online=false;
   }
+  // Only disclose a room when the member's online presence is visible and a
+  // live authenticated socket is actually subscribed to that room.
+  profile.currentRoom=null;
+  if(profile.online&&!v.invisible&&!v.hideMode&&!v.deadMode){
+    const activeRoomId=String(v.roomId||'');
+    const room=activeRoomId?db.rooms.find(item=>String(item.id)===activeRoomId):null;
+    const userSockets=io.sockets.adapter.rooms.get('user:'+String(v.id));
+    const hasLiveRoomSocket=!!(room&&userSockets&&[...userSockets].some(socketId=>{
+      const activeSocket=io.sockets.sockets.get(socketId);
+      return activeSocket&&String(activeSocket.data?.roomId||'')===activeRoomId&&activeSocket.rooms.has('room:'+activeRoomId);
+    }));
+    if(hasLiveRoomSocket){
+      const isPrivate=room.public===false;
+      profile.currentRoom={name:isPrivate?'Private room':String(room.name||'Chat'),icon:isPrivate?'🔒':String(room.icon||'💬'),isPrivate};
+    }
+  }
   res.json({user:profile,email:(hasRank(u,'MOD')&&v.id!==u.id&&rankOrder[v.rank]<rankOrder[u.rank])?(v.email||''):'',likedByMe:liked,friendship:friendship?friendship.status:null,profileLikes:v.profileLikes||0});
 });
 
