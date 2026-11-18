@@ -140,3 +140,36 @@
   border:0!important;
   overflow:hidden!important;
 }
+
+
+/* 18 Nov 2026 — remove the dead space below the composer while retaining the fixed icon dock. */
+#viewRooms.chatting .chat-card{
+  padding-bottom:0!important;
+}
+#viewRooms.chatting .chat-card>.composer{
+  position:relative!important;
+  inset:auto!important;
+  margin:0!important;
+  flex:0 0 auto!important;
+  transform:none!important;
+}
+#viewRooms.chatting .msg-actions{
+  display:none!important;
+  visibility:hidden!important;
+  pointer-events:none!important;
+}
+#viewRooms.chatting .message-actions-menu:not(.is-floating),
+#viewRooms.chatting .message-actions-menu.hidden{
+  display:none!important;
+  visibility:hidden!important;
+  pointer-events:none!important;
+}
+#viewRooms.chatting .message-actions-menu.is-floating:not(.hidden){
+  display:flex!important;
+  visibility:visible!important;
+  pointer-events:auto!important;
+}
+@media(max-width:800px){
+  #viewRooms.chatting .chat-card{padding-bottom:0!important}
+  #viewRooms.chatting .chat-card>.composer{margin-bottom:0!important}
+}
