@@ -646,30 +646,27 @@ const minimizedDMWindows=[];
 function renderMinimizedDMs(){
   const roomCard=$("viewRooms")?.querySelector(".chat-card");
   const modalCard=$("modal")?.querySelector(".modal-card");
-  if(!minimizedDMWindows.length){
-    // Keep the bottom-row room controls available even before a DM is minimized.
-    let mainDock=$("mainChatMinimizedDock");
-    if(!mainDock){mainDock=document.createElement("div");mainDock.id="mainChatMinimizedDock";mainDock.setAttribute("aria-label","Chat options and minimized private chats");}
-    if(roomCard&&mainDock.parentNode!==roomCard)roomCard.appendChild(mainDock);
-    const roomOptions=$("roomMenu"), dimensions=$("openParallelSplits");
-    if(roomOptions&&roomOptions.parentNode!==mainDock)mainDock.appendChild(roomOptions);
-    if(dimensions&&dimensions.parentNode!==mainDock)mainDock.appendChild(dimensions);
-    $("dmMinimizedDock")?.remove();
-    return;
-  }
   let mainDock=$("mainChatMinimizedDock");
-  if(!mainDock){mainDock=document.createElement("div");mainDock.id="mainChatMinimizedDock";mainDock.setAttribute("aria-label","Minimized private chats");}
+  if(!mainDock){
+    mainDock=document.createElement("div");
+    mainDock.id="mainChatMinimizedDock";
+    mainDock.setAttribute("aria-label","Chat options, minimized private chats, and People panel");
+  }
   if(roomCard&&mainDock.parentNode!==roomCard)roomCard.appendChild(mainDock);
-  // Keep the two existing room controls beside the minimized-avatar row:
-  // horizontal ellipsis first, vertical dimensions control immediately after.
+
+  // Exact bottom-row order: menu, Alternate Dimensions, flexible space,
+  // minimized private-chat avatars, then the People panel toggle.
   const roomOptions=$("roomMenu"), dimensions=$("openParallelSplits");
+  let spacer=$("mainChatMinimizedSpacer");
+  if(!spacer){spacer=document.createElement("div");spacer.id="mainChatMinimizedSpacer";spacer.setAttribute("aria-hidden","true");}
+  const peopleToggle=$("openOnlinePanel");
   if(roomOptions&&roomOptions.parentNode!==mainDock)mainDock.appendChild(roomOptions);
   if(dimensions&&dimensions.parentNode!==mainDock)mainDock.appendChild(dimensions);
-  let pmDock=$("dmMinimizedDock");
-  if(!pmDock){pmDock=document.createElement("div");pmDock.id="dmMinimizedDock";pmDock.setAttribute("aria-label","Switch between minimized private messages");}
-  if(modalCard&&pmDock.parentNode!==modalCard)modalCard.appendChild(pmDock);
+  if(spacer.parentNode!==mainDock)mainDock.appendChild(spacer);
+  if(peopleToggle&&peopleToggle.parentNode!==mainDock)mainDock.appendChild(peopleToggle);
+
   const fill=dock=>{
-    dock.replaceChildren();
+    dock.querySelectorAll(".dm-minimized-avatar").forEach(node=>node.remove());
     minimizedDMWindows.forEach(item=>{
       const button=document.createElement("button");
       button.type="button";
@@ -678,11 +675,18 @@ function renderMinimizedDMs(){
       button.setAttribute("aria-label",button.title);
       button.innerHTML=avatar(item.user||{},"avatar");
       button.addEventListener("click",()=>restoreMinimizedDM(item.id));
-      dock.appendChild(button);
+      if(dock===mainDock&&peopleToggle?.parentNode===mainDock)mainDock.insertBefore(button,peopleToggle);
+      else dock.appendChild(button);
     });
   };
   fill(mainDock);
-  fill(pmDock);
+  if(!minimizedDMWindows.length)$("dmMinimizedDock")?.remove();
+  else{
+    let pmDock=$("dmMinimizedDock");
+    if(!pmDock){pmDock=document.createElement("div");pmDock.id="dmMinimizedDock";pmDock.setAttribute("aria-label","Switch between minimized private messages");}
+    if(modalCard&&pmDock.parentNode!==modalCard)modalCard.appendChild(pmDock);
+    fill(pmDock);
+  }
 }
 // Initialize the bottom controls in their new row as soon as the chat UI loads.
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",renderMinimizedDMs,{once:true});
