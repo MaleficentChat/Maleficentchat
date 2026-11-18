@@ -362,7 +362,6 @@
 #viewRooms:not(.chatting) .room-desc{font-size:10px!important;line-height:1.25!important;-webkit-line-clamp:1!important}
 #viewRooms:not(.chatting) .room-card-bottom{margin-top:2px!important}
 #viewRooms:not(.chatting) .room-presence,#viewRooms:not(.chatting) .room-join-label{font-size:9px!important}
-#viewRooms:not(.chatting) .room-list-actions{display:none!important}
 #viewRooms:not(.chatting) .protected-main-room .room-list-actions{display:none!important}
 #viewRooms:not(.chatting) .mc-room-access{display:flex!important;align-items:center!important;flex-wrap:wrap!important;gap:8px 14px!important;width:100%!important;min-width:0!important;box-sizing:border-box!important;overflow:visible!important}
 #viewRooms:not(.chatting) .mc-room-code{display:block!important;flex:1 1 240px!important;width:auto!important;min-width:0!important;max-width:100%!important;box-sizing:border-box!important}
