@@ -2021,9 +2021,12 @@ function renderRooms() {
   const hiddenRooms=allRooms.filter(room=>room.public===false);
   const hiddenToggle=$("hiddenRoomsToggle");
   if(hiddenToggle){
-    hiddenToggle.classList.toggle("hidden",!canViewHiddenRooms);
-    hiddenToggle.textContent=state.showHiddenRoomsOnly?"← All rooms · "+hiddenRooms.length+" hidden":"🔒 Hidden rooms · "+hiddenRooms.length;
-    hiddenToggle.setAttribute("aria-pressed",state.showHiddenRoomsOnly?"true":"false");
+    hiddenToggle.classList.remove("hidden");
+    hiddenToggle.textContent=canViewHiddenRooms
+      ?(state.showHiddenRoomsOnly?"← All rooms · "+hiddenRooms.length+" hidden":"🔒 Hidden rooms · "+hiddenRooms.length)
+      :"♛ Secret rooms";
+    hiddenToggle.setAttribute("aria-pressed",canViewHiddenRooms&&state.showHiddenRoomsOnly?"true":"false");
+    hiddenToggle.setAttribute("aria-expanded",!canViewHiddenRooms&&!$("mcRoomAccess")?.classList.contains("hidden")?"true":"false");
   }
   const baseRooms=allRooms.filter(room=>{
     if(canViewHiddenRooms&&state.showHiddenRoomsOnly&&room.public!==false)return false;
@@ -2142,7 +2145,22 @@ function toggleHiddenRoomsView(){
   if($("roomSearch"))$("roomSearch").value="";
   renderRooms();
 }
+function toggleRoomAccess(){
+  const isPrivileged=["OWNER","DEVELOPER"].includes(String(state.user?.rank||"").toUpperCase());
+  if(isPrivileged){toggleHiddenRoomsView();return;}
+  const panel=$("mcRoomAccess");
+  const button=$("hiddenRoomsToggle");
+  if(!panel)return;
+  panel.classList.toggle("hidden");
+  if(button){
+    const expanded=!panel.classList.contains("hidden");
+    button.setAttribute("aria-expanded",expanded?"true":"false");
+    button.setAttribute("aria-pressed",expanded?"true":"false");
+    if(expanded) $("roomCodeSearch")?.focus();
+  }
+}
 window.toggleHiddenRoomsView=toggleHiddenRoomsView;
+window.toggleRoomAccess=toggleRoomAccess;
 
 function renderRoomQuickNav() {
   const nav = $('roomQuickNav');
