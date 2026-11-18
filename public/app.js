@@ -2050,7 +2050,7 @@ function renderRooms() {
             <span class="room-card-bottom"><span class="room-presence"><i></i>${count} members online</span><span class="room-join-label">Join <b>→</b></span></span>
           </span>
         </button>
-        ${(canManage&&room.id!=="main")||canManagePins? `<div class="room-list-actions" aria-label="Room actions">
+        ${(!isProtectedMainRoom&&(canManage||canManagePins))? `<div class="room-list-actions" aria-label="Room actions">
           <button class="mini room-action-icon ${canManage?'':'hidden'}" type="button" title="Edit room" aria-label="Edit room" onclick="event.stopPropagation();editRoomById('${esc(room.id)}')">✎</button>
           ${canManagePins&&!isProtectedMainRoom?`<button class="mini room-action-icon room-pin-toggle" type="button" title="Pin / unpin room" aria-label="Pin / unpin room" onclick="event.stopPropagation();toggleRoomPinById(&quot;${esc(room.id)}&quot;)">📌</button>`:""}
           ${canManage&&canFeature("delete_room")?`<button class="mini danger room-action-icon" type="button" title="Delete room" aria-label="Delete room" onclick="event.stopPropagation();deleteRoomById('${esc(room.id)}')">⌫</button>`:""}
