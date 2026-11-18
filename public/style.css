@@ -8890,7 +8890,19 @@ html{scroll-behavior:smooth;}
   min-height:36px!important;
   margin:0!important;
 }
+#mainChatMinimizedDock{justify-content:flex-start!important}
 #mainChatMinimizedDock #roomMenu{order:0!important}
+#mainChatMinimizedDock #openParallelSplits{order:1!important}
+#mainChatMinimizedDock #mainChatMinimizedSpacer{order:2!important;flex:1 1 auto!important;min-width:8px!important;height:1px!important}
+#mainChatMinimizedDock .dm-minimized-avatar{order:3!important}
+#mainChatMinimizedDock #openOnlinePanel{
+  position:relative!important;inset:auto!important;order:4!important;
+  display:flex!important;align-items:center!important;justify-content:center!important;
+  flex:0 0 38px!important;width:38px!important;min-width:38px!important;
+  height:38px!important;min-height:38px!important;margin:0!important;
+  border:1px solid rgba(239,191,159,.22)!important;border-radius:10px!important;
+  background:rgba(25,16,11,.94)!important;color:#f4d5c1!important;
+}
 #mainChatMinimizedDock #openParallelSplits{order:1!important}
 #mainChatMinimizedDock .dm-minimized-avatar{order:2!important}
 #mainChatMinimizedDock .dm-minimized-avatar{
