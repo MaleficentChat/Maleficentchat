@@ -8548,3 +8548,8 @@ html{scroll-behavior:smooth;}
  #topMessagesDropdown .dm-header-avatar{flex-basis:38px;width:38px;height:38px;}
  #topMessagesDropdown .dm-header-avatar .avatar{width:36px!important;height:36px!important;min-width:36px!important;min-height:36px!important;}
 }
+
+/* Collapsible search and filter controls in Friends and Reports dropdowns. */
+#topFriendsDropdown .dm-header-tools,#reportDropdown .dm-header-tools{display:flex;align-items:center;gap:6px;flex:0 0 auto;}
+#topFriendsDropdown .dm-header-tools .mini,#reportDropdown .dm-header-tools .mini{width:34px;height:34px;min-width:34px;padding:0;display:inline-flex;align-items:center;justify-content:center;}
+#topFriendsDropdown .friend-hub-search.hidden,#reportDropdown .report-manager-tools.hidden{display:none!important;}
