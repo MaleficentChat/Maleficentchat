@@ -74,3 +74,101 @@
  .mc-room-code{width:100%}
 }
 @media(max-width:370px){#viewRooms .discover-room-grid{grid-template-columns:1fr!important}.discover-head h1{font-size:24px}}
+
+
+/* Room directory: keep the full page scrollable and the cards consistent. */
+#viewRooms:not(.chatting){
+  width:100%;
+  max-width:980px;
+  height:100%;
+  min-height:0;
+  margin:0 auto;
+  padding:12px 16px 30px;
+  box-sizing:border-box;
+  overflow-x:hidden!important;
+  overflow-y:auto!important;
+  -webkit-overflow-scrolling:touch;
+  overscroll-behavior-y:contain;
+  scrollbar-gutter:stable;
+}
+#viewRooms:not(.chatting) .mc-room-directory{
+  width:100%;
+  max-width:100%;
+  min-width:0;
+  box-sizing:border-box;
+}
+#viewRooms:not(.chatting) .discover-head{
+  justify-content:flex-end;
+  gap:8px;
+  padding:0 0 12px;
+  min-height:0;
+}
+#viewRooms:not(.chatting) .discover-actions{
+  width:100%;
+  justify-content:flex-end;
+  min-width:0;
+}
+#viewRooms:not(.chatting) .room-filter-tabs{
+  margin:0 auto;
+  width:100%;
+  box-sizing:border-box;
+}
+#viewRooms:not(.chatting) .room-shelf{
+  width:100%;
+  min-width:0;
+  margin-top:16px;
+  box-sizing:border-box;
+}
+#viewRooms:not(.chatting) .discover-room-grid{
+  width:100%;
+  min-width:0;
+  box-sizing:border-box;
+  grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  align-items:stretch;
+}
+#viewRooms:not(.chatting) .discover-room-card{
+  width:100%;
+  min-width:0;
+  min-height:104px!important;
+  height:auto!important;
+  aspect-ratio:auto!important;
+  box-sizing:border-box;
+  border-radius:10px!important;
+}
+#viewRooms:not(.chatting) .discover-room-open{
+  width:100%;
+  min-width:0;
+  min-height:104px!important;
+  height:100%;
+  box-sizing:border-box;
+  padding:12px 13px!important;
+}
+#viewRooms:not(.chatting) .room-section-heading{
+  margin-bottom:9px;
+}
+#viewRooms:not(.chatting) .room-section-heading h2{
+  font-size:14px;
+}
+@media(max-width:620px){
+  #viewRooms:not(.chatting){
+    padding:10px 10px 24px;
+  }
+  #viewRooms:not(.chatting) .discover-head{
+    padding-bottom:10px;
+  }
+  #viewRooms:not(.chatting) .room-shelf{
+    margin-top:13px;
+  }
+  #viewRooms:not(.chatting) .discover-room-grid{
+    gap:8px!important;
+  }
+  #viewRooms:not(.chatting) .discover-room-card,
+  #viewRooms:not(.chatting) .discover-room-open{
+    min-height:98px!important;
+  }
+}
+@media(max-width:350px){
+  #viewRooms:not(.chatting) .discover-room-grid{
+    grid-template-columns:1fr!important;
+  }
+}
