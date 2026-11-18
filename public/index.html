@@ -169,26 +169,40 @@
 <main class="main">
   <div id="viewRooms" class="view">
     <section class="mc-room-directory" aria-labelledby="mc-room-directory-title">
-      <header class="mc-room-directory-head">
-        <div class="mc-room-heading">
-          <span class="mc-room-live"><i></i> COMMUNITY ROOMS</span>
-          <h2 id="mc-room-directory-title">Rooms</h2>
+      <header class="discover-head">
+        <div>
+          <h1 id="mc-room-directory-title">Discover rooms</h1>
+          <p>Find a conversation worth joining.</p>
         </div>
-        <div class="mc-room-actions">
-          <button class="mc-room-search-toggle" id="mcRoomSearchToggle" type="button" aria-label="Search rooms" aria-expanded="false">⌕</button>
-          <button class="mc-room-main primary age-chat-open-button" id="refreshRoomsBtn" type="button" title="Open Main Room" aria-label="Open Main Room" onclick="goToMainRoomFromRoomRefresh()">↗ <span>Main Room</span></button>
-          <button class="mc-room-create primary hidden room-create-button" id="newRoom" type="button">＋ <span>Create</span></button>
+        <div class="discover-actions">
+          <button class="discover-search-toggle" id="mcRoomSearchToggle" type="button" aria-label="Search rooms" aria-expanded="false">⌕</button>
+          <button class="discover-create primary room-create-button hidden" id="newRoom" type="button">＋ Create a room</button>
         </div>
       </header>
+      <nav class="room-filter-tabs" aria-label="Room filters">
+        <button type="button" class="room-filter active" data-room-filter="all" aria-pressed="true">All rooms</button>
+        <button type="button" class="room-filter" data-room-filter="active" aria-pressed="false">Active</button>
+        <button type="button" class="room-filter" data-room-filter="mine" aria-pressed="false">My rooms</button>
+      </nav>
       <div class="mc-room-search-row" id="mcRoomSearchRow">
         <label class="mc-room-search"><span aria-hidden="true">⌕</span><input id="roomSearch" type="search" placeholder="Search rooms…" aria-label="Search rooms"></label>
         <button class="kp-hidden-rooms mini hidden" id="hiddenRoomsToggle" type="button" onclick="toggleHiddenRoomsView()" aria-pressed="false">▣ Hidden</button>
       </div>
+      <section class="room-shelf" id="roomsPinnedSection">
+        <div class="room-section-heading"><div><h2>Pinned rooms</h2><span id="pinnedRoomCount">0 rooms</span></div></div>
+        <div id="pinnedRooms" class="room-grid discover-room-grid"></div>
+      </section>
+      <section class="room-shelf room-directory-shelf" id="roomsAllSection">
+        <div class="room-section-heading">
+          <div><h2>All rooms</h2><span id="allRoomCount">Browse the community</span></div>
+          <button type="button" class="browse-directory" id="browseRoomDirectory">Browse directory <span>→</span></button>
+        </div>
+        <div id="rooms" class="room-grid discover-room-grid"></div>
+      </section>
       <div class="mc-room-access">
         <div class="mc-access-label"><span>♛</span><b>Secret room access</b></div>
         <label class="mc-room-code"><input id="roomCodeSearch" inputmode="numeric" autocomplete="off" maxlength="11" placeholder="Enter room code" aria-label="Enter Secret Room code"><small id="roomCodeFeedback">Private room code</small></label>
       </div>
-      <div id="rooms" class="room-grid"></div>
     </section>
     <div id="chatWrap" class="chat-wrap hidden">
 <section class="chat-card">
