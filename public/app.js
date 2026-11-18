@@ -1475,6 +1475,50 @@ function updateNav() {
   });
 }
 
+function renderSidebarRoomList(){
+  const root=$("roomsNavList");
+  if(!root)return;
+  const rooms=sortRoomsForNavigation((Array.isArray(state.rooms)?state.rooms:[]).filter(room=>!isParallelSplitRoom(room)));
+  if(!rooms.length){
+    root.innerHTML='<div class="rooms-nav-empty">No rooms available</div>';
+    return;
+  }
+  root.innerHTML=rooms.map(room=>{
+    const active=String(state.currentRoom)===String(room.id);
+    const locked=room.locked??!!room.passwordHash;
+    return `<button type="button" class="rooms-nav-item ${active?'active':''}" data-sidebar-room-id="${esc(room.id)}" title="${esc(room.name)}">
+      <span class="rooms-nav-item-icon">${esc(room.icon||'💬')}</span>
+      <span class="rooms-nav-item-name">${esc(room.name||'Chat')}</span>
+      ${locked?'<span class="rooms-nav-item-lock">🔒</span>':''}
+      <span class="rooms-nav-item-count">${Number(room.onlineCount||0)}</span>
+    </button>`;
+  }).join("");
+}
+const roomsNavToggle=$("roomsNavToggle");
+roomsNavToggle?.addEventListener("click",async()=>{
+  const list=$("roomsNavList");
+  if(!list)return;
+  const opening=list.classList.contains("hidden");
+  list.classList.toggle("hidden",!opening);
+  roomsNavToggle.setAttribute("aria-expanded",opening?"true":"false");
+  roomsNavToggle.classList.toggle("expanded",opening);
+  if(opening){
+    try{
+      const data=await api("/api/rooms");
+      if(Array.isArray(data.rooms))state.rooms=sanitizeRoomList(data.rooms);
+    }catch(error){console.warn("Could not refresh navigation rooms:",error?.message||error);}
+    renderSidebarRoomList();
+  }
+});
+$("roomsNavList")?.addEventListener("click",event=>{
+  const button=event.target instanceof Element?event.target.closest("[data-sidebar-room-id]"):null;
+  if(!button)return;
+  const roomId=button.dataset.sidebarRoomId;
+  if(!roomId)return;
+  $("sidebar")?.classList.remove("open");
+  joinRoom(roomId);
+});
+
 document
   .querySelectorAll(".nav[data-view]")
   .forEach(button => {
