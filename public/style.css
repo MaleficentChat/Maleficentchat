@@ -8688,3 +8688,51 @@ html{scroll-behavior:smooth;}
  .dm-composer{flex:0 0 auto;padding:9px 9px max(11px,env(safe-area-inset-bottom));gap:6px}
  .dm-composer #dmText{min-height:44px;font-size:14px}
 }
+
+
+/* Private messages: remove the oversized dead space below the composer. */
+.modal-card:has(.dm-chat-header){gap:0!important;box-sizing:border-box!important;}
+.modal-card:has(.dm-chat-header)>.dm-composer{
+  flex:0 0 auto!important;
+  margin:0!important;
+  padding:6px 10px 6px!important;
+  min-height:0!important;
+  gap:7px!important;
+  box-sizing:border-box!important;
+}
+.modal-card:has(.dm-chat-header)>.dm-message-list{
+  box-sizing:border-box!important;
+  padding:12px 18px 8px!important;
+  margin:0!important;
+}
+.modal-card:has(.dm-chat-header)>.dm-composer #dmText{
+  min-height:40px!important;
+  height:40px!important;
+  padding:8px 11px!important;
+  box-sizing:border-box!important;
+}
+.modal-card:has(.dm-chat-header)>.dm-composer .send,
+.modal-card:has(.dm-chat-header)>.dm-composer .dm-upload-btn{
+  min-height:40px!important;
+  height:40px!important;
+  box-sizing:border-box!important;
+}
+@media(max-width:700px){
+  .modal-card:has(.dm-chat-header)>.dm-message-list{
+    padding:9px 8px 5px!important;
+  }
+  .modal-card:has(.dm-chat-header)>.dm-composer{
+    padding:5px 7px max(5px,env(safe-area-inset-bottom))!important;
+    gap:5px!important;
+  }
+  .modal-card:has(.dm-chat-header)>.dm-composer #dmText{
+    min-height:38px!important;
+    height:38px!important;
+    padding:7px 8px!important;
+  }
+  .modal-card:has(.dm-chat-header)>.dm-composer .send,
+  .modal-card:has(.dm-chat-header)>.dm-composer .dm-upload-btn{
+    min-height:38px!important;
+    height:38px!important;
+  }
+}
