@@ -1,0 +1,120 @@
+/* Whole-app flat controls: keep the existing layout and behavior, remove visual clutter. */
+:root{
+  --flat-control-hover:rgba(255,255,255,.055);
+  --flat-control-active:rgba(255,255,255,.09);
+}
+
+/* Buttons across every view: no raised surfaces, gradients, heavy outlines or shadows. */
+button,
+button.primary,button.mini,button.action,button.icon-btn,
+button.top-icon,button.top-profile,
+a.action,a.mini,
+.settings-tab,.settings-tabs button,
+.auth-tabs button,.profile-tabs button,
+.room-view-tabs button,.hub-tabs button,
+.message-actions-menu .message-menu-item,
+.message-more-submenu .message-menu-item,
+.chat-tools-toggle,.dm-upload-btn,
+[role="tab"],[role="menuitem"]{
+  box-shadow:none!important;
+  text-shadow:none!important;
+  outline-offset:2px;
+}
+button:not(.send):not(.primary):not(.danger):not(.warning):not(.success),
+.settings-tab,.settings-tabs button,.auth-tabs button,
+.profile-tabs button,.room-view-tabs button,.hub-tabs button,
+.message-actions-menu .message-menu-item,
+.message-more-submenu .message-menu-item,
+.chat-tools-toggle,.dm-upload-btn,
+[role="tab"],[role="menuitem"]{
+  border-color:transparent!important;
+  background:transparent!important;
+  box-shadow:none!important;
+}
+button:not(:disabled):hover,
+.settings-tab:hover,.settings-tabs button:hover,
+.auth-tabs button:hover,.profile-tabs button:hover,
+.room-view-tabs button:hover,.hub-tabs button:hover,
+.message-actions-menu .message-menu-item:hover,
+.message-more-submenu .message-menu-item:hover,
+[role="menuitem"]:hover{
+  background:var(--flat-control-hover)!important;
+  border-color:transparent!important;
+  box-shadow:none!important;
+  filter:none!important;
+}
+button.active,button[aria-pressed="true"],
+.settings-tab.active,.auth-tabs button.active,
+.profile-tabs button.active,.room-view-tabs button.active,
+.hub-tabs button.active,[role="tab"][aria-selected="true"]{
+  background:var(--flat-control-active)!important;
+  border-color:transparent!important;
+  box-shadow:none!important;
+}
+
+/* Primary actions remain easy to find, but are flat rather than glossy/raised. */
+button.primary,.primary,button.send,.send,
+button.danger,.danger,button.warning,.warning,
+button.success,.success{
+  box-shadow:none!important;
+  text-shadow:none!important;
+  filter:none!important;
+  border:0!important;
+  background-image:none!important;
+  border-radius:8px!important;
+}
+button.primary,.primary,button.send,.send{
+  background-color:#c9784e!important;
+  color:#fff!important;
+}
+button.primary:hover,.primary:hover,button.send:hover,.send:hover{
+  background-color:#d1845b!important;
+}
+button.danger,.danger{background-color:rgba(210,75,75,.12)!important;color:#ffaaaa!important}
+button.warning,.warning{background-color:rgba(210,155,65,.12)!important}
+button.success,.success{background-color:rgba(70,170,120,.12)!important}
+
+/* Compact, icon-and-label controls should read like stickers, not individual cards. */
+.icon-btn,.top-icon,.top-profile,.mini,.action,
+.composer .icon-btn,.chat-side-actions .icon-btn,
+.profile-actions .mini,.user-card .mini{
+  border:0!important;
+  border-radius:7px!important;
+  background:transparent!important;
+  box-shadow:none!important;
+}
+.icon-btn:hover,.top-icon:hover,.top-profile:hover,.mini:hover,.action:hover,
+.composer .icon-btn:hover,.chat-side-actions .icon-btn:hover{
+  background:var(--flat-control-hover)!important;
+  box-shadow:none!important;
+}
+
+/* Remove decorative tile treatment from option groups and tab strips. */
+.settings-tabs,.auth-tabs,.profile-tabs,.room-view-tabs,.hub-tabs,
+.online-tabs,.chat-tools-drawer,.message-actions-menu,.message-more-submenu{
+  box-shadow:none!important;
+}
+.settings-tabs,.auth-tabs,.profile-tabs,.room-view-tabs,.hub-tabs{
+  border:0!important;
+  background:transparent!important;
+}
+.settings-tabs button,.auth-tabs button,.profile-tabs button,
+.room-view-tabs button,.hub-tabs button{
+  border-radius:7px!important;
+  box-shadow:none!important;
+}
+
+/* Menus stay readable and actionable without a stack of icon tiles. */
+.message-actions-menu .message-menu-item .menu-icon,
+.message-more-submenu .menu-icon{
+  background:transparent!important;
+  border:0!important;
+  border-radius:5px!important;
+  box-shadow:none!important;
+}
+
+/* Keyboard focus remains visible without a permanent border around controls. */
+button:focus-visible,[role="tab"]:focus-visible,[role="menuitem"]:focus-visible{
+  outline:2px solid rgba(221,157,117,.72)!important;
+  outline-offset:2px!important;
+}
