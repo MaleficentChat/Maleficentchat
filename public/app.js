@@ -4109,11 +4109,17 @@ function dmMessageHTML(message, messages, user) {
     ? (quoted.deleted ? "Deleted message" : (quoted.text || (quoted.attachment ? "📎 Attachment" : "Message")))
     : null;
 
+  const isMine=String(message.from)===String(state.user.id);
+  const sender=isMine?state.user:user;
+  const senderId=String(sender?.id||"");
+  const senderAvatar=message.avatar||sender?.avatar||"";
+  const senderProfile={...sender,id:senderId,avatar:senderAvatar};
   return `
     <div
-      class="msg dm-msg ${String(message.from) === String(state.user.id) ? "mine" : "theirs"}"
+      class="msg dm-msg ${isMine ? "mine" : "theirs"}"
       data-dmid="${esc(message.id)}"
     >
+      <button type="button" class="message-avatar-button dm-message-avatar" onclick="openUser('${esc(senderId)}')" title="Open ${esc(sender?.displayName||"user")}'s profile" aria-label="Open ${esc(sender?.displayName||"user")}'s profile">${avatar(senderProfile)}</button>
       <div class="msg-body">
         <div class="msg-top">
           <b class="message-author" style="color:${esc(user.settings?.usernameColor||'var(--username-color)')}">${String(message.from) === String(state.user.id) ? "You" : esc(user.displayName)}</b>
