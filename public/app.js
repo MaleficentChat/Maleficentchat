@@ -1344,35 +1344,31 @@ async function start() {
 
   await loadRooms();
 
-  // Every member enters the correct age room immediately; staff always enter Teen Chat.
-  let mainRoom=null;
-  try { mainRoom=roomForAgeRouting(); }
-  catch(error){ toast(String(error?.message||error)); }
+  // Resolve the destination from a fresh server room list and join it in the
+  // same login flow. Never expose the room directory as a required intermediate step.
   let joined=false;
-  const invite=roomInviteFromHash();
-  if(invite?.roomId&&state.rooms.some(room=>String(room.id)===invite.roomId))joined=await joinRoom(invite.roomId);
-  for(let attempt=0;attempt<4&&!joined;attempt++){
-    if(!mainRoom||attempt>0){
-      try{
-        const latest=await api("/api/rooms");
-        state.rooms=sanitizeRoomList(latest.rooms);
-        state.roomListMode="all";
-        renderRooms();
-        try { mainRoom=roomForAgeRouting(); } catch(error) { mainRoom=null; }
-      }catch(e){
-        if(attempt===3)toast("Could not load your chat room: "+e.message);
-      }
+  let lastJoinError="";
+  for(let attempt=0;attempt<6&&!joined;attempt++){
+    try{
+      const latest=await api("/api/rooms");
+      if(Array.isArray(latest.rooms))state.rooms=sanitizeRoomList(latest.rooms);
+      state.roomListMode="all";
+      renderRooms();
+      const targetRoom=roomForAgeRouting();
+      joined=await joinRoom(String(targetRoom.id),{silent:true});
+      if(!joined)lastJoinError="The server did not complete the room join.";
+    }catch(error){
+      lastJoinError=String(error?.message||error);
+      if(attempt===0)console.warn("Automatic age-room routing is waiting for room setup:",lastJoinError);
     }
-    if(mainRoom)joined=await joinRoom(String(mainRoom.id));
-    if(!joined&&attempt<3)await new Promise(resolve=>setTimeout(resolve,500*(attempt+1)));
+    if(!joined&&attempt<5)await new Promise(resolve=>setTimeout(resolve,500+attempt*500));
   }
   if(joined){
     $("viewRooms")?.classList.remove("hidden");
   }else{
-    // Do not fall back to the manual room-selection directory. Keep the user out
-    // of the intermediate panel and explain that automatic age-room entry failed.
     $("viewRooms")?.classList.add("hidden");
-    toast("Your age-appropriate chat could not be opened. Please check your date of birth and ask staff to verify Teen Chat / Adult Chat setup.");
+    console.error("Automatic age-room entry failed after retries:",lastJoinError);
+    toast("We couldn't open your age-appropriate room automatically. Please contact staff. "+lastJoinError);
   }
   await loadNotifications();
   // Notification Reply/Open actions deep-link directly into the sender conversation.
@@ -2424,7 +2420,7 @@ function postRoomAnnouncement(){
 }
 window.canPostRoomAnnouncement=()=>can("COMMISSOR");
 
-async function joinRoom(id) {
+async function joinRoom(id, options = {}) {
   const room =
     state.rooms.find(r => String(r.id) === String(id));
 
@@ -2511,7 +2507,8 @@ $("messages").innerHTML =
     // The confirmed Socket.IO room subscription now receives new messages live.
     return true;
   } catch (error) {
-    toast(error.message);
+    if(!options.silent)toast(error.message);
+    else console.warn("Automatic room join attempt failed:",error?.message||error);
     return false;
   }
 }
