@@ -248,3 +248,38 @@ button.success,.success{border-color:rgba(110,190,145,.28)!important}
   #sidebar .nav-group>summary>span,
   #sidebar #roomsNavToggle>span{display:inline-flex!important}
 }
+
+
+/* Final universal thin-outline pass: include custom clickable rows and icon controls,
+   not only native buttons. */
+:root{--mc-outline:rgba(232,205,190,.34);--mc-outline-strong:rgba(232,205,190,.52)}
+body button,
+body a[href],
+body [role="button"],
+body [role="tab"],
+body [role="menuitem"],
+body summary,
+body [data-view],
+body [data-room-filter],
+body [data-room-code],
+body .rooms-nav-list button,
+body .room-quick-nav button,
+body .chat-tools-drawer button,
+body .people-panel button,
+body .profile-actions button,
+body .settings-row,
+body .message-menu-item{
+  border:1px solid var(--mc-outline)!important;
+  border-radius:8px!important;
+  box-shadow:none!important;
+  background-image:none!important;
+}
+body button:disabled{border-color:rgba(232,205,190,.16)!important}
+body button:not(:disabled):active,
+body a[href]:active,
+body [role="button"]:active,
+body [role="tab"]:active,
+body [data-view]:active,
+body [data-room-filter]:active{
+  border-color:var(--mc-outline-strong)!important;
+}
