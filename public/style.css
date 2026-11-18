@@ -8520,3 +8520,15 @@ html{scroll-behavior:smooth;}
  .dm-message-list .dm-msg .dm-message-avatar,
  .dm-message-list .dm-msg .dm-message-avatar .avatar{width:30px!important;height:30px!important;min-width:30px!important;flex-basis:30px!important;}
 }
+
+
+/* Private-message timestamps sit below the bubble; sender avatar anchors to its top. */
+.dm-message-list .dm-msg{align-items:flex-start!important;}
+.dm-message-list .dm-msg .dm-message-avatar{align-self:flex-start!important;margin-top:3px!important;}
+.dm-message-list .dm-msg .dm-message-meta{
+  display:block!important;margin:5px 4px 0!important;padding:0!important;
+  color:var(--muted,#b8a69d)!important;font-size:12px!important;
+  line-height:1.35!important;text-align:inherit!important;
+}
+.dm-message-list .dm-msg.mine .dm-message-meta{text-align:right!important;}
+.dm-message-list .dm-msg .msg-top{display:none!important;}
