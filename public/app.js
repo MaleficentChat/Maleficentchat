@@ -1102,7 +1102,7 @@ async function start() {
     if(String(data?.roomId)!==String(state.currentRoom))return;
     try{const access=JSON.parse(safeStorage.getItem("mc_room_join")||"null");if(String(access?.roomId)===String(data.roomId))safeStorage.removeItem("mc_room_join");}catch{}
     state.currentRoom=null;state.currentRoomRole="USER";
-    $("viewRooms")?.classList.remove("chatting");$("chatWrap")?.classList.add("hidden");
+    $("viewRooms")?.classList.remove("chatting","main-room-chat");$("chatWrap")?.classList.add("hidden");
     state.messages=[];
     if($("messages"))$("messages").innerHTML="";
     toast("You were removed from this room. Reason: "+String(data?.reason||"Room rules"));
@@ -2270,6 +2270,7 @@ async function joinRoom(id) {
 
     $("chatWrap").classList.remove("hidden");
     $("viewRooms").classList.add("chatting");
+    $("viewRooms").classList.toggle("main-room-chat",!!(room.isDefault||/^main room$/i.test(String(room.name||"").trim())));
 
     $("roomName").textContent =
       `${room.icon || "💬"} ${room.name}`;
