@@ -8594,7 +8594,7 @@ html{scroll-behavior:smooth;}
   justify-content:center!important;
   gap:0!important;
   text-align:center!important;
-  font-size:20px!important;
+  font-size:17px!important;
   border-radius:12px!important;
 }
 #sidebar .nav>span,
@@ -8613,7 +8613,7 @@ html{scroll-behavior:smooth;}
   justify-content:center!important;
   gap:0!important;
   text-align:center!important;
-  font-size:19px!important;
+  font-size:16px!important;
   list-style:none!important;
 }
 #sidebar .nav-group>summary::-webkit-details-marker{display:none}
