@@ -8871,6 +8871,7 @@ html{scroll-behavior:smooth;}
   align-items:center!important;
   justify-content:flex-end!important;
   gap:6px!important;
+  width:calc(100% - 20px)!important;
   max-width:calc(100% - 20px)!important;
   max-height:44px!important;
   overflow-x:auto!important;
@@ -8878,6 +8879,20 @@ html{scroll-behavior:smooth;}
   padding:2px!important;
   margin:0!important;
 }
+#mainChatMinimizedDock #roomMenu,
+#mainChatMinimizedDock #openParallelSplits{
+  position:relative!important;
+  inset:auto!important;
+  flex:0 0 36px!important;
+  width:36px!important;
+  min-width:36px!important;
+  height:36px!important;
+  min-height:36px!important;
+  margin:0!important;
+}
+#mainChatMinimizedDock #roomMenu{order:0!important}
+#mainChatMinimizedDock #openParallelSplits{order:1!important}
+#mainChatMinimizedDock .dm-minimized-avatar{order:2!important}
 #mainChatMinimizedDock .dm-minimized-avatar{
   box-sizing:border-box!important;
   flex:0 0 40px!important;
