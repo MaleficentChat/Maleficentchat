@@ -1137,3 +1137,8 @@ html,body,#app,.main{background-color:#100c0a!important;color:#fff4e9!important}
   object-position:center!important;
   border-radius:50%!important;
 }
+
+
+/* Navigation rail: use the site initials instead of the decorative heart. */
+#sidebar .rail-logo{font-size:14px!important;}
+#sidebar .rail-logo:after{content:none!important;display:none!important;}
