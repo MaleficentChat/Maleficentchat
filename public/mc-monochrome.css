@@ -1,0 +1,137 @@
+/* MC monochrome theme — global black, charcoal, grey and white only. */
+:root{
+  color-scheme:dark;
+  --bg:#080808!important;--bg-deep:#000!important;
+  --panel:#171717!important;--panel-2:#202020!important;--panel-3:#292929!important;
+  --border:rgba(255,255,255,.14)!important;--border-strong:rgba(255,255,255,.28)!important;
+  --text:#fff!important;--muted:#dedede!important;
+  --accent:#bdbdbd!important;--accent-2:#fff!important;--accent-soft:rgba(255,255,255,.09)!important;
+  --bubble:#252525!important;--mine:#383838!important;
+  --pink:#fff!important;--purple:#ddd!important;--green:#eee!important;--danger:#fff!important;
+  --primary:#fff!important;--success:#fff!important;--warning:#fff!important;
+}
+html,body,#app,.main,#viewRooms,.view,.auth-screen{
+  background:#080808!important;color:#fff!important;
+}
+body,.auth-screen{
+  background:radial-gradient(ellipse at 50% -20%,rgba(255,255,255,.055),transparent 55%),#080808!important;
+}
+#app,.main,.view,.stack,.grid2,.card,.room,.chat-card,.online-panel,
+.modal-card,.notification-dropdown,.dropdown,.popover,.menu,.panel,
+.topbar,.top-header,.sidebar,.chat-head,.panel-head,.composer,.replybar,
+.typing,.announcement,.room-card,.rooms-more-panel,.rooms-more-content,
+.mc-nav-panel,.mc-nav-panel-head,.mc-nav-panel-body,.mc-nav-panel-overlay,
+.mc-rooms-panel,.quick-user-card,.profile-card,.settings-card,
+#chatToolsDrawer,.chat-tools-drawer,.message-actions-menu,.message-more-submenu,
+.reaction-picker,.notification-item,.message-item,.dm-inbox,.dm-thread,
+.ai-companion-shell,.entertainment-root,.games-root,.shop-grid,
+.leaderboard-card,.online-user,.auth-card,.auth-tabs{
+  color:#fff!important;
+  background-color:#191919!important;
+  border-color:rgba(255,255,255,.16)!important;
+  box-shadow:0 8px 28px rgba(0,0,0,.42)!important;
+}
+.top-header,.topbar,.chat-head,.panel-head,.mc-nav-panel-head{
+  background:#161616!important;
+  border-color:#383838!important;
+}
+.sidebar,.online-panel,.chat-card,.composer,.replybar,.typing{
+  background:#111!important;
+}
+.main,.view,#viewRooms{background:#090909!important}
+.room,.card,.auth-card,.modal-card,.notification-dropdown,.mc-nav-panel{
+  background:linear-gradient(145deg,#202020,#141414)!important;
+}
+.room:hover,.room.selected,.nav:hover,.nav.active,
+button:hover,.icon-btn:hover,.action:hover,.mini:hover{
+  background:#333!important;border-color:#777!important;color:#fff!important;
+}
+button,input,textarea,select,.nav,.icon-btn,.action,.mini,
+.primary,.send,.message-menu-item,.message-more-button,
+.top-menu,.top-icon,.top-profile,.panel-more,.mc-nav-panel-close{
+  color:#fff!important;
+  border-color:#666!important;
+  accent-color:#fff!important;
+}
+button,.primary,.send,.mini,.icon-btn,.action,.message-menu-item,
+.auth-tabs button,.nav{
+  background:#292929!important;
+  box-shadow:none!important;
+}
+.primary,.send,.auth-card button.active,.auth-tabs button.active{
+  background:#e5e5e5!important;color:#080808!important;border-color:#fff!important;
+}
+input,textarea,select,form input,form textarea,form select,
+.field input,.field textarea,.field select,.composer input{
+  background:#101010!important;color:#fff!important;
+  border:1px solid #555!important;box-shadow:none!important;
+}
+input::placeholder,textarea::placeholder{color:#bdbdbd!important;opacity:1!important}
+input:focus,textarea:focus,select:focus,button:focus-visible,a:focus-visible{
+  outline:2px solid #fff!important;outline-offset:2px!important;
+  border-color:#fff!important;box-shadow:0 0 0 2px rgba(255,255,255,.18)!important;
+}
+a,.top-brand-copy b:after,.top-brand-copy span:after,
+.brand-mark:after,.brand-avatar:after,.rail-logo:after{
+  color:#fff!important;
+}
+.top-brand-copy span:after{content:"COMMUNITY"!important}
+.brand-mark,.brand-avatar,.rail-logo{
+  background:#242424!important;border:1px solid #777!important;
+  color:#fff!important;box-shadow:none!important;
+}
+.brand-mark:after,.brand-avatar:after,.rail-logo:after{
+  filter:grayscale(1)!important;text-shadow:none!important;
+}
+.nav{color:#eee!important}
+.nav:hover,.nav.active{background:#303030!important;color:#fff!important}
+.nav-group,.nav-group>summary{border-color:#444!important;color:#fff!important}
+.top-menu,.top-icon,.top-profile{color:#fff!important}
+.top-icon:hover,.top-menu:hover{background:#333!important}
+.topbar h1,.topbar h2,.topbar h3,.card h1,.card h2,.card h3,
+.room h1,.room h2,.room h3,.modal-card h1,.modal-card h2,
+strong,b,label,small,p,span,li,dt,dd,th,td,legend{
+  color:inherit;
+}
+.muted,.subtle,.hint,.description,.room-description,.online-user small,
+.auth-card p,.top-brand-copy span:after{color:#ddd!important}
+.msg,.msg-body,.msg-text,.quoted,.quoted-label,.message-actions-menu,
+.message-menu-item,.reaction,.pinned,.announcement{
+  color:#fff!important;
+}
+.msg-body,.message-actions-menu,.message-more-submenu{
+  background:#222!important;border-color:#666!important;
+}
+.msg.mine .msg-body,.msg.mine .msg-text,.message.mine .msg-body{
+  background:#303030!important;color:#fff!important;
+}
+.quoted{background:#171717!important;border-left-color:#aaa!important}
+.quoted-label{color:#fff!important}
+.messages{scrollbar-color:#777 #151515!important}
+.badge,.rank,.tag,.pill,.status,.online-badge,.room-meta,
+.role-badge,.rank-badge,.level-badge,.xp-badge{
+  background:#303030!important;color:#fff!important;
+  border:1px solid #666!important;box-shadow:none!important;
+}
+.danger,.error,.success,.warning,.online,.offline,.status-online,
+.status-offline,[class*="rank-"],[class*="badge-"]{
+  color:#fff!important;border-color:#666!important;
+}
+.danger,.error,.success,.warning{background:#252525!important}
+hr,.divider,.separator{border-color:#444!important}
+svg{color:#fff!important}
+svg:not([fill="none"]){fill:currentColor}
+svg [stroke]:not([stroke="none"]){stroke:#fff!important}
+::-webkit-scrollbar{width:8px;height:8px}
+::-webkit-scrollbar-track{background:#101010!important}
+::-webkit-scrollbar-thumb{background:#555!important;border:2px solid #101010!important;border-radius:9px}
+::selection{background:#eee!important;color:#000!important}
+.toast,.toast-message,.alert,.notice{background:#222!important;color:#fff!important;border:1px solid #777!important}
+[style*="color:"][style*="rgb"],[style*="color:"][style*="#"]{color:#fff!important}
+[style*="background:"][style*="linear-gradient"],
+[style*="background-color:"],[style*="background: rgb"],[style*="background:#"]{
+  background-color:#202020!important;color:#fff!important;border-color:#555!important;
+}
+@media(max-width:700px){
+  .top-header,.sidebar,.chat-head,.panel-head{background:#111!important}
+}
