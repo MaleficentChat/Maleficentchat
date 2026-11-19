@@ -184,3 +184,26 @@
   #viewRooms.chatting .chat-card{padding-bottom:58px!important}
   #viewRooms.chatting .chat-card>.composer{margin-bottom:0!important}
 }
+
+
+/* 19 Nov 2026 — keep the final message clear of the fixed mobile composer,
+   restore bubble-tap message actions, and keep shared doodle images compact. */
+@media(max-width:800px){
+  #viewRooms.chatting #messages{
+    padding-bottom:calc(170px + env(safe-area-inset-bottom,0px))!important;
+    scroll-padding-bottom:calc(170px + env(safe-area-inset-bottom,0px))!important;
+  }
+  #viewRooms.chatting .msg .message-image{
+    display:block!important;
+    width:auto!important;
+    max-width:min(280px,68vw)!important;
+    max-height:190px!important;
+    object-fit:contain!important;
+  }
+}
+#viewRooms.chatting .msg .message-image{
+  width:auto!important;
+  max-width:min(360px,70vw)!important;
+  max-height:260px!important;
+  object-fit:contain!important;
+}
