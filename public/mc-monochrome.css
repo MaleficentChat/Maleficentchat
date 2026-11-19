@@ -135,3 +135,28 @@ svg [stroke]:not([stroke="none"]){stroke:#fff!important}
 @media(max-width:700px){
   .top-header,.sidebar,.chat-head,.panel-head{background:#111!important}
 }
+
+/* Final cascade: override legacy per-component accent text and inline colour styling. */
+#app,#app *{
+  color:#fff!important;
+  border-color:rgba(255,255,255,.2)!important;
+  text-shadow:none!important;
+}
+#app *:not(img):not(video):not(canvas):not(iframe):not(svg):not(path):not(.avatar):not(.profile-avatar){
+  background-image:none!important;
+}
+#app button,#app .nav,#app .badge,#app .rank,#app .tag,#app .pill,
+#app .status,#app .room-meta,#app .online-badge{
+  background-color:#292929!important;
+}
+#app .primary,#app .send,#app .auth-tabs button.active{
+  background-color:#e5e5e5!important;color:#080808!important;
+}
+#app .chat-card,#app .messages,#app .main,#app .view{background-color:#090909!important}
+#app .composer,#app .replybar,#app .typing,#app .online-panel,
+#app .sidebar,#app .chat-head,#app .panel-head{background-color:#141414!important}
+#app .card,#app .room,#app .modal-card,#app .notification-dropdown,
+#app .message-actions-menu,#app .message-more-submenu,
+#app .mc-nav-panel,#app .mc-nav-panel-head,#app .mc-nav-panel-body{
+  background-color:#202020!important;
+}
