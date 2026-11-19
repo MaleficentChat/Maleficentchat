@@ -262,3 +262,67 @@ html,body{background:#050505!important;color:#fff!important;color-scheme:dark!im
 #app img,#app video,#app canvas,#app [style*="background-image"]{
  filter:none!important;opacity:1!important;mix-blend-mode:normal!important;
 }
+
+
+/* Final site-wide audit corrections: grayscale UI glyphs and component accents.
+   User-uploaded photos, avatars, banners and video thumbnails remain untouched. */
+:root{
+  --username-color:#fff!important;
+  --profile-color:#fff!important;
+  --profile-accent:#fff!important;
+  --bubble-color:#303030!important;
+  --pink:#fff!important;--purple:#ddd!important;--green:#ddd!important;
+  --gold:#ddd!important;--blue:#ddd!important;--mint:#ddd!important;
+}
+#app button:not(:has(img)):not(:has(.avatar)):not(.top-profile),
+#app .nav-icon,#app .user-mood-indicator,#app .room-user-rank,
+#app .rank-icon,#app .status-icon,#app .status,#app .badge,
+#app .rank,#app .rank-badge,#app .role-badge,#app .tag,#app .pill,
+#app .online-badge,#app .room-meta,#app .dm-unread-badge,
+#app .notification-icon,#app .profile-note-dot,
+#app .profile-music-toggle,#app .profile-music-bars i,
+#app .my-status-glyph,#app .my-status-option span,
+#app .feature-grant-rank-checks label,
+#app [class*="rank-"],#app [class*="status-"],#app [class*="badge-"]{
+  filter:grayscale(1)!important;
+}
+#app .online-user .status,#app .online-user .user-mood-indicator,
+#app .online-user-copy .room-user-rank{
+  filter:grayscale(1)!important;
+}
+#app .profile-music-pill,#app .profile-music-card,
+#app .profile-friend-tile,#app .profile-friend-photo,
+#app .profile-music-current,#app .profile-music-upload .profile-music-file-label{
+  background-color:#202020!important;background-image:none!important;
+  border-color:#555!important;color:#fff!important;
+}
+#app .profile-music-toggle{background:#292929!important;color:#fff!important}
+#app .profile-music-bars i{background:#ddd!important}
+#app .profile-note-dot{background:#aaa!important;box-shadow:none!important}
+#app .profile-friend-name{background:linear-gradient(transparent,rgba(0,0,0,.82))!important;color:#fff!important}
+#app .dm-inbox-actions button{filter:grayscale(1)!important}
+#app .online-user .my-status-toggle,
+#app .online-user .my-status-options,
+#app .my-status-option{background:#292929!important;color:#fff!important;border-color:#555!important}
+#app .online-user .status.on,#app .online-user .status.online,
+#app .online-user .status.is-online{background:#aaa!important;box-shadow:none!important}
+#app .online-user .status.offline,
+#app .online-user .status.is-offline{background:#555!important;box-shadow:none!important}
+#app .profile-settings-card,#app .profile-settings-head,
+#app .profile-banner,#app .profile-theme-obsidian,
+#app .profile-theme-midnight,#app .profile-theme-rose,#app .profile-theme-emerald{
+  background-color:#191919!important;color:#fff!important;border-color:#555!important;
+}
+#app .profile-settings-card *:not(img):not(video):not(canvas){
+  color:#fff!important;border-color:#555!important;
+}
+#app .profile-settings-card button:not(:has(img)),
+#app .profile-settings-card .badge,#app .profile-settings-card .rank,
+#app .profile-settings-card .tag,#app .profile-settings-card .pill{
+  background:#292929!important;color:#fff!important;filter:grayscale(1)!important;
+}
+/* Keep media assets at original colour even when nested inside interactive cards. */
+#app img,#app video,#app canvas,#app picture,#app picture img,
+#app .avatar img,#app .profile-avatar img,#app .profile-cover-image{
+  filter:none!important;opacity:1!important;mix-blend-mode:normal!important;
+}
