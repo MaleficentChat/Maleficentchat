@@ -108,7 +108,7 @@ button.success,.success{border-color:rgba(170, 170, 170, .28)!important}
   #sidebar>.nav:not(#roomsNavToggle)>span{display:inline-flex!important}
 }
 
-/* Guarantee an actual 58px breathing gap below the message composer. */
+/* Keep a compact 50px breathing gap below the message composer. */
 #viewRooms.chatting .chat-card{
   display:flex!important;
   flex-direction:column!important;
@@ -126,9 +126,9 @@ button.success,.success{border-color:rgba(170, 170, 170, .28)!important}
 #viewRooms.chatting .chat-card::after{
   content:""!important;
   display:block!important;
-  flex:0 0 58px!important;
-  height:58px!important;
-  min-height:58px!important;
+  flex:0 0 50px!important;
+  height:50px!important;
+  min-height:50px!important;
   pointer-events:none!important;
 }
 
@@ -583,11 +583,11 @@ body [data-room-filter]:active{
   content:""!important;
   display:block!important;
   position:relative!important;
-  flex:0 0 58px!important;
+  flex:0 0 50px!important;
   width:100%!important;
-  height:58px!important;
-  min-height:58px!important;
-  max-height:58px!important;
+  height:50px!important;
+  min-height:50px!important;
+  max-height:50px!important;
   margin:0!important;
   padding:0!important;
   pointer-events:none!important;
