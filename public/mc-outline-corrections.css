@@ -817,3 +817,21 @@ body [data-room-filter]:active{
 }
 
 .notification-default-avatar{color:#fff!important;background:#777!important;border:2px solid #ddd!important;font-size:23px!important;font-weight:800!important;}
+
+
+/* 2026-11-20 — main chat spacing, quote clarity and sender avatar sizing. */
+#viewRooms.chatting .chat-card::after{box-sizing:border-box!important;border-top:1px solid rgba(190,205,225,.24)!important;}
+#viewRooms.chatting #messages > .msg:not(.dm-msg) .msg-text{
+  padding-top:8px!important;padding-right:11px!important;padding-bottom:2px!important;padding-left:11px!important;
+}
+#viewRooms.chatting #messages > .msg:not(.dm-msg) .quoted{
+  min-height:46px!important;padding:12px 13px!important;display:flex!important;align-items:center!important;
+}
+#viewRooms.chatting #messages > .msg:not(.dm-msg) .quoted-text{line-height:1.4!important;}
+@media(max-width:700px){
+  #viewRooms.chatting #messages > .msg:not(.dm-msg) > .message-avatar-button,
+  #viewRooms.chatting #messages > .msg:not(.dm-msg) > .message-avatar-button .avatar,
+  #viewRooms.chatting #messages > .msg:not(.dm-msg) > .message-avatar-button img{
+    width:42px!important;height:42px!important;min-width:42px!important;min-height:42px!important;flex:0 0 42px!important;
+  }
+}
