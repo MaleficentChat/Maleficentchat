@@ -9499,7 +9499,7 @@ html{scroll-behavior:smooth;}
   align-items:stretch!important;
 }
 @media(max-width:600px){
-  #viewRooms.chatting #messages > .msg:not(.dm-msg){padding:11px 8px!important;gap:9px!important}
+  #viewRooms.chatting #messages > .msg:not(.dm-msg){padding:5px 8px!important;gap:9px!important}
   #viewRooms.chatting #messages > .msg:not(.dm-msg) > .message-avatar-button,
   #viewRooms.chatting #messages > .msg:not(.dm-msg) > .message-avatar-button .avatar,
   #viewRooms.chatting #messages > .msg:not(.dm-msg) > .message-avatar-button img{
