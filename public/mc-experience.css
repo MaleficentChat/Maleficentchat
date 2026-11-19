@@ -1594,3 +1594,31 @@ body{background-image:radial-gradient(ellipse at 70% -15%,rgba(77,143,216,.18),t
   min-width:36px!important;
   max-width:36px!important;
 }
+
+
+/* 2026-11-20 FIX: explicitly style the actual ☰ People button by its HTML id.
+   This stylesheet loads after style.css, so the button treatment remains visible. */
+#openOnlinePanel,
+#viewRooms.chatting #openOnlinePanel,
+#viewRooms.chatting button.chat-people-hamburger{
+  appearance:none!important;
+  -webkit-appearance:none!important;
+  box-sizing:border-box!important;
+  border:1px solid rgba(205,132,91,.52)!important;
+  border-radius:11px!important;
+  background:linear-gradient(145deg,rgba(205,132,91,.20),rgba(40,31,28,.92))!important;
+  color:#f5e8df!important;
+  box-shadow:inset 0 1px 0 rgba(255,225,205,.14),0 3px 10px rgba(0,0,0,.38)!important;
+  text-shadow:0 1px 2px rgba(0,0,0,.35)!important;
+  -webkit-tap-highlight-color:transparent!important;
+}
+#openOnlinePanel:hover,
+#viewRooms.chatting #openOnlinePanel:hover{
+  border-color:rgba(225,151,108,.78)!important;
+  background:linear-gradient(145deg,rgba(205,132,91,.28),rgba(52,39,34,.96))!important;
+}
+#openOnlinePanel:active,
+#viewRooms.chatting #openOnlinePanel:active{
+  background:rgba(205,132,91,.30)!important;
+  box-shadow:inset 0 2px 4px rgba(0,0,0,.35)!important;
+}
