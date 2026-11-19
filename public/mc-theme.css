@@ -1,66 +1,66 @@
 /* Maleficent Chat identity layer — intentionally separate from the legacy base stylesheet. */
 :root {
-  --bg:#100c0a; --bg-deep:#090807; --panel:#1a1411; --panel-2:#241a16; --panel-3:#30201b;
-  --border:rgba(221, 164, 132,.14); --border-strong:rgba(221, 164, 132,.25);
-  --text:#fff4e9; --muted:#bca99c; --accent:#d27a52; --accent-2:#e5bd78;
-  --accent-soft:rgba(210, 122, 82,.15); --bubble:#30211c; --mine:#71372f;
-  --pink:#e7a47d; --purple:#b85d43; --green:#d59b72; --danger:#ff7189;
+  --bg:#0d0d0d; --bg-deep:#080808; --panel:#151515; --panel-2:#1c1c1c; --panel-3:#232323;
+  --border:rgba(174, 174, 174, .14); --border-strong:rgba(174, 174, 174, .25);
+  --text:#f6f6f6; --muted:#acacac; --accent:#8a8a8a; --accent-2:#c1c1c1;
+  --accent-soft:rgba(138, 138, 138, .15); --bubble:#242424; --mine:#434343;
+  --pink:#afafaf; --purple:#6e6e6e; --green:#a4a4a4; --danger:#919191;
 }
-html,body{background:#201008;color:var(--text)}
-body{background:radial-gradient(ellipse at 70% -15%,rgba(181, 98, 56,.19),transparent 45%),#201008}
-button,input,textarea,select{accent-color:#e6b17d}
-.auth-screen{position:relative;isolation:isolate;background:radial-gradient(ellipse at 50% 0%,rgba(201, 108, 61,.25),transparent 48%),linear-gradient(145deg,#201008,#28150b 58%,#1b0e08)}
-.auth-screen:before{content:"";position:absolute;inset:0;z-index:-1;opacity:.22;background-image:linear-gradient(rgba(225, 162, 130,.08) 1px,transparent 1px),linear-gradient(90deg,rgba(225, 162, 130,.08) 1px,transparent 1px);background-size:44px 44px;mask-image:linear-gradient(to bottom,black,transparent 80%)}
-.auth-card{position:relative;width:min(460px,94vw);padding:38px 34px 32px;background:linear-gradient(155deg,rgba(63, 35, 21,.97),rgba(36, 19, 10,.98));border:1px solid rgba(237, 174, 142,.28);border-radius:26px;box-shadow:0 30px 100px rgba(0, 0, 0,.55),inset 0 1px rgba(255, 255, 255,.05)}
-.auth-card:before{content:"";position:absolute;top:0;left:12%;right:12%;height:2px;background:linear-gradient(90deg,transparent,#eba683,#e6bd78,transparent);border-radius:50%}
-.brand-mark{display:grid;place-items:center;width:68px;height:68px;margin:0 auto 16px;border-radius:21px;background:linear-gradient(145deg,#834729,#442313);border:1px solid rgba(241, 192, 168,.38);color:#f1d49d;font-size:0;box-shadow:0 12px 35px rgba(168, 84, 42,.28)}
-.brand-mark:after{content:"🖤";font-family:Georgia,serif;font-size:42px;line-height:1;color:#f1d49d;text-shadow:0 3px 16px rgba(230, 185, 106,.25)}
-.auth-card h1{font-size:27px;letter-spacing:-.8px;color:#fdf8f6}
-.auth-card p{color:#d0af9e}
-.auth-tabs{padding:5px;background:#29150b;border:1px solid rgba(229, 171, 142,.14);border-radius:14px}
-.auth-tabs button{border-radius:10px;color:#cdaa98}
-.auth-tabs button:hover,.auth-tabs button.active{background:linear-gradient(135deg,rgba(230, 146, 104,.25),rgba(230, 185, 106,.08));border-color:rgba(235, 167, 133,.3);color:#fff}
-form input,form textarea,form select,.field input,.field textarea,.field select,input,textarea,select{background:#28140a;border:1px solid rgba(221, 166, 139,.2);border-radius:12px;color:#fcf4f0}
-input:focus,textarea:focus,select:focus{border-color:#eba683;box-shadow:0 0 0 3px rgba(230, 146, 104,.13)}
-.primary,.send{background:linear-gradient(115deg,#a84f3d,#e6a078 58%,#d3a75e);color:#261107;border-radius:12px;box-shadow:0 8px 22px rgba(207, 103, 51,.22);font-weight:800}
-.top-header{height:var(--header-h);padding:0 16px;background:rgba(36, 19, 10,.94);backdrop-filter:blur(18px);border-bottom:1px solid rgba(230, 171, 141,.15);box-shadow:0 8px 30px rgba(0, 0, 0,.18)}
-.top-menu,.top-icon,.top-profile{color:#fae7de;border-radius:12px}
-.top-menu:hover,.top-icon:hover{background:rgba(230, 143, 100,.14)}
-.brand-avatar,.rail-logo{background:linear-gradient(145deg,#9b5431,#442414 70%);border:1px solid rgba(240, 191, 166,.48);color:#f1d49d;box-shadow:0 5px 18px rgba(169, 88, 48,.25);font-size:0}
-.brand-avatar:after,.rail-logo:after{content:"🖤";font-family:Georgia,serif;font-size:23px;color:#f1d49d}
+html,body{background:#131313;color:var(--text)}
+body{background:radial-gradient(ellipse at 70% -15%,rgba(113, 113, 113, .19),transparent 45%),#131313}
+button,input,textarea,select{accent-color:#b9b9b9}
+.auth-screen{position:relative;isolation:isolate;background:radial-gradient(ellipse at 50% 0%,rgba(124, 124, 124, .25),transparent 48%),linear-gradient(145deg,#131313,#181818 58%,#101010)}
+.auth-screen:before{content:"";position:absolute;inset:0;z-index:-1;opacity:.22;background-image:linear-gradient(rgba(173, 173, 173, .08) 1px,transparent 1px),linear-gradient(90deg,rgba(173, 173, 173, .08) 1px,transparent 1px);background-size:44px 44px;mask-image:linear-gradient(to bottom,black,transparent 80%)}
+.auth-card{position:relative;width:min(460px,94vw);padding:38px 34px 32px;background:linear-gradient(155deg,rgba(40, 40, 40, .97),rgba(22, 22, 22, .98));border:1px solid rgba(185, 185, 185, .28);border-radius:26px;box-shadow:0 30px 100px rgba(0, 0, 0, .55),inset 0 1px rgba(255, 255, 255, .05)}
+.auth-card:before{content:"";position:absolute;top:0;left:12%;right:12%;height:2px;background:linear-gradient(90deg,transparent,#b2b2b2,#c1c1c1,transparent);border-radius:50%}
+.brand-mark{display:grid;place-items:center;width:68px;height:68px;margin:0 auto 16px;border-radius:21px;background:linear-gradient(145deg,#525252,#292929);border:1px solid rgba(201, 201, 201, .38);color:#d6d6d6;font-size:0;box-shadow:0 12px 35px rgba(99, 99, 99, .28)}
+.brand-mark:after{content:"🖤";font-family:Georgia,serif;font-size:42px;line-height:1;color:#d6d6d6;text-shadow:0 3px 16px rgba(189, 189, 189, .25)}
+.auth-card h1{font-size:27px;letter-spacing:-.8px;color:#f9f9f9}
+.auth-card p{color:#b5b5b5}
+.auth-tabs{padding:5px;background:#191919;border:1px solid rgba(181, 181, 181, .14);border-radius:14px}
+.auth-tabs button{border-radius:10px;color:#b0b0b0}
+.auth-tabs button:hover,.auth-tabs button.active{background:linear-gradient(135deg,rgba(161, 161, 161, .25),rgba(189, 189, 189, .08));border-color:rgba(179, 179, 179, .3);color:#ffffff}
+form input,form textarea,form select,.field input,.field textarea,.field select,input,textarea,select{background:#181818;border:1px solid rgba(176, 176, 176, .2);border-radius:12px;color:#f5f5f5}
+input:focus,textarea:focus,select:focus{border-color:#b2b2b2;box-shadow:0 0 0 3px rgba(161, 161, 161, .13)}
+.primary,.send{background:linear-gradient(115deg,#616161,#acacac 58%,#ababab);color:#151515;border-radius:12px;box-shadow:0 8px 22px rgba(121, 121, 121, .22);font-weight:800}
+.top-header{height:var(--header-h);padding:0 16px;background:rgba(22, 22, 22, .94);backdrop-filter:blur(18px);border-bottom:1px solid rgba(181, 181, 181, .15);box-shadow:0 8px 30px rgba(0, 0, 0, .18)}
+.top-menu,.top-icon,.top-profile{color:#eaeaea;border-radius:12px}
+.top-menu:hover,.top-icon:hover{background:rgba(158, 158, 158, .14)}
+.brand-avatar,.rail-logo{background:linear-gradient(145deg,#616161,#2a2a2a 70%);border:1px solid rgba(200, 200, 200, .48);color:#d6d6d6;box-shadow:0 5px 18px rgba(102, 102, 102, .25);font-size:0}
+.brand-avatar:after,.rail-logo:after{content:"🖤";font-family:Georgia,serif;font-size:23px;color:#d6d6d6}
 .top-brand-copy b{font-size:0}
-.top-brand-copy b:after{content:"Maleficent Chat";font-size:16px;letter-spacing:.1px;color:#fdf7f4}
+.top-brand-copy b:after{content:"Maleficent Chat";font-size:16px;letter-spacing:.1px;color:#f8f8f8}
 .top-brand-copy span{font-size:0}
-.top-brand-copy span:after{content:"community";font-size:11px;letter-spacing:1.3px;text-transform:uppercase;color:#d4b477}
-.sidebar{background:rgba(35, 18, 10,.97);border-right:1px solid rgba(230, 171, 141,.13);backdrop-filter:blur(16px)}
-.nav{color:#cca998;border-radius:12px}
-.nav:hover,.nav.active{background:linear-gradient(110deg,rgba(211, 115, 67,.24),rgba(230, 185, 106,.07));border-color:rgba(233, 159, 122,.2);color:#fef9f6}
-.nav-group{border-color:rgba(230, 171, 141,.13)}
-.nav-group>summary{color:#e4c7b8}
-.main{background:#201008}
-.topbar{background:linear-gradient(100deg,#341c10,#2c170d);border-bottom:1px solid rgba(230, 171, 141,.13)}
-.topbar h2{color:#fdf6f3;letter-spacing:-.3px}
-.room-grid{background:radial-gradient(ellipse at 80% 0%,rgba(166, 87, 48,.12),transparent 55%)}
-.room,.card,.online-panel,.chat-card{background-color:#311b10;border-color:rgba(228, 171, 143,.14)}
-.room{background:linear-gradient(145deg,#442617,#301b10);border-radius:17px;box-shadow:0 12px 28px rgba(0, 0, 0,.12)}
-.room:hover,.room.selected{border-color:rgba(235, 166, 131,.55);box-shadow:0 12px 32px rgba(168, 81, 37,.17)}
-.room-meta{color:#d7b779}
-.chat-card{background-color:#29150b;background-image:radial-gradient(circle at 1px 1px,rgba(226, 163, 131,.10) 1px,transparent 0);background-size:28px 28px}
-.chat-head,.panel-head{background:rgba(52, 29, 17,.97);border-color:rgba(230, 171, 141,.13)}
-.announcement{background:#442617;color:#fae9e1;border-color:rgba(230, 171, 141,.13)}
-.messages{scrollbar-color:#7d4d35 transparent}
-.msg-text{color:#fcf2ed}
-.quoted{border-left-color:#d8b36e;background:rgba(79, 47, 31,.8)}
-.quoted-label{color:#e7c987}
-.composer,.replybar,.typing{background:#351c10;border-color:rgba(230, 171, 141,.13)}
-.composer input{background:#271309;border-color:rgba(230, 171, 141,.2)}
-.online-panel{background:#30190e}
+.top-brand-copy span:after{content:"community";font-size:11px;letter-spacing:1.3px;text-transform:uppercase;color:#b6b6b6}
+.sidebar{background:rgba(21, 21, 21, .97);border-right:1px solid rgba(181, 181, 181, .13);backdrop-filter:blur(16px)}
+.nav{color:#afafaf;border-radius:12px}
+.nav:hover,.nav.active{background:linear-gradient(110deg,rgba(132, 132, 132, .24),rgba(189, 189, 189, .07));border-color:rgba(172, 172, 172, .2);color:#fafafa}
+.nav-group{border-color:rgba(181, 181, 181, .13)}
+.nav-group>summary{color:#cccccc}
+.main{background:#131313}
+.topbar{background:linear-gradient(100deg,#202020,#1b1b1b);border-bottom:1px solid rgba(181, 181, 181, .13)}
+.topbar h2{color:#f7f7f7;letter-spacing:-.3px}
+.room-grid{background:radial-gradient(ellipse at 80% 0%,rgba(101, 101, 101, .12),transparent 55%)}
+.room,.card,.online-panel,.chat-card{background-color:#1f1f1f;border-color:rgba(181, 181, 181, .14)}
+.room{background:linear-gradient(145deg,#2b2b2b,#1f1f1f);border-radius:17px;box-shadow:0 12px 28px rgba(0, 0, 0, .12)}
+.room:hover,.room.selected{border-color:rgba(178, 178, 178, .55);box-shadow:0 12px 32px rgba(96, 96, 96, .17)}
+.room-meta{color:#b9b9b9}
+.chat-card{background-color:#191919;background-image:radial-gradient(circle at 1px 1px,rgba(174, 174, 174, .10) 1px,transparent 0);background-size:28px 28px}
+.chat-head,.panel-head{background:rgba(33, 33, 33, .97);border-color:rgba(181, 181, 181, .13)}
+.announcement{background:#2b2b2b;color:#ececec;border-color:rgba(181, 181, 181, .13)}
+.messages{scrollbar-color:#555555 transparent}
+.msg-text{color:#f4f4f4}
+.quoted{border-left-color:#b6b6b6;background:rgba(53, 53, 53, .8)}
+.quoted-label{color:#cbcbcb}
+.composer,.replybar,.typing{background:#202020;border-color:rgba(181, 181, 181, .13)}
+.composer input{background:#171717;border-color:rgba(181, 181, 181, .2)}
+.online-panel{background:#1d1d1d}
 button.mini,.icon-btn,.action{border-radius:11px}
-button.mini{background:#442617;border-color:rgba(230, 171, 141,.17);color:#fae7dd}
-button.mini:hover,.icon-btn:hover,.action:hover{background:rgba(230, 146, 104,.15);border-color:rgba(235, 166, 131,.28)}
-.modal-card,.notification-dropdown{background:#361d11;border:1px solid rgba(230, 171, 141,.2);border-radius:18px;box-shadow:0 25px 80px rgba(0, 0, 0,.5)}
+button.mini{background:#2b2b2b;border-color:rgba(181, 181, 181, .17);color:#eaeaea}
+button.mini:hover,.icon-btn:hover,.action:hover{background:rgba(161, 161, 161, .15);border-color:rgba(178, 178, 178, .28)}
+.modal-card,.notification-dropdown{background:#212121;border:1px solid rgba(181, 181, 181, .2);border-radius:18px;box-shadow:0 25px 80px rgba(0, 0, 0, .5)}
 input,textarea,select{color-scheme:dark}
-a{color:#efb99e}
+a{color:#c3c3c3}
 .badge,.rank{letter-spacing:.2px}
 @media(max-width:700px){
  :root{--header-h:58px;--rail-w:54px}
@@ -74,5 +74,5 @@ a{color:#efb99e}
 }
 @media(prefers-reduced-motion:no-preference){
  .room,.nav,.primary,.send,.top-icon{transition:background .18s ease,border-color .18s ease,transform .18s ease,box-shadow .18s ease}
- .primary:hover,.send:hover{transform:translateY(-1px);box-shadow:0 12px 26px rgba(207, 103, 51,.28)}
+ .primary:hover,.send:hover{transform:translateY(-1px);box-shadow:0 12px 26px rgba(121, 121, 121, .28)}
 }
