@@ -1381,3 +1381,120 @@ button,.button,.secondary,.icon-btn,.action,.tab-btn,.nav,.top-icon,.top-menu{
 #app svg{stroke:currentColor}
 #app :is(.top-icon svg,.top-menu svg,.nav svg,.icon-btn svg,.action svg){color:#83b8ef!important}
 #app :is(.nav.active svg,.gold-icon,.crown-icon,.premium-icon){color:#e5bd63!important}
+
+
+/* Correct target: the People drawer opened by the three-line button.
+   Override the older high-specificity 132px/122px inbox-matching rules. */
+#viewRooms.chatting #onlinePanel #onlineUsers .online-user-grid{
+  display:flex!important;
+  flex-direction:column!important;
+  gap:6px!important;
+  grid-template-columns:minmax(0,1fr)!important;
+  padding:8px!important;
+}
+#viewRooms.chatting #onlinePanel #onlineUsers .online-user-grid>.online-user{
+  box-sizing:border-box!important;
+  display:flex!important;
+  flex-direction:row!important;
+  align-items:center!important;
+  justify-content:flex-start!important;
+  flex-wrap:nowrap!important;
+  width:100%!important;
+  min-width:0!important;
+  height:48px!important;
+  min-height:48px!important;
+  max-height:48px!important;
+  aspect-ratio:auto!important;
+  margin:0!important;
+  padding:5px 8px!important;
+  gap:8px!important;
+  overflow:hidden!important;
+}
+#viewRooms.chatting #onlinePanel #onlineUsers .online-user-grid>.online-user>.avatar,
+#viewRooms.chatting #onlinePanel #onlineUsers .online-user-grid>.online-user>img{
+  box-sizing:border-box!important;
+  flex:0 0 36px!important;
+  width:36px!important;
+  min-width:36px!important;
+  max-width:36px!important;
+  height:36px!important;
+  min-height:36px!important;
+  max-height:36px!important;
+}
+#viewRooms.chatting #onlinePanel #onlineUsers .online-user-copy{
+  flex:1 1 auto!important;
+  min-width:0!important;
+  max-width:none!important;
+  text-align:left!important;
+}
+#viewRooms.chatting #onlinePanel #onlineUsers .online-user-copy>b{
+  display:block!important;
+  font-size:12px!important;
+  line-height:14px!important;
+  white-space:nowrap!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+}
+#viewRooms.chatting #onlinePanel #onlineUsers .online-user-copy>small{
+  display:block!important;
+  font-size:9px!important;
+  line-height:11px!important;
+  margin:1px 0 0!important;
+  white-space:nowrap!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+}
+#viewRooms.chatting #onlinePanel #onlineUsers .online-user-copy .room-user-rank{
+  display:none!important;
+}
+@media(max-width:700px){
+  #viewRooms.chatting #onlinePanel #onlineUsers .online-user-grid>.online-user{
+    height:48px!important;min-height:48px!important;max-height:48px!important;
+    padding:5px 8px!important;gap:8px!important;
+  }
+}
+
+/* Quick actions: one full-width action per row on every screen size. */
+#viewRooms.chatting .chat-tools-drawer{
+  grid-template-columns:minmax(0,1fr)!important;
+}
+#viewRooms.chatting .chat-tools-drawer.open{
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:stretch!important;
+  gap:5px!important;
+}
+#viewRooms.chatting .chat-tools-heading{width:100%!important}
+#viewRooms.chatting .chat-tools-drawer>button{
+  box-sizing:border-box!important;
+  display:flex!important;
+  flex-direction:row!important;
+  align-items:center!important;
+  justify-content:flex-start!important;
+  width:100%!important;
+  min-width:0!important;
+  min-height:42px!important;
+  height:42px!important;
+  padding:5px 9px!important;
+  gap:9px!important;
+}
+#viewRooms.chatting .chat-tools-drawer>button .chat-tool-icon{
+  flex:0 0 28px!important;
+  width:28px!important;
+  height:28px!important;
+}
+@media(max-width:600px){
+  #viewRooms.chatting .chat-tools-drawer{
+    width:min(190px,calc(100vw - 24px))!important;
+    grid-template-columns:minmax(0,1fr)!important;
+    gap:5px!important;
+  }
+  #viewRooms.chatting .chat-tools-drawer.open{
+    display:flex!important;
+    flex-direction:column!important;
+  }
+  #viewRooms.chatting .chat-tools-drawer>button{
+    min-height:42px!important;height:42px!important;
+    flex-direction:row!important;padding:5px 9px!important;
+  }
+}
