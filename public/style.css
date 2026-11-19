@@ -9715,3 +9715,60 @@ html{scroll-behavior:smooth;}
     margin-right:0!important;
   }
 }
+
+
+/* 2026-11-20 — final People panel edge expansion and avatar alignment.
+   Apply to the actual #onlineUsers container (not the obsolete #onlinePanel id). */
+@media(max-width:900px){
+  #viewRooms.chatting .online-panel.mobile-open>#onlineUsers{
+    padding-left:0!important;
+    padding-right:0!important;
+  }
+  #viewRooms.chatting .online-panel.mobile-open>#onlineUsers .online-user-grid{
+    display:flex!important;
+    flex-direction:column!important;
+    align-items:stretch!important;
+    width:100%!important;
+    padding:0!important;
+    margin:0!important;
+    gap:10px!important;
+    box-sizing:border-box!important;
+  }
+  #viewRooms.chatting .online-panel.mobile-open>#onlineUsers .online-user-grid>.online-user{
+    display:flex!important;
+    width:100%!important;
+    max-width:none!important;
+    min-width:0!important;
+    min-height:94px!important;
+    height:auto!important;
+    max-height:none!important;
+    margin:0!important;
+    padding:14px 14px!important;
+    box-sizing:border-box!important;
+    flex:0 0 auto!important;
+    align-items:center!important;
+    justify-content:flex-start!important;
+    gap:13px!important;
+    text-align:left!important;
+  }
+  #viewRooms.chatting .online-panel.mobile-open>#onlineUsers .online-user-grid>.online-user>.avatar,
+  #viewRooms.chatting .online-panel.mobile-open>#onlineUsers .online-user-grid>.online-user>img.avatar{
+    display:block!important;
+    width:52px!important;height:52px!important;
+    min-width:52px!important;min-height:52px!important;
+    flex:0 0 52px!important;
+    align-self:center!important;
+    margin:0!important;
+    object-fit:cover!important;
+  }
+  #viewRooms.chatting .online-panel.mobile-open>#onlineUsers .online-user-grid>.online-user>.avatar img{
+    display:block!important;width:100%!important;height:100%!important;
+    border-radius:50%!important;object-fit:cover!important;
+  }
+  #viewRooms.chatting .online-panel.mobile-open>#onlineUsers .online-user-grid>.online-user>.online-user-copy{
+    display:flex!important;flex:1 1 auto!important;min-width:0!important;
+    align-self:center!important;justify-content:center!important;
+    flex-direction:column!important;align-items:flex-start!important;
+    text-align:left!important;gap:4px!important;
+  }
+}
