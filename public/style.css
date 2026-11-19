@@ -3987,11 +3987,11 @@ body.party-mode-active .msg.dm-msg .chat-gif{
 
 /* Bot welcome-back message bubble */
 .bot-welcome-message{display:flex;justify-content:center;width:100%;margin:14px 0;padding:0 8px;box-sizing:border-box}
-.bot-welcome-bubble{width:min(100%,420px);box-sizing:border-box;text-align:center;padding:18px 20px 20px;border-radius:18px;border:1px solid rgba(167, 167, 167, .48);background:radial-gradient(ellipse at 50% 0%,rgba(173, 173, 173, .22),transparent 68%),linear-gradient(145deg,rgba(23, 23, 23, .98),rgba(16, 16, 16, .98));box-shadow:0 0 10px rgba(173, 173, 173, .25),inset 0 0 22px rgba(167, 167, 167, .05)}
-.bot-welcome-byline{font-size:12px;font-weight:700;letter-spacing:.08em;color:#dadada;margin-bottom:13px}
-.bot-welcome-glow{font-weight:900;font-size:clamp(20px,5vw,29px);letter-spacing:.12em;line-height:1.25;color:#ffffff;text-shadow:0 0 5px #ffffff,0 0 12px #afafaf,0 0 25px #8a8a8a,0 0 38px rgba(167, 167, 167, .8);animation:botWelcomeGlow 2s ease-in-out infinite alternate}
-.bot-welcome-username{font-weight:800;font-size:clamp(17px,4.5vw,22px);margin-top:10px;color:#ededed;text-shadow:0 0 8px rgba(173, 173, 173, .8);overflow-wrap:anywhere}
-@keyframes botWelcomeGlow{from{filter:brightness(.9);text-shadow:0 0 4px #ffffff,0 0 9px #afafaf,0 0 18px #8a8a8a}to{filter:brightness(1.25);text-shadow:0 0 7px #ffffff,0 0 16px #afafaf,0 0 30px #8a8a8a,0 0 42px rgba(167, 167, 167, .85)}}
+.bot-welcome-bubble{width:min(100%,420px);box-sizing:border-box;text-align:center;padding:18px 20px 20px;border-radius:18px;border:1px solid rgba(230, 154, 104,.48);background:radial-gradient(ellipse at 50% 0%,rgba(232, 162, 115,.22),transparent 68%),linear-gradient(145deg,rgba(34, 21, 15,.98),rgba(23, 15, 11,.98));box-shadow:0 0 10px rgba(232, 162, 115,.25),inset 0 0 22px rgba(230, 154, 104,.05)}
+.bot-welcome-byline{font-size:12px;font-weight:700;letter-spacing:.08em;color:#f5d5c0;margin-bottom:13px}
+.bot-welcome-glow{font-weight:900;font-size:clamp(20px,5vw,29px);letter-spacing:.12em;line-height:1.25;color:#fff;text-shadow:0 0 5px #fff,0 0 12px #e7a47d,0 0 25px #d27a52,0 0 38px rgba(230, 154, 104,.8);animation:botWelcomeGlow 2s ease-in-out infinite alternate}
+.bot-welcome-username{font-weight:800;font-size:clamp(17px,4.5vw,22px);margin-top:10px;color:#faebe1;text-shadow:0 0 8px rgba(232, 162, 115,.8);overflow-wrap:anywhere}
+@keyframes botWelcomeGlow{from{filter:brightness(.9);text-shadow:0 0 4px #fff,0 0 9px #e7a47d,0 0 18px #d27a52}to{filter:brightness(1.25);text-shadow:0 0 7px #fff,0 0 16px #e7a47d,0 0 30px #d27a52,0 0 42px rgba(230, 154, 104,.85)}}
 @media(prefers-reduced-motion:reduce){.bot-welcome-glow{animation:none}}
 
 
