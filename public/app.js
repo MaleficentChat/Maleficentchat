@@ -3087,31 +3087,41 @@ function positionMessageMenu(menu,id){
   const bubble=message?.querySelector(".msg-body");
   const viewport=document.getElementById("messages");
   const trigger=message?.querySelector(".message-more-button");
-  if(!message||!bubble||!viewport||!trigger)return;
+  if(!menu||!message||!bubble||!viewport||!trigger)return;
   const area=viewport.getBoundingClientRect();
   const bubbleRect=bubble.getBoundingClientRect();
   const triggerRect=trigger.getBoundingClientRect();
-  const gap=8, edge=8;
+  const vv=window.visualViewport;
+  const composer=document.querySelector("#viewRooms.chatting .chat-card > .composer, #viewRooms.chatting .composer");
+  const composerTop=composer?.getBoundingClientRect().top;
+  const edge=10,gap=8;
+  const safeTop=Math.max(area.top,vv?.offsetTop??0)+edge;
+  const safeBottom=Math.min(
+    area.bottom,
+    vv?vv.offsetTop+vv.height:window.innerHeight,
+    Number.isFinite(composerTop)?composerTop-edge:Infinity
+  );
+  const safeHeight=Math.max(0,safeBottom-safeTop);
   const width=Math.min(246,Math.max(210,area.width-2*edge));
   menu.style.setProperty("position","fixed","important");
+  menu.style.setProperty("box-sizing","border-box","important");
   menu.style.setProperty("width",width+"px","important");
   menu.style.setProperty("min-width","0","important");
-  menu.style.setProperty("max-width",(area.width-2*edge)+"px","important");
-  menu.style.setProperty("max-height",Math.max(150,area.height-2*edge)+"px","important");
+  menu.style.setProperty("max-width",Math.max(0,area.width-2*edge)+"px","important");
+  menu.style.setProperty("max-height",safeHeight+"px","important");
   menu.style.setProperty("overflow-y","auto","important");
   menu.style.setProperty("z-index","2147483000","important");
   menu.style.setProperty("transform","none","important");
   menu.style.setProperty("bottom","auto","important");
   menu.style.setProperty("right","auto","important");
-  // Outgoing bubbles open to their left; incoming bubbles open to their right.
-  // If there is not enough room, clamp the panel inside the chat viewport.
   let left=message.classList.contains("mine")
     ? bubbleRect.left-width-gap
     : bubbleRect.right+gap;
   left=Math.max(area.left+edge,Math.min(left,area.right-width-edge));
-  const estimatedHeight=Math.min(menu.scrollHeight,area.height-2*edge);
-  let top=triggerRect.top+(triggerRect.height/2)-(estimatedHeight/2);
-  top=Math.max(area.top+edge,Math.min(top,area.bottom-estimatedHeight-edge));
+  const measuredHeight=Math.min(menu.scrollHeight,safeHeight);
+  // The panel's bottom edge is pinned to the top edge of the composer,
+  // with a small visual gap; it can never extend over the composer.
+  const top=Math.max(safeTop,safeBottom-measuredHeight);
   menu.style.setProperty("left",left+"px","important");
   menu.style.setProperty("top",top+"px","important");
   menu.classList.add("is-floating");
