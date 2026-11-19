@@ -124,3 +124,162 @@
   #sidebar .me-mini{background:transparent!important;border:0!important;box-shadow:none!important}
   #sidebar .me-mini:hover{background:rgba(255, 255, 255, .045)!important}
 }
+
+
+/* 19 Nov 2026 — make Rooms dropdown entries use the same navigation-row
+   geometry, typography, hover and selected treatment as every other option. */
+#sidebar #roomsNavToggle{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:flex-start!important;
+  width:100%!important;
+  min-width:0!important;
+  height:auto!important;
+  min-height:36px!important;
+  flex:0 0 auto!important;
+  padding:7px 10px!important;
+  margin:0!important;
+  gap:11px!important;
+  border:1px solid transparent!important;
+  border-radius:7px!important;
+  background:transparent!important;
+  box-shadow:none!important;
+  color:#cbcbcb!important;
+  text-align:left!important;
+  font-size:18px!important;
+  line-height:1.2!important;
+}
+#sidebar #roomsNavToggle>span{
+  display:inline!important;
+  visibility:visible!important;
+  opacity:1!important;
+  flex:1 1 auto!important;
+  min-width:0!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+  white-space:nowrap!important;
+  font-size:13px!important;
+  font-weight:450!important;
+}
+#sidebar #roomsNavToggle .rooms-nav-chevron{
+  display:block!important;
+  flex:0 0 auto!important;
+  margin-left:auto!important;
+  font-size:13px!important;
+  font-style:normal!important;
+}
+#sidebar #roomsNavToggle:hover,
+#sidebar #roomsNavToggle.expanded,
+#sidebar #roomsNavToggle.active{
+  background:rgba(255,255,255,.055)!important;
+  border-color:transparent!important;
+  color:#fff!important;
+}
+#sidebar .rooms-nav-list{
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:stretch!important;
+  width:100%!important;
+  min-width:0!important;
+  gap:2px!important;
+  padding:2px 0 4px 12px!important;
+  margin:0!important;
+  box-sizing:border-box!important;
+}
+#sidebar .rooms-nav-list.hidden{display:none!important}
+#sidebar .rooms-nav-list .rooms-nav-item,
+#sidebar .rooms-nav-list .rooms-nav-more{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:flex-start!important;
+  width:100%!important;
+  min-width:0!important;
+  min-height:36px!important;
+  height:auto!important;
+  flex:0 0 auto!important;
+  gap:11px!important;
+  margin:0!important;
+  padding:7px 10px!important;
+  border:1px solid transparent!important;
+  border-radius:7px!important;
+  background:transparent!important;
+  box-shadow:none!important;
+  color:#cbcbcb!important;
+  text-align:left!important;
+  font-size:18px!important;
+  line-height:1.2!important;
+  cursor:pointer!important;
+}
+#sidebar .rooms-nav-list .rooms-nav-item-icon,
+#sidebar .rooms-nav-list .rooms-nav-more>span:first-child{
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  flex:0 0 20px!important;
+  width:20px!important;
+  min-width:20px!important;
+  font-size:16px!important;
+  line-height:1!important;
+}
+#sidebar .rooms-nav-list .rooms-nav-item-name,
+#sidebar .rooms-nav-list .rooms-nav-more>span:last-child{
+  display:inline!important;
+  flex:1 1 auto!important;
+  min-width:0!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+  white-space:nowrap!important;
+  color:inherit!important;
+  font-size:13px!important;
+  font-weight:450!important;
+  letter-spacing:0!important;
+}
+#sidebar .rooms-nav-list .rooms-nav-item-count{
+  flex:0 0 auto!important;
+  min-width:16px!important;
+  margin-left:auto!important;
+  color:#999!important;
+  font-size:10px!important;
+  font-weight:500!important;
+  text-align:right!important;
+}
+#sidebar .rooms-nav-list .rooms-nav-item-lock{
+  flex:0 0 auto!important;
+  font-size:11px!important;
+}
+#sidebar .rooms-nav-list .rooms-nav-item:hover,
+#sidebar .rooms-nav-list .rooms-nav-more:hover{
+  background:rgba(255,255,255,.045)!important;
+  border-color:transparent!important;
+  color:#fff!important;
+}
+#sidebar .rooms-nav-list .rooms-nav-item.active{
+  background:rgba(255,255,255,.075)!important;
+  border-color:transparent!important;
+  color:#fff!important;
+  font-weight:600!important;
+}
+#sidebar .rooms-nav-list .rooms-nav-item.active .rooms-nav-item-name{
+  font-weight:600!important;
+}
+#sidebar .rooms-nav-list .rooms-nav-empty{
+  padding:8px 10px!important;
+  color:#999!important;
+  font-size:12px!important;
+}
+@media(max-width:800px){
+  #sidebar.sidebar.open #roomsNavToggle{
+    width:100%!important;
+    min-width:0!important;
+    min-height:40px!important;
+    height:auto!important;
+    justify-content:flex-start!important;
+    padding:8px 10px!important;
+  }
+  #sidebar.sidebar.open #roomsNavToggle>span{display:inline!important}
+  #sidebar.sidebar.open .rooms-nav-list .rooms-nav-item,
+  #sidebar.sidebar.open .rooms-nav-list .rooms-nav-more{
+    min-height:40px!important;
+    padding:8px 10px!important;
+  }
+}
