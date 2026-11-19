@@ -3035,7 +3035,7 @@ function positionMessageMorePanel(submenu,messageId){
   submenu.style.setProperty("max-width",width+"px","important");
   submenu.style.setProperty("max-height",maxHeight+"px","important");
   submenu.style.setProperty("overflow-y","auto","important");
-  submenu.style.setProperty("z-index","10020","important");
+  submenu.style.setProperty("z-index","2147483001","important");
   // A separate layer deliberately sits over the original action panel.
   const left=Math.max(safeLeft,Math.min(mainRect.left+16,safeRight-width));
   const measuredHeight=Math.min(submenu.scrollHeight,maxHeight);
@@ -3073,7 +3073,9 @@ function closeMessageMenus(){
     m.classList.add("hidden");
     if(m.classList.contains("is-floating")){
       m.classList.remove("is-floating");
-      ["position","left","top","right","bottom","width","min-width","max-width","max-height","overflow-y","transform"].forEach(prop=>m.style.removeProperty(prop));
+      ["position","left","top","right","bottom","width","min-width","max-width","max-height","overflow-y","z-index","transform"].forEach(prop=>m.style.removeProperty(prop));
+      if(m.classList.contains("message-more-submenu"))restoreMessageMorePanel(m);
+      else restoreMessageMenu(m);
     }
   });
   document.querySelectorAll(".message-more-trigger").forEach(b=>b.setAttribute("aria-expanded","false"));
@@ -3095,6 +3097,7 @@ function positionMessageMenu(menu,id){
   menu.style.setProperty("max-width",(area.width-2*edge)+"px","important");
   menu.style.setProperty("max-height",Math.max(150,area.height-2*edge)+"px","important");
   menu.style.setProperty("overflow-y","auto","important");
+  menu.style.setProperty("z-index","2147483000","important");
   menu.style.setProperty("transform","none","important");
   menu.style.setProperty("bottom","auto","important");
   menu.style.setProperty("right","auto","important");
