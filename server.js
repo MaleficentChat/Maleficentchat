@@ -7456,11 +7456,21 @@ app.get('/api/users/:id/profile',auth,(req,res)=>{
     if(p.lastSeen===false)profile.lastSeen=null;
     if(p.online===false)profile.online=false;
   }
-  // Show the current room to other members whenever the user's online
-  // presence is visible. Explicit privacy/hide modes still suppress it.
+  // Resolve room presence from both the persisted account field and live
+  // Socket.IO subscriptions. The socket is the source of truth when a mobile
+  // reconnect/tab transition has left users.roomId temporarily stale or empty.
   profile.currentRoom=null;
   if(profile.online&&!v.invisible&&!v.hideMode&&!v.deadMode){
-    const activeRoomId=String(v.roomId||'');
+    let activeRoomId=String(v.roomId||'');
+    const liveSockets=[...io.sockets.sockets.values()].filter(socket=>
+      String(socket.data?.userId||'')===String(v.id)&&
+      socket.data?.roomId!=null&&
+      socket.rooms.has('room:'+String(socket.data.roomId))
+    );
+    if(liveSockets.length){
+      const persistedSocket=liveSockets.find(socket=>String(socket.data.roomId)===activeRoomId);
+      activeRoomId=String((persistedSocket||liveSockets[liveSockets.length-1]).data.roomId);
+    }
     const room=activeRoomId?db.rooms.find(item=>String(item.id)===activeRoomId):null;
     if(room){
       const isPrivate=room.public===false;
