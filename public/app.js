@@ -3119,9 +3119,9 @@ function positionMessageMenu(menu,id){
     : bubbleRect.right+gap;
   left=Math.max(area.left+edge,Math.min(left,area.right-width-edge));
   const measuredHeight=Math.min(menu.scrollHeight,safeHeight);
-  // The panel's bottom edge is pinned to the top edge of the composer,
-  // with a small visual gap; it can never extend over the composer.
-  const top=Math.max(safeTop,safeBottom-measuredHeight);
+  // Anchor beside the message's own ⋯ trigger. If the panel would run into
+  // the composer, shift it upward only as much as needed.
+  const top=Math.max(safeTop,Math.min(triggerRect.top,safeBottom-measuredHeight));
   menu.style.setProperty("left",left+"px","important");
   menu.style.setProperty("top",top+"px","important");
   menu.classList.add("is-floating");
@@ -3237,33 +3237,7 @@ function toggleMessageMenu(id){
   closeMessageMenus();
   if(wasHidden)openMessageMenu(menu,id);
 }
-/* Open the full message action panel with one tap/click on the message bubble.
-   Use pointerup so touch devices do not depend on a synthesized click event.
-   Keep the ⋯ trigger as an additional way to open the same panel. */
-function openActionsFromMessageTarget(event){
-  const target=event.target instanceof Element?event.target:null;
-  if(!target||target.closest(".message-actions-menu"))return;
-  const message=target.closest(".msg[data-mid]");
-  if(!message)return;
-  // The entire message row is an action surface. Preserve real controls,
-  // links, media controls, reactions and the message menu as independent actions.
-  if(target.closest("button,a,input,textarea,select,audio,video,iframe,.msg-actions,.message-actions-menu,.reaction-picker,.message-avatar-button"))return;
-  const id=String(message.dataset.mid||"");
-  const menu=$("message-menu-"+id);
-  if(!menu)return;
-  event.preventDefault();
-  event.stopPropagation();
-  if(typeof event.stopImmediatePropagation==="function")event.stopImmediatePropagation();
-  const wasHidden=menu.classList.contains("hidden");
-  closeMessageMenus();
-  if(wasHidden)openMessageMenu(menu,id);
-}
-document.addEventListener("pointerup",openActionsFromMessageTarget,true);
-document.addEventListener("click",event=>{
-  // Keyboard activation has no preceding pointerup; pointer-generated clicks
-  // are handled above and must not toggle the panel closed again.
-  if(event.detail===0)openActionsFromMessageTarget(event);
-},true);
+/* Message actions open only from the explicit ⋯ trigger. Message content is inert. */
 
 function showStefanOptions(){
   if(!state.currentRoom) return;
