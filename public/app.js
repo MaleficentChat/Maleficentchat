@@ -3135,27 +3135,34 @@ function toggleMessageMenu(id){
   closeMessageMenus();
   if(wasHidden)openMessageMenu(menu,id);
 }
-/* Open message actions directly from the message content area (not only ⋯).
-   Capture phase prevents other chat click handlers from swallowing the bubble tap. */
-document.addEventListener("click",e=>{
-  const target=e.target instanceof Element?e.target:null;
-  if(!target)return;
-  if(target.closest(".message-actions-menu"))return;
-  const msg=target.closest(".msg[data-mid]");
-  const bubble=target.closest(".msg-text,.message-image,.chat-gif,.quoted,.msg-body");
-  if(msg&&bubble&&!target.closest("button,a,input,textarea,audio,video,iframe,.msg-actions,.message-actions-menu")){
-    const id=String(msg.dataset.mid||"");
-    const menu=$("message-menu-"+id);
-    if(menu){
-      e.preventDefault();
-      e.stopPropagation();
-      e.stopImmediatePropagation();
-      const wasHidden=menu.classList.contains("hidden");
-      closeMessageMenus();
-      if(wasHidden)openMessageMenu(menu,id);
-      return;
-    }
-  }
+/* Open the full message action panel with one tap/click on the message bubble.
+   Use pointerup so touch devices do not depend on a synthesized click event.
+   Keep the ⋯ trigger as an additional way to open the same panel. */
+function openActionsFromMessageTarget(event){
+  const target=event.target instanceof Element?event.target:null;
+  if(!target||target.closest(".message-actions-menu"))return;
+  const message=target.closest(".msg[data-mid]");
+  if(!message)return;
+  // Ignore interactive controls and the avatar/header controls; the message
+  // body itself (including quoted text, attachments and media) is tappable.
+  if(target.closest("button,a,input,textarea,select,audio,video,iframe,.msg-actions,.msg-top,.message-avatar-button"))return;
+  const body=target.closest(".msg-body");
+  if(!body||!message.contains(body))return;
+  const id=String(message.dataset.mid||"");
+  const menu=$("message-menu-"+id);
+  if(!menu)return;
+  event.preventDefault();
+  event.stopPropagation();
+  if(typeof event.stopImmediatePropagation==="function")event.stopImmediatePropagation();
+  const wasHidden=menu.classList.contains("hidden");
+  closeMessageMenus();
+  if(wasHidden)openMessageMenu(menu,id);
+}
+document.addEventListener("pointerup",openActionsFromMessageTarget,true);
+document.addEventListener("click",event=>{
+  // Keyboard activation has no preceding pointerup; pointer-generated clicks
+  // are handled above and must not toggle the panel closed again.
+  if(event.detail===0)openActionsFromMessageTarget(event);
 },true);
 
 function showStefanOptions(){
