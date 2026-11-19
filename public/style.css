@@ -9559,3 +9559,44 @@ html{scroll-behavior:smooth;}
     overflow:visible!important;
   }
 }
+
+
+/* 2026-11-19: tactile feedback for message dots, side-panel dots and People toggle.
+   Effects stay within each button's existing footprint; no layout movement. */
+#viewRooms.chatting .message-more-button,
+#viewRooms.chatting .chat-side-actions .panel-more,
+#viewRooms.chatting .chat-people-hamburger,
+#viewRooms.chatting .panel-head>.panel-more{
+  -webkit-tap-highlight-color:transparent!important;
+  transition:background-color .16s ease,border-color .16s ease,box-shadow .16s ease,transform .12s ease,color .16s ease!important;
+  transform-origin:center!important;
+}
+#viewRooms.chatting .message-more-button:hover,
+#viewRooms.chatting .chat-side-actions .panel-more:hover,
+#viewRooms.chatting .chat-people-hamburger:hover,
+#viewRooms.chatting .panel-head>.panel-more:hover{
+  background:rgba(185,185,185,.16)!important;
+  border-color:rgba(210,210,210,.42)!important;
+  box-shadow:0 0 0 3px rgba(190,190,190,.08),0 3px 12px rgba(0,0,0,.22)!important;
+}
+#viewRooms.chatting .message-more-button:active,
+#viewRooms.chatting .chat-side-actions .panel-more:active,
+#viewRooms.chatting .chat-people-hamburger:active,
+#viewRooms.chatting .panel-head>.panel-more:active{
+  transform:scale(.91)!important;
+  background:rgba(185,185,185,.24)!important;
+  box-shadow:0 0 0 4px rgba(190,190,190,.11)!important;
+}
+#viewRooms.chatting .message-more-button:focus-visible,
+#viewRooms.chatting .chat-side-actions .panel-more:focus-visible,
+#viewRooms.chatting .chat-people-hamburger:focus-visible,
+#viewRooms.chatting .panel-head>.panel-more:focus-visible{
+  outline:2px solid rgba(220,220,220,.75)!important;
+  outline-offset:2px!important;
+}
+@media(prefers-reduced-motion:reduce){
+  #viewRooms.chatting .message-more-button,
+  #viewRooms.chatting .chat-side-actions .panel-more,
+  #viewRooms.chatting .chat-people-hamburger,
+  #viewRooms.chatting .panel-head>.panel-more{transition:none!important}
+}
