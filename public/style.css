@@ -9518,3 +9518,44 @@ html{scroll-behavior:smooth;}
     max-height:calc(100dvh - var(--header-h,58px) - 124px)!important;
   }
 }
+
+
+/* 2026-11-19: compact mobile People panel; keep its controls fixed and scroll only the user list. */
+@media(max-width:900px){
+  #viewRooms.chatting .online-panel.mobile-open{
+    display:flex!important;
+    flex-direction:column!important;
+    top:auto!important;
+    bottom:116px!important;
+    right:0!important;
+    width:min(276px,88vw)!important;
+    height:min(62dvh,calc(100dvh - 190px))!important;
+    max-height:min(62dvh,calc(100dvh - 190px))!important;
+    min-height:190px!important;
+    overflow:hidden!important;
+    box-sizing:border-box!important;
+  }
+  #viewRooms.chatting .online-panel.mobile-open>.chat-side-topbar,
+  #viewRooms.chatting .online-panel.mobile-open>.mobile-users-head,
+  #viewRooms.chatting .online-panel.mobile-open>#onlineTabs,
+  #viewRooms.chatting .online-panel.mobile-open>.panel-head{
+    flex:0 0 auto!important;
+  }
+  #viewRooms.chatting .online-panel.mobile-open>#onlineUsers{
+    display:block!important;
+    flex:1 1 0!important;
+    min-height:0!important;
+    height:auto!important;
+    max-height:none!important;
+    overflow-x:hidden!important;
+    overflow-y:auto!important;
+    -webkit-overflow-scrolling:touch!important;
+    overscroll-behavior:contain!important;
+    touch-action:pan-y!important;
+    padding-bottom:8px!important;
+  }
+  #viewRooms.chatting .online-panel.mobile-open>#onlineUsers .online-user-grid{
+    min-height:min-content!important;
+    overflow:visible!important;
+  }
+}
