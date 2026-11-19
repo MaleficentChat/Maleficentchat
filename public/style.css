@@ -9600,3 +9600,28 @@ html{scroll-behavior:smooth;}
   #viewRooms.chatting .chat-people-hamburger,
   #viewRooms.chatting .panel-head>.panel-more{transition:none!important}
 }
+
+
+/* 2026-11-20 — compact main-room message rows to the inner guide
+   and keep floating action menus above the actual composer element. */
+@media(max-width:700px){
+  #viewRooms.chatting #messages > .msg:not(.dm-msg){
+    min-height:0!important;
+    height:auto!important;
+    padding:4px 8px!important;
+  }
+  #viewRooms.chatting #messages > .msg:not(.dm-msg) .msg-body{
+    gap:0!important;
+  }
+  #viewRooms.chatting #messages > .msg:not(.dm-msg) .msg-top{
+    min-height:18px!important;
+    margin:0 0 2px!important;
+  }
+  #viewRooms.chatting #messages > .msg:not(.dm-msg) .msg-text{
+    line-height:1.35!important;
+  }
+  #viewRooms.chatting #messages > .msg:not(.dm-msg) .msg-actions:empty,
+  #viewRooms.chatting #messages > .msg:not(.dm-msg) .reaction:empty{
+    display:none!important;
+  }
+}
