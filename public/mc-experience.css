@@ -1318,3 +1318,147 @@ button:active{
   #onlinePanel .online-user-copy>small,
   #onlinePanel .online-user-copy .room-user-rank{font-size:10px!important}
 }
+
+
+/* 19 Nov 2026 — complete monochrome site pass + PM cards match People rows.
+   People rows: 62px desktop (42px avatar + 18px vertical padding + border),
+   58px mobile (38px avatar + 18px vertical padding + border). */
+:root{
+  --bg:#101010!important;--bg-deep:#080808!important;
+  --panel:#191919!important;--panel-2:#222!important;--panel-3:#2b2b2b!important;
+  --border:rgba(255,255,255,.12)!important;--border-strong:rgba(255,255,255,.22)!important;
+  --text:#fff!important;--muted:#aaa!important;--accent:#aaa!important;--accent-2:#ddd!important;
+  --accent-soft:rgba(255,255,255,.08)!important;--bubble:#292929!important;--mine:#383838!important;
+  --pink:#ccc!important;--purple:#bbb!important;--green:#ddd!important;--danger:#ddd!important;
+  --kp-void:#090909!important;--kp-night:#111!important;--kp-surface:#191919!important;
+  --kp-raised:#222!important;--kp-raised2:#2c2c2c!important;--kp-line:rgba(255,255,255,.13)!important;
+  --kp-line-hot:rgba(255,255,255,.3)!important;--kp-ink:#fff!important;--kp-muted:#aaa!important;
+  --kp-blue:#ccc!important;--kp-blue2:#888!important;--kp-gold:#ddd!important;
+  --kp-mint:#ddd!important;--kp-red:#bbb!important;
+}
+html,body,#app,.app,.main,.view{background:#101010!important;color:#fff!important}
+body{background-image:none!important}
+#app .top-header,#app .topbar,#app .sidebar,#app .panel-head,#app .chat-head,
+#app .online-panel,#app .chat-card,#app .card,#app .panel,#app .room,
+#app .stat-card,#app .user-card,#app .friend-card,#app .news-card,#app .game-card,
+#app .settings-card,#app .staff-card,#app .profile-card,#app .profile-section,
+#app .profile-info-card,#app .modal-card,#app .profile-modal,#app .notification-dropdown,
+#app .dropdown-menu,#app .context-menu,#app .dm-chat-header,#app .dm-settings-menu,
+#app .dm-message-search,#app .dm-replybar,#app .composer,#app .replybar,#app .typing,
+#app .dm-inbox-toolbar,#app .dm-inbox-card,#app .dm-inbox-list,
+#app .kp-rooms-panel,#app .kp-command-center,#app .kp-staff-inbox,
+#app .staff-space-hero,#app .staff-compact-dropdown,#app .kp-staff-group{
+  background:#1b1b1b!important;background-image:none!important;color:#fff!important;
+  border-color:#3a3a3a!important;box-shadow:none!important;
+}
+#app .top-header,#app .topbar,#app .sidebar,#app .panel-head,#app .chat-head,
+#app .profile-tabs,#app .profile-modal .profile-tabs{background:#151515!important}
+#app .room,#app .card,#app .user-card,#app .friend-card,#app .game-card,
+#app .settings-row,#app .profile-social-stat,#app .profile-info-row,
+#app .feature-grant-row,#app .filter-word-row,#app .hub-row,
+#app .notification-item,#app .conversation-row,#app .user-row,#app .friend-row{
+  background:#202020!important;border-color:#383838!important;color:#fff!important;
+}
+#app :is(h1,h2,h3,h4,h5,b,strong,label,p,span,small,li,summary,dt,dd,a){
+  text-shadow:none!important;
+}
+#app :is(h1,h2,h3,h4,h5,b,strong,label,p,li,summary,dt,dd){color:#fff!important}
+#app :is(.muted,small,.profile-handle,.dm-inbox-handle,.dm-inbox-preview,.dm-inbox-time){color:#bdbdbd!important}
+#app a{color:#eee!important}
+#app .nav,#app .nav-group>summary,#app .top-menu,#app .top-icon,#app .top-profile{
+  color:#eee!important;background:transparent!important;border-color:transparent!important;
+}
+#app .nav:hover,#app .nav.active,#app .top-menu:hover,#app .top-icon:hover,#app .top-profile:hover{
+  color:#fff!important;background:#292929!important;border-color:#444!important;box-shadow:none!important;
+}
+#app :is(.room-meta,.room small,.badge,.rank,.dm-unread-badge,.online-badge,
+.profile-note-dot,.status,.dm-inbox-handle i,.kp-leader-place,.brand-news-category){
+  background:#555!important;color:#fff!important;border-color:#777!important;box-shadow:none!important;
+}
+#app :is(input,textarea,select){
+  color:#fff!important;background:#111!important;border:1px solid #444!important;
+  box-shadow:none!important;accent-color:#ccc!important;color-scheme:dark!important;
+}
+#app :is(input,textarea,select)::placeholder{color:#999!important}
+#app :is(input,textarea,select):focus{border-color:#888!important;outline:none!important;box-shadow:none!important}
+#app :is(button,.button,.primary,.send,.mini,.icon-btn,.action,.secondary,.tab-btn){
+  color:#fff!important;background:#292929!important;border:0!important;border-radius:8px!important;
+  box-shadow:none!important;text-shadow:none!important;outline:none!important;
+  transform:none!important;filter:none!important;transition:none!important;
+}
+#app :is(button,.button,.primary,.send,.mini,.icon-btn,.action,.secondary,.tab-btn):hover,
+#app :is(button,.button,.primary,.send,.mini,.icon-btn,.action,.secondary,.tab-btn):active{
+  color:#fff!important;background:#383838!important;border:0!important;
+  box-shadow:none!important;transform:none!important;filter:none!important;
+}
+#app :is(button,.button,.primary,.send,.mini,.icon-btn,.action,.secondary,.tab-btn):focus-visible{
+  outline:1px solid #aaa!important;outline-offset:2px!important;box-shadow:none!important;
+}
+#app .danger,#app .error,#app .success{color:#ddd!important}
+#app .msg-text,#app .quoted,#app .announcement{color:#fff!important;background:#242424!important;border-color:#444!important}
+#app .quoted-label,#app .quoted-text{color:#eee!important}
+#app .messages{scrollbar-color:#666 #171717!important;background-color:#111!important;background-image:none!important}
+#app .profile-banner,#app .brand-news-masthead,#app .brand-news-story,
+#app .profile-settings-head,#app .profile-section,#app .profile-info{
+  background:#202020!important;background-image:none!important;border-color:#3a3a3a!important;
+}
+#app .profile-tabs button.active,#app .settings-tabs button.active,
+#app .dm-inbox-tabs button.active{background:#444!important;color:#fff!important;border-color:#777!important}
+#app hr{border-color:#3a3a3a!important}
+#app .online-user,#app .online-user:hover{background:#222!important;border-color:#3b3b3b!important}
+#app .online-user .status.on{background:#bbb!important;box-shadow:none!important}
+/* Never grayscale, tint, or otherwise recolor profile photos/avatars. */
+
+/* Compact PM inbox cards to the exact People-panel row height and full available width. */
+#viewDms #dmList .dm-inbox-list{display:grid!important;grid-template-columns:minmax(0,1fr)!important;gap:8px!important;width:100%!important}
+#viewDms #dmList .dm-inbox-card{
+  display:flex!important;align-items:center!important;flex-wrap:nowrap!important;
+  width:100%!important;max-width:100%!important;min-width:0!important;
+  height:62px!important;min-height:62px!important;max-height:62px!important;
+  box-sizing:border-box!important;margin:0!important;padding:8px!important;gap:8px!important;
+  overflow:hidden!important;border:1px solid #3a3a3a!important;border-radius:12px!important;
+  background:#202020!important;box-shadow:none!important;transform:none!important;
+}
+#viewDms #dmList .dm-inbox-card>.avatar{
+  display:block!important;flex:0 0 42px!important;width:42px!important;height:42px!important;
+  min-width:42px!important;max-width:42px!important;min-height:42px!important;max-height:42px!important;
+  margin:0!important;object-fit:cover!important;
+}
+#viewDms #dmList .dm-inbox-card .dm-contact-copy{
+  display:flex!important;flex:1 1 auto!important;flex-direction:column!important;justify-content:center!important;
+  min-width:0!important;gap:3px!important;overflow:hidden!important;
+}
+#viewDms #dmList .dm-inbox-title{min-width:0!important;line-height:1.15!important}
+#viewDms #dmList .dm-inbox-title b{font-size:13px!important;line-height:1.15!important}
+#viewDms #dmList .dm-inbox-handle{font-size:10px!important;line-height:1.15!important}
+#viewDms #dmList .dm-inbox-preview,#viewDms #dmList .dm-inbox-time{display:none!important}
+#viewDms #dmList .dm-inbox-actions{
+  display:flex!important;flex:0 0 auto!important;align-items:center!important;justify-content:flex-end!important;
+  flex-wrap:nowrap!important;gap:3px!important;min-width:0!important;padding:0!important;margin:0!important;
+}
+#viewDms #dmList .dm-inbox-actions button{
+  display:inline-flex!important;align-items:center!important;justify-content:center!important;
+  flex:0 0 27px!important;width:27px!important;min-width:27px!important;max-width:27px!important;
+  height:27px!important;min-height:27px!important;padding:0!important;margin:0!important;
+  font-size:12px!important;line-height:1!important;border-radius:7px!important;
+}
+#viewDms #dmList .dm-inbox-actions button:last-child{
+  flex:0 0 40px!important;width:40px!important;min-width:40px!important;max-width:40px!important;
+  height:27px!important;min-height:27px!important;margin:0!important;font-size:11px!important;
+}
+#viewDms #dmList .dm-inbox-card.dm-is-pinned{border-color:#666!important;background:#252525!important}
+#viewDms #dmList .dm-inbox-card:hover{transform:none!important;border-color:#666!important;background:#252525!important;box-shadow:none!important}
+@media(max-width:700px){
+  #viewDms #dmList .dm-inbox-card{
+    height:58px!important;min-height:58px!important;max-height:58px!important;padding:8px!important;gap:7px!important;
+  }
+  #viewDms #dmList .dm-inbox-card>.avatar{
+    flex-basis:38px!important;width:38px!important;height:38px!important;min-width:38px!important;max-width:38px!important;
+    min-height:38px!important;max-height:38px!important;
+  }
+  #viewDms #dmList .dm-inbox-title b{font-size:12px!important}
+  #viewDms #dmList .dm-inbox-handle{font-size:9px!important}
+  #viewDms #dmList .dm-inbox-actions{gap:2px!important}
+  #viewDms #dmList .dm-inbox-actions button{flex-basis:24px!important;width:24px!important;min-width:24px!important;max-width:24px!important;height:25px!important;min-height:25px!important;font-size:11px!important}
+  #viewDms #dmList .dm-inbox-actions button:last-child{flex-basis:34px!important;width:34px!important;min-width:34px!important;max-width:34px!important;height:25px!important;min-height:25px!important;font-size:10px!important}
+}
