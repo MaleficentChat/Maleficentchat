@@ -1363,8 +1363,10 @@ async function start() {
     }
     if(!joined&&attempt<5)await new Promise(resolve=>setTimeout(resolve,500+attempt*500));
   }
+  // The room directory is not part of the signed-in flow. The chat is now
+  // a sibling of the directory, so keep the picker hidden after successful entry.
   if(joined){
-    $("viewRooms")?.classList.remove("hidden");
+    $("viewRooms")?.classList.add("hidden");
   }else{
     $("viewRooms")?.classList.add("hidden");
     console.error("Automatic age-room entry failed after retries:",lastJoinError);
