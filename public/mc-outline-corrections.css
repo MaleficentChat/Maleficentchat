@@ -323,3 +323,89 @@ body [data-room-filter]:active{
     width:100%!important;flex-basis:100%!important;
   }
 }
+
+
+/* 19 Nov 2026 — correct mobile chat bottom gap, navigation sizing and quick actions. */
+@media(max-width:800px){
+  /* Keep a real 58px clear area below the composer, above the device navigation bar. */
+  #viewRooms.chatting .chat-card>.composer,
+  #viewRooms.chatting .composer{
+    position:fixed!important;
+    left:0!important;right:0!important;bottom:58px!important;
+    width:100%!important;margin:0!important;
+    z-index:35!important;
+  }
+  #viewRooms.chatting .chat-card{
+    padding-bottom:58px!important;
+  }
+
+  /* Rooms is a normal navigation row, never a tall empty panel. */
+  #sidebar #roomsNavToggle,
+  #sidebar .nav-group>summary,
+  #sidebar .nav-group .nav,
+  #sidebar>.nav:not(#roomsNavToggle){
+    height:42px!important;min-height:42px!important;
+    max-height:42px!important;flex:0 0 42px!important;
+    padding:8px 11px!important;box-sizing:border-box!important;
+  }
+  #sidebar #roomsNavList{
+    height:auto!important;min-height:0!important;max-height:34dvh!important;
+    overflow-x:hidden!important;overflow-y:auto!important;
+    flex:0 1 auto!important;align-content:start!important;
+  }
+  #sidebar,#sidebar *{
+    min-width:0;
+  }
+  #sidebar{
+    overflow-x:hidden!important;
+    box-sizing:border-box!important;
+  }
+  #sidebar .nav-group,
+  #sidebar .nav-group>summary,
+  #sidebar .nav-group .nav,
+  #sidebar .nav-group>div,
+  #sidebar .nav-group>section,
+  #sidebar .nav-group .nav-list,
+  #sidebar .nav-group .dropdown-menu{
+    width:100%!important;max-width:100%!important;
+    box-sizing:border-box!important;min-width:0!important;
+  }
+  #sidebar .nav-group .nav,
+  #sidebar .nav-group>summary{
+    flex:0 0 auto!important;
+  }
+
+  /* Quick actions: narrow, vertical, text-only labels, all left aligned. */
+  #viewRooms.chatting .chat-tools-drawer{
+    width:130px!important;max-width:130px!important;
+    padding:6px!important;gap:4px!important;
+    box-sizing:border-box!important;
+  }
+  #viewRooms.chatting .chat-tools-drawer.open{
+    display:flex!important;flex-direction:column!important;
+    align-items:stretch!important;gap:4px!important;
+  }
+  #viewRooms.chatting .chat-tools-heading{
+    align-items:flex-start!important;text-align:left!important;
+    padding:0 2px 5px!important;
+  }
+  #viewRooms.chatting .chat-tools-heading span,
+  #viewRooms.chatting .chat-tools-drawer>button small{
+    display:none!important;
+  }
+  #viewRooms.chatting .chat-tools-drawer>button{
+    width:100%!important;max-width:100%!important;
+    min-height:31px!important;height:31px!important;
+    justify-content:flex-start!important;text-align:left!important;
+    padding:4px 5px!important;gap:5px!important;
+    box-sizing:border-box!important;
+  }
+  #viewRooms.chatting .chat-tools-drawer>button>span:last-child{
+    flex:1 1 auto!important;min-width:0!important;
+    align-items:flex-start!important;text-align:left!important;
+  }
+  #viewRooms.chatting .chat-tools-drawer>button b{
+    display:block!important;text-align:left!important;
+    font-size:9px!important;white-space:nowrap!important;
+  }
+}
