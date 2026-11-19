@@ -1,8 +1,8 @@
 /* MC correction pass — match the user's thin-outline reference across the entire app. */
 :root{
-  --mc-outline:rgba(232,205,190,.22);
-  --mc-outline-strong:rgba(232,205,190,.38);
-  --mc-control-hover:rgba(232,205,190,.075);
+  --mc-outline:rgba(210, 210, 210, .22);
+  --mc-outline-strong:rgba(210, 210, 210, .38);
+  --mc-control-hover:rgba(210, 210, 210, .075);
 }
 
 /* A consistent, subtle outline makes every interactive control legible. */
@@ -34,18 +34,18 @@ a.button:hover,a.action:hover{
 }
 button:focus-visible,
 [role="button"]:focus-visible,[role="tab"]:focus-visible,[role="menuitem"]:focus-visible{
-  outline:2px solid rgba(232,205,190,.62)!important;
+  outline:2px solid rgba(210, 210, 210, .62)!important;
   outline-offset:2px!important;
 }
 
 /* Keep the primary action distinct while retaining the same fine outline. */
 button.primary,.primary,button.send,.send{
-  border:1px solid rgba(232,205,190,.34)!important;
+  border:1px solid rgba(210, 210, 210, .34)!important;
   background-image:none!important;
   box-shadow:none!important;
 }
-button.danger,.danger{border-color:rgba(235,120,120,.28)!important}
-button.success,.success{border-color:rgba(110,190,145,.28)!important}
+button.danger,.danger{border-color:rgba(144, 144, 144, .28)!important}
+button.success,.success{border-color:rgba(170, 170, 170, .28)!important}
 
 /* The reference uses thin separators between information groups. */
 .settings-tabs,.auth-tabs,.profile-tabs,.room-view-tabs,.hub-tabs,
@@ -62,7 +62,7 @@ button.success,.success{border-color:rgba(110,190,145,.28)!important}
 .profile-tabs button.active,.room-view-tabs button.active,
 .hub-tabs button.active{
   border-color:var(--mc-outline)!important;
-  background:rgba(232,205,190,.055)!important;
+  background:rgba(210, 210, 210, .055)!important;
 }
 
 /* Navigation: always show icon + readable label, including compact/mobile layouts. */
@@ -252,7 +252,7 @@ button.success,.success{border-color:rgba(110,190,145,.28)!important}
 
 /* Final universal thin-outline pass: include custom clickable rows and icon controls,
    not only native buttons. */
-:root{--mc-outline:rgba(232,205,190,.34);--mc-outline-strong:rgba(232,205,190,.52)}
+:root{--mc-outline:rgba(210, 210, 210, .34);--mc-outline-strong:rgba(210, 210, 210, .52)}
 body button,
 body a[href],
 body [role="button"],
@@ -274,7 +274,7 @@ body .message-menu-item{
   box-shadow:none!important;
   background-image:none!important;
 }
-body button:disabled{border-color:rgba(232,205,190,.16)!important}
+body button:disabled{border-color:rgba(210, 210, 210, .16)!important}
 body button:not(:disabled):active,
 body a[href]:active,
 body [role="button"]:active,
@@ -448,7 +448,7 @@ body [data-room-filter]:active{
   justify-content:flex-start!important;
   gap:11px!important;
   text-align:left!important;
-  border:1px solid var(--mc-outline,rgba(232,205,190,.22))!important;
+  border:1px solid var(--mc-outline,rgba(210, 210, 210, .22))!important;
   border-radius:10px!important;
   overflow:hidden!important;
 }
@@ -500,8 +500,8 @@ body [data-room-filter]:active{
 #sidebar .nav.active,
 #sidebar .nav-group>summary:hover,
 #sidebar #roomsNavToggle:hover{
-  background:rgba(232,205,190,.075)!important;
-  border-color:var(--mc-outline,rgba(232,205,190,.35))!important;
+  background:rgba(210, 210, 210, .075)!important;
+  border-color:var(--mc-outline,rgba(210, 210, 210, .35))!important;
 }
 @media(max-width:800px){
   #sidebar.sidebar,#sidebar.sidebar.open,#sidebar.sidebar.mobile-open{
