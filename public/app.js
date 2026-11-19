@@ -3191,11 +3191,9 @@ function openActionsFromMessageTarget(event){
   if(!target||target.closest(".message-actions-menu"))return;
   const message=target.closest(".msg[data-mid]");
   if(!message)return;
-  // Ignore interactive controls and the avatar/header controls; the message
-  // body itself (including quoted text, attachments and media) is tappable.
-  if(target.closest("button,a,input,textarea,select,audio,video,iframe,.msg-actions,.msg-top,.message-avatar-button"))return;
-  const body=target.closest(".msg-body");
-  if(!body||!message.contains(body))return;
+  // The entire message row is an action surface. Preserve real controls,
+  // links, media controls, reactions and the message menu as independent actions.
+  if(target.closest("button,a,input,textarea,select,audio,video,iframe,.msg-actions,.message-actions-menu,.reaction-picker,.message-avatar-button"))return;
   const id=String(message.dataset.mid||"");
   const menu=$("message-menu-"+id);
   if(!menu)return;
