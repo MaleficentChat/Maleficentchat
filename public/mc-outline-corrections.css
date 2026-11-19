@@ -616,3 +616,26 @@ body [data-room-filter]:active{
     margin:0!important;
   }
 }
+
+
+/* Bubble-free usernames: keep clickable/taggable names, remove their button-pill chrome. */
+#viewRooms.chatting .msg .message-author,
+#viewRooms.chatting .msg .tag-author,
+#viewRooms.chatting .msg-top .message-author,
+#viewRooms.chatting .msg-top .tag-author,
+.system-message .system-message-user-link {
+  display:inline!important;
+  padding:0!important;
+  margin:0!important;
+  border:0!important;
+  border-radius:0!important;
+  background:transparent!important;
+  box-shadow:none!important;
+  outline:0!important;
+  -webkit-appearance:none!important;
+  appearance:none!important;
+  text-decoration:none!important;
+}
+#viewRooms.chatting .msg .message-author,
+#viewRooms.chatting .msg .tag-author { cursor:pointer!important; }
+.system-message .system-message-user-link { cursor:pointer!important; }
