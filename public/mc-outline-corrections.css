@@ -696,3 +696,31 @@ body [data-room-filter]:active{
   background:transparent!important;
   box-shadow:none!important;
 }
+
+
+/* Message More opens as a separate overlapping layer above the original action panel. */
+.message-more-submenu.is-floating:not(.hidden){
+  display:flex!important;
+  visibility:visible!important;
+  pointer-events:auto!important;
+  position:fixed!important;
+  flex-direction:column!important;
+  align-items:stretch!important;
+  gap:3px!important;
+  margin:0!important;
+  padding:8px!important;
+  border:1px solid rgba(190,190,190,.28)!important;
+  border-left:1px solid rgba(190,190,190,.28)!important;
+  border-radius:15px!important;
+  background:linear-gradient(155deg,#202020 0%,#171717 78%,#151515 100%)!important;
+  box-shadow:0 18px 48px rgba(0,0,0,.62),0 0 0 1px rgba(190,190,190,.08)!important;
+  backdrop-filter:blur(18px)!important;
+  -webkit-overflow-scrolling:touch!important;
+}
+.message-more-submenu.is-floating:not(.hidden) .message-menu-item{
+  display:flex!important;
+  visibility:visible!important;
+  width:100%!important;
+  min-height:42px!important;
+  flex:0 0 auto!important;
+}
