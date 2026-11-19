@@ -29,7 +29,7 @@ input:focus,textarea:focus,select:focus{border-color:#b2b2b2;box-shadow:0 0 0 3p
 .brand-avatar,.rail-logo{background:linear-gradient(145deg,#616161,#2a2a2a 70%);border:1px solid rgba(200, 200, 200, .48);color:#d6d6d6;box-shadow:0 5px 18px rgba(102, 102, 102, .25);font-size:0}
 .brand-avatar:after,.rail-logo:after{content:"🖤";font-family:Georgia,serif;font-size:23px;color:#d6d6d6}
 .top-brand-copy b{font-size:0}
-.top-brand-copy b:after{content:"Maleficent Chat";font-size:16px;letter-spacing:.1px;color:#f8f8f8}
+.top-brand-copy b:after{content:"🛠️ Maleficent Chat";font-size:16px;letter-spacing:.1px;color:#f8f8f8}
 .top-brand-copy span{font-size:0}
 .top-brand-copy span:after{content:"community";font-size:11px;letter-spacing:1.3px;text-transform:uppercase;color:#b6b6b6}
 .sidebar{background:rgba(21, 21, 21, .97);border-right:1px solid rgba(181, 181, 181, .13);backdrop-filter:blur(16px)}
