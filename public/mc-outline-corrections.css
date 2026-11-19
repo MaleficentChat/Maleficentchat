@@ -519,3 +519,7 @@ body [data-room-filter]:active{
     margin-right:0!important;
   }
 }
+
+
+/* After a room is selected, hide the entire room directory so chat opens immediately. */
+#viewRooms.chatting > .mc-room-directory{display:none!important;}
