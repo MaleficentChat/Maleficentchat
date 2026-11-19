@@ -326,3 +326,31 @@ html,body{background:#050505!important;color:#fff!important;color-scheme:dark!im
 #app .avatar img,#app .profile-avatar img,#app .profile-cover-image{
   filter:none!important;opacity:1!important;mix-blend-mode:normal!important;
 }
+
+
+/* User's final media rule: profile pictures alone retain full colour.
+   Every other image/media thumbnail is monochrome; UI is already grayscale. */
+#app img,#app video,#app canvas,#app picture,
+#app [style*="background-image"]{
+  filter:grayscale(1)!important;
+  opacity:1!important;
+  mix-blend-mode:normal!important;
+}
+/* Preserve profile photos wherever the site displays an account avatar. */
+#app .avatar img,
+#app .big-avatar img,
+#app .profile-avatar img,
+#app .top-profile img,
+#app .user-avatar img,
+#app .profile-picture img,
+#app .equipped-profile-frame img,
+#app #profileAvatarViewer img,
+#app .dm-contact-card>.avatar img,
+#onlinePanel .online-user>.avatar img{
+  filter:none!important;
+  opacity:1!important;
+  mix-blend-mode:normal!important;
+}
+/* Keep profile image viewer itself neutral while leaving the photo coloured. */
+#profileAvatarViewer{background:#080808!important;color:#fff!important}
+#profileAvatarViewer button{background:#292929!important;color:#fff!important;border-color:#666!important}
