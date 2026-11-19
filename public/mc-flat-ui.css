@@ -1,7 +1,7 @@
 /* Whole-app flat controls: keep the existing layout and behavior, remove visual clutter. */
 :root{
-  --flat-control-hover:rgba(255,255,255,.055);
-  --flat-control-active:rgba(255,255,255,.09);
+  --flat-control-hover:rgba(255, 255, 255, .055);
+  --flat-control-active:rgba(255, 255, 255, .09);
 }
 
 /* Buttons across every view: no raised surfaces, gradients, heavy outlines or shadows. */
@@ -64,15 +64,15 @@ button.success,.success{
   border-radius:8px!important;
 }
 button.primary,.primary,button.send,.send{
-  background-color:#c9784e!important;
-  color:#fff!important;
+  background-color:#868686!important;
+  color:#ffffff!important;
 }
 button.primary:hover,.primary:hover,button.send:hover,.send:hover{
-  background-color:#d1845b!important;
+  background-color:#919191!important;
 }
-button.danger,.danger{background-color:rgba(210,75,75,.12)!important;color:#ffaaaa!important}
-button.warning,.warning{background-color:rgba(210,155,65,.12)!important}
-button.success,.success{background-color:rgba(70,170,120,.12)!important}
+button.danger,.danger{background-color:rgba(104, 104, 104, .12)!important;color:#bcbcbc!important}
+button.warning,.warning{background-color:rgba(160, 160, 160, .12)!important}
+button.success,.success{background-color:rgba(145, 145, 145, .12)!important}
 
 /* Compact, icon-and-label controls should read like stickers, not individual cards. */
 .icon-btn,.top-icon,.top-profile,.mini,.action,
@@ -115,7 +115,7 @@ button.success,.success{background-color:rgba(70,170,120,.12)!important}
 
 /* Keyboard focus remains visible without a permanent border around controls. */
 button:focus-visible,[role="tab"]:focus-visible,[role="menuitem"]:focus-visible{
-  outline:2px solid rgba(221,157,117,.72)!important;
+  outline:2px solid rgba(168, 168, 168, .72)!important;
   outline-offset:2px!important;
 }
 
@@ -127,28 +127,28 @@ button,a[role="button"],[role="button"],[role="tab"],[role="menuitem"],
 .chat-tools-toggle,.message-more-button,.message-menu-item,
 #sidebar .nav,#sidebar #roomsNavToggle,#sidebar .nav-group>summary,
 #sidebar .rooms-nav-list button{
-  border:1px solid rgba(224,195,177,.22)!important;
+  border:1px solid rgba(200, 200, 200, .22)!important;
   border-radius:8px!important;
   box-shadow:none!important;
   background-image:none!important;
 }
 button:not(:disabled):hover,a[role="button"]:hover,[role="button"]:hover,
 [role="tab"]:hover,[role="menuitem"]:hover{
-  border-color:rgba(224,195,177,.38)!important;
-  background-color:rgba(255,255,255,.045)!important;
+  border-color:rgba(200, 200, 200, .38)!important;
+  background-color:rgba(255, 255, 255, .045)!important;
   box-shadow:none!important;
 }
 button:focus-visible,[role="button"]:focus-visible,[role="tab"]:focus-visible{
-  outline:2px solid rgba(224,195,177,.62)!important;
+  outline:2px solid rgba(200, 200, 200, .62)!important;
   outline-offset:2px!important;
 }
 #sidebar .nav-group{border:0!important;background:transparent!important}
-#sidebar .nav-group>summary{border-color:rgba(224,195,177,.16)!important}
+#sidebar .nav-group>summary{border-color:rgba(200, 200, 200, .16)!important}
 #sidebar .nav-group .nav,
 #sidebar>.nav:not(#roomsNavToggle){
   display:flex!important;align-items:center!important;justify-content:flex-start!important;
   width:100%!important;min-width:0!important;gap:12px!important;
-  border-color:rgba(224,195,177,.18)!important;
+  border-color:rgba(200, 200, 200, .18)!important;
   text-align:left!important;
 }
 #sidebar .nav-group .nav>span,
