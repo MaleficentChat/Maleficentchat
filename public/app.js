@@ -2597,9 +2597,23 @@ function openOnlinePanelMenu(){
 }
 
 
-$("closeOnlinePanel")?.addEventListener("click",()=>{
+function returnToMainRoomAfterPanelClose(){
+  // Closing a navigation-side panel should reveal the room that is already
+  // joined, not leave the app on the non-rendering "users" view.
+  if(!state.user||!state.currentRoom)return;
+  state.view="rooms";
+  document.querySelectorAll(".nav[data-view]").forEach(button=>
+    button.classList.toggle("active",button.dataset.view==="rooms")
+  );
+  document.querySelectorAll(".view").forEach(view=>{
+    if(view.id==="viewRooms")view.classList.remove("hidden");
+    else view.classList.add("hidden");
+  });
+  $("chatWrap")?.classList.remove("hidden");
   $("onlinePanel")?.classList.remove("mobile-open");
-});
+}
+
+$("closeOnlinePanel")?.addEventListener("click",returnToMainRoomAfterPanelClose);
 $("openOnlinePanel")?.addEventListener("click",()=>{
   const panel=$("onlinePanel");
   if(!panel)return;
