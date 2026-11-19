@@ -641,7 +641,60 @@ body [data-room-filter]:active{
 .system-message .system-message-user-link { cursor:pointer!important; }
 
 
-/* 19 Nov 2026 — balance the new rectangular room-message bubble: remove excess lower padding only. */
-#viewRooms.chatting #messages .msg .msg-text{
-  padding-bottom:2px!important;
+
+
+/* 19 Nov 2026 — compact the room message rows and keep author links visible. */
+#viewRooms.chatting #messages > .msg:not(.dm-msg){
+  padding-top:5px!important;
+  padding-bottom:3px!important;
+}
+#viewRooms.chatting #messages > .msg:not(.dm-msg) .msg-top{
+  margin-bottom:2px!important;
+  min-height:18px!important;
+}
+#viewRooms.chatting #messages > .msg:not(.dm-msg) .msg-text{
+  padding:0!important;
+  margin:0!important;
+  line-height:1.35!important;
+}
+#viewRooms.chatting #messages > .msg:not(.dm-msg) .msg-author-group,
+#viewRooms.chatting #messages > .msg:not(.dm-msg) .message-author,
+#viewRooms.chatting #messages > .msg:not(.dm-msg) .tag-author{
+  display:inline-flex!important;
+  visibility:visible!important;
+  opacity:1!important;
+}
+#viewRooms.chatting #messages > .msg:not(.dm-msg) .message-author,
+#viewRooms.chatting #messages > .msg:not(.dm-msg) .tag-author{
+  flex:0 1 auto!important;
+  max-width:min(55vw,360px)!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+  white-space:nowrap!important;
+  color:inherit!important;
+  -webkit-text-fill-color:currentColor!important;
+}
+
+/* Aurora join announcements: remove inherited button-pill styling, not the name/link. */
+#viewRooms.chatting .system-message .system-message-user-link{
+  display:inline!important;
+  padding:0!important;
+  margin:0!important;
+  border:0!important;
+  border-radius:0!important;
+  background:transparent!important;
+  box-shadow:none!important;
+  outline:0!important;
+  appearance:none!important;
+  -webkit-appearance:none!important;
+  color:var(--accent,#b3b3b3)!important;
+  font:inherit!important;
+  font-weight:800!important;
+  text-decoration:underline!important;
+  cursor:pointer!important;
+}
+#viewRooms.chatting .system-message .system-message-user-link:hover,
+#viewRooms.chatting .system-message .system-message-user-link:focus-visible{
+  background:transparent!important;
+  box-shadow:none!important;
 }
