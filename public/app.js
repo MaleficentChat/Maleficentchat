@@ -2873,7 +2873,7 @@ function messageHTML(message) {
         <div class="msg-top">
           <span class="msg-time-side">${fmt(message.time)}${message.edited ? " · edited" : ""}</span>
           <span class="msg-author-group">
-            ${$("viewRooms")?.classList.contains("main-room-chat") ? `<span class="message-rank-floating" title="${esc(message.rank||"MEMBER")}" aria-label="${esc(message.rank||"MEMBER")}">${rankIcon[String(message.rank||"MEMBER").toUpperCase()]||"⚡"}</span>` : ''}
+            ${($("viewRooms")?.classList.contains("main-room-chat") || !!state.currentRoom?.isDefault || /^(main room|teen chat)$/i.test(String(state.currentRoom?.name||"").trim())) ? `<span class="message-rank-floating" title="${esc(message.rank||"MEMBER")}" aria-label="${esc(message.rank||"MEMBER")}">${rankIcon[String(message.rank||"MEMBER").toUpperCase()]||"⚡"}</span>` : ''}
             <button class="message-author tag-author" type="button" title="Tag @${esc(message.username)}" onclick="tagUserFromMessage('${esc(message.username)}')" style="color:${esc(message.usernameColor||state.user?.settings?.usernameColor||'var(--username-color)')}">${esc(message.displayName)}</button>
           </span>
           <span class="msg-header-right">
