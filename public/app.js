@@ -5815,13 +5815,17 @@ function renderAuditRow(x) {
   const when = x.time ? fmt(x.time) : "";
   const action = String(x.action || "").toUpperCase();
   const reason = auditActionLabel(action);
+  const isMessageDeletion = /MESSAGE.*DELETE|DELETE.*MESSAGE/.test(action);
+  const isRankChange = /RANK/.test(action);
+  const isUsernameChange = /USERNAME/.test(action);
   const pick = (...keys) => { for (const key of keys) { const value = meta[key]; if (value != null && value !== "") return value; } return ""; };
   const duration = pick("duration", "durationMinutes", "minutes", "muteMinutes", "kickMinutes");
-  const previousRank = pick("previousRank", "oldRank", "fromRank");
-  const newRank = pick("newRank", "rank", "toRank");
-  const previousUsername = pick("previousUsername", "oldUsername", "fromUsername");
-  const newUsername = pick("newUsername", "username", "toUsername");
+  const previousRank = isRankChange ? pick("previousRank", "oldRank", "fromRank") : "";
+  const newRank = isRankChange ? pick("newRank", "rank", "toRank") : "";
+  const previousUsername = isUsernameChange ? pick("previousUsername", "oldUsername", "fromUsername") : "";
+  const newUsername = isUsernameChange ? pick("newUsername", "username", "toUsername") : "";
   const evidence = pick("evidence", "attachment", "media", "mediaUrl", "deletedText", "deletedMessage", "news", "item");
+  const deletedText = isMessageDeletion ? pick("text", "deletedText", "messageText", "content") : "";
   const rows = [
     '<div class="audit-compact-field"><small>Actor</small><b>' + esc(actor) + '</b></div>',
     '<div class="audit-compact-field"><small>Target</small><b>' + esc(target) + '</b></div>',
@@ -5831,16 +5835,17 @@ function renderAuditRow(x) {
   if (previousRank || newRank) rows.push('<div class="audit-compact-field"><small>Rank</small><b>' + esc(String(previousRank || "—") + " → " + String(newRank || "—")) + '</b></div>');
   if (previousUsername || newUsername) rows.push('<div class="audit-compact-field"><small>Username</small><b>' + esc(String(previousUsername || "—") + " → " + String(newUsername || "—")) + '</b></div>');
   let evidenceHtml = "";
+  if (deletedText) evidenceHtml += '<div class="audit-compact-field audit-compact-evidence"><small>Deleted message</small><div class="audit-detail-text">' + esc(String(deletedText)) + '</div></div>';
   if (evidence) {
     const evidenceValue = typeof evidence === "string" && (evidence.startsWith("/uploads/") || evidence.startsWith("https://")) ? {url:evidence} : evidence;
-    evidenceHtml = '<div class="audit-compact-field audit-compact-evidence"><small>Evidence</small>' + (typeof evidenceValue === "object" && evidenceValue !== null && (evidenceValue.url || evidenceValue.mediaUrl) ? auditMediaPreview(evidenceValue, "Evidence") : '<b>' + esc(typeof evidenceValue === "object" ? String(evidenceValue.text || evidenceValue.content || evidenceValue.name || evidenceValue.title || evidenceValue.type || "Evidence attached") : String(evidenceValue)) + '</b>') + '</div>';
+    evidenceHtml += '<div class="audit-compact-field audit-compact-evidence"><small>Evidence</small>' + (typeof evidenceValue === "object" && evidenceValue !== null && (evidenceValue.url || evidenceValue.mediaUrl) ? auditMediaPreview(evidenceValue, "Deleted attachment") : '<b>' + esc(typeof evidenceValue === "object" ? String(evidenceValue.text || evidenceValue.content || evidenceValue.name || evidenceValue.title || evidenceValue.type || "Evidence attached") : String(evidenceValue)) + '</b>') + '</div>';
   }
+  const hasDetails = previousRank || newRank || previousUsername || newUsername || deletedText || evidence;
   return '<article class="system-audit-row"><div class="system-audit-heading"><b>Audit Entry</b><span class="audit-source">' + esc(when) + '</span></div>' +
     '<div class="system-audit-meta audit-compact-meta">' + rows.slice(0,3).join("") + (duration ? rows[3] || "" : "") + '</div>' +
-    ((previousRank || newRank || previousUsername || newUsername || evidence) ? '<details class="audit-evidence-details"><summary>View details</summary><div class="audit-evidence-content">' + rows.slice(3).join("") + evidenceHtml + '</div></details>' : '') +
+    (hasDetails ? '<details class="audit-evidence-details"><summary>View details</summary><div class="audit-evidence-content">' + rows.slice(3).join("") + evidenceHtml + '</div></details>' : '') +
     '</article>';
 }
-
 
 /* ---------------- STAFF APPLICATION ---------------- */
 async function loadStaffApplication(){
