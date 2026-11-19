@@ -9250,3 +9250,38 @@ html{scroll-behavior:smooth;}
     opacity:.7!important;
   }
 }
+
+
+/* Quick actions: half-width, 30% shorter vertical list. */
+@media(max-width:800px){
+  #viewRooms.chatting .chat-tools-drawer{
+    width:min(155px,calc(100vw - 24px))!important;
+    max-width:155px!important;
+    padding:6px!important;
+    gap:4px!important;
+  }
+  #viewRooms.chatting .chat-tools-drawer.open{
+    display:flex!important;
+    flex-direction:column!important;
+    gap:4px!important;
+  }
+  #viewRooms.chatting .chat-tools-heading{
+    padding:0 1px 5px!important;
+    gap:1px!important;
+  }
+  #viewRooms.chatting .chat-tools-heading strong{font-size:11px!important}
+  #viewRooms.chatting .chat-tools-heading span{font-size:8px!important}
+  #viewRooms.chatting .chat-tools-drawer>button{
+    min-height:34px!important;
+    height:34px!important;
+    padding:4px 5px!important;
+    gap:5px!important;
+    border-radius:8px!important;
+  }
+  #viewRooms.chatting .chat-tools-drawer>button .chat-tool-icon{
+    flex-basis:19px!important;width:19px!important;height:19px!important;
+    font-size:13px!important;
+  }
+  #viewRooms.chatting .chat-tools-drawer>button b{font-size:9px!important}
+  #viewRooms.chatting .chat-tools-drawer>button small{font-size:7px!important}
+}
