@@ -3121,7 +3121,13 @@ function positionMessageMenu(menu,id){
   const safeLeft=Math.max(area.left+edge,edge);
   const safeRight=Math.min(area.right-edge,window.innerWidth-edge);
   const safeTop=Math.max(area.top+edge,screenTop+edge);
-  const safeBottom=Math.min(area.bottom-edge,screenBottom-edge);
+  // Keep the message action panel entirely ABOVE the message composer.
+  // The composer's top edge is a hard lower boundary, so Quote/Delete/More
+  // can never cover or spill underneath the typing controls.
+  const composer=document.querySelector("#viewRooms.chatting .chat-card > .composer, #viewRooms.chatting .composer");
+  const composerTop=composer?.getBoundingClientRect().top;
+  const composerBoundary=Number.isFinite(composerTop)?composerTop-edge:Infinity;
+  const safeBottom=Math.min(area.bottom-edge,screenBottom-edge,composerBoundary);
   const availableWidth=Math.max(120,safeRight-safeLeft);
   const width=Math.min(250,availableWidth);
   const maxHeight=Math.max(100,safeBottom-safeTop);
