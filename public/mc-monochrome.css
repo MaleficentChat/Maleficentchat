@@ -228,3 +228,37 @@ html,body{background:#050505!important;color:#fff!important;color-scheme:dark!im
 }
 #app input::placeholder,#app textarea::placeholder{color:#ccc!important;opacity:1!important}
 #app ::selection{background:#eee!important;color:#000!important}
+
+/* Final pass: remove every remaining warm accent from the site interface. */
+#app *:not(img):not(video):not(canvas):not(iframe):not(svg):not(path){
+ color:#fff!important;border-color:#555!important;text-shadow:none!important;
+}
+#app,html,body{background:#050505!important;color:#fff!important}
+#app .composer,#app .replybar,#app .typing,#app .chat-head,
+#app .panel-head,#app .sidebar,#app .online-panel,#app .top-header,
+#app .topbar,#app header,#app nav{background-color:#151515!important}
+#app .messages,#app .message-list,#app .chat-card,#app .view,
+#app #viewRooms,#app main{background-color:#080808!important}
+#app .card,#app .panel,#app .room,#app .room-card,#app .modal-card,
+#app .dropdown,#app .popover,#app .menu,#app .profile-card,
+#app .settings-card,#app .message-actions-menu,#app .message-more-submenu,
+#app .dm-inbox,#app .dm-thread,#app .notification-dropdown{
+ background-color:#202020!important;
+}
+#app .msg-body,#app .msg-text,#app .message-bubble,
+#app .quoted,#app .composer input,#app .chat-input-area{
+ background-color:#292929!important;color:#fff!important;
+}
+#app .msg.mine .msg-body,#app .message.mine .msg-body,
+#app .message-bubble.mine{background-color:#383838!important;color:#fff!important}
+#app button,#app input,#app textarea,#app select,#app .nav,
+#app .tab,#app .badge,#app .rank,#app .tag,#app .pill,
+#app .icon-btn,#app .action,#app .mini,#app .quick-action{
+ background-color:#292929!important;color:#fff!important;border-color:#666!important;
+}
+#app .primary,#app .send,#app button.primary,#app .nav.active,#app .tab.active{
+ background-color:#e5e5e5!important;color:#080808!important;border-color:#fff!important;
+}
+#app img,#app video,#app canvas,#app [style*="background-image"]{
+ filter:none!important;opacity:1!important;mix-blend-mode:normal!important;
+}
