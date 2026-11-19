@@ -5833,10 +5833,9 @@ function renderAuditRow(x) {
   let evidenceHtml = "";
   if (evidence) {
     const evidenceValue = typeof evidence === "string" && (evidence.startsWith("/uploads/") || evidence.startsWith("https://")) ? {url:evidence} : evidence;
-    evidenceHtml = '<div class="audit-compact-field audit-compact-evidence"><small>Evidence</small>' + (typeof evidenceValue === "object" && evidenceValue !== null ? auditMediaPreview(evidenceValue, "Evidence") : '<b>' + esc(String(evidenceValue)) + '</b>') + '</div>';
+    evidenceHtml = '<div class="audit-compact-field audit-compact-evidence"><small>Evidence</small>' + (typeof evidenceValue === "object" && evidenceValue !== null && (evidenceValue.url || evidenceValue.mediaUrl) ? auditMediaPreview(evidenceValue, "Evidence") : '<b>' + esc(typeof evidenceValue === "object" ? JSON.stringify(evidenceValue) : String(evidenceValue)) + '</b>') + '</div>';
   }
-  const details = rows.join("") + evidenceHtml;
-  return '<article class="system-audit-row"><div class="system-audit-heading"><b>' + esc(reason) + '</b><span class="audit-source">' + esc(when) + '</span></div>' +
+  return '<article class="system-audit-row"><div class="system-audit-heading"><b>Audit Entry</b><span class="audit-source">' + esc(when) + '</span></div>' +
     '<div class="system-audit-meta audit-compact-meta">' + rows.slice(0,3).join("") + (duration ? rows[3] || "" : "") + '</div>' +
     ((previousRank || newRank || previousUsername || newUsername || evidence) ? '<details class="audit-evidence-details"><summary>View details</summary><div class="audit-evidence-content">' + rows.slice(3).join("") + evidenceHtml + '</div></details>' : '') +
     '</article>';
