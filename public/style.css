@@ -9772,3 +9772,22 @@ html{scroll-behavior:smooth;}
     text-align:left!important;gap:4px!important;
   }
 }
+
+
+/* 2026-11-20: keep Main Room rank badge immediately before its username,
+   regardless of markup order or older cached message-renderer code. */
+#viewRooms.main-room-chat #messages > .msg:not(.dm-msg) .msg-author-group{
+  display:flex!important;
+  flex-direction:row!important;
+  align-items:center!important;
+  gap:5px!important;
+}
+#viewRooms.main-room-chat #messages > .msg:not(.dm-msg) .msg-author-group .message-rank-floating{
+  order:-1!important;
+  flex:0 0 auto!important;
+  float:none!important;
+  margin:0!important;
+}
+#viewRooms.main-room-chat #messages > .msg:not(.dm-msg) .msg-author-group .message-author{
+  order:0!important;
+}
