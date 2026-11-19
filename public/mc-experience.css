@@ -1244,3 +1244,77 @@ button:active{
   transform:none!important;
   box-shadow:0 1px 4px rgba(0,0,0,.34),inset 0 1px rgba(255,255,255,.04)!important;
 }
+
+
+/* 19 Nov 2026 — People list rows match Private Messages inbox card sizing. */
+#onlinePanel .online-user-grid{
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr)!important;
+  gap:8px!important;
+  width:100%!important;
+}
+#onlinePanel .online-user{
+  box-sizing:border-box!important;
+  position:relative!important;
+  display:flex!important;
+  align-items:center!important;
+  gap:11px!important;
+  width:100%!important;
+  min-width:0!important;
+  min-height:0!important;
+  height:auto!important;
+  padding:12px!important;
+  border:1px solid #34303f!important;
+  border-radius:14px!important;
+  background:linear-gradient(115deg,#242424,#1c1c1c)!important;
+  box-shadow:none!important;
+  transform:none!important;
+  transition:border-color .16s ease,background-color .16s ease!important;
+}
+#onlinePanel .online-user:hover,
+#onlinePanel .online-user:focus,
+#onlinePanel .online-user:active{
+  transform:none!important;
+  border-color:#666!important;
+  background:#292929!important;
+}
+#onlinePanel .online-user img,
+#onlinePanel .online-user .avatar{
+  box-sizing:border-box!important;
+  flex:0 0 42px!important;
+  width:42px!important;
+  height:42px!important;
+  min-width:42px!important;
+  border-radius:50%!important;
+  filter:none!important;
+  opacity:1!important;
+}
+#onlinePanel .online-user-copy{
+  display:grid!important;
+  flex:1 1 auto!important;
+  min-width:0!important;
+  gap:4px!important;
+}
+#onlinePanel .online-user-copy>b,
+#onlinePanel .online-user-copy>small,
+#onlinePanel .online-user-copy .room-user-rank{
+  min-width:0!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+  white-space:nowrap!important;
+}
+#onlinePanel .online-user-copy>b{font-size:14px!important;line-height:1.2!important;font-weight:750!important}
+#onlinePanel .online-user-copy>small,
+#onlinePanel .online-user-copy .room-user-rank{font-size:11px!important;line-height:1.2!important}
+#onlinePanel .online-user>.status{flex:0 0 8px!important;margin-left:auto!important}
+@media(max-width:700px){
+  #onlinePanel .online-user-grid{gap:8px!important}
+  #onlinePanel .online-user{gap:8px!important;padding:9px!important}
+  #onlinePanel .online-user img,
+  #onlinePanel .online-user .avatar{
+    flex:0 0 38px!important;width:38px!important;height:38px!important;min-width:38px!important;
+  }
+  #onlinePanel .online-user-copy>b{font-size:13px!important}
+  #onlinePanel .online-user-copy>small,
+  #onlinePanel .online-user-copy .room-user-rank{font-size:10px!important}
+}
