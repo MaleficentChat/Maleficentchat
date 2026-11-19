@@ -5809,43 +5809,63 @@ function formatAuditDetail(value) {
   }).join("") + '</div>';
 }
 function renderAuditRow(x) {
-  const meta = x.meta && typeof x.meta === "object" && !Array.isArray(x.meta) ? x.meta : {};
-  const actor = x.actorUsername || x.actorName || x.actor || "System";
-  const target = x.targetUsername || x.targetName || x.target || "Site";
-  const when = x.time ? fmt(x.time) : "";
-  const action = String(x.action || "").toUpperCase();
-  const reason = auditActionLabel(action);
-  const isMessageDeletion = /MESSAGE.*DELETE|DELETE.*MESSAGE/.test(action);
-  const isRankChange = /RANK/.test(action);
-  const isUsernameChange = /USERNAME/.test(action);
-  const pick = (...keys) => { for (const key of keys) { const value = meta[key]; if (value != null && value !== "") return value; } return ""; };
-  const duration = pick("duration", "durationMinutes", "minutes", "muteMinutes", "kickMinutes");
-  const previousRank = isRankChange ? pick("previousRank", "oldRank", "fromRank") : "";
-  const newRank = isRankChange ? pick("newRank", "rank", "toRank") : "";
-  const previousUsername = isUsernameChange ? pick("previousUsername", "oldUsername", "fromUsername") : "";
-  const newUsername = isUsernameChange ? pick("newUsername", "username", "toUsername") : "";
-  const evidence = pick("evidence", "attachment", "media", "mediaUrl", "deletedText", "deletedMessage", "news", "item");
-  const deletedSnapshot = meta.deletedSnapshot && typeof meta.deletedSnapshot === "object" ? meta.deletedSnapshot : {};
-  const deletedText = isMessageDeletion ? (pick("text", "deletedText", "messageText", "content") || deletedSnapshot.text || "") : "";
-  const rows = [
-    '<div class="audit-compact-field"><small>Actor</small><b>' + esc(actor) + '</b></div>',
-    '<div class="audit-compact-field"><small>Target</small><b>' + esc(target) + '</b></div>',
-    '<div class="audit-compact-field"><small>Reason</small><b>' + esc(reason) + '</b></div>'
-  ];
-  if (duration) rows.push('<div class="audit-compact-field"><small>Duration</small><b>' + esc(typeof duration === "number" ? duration + " min" : String(duration)) + '</b></div>');
-  if (previousRank || newRank) rows.push('<div class="audit-compact-field"><small>Rank</small><b>' + esc(String(previousRank || "—") + " → " + String(newRank || "—")) + '</b></div>');
-  if (previousUsername || newUsername) rows.push('<div class="audit-compact-field"><small>Username</small><b>' + esc(String(previousUsername || "—") + " → " + String(newUsername || "—")) + '</b></div>');
-  let evidenceHtml = "";
-  if (deletedText) evidenceHtml += '<div class="audit-compact-field audit-compact-evidence"><small>Deleted message</small><div class="audit-detail-text">' + esc(String(deletedText)) + '</div></div>';
-  if (evidence) {
-    const evidenceValue = typeof evidence === "string" && (evidence.startsWith("/uploads/") || evidence.startsWith("https://")) ? {url:evidence} : evidence;
-    evidenceHtml += '<div class="audit-compact-field audit-compact-evidence"><small>Evidence</small>' + (typeof evidenceValue === "object" && evidenceValue !== null && (evidenceValue.url || evidenceValue.mediaUrl) ? auditMediaPreview(evidenceValue, "Deleted attachment") : '<b>' + esc(typeof evidenceValue === "object" ? String(evidenceValue.text || evidenceValue.content || evidenceValue.name || evidenceValue.title || evidenceValue.type || "Evidence attached") : String(evidenceValue)) + '</b>') + '</div>';
+  const meta=x.meta&&typeof x.meta==="object"&&!Array.isArray(x.meta)?x.meta:{};
+  const action=String(x.action||"").toUpperCase();
+  const actor=x.actorUsername||x.actorName||x.actor||"System";
+  const target=x.targetUsername||x.targetName||x.target||"Site";
+  const pick=(...keys)=>{for(const key of keys){const value=meta[key];if(value!==undefined&&value!==null&&value!=="")return value;}return "";};
+  const name=value=>String(value||"Unknown").replace(/^@/,"");
+  const room=pick("room","roomName","room_name");
+  const oldRank=pick("previousRank","oldRank","fromRank"),newRank=pick("newRank","rank","toRank");
+  const oldName=pick("previousUsername","oldUsername","fromUsername"),newName=pick("newUsername","username","toUsername");
+  const snapshot=meta.deletedSnapshot&&typeof meta.deletedSnapshot==="object"?meta.deletedSnapshot:{};
+  const deletedText=pick("text","deletedText","messageText","content")||snapshot.text||"";
+  const attachment=pick("attachment","media","mediaUrl")||snapshot.attachment||"";
+  let sentence="",detail=null;
+  if(/MESSAGE.*DELETE|DELETE.*MESSAGE/.test(action)){
+    sentence=name(actor)+" has deleted the message of "+name(target)+(room?" in room "+name(room):"");
+    detail={};if(deletedText)detail.Message=String(deletedText);if(attachment)detail.Media=attachment;
+    if(!deletedText&&!attachment)detail.Evidence="The original message content is not available.";
+  }else if(/RANK_CHANGE/.test(action)){
+    sentence=name(actor)+" has changed rank of "+name(target)+" to "+String(newRank||"Unknown").replaceAll("_"," ");
+    detail={"Previous rank":oldRank||"Not recorded"};
+  }else if(action==="PROFILE_EDIT"&&(oldName||newName)){
+    sentence=name(oldName||actor)+" has changed name to "+name(newName||target);
+  }else if(/USERNAME_CHANGE|ACCOUNT_USERNAME/.test(action)){
+    sentence=name(actor)+" has changed name of "+name(target)+" to "+name(newName||pick("username"));
+    detail=oldName?{"Previous username":oldName}:null;
+  }else if(/ACCOUNT_AVATAR_MODIFY/.test(action)){
+    sentence=name(actor)+" has "+(String(pick("operation")).toLowerCase()==="remove"?"removed":"updated")+" profile picture of "+name(target);
+  }else if(/ACCOUNT_BANNER_MODIFY/.test(action)){
+    sentence=name(actor)+" has "+(String(pick("operation")).toLowerCase()==="remove"?"removed":"updated")+" profile background of "+name(target);
+  }else if(action==="ROOM_EDIT"){
+    sentence=name(actor)+" has edited room "+name(target);detail=pick("changes")||null;
+  }else if(action==="ROOM_CREATE")sentence=name(actor)+" has created room "+name(target);
+  else if(action==="ROOM_DELETE")sentence=name(actor)+" has deleted room "+name(target);
+  else if(action==="ROOM_PIN"||action==="ROOM_UNPIN")sentence=name(actor)+" has "+(action==="ROOM_PIN"?"pinned":"unpinned")+" room "+name(target);
+  else if(action==="ROOM_THEME_UPDATE"){sentence=name(actor)+" has changed the theme of room "+name(target);detail={Theme:pick("theme")};}
+  else if(action==="ACCOUNT_PROFILE_MODIFY"){sentence=name(actor)+" has edited profile of "+name(target);detail=pick("fields")?{"Edited fields":pick("fields")}:null;}
+  else if(/STAFF_ACCOUNT_DELETE|ACCOUNT_DELETE/.test(action))sentence=name(actor)+" has deleted account "+name(target);
+  else if(action==="ROOM_CLEAR"){sentence=name(actor)+" has cleared messages in room "+name(target);detail=pick("removed")?{"Messages removed":pick("removed")}:null;}
+  else if(action==="ROOM_RULES_UPDATE")sentence=name(actor)+" has edited rules of room "+name(target);
+  else if(action==="ROOM_STAFF_ACTION"){sentence=name(actor)+" has performed "+String(pick("action")||"a staff action").toLowerCase()+" on "+name(target);detail=pick("reason")?{Reason:pick("reason")}:null;}
+  else if(action==="EMAIL_CHANGE")sentence=name(actor)+" has changed their email address";
+  else if(action==="PASSWORD_CHANGE")sentence=name(actor)+" has changed their password";
+  else if(/USER_BAN|^BAN$/.test(action))sentence=name(actor)+" has banned "+name(target);
+  else if(/USER_UNBAN|^UNBAN$/.test(action))sentence=name(actor)+" has unbanned "+name(target);
+  else if(/USER_MUTE|^MUTE$/.test(action)){sentence=name(actor)+" has muted "+name(target);detail=pick("duration","minutes")?{Duration:pick("duration","minutes")+" minutes"}:null;}
+  else if(/USER_KICK|^KICK$/.test(action))sentence=name(actor)+" has kicked "+name(target);
+  else{
+    sentence=name(actor)+" has "+auditActionLabel(action).toLowerCase()+" · "+name(target);
+    const ignored=new Set(["id","userId","targetId","actorId","roomId","evidenceId","deletedSnapshot","ip","ipAddress","device","userAgent","reason"]);
+    const safe={};Object.entries(meta).forEach(([key,value])=>{if(!ignored.has(key)&&value!=null&&value!==""&&typeof value!=="object")safe[key.replace(/([A-Z])/g," $1").replace(/[_-]+/g," ")]=value;});
+    detail=Object.keys(safe).length?safe:null;
   }
-  const hasDetails = previousRank || newRank || previousUsername || newUsername || deletedText || evidence;
-  return '<article class="system-audit-row"><div class="system-audit-heading"><b>Audit Entry</b><span class="audit-source">' + esc(when) + '</span></div>' +
-    '<div class="system-audit-meta audit-compact-meta">' + rows.slice(0,3).join("") + (duration ? rows[3] || "" : "") + '</div>' +
-    (hasDetails ? '<details class="audit-evidence-details"><summary>View details</summary><div class="audit-evidence-content">' + rows.slice(3).join("") + evidenceHtml + '</div></details>' : '') +
-    '</article>';
+  const detailHtml=detail?(typeof detail==="object"&&(detail.url||detail.mediaUrl)?auditMediaPreview(detail,"Attachment"):formatAuditDetail(detail)):"";
+  const when=x.time?fmt(x.time):"";
+  return '<article class="system-audit-row"><div class="audit-sentence">'+esc(sentence)+'</div>'+
+    (detail?'<details class="audit-evidence-details"><summary>Details</summary><div class="audit-evidence-content">'+detailHtml+'</div></details>':'')+
+    '<time class="audit-source">'+esc(when)+'</time></article>';
 }
 
 /* ---------------- STAFF APPLICATION ---------------- */
