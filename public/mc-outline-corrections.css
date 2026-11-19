@@ -523,3 +523,96 @@ body [data-room-filter]:active{
 
 /* After a room is selected, hide the entire room directory so chat opens immediately. */
 #viewRooms.chatting > .mc-room-directory{display:none!important;}
+
+
+/* 19 Nov 2026 — final chat flow alignment.
+   Keep messages, quote preview, typing status and composer in normal document
+   flow. The only 58px spacer is AFTER the composer, never inside the scroll area. */
+#viewRooms.chatting .chat-card{
+  display:flex!important;
+  flex-direction:column!important;
+  min-height:0!important;
+  padding-bottom:0!important;
+  overflow:hidden!important;
+}
+#viewRooms.chatting #messages{
+  position:relative!important;
+  flex:1 1 0!important;
+  min-height:0!important;
+  height:auto!important;
+  padding-bottom:0!important;
+  margin-bottom:0!important;
+  overflow-x:hidden!important;
+  overflow-y:auto!important;
+  scroll-padding-bottom:12px!important;
+  scroll-margin-bottom:0!important;
+  overscroll-behavior:contain!important;
+}
+#viewRooms.chatting #replyBar{
+  position:relative!important;
+  flex:0 0 auto!important;
+  min-height:0!important;
+  max-height:88px!important;
+  margin:0!important;
+  overflow-y:auto!important;
+  z-index:2!important;
+}
+#viewRooms.chatting #replyBar.hidden{display:none!important}
+#viewRooms.chatting #typing{
+  position:relative!important;
+  flex:0 0 auto!important;
+  min-height:0!important;
+  margin:0!important;
+}
+#viewRooms.chatting #viewRooms.chatting .composer,
+#viewRooms.chatting .chat-card>.composer,
+#viewRooms.chatting .composer{
+  position:relative!important;
+  inset:auto!important;
+  left:auto!important;
+  right:auto!important;
+  bottom:auto!important;
+  flex:0 0 auto!important;
+  width:100%!important;
+  max-width:100%!important;
+  margin:0!important;
+  transform:none!important;
+  z-index:3!important;
+}
+#viewRooms.chatting .chat-card::after{
+  content:""!important;
+  display:block!important;
+  position:relative!important;
+  flex:0 0 58px!important;
+  width:100%!important;
+  height:58px!important;
+  min-height:58px!important;
+  max-height:58px!important;
+  margin:0!important;
+  padding:0!important;
+  pointer-events:none!important;
+}
+#viewRooms.chatting .replybar-content,
+#viewRooms.chatting .reply-preview{
+  min-width:0!important;
+  max-width:100%!important;
+  white-space:normal!important;
+  overflow-wrap:anywhere!important;
+}
+@media(max-width:800px){
+  #viewRooms.chatting .chat-card{padding-bottom:0!important}
+  #viewRooms.chatting #messages{
+    padding-bottom:0!important;
+    scroll-padding-bottom:12px!important;
+  }
+  #viewRooms.chatting .chat-card>.composer,
+  #viewRooms.chatting .composer{
+    position:relative!important;
+    inset:auto!important;
+    bottom:auto!important;
+    left:auto!important;
+    right:auto!important;
+    width:100%!important;
+    margin:0!important;
+  }
+}
