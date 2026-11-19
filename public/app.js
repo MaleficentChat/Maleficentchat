@@ -3040,7 +3040,7 @@ function positionMessageMorePanel(submenu,messageId){
   main.style.setProperty("z-index","2147483000","important");
   const measuredHeight=Math.min(submenu.scrollHeight,maxHeight);
   // Anchor both action cards to the safe lower edge above the composer.
-  const top=Math.max(safeTop,Math.min(bubbleRect.top,safeBottom-measuredHeight));
+  const top=Math.max(safeTop,Math.min(mainRect.top,safeBottom-measuredHeight));
   submenu.style.setProperty("z-index","2147483001","important");
   submenu.style.setProperty("left",moreLeft+"px","important");
   submenu.style.setProperty("top",top+"px","important");
@@ -3214,7 +3214,7 @@ function positionMessageMenu(menu,id){
   // Keep the entire panel above the composer, even when the available
   // vertical lane is short; the menu scrolls internally when necessary.
   const measuredHeight=Math.min(menu.scrollHeight,maxHeight);
-  const top=Math.max(safeTop,safeBottom-measuredHeight);
+  const top=Math.max(safeTop,Math.min(bubbleRect.top,safeBottom-measuredHeight));
 
   menu.style.setProperty("left",left+"px","important");
   menu.style.setProperty("top",top+"px","important");
