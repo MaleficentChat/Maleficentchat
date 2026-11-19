@@ -2929,14 +2929,6 @@ app.post(
     }
     if(!isStaffAccount&&!existingJoinToken&&!roomCapacityAvailable(u,r))return res.status(403).json({error:"This room has reached its member limit."});
 
-    // Track the selected room as soon as the authenticated HTTP join succeeds.
-    // The profile's live-room field must not depend on the Socket.IO subscription
-    // succeeding; mobile clients can briefly have a disconnected/delayed socket.
-    u.roomId=String(r.id);
-    u.lastSeen=Date.now();
-    save();
-    io.emit("presence");
-
     if(
       !isStaffAccount&&r.passwordHash&&
       !(await bcrypt.compare(
@@ -2948,6 +2940,14 @@ app.post(
         error:"Wrong room password."
       });
     }
+
+    // Track the selected room as soon as the authenticated HTTP join succeeds.
+    // The profile's live-room field must not depend on the Socket.IO subscription
+    // succeeding; mobile clients can briefly have a disconnected/delayed socket.
+    u.roomId=String(r.id);
+    u.lastSeen=Date.now();
+    save();
+    io.emit("presence");
 
     if(!u.hideMode&&!u.invisible)systemNotice(`${u.displayName||u.username} has joined the room ${r.name}.`,r.id,{userId:u.id,username:u.username,displayName:u.displayName||u.username});
     res.json({
