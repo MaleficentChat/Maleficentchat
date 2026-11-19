@@ -9285,3 +9285,31 @@ html{scroll-behavior:smooth;}
   #viewRooms.chatting .chat-tools-drawer>button b{font-size:9px!important}
   #viewRooms.chatting .chat-tools-drawer>button small{font-size:7px!important}
 }
+
+
+/* 2026-11-19: make People-panel rows and DM-inbox cards exactly the same height. */
+#onlineUsers .online-user-grid .online-user,
+#viewRooms.chatting .online-panel #onlineUsers .online-user-grid .online-user,
+#dmList .dm-inbox-card{
+  box-sizing:border-box!important;
+  min-height:132px!important;
+  height:132px!important;
+  max-height:132px!important;
+}
+#onlineUsers .online-user-grid .online-user,
+#viewRooms.chatting .online-panel #onlineUsers .online-user-grid .online-user{
+  align-items:center!important;
+}
+#dmList .dm-inbox-card{
+  grid-template-rows:minmax(0,1fr) auto!important;
+  align-content:center!important;
+}
+@media(max-width:700px){
+  #onlineUsers .online-user-grid .online-user,
+  #viewRooms.chatting .online-panel #onlineUsers .online-user-grid .online-user,
+  #dmList .dm-inbox-card{
+    min-height:122px!important;
+    height:122px!important;
+    max-height:122px!important;
+  }
+}
