@@ -9313,3 +9313,28 @@ html{scroll-behavior:smooth;}
     max-height:122px!important;
   }
 }
+
+/* Admin activity logs: plain text feed instead of separate event cards. */
+.system-audit-row{display:block;min-width:0;margin:0;padding:12px 2px;border:0;border-bottom:1px solid var(--border);border-radius:0;background:transparent;overflow-wrap:anywhere}
+.audit-sentence{font-size:13px;line-height:1.55;color:var(--text,#eee);font-weight:500}
+.audit-source{display:block;margin-top:4px;font-size:10px;letter-spacing:.02em;color:var(--muted,#999);border:0;padding:0}
+.audit-evidence-details{margin-top:5px;border:0;padding:0}
+.audit-evidence-details>summary{cursor:pointer;color:var(--muted,#bdbdbd);font-size:11px;font-weight:600;list-style:none}
+.audit-evidence-details>summary::-webkit-details-marker{display:none}
+.audit-evidence-details>summary:before{content:"Details → ";color:var(--text,#eee)}
+.audit-evidence-details[open]>summary:before{content:"Details ↓ "}
+.audit-evidence-content{padding:7px 0 2px;min-width:0;overflow-wrap:anywhere}
+.audit-detail-list{display:flex;flex-direction:column;gap:8px}
+.audit-detail-item{font-size:12px;line-height:1.5;overflow-wrap:anywhere}
+.audit-detail-item>b{display:block;color:var(--text,#eee);margin-bottom:3px}
+.audit-detail-empty{display:inline-block;color:var(--muted,#999);font-size:12px}
+.audit-detail-text{white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px}
+.audit-detail-nested{display:grid;gap:5px;margin-top:6px}
+.audit-detail-nested>div{display:flex;justify-content:space-between;gap:12px;padding:6px 0;border-bottom:1px solid var(--border)}
+.audit-detail-nested>div span{color:var(--muted,#999)}
+.audit-detail-nested>div b{text-align:right;overflow-wrap:anywhere}
+.audit-feature-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;list-style:none;padding:0;margin:8px 0 0}
+.audit-feature-list li{display:flex;flex-direction:column;gap:3px;min-width:0;padding:6px 0;border-bottom:1px solid var(--border);overflow-wrap:anywhere}
+.audit-feature-list li span{font-size:11px}
+.audit-feature-list li small{font-size:10px;color:var(--muted,#999)}
+@media(max-width:600px){.audit-feature-list{grid-template-columns:1fr}}
