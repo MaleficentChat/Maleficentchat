@@ -9338,3 +9338,173 @@ html{scroll-behavior:smooth;}
 .audit-feature-list li span{font-size:11px}
 .audit-feature-list li small{font-size:10px;color:var(--muted,#999)}
 @media(max-width:600px){.audit-feature-list{grid-template-columns:1fr}}
+
+
+/* 2026-11-19 — MC main chat: full-width floating message rows.
+   Scoped to the room chat only; private-message layouts remain untouched. */
+#viewRooms.chatting #messages > .msg:not(.dm-msg){
+  display:flex!important;
+  flex-direction:row!important;
+  align-items:flex-start!important;
+  justify-content:flex-start!important;
+  gap:11px!important;
+  width:100%!important;
+  max-width:none!important;
+  min-width:0!important;
+  box-sizing:border-box!important;
+  margin:0!important;
+  padding:12px 10px!important;
+  border:0!important;
+  border-bottom:1px solid rgba(160,175,190,.16)!important;
+  border-radius:0!important;
+  background:rgba(255,255,255,.018)!important;
+  box-shadow:none!important;
+  cursor:pointer!important;
+}
+#viewRooms.chatting #messages > .msg:not(.dm-msg):hover{
+  background:rgba(255,255,255,.045)!important;
+}
+#viewRooms.chatting #messages > .msg:not(.dm-msg) > .message-avatar-button{
+  display:flex!important;
+  flex:0 0 38px!important;
+  align-self:flex-start!important;
+  width:38px!important;
+  height:38px!important;
+  min-width:38px!important;
+  margin:1px 0 0!important;
+  padding:0!important;
+  border:0!important;
+  border-radius:50%!important;
+  overflow:hidden!important;
+}
+#viewRooms.chatting #messages > .msg:not(.dm-msg) > .message-avatar-button .avatar,
+#viewRooms.chatting #messages > .msg:not(.dm-msg) > .message-avatar-button img{
+  display:block!important;
+  width:38px!important;
+  height:38px!important;
+  min-width:38px!important;
+  min-height:38px!important;
+  border-radius:50%!important;
+  object-fit:cover!important;
+}
+#viewRooms.chatting #messages > .msg:not(.dm-msg) .msg-body{
+  display:flex!important;
+  flex:1 1 auto!important;
+  flex-direction:column!important;
+  align-items:stretch!important;
+  width:auto!important;
+  max-width:none!important;
+  min-width:0!important;
+  margin:0!important;
+  padding:0!important;
+  border:0!important;
+  border-radius:0!important;
+  background:transparent!important;
+  box-shadow:none!important;
+  overflow:visible!important;
+}
+#viewRooms.chatting #messages > .msg:not(.dm-msg) .msg-top{
+  display:flex!important;
+  flex-direction:row!important;
+  align-items:center!important;
+  justify-content:flex-start!important;
+  gap:7px!important;
+  width:100%!important;
+  min-width:0!important;
+  min-height:21px!important;
+  margin:0 0 4px!important;
+  padding:0!important;
+  flex-wrap:nowrap!important;
+}
+#viewRooms.chatting #messages > .msg:not(.dm-msg) .msg-author-group{
+  order:0!important;
+  display:flex!important;
+  align-items:center!important;
+  gap:5px!important;
+  min-width:0!important;
+}
+#viewRooms.chatting #messages > .msg:not(.dm-msg) .message-author{
+  max-width:min(55vw,360px)!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+  white-space:nowrap!important;
+  font-size:13px!important;
+  font-weight:750!important;
+}
+#viewRooms.chatting #messages > .msg:not(.dm-msg) .message-rank-floating{
+  flex:0 0 auto!important;
+  margin:0!important;
+}
+#viewRooms.chatting #messages > .msg:not(.dm-msg) .msg-time-side{
+  order:1!important;
+  flex:0 0 auto!important;
+  margin:0 0 0 auto!important;
+  color:var(--muted,#a8b0bc)!important;
+  font-size:10px!important;
+  white-space:nowrap!important;
+}
+#viewRooms.chatting #messages > .msg:not(.dm-msg) .msg-header-right{
+  order:2!important;
+  flex:0 0 auto!important;
+  margin:0!important;
+}
+#viewRooms.chatting #messages > .msg:not(.dm-msg) .msg-header-right .message-more-button{
+  display:inline-grid!important;
+  place-items:center!important;
+  width:25px!important;
+  height:24px!important;
+  padding:0!important;
+  border:0!important;
+  background:transparent!important;
+  color:var(--muted,#a8b0bc)!important;
+}
+#viewRooms.chatting #messages > .msg:not(.dm-msg) .msg-text{
+  display:block!important;
+  width:auto!important;
+  max-width:100%!important;
+  margin:0!important;
+  padding:0!important;
+  border:0!important;
+  border-radius:0!important;
+  background:transparent!important;
+  box-shadow:none!important;
+  color:var(--text,#f2f4f7)!important;
+  font-size:14px!important;
+  line-height:1.5!important;
+  white-space:pre-wrap!important;
+  overflow-wrap:anywhere!important;
+}
+#viewRooms.chatting #messages > .msg:not(.dm-msg) .quoted{
+  width:100%!important;
+  max-width:100%!important;
+  box-sizing:border-box!important;
+  margin:0 0 7px!important;
+}
+#viewRooms.chatting #messages > .msg:not(.dm-msg) .msg-actions{
+  margin-top:5px!important;
+}
+#viewRooms.chatting #messages > .msg:not(.dm-msg) .reaction{
+  margin-top:5px!important;
+}
+#viewRooms.chatting #messages > .msg:not(.dm-msg).own-message{
+  flex-direction:row!important;
+  justify-content:flex-start!important;
+  margin-left:0!important;
+  margin-right:0!important;
+}
+#viewRooms.chatting #messages > .msg:not(.dm-msg).own-message > .message-avatar-button{
+  display:flex!important;
+}
+#viewRooms.chatting #messages > .msg:not(.dm-msg).own-message .msg-body{
+  align-items:stretch!important;
+}
+@media(max-width:600px){
+  #viewRooms.chatting #messages > .msg:not(.dm-msg){padding:11px 8px!important;gap:9px!important}
+  #viewRooms.chatting #messages > .msg:not(.dm-msg) > .message-avatar-button,
+  #viewRooms.chatting #messages > .msg:not(.dm-msg) > .message-avatar-button .avatar,
+  #viewRooms.chatting #messages > .msg:not(.dm-msg) > .message-avatar-button img{
+    width:34px!important;height:34px!important;min-width:34px!important;min-height:34px!important;flex-basis:34px!important;
+  }
+  #viewRooms.chatting #messages > .msg:not(.dm-msg) .message-author{font-size:12px!important;max-width:48vw!important}
+  #viewRooms.chatting #messages > .msg:not(.dm-msg) .msg-text{font-size:14px!important}
+}
