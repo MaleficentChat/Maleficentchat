@@ -541,3 +541,77 @@ html,body{background:var(--mc-page)!important;color:var(--mc-text)!important;col
 #app .voice-icon,#app .call-icon{
   color:revert!important;
 }
+
+
+/* 19 Nov 2026 — repair icon and accent handling.
+   Never grayscale an entire button/control: that was darkening its icon too.
+   Keep control surfaces and chat bubbles neutral while icons retain their own colours. */
+#app button,
+#app [role="button"],
+#app input[type="button"],
+#app input[type="submit"],
+#app .icon-btn,
+#app .action,
+#app .mini,
+#app .primary,
+#app .send,
+#app .toolbar button,
+#app .composer button,
+#app .dm-inbox-actions button,
+#app .publish-news-modal button,
+#app .brand-news-compose-actions button,
+#app #publishNews,
+#app #publishBrandNews,
+#app #newsComposePublish,
+#app #brandNewsSubmit,
+#app #wallPostSend,
+#app #wallReelPublish{
+  filter:none!important;
+  background-color:var(--mc-surface-raised)!important;
+  background-image:none!important;
+  border-color:var(--mc-border)!important;
+  box-shadow:none!important;
+  text-shadow:none!important;
+}
+#app button.primary,#app .primary,#app .send,
+#app #publishNews,#app #publishBrandNews,#app #newsComposePublish,
+#app #brandNewsSubmit,#app #wallPostSend,#app #wallReelPublish{
+  background-color:var(--mc-surface-hover)!important;
+  background-image:none!important;
+  color:var(--mc-text)!important;
+  border-color:var(--mc-border-strong)!important;
+}
+#app button:hover,#app [role="button"]:hover,
+#app button:active,#app [role="button"]:active{
+  background-color:var(--mc-surface-hover)!important;
+  background-image:none!important;
+  border-color:var(--mc-border-strong)!important;
+  box-shadow:none!important;
+}
+/* Chat bubbles: every sender state uses grayscale surfaces, never orange. */
+#app .msg,#app .msg-body,#app .msg-text,#app .msg.mine .msg-body,
+#app .msg.mine .msg-text,#app .message-bubble,#app .message.mine .msg-body,
+#app .message-bubble.mine,#app .quoted,#app .message-translation{
+  background-color:var(--mc-surface-raised)!important;
+  background-image:none!important;
+  border-color:var(--mc-border)!important;
+  box-shadow:none!important;
+}
+/* Let icon artwork/glyphs keep their original colour; do not grayscale a parent. */
+#app svg,#app svg *,
+#app button svg,#app [role="button"] svg,
+#app .nav-icon,#app .icon,#app i[class*="fa-"],
+#app [class*="icon-"],#app [data-lucide],
+#app .chat-tool-icon,#app .message-action-icon,
+#app .top-icon,#app .notification-icon{
+  filter:none!important;
+  opacity:1!important;
+  mix-blend-mode:normal!important;
+}
+/* Restore colour to icon font glyphs without changing their surrounding controls. */
+#app button i,#app button .icon,#app button .nav-icon,
+#app [role="button"] i,#app [role="button"] .icon,
+#app .nav-icon,#app .chat-tool-icon{
+  filter:none!important;
+  opacity:1!important;
+}
