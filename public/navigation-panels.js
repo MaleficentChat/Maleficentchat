@@ -56,11 +56,31 @@
     old.overlay.remove();
     document.body.classList.remove("mc-nav-panel-open");
     if (resetToRooms !== false) {
-      var rooms = document.querySelector('.nav[data-view="rooms"]');
-      if (rooms) {
-        suppressNextRoomsClick = true;
-        rooms.click();
-        setTimeout(function(){ suppressNextRoomsClick = false; }, 0);
+      // Full-page navigation panels temporarily move their view out of the
+      // room screen. On close, reveal the already-joined chat in place.
+      // Do not click the Rooms navigation item here: that reloads the room
+      // directory and can leave the chat area blank on mobile.
+      var joinedRoom = old.name !== "users" && typeof state !== "undefined" &&
+        state.user && state.currentRoom;
+      if (joinedRoom) {
+        state.view = "rooms";
+        document.querySelectorAll(".nav[data-view]").forEach(function(button){
+          button.classList.toggle("active", button.dataset.view === "rooms");
+        });
+        var roomsView = document.getElementById("viewRooms");
+        if (roomsView) {
+          roomsView.classList.remove("hidden");
+          roomsView.classList.add("chatting");
+        }
+        var chat = document.getElementById("chatWrap");
+        if (chat) chat.classList.remove("hidden");
+      } else {
+        var rooms = document.querySelector('.nav[data-view="rooms"]');
+        if (rooms) {
+          suppressNextRoomsClick = true;
+          rooms.click();
+          setTimeout(function(){ suppressNextRoomsClick = false; }, 0);
+        }
       }
     }
   }
