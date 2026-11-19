@@ -2589,11 +2589,11 @@ async function renderOnline(tab=onlinePanelTab,searchQuery=""){
         ${avatar(user)}${String(user.id)===String(state.user?.id) ? '<button type="button" class="my-status-toggle" id="myStatusToggle" aria-haspopup="true" aria-expanded="false" onclick="event.stopPropagation()"><span id="myStatusGlyph">⚙</span><b id="myStatusLabel">Online</b><span>⌄</span></button><div class="my-status-options hidden" id="myStatusOptions" role="menu" onclick="event.stopPropagation()"></div>' : '<span class="user-mood-indicator" title="'+esc(user.customStatus|| (user.online?'Online':'Away'))+'">'+statusEmoji(user.customStatus|| (user.online?'Online':'Away'))+'</span>'}
         <div class="online-user-copy">
           <div class="online-user-heading">
-            <span class="room-user-rank" title="${esc(roomRoleLabel[roomRoleByUser[String(user.id)]]||user.rank||'Member')}">${roomRoleByUser[String(user.id)] ? (roomRoleIcon[roomRoleByUser[String(user.id)]]||'✨') : (rankIcon[String(user.rank||'MEMBER').toUpperCase()]||'⚡')} ${esc(roomRoleLabel[roomRoleByUser[String(user.id)]]||String(user.rank||'MEMBER').replaceAll('_',' '))}</span>
             <b>@${esc(user.username)}</b>
           </div>
           <small>${esc(user.displayName)} ${invisibleDot(user)} ${moderationStatusTags(user)}${user.invisible?"":" · "+(user.customStatus||(user.online?"Available":"Away"))}</small>
         </div>
+        <span class="online-user-rank-badge" title="${esc(String(user.rank||'MEMBER').replaceAll('_',' '))}" aria-label="${esc(String(user.rank||'MEMBER').replaceAll('_',' '))}">${rankIcon[String(user.rank||'MEMBER').toUpperCase()]||'⚡'}</span>
       </div>
     `).join("") || `<div class="online-empty"><div>${tab==="staff"?"🛡️":tab==="friends"?"💜":"👥"}</div><b>No users here</b><span>Try another tab.</span></div>`}</div>`;
     const sortSelect=$("onlineSortMode");if(sortSelect){sortSelect.value=onlineSortMode;sortSelect.onchange=()=>{onlineSortMode=sortSelect.value;renderOnline(onlinePanelTab);};}
@@ -2875,7 +2875,6 @@ function messageHTML(message) {
           <span class="msg-author-group">
             ${$("viewRooms")?.classList.contains("main-room-chat") ? `<span class="message-rank-floating" title="${esc(message.rank||"MEMBER")}" aria-label="${esc(message.rank||"MEMBER")}">${rankIcon[String(message.rank||"MEMBER").toUpperCase()]||"⚡"}</span>` : ''}
             <button class="message-author tag-author" type="button" title="Tag @${esc(message.username)}" onclick="tagUserFromMessage('${esc(message.username)}')" style="color:${esc(message.usernameColor||state.user?.settings?.usernameColor||'var(--username-color)')}">${esc(message.displayName)}</button>
-            ${$("viewRooms")?.classList.contains("main-room-chat") ? '' : `<span class="message-rank-floating" title="${esc(message.rank||"MEMBER")}" aria-label="${esc(message.rank||"MEMBER")}">${rankIcon[String(message.rank||"MEMBER").toUpperCase()]||"⚡"}</span>`}
           </span>
           <span class="msg-header-right">
             <button class="message-more-button" type="button" aria-label="Message actions" title="Message actions" onclick="event.stopPropagation();toggleMessageMenu('${esc(message.id)}')">⋯</button>
