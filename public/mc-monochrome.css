@@ -354,3 +354,59 @@ html,body{background:#050505!important;color:#ffffff!important;color-scheme:dark
 /* Keep profile image viewer itself neutral while leaving the photo coloured. */
 #profileAvatarViewer{background:#080808!important;color:#ffffff!important}
 #profileAvatarViewer button{background:#292929!important;color:#ffffff!important;border-color:#666666!important}
+
+/* 19 Nov 2026 — final pass for dynamically styled publish/actions and text.
+   These rules intentionally come last so feature-specific styles cannot restore colour. */
+#app button,
+#app [role="button"],
+#app input[type="button"],
+#app input[type="submit"],
+#app .primary,
+#app .mini,
+#app .action,
+#app .icon-btn,
+#app .send,
+#app .toolbar button,
+#app .publish-news-modal button,
+#app .brand-news-compose-actions button,
+#app #publishNews,
+#app #publishBrandNews,
+#app #newsComposePublish,
+#app #brandNewsSubmit,
+#app #wallPostSend,
+#app #wallReelPublish{
+  filter:grayscale(1)!important;
+  color:#ffffff!important;
+  background-color:#292929!important;
+  background-image:none!important;
+  border-color:#666666!important;
+  box-shadow:none!important;
+  text-shadow:none!important;
+}
+#app button.primary,
+#app .primary,
+#app #publishNews,
+#app #publishBrandNews,
+#app #newsComposePublish,
+#app #brandNewsSubmit,
+#app #wallPostSend,
+#app #wallReelPublish{
+  background:#e5e5e5!important;
+  color:#080808!important;
+  border-color:#ffffff!important;
+}
+#app [style*="color:"],
+#app [style*="--username-color"],
+#app [style*="--profile-color"],
+#app [style*="--profile-accent"]{
+  color:#ffffff!important;
+}
+#app .rank,#app .badge,#app .pill,#app .tag,
+#app [class*="rank-"],#app [class*="badge-"],
+#app [class*="status"],#app [class*="accent"]{
+  filter:grayscale(1)!important;
+  color:#ffffff!important;
+  border-color:#666666!important;
+}
+#app svg,#app svg *{filter:grayscale(1)!important}
+
