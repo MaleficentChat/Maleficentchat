@@ -1462,3 +1462,169 @@ body{background-image:none!important}
   #viewDms #dmList .dm-inbox-actions button{flex-basis:24px!important;width:24px!important;min-width:24px!important;max-width:24px!important;height:25px!important;min-height:25px!important;font-size:11px!important}
   #viewDms #dmList .dm-inbox-actions button:last-child{flex-basis:34px!important;width:34px!important;min-width:34px!important;max-width:34px!important;height:25px!important;min-height:25px!important;font-size:10px!important}
 }
+
+
+/* 19 Nov 2026 — final global grayscale correction.
+   Keep all user-uploaded photos and avatars in their original colors. */
+:root{
+  color-scheme:dark!important;
+  --bg:#101010!important;--bg-deep:#080808!important;
+  --panel:#191919!important;--panel-2:#222!important;--panel-3:#2b2b2b!important;
+  --border:#383838!important;--border-strong:#555!important;
+  --text:#fff!important;--muted:#aaa!important;
+  --accent:#bbb!important;--accent-2:#ddd!important;
+  --accent-soft:rgba(255,255,255,.08)!important;
+  --kp-void:#090909!important;--kp-night:#111!important;--kp-surface:#191919!important;
+  --kp-raised:#222!important;--kp-raised2:#2c2c2c!important;
+  --kp-line:rgba(255,255,255,.13)!important;--kp-line-hot:rgba(255,255,255,.3)!important;
+  --kp-ink:#fff!important;--kp-muted:#aaa!important;
+  --kp-blue:#ccc!important;--kp-blue2:#888!important;--kp-gold:#ddd!important;
+  --kp-mint:#ddd!important;--kp-red:#bbb!important;
+}
+html,body{background:#101010!important;color:#fff!important}
+body{background-image:none!important}
+#app{background:#101010!important;color:#fff!important}
+#app :is(.top-header,.topbar,.sidebar,.panel-head,.chat-head,.online-panel,#onlinePanel,
+.chat-card,.card,.panel,.room,.stat-card,.user-card,.friend-card,.news-card,.game-card,
+.settings-card,.staff-card,.profile-card,.profile-section,.profile-info-card,.modal-card,
+.profile-modal,.notification-dropdown,.dropdown-menu,.context-menu,.dm-chat-header,
+.dm-settings-menu,.dm-message-search,.dm-replybar,.composer,.replybar,.typing,
+.dm-inbox-toolbar,.dm-inbox-card,.dm-inbox-list,.kp-rooms-panel,.kp-command-center,
+.kp-staff-inbox,.staff-space-hero,.staff-compact-dropdown,.kp-staff-group,
+#viewRooms .kp-room-hub,#viewRooms .kp-room-access,#viewRooms .kp-room-search,
+#viewNews .brand-news-masthead,#viewNews .brand-news-story,
+#viewNews .news-compose-v2,#viewNews .brand-news-composer,
+#viewGames .game-card,#viewSettings .settings-card,#viewStaff .staff-card,
+#viewFriends .card,#viewUsers .card,#viewPM .card,#viewProfile .profile-card){
+  background-color:#1b1b1b!important;
+  background-image:none!important;
+  color:#fff!important;
+  border-color:#383838!important;
+  box-shadow:none!important;
+}
+#app :is(.room,.card,.user-card,.friend-card,.game-card,.settings-row,
+.profile-social-stat,.profile-info-row,.feature-grant-row,.filter-word-row,.hub-row,
+.notification-item,.conversation-row,.user-row,.friend-row,.online-user,
+.dm-inbox-card,.profile-section,.profile-info-card,.profile-banner,
+.brand-news-story,.announcement,.quoted){
+  background:#202020!important;
+  background-image:none!important;
+  border-color:#383838!important;
+  color:#fff!important;
+}
+#app :is(h1,h2,h3,h4,h5,b,strong,label,p,span,small,li,summary,dt,dd,a,
+.room-meta,.room small,.muted,.profile-handle,.dm-inbox-handle,
+.dm-inbox-preview,.dm-inbox-time,.online-user-copy,.room-user-rank){
+  text-shadow:none!important;
+}
+#app :is(h1,h2,h3,h4,h5,b,strong,label,p,li,summary,dt,dd){color:#fff!important}
+#app :is(small,.muted,.profile-handle,.dm-inbox-handle,.dm-inbox-preview,
+.dm-inbox-time,.online-user-copy>small){color:#bdbdbd!important}
+#app a{color:#eee!important}
+#app :is(.room-meta,.room small,.badge,.rank,.dm-unread-badge,.online-badge,
+.profile-note-dot,.status,.dm-inbox-handle i,.kp-leader-place,.brand-news-category,
+.user-mood-indicator,.kp-live-dot,.kp-status-pulse){
+  background:#666!important;color:#fff!important;border-color:#888!important;
+  box-shadow:none!important;
+}
+#app :is(.status.on,.online-user .status.on,.kp-live-dot,.kp-status-pulse){
+  background:#aaa!important;box-shadow:none!important;
+}
+#app :is(input,textarea,select){
+  color:#fff!important;background:#111!important;border:1px solid #444!important;
+  box-shadow:none!important;accent-color:#ccc!important;color-scheme:dark!important;
+}
+#app :is(input,textarea,select)::placeholder{color:#999!important}
+#app :is(input,textarea,select):focus{border-color:#888!important;outline:none!important;box-shadow:none!important}
+#app :is(button,.button,.primary,.send,.mini,.icon-btn,.action,.secondary,.tab-btn,
+.top-icon,.top-profile,.top-menu,.online-tabs button){
+  color:#fff!important;background:#292929!important;border:0!important;border-radius:8px!important;
+  box-shadow:none!important;text-shadow:none!important;outline:none!important;
+  transform:none!important;filter:grayscale(1)!important;transition:none!important;
+}
+#app :is(button,.button,.primary,.send,.mini,.icon-btn,.action,.secondary,.tab-btn,
+.top-icon,.top-profile,.top-menu,.online-tabs button):hover,
+#app :is(button,.button,.primary,.send,.mini,.icon-btn,.action,.secondary,.tab-btn,
+.top-icon,.top-profile,.top-menu,.online-tabs button):active{
+  color:#fff!important;background:#292929!important;border:0!important;
+  box-shadow:none!important;transform:none!important;filter:grayscale(1)!important;
+}
+#app :is(.danger,.error,.success){color:#ddd!important}
+#app :is(.msg-text,.quoted,.announcement){color:#fff!important;background:#242424!important;border-color:#444!important}
+#app :is(.quoted-label,.quoted-text){color:#eee!important}
+#app .messages{scrollbar-color:#666 #171717!important;background-color:#111!important;background-image:none!important}
+#app :is(.profile-banner,.brand-news-masthead,.brand-news-story,
+.profile-settings-head,.profile-section,.profile-info){background:#202020!important;background-image:none!important;border-color:#3a3a3a!important}
+#app :is(.profile-tabs button.active,.settings-tabs button.active,.dm-inbox-tabs button.active){background:#444!important;color:#fff!important;border-color:#777!important}
+#app hr{border-color:#3a3a3a!important}
+#onlinePanel{
+  background:#191919!important;background-image:none!important;border-color:#383838!important;
+  box-shadow:none!important;
+}
+#onlinePanel:before{display:none!important}
+#onlinePanel>.mobile-users-head,#onlinePanel>.panel-head,
+#onlinePanel .online-tabs{background:#151515!important;border-color:#383838!important}
+#onlinePanel .online-user,#onlinePanel .online-user:hover{
+  background:#202020!important;background-image:none!important;border-color:#383838!important;
+}
+#onlinePanel .online-user .status.on{background:#aaa!important;box-shadow:none!important}
+#onlinePanel .online-user-copy>b{color:#fff!important}
+#onlinePanel .online-user-copy>small,#onlinePanel .online-user-copy .room-user-rank{color:#bbb!important}
+#onlinePanel .online-user-copy .room-user-rank{filter:grayscale(1)!important}
+#onlinePanel .online-user .user-mood-indicator{filter:grayscale(1)!important}
+
+/* People cards use the same compact horizontal footprint as PM inbox cards.
+   Only People is resized here; the PM inbox layout is left untouched. */
+#onlinePanel .online-user-grid{
+  display:grid!important;grid-template-columns:minmax(0,1fr)!important;
+  gap:8px!important;width:100%!important;
+}
+#onlinePanel .online-user{
+  box-sizing:border-box!important;display:flex!important;flex-direction:row!important;
+  align-items:center!important;flex-wrap:nowrap!important;gap:8px!important;
+  width:100%!important;min-width:0!important;height:62px!important;
+  min-height:62px!important;max-height:62px!important;
+  margin:0!important;padding:8px!important;overflow:hidden!important;
+  border:1px solid #383838!important;border-radius:12px!important;
+  background:#202020!important;box-shadow:none!important;transform:none!important;
+}
+#onlinePanel .online-user>img,
+#onlinePanel .online-user>.avatar{
+  display:block!important;flex:0 0 42px!important;width:42px!important;height:42px!important;
+  min-width:42px!important;max-width:42px!important;min-height:42px!important;max-height:42px!important;
+  object-fit:cover!important;filter:none!important;opacity:1!important;
+}
+#onlinePanel .online-user-copy{
+  display:flex!important;flex:1 1 auto!important;flex-direction:column!important;
+  align-items:flex-start!important;justify-content:center!important;gap:3px!important;
+  min-width:0!important;overflow:hidden!important;text-align:left!important;
+}
+#onlinePanel .online-user-copy>b,
+#onlinePanel .online-user-copy>small,
+#onlinePanel .online-user-copy .room-user-rank{
+  display:block!important;max-width:100%!important;min-width:0!important;
+  overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important;
+  line-height:1.15!important;
+}
+#onlinePanel .online-user-copy>b{font-size:13px!important;font-weight:750!important}
+#onlinePanel .online-user-copy>small,
+#onlinePanel .online-user-copy .room-user-rank{font-size:10px!important}
+#onlinePanel .online-user>.status{flex:0 0 8px!important;margin-left:auto!important}
+#onlinePanel .online-user .my-status-toggle{
+  flex:0 0 auto!important;width:auto!important;max-width:100px!important;
+  height:27px!important;padding:0 6px!important;font-size:9px!important;
+}
+#onlinePanel .online-user:hover,#onlinePanel .online-user:focus,#onlinePanel .online-user:active{
+  background:#202020!important;border-color:#555!important;box-shadow:none!important;transform:none!important;
+}
+@media(max-width:700px){
+  #onlinePanel .online-user{height:58px!important;min-height:58px!important;max-height:58px!important;padding:8px!important;gap:7px!important}
+  #onlinePanel .online-user>img,#onlinePanel .online-user>.avatar{
+    flex-basis:38px!important;width:38px!important;height:38px!important;min-width:38px!important;
+    max-width:38px!important;min-height:38px!important;max-height:38px!important;
+  }
+  #onlinePanel .online-user-copy>b{font-size:12px!important}
+  #onlinePanel .online-user-copy>small,#onlinePanel .online-user-copy .room-user-rank{font-size:9px!important}
+}
+/* Preserve uploaded profile and avatar imagery exactly as uploaded. */
+#app img,.profile-avatar img,#onlinePanel img{filter:none!important;opacity:1!important}
