@@ -3088,32 +3088,56 @@ function positionMessageMenu(menu,id){
   const bubble=message?.querySelector(".msg-text,.message-image,.chat-gif,.quoted")||message?.querySelector(".msg-body");
   if(!message||!viewport||!trigger||!bubble)return;
   const area=viewport.getBoundingClientRect(),bubbleRect=bubble.getBoundingClientRect(),triggerRect=trigger.getBoundingClientRect();
-  const edge=9,gap=9,width=Math.max(180,Math.min(250,area.width-edge*2));
-  const maxHeight=Math.max(140,Math.min(window.innerHeight-24,area.height-edge*2));
+  const edge=10,gap=9;
+  // Constrain the menu to BOTH the chat viewport and the visible device viewport.
+  // visualViewport accounts for Android browser chrome and the on-screen keyboard.
+  const vv=window.visualViewport;
+  const screenTop=vv?vv.offsetTop:0;
+  const screenBottom=vv?vv.offsetTop+vv.height:window.innerHeight;
+  const safeLeft=Math.max(area.left+edge,edge);
+  const safeRight=Math.min(area.right-edge,window.innerWidth-edge);
+  const safeTop=Math.max(area.top+edge,screenTop+edge);
+  const safeBottom=Math.min(area.bottom-edge,screenBottom-edge);
+  const availableWidth=Math.max(120,safeRight-safeLeft);
+  const width=Math.min(250,availableWidth);
+  const maxHeight=Math.max(100,safeBottom-safeTop);
   menu.style.setProperty("position","fixed","important");
   menu.style.setProperty("box-sizing","border-box","important");
   menu.style.setProperty("width",width+"px","important");
   menu.style.setProperty("min-width","0","important");
-  menu.style.setProperty("max-width",(area.width-edge*2)+"px","important");
+  menu.style.setProperty("max-width",availableWidth+"px","important");
   menu.style.setProperty("max-height",maxHeight+"px","important");
   menu.style.setProperty("overflow-y","auto","important");
   menu.style.setProperty("overscroll-behavior","contain","important");
   menu.style.setProperty("transform","none","important");
   menu.style.setProperty("bottom","auto","important");
   menu.style.setProperty("right","auto","important");
-  menu.style.setProperty("z-index","1200","important");
-  const leftSpace=bubbleRect.left-area.left-edge-gap;
-  const rightSpace=area.right-bubbleRect.right-edge-gap;
+  menu.style.setProperty("z-index","2147483000","important");
+
+  // Pick the side of the bubble that can contain the whole panel. If neither
+  // side fits, use the side with more room and let the panel scroll internally.
+  const leftSpace=Math.max(0,bubbleRect.left-safeLeft-gap);
+  const rightSpace=Math.max(0,safeRight-bubbleRect.right-gap);
   const preferLeft=message.classList.contains("mine");
   let openLeft=preferLeft;
-  if(preferLeft&&leftSpace<width&&rightSpace>=width)openLeft=false;
-  else if(!preferLeft&&rightSpace<width&&leftSpace>=width)openLeft=true;
+  if(leftSpace<width&&rightSpace>=width)openLeft=false;
+  else if(rightSpace<width&&leftSpace>=width)openLeft=true;
   else if(leftSpace<width&&rightSpace<width)openLeft=leftSpace>=rightSpace;
   let left=openLeft?bubbleRect.left-width-gap:bubbleRect.right+gap;
-  left=Math.max(area.left+edge,Math.min(left,area.right-width-edge));
+  left=Math.max(safeLeft,Math.min(left,safeRight-width));
+
+  // Also choose above or below the tapped message control based on available
+  // vertical room, rather than centering a tall menu off the visible screen.
   const measuredHeight=Math.min(menu.scrollHeight,maxHeight);
-  let top=triggerRect.top+triggerRect.height/2-measuredHeight/2;
-  top=Math.max(area.top+edge,Math.min(top,area.bottom-measuredHeight-edge));
+  const below=Math.max(0,safeBottom-triggerRect.bottom-gap);
+  const above=Math.max(0,triggerRect.top-safeTop-gap);
+  let top;
+  if(below>=measuredHeight)top=triggerRect.bottom+gap;
+  else if(above>=measuredHeight)top=triggerRect.top-measuredHeight-gap;
+  else if(below>=above)top=triggerRect.bottom+gap;
+  else top=triggerRect.top-measuredHeight-gap;
+  top=Math.max(safeTop,Math.min(top,safeBottom-measuredHeight));
+
   menu.style.setProperty("left",left+"px","important");
   menu.style.setProperty("top",top+"px","important");
   menu.classList.add("is-floating");
