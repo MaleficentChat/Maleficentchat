@@ -815,3 +815,5 @@ body [data-room-filter]:active{
     width:100%!important;margin-top:1px!important;
   }
 }
+
+.notification-default-avatar{color:#fff!important;background:#777!important;border:2px solid #ddd!important;font-size:23px!important;font-weight:800!important;}
