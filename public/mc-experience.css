@@ -1171,26 +1171,27 @@ html,body,#app,.main{background-color:#100c0a!important;color:#fff4e9!important}
 .brand-avatar:after{content:none!important;display:none!important}
 
 
-/* 19 Nov 2026 — People cards use the same compact footprint and spacing
-   as the mobile Private Messages inbox cards. Keep the status dot intact. */
+/* 19 Nov 2026 — Match People rows to the actual Private Messages inbox cards.
+   Remove the previous oversized fixed-height treatment. */
 #onlinePanel .online-user-grid{
   display:grid!important;
-  gap:10px!important;
+  grid-template-columns:minmax(0,1fr)!important;
+  gap:8px!important;
 }
 #onlinePanel .online-user{
   box-sizing:border-box!important;
   display:flex!important;
   align-items:center!important;
-  gap:8px!important;
+  gap:11px!important;
   width:100%!important;
   min-width:0!important;
-  min-height:68px!important;
-  height:68px!important;
-  padding:10px!important;
-  border:1px solid rgba(240,192,160,.2)!important;
+  min-height:0!important;
+  height:auto!important;
+  padding:12px!important;
+  border:0!important;
   border-radius:14px!important;
-  background:linear-gradient(125deg,rgba(57,38,25,.94),rgba(32,21,15,.98) 72%)!important;
-  box-shadow:0 6px 20px rgba(0,0,0,.12)!important;
+  background:rgba(255,255,255,.035)!important;
+  box-shadow:none!important;
   transform:none!important;
 }
 #onlinePanel .online-user img,
@@ -1199,7 +1200,7 @@ html,body,#app,.main{background-color:#100c0a!important;color:#fff4e9!important}
   width:46px!important;
   height:46px!important;
   min-width:46px!important;
-  border:2px solid rgba(240,192,160,.55)!important;
+  border:0!important;
   box-shadow:none!important;
   box-sizing:border-box!important;
 }
@@ -1211,31 +1212,33 @@ html,body,#app,.main{background-color:#100c0a!important;color:#fff4e9!important}
   justify-content:center!important;
   gap:4px!important;
 }
-#onlinePanel .online-user-copy>b{
-  font-size:14px!important;
-  line-height:1.2!important;
-  font-weight:750!important;
+#onlinePanel .online-user-copy>b{font-size:14px!important;line-height:1.2!important;font-weight:750!important}
+#onlinePanel .online-user-copy>small,
+#onlinePanel .online-user-copy .room-user-rank{font-size:11px!important;line-height:1.2!important}
+#onlinePanel .online-user>.status{flex:0 0 8px!important;margin-left:auto!important}
+#onlinePanel .online-user:hover,
+#onlinePanel .online-user:focus,
+#onlinePanel .online-user:active{
+  border:0!important;box-shadow:none!important;transform:none!important;filter:none!important;
+  background:rgba(255,255,255,.055)!important;
 }
-#onlinePanel .online-user-copy>small{
-  font-size:11px!important;
-  line-height:1.2!important;
-}
-#onlinePanel .online-user-copy .room-user-rank{
-  font-size:11px!important;
-  line-height:1.2!important;
-}
-#onlinePanel .online-user>.status{
-  flex:0 0 8px!important;
-  margin-left:auto!important;
-}
-#onlinePanel .online-user:hover{
+
+/* Plain controls: retain sizing and readable text, remove decorative button
+   borders, outlines, glow, shadows and motion throughout the app. */
+button,
+button:hover,
+button:active,
+button:focus,
+button:focus-visible{
+  border:0!important;
+  outline:0!important;
+  box-shadow:none!important;
+  text-shadow:none!important;
+  filter:none!important;
   transform:none!important;
-  border-color:rgba(240,196,166,.55)!important;
+  transition:none!important;
 }
-@media(max-width:760px){
-  #onlinePanel .online-user-grid{gap:10px!important}
-  #onlinePanel .online-user{
-    min-height:68px!important;height:68px!important;
-    padding:10px!important;gap:8px!important;
-  }
+button::before,button::after{box-shadow:none!important;text-shadow:none!important;filter:none!important}
+button:hover,button:active,button:focus,button:focus-visible{
+  background-image:none!important;
 }
