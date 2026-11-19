@@ -2423,10 +2423,21 @@ function postRoomAnnouncement(){
 window.canPostRoomAnnouncement=()=>can("COMMISSOR");
 
 async function joinRoom(id, options = {}) {
-  const room =
-    state.rooms.find(r => String(r.id) === String(id));
+  let room =
+    (Array.isArray(state.rooms)?state.rooms:[]).find(r => String(r.id) === String(id));
 
-  if (!room) return false;
+  // The sidebar can be opened before its room cache has finished loading.
+  // Refresh once before rejecting a valid room selection.
+  if (!room) {
+    try { await loadRooms(); } catch (error) {
+      console.warn("Could not refresh rooms before joining:",error?.message||error);
+    }
+    room=(Array.isArray(state.rooms)?state.rooms:[]).find(r => String(r.id) === String(id));
+  }
+  if (!room) {
+    if(!options.silent)toast("That room is no longer available. Please refresh the room list.");
+    return false;
+  }
   id=String(room.id);
 
   try {
