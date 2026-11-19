@@ -160,3 +160,71 @@ svg [stroke]:not([stroke="none"]){stroke:#fff!important}
 #app .mc-nav-panel,#app .mc-nav-panel-head,#app .mc-nav-panel-body{
   background-color:#202020!important;
 }
+
+/* Strict monochrome override: no legacy component or inline accent colours. */
+html,body{background:#050505!important;color:#fff!important;color-scheme:dark!important}
+#app,#app *{
+  color:#fff!important;
+  border-color:#555!important;
+  text-shadow:none!important;
+  box-shadow:none!important;
+  background-image:none!important;
+}
+#app *:not(img):not(video):not(canvas):not(iframe):not(svg):not(path){
+  background-color:transparent!important;
+}
+#app{background:#050505!important}
+#app header,#app nav,#app aside,#app footer,
+#app .topbar,#app .top-header,#app .header,#app .sidebar,#app .chat-head,
+#app .panel-head,#app .mc-nav-panel-head,#app .tabs,#app .tab-bar{
+  background:#151515!important;
+}
+#app main,#app .main,#app .view,#app #viewRooms,#app .chat-card,
+#app .messages,#app .message-list,#app .content,#app .page-content,
+#app .room-list,#app .rooms-list,#app .feed,#app .feed-list{
+  background:#080808!important;
+}
+#app .card,#app .panel,#app .modal,#app .modal-card,#app .drawer,
+#app .dropdown,#app .popover,#app .menu,#app .notification-dropdown,
+#app .mc-nav-panel,#app .mc-nav-panel-body,#app .room,#app .room-card,
+#app .user-card,#app .profile-card,#app .settings-card,#app .game-card,
+#app .leaderboard-card,#app .achievement-card,#app .shop-card,
+#app .message-actions-menu,#app .message-more-submenu,#app .reaction-picker,
+#app .quick-user-card,#app .dm-inbox,#app .dm-thread,#app .auth-card,
+#app .ai-companion-shell,#app .entertainment-root,#app .call-panel{
+  background:#202020!important;
+}
+#app button,#app input,#app textarea,#app select,#app option,
+#app .nav,#app .tab,#app .badge,#app .rank,#app .tag,#app .pill,
+#app .status,#app .room-meta,#app .online-badge,#app .message-menu-item,
+#app .icon-btn,#app .action,#app .mini,#app .quick-action{
+  background:#292929!important;color:#fff!important;
+  border:1px solid #666!important;
+}
+#app .primary,#app .send,#app button.primary,#app .active-tab,
+#app .tab.active,#app .nav.active{
+  background:#e5e5e5!important;color:#080808!important;
+  border-color:#fff!important;
+}
+#app .msg-body,#app .msg-text,#app .quoted,#app .replybar,
+#app .composer,#app .typing,#app .message-bubble{
+  background:#242424!important;color:#fff!important;
+}
+#app .msg.mine .msg-body,#app .msg.mine .msg-text,
+#app .message.mine .msg-body,#app .message-bubble.mine{
+  background:#383838!important;color:#fff!important;
+}
+#app img,#app video,#app canvas,
+#app [style*="background-image"],#app .emoji,#app .emoji-picker img,
+#app .reaction img,#app .sticker img{
+  filter:grayscale(1)!important;
+}
+#app svg,#app svg *{color:#fff!important;fill:currentColor!important;stroke:#fff!important}
+#app a,#app a:visited,#app [role="link"]{color:#fff!important}
+#app .success,#app .error,#app .warning,#app .danger,#app .online,
+#app .offline,#app [class*="status-"],#app [class*="badge-"],
+#app [class*="rank-"],#app [class*="accent"],#app [class*="gradient"]{
+  color:#fff!important;background:#292929!important;border-color:#666!important;
+}
+#app input::placeholder,#app textarea::placeholder{color:#ccc!important;opacity:1!important}
+#app ::selection{background:#eee!important;color:#000!important}
