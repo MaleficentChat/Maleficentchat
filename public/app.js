@@ -5821,10 +5821,14 @@ function renderAuditRow(x) {
   const snapshot=meta.deletedSnapshot&&typeof meta.deletedSnapshot==="object"?meta.deletedSnapshot:{};
   const deletedText=pick("text","deletedText","messageText","content")||snapshot.text||"";
   const attachment=pick("attachment","media","mediaUrl")||snapshot.attachment||"";
-  let sentence="",detail=null;
+  let sentence="",detail=null,detailHtmlOverride="";
   if(/MESSAGE.*DELETE|DELETE.*MESSAGE/.test(action)){
     sentence=name(actor)+" has deleted the message of "+name(target)+(room?" in room "+name(room):"");
-    detail={};if(deletedText)detail.Message=String(deletedText);if(attachment)detail.Media=attachment;
+    detail={};
+    if(deletedText)detail.Message=String(deletedText);
+    if(attachment)detail.Media=attachment;
+    if(deletedText)detailHtmlOverride+='<div class="audit-detail-item"><b>Deleted message</b><div class="audit-detail-text">'+esc(String(deletedText))+'</div></div>';
+    if(attachment){const mediaValue=typeof attachment==="string"?{url:attachment}:attachment;detailHtmlOverride+=auditMediaPreview(mediaValue,"Deleted media");}
     if(!deletedText&&!attachment)detail.Evidence="The original message content is not available.";
   }else if(/RANK_CHANGE/.test(action)){
     sentence=name(actor)+" has changed rank of "+name(target)+" to "+String(newRank||"Unknown").replaceAll("_"," ");
@@ -5861,7 +5865,7 @@ function renderAuditRow(x) {
     const safe={};Object.entries(meta).forEach(([key,value])=>{if(!ignored.has(key)&&value!=null&&value!==""&&typeof value!=="object")safe[key.replace(/([A-Z])/g," $1").replace(/[_-]+/g," ")]=value;});
     detail=Object.keys(safe).length?safe:null;
   }
-  const detailHtml=detail?(typeof detail==="object"&&(detail.url||detail.mediaUrl)?auditMediaPreview(detail,"Attachment"):formatAuditDetail(detail)):"";
+  const detailHtml=detailHtmlOverride||(detail?(typeof detail==="object"&&(detail.url||detail.mediaUrl)?auditMediaPreview(detail,"Attachment"):formatAuditDetail(detail)):"");
   const when=x.time?fmt(x.time):"";
   return '<article class="system-audit-row"><div class="audit-sentence">'+esc(sentence)+'</div>'+
     (detail?'<details class="audit-evidence-details"><summary>Details</summary><div class="audit-evidence-content">'+detailHtml+'</div></details>':'')+
