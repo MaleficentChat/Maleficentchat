@@ -835,3 +835,22 @@ body [data-room-filter]:active{
     width:42px!important;height:42px!important;min-width:42px!important;min-height:42px!important;flex:0 0 42px!important;
   }
 }
+
+
+/* 2026-11-20 — enforce compact message content and larger sender avatars. */
+@media(max-width:700px){
+  #viewRooms.chatting #messages > .msg:not(.dm-msg){
+    padding-top:0!important;padding-bottom:0!important;gap:3px!important;
+    min-height:0!important;height:auto!important;
+  }
+  #viewRooms.chatting #messages > .msg:not(.dm-msg) .msg-body{gap:0!important;min-height:0!important}
+  #viewRooms.chatting #messages > .msg:not(.dm-msg) .msg-text{
+    padding:6px 10px 0!important;line-height:1.15!important;margin-bottom:0!important;
+  }
+  #viewRooms.chatting #messages > .msg:not(.dm-msg) .message-avatar-button,
+  #viewRooms.chatting #messages > .msg:not(.dm-msg) .message-avatar-button .avatar,
+  #viewRooms.chatting #messages > .msg:not(.dm-msg) .message-avatar-button .avatar img{
+    width:44px!important;height:44px!important;min-width:44px!important;min-height:44px!important;
+    flex:0 0 44px!important;object-fit:cover!important;
+  }
+}
