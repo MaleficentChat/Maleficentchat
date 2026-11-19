@@ -3011,7 +3011,7 @@ function positionMessageMorePanel(submenu,messageId){
   const area=viewport?.getBoundingClientRect();
   const vv=window.visualViewport;
   const edge=10,gap=8;
-  const composer=document.querySelector("#viewRooms.chatting .chat-card > .composer, #viewRooms.chatting .composer");
+  const composer=document.getElementById("composer");
   const composerTop=composer?.getBoundingClientRect().top;
   const safeTop=Math.max(area?.top??edge,vv?.offsetTop??0)+edge;
   const safeBottom=Math.min(area?.bottom??window.innerHeight,(vv?vv.offsetTop+vv.height:window.innerHeight),Number.isFinite(composerTop)?composerTop-edge:Infinity);
@@ -3169,7 +3169,7 @@ function positionMessageMenu(menu,id){
   // Keep the message action panel entirely ABOVE the message composer.
   // The composer's top edge is a hard lower boundary, so Quote/Delete/More
   // can never cover or spill underneath the typing controls.
-  const composer=document.querySelector("#viewRooms.chatting .chat-card > .composer, #viewRooms.chatting .composer");
+  const composer=document.getElementById("composer");
   const composerTop=composer?.getBoundingClientRect().top;
   const composerBoundary=Number.isFinite(composerTop)?composerTop-edge:Infinity;
   const safeBottom=Math.min(area.bottom-edge,screenBottom-edge,composerBoundary);
