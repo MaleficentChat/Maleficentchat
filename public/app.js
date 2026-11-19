@@ -2681,36 +2681,36 @@ function messageHTML(message) {
   }
   if(message?.breadCommand && String(message.bot||message.username)==="Bot"){
     return `<div class="message bot-welcome-message bot-bread-message" data-mid="${esc(message.id)}">
-      <div class="bot-welcome-bubble" style="border-color:#c4c4c4;box-shadow:0 0 16px #9f9f9f44">
+      <div class="bot-welcome-bubble" style="border-color:#ffbd59;box-shadow:0 0 16px #ff8c4244">
         <div class="bot-welcome-byline">🤖 Bot</div>
-        <div class="bot-welcome-glow" style="color:#cccccc;text-shadow:0 0 12px #9f9f9f">🍞 FOR YOU</div>
+        <div class="bot-welcome-glow" style="color:#ffc66d;text-shadow:0 0 12px #ff8c42">🍞 FOR YOU</div>
         <div class="bot-welcome-username">@${esc(message.breadTargetUsername||"")}</div>
       </div>
     </div>`;
   }
   if(message?.brainCommand && String(message.bot||message.username)==="Bot"){
     return `<div class="message bot-welcome-message bot-brain-message" data-mid="${esc(message.id)}">
-      <div class="bot-welcome-bubble" style="border-color:#717171;box-shadow:0 0 18px #71717144">
+      <div class="bot-welcome-bubble" style="border-color:#8b5cf6;box-shadow:0 0 18px #8b5cf644">
         <div class="bot-welcome-byline">🤖 Bot</div>
-        <div class="bot-welcome-glow" style="color:#bdbdbd;text-shadow:0 0 12px #717171">🧠 BRAIN POWER</div>
+        <div class="bot-welcome-glow" style="color:#c4b5fd;text-shadow:0 0 12px #8b5cf6">🧠 BRAIN POWER</div>
         <div class="bot-welcome-username">@${esc(message.brainTargetUsername||"")}</div>
       </div>
     </div>`;
   }
   if(message?.roseCommand && String(message.bot||message.username)==="Bot"){
     return `<div class="message bot-welcome-message bot-rose-message" data-mid="${esc(message.id)}">
-      <div class="bot-welcome-bubble" style="border-color:#7e7e7e;box-shadow:0 0 16px #4c4c4c44">
+      <div class="bot-welcome-bubble" style="border-color:#ff4fd8;box-shadow:0 0 16px #ff174444">
         <div class="bot-welcome-byline">🤖 Bot</div>
-        <div class="bot-welcome-glow" style="color:#a9a9a9;text-shadow:0 0 12px #4c4c4c">🌹 FOR YOU</div>
+        <div class="bot-welcome-glow" style="color:#ff8adf;text-shadow:0 0 12px #ff1744">🌹 FOR YOU</div>
         <div class="bot-welcome-username">@${esc(message.roseTargetUsername||"")}</div>
       </div>
     </div>`;
   }
   if(message?.bankCommand && String(message.bot||message.username)==="Bot"){
     return `<div class="message bot-welcome-message bot-bank-message" data-mid="${esc(message.id)}">
-      <div class="bot-welcome-bubble" style="border-color:#c1c1c1;box-shadow:0 0 16px #c1c1c133">
+      <div class="bot-welcome-bubble" style="border-color:#fbbf24;box-shadow:0 0 16px #fbbf2433">
         <div class="bot-welcome-byline">🤖 Bot · BANK</div>
-        <div class="bot-welcome-glow" style="color:#d2d2d2;text-shadow:0 0 10px #a6a6a6">🏦 BANK BALANCE</div>
+        <div class="bot-welcome-glow" style="color:#fcd34d;text-shadow:0 0 10px #f59e0b">🏦 BANK BALANCE</div>
         <div class="bot-welcome-username">@${esc(message.bankUsername||"User")}</div>
         <div style="display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-top:8px;font-size:13px">
           <span>💎 Diamonds <b>${Math.max(0,Number(message.bankDiamonds)||0).toLocaleString()}</b></span>
@@ -2722,7 +2722,7 @@ function messageHTML(message) {
   }
   if(message?.stealCommand && String(message.bot||message.username)==="Bot"){
     const outcome=String(message.stealOutcome||"");
-    const color=outcome==="success"?"#d7d7d7":outcome==="reverse"?"#999999":outcome==="bail"?"#919191":"#c1c1c1";
+    const color=outcome==="success"?"#5cffb0":outcome==="reverse"?"#c084fc":outcome==="bail"?"#ff7373":"#fbbf24";
     const heading=outcome==="success"?"💰 HEIST SUCCESS":outcome==="reverse"?"🔄 REVERSE LOOT":outcome==="bail"?"🚨 BAIL FEE":"🪙 EMPTY VAULT";
     return `<div class="message bot-welcome-message bot-steal-message" data-mid="${esc(message.id)}">
       <div class="bot-welcome-bubble" style="border-color:${color};box-shadow:0 0 16px ${color}33">
@@ -2736,14 +2736,14 @@ function messageHTML(message) {
     return `<div class="message bot-welcome-message bot-roast-message" data-mid="${esc(message.id)}">
       <div class="bot-welcome-bubble">
         <div class="bot-welcome-byline">🤖 Bot</div>
-        <div class="bot-welcome-glow" style="color:#929292;text-shadow:0 0 12px #7e7e7e">BOT ROAST</div>
+        <div class="bot-welcome-glow" style="color:#ff7a45;text-shadow:0 0 12px #ff4fd8">BOT ROAST</div>
         <div class="bot-welcome-username">${esc(message.text||"") .replace(/\\n/g,"<br>")}</div>
       </div>
     </div>`;
   }
   if(message?.auraCommand && String(message.bot||message.username)==="Bot"){
     const score=Math.max(0,Math.min(100,Number(message.auraScore)||0));
-    const color=/^#[0-9a-f]{6}$/i.test(String(message.auraColor||""))?message.auraColor:"#727272";
+    const color=/^#[0-9a-f]{6}$/i.test(String(message.auraColor||""))?message.auraColor:"#a855f7";
     return `<div class="message bot-welcome-message bot-aura-message" data-mid="${esc(message.id)}">
       <div class="bot-welcome-bubble" style="border-color:${color};box-shadow:0 0 18px ${color}44">
         <div class="bot-welcome-byline">🤖 Bot · AURA SCAN</div>
