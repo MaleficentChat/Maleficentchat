@@ -671,8 +671,6 @@ body [data-room-filter]:active{
   overflow:hidden!important;
   text-overflow:ellipsis!important;
   white-space:nowrap!important;
-  color:inherit!important;
-  -webkit-text-fill-color:currentColor!important;
 }
 
 /* Aurora join announcements: remove inherited button-pill styling, not the name/link. */
