@@ -3025,7 +3025,7 @@ function positionMessageMorePanel(submenu,messageId){
   const mainRect=main.getBoundingClientRect();
   const mainLeft=Math.max(safeLeft,Math.min(mainRect.left,safeRight-groupWidth));
   const moreLeft=mainLeft+panelWidth+gap;
-  const maxHeight=Math.max(90,safeBottom-safeTop);
+  const maxHeight=Math.max(0,safeBottom-safeTop);
   [main,submenu].forEach(panel=>{
     panel.style.setProperty("position","fixed","important");
     panel.style.setProperty("box-sizing","border-box","important");
@@ -3039,7 +3039,8 @@ function positionMessageMorePanel(submenu,messageId){
   main.style.setProperty("right","auto","important");
   main.style.setProperty("z-index","2147483000","important");
   const measuredHeight=Math.min(submenu.scrollHeight,maxHeight);
-  const top=Math.max(safeTop,Math.min(mainRect.top,safeBottom-measuredHeight));
+  // Anchor both action cards to the safe lower edge above the composer.
+  const top=Math.max(safeTop,safeBottom-measuredHeight);
   submenu.style.setProperty("z-index","2147483001","important");
   submenu.style.setProperty("left",moreLeft+"px","important");
   submenu.style.setProperty("top",top+"px","important");
@@ -3174,7 +3175,7 @@ function positionMessageMenu(menu,id){
   const safeBottom=Math.min(area.bottom-edge,screenBottom-edge,composerBoundary);
   const availableWidth=Math.max(120,safeRight-safeLeft);
   const width=Math.min(250,availableWidth);
-  const maxHeight=Math.max(100,safeBottom-safeTop);
+  const maxHeight=Math.max(0,safeBottom-safeTop);
   menu.style.setProperty("position","fixed","important");
   menu.style.setProperty("box-sizing","border-box","important");
   menu.style.setProperty("width",width+"px","important");
@@ -3200,17 +3201,10 @@ function positionMessageMenu(menu,id){
   let left=openLeft?bubbleRect.left-width-gap:bubbleRect.right+gap;
   left=Math.max(safeLeft,Math.min(left,safeRight-width));
 
-  // Also choose above or below the tapped message control based on available
-  // vertical room, rather than centering a tall menu off the visible screen.
+  // Keep the entire panel above the composer, even when the available
+  // vertical lane is short; the menu scrolls internally when necessary.
   const measuredHeight=Math.min(menu.scrollHeight,maxHeight);
-  const below=Math.max(0,safeBottom-triggerRect.bottom-gap);
-  const above=Math.max(0,triggerRect.top-safeTop-gap);
-  let top;
-  if(below>=measuredHeight)top=triggerRect.bottom+gap;
-  else if(above>=measuredHeight)top=triggerRect.top-measuredHeight-gap;
-  else if(below>=above)top=triggerRect.bottom+gap;
-  else top=triggerRect.top-measuredHeight-gap;
-  top=Math.max(safeTop,Math.min(top,safeBottom-measuredHeight));
+  const top=Math.max(safeTop,safeBottom-measuredHeight);
 
   menu.style.setProperty("left",left+"px","important");
   menu.style.setProperty("top",top+"px","important");
