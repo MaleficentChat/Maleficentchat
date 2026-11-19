@@ -724,3 +724,8 @@ body [data-room-filter]:active{
   min-height:42px!important;
   flex:0 0 auto!important;
 }
+
+
+/* Keep the More card visibly in front of the original message action panel. */
+.message-actions-menu.is-floating:not(.hidden){z-index:2147483000!important;}
+.message-more-submenu.is-floating:not(.hidden){z-index:2147483001!important;}
