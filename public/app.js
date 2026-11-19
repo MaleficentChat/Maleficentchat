@@ -1577,13 +1577,8 @@ document
       event.stopPropagation();
       const requestedView = button.dataset.view;
       if (!requestedView) return;
-      // Selecting any normal navigation destination closes the inline Rooms
-      // section and clears its selected state, matching the other nav items.
-      const roomsToggle=$("roomsNavToggle");
-      const roomsList=$("roomsNavList");
-      roomsList?.classList.add("hidden");
-      roomsToggle?.classList.remove("expanded","active");
-      roomsToggle?.setAttribute("aria-expanded","false");
+      // Keep the Rooms dropdown expanded while switching between other
+      // navigation destinations. Its open state is independent of the active view.
       state.view = requestedView;
 
       // Close the mobile navigation immediately so it cannot cover the selected view
