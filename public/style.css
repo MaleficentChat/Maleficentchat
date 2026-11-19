@@ -9508,3 +9508,30 @@ html{scroll-behavior:smooth;}
   #viewRooms.chatting #messages > .msg:not(.dm-msg) .message-author{font-size:12px!important;max-width:48vw!important}
   #viewRooms.chatting #messages > .msg:not(.dm-msg) .msg-text{font-size:14px!important}
 }
+
+
+/* 2026-11-19 — Keep the People drawer below its ☰ trigger and shorten it. */
+@media(max-width:700px){
+  #viewRooms.chatting .chat-people-hamburger{
+    position:fixed!important;
+    top:calc(var(--header-h,58px) + 8px)!important;
+    right:8px!important;
+    z-index:300!important;
+  }
+  #viewRooms.chatting .online-panel.mobile-open{
+    top:calc(var(--header-h,58px) + 48px)!important;
+    right:8px!important;
+    bottom:72px!important;
+    height:auto!important;
+    min-height:0!important;
+    max-height:calc(100dvh - var(--header-h,58px) - 120px)!important;
+    overflow:hidden!important;
+  }
+  #viewRooms.chatting .online-panel.mobile-open #onlineUsers,
+  #viewRooms.chatting .online-panel.mobile-open .online-users{
+    flex:1 1 auto!important;
+    min-height:0!important;
+    max-height:none!important;
+    overflow-y:auto!important;
+  }
+}
