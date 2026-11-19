@@ -3015,32 +3015,41 @@ function restoreMessageMorePanel(submenu){
 function positionMessageMorePanel(submenu,messageId){
   const main=document.getElementById("message-menu-"+messageId);
   if(!submenu||!main)return;
-  const mainRect=main.getBoundingClientRect();
   const viewport=document.getElementById("messages");
   const area=viewport?.getBoundingClientRect();
   const vv=window.visualViewport;
-  const edge=10;
+  const edge=10,gap=8;
   const composer=document.querySelector("#viewRooms.chatting .chat-card > .composer, #viewRooms.chatting .composer");
   const composerTop=composer?.getBoundingClientRect().top;
   const safeTop=Math.max(area?.top??edge,vv?.offsetTop??0)+edge;
   const safeBottom=Math.min(area?.bottom??window.innerHeight,(vv?vv.offsetTop+vv.height:window.innerHeight),Number.isFinite(composerTop)?composerTop-edge:Infinity);
   const safeLeft=Math.max(edge,area?.left??edge);
   const safeRight=Math.min(window.innerWidth-edge,area?.right??window.innerWidth-edge);
-  const width=Math.min(250,Math.max(160,safeRight-safeLeft));
+  const safeWidth=Math.max(0,safeRight-safeLeft);
+  // Keep both cards side by side. On narrow screens, share the available
+  // width evenly so the More options never cover the original action panel.
+  const panelWidth=Math.max(120,Math.min(220,(safeWidth-gap)/2));
+  const groupWidth=panelWidth*2+gap;
+  const mainRect=main.getBoundingClientRect();
+  const mainLeft=Math.max(safeLeft,Math.min(mainRect.left,safeRight-groupWidth));
+  const moreLeft=mainLeft+panelWidth+gap;
   const maxHeight=Math.max(90,safeBottom-safeTop);
-  submenu.style.setProperty("position","fixed","important");
-  submenu.style.setProperty("box-sizing","border-box","important");
-  submenu.style.setProperty("width",width+"px","important");
-  submenu.style.setProperty("min-width","0","important");
-  submenu.style.setProperty("max-width",width+"px","important");
-  submenu.style.setProperty("max-height",maxHeight+"px","important");
-  submenu.style.setProperty("overflow-y","auto","important");
-  submenu.style.setProperty("z-index","2147483001","important");
-  // A separate layer deliberately sits over the original action panel.
-  const left=Math.max(safeLeft,Math.min(mainRect.left+16,safeRight-width));
+  [main,submenu].forEach(panel=>{
+    panel.style.setProperty("position","fixed","important");
+    panel.style.setProperty("box-sizing","border-box","important");
+    panel.style.setProperty("width",panelWidth+"px","important");
+    panel.style.setProperty("min-width","0","important");
+    panel.style.setProperty("max-width",panelWidth+"px","important");
+    panel.style.setProperty("max-height",maxHeight+"px","important");
+    panel.style.setProperty("overflow-y","auto","important");
+  });
+  main.style.setProperty("left",mainLeft+"px","important");
+  main.style.setProperty("right","auto","important");
+  main.style.setProperty("z-index","2147483000","important");
   const measuredHeight=Math.min(submenu.scrollHeight,maxHeight);
-  const top=Math.max(safeTop,Math.min(mainRect.top+16,safeBottom-measuredHeight));
-  submenu.style.setProperty("left",left+"px","important");
+  const top=Math.max(safeTop,Math.min(mainRect.top,safeBottom-measuredHeight));
+  submenu.style.setProperty("z-index","2147483001","important");
+  submenu.style.setProperty("left",moreLeft+"px","important");
   submenu.style.setProperty("top",top+"px","important");
   submenu.style.setProperty("right","auto","important");
   submenu.style.setProperty("bottom","auto","important");
