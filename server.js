@@ -7052,6 +7052,12 @@ io.on(
     socket.on("leave-room", roomId=>{
       socket.leave("room:"+roomId);
       if(String(socket.data.roomId||"")===String(roomId)){socket.data.roomId=null;socket.data.roomJoinToken=null;}
+      const user=findUser(socket.data.userId);
+      if(user&&String(user.roomId||"")===String(roomId)){
+        const otherRoomSocket=[...io.sockets.sockets.values()].find(other=>other.id!==socket.id&&String(other.data?.userId||"")===String(user.id)&&other.data?.roomId);
+        user.roomId=otherRoomSocket?String(otherRoomSocket.data.roomId):null;
+        save();
+      }
       io.emit("presence");
     });
 
