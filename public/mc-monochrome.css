@@ -424,3 +424,74 @@ html,body{background:var(--mc-page)!important;color:var(--mc-text)!important;col
 }
 #app svg,#app svg *{filter:grayscale(1)!important}
 
+
+
+/* 19 Nov 2026 — colour is reserved for profile photos, badges and icons only.
+   This pass changes foreground/media accents only; surrounding UI surfaces stay monochrome. */
+#app :is(.avatar,.big-avatar,.profile-avatar,.top-avatar,.user-avatar,.profile-picture,
+        .msg-avatar,.message-avatar,.chat-avatar,.dm-avatar,.inbox-avatar,.contact-avatar,
+        .participant-avatar,.sender-avatar,.online-avatar,.userpic,.user-photo) img,
+#app img:is(.avatar,.big-avatar,.profile-avatar,.top-avatar,.user-avatar,.profile-picture,
+            .msg-avatar,.message-avatar,.chat-avatar,.dm-avatar,.inbox-avatar,.contact-avatar,
+            .participant-avatar,.sender-avatar,.online-avatar,.userpic,.user-photo),
+#app :is(.avatar,.big-avatar,.profile-avatar,.top-avatar,.user-avatar,.profile-picture,
+        .msg-avatar,.message-avatar,.chat-avatar,.dm-avatar,.inbox-avatar,.contact-avatar,
+        .participant-avatar,.sender-avatar,.online-avatar,.userpic,.user-photo)[style*="background-image"],
+#app :is(.avatar,.big-avatar,.profile-avatar,.top-avatar,.user-avatar,.profile-picture,
+        .msg-avatar,.message-avatar,.chat-avatar,.dm-avatar,.inbox-avatar,.contact-avatar,
+        .participant-avatar,.sender-avatar,.online-avatar,.userpic,.user-photo){
+  filter:none!important;opacity:1!important;mix-blend-mode:normal!important;
+}
+#app :is(.msg,.message,.message-item,.dm-message,.dm-thread,.dm-inbox,.online-user,
+        .people-list,.people-panel,.profile-card,.profile-view,.user-card)
+  :is(.avatar,.big-avatar,.profile-avatar,.top-avatar,.user-avatar,.profile-picture,
+      .msg-avatar,.message-avatar,.chat-avatar,.dm-avatar,.inbox-avatar,.contact-avatar,
+      .participant-avatar,.sender-avatar,.online-avatar) img{
+  filter:none!important;opacity:1!important;mix-blend-mode:normal!important;
+}
+/* Restore colourful badge treatments without changing their size or placement. */
+#app .badge,#app .rank,#app .rank-badge,#app .role-badge,#app .level-badge,
+#app .xp-badge,#app .online-badge,#app .dm-unread-badge,#app .tag,
+#app [class*="rank-"],#app [class*="badge-"]{
+  filter:none!important;
+  border-color:currentColor!important;
+  box-shadow:none!important;
+}
+#app .rank,#app .rank-badge,#app .role-badge{
+  color:#f2c14e!important;background-color:#493a17!important;
+}
+#app .rank[class*="vip"],#app .rank[class*="VIP"],#app [class*="rank-vip"]{
+  color:#62d7f5!important;background-color:#123744!important;
+}
+#app .rank[class*="premium"],#app [class*="rank-premium"]{
+  color:#f4c76b!important;background-color:#493719!important;
+}
+#app .rank[class*="admin"],#app [class*="rank-admin"]{
+  color:#ff8b8b!important;background-color:#4a2020!important;
+}
+#app .rank[class*="owner"],#app [class*="rank-owner"]{
+  color:#d6a6ff!important;background-color:#38204c!important;
+}
+#app .badge,#app .level-badge,#app .xp-badge,#app .tag{
+  color:#8fe0bd!important;background-color:#173b30!important;
+}
+#app .online-badge,#app .status.online,#app .status.on,
+#app [class*="status-online"],#app [class*="is-online"]{
+  color:#72e2a5!important;
+}
+#app .dm-unread-badge{color:#ffffff!important;background-color:#c94f78!important}
+/* Restore coloured icon glyphs; do not recolour their button or panel backgrounds. */
+#app svg,#app svg *{filter:none!important}
+#app .nav-icon,#app .icon,#app .icon-btn svg,#app button svg,
+#app [class*="icon-"],#app i[class*="fa-"],#app [data-lucide]{
+  filter:none!important;
+}
+#app .nav-icon,#app .icon,#app [class*="icon-"],#app i[class*="fa-"]{
+  color:#75c9f2!important;
+}
+#app .top-icon svg,#app .notification-icon,#app .bell-icon{color:#f2c66d!important}
+#app .send svg,#app .message-send-icon{color:#75d6a5!important}
+#app .delete-icon,#app .danger-icon{color:#f08080!important}
+#app .gift-icon,#app .diamond-icon{color:#d7a4ff!important}
+#app .youtube-icon,#app .video-icon{color:#ff7777!important}
+#app .voice-icon,#app .call-icon{color:#76d7c4!important}
