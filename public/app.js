@@ -5825,7 +5825,8 @@ function renderAuditRow(x) {
   const previousUsername = isUsernameChange ? pick("previousUsername", "oldUsername", "fromUsername") : "";
   const newUsername = isUsernameChange ? pick("newUsername", "username", "toUsername") : "";
   const evidence = pick("evidence", "attachment", "media", "mediaUrl", "deletedText", "deletedMessage", "news", "item");
-  const deletedText = isMessageDeletion ? pick("text", "deletedText", "messageText", "content") : "";
+  const deletedSnapshot = meta.deletedSnapshot && typeof meta.deletedSnapshot === "object" ? meta.deletedSnapshot : {};
+  const deletedText = isMessageDeletion ? (pick("text", "deletedText", "messageText", "content") || deletedSnapshot.text || "") : "";
   const rows = [
     '<div class="audit-compact-field"><small>Actor</small><b>' + esc(actor) + '</b></div>',
     '<div class="audit-compact-field"><small>Target</small><b>' + esc(target) + '</b></div>',
