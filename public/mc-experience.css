@@ -1575,3 +1575,22 @@ body{background-image:radial-gradient(ellipse at 70% -15%,rgba(77,143,216,.18),t
  #onlinePanel .online-user-copy>b{font-size:12px!important}
  #onlinePanel .online-user-copy>small,#onlinePanel .online-user-copy .room-user-rank{font-size:9px!important}
 }
+
+
+/* People panel only: compact user cards to exactly 48px tall. */
+#onlinePanel .online-user{
+  box-sizing:border-box!important;
+  height:48px!important;
+  min-height:48px!important;
+  max-height:48px!important;
+  padding:4px 8px!important;
+  overflow:hidden!important;
+}
+#onlinePanel .online-user img,
+#onlinePanel .online-user .avatar{
+  flex:0 0 36px!important;
+  width:36px!important;
+  height:36px!important;
+  min-width:36px!important;
+  max-width:36px!important;
+}
