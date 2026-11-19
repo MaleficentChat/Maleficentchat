@@ -5254,10 +5254,18 @@ app.get("/api/staff/system-center/audit",auth,async(req,res)=>{
   const q=String(req.query.q||"").trim().toLowerCase().slice(0,100);
   try{
     const auditRows=await pool.query("SELECT l.id,l.action_type,l.performed_by,l.target_user_id,l.details,l.created_at,performer.username AS performer_username,target.username AS target_username FROM admin_logs l LEFT JOIN users performer ON performer.id=l.performed_by LEFT JOIN users target ON target.id=l.target_user_id ORDER BY l.created_at DESC,l.id DESC LIMIT 5000");
-    const rows=auditRows.rows.map(row=>{
+    const rows=await Promise.all(auditRows.rows.map(async row=>{
       let details={};try{details=typeof row.details==="string"?JSON.parse(row.details):(row.details||{});}catch{details={message:String(row.details||"")};}
+      const action=String(row.action_type||"").toUpperCase();
+      if(/MESSAGE.*DELETE|DELETE.*MESSAGE/.test(action)&&details.id){
+        try{
+          const stored=await getStoredRoomMessage(details.id);
+          const snapshot=stored?.deletedSnapshot||details.deletedSnapshot||details;
+          details={...details,text:details.text||snapshot.text||stored?.text||"",attachment:details.attachment||snapshot.attachment||stored?.attachment||null};
+        }catch(error){console.error("Deleted-message audit evidence lookup failed:",error?.message||error);}
+      }
       return {id:String(row.id),time:row.created_at?new Date(row.created_at).getTime():Date.now(),actor:row.performer_username||"SYSTEM",actorUsername:row.performer_username||"SYSTEM",action:row.action_type||"ACTION",target:row.target_username||details.target||String(row.target_user_id||""),reason:details.reason||details.message||"",source:details.source||"staff",meta:details};
-    });
+    }));
     const visibleRows=filterAuditRowsForRank(rows,actor);
     res.json({audit:visibleRows.filter(x=>!q||[x.target,x.actor,x.actorUsername,x.action,x.reason,x.source].some(v=>String(v||"").toLowerCase().includes(q)))});
   }catch(error){console.error("Staff audit history lookup failed:",error);res.status(500).json({error:"Could not load audit history. Please try again."});}
