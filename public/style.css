@@ -9625,3 +9625,16 @@ html{scroll-behavior:smooth;}
   #viewRooms.chatting #messages > .msg:not(.dm-msg) .msg-actions:empty,
   #viewRooms.chatting #messages > .msg:not(.dm-msg) .reaction:empty{display:none!important}
 }
+
+/* 2026-11-20: extend People-panel user cards edge-to-edge without changing their height or inner layout. */
+@media(max-width:900px){
+  #viewRooms.chatting .online-panel #onlineUsers .online-user-grid{
+    padding-left:0!important;
+    padding-right:0!important;
+  }
+  #viewRooms.chatting .online-panel #onlineUsers .online-user-grid .online-user{
+    width:100%!important;
+    margin-left:0!important;
+    margin-right:0!important;
+  }
+}
