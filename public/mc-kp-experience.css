@@ -1236,3 +1236,48 @@ button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible,
 .top-brand-copy b:after{content:"Maleficent Chat"!important}
 .topbar:after{content:"MALEFICENT CHAT  /  COMMUNITY NETWORK"!important}
 .brand-mark:after,.brand-avatar:after,.rail-logo:after{content:"🖤"!important;font-family:Georgia,serif!important}
+
+
+/* 2026-11-19: strengthen the visible KnightPulse blue/gold palette and restore icon contrast. */
+:root{
+ --bg:#071326!important;--bg-deep:#040b18!important;--panel:#101f35!important;
+ --panel-2:#172944!important;--panel-3:#203653!important;
+ --text:#f3f6fc!important;--muted:#9aabc2!important;
+ --accent:#4d8fd8!important;--accent-2:#e5bd63!important;
+ --bubble:#1b304b!important;--mine:#174c7b!important;
+}
+html,body,#app,.app,.main,.content,.main-content{background-color:#071326!important;color:#f3f6fc!important}
+.sidebar,.left-sidebar,.right-sidebar,.online-panel,.people-panel,.chat-card,.chat-panel,.panel,.card,.room,.room-card,
+.stat-card,.user-card,.friend-card,.news-card,.game-card,.settings-card,.staff-card,.modal-card,.modal-content,
+.dropdown-menu,.context-menu,.notification-dropdown,.dm-inbox-card{
+ background-color:#101f35!important;color:#f3f6fc!important;border-color:rgba(190,211,235,.18)!important;
+}
+.top-header,.topbar,.chat-head,.panel-head,.composer,.replybar{
+ background-color:#102541!important;color:#f3f6fc!important;border-color:rgba(190,211,235,.18)!important;
+}
+button,.button,.secondary,.icon-btn,.action,.tab-btn,.nav,.top-icon,.top-menu{
+ color:#eaf2fc!important;
+}
+.primary,.send,.btn-primary,button[type=submit]{
+ color:#fff!important;background:linear-gradient(115deg,#286cae,#1b4f82 58%,#c49a4b)!important;
+ border:1px solid rgba(229,189,99,.48)!important;
+}
+.nav.active,.tab.active,.selected,[aria-current=page]{
+ color:#f7dc98!important;border-color:rgba(229,189,99,.62)!important;
+ background:linear-gradient(110deg,rgba(77,143,216,.28),rgba(229,189,99,.12))!important;
+}
+#app i,#app [class^="fa-"],#app [class*=" fa-"],#app .icon,#app .nav-icon,
+#app .menu-icon,#app .action-icon,#app .top-icon svg,#app .top-menu svg,
+#app button svg,#app a svg,#app .nav svg{
+ color:#83b8ef!important;
+}
+#app .nav.active i,#app .nav.active svg,#app .top-icon i,#app .top-menu i,
+#app .gold-icon,#app .crown-icon,#app .premium-icon{
+ color:#e5bd63!important;
+}
+#app button svg,#app a svg,#app .nav svg,#app .top-icon svg,#app .top-menu svg{
+ stroke:currentColor!important;fill:none!important;
+}
+#app button svg [fill="currentColor"],#app .nav svg [fill="currentColor"]{fill:currentColor!important}
+#app a{color:#83b8ef!important}
+#app .gold,#app .rank-badge,#app .premium-badge,#app .brand-accent{color:#e5bd63!important}
