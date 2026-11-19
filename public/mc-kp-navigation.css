@@ -8,7 +8,7 @@
     gap:5px!important;
     overflow-y:auto!important;
     overflow-x:hidden!important;
-    background:rgba(29,16,9,.98)!important;
+    background:rgba(18, 18, 18, .98)!important;
   }
   #sidebar .logo{
     display:flex!important;
@@ -19,8 +19,8 @@
   }
   #sidebar .rail-logo{width:38px!important;height:38px!important;flex:0 0 38px!important}
   #sidebar .rail-brand{display:flex!important;flex-direction:column!important;min-width:0!important;line-height:1.15!important}
-  #sidebar .rail-brand b{font-size:18px!important;letter-spacing:-.35px!important;color:#fff!important}
-  #sidebar .rail-brand span{font-size:10px!important;letter-spacing:1.5px!important;text-transform:uppercase!important;color:#b99582!important;margin-top:3px!important}
+  #sidebar .rail-brand b{font-size:18px!important;letter-spacing:-.35px!important;color:#ffffff!important}
+  #sidebar .rail-brand span{font-size:10px!important;letter-spacing:1.5px!important;text-transform:uppercase!important;color:#9b9b9b!important;margin-top:3px!important}
 
   /* Do not restyle the MC Rooms toggle or its room list. */
   #sidebar #roomsNavToggle{
@@ -34,15 +34,15 @@
   /* KnightPulse-style rows for every non-room navigation option. */
   #sidebar .nav-group{
     width:100%!important;margin:2px 0!important;padding:3px!important;
-    border:1px solid rgba(232,155,117,.14)!important;
-    border-radius:12px!important;background:rgba(255,255,255,.018)!important;
+    border:1px solid rgba(169, 169, 169, .14)!important;
+    border-radius:12px!important;background:rgba(255, 255, 255, .018)!important;
     align-items:stretch!important;gap:2px!important;
   }
   #sidebar .nav-group>summary{
     display:flex!important;align-items:center!important;justify-content:flex-start!important;
     width:100%!important;min-height:34px!important;padding:7px 9px!important;
     gap:10px!important;border-radius:8px!important;
-    color:#e7cec2!important;font-size:12px!important;font-weight:750!important;
+    color:#d2d2d2!important;font-size:12px!important;font-weight:750!important;
     letter-spacing:.04em!important;text-transform:none!important;
   }
   #sidebar .nav-group>summary>span{display:inline!important;flex:1 1 auto!important;min-width:0!important}
@@ -54,7 +54,7 @@
     flex:0 0 auto!important;padding:9px 11px!important;margin:1px 0!important;
     gap:12px!important;border:1px solid transparent!important;border-radius:10px!important;
     text-align:left!important;font-size:20px!important;line-height:1.2!important;
-    color:#e8d2c7!important;
+    color:#d6d6d6!important;
   }
   #sidebar .nav-group .nav>span,
   #sidebar>.nav:not(#roomsNavToggle)>span{
@@ -64,13 +64,13 @@
   }
   #sidebar .nav-group .nav:hover,
   #sidebar>.nav:not(#roomsNavToggle):hover{
-    background:rgba(205,112,66,.13)!important;border-color:rgba(232,155,117,.18)!important;color:#fff!important;
+    background:rgba(128, 128, 128, .13)!important;border-color:rgba(169, 169, 169, .18)!important;color:#ffffff!important;
   }
   #sidebar .nav-group .nav.active,
   #sidebar>.nav:not(#roomsNavToggle).active{
-    background:linear-gradient(100deg,rgba(205,112,66,.22),rgba(229,193,126,.055))!important;
-    border-color:rgba(232,155,117,.2)!important;color:#fff!important;
-    box-shadow:inset 3px 0 0 #d59b72!important;
+    background:linear-gradient(100deg,rgba(128, 128, 128, .22),rgba(196, 196, 196, .055))!important;
+    border-color:rgba(169, 169, 169, .2)!important;color:#ffffff!important;
+    box-shadow:inset 3px 0 0 #a4a4a4!important;
   }
   #sidebar .nav-group .nav i,
   #sidebar>.nav:not(#roomsNavToggle) i{margin-left:auto!important;flex:0 0 7px!important}
@@ -91,7 +91,7 @@
   #sidebar .nav-group>summary{
     min-height:32px!important;padding:6px 10px!important;border:0!important;
     border-radius:0!important;background:transparent!important;
-    color:#bba99f!important;font-size:11px!important;font-weight:650!important;
+    color:#acacac!important;font-size:11px!important;font-weight:650!important;
     letter-spacing:.07em!important;
   }
   #sidebar .nav-group .nav,
@@ -99,7 +99,7 @@
     min-height:36px!important;padding:7px 10px!important;margin:0!important;
     gap:11px!important;border:0!important;border-radius:7px!important;
     background:transparent!important;box-shadow:none!important;
-    color:#d7c9c1!important;font-size:18px!important;
+    color:#cbcbcb!important;font-size:18px!important;
     transition:color .12s ease,background-color .12s ease!important;
   }
   #sidebar .nav-group .nav>span,
@@ -108,19 +108,19 @@
   }
   #sidebar .nav-group .nav:hover,
   #sidebar>.nav:not(#roomsNavToggle):hover{
-    background:rgba(255,255,255,.045)!important;
-    border:0!important;color:#fff!important;
+    background:rgba(255, 255, 255, .045)!important;
+    border:0!important;color:#ffffff!important;
   }
   #sidebar .nav-group .nav.active,
   #sidebar>.nav:not(#roomsNavToggle).active{
-    background:rgba(255,255,255,.075)!important;
-    border:0!important;color:#fff!important;font-weight:600!important;
+    background:rgba(255, 255, 255, .075)!important;
+    border:0!important;color:#ffffff!important;font-weight:600!important;
     box-shadow:none!important;
   }
   #sidebar .nav-group .nav.active>span,
   #sidebar>.nav:not(#roomsNavToggle).active>span{font-weight:600!important}
-  #sidebar .nav-group>summary:hover{background:rgba(255,255,255,.035)!important}
+  #sidebar .nav-group>summary:hover{background:rgba(255, 255, 255, .035)!important}
   #sidebar .nav-group>summary>span{font-weight:650!important}
   #sidebar .me-mini{background:transparent!important;border:0!important;box-shadow:none!important}
-  #sidebar .me-mini:hover{background:rgba(255,255,255,.045)!important}
+  #sidebar .me-mini:hover{background:rgba(255, 255, 255, .045)!important}
 }
