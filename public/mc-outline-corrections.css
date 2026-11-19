@@ -283,3 +283,43 @@ body [data-view]:active,
 body [data-room-filter]:active{
   border-color:var(--mc-outline-strong)!important;
 }
+
+
+/* 19 Nov 2026 — full-width, uniform navigation rows with one-line labels.
+   Keep each option the same width as its Community/Explore section header. */
+#sidebar.sidebar{
+  width:min(292px,88vw)!important;min-width:min(292px,88vw)!important;
+  max-width:min(292px,88vw)!important;padding-left:12px!important;
+  padding-right:12px!important;align-items:stretch!important;
+}
+#sidebar .nav-group,#sidebar .nav-group[open]{
+  width:100%!important;min-width:0!important;align-items:stretch!important;
+}
+#sidebar .nav-group .nav,#sidebar>.nav:not(#roomsNavToggle),#sidebar #roomsNavToggle{
+  display:flex!important;width:100%!important;min-width:100%!important;
+  max-width:100%!important;flex:0 0 100%!important;min-height:42px!important;
+  height:42px!important;box-sizing:border-box!important;align-items:center!important;
+  justify-content:flex-start!important;gap:12px!important;padding:8px 12px!important;
+  white-space:nowrap!important;overflow:hidden!important;
+  border:1px solid var(--mc-outline)!important;border-radius:10px!important;
+  text-align:left!important;
+}
+#sidebar .nav-group .nav>span,#sidebar>.nav:not(#roomsNavToggle)>span,#sidebar #roomsNavToggle>span{
+  display:block!important;flex:1 1 auto!important;width:auto!important;min-width:0!important;
+  max-width:100%!important;white-space:nowrap!important;overflow:hidden!important;
+  text-overflow:ellipsis!important;word-break:normal!important;overflow-wrap:normal!important;
+  line-height:1.15!important;font-size:12.5px!important;
+}
+#sidebar .nav-group .nav .nav-icon,#sidebar>.nav:not(#roomsNavToggle) .nav-icon,#sidebar #roomsNavToggle .nav-icon{
+  display:inline-flex!important;flex:0 0 22px!important;width:22px!important;
+  min-width:22px!important;justify-content:center!important;
+}
+#sidebar .nav-group>summary{width:100%!important;min-width:100%!important;box-sizing:border-box!important}
+@media(max-width:800px){
+  #sidebar.sidebar,#sidebar.sidebar.open,#sidebar.sidebar.mobile-open{
+    width:min(292px,88vw)!important;min-width:min(292px,88vw)!important;max-width:min(292px,88vw)!important;
+  }
+  #sidebar .nav-group .nav,#sidebar>.nav:not(#roomsNavToggle),#sidebar #roomsNavToggle{
+    width:100%!important;flex-basis:100%!important;
+  }
+}
