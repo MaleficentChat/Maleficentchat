@@ -1281,3 +1281,103 @@ button,.button,.secondary,.icon-btn,.action,.tab-btn,.nav,.top-icon,.top-menu{
 #app button svg [fill="currentColor"],#app .nav svg [fill="currentColor"]{fill:currentColor!important}
 #app a{color:#83b8ef!important}
 #app .gold,#app .rank-badge,#app .premium-badge,#app .brand-accent{color:#e5bd63!important}
+
+
+/* Full-site KnightPulse colour restoration — override the older grayscale MC skin. */
+#app, #app * { filter:none!important; }
+#app{
+  --bg:#071326!important;--bg-deep:#040b18!important;
+  --panel:#102541!important;--panel-2:#173657!important;--panel-3:#20476c!important;
+  --text:#f3f6fc!important;--muted:#a9bdd4!important;
+  --accent:#4d8fd8!important;--accent-2:#e5bd63!important;
+  --accent-soft:rgba(77,143,216,.2)!important;
+  color:#f3f6fc!important;background:#071326!important;
+}
+#app :is(.top-header,#topHeader,.topbar,.top-header-actions,.top-brand,.top-menu,.top-icon,.top-profile){
+  background-color:#102541!important;color:#eaf2fc!important;
+  border-color:rgba(229,189,99,.24)!important;
+}
+#app :is(.top-header,.topbar){
+  background:linear-gradient(105deg,#102b49 0%,#173b5e 58%,#102541 100%)!important;
+  border-bottom:1px solid rgba(229,189,99,.32)!important;
+}
+#app :is(.top-menu,.top-icon,.top-profile){background:rgba(38,91,139,.32)!important;color:#9bc9f4!important}
+#app :is(.top-brand-copy b,.topbar h1,.topbar h2,.topbar h3){color:#f5f7fc!important}
+#app :is(.top-brand-copy span,.topbar p,.topbar small){color:#e5bd63!important}
+#app :is(#sidebar,.sidebar,.left-sidebar,.navigation,.side-navigation){
+  background:linear-gradient(180deg,#0d2440,#08182c)!important;
+  border-color:rgba(229,189,99,.2)!important;color:#dce9f7!important;
+}
+#app :is(#sidebar .nav,.sidebar .nav,.navigation .nav,.side-navigation button){
+  background:transparent!important;color:#a9c6e4!important;border-color:transparent!important;
+}
+#app :is(#sidebar .nav:hover,#sidebar .nav.active,.sidebar .nav:hover,.sidebar .nav.active,.navigation .nav.active){
+  background:linear-gradient(100deg,rgba(57,126,190,.42),rgba(229,189,99,.12))!important;
+  color:#f6d991!important;border-color:rgba(229,189,99,.36)!important;
+  box-shadow:inset 3px 0 0 #e5bd63!important;
+}
+#app :is(#sidebar .nav i,#sidebar .nav svg,.sidebar .nav i,.sidebar .nav svg){color:#83b8ef!important;stroke:currentColor!important}
+#app :is(#sidebar .nav.active i,#sidebar .nav.active svg,.sidebar .nav.active i,.sidebar .nav.active svg){color:#e5bd63!important}
+#app :is(.nav-group,.nav-group>summary,.nav-section,.sidebar .section-label){color:#c2d4e8!important;border-color:rgba(160,193,224,.18)!important}
+#app :is(#onlinePanel,.online-panel,.people-panel,.people-list,.online-users,.user-grid,.user-list){
+  background:#0d2038!important;color:#f3f6fc!important;border-color:rgba(130,177,220,.2)!important;
+}
+#app :is(#onlinePanel .panel-head,#onlinePanel .online-tabs,.online-panel .panel-head,.people-panel .panel-head){
+  background:linear-gradient(100deg,#173b5e,#102541)!important;color:#f3f6fc!important;border-color:rgba(229,189,99,.22)!important;
+}
+#app :is(.online-user,.user-card,.friend-card,.people-card,.person-card,.user-list-item){
+  background:linear-gradient(110deg,#142f4c,#10243c)!important;
+  color:#edf4fc!important;border-color:rgba(130,177,220,.2)!important;
+}
+#app :is(.online-user:hover,.user-card:hover,.friend-card:hover,.people-card:hover,.person-card:hover,.user-list-item:hover){
+  background:linear-gradient(110deg,#1b4770,#173452)!important;border-color:rgba(229,189,99,.38)!important;
+}
+#app :is(.online-user-copy>b,.user-card b,.friend-card b,.people-card b,.person-card b){color:#f3f6fc!important}
+#app :is(.online-user-copy>small,.user-card small,.friend-card small,.people-card small,.person-card small){color:#a9bdd4!important}
+#app :is(.online-user .status.on,#onlinePanel .online-user .status.on){background:#72c9a3!important;box-shadow:0 0 0 3px rgba(114,201,163,.13)!important}
+#app :is(#viewRooms,.room-grid,#rooms,#roomsAllSection,#kpRoomsPanel,.room-directory,.room-list,.room-browser){
+  background-color:#091a2e!important;color:#f3f6fc!important;
+}
+#app :is(#viewRooms .topbar,#kpRoomsPanel .panel-head,.room-directory .panel-head,.room-browser .panel-head){
+  background:linear-gradient(100deg,#173b5e,#102541)!important;color:#f3f6fc!important;border-color:rgba(229,189,99,.25)!important;
+}
+#app :is(.room,.room-card,.room-list-item,.discover-room,.room-directory-card){
+  background:linear-gradient(145deg,#173654,#10243c)!important;
+  color:#f3f6fc!important;border:1px solid rgba(130,177,220,.22)!important;
+}
+#app :is(.room:hover,.room.selected,.room-card:hover,.room-list-item:hover,.room-list-item.selected,.discover-room:hover,.room-directory-card:hover){
+  background:linear-gradient(145deg,#20517b,#173654)!important;
+  border-color:rgba(229,189,99,.55)!important;
+}
+#app :is(.room-icon-wrap,.room-icon,.room-badge){color:#e5bd63!important;background-color:#1b3c5d!important;border-color:rgba(229,189,99,.2)!important}
+#app :is(.room-title-row,.room h3,.room-card h3,.room-list-item strong){color:#f4f7fc!important}
+#app :is(.room-desc,.room p,.room-meta,.room small){color:#b5c8dd!important}
+#app :is(.chat-card,.panel,.card,.stat-card,.news-card,.game-card,.settings-card,.staff-card,.modal-card,.modal-content,.dropdown-menu,.context-menu,.notification-dropdown,.dm-inbox-card,.profile-section,.profile-info-card){
+  background:linear-gradient(145deg,#142f4c,#0d2038)!important;
+  color:#f3f6fc!important;border-color:rgba(130,177,220,.2)!important;
+}
+#app :is(.chat-head,.panel-head,.composer,.replybar,.typing,.dm-inbox-tabs){
+  background:linear-gradient(100deg,#173b5e,#102541)!important;
+  color:#f3f6fc!important;border-color:rgba(229,189,99,.2)!important;
+}
+#app :is(button,.button,.icon-btn,.action,.tab-btn,.secondary,.top-icon,.top-menu){
+  color:#dceafa!important;
+}
+#app :is(button:hover,.button:hover,.icon-btn:hover,.action:hover,.tab-btn:hover,.secondary:hover){
+  background-color:rgba(77,143,216,.2)!important;border-color:rgba(229,189,99,.32)!important;
+}
+#app :is(.primary,.send,.btn-primary,button[type=submit]){
+  background:linear-gradient(115deg,#286cae,#1b4f82 58%,#b88e42)!important;
+  color:#fff!important;border-color:rgba(229,189,99,.5)!important;
+}
+#app :is(.active,.selected,[aria-current=page]){color:#f5d991!important}
+#app :is(a,.link){color:#83b8ef!important}
+#app :is(.gold,.rank-badge,.premium-badge,.brand-accent,.room-meta strong){color:#e5bd63!important}
+#app :is(input,textarea,select){
+  background:#091a2e!important;color:#f3f6fc!important;border-color:rgba(130,177,220,.3)!important;
+}
+#app :is(input,textarea,select):focus{border-color:#e5bd63!important;box-shadow:0 0 0 3px rgba(229,189,99,.13)!important}
+#app :is(svg,i,.icon,.nav-icon,.menu-icon,.action-icon){color:inherit}
+#app svg{stroke:currentColor}
+#app :is(.top-icon svg,.top-menu svg,.nav svg,.icon-btn svg,.action svg){color:#83b8ef!important}
+#app :is(.nav.active svg,.gold-icon,.crown-icon,.premium-icon){color:#e5bd63!important}
