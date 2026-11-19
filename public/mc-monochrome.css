@@ -214,10 +214,10 @@ html,body{background:#050505!important;color:#fff!important;color-scheme:dark!im
 #app .message.mine .msg-body,#app .message-bubble.mine{
   background:#383838!important;color:#fff!important;
 }
+/* Preserve all user images and profile photos in their original colours. */
 #app img,#app video,#app canvas,
-#app [style*="background-image"],#app .emoji,#app .emoji-picker img,
-#app .reaction img,#app .sticker img{
-  filter:grayscale(1)!important;
+#app [style*="background-image"],#app .avatar,#app .profile-avatar{
+  filter:none!important;opacity:1!important;mix-blend-mode:normal!important;
 }
 #app svg,#app svg *{color:#fff!important;fill:currentColor!important;stroke:#fff!important}
 #app a,#app a:visited,#app [role="link"]{color:#fff!important}
