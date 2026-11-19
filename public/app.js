@@ -3121,25 +3121,28 @@ function toggleMessageMenu(id){
   closeMessageMenus();
   if(wasHidden)openMessageMenu(menu,id);
 }
-/* A tap on the message bubble opens its action panel; the ⋯ trigger remains available too. */
+/* Open message actions directly from the message content area (not only ⋯).
+   Capture phase prevents other chat click handlers from swallowing the bubble tap. */
 document.addEventListener("click",e=>{
   const target=e.target instanceof Element?e.target:null;
-  if(!target){closeMessageMenus();return;}
+  if(!target)return;
   if(target.closest(".message-actions-menu"))return;
   const msg=target.closest(".msg[data-mid]");
-  const bubble=target.closest(".msg-body");
+  const bubble=target.closest(".msg-text,.message-image,.chat-gif,.quoted,.msg-body");
   if(msg&&bubble&&!target.closest("button,a,input,textarea,audio,video,iframe,.msg-actions,.message-actions-menu")){
     const id=String(msg.dataset.mid||"");
     const menu=$("message-menu-"+id);
     if(menu){
+      e.preventDefault();
+      e.stopPropagation();
+      e.stopImmediatePropagation();
       const wasHidden=menu.classList.contains("hidden");
       closeMessageMenus();
       if(wasHidden)openMessageMenu(menu,id);
       return;
     }
   }
-  if(!target.closest(".msg-actions,.msg[data-mid]"))closeMessageMenus();
-});
+},true);
 
 function showStefanOptions(){
   if(!state.currentRoom) return;
