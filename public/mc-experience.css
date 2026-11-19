@@ -1169,3 +1169,73 @@ html,body,#app,.main{background-color:#100c0a!important;color:#fff4e9!important}
 #sidebar .rail-logo:after{content:none!important;display:none!important}
 .brand-avatar{font-size:13px!important}
 .brand-avatar:after{content:none!important;display:none!important}
+
+
+/* 19 Nov 2026 — People cards use the same compact footprint and spacing
+   as the mobile Private Messages inbox cards. Keep the status dot intact. */
+#onlinePanel .online-user-grid{
+  display:grid!important;
+  gap:10px!important;
+}
+#onlinePanel .online-user{
+  box-sizing:border-box!important;
+  display:flex!important;
+  align-items:center!important;
+  gap:8px!important;
+  width:100%!important;
+  min-width:0!important;
+  min-height:68px!important;
+  height:68px!important;
+  padding:10px!important;
+  border:1px solid rgba(240,192,160,.2)!important;
+  border-radius:14px!important;
+  background:linear-gradient(125deg,rgba(57,38,25,.94),rgba(32,21,15,.98) 72%)!important;
+  box-shadow:0 6px 20px rgba(0,0,0,.12)!important;
+  transform:none!important;
+}
+#onlinePanel .online-user img,
+#onlinePanel .online-user .avatar{
+  flex:0 0 46px!important;
+  width:46px!important;
+  height:46px!important;
+  min-width:46px!important;
+  border:2px solid rgba(240,192,160,.55)!important;
+  box-shadow:none!important;
+  box-sizing:border-box!important;
+}
+#onlinePanel .online-user-copy{
+  display:flex!important;
+  flex:1 1 auto!important;
+  min-width:0!important;
+  flex-direction:column!important;
+  justify-content:center!important;
+  gap:4px!important;
+}
+#onlinePanel .online-user-copy>b{
+  font-size:14px!important;
+  line-height:1.2!important;
+  font-weight:750!important;
+}
+#onlinePanel .online-user-copy>small{
+  font-size:11px!important;
+  line-height:1.2!important;
+}
+#onlinePanel .online-user-copy .room-user-rank{
+  font-size:11px!important;
+  line-height:1.2!important;
+}
+#onlinePanel .online-user>.status{
+  flex:0 0 8px!important;
+  margin-left:auto!important;
+}
+#onlinePanel .online-user:hover{
+  transform:none!important;
+  border-color:rgba(240,196,166,.55)!important;
+}
+@media(max-width:760px){
+  #onlinePanel .online-user-grid{gap:10px!important}
+  #onlinePanel .online-user{
+    min-height:68px!important;height:68px!important;
+    padding:10px!important;gap:8px!important;
+  }
+}
