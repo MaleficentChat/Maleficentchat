@@ -213,3 +213,12 @@
 #viewRooms.chatting .msg .msg-actions > .message-more-button{
   display:none!important;
 }
+
+
+/* Tighten the message-to-composer spacing; composer remains in normal layout. */
+@media(max-width:800px){
+  #viewRooms.chatting #messages{
+    padding-bottom:20px!important;
+    scroll-padding-bottom:20px!important;
+  }
+}
