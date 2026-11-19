@@ -3040,7 +3040,7 @@ function positionMessageMorePanel(submenu,messageId){
   main.style.setProperty("z-index","2147483000","important");
   const measuredHeight=Math.min(submenu.scrollHeight,maxHeight);
   // Anchor both action cards to the safe lower edge above the composer.
-  const top=Math.max(safeTop,safeBottom-measuredHeight);
+  const top=Math.max(safeTop,Math.min(bubbleRect.top,safeBottom-measuredHeight));
   submenu.style.setProperty("z-index","2147483001","important");
   submenu.style.setProperty("left",moreLeft+"px","important");
   submenu.style.setProperty("top",top+"px","important");
@@ -7497,7 +7497,7 @@ async function openNotificationCenter(){
     const data=await api("/api/notifications");
     const rows=Array.isArray(data.notifications)?data.notifications:[];
     const unreadCount=rows.filter(n=>!n.read).length;
-    modal(`<div class="notification-center"><div class="notification-head"><div><h2>🔔 Notifications</h2><p class="muted">${unreadCount} unread</p></div><div class="toolbar"><button class="mini" id="markAllNotifications" type="button" ${unreadCount?'':'disabled'}>Mark all read</button><button class="mini danger" id="clearNotifications" type="button">Clear all</button></div></div><div class="stack">${rows.map(n=>`<div class="card notification-card ${n.read?'':'unread'}"><div><b>${esc(n.title||n.type||'Notification')}</b><p>${esc(n.text||n.message||'')}</p><small>${fmt(n.time)}</small></div><div class="toolbar"><button class="mini" data-notif-read="${esc(n.id)}" type="button">${n.read?'Read':'Mark read'}</button><button class="mini danger" data-notif-delete="${esc(n.id)}" type="button">×</button></div></div>`).join('')||'<p class="muted">No notifications.</p>'}</div></div>`);
+    modal(`<div class="notification-center"><div class="notification-head"><div><h2>🔔 Notifications</h2><p class="muted">${unreadCount} unread</p></div><div class="toolbar"><button class="mini" id="markAllNotifications" type="button" ${unreadCount?'':'disabled'}>Mark all read</button><button class="mini danger" id="clearNotifications" type="button">Clear all</button></div></div><div class="stack">${rows.map(n=>`<div class="card notification-card ${n.read?'':'unread'}"><div class="notification-avatar-wrap">${n.avatar?'<img class="notification-avatar" src="'+esc(n.avatar)+'" alt="">':'<span class="notification-avatar notification-system-avatar">!</span>'}<span class="notification-kind-badge">${({warning:"⚡",moderation:"⚡",gold:"▣",gift:"▣",level:"★",achievement:"✦",wall:"☰",profile:"●","profile-visit":"●"}[String(n.type||"").toLowerCase()]||(n.avatar?"●":"★"))}</span></div><div class="notification-copy"><b>${esc(n.actorName||n.title||n.type||'Notification')}</b><p>${esc(n.text||n.message||'')}</p><small>${fmt(n.time)}</small></div><div class="toolbar notification-actions"><button class="mini" data-notif-read="${esc(n.id)}" type="button">${n.read?'Read':'Mark read'}</button><button class="mini danger" data-notif-delete="${esc(n.id)}" type="button">×</button></div></div>`).join('')||'<p class="muted">No notifications.</p>'}</div></div>`);
     document.querySelectorAll('[data-notif-read]').forEach(b=>b.onclick=async()=>{
       try{const row=b.closest('.notification-card');if(row?.querySelector('b')?.textContent==='Warning ⚠️'){closeModal();return;}await api('/api/notifications/'+encodeURIComponent(b.dataset.notifRead)+'/read',{method:'PATCH'});row?.classList.remove('unread');b.textContent='Read';await loadNotifications();}catch(e){toast(e.message||'Could not update notification.');}
     });
