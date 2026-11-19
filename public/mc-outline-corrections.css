@@ -639,3 +639,9 @@ body [data-room-filter]:active{
 #viewRooms.chatting .msg .message-author,
 #viewRooms.chatting .msg .tag-author { cursor:pointer!important; }
 .system-message .system-message-user-link { cursor:pointer!important; }
+
+
+/* 19 Nov 2026 — balance the new rectangular room-message bubble: remove excess lower padding only. */
+#viewRooms.chatting #messages .msg .msg-text{
+  padding-bottom:2px!important;
+}
