@@ -9791,3 +9791,32 @@ html{scroll-behavior:smooth;}
 #viewRooms.main-room-chat #messages > .msg:not(.dm-msg) .msg-author-group .message-author{
   order:0!important;
 }
+
+
+/* Rank badges in the People panel sit at the far-right edge only. */
+#onlineUsers .online-user{position:relative}
+#onlineUsers .online-user-copy{padding-right:34px}
+#onlineUsers .online-user-rank-badge{
+  position:absolute;
+  right:12px;
+  top:50%;
+  transform:translateY(-50%);
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width:26px;
+  height:30px;
+  color:#ff9b35;
+  font-size:21px;
+  line-height:1;
+  filter:drop-shadow(0 1px 3px rgba(255,145,45,.35));
+  pointer-events:none;
+}
+#onlineUsers .online-user-grid .online-user-rank-badge{
+  right:6px;
+  top:8px;
+  transform:none;
+  width:20px;
+  height:22px;
+  font-size:17px;
+}
