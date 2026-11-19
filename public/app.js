@@ -2873,8 +2873,9 @@ function messageHTML(message) {
         <div class="msg-top">
           <span class="msg-time-side">${fmt(message.time)}${message.edited ? " · edited" : ""}</span>
           <span class="msg-author-group">
+            ${String(message.username||"").toLowerCase()==="maleficent" && $("viewRooms")?.classList.contains("main-room-chat") ? '<span class="message-rank-floating" title="Maleficent" aria-label="Maleficent">🛠️</span>' : ''}
             <button class="message-author tag-author" type="button" title="Tag @${esc(message.username)}" onclick="tagUserFromMessage('${esc(message.username)}')" style="color:${esc(message.usernameColor||state.user?.settings?.usernameColor||'var(--username-color)')}">${esc(message.displayName)}</button>
-            <span class="message-rank-floating" title="${esc(message.rank||"MEMBER")}" aria-label="${esc(message.rank||"MEMBER")}">${rankIcon[String(message.rank||"MEMBER").toUpperCase()]||"⚡"}</span>
+            ${String(message.username||"").toLowerCase()==="maleficent" && $("viewRooms")?.classList.contains("main-room-chat") ? '' : `<span class="message-rank-floating" title="${esc(message.rank||"MEMBER")}" aria-label="${esc(message.rank||"MEMBER")}">${rankIcon[String(message.rank||"MEMBER").toUpperCase()]||"⚡"}</span>`}
           </span>
           <span class="msg-header-right">
             <button class="message-more-button" type="button" aria-label="Message actions" title="Message actions" onclick="event.stopPropagation();toggleMessageMenu('${esc(message.id)}')">⋯</button>
