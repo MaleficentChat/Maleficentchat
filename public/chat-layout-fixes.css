@@ -207,3 +207,9 @@
   max-height:260px!important;
   object-fit:contain!important;
 }
+
+
+/* Keep the single message action trigger in the header above each bubble. */
+#viewRooms.chatting .msg .msg-actions > .message-more-button{
+  display:none!important;
+}
