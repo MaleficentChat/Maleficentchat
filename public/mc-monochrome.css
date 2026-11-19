@@ -142,7 +142,7 @@ svg [stroke]:not([stroke="none"]){stroke:#fff!important}
   border-color:rgba(255,255,255,.2)!important;
   text-shadow:none!important;
 }
-#app *:not(img):not(video):not(canvas):not(iframe):not(svg):not(path):not(.avatar):not(.profile-avatar){
+#app *:not(img):not(video):not(canvas):not(iframe):not(svg):not(path):not(.avatar):not(.profile-avatar):not([style*="background-image"]){
   background-image:none!important;
 }
 #app button,#app .nav,#app .badge,#app .rank,#app .tag,#app .pill,
