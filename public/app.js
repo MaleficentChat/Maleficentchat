@@ -1531,22 +1531,30 @@ function closeRoomsMorePanel(){
   panel.setAttribute("aria-hidden","true");
   $("roomsNavMore")?.focus({preventScroll:true});
 }
-const roomsNavToggle=$("roomsNavToggle");
-roomsNavToggle?.addEventListener("click",async()=>{
+// Rooms is an inline navigation section (not a separate view). Use delegated
+// handling so the control keeps working if the sidebar is re-rendered.
+document.addEventListener("click",async event=>{
+  const toggle=event.target instanceof Element?event.target.closest("#roomsNavToggle"):null;
+  if(!toggle)return;
+  event.preventDefault();
+  event.stopPropagation();
   const list=$("roomsNavList");
   if(!list)return;
   const opening=list.classList.contains("hidden");
   list.classList.toggle("hidden",!opening);
-  roomsNavToggle.setAttribute("aria-expanded",opening?"true":"false");
-  roomsNavToggle.classList.toggle("expanded",opening);
+  toggle.setAttribute("aria-expanded",opening?"true":"false");
+  toggle.classList.toggle("expanded",opening);
+  toggle.classList.toggle("active",opening);
   if(opening){
+    // Rooms is the selected navigation section while its inline list is open.
+    document.querySelectorAll(".nav[data-view]").forEach(button=>button.classList.remove("active"));
     try{
       const data=await api("/api/rooms");
       if(Array.isArray(data.rooms))state.rooms=sanitizeRoomList(data.rooms);
     }catch(error){console.warn("Could not refresh navigation rooms:",error?.message||error);}
     renderSidebarRoomList();
   }
-});
+},true);
 $("roomsNavList")?.addEventListener("click",event=>{
   const more=event.target instanceof Element?event.target.closest("#roomsNavMore"):null;
   if(more){event.preventDefault();event.stopPropagation();openRoomsMorePanel();return;}
