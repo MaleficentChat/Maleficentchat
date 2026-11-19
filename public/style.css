@@ -9161,3 +9161,92 @@ html{scroll-behavior:smooth;}
     max-width:min(240px,78vw)!important;
   }
 }
+
+
+/* 19 Nov 2026 — compact rectangular quick-actions drawer on mobile. */
+@media(max-width:800px){
+  #viewRooms.chatting .composer{position:relative}
+  #viewRooms.chatting .chat-tools-drawer{
+    display:none;
+    position:absolute!important;
+    left:8px!important;
+    bottom:58px!important;
+    width:min(310px,calc(100vw - 24px))!important;
+    max-width:calc(100vw - 24px)!important;
+    box-sizing:border-box!important;
+    padding:10px!important;
+    gap:7px!important;
+    display:none;
+    flex-direction:column!important;
+    border:1px solid rgba(240,192,160,.28)!important;
+    border-radius:14px!important;
+    background:linear-gradient(145deg,rgba(48,30,21,.99),rgba(25,16,12,.99))!important;
+    box-shadow:0 14px 38px rgba(0,0,0,.42)!important;
+  }
+  #viewRooms.chatting .chat-tools-drawer.open{
+    display:grid!important;
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+    grid-auto-rows:minmax(48px,auto)!important;
+    align-items:stretch!important;
+  }
+  #viewRooms.chatting .chat-tools-heading{
+    grid-column:1/-1!important;
+    display:flex!important;
+    flex-direction:column!important;
+    gap:2px!important;
+    padding:1px 2px 7px!important;
+    margin:0 0 1px!important;
+    border-bottom:1px solid rgba(240,192,160,.14)!important;
+  }
+  #viewRooms.chatting .chat-tools-heading strong{
+    font-size:13px!important;line-height:1.2!important;
+  }
+  #viewRooms.chatting .chat-tools-heading span{
+    font-size:10px!important;line-height:1.2!important;opacity:.72!important;
+  }
+  #viewRooms.chatting .chat-tools-drawer>button{
+    display:flex!important;
+    align-items:center!important;
+    justify-content:flex-start!important;
+    gap:8px!important;
+    width:100%!important;
+    min-width:0!important;
+    min-height:48px!important;
+    height:48px!important;
+    box-sizing:border-box!important;
+    padding:6px 8px!important;
+    border:1px solid rgba(240,192,160,.18)!important;
+    border-radius:10px!important;
+    background:rgba(255,255,255,.035)!important;
+    color:inherit!important;
+    text-align:left!important;
+    white-space:normal!important;
+  }
+  #viewRooms.chatting .chat-tools-drawer>button .chat-tool-icon{
+    display:grid!important;
+    place-items:center!important;
+    flex:0 0 25px!important;
+    width:25px!important;
+    height:25px!important;
+    font-size:17px!important;
+  }
+  #viewRooms.chatting .chat-tools-drawer>button>span:last-child{
+    display:flex!important;
+    flex:1 1 auto!important;
+    min-width:0!important;
+    flex-direction:column!important;
+    gap:2px!important;
+  }
+  #viewRooms.chatting .chat-tools-drawer>button b{
+    font-size:11px!important;line-height:1.15!important;
+  }
+  #viewRooms.chatting .chat-tools-drawer>button small{
+    display:block!important;
+    overflow:hidden!important;
+    font-size:9px!important;
+    line-height:1.1!important;
+    white-space:nowrap!important;
+    text-overflow:ellipsis!important;
+    opacity:.7!important;
+  }
+}
