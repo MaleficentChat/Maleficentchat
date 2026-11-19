@@ -495,3 +495,49 @@ html,body{background:var(--mc-page)!important;color:var(--mc-text)!important;col
 #app .gift-icon,#app .diamond-icon{color:#d7a4ff!important}
 #app .youtube-icon,#app .video-icon{color:#ff7777!important}
 #app .voice-icon,#app .call-icon{color:#76d7c4!important}
+
+
+/* 19 Nov 2026 — precise correction: restore actual avatar image colour in every
+   shared avatar component, including main-chat circles and the complete DM inbox. */
+.avatar,.top-avatar,.dm-minimized-avatar,.user-avatar,.profile-avatar,
+#onlinePanel .avatar,#onlineUsers .avatar,#app .avatar{
+  filter:none!important;opacity:1!important;mix-blend-mode:normal!important;
+}
+.avatar img,.top-avatar img,.dm-minimized-avatar img,.user-avatar img,
+.profile-avatar img,#onlinePanel .avatar img,#onlineUsers .avatar img,
+#app .avatar img,#app .top-avatar img,#app .dm-minimized-avatar img{
+  filter:none!important;opacity:1!important;mix-blend-mode:normal!important;
+}
+
+/* No orange/warm accent survives on message surfaces or chat action surfaces. */
+#app .msg,#app .msg-body,#app .msg-text,#app .msg.mine .msg-body,
+#app .msg.mine .msg-text,#app .message-bubble,#app .message.mine .msg-body,
+#app .quoted,#app .message-translation{
+  background-color:var(--mc-surface-soft)!important;
+  background-image:none!important;
+  border-color:var(--mc-border)!important;
+  box-shadow:none!important;
+}
+#app .msg.mine .msg-body,#app .msg.mine .msg-text,
+#app .message.mine .msg-body,#app .message-bubble.mine{
+  background-color:var(--mc-surface-raised)!important;
+}
+
+/* Icons are exempt from grayscale. Do not assign a replacement accent colour:
+   allow each icon's own glyph/artwork to supply its original appearance. */
+#app svg,#app svg *,.nav-icon,.icon,.icon-btn svg,button svg,
+[class*="icon-"],i[class*="fa-"],[data-lucide],
+#app nav span:first-child,#app .nav span:first-child,
+#app .mc-nav-panel span:first-child,#onlinePanel svg,#onlineUsers svg{
+  filter:none!important;
+}
+#app svg,#app svg *{
+  color:revert!important;fill:revert!important;stroke:revert!important;
+}
+#app .nav-icon,#app .icon,#app [class*="icon-"],#app i[class*="fa-"],
+#app .top-icon svg,#app .notification-icon,#app .bell-icon,
+#app .send svg,#app .message-send-icon,#app .delete-icon,#app .danger-icon,
+#app .gift-icon,#app .diamond-icon,#app .youtube-icon,#app .video-icon,
+#app .voice-icon,#app .call-icon{
+  color:revert!important;
+}
