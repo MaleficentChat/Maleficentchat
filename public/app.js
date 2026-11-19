@@ -2588,9 +2588,11 @@ async function renderOnline(tab=onlinePanelTab,searchQuery=""){
       <div class="online-user ${String(user.id)===String(state.user?.id)?"is-current-user ":""}${user.online?'is-online':'is-offline'}" onclick="openQuickUserCard('${esc(user.id)}')">
         ${avatar(user)}${String(user.id)===String(state.user?.id) ? '<button type="button" class="my-status-toggle" id="myStatusToggle" aria-haspopup="true" aria-expanded="false" onclick="event.stopPropagation()"><span id="myStatusGlyph">⚙</span><b id="myStatusLabel">Online</b><span>⌄</span></button><div class="my-status-options hidden" id="myStatusOptions" role="menu" onclick="event.stopPropagation()"></div>' : '<span class="user-mood-indicator" title="'+esc(user.customStatus|| (user.online?'Online':'Away'))+'">'+statusEmoji(user.customStatus|| (user.online?'Online':'Away'))+'</span>'}
         <div class="online-user-copy">
-          <b>${esc(user.displayName)}</b>
-          <small>@${esc(user.username)} ${invisibleDot(user)} ${moderationStatusTags(user)}${user.invisible?"":" · "+(user.customStatus||(user.online?"Available":"Away"))}</small>
-          <span class="room-user-rank" title="${esc(roomRoleLabel[roomRoleByUser[String(user.id)]]||user.rank||'Member')}">${roomRoleByUser[String(user.id)] ? (roomRoleIcon[roomRoleByUser[String(user.id)]]||'✨') : (rankIcon[String(user.rank||'MEMBER').toUpperCase()]||'⚡')} ${esc(roomRoleLabel[roomRoleByUser[String(user.id)]]||String(user.rank||'MEMBER').replaceAll('_',' '))}</span>
+          <div class="online-user-heading">
+            <span class="room-user-rank" title="${esc(roomRoleLabel[roomRoleByUser[String(user.id)]]||user.rank||'Member')}">${roomRoleByUser[String(user.id)] ? (roomRoleIcon[roomRoleByUser[String(user.id)]]||'✨') : (rankIcon[String(user.rank||'MEMBER').toUpperCase()]||'⚡')} ${esc(roomRoleLabel[roomRoleByUser[String(user.id)]]||String(user.rank||'MEMBER').replaceAll('_',' '))}</span>
+            <b>@${esc(user.username)}</b>
+          </div>
+          <small>${esc(user.displayName)} ${invisibleDot(user)} ${moderationStatusTags(user)}${user.invisible?"":" · "+(user.customStatus||(user.online?"Available":"Away"))}</small>
         </div>
       </div>
     `).join("") || `<div class="online-empty"><div>${tab==="staff"?"🛡️":tab==="friends"?"💜":"👥"}</div><b>No users here</b><span>Try another tab.</span></div>`}</div>`;
@@ -3109,6 +3111,7 @@ function positionMessageMenu(menu,id){
   menu.style.setProperty("min-width","0","important");
   menu.style.setProperty("max-width",Math.max(0,area.width-2*edge)+"px","important");
   menu.style.setProperty("max-height",safeHeight+"px","important");
+  menu.style.setProperty("height",Math.min(menu.scrollHeight,safeHeight)+"px","important");
   menu.style.setProperty("overflow-y","auto","important");
   menu.style.setProperty("z-index","2147483000","important");
   menu.style.setProperty("transform","none","important");
@@ -3121,9 +3124,11 @@ function positionMessageMenu(menu,id){
   const measuredHeight=Math.min(menu.scrollHeight,safeHeight);
   // Anchor beside the message's own ⋯ trigger. If the panel would run into
   // the composer, shift it upward only as much as needed.
-  const top=Math.max(safeTop,Math.min(triggerRect.top,safeBottom-measuredHeight));
+  const actualHeight=Math.min(Math.max(measuredHeight,menu.getBoundingClientRect().height),safeHeight);
+  const top=Math.max(safeTop,Math.min(triggerRect.top,safeBottom-actualHeight));
   menu.style.setProperty("left",left+"px","important");
   menu.style.setProperty("top",top+"px","important");
+  menu.style.setProperty("bottom","auto","important");
   menu.classList.add("is-floating");
 }
 document.getElementById("messages")?.addEventListener("scroll",()=>{
