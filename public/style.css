@@ -9638,3 +9638,36 @@ html{scroll-behavior:smooth;}
     margin-right:0!important;
   }
 }
+
+
+/* 2026-11-20 — subtle bronze button treatment for the three compact chat navigation controls.
+   Preserve their existing footprint, placement, icon size, and click behavior. */
+#viewRooms.chatting #roomMenu,
+#viewRooms.chatting .chat-side-actions .panel-more,
+#viewRooms.chatting .panel-head>.panel-more,
+#viewRooms.chatting .chat-people-hamburger{
+  box-sizing:border-box!important;
+  border:1px solid rgba(205,132,91,.34)!important;
+  border-radius:11px!important;
+  background:linear-gradient(145deg,rgba(205,132,91,.105),rgba(255,255,255,.025))!important;
+  color:var(--text,#f4eee9)!important;
+  box-shadow:inset 0 1px 0 rgba(255,220,194,.075),0 2px 7px rgba(0,0,0,.24)!important;
+  -webkit-tap-highlight-color:transparent!important;
+  transition:background .16s ease,border-color .16s ease,box-shadow .16s ease!important;
+}
+#viewRooms.chatting #roomMenu:hover,
+#viewRooms.chatting .chat-side-actions .panel-more:hover,
+#viewRooms.chatting .panel-head>.panel-more:hover,
+#viewRooms.chatting .chat-people-hamburger:hover{
+  background:linear-gradient(145deg,rgba(205,132,91,.19),rgba(255,255,255,.055))!important;
+  border-color:rgba(225,151,108,.58)!important;
+  box-shadow:inset 0 1px 0 rgba(255,220,194,.1),0 3px 10px rgba(0,0,0,.3)!important;
+}
+#viewRooms.chatting #roomMenu:active,
+#viewRooms.chatting .chat-side-actions .panel-more:active,
+#viewRooms.chatting .panel-head>.panel-more:active,
+#viewRooms.chatting .chat-people-hamburger:active{
+  background:rgba(205,132,91,.2)!important;
+  border-color:rgba(225,151,108,.66)!important;
+  box-shadow:inset 0 1px 3px rgba(0,0,0,.28)!important;
+}
