@@ -3004,35 +3004,69 @@ async function copyMsg(id){
   }
 }
 
+function restoreMessageMorePanel(submenu){
+  if(!submenu?.__messageMoreParent)return;
+  const parent=submenu.__messageMoreParent,next=submenu.__messageMoreNext;
+  if(next&&next.parentNode===parent)parent.insertBefore(submenu,next);
+  else parent.appendChild(submenu);
+  delete submenu.__messageMoreParent;
+  delete submenu.__messageMoreNext;
+}
+function positionMessageMorePanel(submenu,messageId){
+  const main=document.getElementById("message-menu-"+messageId);
+  if(!submenu||!main)return;
+  const mainRect=main.getBoundingClientRect();
+  const viewport=document.getElementById("messages");
+  const area=viewport?.getBoundingClientRect();
+  const vv=window.visualViewport;
+  const edge=10;
+  const composer=document.querySelector("#viewRooms.chatting .chat-card > .composer, #viewRooms.chatting .composer");
+  const composerTop=composer?.getBoundingClientRect().top;
+  const safeTop=Math.max(area?.top??edge,vv?.offsetTop??0)+edge;
+  const safeBottom=Math.min(area?.bottom??window.innerHeight,(vv?vv.offsetTop+vv.height:window.innerHeight),Number.isFinite(composerTop)?composerTop-edge:Infinity);
+  const safeLeft=Math.max(edge,area?.left??edge);
+  const safeRight=Math.min(window.innerWidth-edge,area?.right??window.innerWidth-edge);
+  const width=Math.min(250,Math.max(160,safeRight-safeLeft));
+  const maxHeight=Math.max(90,safeBottom-safeTop);
+  submenu.style.setProperty("position","fixed","important");
+  submenu.style.setProperty("box-sizing","border-box","important");
+  submenu.style.setProperty("width",width+"px","important");
+  submenu.style.setProperty("min-width","0","important");
+  submenu.style.setProperty("max-width",width+"px","important");
+  submenu.style.setProperty("max-height",maxHeight+"px","important");
+  submenu.style.setProperty("overflow-y","auto","important");
+  submenu.style.setProperty("z-index","10020","important");
+  // A separate layer deliberately sits over the original action panel.
+  const left=Math.max(safeLeft,Math.min(mainRect.left+16,safeRight-width));
+  const measuredHeight=Math.min(submenu.scrollHeight,maxHeight);
+  const top=Math.max(safeTop,Math.min(mainRect.top+16,safeBottom-measuredHeight));
+  submenu.style.setProperty("left",left+"px","important");
+  submenu.style.setProperty("top",top+"px","important");
+  submenu.style.setProperty("right","auto","important");
+  submenu.style.setProperty("bottom","auto","important");
+  submenu.classList.add("is-floating");
+}
 function toggleMessageMore(messageId){
   const submenu=document.getElementById("message-more-"+messageId);
   if(!submenu)return;
   const willOpen=submenu.classList.contains("hidden");
-  document.querySelectorAll(".message-more-submenu").forEach(item=>item.classList.add("hidden"));
+  document.querySelectorAll(".message-more-submenu").forEach(item=>{
+    item.classList.add("hidden");
+    if(item.classList.contains("is-floating")){
+      item.classList.remove("is-floating");
+      ["position","left","top","right","bottom","width","min-width","max-width","max-height","overflow-y","z-index"].forEach(prop=>item.style.removeProperty(prop));
+      restoreMessageMorePanel(item);
+    }
+  });
   document.querySelectorAll(".message-more-trigger").forEach(item=>item.setAttribute("aria-expanded","false"));
   if(!willOpen)return;
-  submenu.classList.remove("hidden");
   const trigger=submenu.parentElement?.querySelector(".message-more-trigger");
+  submenu.__messageMoreParent=submenu.parentNode;
+  submenu.__messageMoreNext=submenu.nextSibling;
+  document.body.appendChild(submenu);
+  submenu.classList.remove("hidden");
   trigger?.setAttribute("aria-expanded","true");
-  requestAnimationFrame(()=>{
-    const panel=submenu.closest(".message-actions-menu");
-    if(!panel)return;
-    // The panel is a fixed, scrollable layer portaled to <body>. Scroll its
-    // own content (not the chat) until the entire More submenu is visible.
-    const panelRect=panel.getBoundingClientRect();
-    const subRect=submenu.getBoundingClientRect();
-    const bottomOverflow=subRect.bottom-(panelRect.bottom-10);
-    const topOverflow=(panelRect.top+10)-subRect.top;
-    if(bottomOverflow>0)panel.scrollTop+=bottomOverflow;
-    else if(topOverflow>0)panel.scrollTop-=topOverflow;
-    // Re-check after the scroll has been applied; this avoids the submenu
-    // being left below the mobile viewport on short Android screens.
-    requestAnimationFrame(()=>{
-      const p=panel.getBoundingClientRect(),r=submenu.getBoundingClientRect();
-      if(r.bottom>p.bottom-8)panel.scrollTop+=r.bottom-p.bottom+12;
-      if(r.top<p.top+8)panel.scrollTop-=p.top-r.top+10;
-    });
-  });
+  requestAnimationFrame(()=>positionMessageMorePanel(submenu,messageId));
 }
 function closeMessageMenus(){
   document.querySelectorAll(".message-actions-menu,.message-more-submenu").forEach(m=>{
@@ -3086,6 +3120,11 @@ window.addEventListener("resize",()=>{
     const id=open.id.replace(/^message-menu-/,"");
     positionMessageMenu(open,id);
   }
+  const more=document.querySelector(".message-more-submenu.is-floating:not(.hidden)");
+  if(more){
+    const id=more.id.replace(/^message-more-/,"");
+    positionMessageMorePanel(more,id);
+  }
 });
 function restoreMessageMenu(menu){
   if(!menu?.__messageMenuParent)return;
@@ -3101,6 +3140,7 @@ function closeMessageMenus(){
       menu.classList.remove("is-floating");
       ["position","left","top","right","bottom","width","min-width","max-width","max-height","overflow-y","transform","z-index"].forEach(prop=>menu.style.removeProperty(prop));
     }
+    if(menu.classList.contains("message-more-submenu"))restoreMessageMorePanel(menu);
     if(menu.classList.contains("message-actions-menu"))restoreMessageMenu(menu);
   });
   document.querySelectorAll(".message-more-trigger").forEach(button=>button.setAttribute("aria-expanded","false"));
