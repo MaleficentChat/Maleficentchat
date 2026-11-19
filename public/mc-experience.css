@@ -1223,22 +1223,24 @@ html,body,#app,.main{background-color:#100c0a!important;color:#fff4e9!important}
   background:rgba(255,255,255,.055)!important;
 }
 
-/* Plain controls: retain sizing and readable text, remove decorative button
-   borders, outlines, glow, shadows and motion throughout the app. */
-button,
-button:hover,
-button:active,
-button:focus,
-button:focus-visible{
-  border:0!important;
-  outline:0!important;
-  box-shadow:none!important;
+/* Restore defined monochrome button styling without floating movement. */
+button{
+  border:1px solid rgba(255,255,255,.22)!important;
+  box-shadow:0 2px 7px rgba(0,0,0,.30),inset 0 1px rgba(255,255,255,.035)!important;
   text-shadow:none!important;
-  filter:none!important;
+  transition:background-color .16s ease,border-color .16s ease,box-shadow .16s ease!important;
   transform:none!important;
-  transition:none!important;
 }
-button::before,button::after{box-shadow:none!important;text-shadow:none!important;filter:none!important}
-button:hover,button:active,button:focus,button:focus-visible{
-  background-image:none!important;
+button:hover{
+  border-color:rgba(255,255,255,.42)!important;
+  box-shadow:0 3px 9px rgba(0,0,0,.36),inset 0 1px rgba(255,255,255,.06)!important;
+  transform:none!important;
+}
+button:focus-visible{
+  outline:2px solid rgba(255,255,255,.58)!important;
+  outline-offset:2px!important;
+}
+button:active{
+  transform:none!important;
+  box-shadow:0 1px 4px rgba(0,0,0,.34),inset 0 1px rgba(255,255,255,.04)!important;
 }
