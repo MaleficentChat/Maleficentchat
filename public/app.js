@@ -27,18 +27,18 @@ document.addEventListener("click", event => {
 
 // Room theme data must exist before early socket events or room rendering can apply it.
 const ROOM_THEMES = [
-{id:"obsidian",name:"Obsidian",emoji:"🌑",bg:"#0b0b14",bubble:"#302342",accent:"#b58cff"},
-{id:"midnight",name:"Midnight",emoji:"🌌",bg:"#080d20",bubble:"#17264a",accent:"#7197ff"},
-{id:"lavender",name:"Lavender",emoji:"💜",bg:"#171027",bubble:"#4b3268",accent:"#d1a5ff"},
-{id:"rose",name:"Rose",emoji:"🌹",bg:"#210f1b",bubble:"#593044",accent:"#ff8fbe"},
-{id:"forest",name:"Forest",emoji:"🌲",bg:"#091a16",bubble:"#1b4035",accent:"#69d5a7"},
-{id:"sunset",name:"Sunset",emoji:"🌇",bg:"#24120e",bubble:"#653522",accent:"#ffab70"},
-{id:"ocean",name:"Ocean",emoji:"🌊",bg:"#071a24",bubble:"#16465a",accent:"#65d9ef"},
-{id:"cyberpunk",name:"Cyberpunk",emoji:"⚡",bg:"#10091f",bubble:"#39205a",accent:"#ff4fd8"},
-{id:"aurora",name:"Aurora",emoji:"✨",bg:"#071b20",bubble:"#16434a",accent:"#76f0d0"},
-{id:"sakura",name:"Sakura",emoji:"🌸",bg:"#21111f",bubble:"#60304f",accent:"#ffa8db"},
-{id:"ember",name:"Ember",emoji:"🔥",bg:"#1d100d",bubble:"#51271f",accent:"#ff765e"},
-{id:"ice",name:"Ice Palace",emoji:"🧊",bg:"#0b1724",bubble:"#263d52",accent:"#b3e7ff"}
+{id:"obsidian",name:"Obsidian",emoji:"🌑",bg:"#0c0c0c",bubble:"#282828",accent:"#9d9d9d"},
+{id:"midnight",name:"Midnight",emoji:"🌌",bg:"#0d0d0d",bubble:"#252525",accent:"#969696"},
+{id:"lavender",name:"Lavender",emoji:"💜",bg:"#131313",bubble:"#3b3b3b",accent:"#b5b5b5"},
+{id:"rose",name:"Rose",emoji:"🌹",bg:"#141414",bubble:"#3a3a3a",accent:"#aaaaaa"},
+{id:"forest",name:"Forest",emoji:"🌲",bg:"#161616",bubble:"#373737",accent:"#bbbbbb"},
+{id:"sunset",name:"Sunset",emoji:"🌇",bg:"#161616",bubble:"#3e3e3e",accent:"#b9b9b9"},
+{id:"ocean",name:"Ocean",emoji:"🌊",bg:"#171717",bubble:"#3d3d3d",accent:"#c2c2c2"},
+{id:"cyberpunk",name:"Cyberpunk",emoji:"⚡",bg:"#0c0c0c",bubble:"#2a2a2a",accent:"#7e7e7e"},
+{id:"aurora",name:"Aurora",emoji:"✨",bg:"#171717",bubble:"#3a3a3a",accent:"#d4d4d4"},
+{id:"sakura",name:"Sakura",emoji:"🌸",bg:"#151515",bubble:"#3c3c3c",accent:"#bebebe"},
+{id:"ember",name:"Ember",emoji:"🔥",bg:"#131313",bubble:"#2f2f2f",accent:"#919191"},
+{id:"ice",name:"Ice Palace",emoji:"🧊",bg:"#151515",bubble:"#3a3a3a",accent:"#dedede"}
 ];
 
 
@@ -128,7 +128,7 @@ const esc = s =>
     "<": "&lt;",
     ">": "&gt;",
     '"': "&quot;",
-    "'": "&#039;"
+    "'": "&#303030;"
   }[c]));
 
 // Validate profile links before rendering them. Keep this helper available before
@@ -619,8 +619,8 @@ function showPersistentWarning(notification){
   overlay.setAttribute("role","alertdialog");
   overlay.setAttribute("aria-modal","true");
   overlay.setAttribute("aria-labelledby","persistentWarningTitle");
-  overlay.style.cssText="position:fixed;inset:0;z-index:2147483647;display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;background:rgba(5,3,12,.97);backdrop-filter:blur(14px);";
-  overlay.innerHTML=`<div style="width:min(620px,94vw);max-height:calc(100dvh - 40px);overflow:auto;box-sizing:border-box;padding:clamp(24px,6vw,44px);border:1px solid rgba(255,79,216,.6);border-radius:26px;background:linear-gradient(155deg,#21112b,#100b19 68%);box-shadow:0 24px 100px rgba(0,0,0,.8);text-align:center;color:#fff"><div aria-hidden="true" style="font-size:clamp(68px,18vw,112px);line-height:1.1">⚠️</div><h1 id="persistentWarningTitle" style="font-size:clamp(46px,13vw,76px);font-weight:900;letter-spacing:.04em;color:#ffcf65;margin:12px 0 24px">WARNING</h1><div style="overflow-wrap:anywhere;white-space:pre-wrap;font-size:clamp(18px,4.8vw,24px);line-height:1.5;padding:22px 18px;border:1px solid rgba(255,79,216,.25);border-radius:18px;background:rgba(255,79,216,.1);margin:0 0 26px">${esc(reason)}</div><button class="primary" id="warningUnderstand" type="button" style="width:min(340px,100%);min-height:56px;font-size:18px;font-weight:800;border-radius:15px">I understand</button></div>`;
+  overlay.style.cssText="position:fixed;inset:0;z-index:2147483647;display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;background:rgba(4, 4, 4, .97);backdrop-filter:blur(14px);";
+  overlay.innerHTML=`<div style="width:min(620px,94vw);max-height:calc(100dvh - 40px);overflow:auto;box-sizing:border-box;padding:clamp(24px,6vw,44px);border:1px solid rgba(126, 126, 126, .6);border-radius:26px;background:linear-gradient(155deg,#161616,#0d0d0d 68%);box-shadow:0 24px 100px rgba(0, 0, 0, .8);text-align:center;color:#ffffff"><div aria-hidden="true" style="font-size:clamp(68px,18vw,112px);line-height:1.1">⚠️</div><h1 id="persistentWarningTitle" style="font-size:clamp(46px,13vw,76px);font-weight:900;letter-spacing:.04em;color:#d2d2d2;margin:12px 0 24px">WARNING</h1><div style="overflow-wrap:anywhere;white-space:pre-wrap;font-size:clamp(18px,4.8vw,24px);line-height:1.5;padding:22px 18px;border:1px solid rgba(126, 126, 126, .25);border-radius:18px;background:rgba(126, 126, 126, .1);margin:0 0 26px">${esc(reason)}</div><button class="primary" id="warningUnderstand" type="button" style="width:min(340px,100%);min-height:56px;font-size:18px;font-weight:800;border-radius:15px">I understand</button></div>`;
   document.body.appendChild(overlay);
   $("warningUnderstand")?.addEventListener("click",acknowledgePersistentWarning);
 }
@@ -866,7 +866,7 @@ async function browserDeviceFingerprint(){
   const canvas=document.createElement('canvas');
   canvas.width=220;canvas.height=40;
   const ctx=canvas.getContext('2d');
-  if(ctx){ctx.textBaseline='top';ctx.font='14px Arial';ctx.fillStyle='#f60';ctx.fillRect(10,5,100,20);ctx.fillStyle='#069';ctx.fillText('Maleficent Chat device',2,2);}
+  if(ctx){ctx.textBaseline='top';ctx.font='14px Arial';ctx.fillStyle='#7f7f7f';ctx.fillRect(10,5,100,20);ctx.fillStyle='#545454';ctx.fillText('Maleficent Chat device',2,2);}
   const material=[navigator.userAgent,screen.width,Intl.DateTimeFormat().resolvedOptions().timeZone,canvas.toDataURL()||''].join('|');
   if(globalThis.crypto?.subtle){const digest=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(material));return [...new Uint8Array(digest)].map(x=>x.toString(16).padStart(2,'0')).join('');}
   return btoa(unescape(encodeURIComponent(material))).slice(0,2000);
@@ -1587,7 +1587,7 @@ document
             }
           } catch (error) {
             console.error("My Profile navigation recovery failed", error);
-            if (profileRoot) profileRoot.innerHTML = '<section class="card profile-load-message" style="display:block!important;padding:20px;color:#f5edf9;background:#171126"><h2>My Profile could not load</h2><p>Please refresh the page and try again. If this message remains, the browser console has the loading error.</p><button class="primary" type="button" onclick="location.reload()">Refresh profile</button></section>';
+            if (profileRoot) profileRoot.innerHTML = '<section class="card profile-load-message" style="display:block!important;padding:20px;color:#f0f0f0;background:#141414"><h2>My Profile could not load</h2><p>Please refresh the page and try again. If this message remains, the browser console has the loading error.</p><button class="primary" type="button" onclick="location.reload()">Refresh profile</button></section>';
           }
         }
       }
@@ -2681,36 +2681,36 @@ function messageHTML(message) {
   }
   if(message?.breadCommand && String(message.bot||message.username)==="Bot"){
     return `<div class="message bot-welcome-message bot-bread-message" data-mid="${esc(message.id)}">
-      <div class="bot-welcome-bubble" style="border-color:#ffbd59;box-shadow:0 0 16px #ff8c4244">
+      <div class="bot-welcome-bubble" style="border-color:#c4c4c4;box-shadow:0 0 16px #9f9f9f44">
         <div class="bot-welcome-byline">🤖 Bot</div>
-        <div class="bot-welcome-glow" style="color:#ffc66d;text-shadow:0 0 12px #ff8c42">🍞 FOR YOU</div>
+        <div class="bot-welcome-glow" style="color:#cccccc;text-shadow:0 0 12px #9f9f9f">🍞 FOR YOU</div>
         <div class="bot-welcome-username">@${esc(message.breadTargetUsername||"")}</div>
       </div>
     </div>`;
   }
   if(message?.brainCommand && String(message.bot||message.username)==="Bot"){
     return `<div class="message bot-welcome-message bot-brain-message" data-mid="${esc(message.id)}">
-      <div class="bot-welcome-bubble" style="border-color:#8b5cf6;box-shadow:0 0 18px #8b5cf644">
+      <div class="bot-welcome-bubble" style="border-color:#717171;box-shadow:0 0 18px #71717144">
         <div class="bot-welcome-byline">🤖 Bot</div>
-        <div class="bot-welcome-glow" style="color:#c4b5fd;text-shadow:0 0 12px #8b5cf6">🧠 BRAIN POWER</div>
+        <div class="bot-welcome-glow" style="color:#bdbdbd;text-shadow:0 0 12px #717171">🧠 BRAIN POWER</div>
         <div class="bot-welcome-username">@${esc(message.brainTargetUsername||"")}</div>
       </div>
     </div>`;
   }
   if(message?.roseCommand && String(message.bot||message.username)==="Bot"){
     return `<div class="message bot-welcome-message bot-rose-message" data-mid="${esc(message.id)}">
-      <div class="bot-welcome-bubble" style="border-color:#ff4fd8;box-shadow:0 0 16px #ff174444">
+      <div class="bot-welcome-bubble" style="border-color:#7e7e7e;box-shadow:0 0 16px #4c4c4c44">
         <div class="bot-welcome-byline">🤖 Bot</div>
-        <div class="bot-welcome-glow" style="color:#ff8adf;text-shadow:0 0 12px #ff1744">🌹 FOR YOU</div>
+        <div class="bot-welcome-glow" style="color:#a9a9a9;text-shadow:0 0 12px #4c4c4c">🌹 FOR YOU</div>
         <div class="bot-welcome-username">@${esc(message.roseTargetUsername||"")}</div>
       </div>
     </div>`;
   }
   if(message?.bankCommand && String(message.bot||message.username)==="Bot"){
     return `<div class="message bot-welcome-message bot-bank-message" data-mid="${esc(message.id)}">
-      <div class="bot-welcome-bubble" style="border-color:#fbbf24;box-shadow:0 0 16px #fbbf2433">
+      <div class="bot-welcome-bubble" style="border-color:#c1c1c1;box-shadow:0 0 16px #c1c1c133">
         <div class="bot-welcome-byline">🤖 Bot · BANK</div>
-        <div class="bot-welcome-glow" style="color:#fcd34d;text-shadow:0 0 10px #f59e0b">🏦 BANK BALANCE</div>
+        <div class="bot-welcome-glow" style="color:#d2d2d2;text-shadow:0 0 10px #a6a6a6">🏦 BANK BALANCE</div>
         <div class="bot-welcome-username">@${esc(message.bankUsername||"User")}</div>
         <div style="display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-top:8px;font-size:13px">
           <span>💎 Diamonds <b>${Math.max(0,Number(message.bankDiamonds)||0).toLocaleString()}</b></span>
@@ -2722,7 +2722,7 @@ function messageHTML(message) {
   }
   if(message?.stealCommand && String(message.bot||message.username)==="Bot"){
     const outcome=String(message.stealOutcome||"");
-    const color=outcome==="success"?"#5cffb0":outcome==="reverse"?"#c084fc":outcome==="bail"?"#ff7373":"#fbbf24";
+    const color=outcome==="success"?"#d7d7d7":outcome==="reverse"?"#999999":outcome==="bail"?"#919191":"#c1c1c1";
     const heading=outcome==="success"?"💰 HEIST SUCCESS":outcome==="reverse"?"🔄 REVERSE LOOT":outcome==="bail"?"🚨 BAIL FEE":"🪙 EMPTY VAULT";
     return `<div class="message bot-welcome-message bot-steal-message" data-mid="${esc(message.id)}">
       <div class="bot-welcome-bubble" style="border-color:${color};box-shadow:0 0 16px ${color}33">
@@ -2736,14 +2736,14 @@ function messageHTML(message) {
     return `<div class="message bot-welcome-message bot-roast-message" data-mid="${esc(message.id)}">
       <div class="bot-welcome-bubble">
         <div class="bot-welcome-byline">🤖 Bot</div>
-        <div class="bot-welcome-glow" style="color:#ff7a45;text-shadow:0 0 12px #ff4fd8">BOT ROAST</div>
+        <div class="bot-welcome-glow" style="color:#929292;text-shadow:0 0 12px #7e7e7e">BOT ROAST</div>
         <div class="bot-welcome-username">${esc(message.text||"") .replace(/\\n/g,"<br>")}</div>
       </div>
     </div>`;
   }
   if(message?.auraCommand && String(message.bot||message.username)==="Bot"){
     const score=Math.max(0,Math.min(100,Number(message.auraScore)||0));
-    const color=/^#[0-9a-f]{6}$/i.test(String(message.auraColor||""))?message.auraColor:"#a855f7";
+    const color=/^#[0-9a-f]{6}$/i.test(String(message.auraColor||""))?message.auraColor:"#727272";
     return `<div class="message bot-welcome-message bot-aura-message" data-mid="${esc(message.id)}">
       <div class="bot-welcome-bubble" style="border-color:${color};box-shadow:0 0 18px ${color}44">
         <div class="bot-welcome-byline">🤖 Bot · AURA SCAN</div>
@@ -3285,19 +3285,19 @@ function openPresenceModes(){
   modal(`<div class="mode-control-panel" style="display:flex;flex-direction:column;gap:10px;width:100%;max-width:420px;min-width:0;box-sizing:border-box;padding:14px">
     <h2 style="margin:0;font-size:18px;line-height:1.25">🕶️ Presence Modes</h2>
     <p class="muted" style="margin:0;font-size:13px;line-height:1.5;white-space:normal;overflow-wrap:anywhere">Select one mode. Read the description before applying it.</p>
-    <label class="mode-control-row" style="display:grid;grid-template-columns:20px minmax(0,1fr);align-items:start;gap:10px;width:100%;min-width:0;box-sizing:border-box;padding:10px;border:1px solid var(--border-color,#393244);border-radius:10px;white-space:normal">
+    <label class="mode-control-row" style="display:grid;grid-template-columns:20px minmax(0,1fr);align-items:start;gap:10px;width:100%;min-width:0;box-sizing:border-box;padding:10px;border:1px solid var(--border-color,#353535);border-radius:10px;white-space:normal">
       <input type="checkbox" id="modePopupHide" style="margin:3px 0 0" ${state.user?.hideMode&&!state.user?.deadMode?'checked':''} ${canUsePresenceMode("ghost")?'':'disabled title="Not granted to your rank"'}>
       <span style="display:block;min-width:0;white-space:normal;overflow-wrap:anywhere"><b style="display:block;margin-bottom:4px">👻 Ghost Mode</b><small style="display:block;white-space:normal;overflow-wrap:anywhere;line-height:1.45">Your account is hidden from all user lists, search, profiles, and presence—including from staff. You can still chat; your messages appear as Aurora and no join announcement is sent.</small></span>
     </label>
-    <label class="mode-control-row" style="display:grid;grid-template-columns:20px minmax(0,1fr);align-items:start;gap:10px;width:100%;min-width:0;box-sizing:border-box;padding:10px;border:1px solid var(--border-color,#393244);border-radius:10px;white-space:normal">
+    <label class="mode-control-row" style="display:grid;grid-template-columns:20px minmax(0,1fr);align-items:start;gap:10px;width:100%;min-width:0;box-sizing:border-box;padding:10px;border:1px solid var(--border-color,#353535);border-radius:10px;white-space:normal">
       <input type="checkbox" id="modePopupDead" style="margin:3px 0 0" ${state.user?.deadMode?'checked':''} ${canUsePresenceMode("dead")?'':'disabled title="Not granted to your rank"'}>
       <span style="display:block;min-width:0;white-space:normal;overflow-wrap:anywhere"><b style="display:block;margin-bottom:4px">💀 Dead Mode</b><small style="display:block;white-space:normal;overflow-wrap:anywhere;line-height:1.45">Your account stays visible in online/offline lists and profiles. Aurora announces when you join, but all messages you send appear as Aurora.</small></span>
     </label>
-    <label class="mode-control-row" style="display:grid;grid-template-columns:20px minmax(0,1fr);align-items:start;gap:10px;width:100%;min-width:0;box-sizing:border-box;padding:10px;border:1px solid var(--border-color,#393244);border-radius:10px;white-space:normal">
+    <label class="mode-control-row" style="display:grid;grid-template-columns:20px minmax(0,1fr);align-items:start;gap:10px;width:100%;min-width:0;box-sizing:border-box;padding:10px;border:1px solid var(--border-color,#353535);border-radius:10px;white-space:normal">
       <input type="checkbox" id="modePopupInvisible" style="margin:3px 0 0" ${state.user?.invisible&&!state.user?.deadMode?'checked':''} ${canUsePresenceMode("invisible")?'':'disabled title="Not granted to your rank"'}>
       <span style="display:block;min-width:0;white-space:normal;overflow-wrap:anywhere"><b style="display:block;margin-bottom:4px">😈 Invisible Mode</b><small style="display:block;white-space:normal;overflow-wrap:anywhere;line-height:1.45">Hidden from online and offline user lists for everyone except higher-ranked staff. Your room joins are not announced; eligible staff see a green indicator.</small></span>
     </label>
-    <div class="mode-control-row" style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px;border:1px solid var(--border-color,#393244);border-radius:10px">
+    <div class="mode-control-row" style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px;border:1px solid var(--border-color,#353535);border-radius:10px">
       <span><b>🎉 Party Mode</b><small style="display:block;line-height:1.45;margin-top:4px">Rainbow-glowing usernames, spinning GIFs and a music player starting at 0:20. This affects your current browser only.</small></span>
       <button type="button" class="mini" id="togglePartyMode">🎉 Turn Party Mode On</button>
     </div>
@@ -3542,7 +3542,7 @@ if(composer && !composer.dataset.submitBound){
     try{
       const result=await api("/api/rooms/"+encodeURIComponent(state.currentRoom)+"/messages",{method:"POST",body:form});
       if(result.guide){
-        const rows=(result.commands||[]).map(item=>'<div style="padding:10px 12px;border:1px solid var(--border,#342544);border-radius:10px;background:rgba(155,92,255,.07);margin:7px 0"><b style="color:#d8b4fe">'+esc(item.usage||("/"+item.name))+'</b><div style="font-size:13px;margin-top:4px">'+esc(item.description||"")+'</div></div>').join("");
+        const rows=(result.commands||[]).map(item=>'<div style="padding:10px 12px;border:1px solid var(--border,#2a2a2a);border-radius:10px;background:rgba(117, 117, 117, .07);margin:7px 0"><b style="color:#c1c1c1">'+esc(item.usage||("/"+item.name))+'</b><div style="font-size:13px;margin-top:4px">'+esc(item.description||"")+'</div></div>').join("");
         modal('<div class="guide-command-dialog"><h2>📖 Your Command Guide</h2><p class="muted">Commands available to your <b>'+esc(result.rank||state.user.rank||"MEMBER")+'</b> rank only.</p><div style="max-height:55vh;overflow:auto;padding-right:3px">'+(rows||'<p class="muted">No commands are currently available for your rank.</p>')+'</div><div style="display:flex;justify-content:flex-end;margin-top:12px"><button class="primary" onclick="closeModal()">Close</button></div></div>');
         if(input)input.value="";
         input?.focus();
@@ -3912,7 +3912,7 @@ async function openQuickUserCard(id){
   if(!user){toast("User details are not available in this chat.");return;}
   const isSelf=String(user.id)===String(state.user.id);
   const countryFlag=user.countryFlag||user.flag||"";
-  const quickBannerStyle=user.banner?`style="background-image:linear-gradient(180deg,rgba(0,0,0,.10),rgba(20,12,8,.78)),url('${esc(user.banner)}')!important;background-size:cover!important;background-position:center!important"`:'style="background-image:linear-gradient(160deg,#442d22,#35231a)"';
+  const quickBannerStyle=user.banner?`style="background-image:linear-gradient(180deg,rgba(0, 0, 0, .10),rgba(13, 13, 13, .78)),url('${esc(user.banner)}')!important;background-size:cover!important;background-position:center!important"`:'style="background-image:linear-gradient(160deg,#313131,#262626)"';
   modal(`<div class="quick-user-card">
     <div class="quick-user-top" ${quickBannerStyle}><span class="quick-user-level">⭐ ${Number(user.level||1)}</span><button class="quick-user-close" onclick="closeModal()" aria-label="Close">×</button>
     <div class="quick-user-avatar">${avatar(user)}</div><h2>${esc(user.displayName||user.username)}</h2>
@@ -5414,7 +5414,7 @@ async function loadProfile(user){
   const frame=cosmetics.find(x=>x.category==='frame');
   const profileTheme=cosmetics.find(x=>x.category==='theme');
   const profileBadge=cosmetics.find(x=>x.category==='badge');
-  const banner=user.banner?`style="background-image:linear-gradient(180deg,rgba(0,0,0,.05),rgba(0,0,0,.72)),url('${esc(user.banner)}')"`:'';
+  const banner=user.banner?`style="background-image:linear-gradient(180deg,rgba(0, 0, 0, .05),rgba(0, 0, 0, .72)),url('${esc(user.banner)}')"`:'';
   $('profile').innerHTML=`<div class="my-profile-wrap"><div class="profile-settings-card ${profileTheme?esc(profileTheme.id):''} profile-theme-${['obsidian','midnight','rose','emerald'].includes(user.theme)?esc(user.theme):'obsidian'}">
     <div class="profile-settings-head" ${banner}>
       ${user.banner?'<img class="profile-cover-image" src="'+esc(user.banner)+'" alt="" aria-hidden="true" loading="eager">':''}
@@ -6570,7 +6570,7 @@ async function loadOwner() {
         <div class="toolbar">
           <button class="primary" onclick="inspectDMs()">Inspect private messages</button>
         </div>
-        <section class="card owner-message-refresh-card" style="margin-top:14px;border-color:var(--danger,#b84a68)">
+        <section class="card owner-message-refresh-card" style="margin-top:14px;border-color:var(--danger,#646464)">
           <h3>🧹 Refresh Site Messages</h3>
           <p class="muted">Permanently remove all current room chat messages and private messages for every user. Accounts, passwords, ranks, gold, settings, rooms, reports, and moderation/audit history are kept.</p>
           <button class="danger" type="button" id="ownerClearAllMessages">🧹 Clear all room & private messages</button>
@@ -7753,9 +7753,9 @@ function applyTheme(theme){
   theme=allowedThemes.includes(theme)?theme:'obsidian';
   document.documentElement.dataset.theme=theme;
   document.body.dataset.theme=theme;
-  const st=state.user?.settings||{}; document.documentElement.style.setProperty('--username-color',st.usernameColor||'#9b5cff');
-  document.documentElement.style.setProperty('--profile-color',state.user?.profileColor||'#9b5cff');
-  document.documentElement.style.setProperty('--profile-accent',state.user?.profileAccentColor||st.profileAccentColor||'#ff4fd8'); document.documentElement.style.setProperty('--bubble-color',st.bubbleColor||'#33244f'); document.documentElement.style.setProperty('--chat-font',st.chatFont||'Inter'); document.documentElement.style.setProperty('--chat-size',st.fontSize==='large'?'1.08em':st.fontSize==='small'?'.94em':'1em'); document.documentElement.classList.toggle('compact-chat',!!st.compactMode); document.documentElement.dataset.effects=st.messageEffects||'none';
+  const st=state.user?.settings||{}; document.documentElement.style.setProperty('--username-color',st.usernameColor||'#757575');
+  document.documentElement.style.setProperty('--profile-color',state.user?.profileColor||'#757575');
+  document.documentElement.style.setProperty('--profile-accent',state.user?.profileAccentColor||st.profileAccentColor||'#7e7e7e'); document.documentElement.style.setProperty('--bubble-color',st.bubbleColor||'#2a2a2a'); document.documentElement.style.setProperty('--chat-font',st.chatFont||'Inter'); document.documentElement.style.setProperty('--chat-size',st.fontSize==='large'?'1.08em':st.fontSize==='small'?'.94em':'1em'); document.documentElement.classList.toggle('compact-chat',!!st.compactMode); document.documentElement.dataset.effects=st.messageEffects||'none';
 }
 
 async function loadSettings(){
