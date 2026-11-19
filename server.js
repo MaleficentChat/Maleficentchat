@@ -2789,6 +2789,7 @@ app.put("/api/rooms/:id",auth,async(req,res)=>{
   if(r.isDefault || /^main room$/i.test(String(r.name||"").trim()))return res.status(403).json({error:"The permanent Main Room cannot be modified."});
   const canEditThisRoom=roomOwnerOrGlobal(u,r)||roomRoleCan(r.id,u.id,"edit_room")||featureGrantAllowed(u,"edit_rooms")||featureGrantAllowed(u,"edit_room");
   if(!canEditThisRoom)return res.status(403).json({error:"Room editing is available to this room's owner, room admins, and globally authorized staff."});
+  const roomBefore={...r};
   const fields={}; for(const k of ["name","icon","description","category","rankRequired","limit","slowMode","banner","public"]) if(req.body[k]!==undefined) fields[k]=req.body[k];
   if(req.body.ageCriteria!==undefined){
     const criteria=String(req.body.ageCriteria||"").toLowerCase();
@@ -2817,7 +2818,9 @@ app.put("/api/rooms/:id",auth,async(req,res)=>{
   save();
   // Revalidate signed access after privacy, password, rank, or friend rules change.
   evictRoomSocketsWithoutAccess(r);
-  log(u,"ROOM_EDIT",r.name);io.emit("rooms_updated");
+  const roomChanges={};for(const key of Object.keys(fields)){if(String(roomBefore[key]??"")!==String(r[key]??""))roomChanges[key]={from:roomBefore[key]??"",to:r[key]??""};}
+  if(req.body.friendsOnly!==undefined&&!!roomBefore.friendsOnly!==!!r.friendsOnly)roomChanges.friendsOnly={from:!!roomBefore.friendsOnly,to:!!r.friendsOnly};
+  log(u,"ROOM_EDIT",r.name,{changes:roomChanges});io.emit("rooms_updated");
   res.json({room:{...r,passwordHash:undefined,inviteToken:undefined}});
 });
 
@@ -6285,6 +6288,7 @@ app.patch('/api/staff/user/:id/account',auth,(req,res)=>{
   }
   if(req.body.email!==undefined){if(!featureGrantAllowed(actor,'edit_email'))return res.status(403).json({error:'Email edit permission has not been granted.'});target.email=String(req.body.email||'').trim().slice(0,160);pool.query('UPDATE users SET email=$1 WHERE id=$2',[target.email,Number(target.id)]).catch(e=>console.error('Staff email update failed',e));}
   save();
+  if(req.body.username!==undefined){const nameChange=target.usernameHistory?.slice(-1)[0];log(actor,'USERNAME_CHANGE',target.username,{previousUsername:nameChange?.from||'',newUsername:target.username});}
   res.json({user:safeUser(target),email:target.email||''});
 });
 
