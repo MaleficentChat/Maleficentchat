@@ -9535,3 +9535,33 @@ html{scroll-behavior:smooth;}
     overflow-y:auto!important;
   }
 }
+
+
+/* 2026-11-19 correction: preserve the People trigger's original position;
+   let the drawer sit behind it so the ☰ remains visible above the panel. */
+@media(max-width:700px){
+  #viewRooms.chatting .chat-people-hamburger{
+    position:absolute!important;
+    top:8px!important;
+    right:8px!important;
+    z-index:300!important;
+  }
+  #viewRooms.chatting .online-panel.mobile-open{
+    position:fixed!important;
+    top:calc(var(--header-h,58px) + 8px)!important;
+    right:8px!important;
+    bottom:72px!important;
+    height:auto!important;
+    min-height:0!important;
+    max-height:calc(100dvh - var(--header-h,58px) - 80px)!important;
+    z-index:255!important;
+    overflow:hidden!important;
+  }
+  #viewRooms.chatting .online-panel.mobile-open #onlineUsers,
+  #viewRooms.chatting .online-panel.mobile-open .online-users{
+    flex:1 1 auto!important;
+    min-height:0!important;
+    max-height:none!important;
+    overflow-y:auto!important;
+  }
+}
