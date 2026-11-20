@@ -1,23 +1,25 @@
 const $ = id => document.getElementById(id);
 
-// Reliable status picker: handle taps before the clickable People card can intercept them.
+// Status picker: resolve controls inside the current-user People card and handle
+// taps before the card's own profile-opening click handler.
 document.addEventListener("click", event => {
-  const target = event.target instanceof Element ? event.target : null;
+  const target = event.target instanceof Element ? event.target : event.target?.parentElement;
   if (!target) return;
-  const button = target.closest("#myStatusToggle");
-  const option = target.closest("#myStatusOptions [data-status]");
-  const menu = document.getElementById("myStatusOptions");
-  const toggle = document.getElementById("myStatusToggle");
-  if (button && menu && toggle) {
+  const toggle = target.closest("#myStatusToggle, .my-status-toggle");
+  const option = target.closest("#myStatusOptions [data-status], .my-status-options [data-status]");
+  const card = toggle?.closest(".online-user") || option?.closest(".online-user");
+  const menu = card?.querySelector(".my-status-options");
+  const button = card?.querySelector(".my-status-toggle");
+  if (toggle && menu && button) {
     event.preventDefault();
     event.stopPropagation();
     event.stopImmediatePropagation();
     const opening = menu.classList.contains("hidden");
     menu.classList.toggle("hidden", !opening);
-    toggle.setAttribute("aria-expanded", opening ? "true" : "false");
+    button.setAttribute("aria-expanded", opening ? "true" : "false");
     return;
   }
-  if (option && menu && toggle) {
+  if (option && menu && button) {
     event.preventDefault();
     event.stopPropagation();
     event.stopImmediatePropagation();
@@ -29,9 +31,13 @@ document.addEventListener("click", event => {
           method: "POST",
           body: JSON.stringify({status: option.dataset.status})
         });
-        state.user.customStatus = result.status;
+        state.user.customStatus = result.status || option.dataset.status;
         menu.classList.add("hidden");
-        toggle.setAttribute("aria-expanded", "false");
+        button.setAttribute("aria-expanded", "false");
+        const glyph = button.querySelector("#myStatusGlyph");
+        const label = button.querySelector("#myStatusLabel");
+        if (glyph) glyph.textContent = statusEmoji(state.user.customStatus);
+        if (label) label.textContent = state.user.customStatus;
         toast("Status updated.");
         await renderOnline(onlinePanelTab);
       } catch (error) {
@@ -41,10 +47,27 @@ document.addEventListener("click", event => {
     })();
     return;
   }
-  if (menu && !menu.classList.contains("hidden") && !target.closest("#myStatusOptions")) {
+  if (menu && !menu.classList.contains("hidden") && !target.closest(".my-status-options")) {
     menu.classList.add("hidden");
-    toggle?.setAttribute("aria-expanded", "false");
+    button?.setAttribute("aria-expanded", "false");
   }
+}, true);
+
+// Message action panel: open by tapping the message itself (or its top ⋯),
+// and close it when tapping anywhere outside the message or panel.
+document.addEventListener("click", event => {
+  const target = event.target instanceof Element ? event.target : event.target?.parentElement;
+  if (!target) return;
+  if (target.closest(".message-actions-menu, .message-more-submenu")) return;
+  if (target.closest(".message-more-button")) return;
+  const message = target.closest("#viewRooms.chatting .msg[data-mid]");
+  if (message && !target.closest("button, a, input, textarea, select, video, audio, [contenteditable='true'], .reaction, .reaction-picker")) {
+    event.preventDefault();
+    event.stopPropagation();
+    toggleMessageMenu(message.dataset.mid);
+    return;
+  }
+  if (!target.closest(".msg[data-mid]")) closeMessageMenus();
 }, true);
 
 
@@ -3012,7 +3035,6 @@ function messageHTML(message) {
             : ""
         }
         <div class="msg-actions">
-          <button type="button" class="message-more-button" aria-label="Message options" title="Message options" onclick="event.stopPropagation();toggleMessageMenu('${esc(message.id)}')">⋯</button>
           <div class="message-actions-menu hidden" id="message-menu-${esc(message.id)}" role="menu" aria-label="Message actions">
             <button class="message-menu-item" role="menuitem" onclick="replyMsg('${esc(message.id)}');closeMessageMenus()"><span class="menu-icon">↩</span><span><b>Quote</b><small>Reply to this message</small></span></button>
             <button class="message-menu-item" role="menuitem" onclick="hideMsg('${esc(message.id)}');closeMessageMenus()"><span class="menu-icon">◉</span><span><b>Hide</b><small>Hide from my screen</small></span></button>
@@ -3319,7 +3341,7 @@ function toggleMessageMenu(id){
   closeMessageMenus();
   if(wasHidden)openMessageMenu(menu,id);
 }
-/* Message actions open only from the explicit ⋯ trigger. Message content is inert. */
+/* Message actions can be opened from the message body or its top-right ⋯ trigger. */
 
 function showStefanOptions(){
   if(!state.currentRoom) return;
