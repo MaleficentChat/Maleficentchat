@@ -1501,3 +1501,32 @@ body [data-room-filter]:active{
     animation:mcMainChatHaloTravelingArc 1.8s linear infinite!important;
   }
 }
+
+
+/* Hotfix: restore a clearly visible gold ring and spin its asymmetric arc.
+   Keep the 28px circle centred; do not animate its translation. */
+@keyframes mcMainChatHaloVisibleSpin {
+  from { rotate:0deg; }
+  to { rotate:360deg; }
+}
+#viewRooms.chatting #messages > .msg:not(.dm-msg):not(.system-message) .msg-author-group .message-rank-floating .mc-rank-ring{
+  position:absolute!important;
+  display:block!important;
+  left:50%!important;top:50%!important;right:auto!important;bottom:auto!important;inset:auto!important;
+  width:28px!important;height:28px!important;min-width:28px!important;min-height:28px!important;
+  max-width:28px!important;max-height:28px!important;aspect-ratio:1/1!important;
+  box-sizing:border-box!important;border:1.7px solid transparent!important;
+  border-top-color:#ffe08a!important;border-right-color:#f6a23b!important;
+  border-bottom-color:rgba(255,190,88,.82)!important;border-left-color:transparent!important;
+  border-radius:50%!important;
+  transform:translate(-50%,-50%)!important;transform-origin:50% 50%!important;
+  rotate:0deg!important;
+  animation:mcMainChatHaloVisibleSpin 1.8s linear infinite!important;
+  opacity:1!important;visibility:visible!important;
+  filter:drop-shadow(0 0 3px rgba(255,174,45,.9))!important;
+}
+@media(prefers-reduced-motion:reduce){
+  #viewRooms.chatting #messages > .msg:not(.dm-msg):not(.system-message) .msg-author-group .message-rank-floating .mc-rank-ring{
+    animation:mcMainChatHaloVisibleSpin 1.8s linear infinite!important;
+  }
+}
