@@ -1,7 +1,5 @@
 const $ = id => document.getElementById(id);
 
-const $ = id => document.getElementById(id);
-
 // Explicit handlers for the personal status control. Keeping the click action
 // on the control itself avoids the People-card click delegate swallowing taps.
 function toggleMyStatusMenu(event){
