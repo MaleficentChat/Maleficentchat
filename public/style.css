@@ -10893,3 +10893,108 @@ html{scroll-behavior:smooth;}
 }
 #viewRooms.main-room-chat #messages .quoted .quoted-author-name{font-size:12px!important;line-height:1.2!important}
 #viewRooms.main-room-chat #messages .quoted .quoted-text{font-size:11px!important;line-height:1.3!important}
+
+
+/* Main Chat correction: explicit ordering, compact rows, and a true circular quote avatar. */
+#viewRooms.main-room-chat #messages>.msg:not(.dm-msg) .msg-author-group{
+  display:inline-flex!important;
+  flex-direction:row!important;
+  align-items:center!important;
+  justify-content:flex-start!important;
+  gap:8px!important;
+  min-width:0!important;
+  max-width:100%!important;
+  overflow:visible!important;
+}
+#viewRooms.main-room-chat #messages>.msg:not(.dm-msg) .msg-author-group>.online-user-rank-badge{
+  order:0!important;
+  position:static!important;
+  inset:auto!important;
+  transform:none!important;
+  display:inline-flex!important;
+  flex:0 0 18px!important;
+  width:18px!important;
+  min-width:18px!important;
+  height:18px!important;
+  min-height:18px!important;
+  margin:0!important;
+}
+#viewRooms.main-room-chat #messages>.msg:not(.dm-msg) .msg-author-group>.message-author{
+  order:1!important;
+  display:inline-block!important;
+  margin:0!important;
+  padding:0!important;
+}
+#viewRooms.main-room-chat #messages>.msg:not(.dm-msg){
+  padding-top:2px!important;
+  padding-bottom:2px!important;
+  margin-bottom:1px!important;
+}
+#viewRooms.main-room-chat #messages>.msg:not(.dm-msg) .msg-body{
+  padding-top:0!important;
+  padding-bottom:0!important;
+  margin-bottom:0!important;
+}
+#viewRooms.main-room-chat #messages>.msg:not(.dm-msg) .quoted{
+  display:flex!important;
+  align-items:flex-start!important;
+  gap:7px!important;
+}
+#viewRooms.main-room-chat #messages>.msg:not(.dm-msg) .quoted-avatar{
+  display:block!important;
+  flex:0 0 26px!important;
+  width:26px!important;
+  min-width:26px!important;
+  height:26px!important;
+  min-height:26px!important;
+  aspect-ratio:1/1!important;
+  padding:0!important;
+  margin:0!important;
+  overflow:hidden!important;
+  border-radius:50%!important;
+  line-height:0!important;
+}
+#viewRooms.main-room-chat #messages>.msg:not(.dm-msg) .quoted-avatar>.avatar{
+  display:block!important;
+  box-sizing:border-box!important;
+  flex:none!important;
+  width:26px!important;
+  min-width:26px!important;
+  max-width:26px!important;
+  height:26px!important;
+  min-height:26px!important;
+  max-height:26px!important;
+  aspect-ratio:1/1!important;
+  padding:0!important;
+  margin:0!important;
+  border-radius:50%!important;
+  overflow:hidden!important;
+  line-height:26px!important;
+}
+#viewRooms.main-room-chat #messages>.msg:not(.dm-msg) .quoted-avatar>.avatar>img{
+  display:block!important;
+  box-sizing:border-box!important;
+  width:100%!important;
+  min-width:100%!important;
+  max-width:100%!important;
+  height:100%!important;
+  min-height:100%!important;
+  max-height:100%!important;
+  aspect-ratio:1/1!important;
+  object-fit:cover!important;
+  object-position:center!important;
+  border-radius:50%!important;
+}
+#viewRooms.main-room-chat #messages>.msg:not(.dm-msg) .quoted-content{
+  min-width:0!important;
+  flex:1 1 auto!important;
+}
+#viewRooms.main-room-chat #messages>.msg:not(.dm-msg) .quoted-author-name{
+  font-size:11px!important;
+  line-height:1.15!important;
+}
+#viewRooms.main-room-chat #messages>.msg:not(.dm-msg) .quoted-text{
+  font-size:11px!important;
+  line-height:1.25!important;
+  margin:0!important;
+}
