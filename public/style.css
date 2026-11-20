@@ -10998,3 +10998,36 @@ html{scroll-behavior:smooth;}
   line-height:1.25!important;
   margin:0!important;
 }
+
+
+/* People panel: keep username first and its rank badge immediately after it. */
+#onlineUsers .online-user-heading{
+  display:flex!important;
+  flex-direction:row!important;
+  align-items:center!important;
+  justify-content:flex-start!important;
+  gap:8px!important;
+  min-width:0!important;
+}
+#onlineUsers .online-user-heading>b{
+  order:0!important;
+  display:inline-block!important;
+  min-width:0!important;
+}
+#onlineUsers .online-user-heading>.online-user-rank-badge{
+  order:1!important;
+  position:static!important;
+  inset:auto!important;
+  inset-inline:auto!important;
+  top:auto!important;
+  right:auto!important;
+  left:auto!important;
+  transform:none!important;
+  display:inline-flex!important;
+  flex:0 0 21px!important;
+  width:21px!important;
+  min-width:21px!important;
+  height:21px!important;
+  min-height:21px!important;
+  margin:0!important;
+}
