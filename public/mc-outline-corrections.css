@@ -1458,3 +1458,46 @@ body [data-room-filter]:active{
     animation:mcMainChatHaloRotateOnly 1.8s linear infinite!important;
   }
 }
+
+
+/* 20 Nov 2026 — make the main-chat halo visibly spin.
+   Animate the bright arc around the ring instead of rotating a nearly
+   symmetrical border, which can look stationary on mobile. */
+@keyframes mcMainChatHaloTravelingArc {
+  0%,100% {
+    border-top-color:#fff2b0!important;
+    border-right-color:#f6a23b!important;
+    border-bottom-color:rgba(255,190,88,.16)!important;
+    border-left-color:transparent!important;
+  }
+  25% {
+    border-top-color:rgba(255,224,138,.16)!important;
+    border-right-color:#fff2b0!important;
+    border-bottom-color:#f6a23b!important;
+    border-left-color:rgba(255,190,88,.16)!important;
+  }
+  50% {
+    border-top-color:transparent!important;
+    border-right-color:rgba(255,224,138,.16)!important;
+    border-bottom-color:#fff2b0!important;
+    border-left-color:#f6a23b!important;
+  }
+  75% {
+    border-top-color:#f6a23b!important;
+    border-right-color:transparent!important;
+    border-bottom-color:rgba(255,224,138,.16)!important;
+    border-left-color:#fff2b0!important;
+  }
+}
+#viewRooms.chatting #messages > .msg:not(.dm-msg):not(.system-message) .msg-author-group .message-rank-floating .mc-rank-ring{
+  width:28px!important;height:28px!important;min-width:28px!important;min-height:28px!important;
+  max-width:28px!important;max-height:28px!important;aspect-ratio:1/1!important;
+  border:1.6px solid transparent!important;
+  border-radius:50%!important;
+  animation:mcMainChatHaloTravelingArc 1.8s linear infinite!important;
+}
+@media(prefers-reduced-motion:reduce){
+  #viewRooms.chatting #messages > .msg:not(.dm-msg):not(.system-message) .msg-author-group .message-rank-floating .mc-rank-ring{
+    animation:mcMainChatHaloTravelingArc 1.8s linear infinite!important;
+  }
+}
