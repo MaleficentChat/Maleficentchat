@@ -11048,3 +11048,11 @@ html{scroll-behavior:smooth;}
   margin:0!important;font-size:12px!important;line-height:1!important;
 }
 #onlineUsers .online-user-grid .online-user>.online-user-rank-badge .mc-rank-glyph{font-size:12px!important;line-height:1!important;}
+
+
+/* Public profile Account tab: compact account-details list, matching View Account rows. */
+#modal .profile-modal .profile-info .public-profile-account-list{display:grid!important;grid-template-columns:minmax(0,1fr)!important;gap:0!important;width:100%!important;margin:0!important;padding:0!important;background:transparent!important;border:0!important;border-radius:0!important;}
+#modal .profile-modal .profile-info .public-profile-account-list>.profile-info-row{display:flex!important;flex-direction:row!important;align-items:center!important;justify-content:space-between!important;grid-template-columns:none!important;gap:12px!important;width:100%!important;min-width:0!important;box-sizing:border-box!important;margin:0!important;padding:11px 2px!important;border:0!important;border-bottom:1px solid rgba(255,255,255,.10)!important;border-radius:0!important;background:transparent!important;box-shadow:none!important;font-size:13px!important;}
+#modal .profile-modal .profile-info .public-profile-account-list>.profile-info-row>b{flex:0 1 42%!important;min-width:0!important;text-align:left!important;color:var(--text,#f4f6fa)!important;font-weight:750!important;}
+#modal .profile-modal .profile-info .public-profile-account-list>.profile-info-row>span{flex:1 1 58%!important;min-width:0!important;text-align:right!important;overflow-wrap:anywhere!important;word-break:break-word!important;color:var(--muted,#c5ccd6)!important;}
+@media(max-width:700px){#modal .profile-modal .profile-info .public-profile-account-list>.profile-info-row{padding:10px 1px!important;gap:9px!important;font-size:12px!important;}#modal .profile-modal .profile-info .public-profile-account-list>.profile-info-row>b{flex-basis:40%!important;}#modal .profile-modal .profile-info .public-profile-account-list>.profile-info-row>span{flex-basis:60%!important;}}
