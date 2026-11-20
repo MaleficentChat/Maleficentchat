@@ -916,3 +916,27 @@ body [data-room-filter]:active{
   display:block!important;white-space:normal!important;font-size:12px!important;
   line-height:1.3!important;margin-top:3px!important;
 }
+
+/* 20 Nov 2026 — requested badge placement: People-panel rank icon centered
+   in its right-hand slot; main-room rank icon follows the username in pink. */
+#onlineUsers .online-user{position:relative!important;min-height:84px!important}
+#onlineUsers .online-user-copy{padding-right:96px!important}
+#onlineUsers .online-user-rank-badge{
+  position:absolute!important;top:0!important;right:0!important;bottom:0!important;
+  transform:none!important;width:88px!important;height:100%!important;
+  display:grid!important;place-items:center!important;font-size:23px!important;
+  line-height:1!important;color:#ff9b35!important;
+  filter:drop-shadow(0 1px 3px rgba(255,145,45,.38))!important;
+}
+#onlineUsers .online-user-grid .online-user-rank-badge{
+  top:0!important;right:0!important;bottom:0!important;width:88px!important;
+  height:100%!important;transform:none!important;display:grid!important;place-items:center!important;
+}
+#viewRooms.main-room-chat #messages > .msg:not(.dm-msg):not(.system-message) .msg-author-group{
+  display:flex!important;flex-direction:row!important;align-items:center!important;gap:5px!important;
+}
+#viewRooms.main-room-chat #messages > .msg:not(.dm-msg):not(.system-message) .message-rank-floating{
+  order:1!important;flex:0 0 auto!important;float:none!important;margin:0!important;
+  color:#ff4fd8!important;filter:drop-shadow(0 0 4px rgba(255,79,216,.45))!important;
+}
+#viewRooms.main-room-chat #messages > .msg:not(.dm-msg):not(.system-message) .message-author{order:0!important;}
