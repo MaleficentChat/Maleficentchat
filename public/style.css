@@ -10733,7 +10733,7 @@ html{scroll-behavior:smooth;}
 /* Quoted reply: sender avatar sits beside the original message, not above it. */
 #viewRooms.main-room-chat #messages .quoted{
   display:flex!important;
-  align-items:center!important;
+  align-items:flex-start!important;
   gap:9px!important;
 }
 #viewRooms.main-room-chat #messages .quoted .quoted-avatar{
