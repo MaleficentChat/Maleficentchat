@@ -2991,13 +2991,13 @@ function messageHTML(message) {
         };
         return `
           <div class="quoted" onclick="jumpToMessage('${esc(quoted.id)}')" title="Jump to original message">
-            <div class="quoted-author">
-              <span class="quoted-avatar">${avatar(quotedAuthor)}</span>
-              <span class="quoted-author-name">${esc(quotedAuthor.displayName)}</span>
+            <span class="quoted-avatar">${avatar(quotedAuthor)}</span>
+            <div class="quoted-content">
+              <div class="quoted-author-name">${esc(quotedAuthor.displayName)}</div>
+              <div class="quoted-text">${
+                quoted.text ? esc(quoted.text) : quoted.attachment ? "📎 Attachment" : "Message"
+              }</div>
             </div>
-            <div class="quoted-text">${
-              quoted.text ? esc(quoted.text) : quoted.attachment ? "📎 Attachment" : "Message"
-            }</div>
           </div>
         `;
       })()
