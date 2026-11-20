@@ -2671,10 +2671,10 @@ async function renderOnline(tab=onlinePanelTab,searchQuery=""){
         <div class="online-user-copy">
           <div class="online-user-heading">
             <b>@${esc(user.username)}</b>
-            <span class="online-user-rank-badge" title="${esc(String(user.rank||'MEMBER').replaceAll('_',' '))}" aria-label="${esc(String(user.rank||'MEMBER').replaceAll('_',' '))}"><span class="mc-rank-ring" aria-hidden="true"></span><span class="mc-rank-glyph">${rankIcon[String(user.rank||'MEMBER').toUpperCase()]||'⚡'}</span></span>
           </div>
           <small>${esc(user.displayName)} ${invisibleDot(user)} ${moderationStatusTags(user)}${user.invisible?"":" · "+(user.customStatus||(user.online?"Available":"Away"))}</small>
         </div>
+        <span class="online-user-rank-badge" title="${esc(String(user.rank||'MEMBER').replaceAll('_',' '))}" aria-label="${esc(String(user.rank||'MEMBER').replaceAll('_',' '))}"><span class="mc-rank-ring" aria-hidden="true"></span><span class="mc-rank-glyph">${rankIcon[String(user.rank||'MEMBER').toUpperCase()]||'⚡'}</span></span>
         
       </div>
     `).join("") || `<div class="online-empty"><div>${tab==="staff"?"🛡️":tab==="friends"?"💜":"👥"}</div><b>No users here</b><span>Try another tab.</span></div>`}</div>`;
