@@ -9842,7 +9842,8 @@ html{scroll-behavior:smooth;}
 
 
 
-/* Dedicated public-profile close control: visible with the profile, hidden while its action drawer is open. */
-#modal .modal-card>.modal-close.profile-native-close-hidden{display:none!important;}
-#modal .profile-modal .profile-inline-close{position:static!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;flex:0 0 34px!important;width:34px!important;height:34px!important;min-width:34px!important;height:34px!important;margin:0!important;padding:0!important;border:1px solid rgba(226,196,125,.72)!important;border-radius:10px!important;background:linear-gradient(145deg,#24496a,#132d46)!important;color:#fff!important;font-size:25px!important;line-height:1!important;}
-#modal .profile-modal:has(.profile-action-drawer-layer) .profile-inline-close{display:none!important;}
+
+
+/* Single public-profile close button sits after Edit Profile and the actions menu. */
+#modal .profile-modal .profile-stats>.profile-inline-close{position:static!important;inset:auto!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;flex:0 0 34px!important;width:34px!important;height:34px!important;min-width:34px!important;margin:0!important;padding:0!important;border:1px solid rgba(226,196,125,.72)!important;border-radius:10px!important;background:linear-gradient(145deg,#24496a,#132d46)!important;color:#fff!important;font-size:25px!important;line-height:1!important;}
+#modal:has(.profile-action-drawer-layer) .profile-modal .profile-inline-close{display:none!important;}
