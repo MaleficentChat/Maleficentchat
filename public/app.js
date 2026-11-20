@@ -4039,16 +4039,13 @@ function renderUserProfileModal(user,data={}){
   // Keep the public-profile close control in the same action row as rank, edit and menu.
   const profileStats=document.querySelector("#modal .profile-modal .profile-stats");
   const nativeProfileClose=document.querySelector("#modal .modal-card > .modal-close");
-  if(nativeProfileClose)nativeProfileClose.classList.add("profile-native-close-hidden");
-  if(profileStats&&!profileStats.querySelector(".profile-inline-close")){
-    const inlineClose=document.createElement("button");
-    inlineClose.type="button";
-    inlineClose.className="mini profile-inline-close";
-    inlineClose.setAttribute("aria-label","Close public profile");
-    inlineClose.title="Close public profile";
-    inlineClose.textContent="×";
-    inlineClose.addEventListener("click",()=>closeModal());
-    profileStats.appendChild(inlineClose);
+  profileStats?.querySelector(".profile-inline-close")?.remove();
+  if(nativeProfileClose&&profileStats){
+    nativeProfileClose.classList.remove("profile-native-close-hidden");
+    nativeProfileClose.classList.add("mini","profile-inline-close");
+    nativeProfileClose.setAttribute("aria-label","Close public profile");
+    nativeProfileClose.title="Close public profile";
+    profileStats.appendChild(nativeProfileClose);
   }
   // Public profile avatar: bind to the frame itself, and resolve the image URL
   // at click time so lazy-loaded images and framed avatars both open reliably.
