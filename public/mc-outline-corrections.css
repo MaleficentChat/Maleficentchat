@@ -2409,3 +2409,29 @@ body [data-room-filter]:active{
   #modal .profile-modal.kp-public-profile .profile-stats{right:54px!important;left:10px!important;}
   #modal .modal-card:has(#modalBody .profile-modal)>.modal-close{top:14px!important;right:10px!important;}
 }
+
+
+/* 2026-11-20 — keep the profile quick-action drawer visible at the current screen position.
+   Anchor it to the viewport instead of the scrollable profile content. */
+#modal .profile-modal.kp-public-profile .profile-action-drawer-layer{
+  position:fixed!important;
+  inset:0!important;
+  display:flex!important;
+  align-items:flex-start!important;
+  justify-content:center!important;
+  padding:64px 12px 12px!important;
+  box-sizing:border-box!important;
+  overflow-y:auto!important;
+  z-index:999!important;
+}
+#modal .profile-modal.kp-public-profile .profile-action-drawer-layer .profile-drawer{
+  width:min(330px,100%)!important;
+  max-height:calc(100dvh - 84px)!important;
+  margin:0 auto!important;
+  overflow-x:hidden!important;
+  overflow-y:auto!important;
+}
+@media(max-width:480px){
+  #modal .profile-modal.kp-public-profile .profile-action-drawer-layer{padding:58px 10px 10px!important;}
+  #modal .profile-modal.kp-public-profile .profile-action-drawer-layer .profile-drawer{max-height:calc(100dvh - 72px)!important;}
+}
