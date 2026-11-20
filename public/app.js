@@ -784,6 +784,10 @@ function modal(html) {
     modalHistory.length=0;
   }
   body.innerHTML=html;
+  // Every panel opened from profile actions gets its own close control.
+  // The public profile is the exception: its close button is moved into the
+  // profile action row by renderUserProfileModal().
+  if(!body.querySelector(".profile-modal")) addProfileEditPanelClose();
   overlay.classList.remove("hidden");
   overlay.setAttribute("aria-hidden","false");
 }
@@ -4045,6 +4049,8 @@ function renderUserProfileModal(user,data={}){
     nativeProfileClose.classList.add("mini","profile-inline-close");
     nativeProfileClose.setAttribute("aria-label","Close public profile");
     nativeProfileClose.title="Close public profile";
+    // Keep the close control as the final flex item in the same row:
+    // Rank Giving (when present) → Edit Profile → Actions → Close Profile.
     profileStats.appendChild(nativeProfileClose);
   }
   // Public profile avatar: bind to the frame itself, and resolve the image URL
