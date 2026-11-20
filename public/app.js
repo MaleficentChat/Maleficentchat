@@ -4061,14 +4061,23 @@ function renderUserProfileModal(user,data={}){
   const profileStats=document.querySelector("#modal .profile-modal .profile-stats");
   const nativeProfileClose=document.querySelector("#modal .modal-card > .modal-close");
   profileStats?.querySelector(".profile-inline-close")?.remove();
-  if(nativeProfileClose&&profileStats){
-    nativeProfileClose.classList.remove("profile-native-close-hidden");
-    nativeProfileClose.classList.add("mini","profile-inline-close");
-    nativeProfileClose.setAttribute("aria-label","Close public profile");
-    nativeProfileClose.title="Close public profile";
+  if(profileStats){
+    let profileClose=nativeProfileClose||profileStats.querySelector(".profile-inline-close");
+    if(!profileClose){
+      profileClose=document.createElement("button");
+      profileClose.type="button";
+      profileClose.className="mini profile-inline-close";
+      profileClose.textContent="×";
+      profileClose.addEventListener("click",closeModal);
+    }
+    profileClose.classList.remove("profile-native-close-hidden");
+    profileClose.classList.add("mini","profile-inline-close");
+    profileClose.setAttribute("aria-label","Close public profile");
+    profileClose.title="Close public profile";
+    profileClose.style.display="inline-flex";
     // Keep the close control as the final flex item in the same row:
     // Rank Giving (when present) → Edit Profile → Actions → Close Profile.
-    profileStats.appendChild(nativeProfileClose);
+    profileStats.appendChild(profileClose);
   }
   // Public profile avatar: bind to the frame itself, and resolve the image URL
   // at click time so lazy-loaded images and framed avatars both open reliably.
