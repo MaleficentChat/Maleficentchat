@@ -1,4 +1,4 @@
-const $ = id => document.getElementById(id);
+const mcGetById = id => document.getElementById(id);
 
 // Explicit handlers for the personal status control. Keeping the click action
 // on the control itself avoids the People-card click delegate swallowing taps.
@@ -336,12 +336,12 @@ async function api(url, opt = {}) {
     if(body.moderationLock==="BAN" || /you have been banned/i.test(String(body.error||""))){
       safeStorage.removeItem("mc_token");
       safeStorage.removeItem("mc_room_join");
-      $("auth")?.classList.add("hidden");$("app")?.classList.add("hidden");
+      mcGetById("auth")?.classList.add("hidden");mcGetById("app")?.classList.add("hidden");
       showBanLock(body.reason||"Community rules");
     }else if(body.moderationLock==="KICK" || (/you have been kicked/i.test(String(body.error||"")) && err.kickedUntil)){
       safeStorage.removeItem("mc_token");
       safeStorage.removeItem("mc_room_join");
-      $("auth")?.classList.add("hidden");$("app")?.classList.add("hidden");
+      mcGetById("auth")?.classList.add("hidden");mcGetById("app")?.classList.add("hidden");
       showKickLock(err.kickedUntil,body.reason||"Community rules");
     }
     throw err;
@@ -390,12 +390,12 @@ async function enableSiteNotifications(){
     if(!subscription)subscription=await registration.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:decodePushKey(keyData.publicKey)});
     await api("/api/push/subscribe",{method:"POST",body:JSON.stringify(subscription.toJSON())});
     siteNotificationRegistration=registration;
-    const btn=$("enableSiteNotifications");if(btn)btn.textContent="🔕 Disable background notifications";
+    const btn=mcGetById("enableSiteNotifications");if(btn)btn.textContent="🔕 Disable background notifications";
     toast("Background notifications enabled on this device, including when the site is closed.");
   }catch(e){toast("Could not enable background notifications: "+(e.message||"check browser and site settings"));}
 }
 async function syncSiteNotificationState(){
-  const btn=$("enableSiteNotifications");
+  const btn=mcGetById("enableSiteNotifications");
   if(!btn||!state.user||!("serviceWorker" in navigator)||!("PushManager" in window))return;
   try{
     const registration=await registerSiteNotificationWorker();
@@ -413,7 +413,7 @@ async function syncSiteNotificationState(){
   }
 }
 async function toggleSiteNotifications(){
-  const btn=$("enableSiteNotifications");
+  const btn=mcGetById("enableSiteNotifications");
   if(!btn)return;
   btn.disabled=true;
   try{
@@ -433,9 +433,9 @@ async function toggleSiteNotifications(){
     btn.disabled=false;
   }
 }
-$("enableSiteNotifications")?.addEventListener("click",toggleSiteNotifications);
+mcGetById("enableSiteNotifications")?.addEventListener("click",toggleSiteNotifications);
 async function testSiteNotifications(){
-  const button=$("testSiteNotifications");
+  const button=mcGetById("testSiteNotifications");
   if(button){button.disabled=true;button.textContent="Testing…";}
   try{
     const result=await api("/api/push/test",{method:"POST",body:JSON.stringify({})});
@@ -448,7 +448,7 @@ async function testSiteNotifications(){
 }
 async function hardRefreshSite(){
   const savedAuthToken=safeStorage.getItem("mc_token");
-  const button=$("siteHardRefresh");
+  const button=mcGetById("siteHardRefresh");
   if(button){button.disabled=true;button.textContent="⏳ Refreshing…";}
   try{
     // Clear only Cache Storage. Preserve login cookies, localStorage, IndexedDB,
@@ -473,7 +473,7 @@ async function hardRefreshSite(){
   }
 }
 async function refreshCurrentRoomOnly(){
-  const button=$("siteHardRefresh");
+  const button=mcGetById("siteHardRefresh");
   const roomId=state.currentRoom;
   if(!state.user||!roomId){toast("Open a room before refreshing its messages.");return;}
   if(button){button.disabled=true;button.textContent="⏳";}
@@ -644,22 +644,22 @@ async function joinParallelSplit(){
 }
 document.getElementById("openParallelSplits")?.addEventListener("click",openParallelSplits);
 
-$("siteHardRefresh")?.addEventListener("click",refreshCurrentRoomOnly);
-$("testSiteNotifications")?.addEventListener("click",testSiteNotifications);
+mcGetById("siteHardRefresh")?.addEventListener("click",refreshCurrentRoomOnly);
+mcGetById("testSiteNotifications")?.addEventListener("click",testSiteNotifications);
 if("Notification" in window && Notification.permission==="granted") registerSiteNotificationWorker();
 
 function toast(text) {
-  const el = $("toast");
+  const el = mcGetById("toast");
   if (!el) { console.warn("[Maleficent Chat]", String(text)); return; }
   el.textContent = String(text ?? "");el.style.display = "block";el.onclick=null;el.style.cursor="";
   clearTimeout(toast.timer);
-  toast.timer=setTimeout(()=>{const current=$("toast");if(current)current.style.display="none";},3200);
+  toast.timer=setTimeout(()=>{const current=mcGetById("toast");if(current)current.style.display="none";},3200);
 }
 function showPrivateMessagePopup(message){
   const senderId=String(message?.from??message?.senderId??message?.fromId??"");
   const sender=senderId==="system-bot"?"System Bot":(message?.displayName||message?.username||message?.senderUsername||"New message");
   toast("💌  "+sender+" has sent you a private message  ·  Tap to open");
-  const el=$("toast");if(!el)return;
+  const el=mcGetById("toast");if(!el)return;
   el.style.cursor="pointer";el.onclick=()=>{openDM(senderId||"system-bot");el.style.display="none";};
   clearTimeout(toast.timer);toast.timer=setTimeout(()=>{el.style.display="none";},6500);
 }
@@ -668,12 +668,12 @@ let activeWarningNotificationId=null;
 function showPersistentWarning(notification){
   if(!notification||!notification.id)return;
   const id=String(notification.id);
-  if(activeWarningNotificationId===id&&$("persistentWarningOverlay"))return;
+  if(activeWarningNotificationId===id&&mcGetById("persistentWarningOverlay"))return;
   activeWarningNotificationId=id;
   const reason=String(notification.text||notification.message||notification.reason||"Please review the community rules.");
   // Use a dedicated body-level overlay instead of the shared dialog system:
   // profile/settings dialogs and their close handlers must never suppress a warning.
-  $("persistentWarningOverlay")?.remove();
+  mcGetById("persistentWarningOverlay")?.remove();
   const overlay=document.createElement("div");
   overlay.id="persistentWarningOverlay";
   overlay.setAttribute("role","alertdialog");
@@ -682,17 +682,17 @@ function showPersistentWarning(notification){
   overlay.style.cssText="position:fixed;inset:0;z-index:2147483647;display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;background:rgba(4, 4, 4, .97);backdrop-filter:blur(14px);";
   overlay.innerHTML=`<div style="width:min(620px,94vw);max-height:calc(100dvh - 40px);overflow:auto;box-sizing:border-box;padding:clamp(24px,6vw,44px);border:1px solid rgba(126, 126, 126, .6);border-radius:26px;background:linear-gradient(155deg,#161616,#0d0d0d 68%);box-shadow:0 24px 100px rgba(0, 0, 0, .8);text-align:center;color:#ffffff"><div aria-hidden="true" style="font-size:clamp(68px,18vw,112px);line-height:1.1">⚠️</div><h1 id="persistentWarningTitle" style="font-size:clamp(46px,13vw,76px);font-weight:900;letter-spacing:.04em;color:#d2d2d2;margin:12px 0 24px">WARNING</h1><div style="overflow-wrap:anywhere;white-space:pre-wrap;font-size:clamp(18px,4.8vw,24px);line-height:1.5;padding:22px 18px;border:1px solid rgba(126, 126, 126, .25);border-radius:18px;background:rgba(126, 126, 126, .1);margin:0 0 26px">${esc(reason)}</div><button class="primary" id="warningUnderstand" type="button" style="width:min(340px,100%);min-height:56px;font-size:18px;font-weight:800;border-radius:15px">I understand</button></div>`;
   document.body.appendChild(overlay);
-  $("warningUnderstand")?.addEventListener("click",acknowledgePersistentWarning);
+  mcGetById("warningUnderstand")?.addEventListener("click",acknowledgePersistentWarning);
 }
 async function acknowledgePersistentWarning(){
   const id=activeWarningNotificationId;
   if(!id)return;
-  const button=$("warningUnderstand");
+  const button=mcGetById("warningUnderstand");
   if(button){button.disabled=true;button.textContent="Saving…";}
   try{
     await api("/api/notifications/"+encodeURIComponent(id)+"/acknowledge-warning",{method:"POST"});
     activeWarningNotificationId=null;
-    $("persistentWarningOverlay")?.remove();
+    mcGetById("persistentWarningOverlay")?.remove();
     await loadNotifications();
   }catch(error){
     if(button){button.disabled=false;button.textContent="I understand";}
@@ -704,9 +704,9 @@ async function acknowledgePersistentWarning(){
 const modalHistory=[];
 const minimizedDMWindows=[];
 function renderMinimizedDMs(){
-  const roomCard=$("viewRooms")?.querySelector(".chat-card");
-  const modalCard=$("modal")?.querySelector(".modal-card");
-  let mainDock=$("mainChatMinimizedDock");
+  const roomCard=mcGetById("viewRooms")?.querySelector(".chat-card");
+  const modalCard=mcGetById("modal")?.querySelector(".modal-card");
+  let mainDock=mcGetById("mainChatMinimizedDock");
   if(!mainDock){
     mainDock=document.createElement("div");
     mainDock.id="mainChatMinimizedDock";
@@ -716,10 +716,10 @@ function renderMinimizedDMs(){
 
   // Exact bottom-row order: menu, Alternate Dimensions, flexible space,
   // minimized private-chat avatars, then the People panel toggle.
-  const roomOptions=$("roomMenu"), dimensions=$("openParallelSplits");
-  let spacer=$("mainChatMinimizedSpacer");
+  const roomOptions=mcGetById("roomMenu"), dimensions=mcGetById("openParallelSplits");
+  let spacer=mcGetById("mainChatMinimizedSpacer");
   if(!spacer){spacer=document.createElement("div");spacer.id="mainChatMinimizedSpacer";spacer.setAttribute("aria-hidden","true");}
-  const peopleToggle=$("openOnlinePanel");
+  const peopleToggle=mcGetById("openOnlinePanel");
   if(roomOptions&&roomOptions.parentNode!==mainDock)mainDock.appendChild(roomOptions);
   if(dimensions&&dimensions.parentNode!==mainDock)mainDock.appendChild(dimensions);
   if(spacer.parentNode!==mainDock)mainDock.appendChild(spacer);
@@ -740,9 +740,9 @@ function renderMinimizedDMs(){
     });
   };
   fill(mainDock);
-  if(!minimizedDMWindows.length)$("dmMinimizedDock")?.remove();
+  if(!minimizedDMWindows.length)mcGetById("dmMinimizedDock")?.remove();
   else{
-    let pmDock=$("dmMinimizedDock");
+    let pmDock=mcGetById("dmMinimizedDock");
     if(!pmDock){pmDock=document.createElement("div");pmDock.id="dmMinimizedDock";pmDock.setAttribute("aria-label","Switch between minimized private messages");}
     if(modalCard&&pmDock.parentNode!==modalCard)modalCard.appendChild(pmDock);
     fill(pmDock);
@@ -752,7 +752,7 @@ function renderMinimizedDMs(){
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",renderMinimizedDMs,{once:true});
 else renderMinimizedDMs();
 function minimizeActiveDM(){
-  const overlay=$("modal"),body=$("modalBody");
+  const overlay=mcGetById("modal"),body=mcGetById("modalBody");
   if(!overlay||overlay.classList.contains("hidden")||!body?.querySelector(".dm-chat-header")||!state.dmUserId)return;
   const id=String(state.dmUserId),existing=minimizedDMWindows.findIndex(x=>x.id===id);
   const item={id,user:state.dmPeerUser||{},nodes:Array.from(body.childNodes)};
@@ -762,7 +762,7 @@ function minimizeActiveDM(){
   renderMinimizedDMs();
 }
 function restoreMinimizedDM(id){
-  const overlay=$("modal"),body=$("modalBody");if(!overlay||!body)return;
+  const overlay=mcGetById("modal"),body=mcGetById("modalBody");if(!overlay||!body)return;
   if(!overlay.classList.contains("hidden")){
     if(body.querySelector(".dm-chat-header"))minimizeActiveDM();
     else {toast("Close the current window before reopening a minimized chat.");return;}
@@ -774,7 +774,7 @@ function restoreMinimizedDM(id){
   body.replaceChildren(...item.nodes);state.dmUserId=item.id;state.dmPeerUser=item.user;
   overlay.classList.remove("hidden");overlay.setAttribute("aria-hidden","false");modalHistory.length=0;
   renderMinimizedDMs();
-  requestAnimationFrame(()=>{const list=$("dmMessages");if(list)list.scrollTop=list.scrollHeight;});
+  requestAnimationFrame(()=>{const list=mcGetById("dmMessages");if(list)list.scrollTop=list.scrollHeight;});
 }
 
 function stopModalMedia(root){
@@ -785,8 +785,8 @@ function stopModalMedia(root){
 
 function closeModal() {
   if(activeWarningNotificationId)return;
-  const overlay=$("modal");
-  const body=$("modalBody");
+  const overlay=mcGetById("modal");
+  const body=mcGetById("modalBody");
   if(!overlay)return;
   stopModalMedia(body);
   if(modalHistory.length&&body){
@@ -816,8 +816,8 @@ if(!window.__quickUserOutsideDismissBound){
     const target=event.target;
     // The People panel is intentionally persistent: only its ☰ trigger toggles it.
 
-    const overlay=$("modal");
-    const body=$("modalBody");
+    const overlay=mcGetById("modal");
+    const body=mcGetById("modalBody");
     const quickCard=body?.querySelector(".quick-user-card");
     if(overlay&&!overlay.classList.contains("hidden")&&quickCard&&!quickCard.contains(target)){
       closeModal();
@@ -827,8 +827,8 @@ if(!window.__quickUserOutsideDismissBound){
 
 function modal(html) {
   if(activeWarningNotificationId&&!renderingPersistentWarning)return;
-  const overlay=$("modal");
-  const body=$("modalBody");
+  const overlay=mcGetById("modal");
+  const body=mcGetById("modalBody");
   if(!body)return;
   if(!overlay.classList.contains("hidden")){
     // Detach, rather than serialize, so previously attached handlers and form
@@ -900,24 +900,24 @@ function canFeature(key){
 /* ---------------- AUTH ---------------- */
 
 function setAuthMode(login) {
-  $("tabLogin").classList.toggle("active", login);
-  $("tabRegister").classList.toggle("active", !login);
+  mcGetById("tabLogin").classList.toggle("active", login);
+  mcGetById("tabRegister").classList.toggle("active", !login);
 
   document
     .querySelectorAll(".register-only")
     .forEach(el => el.classList.toggle("hidden", login));
 
-  if ($("confirmPassword")) $("confirmPassword").classList.toggle("hidden", login);
-  if ($("passwordStrength")) $("passwordStrength").classList.toggle("hidden", login);
-  [$("displayName"),$("registerEmail"),$("dateOfBirth"),$("gender"),$("confirmPassword")].forEach(el=>{if(el) el.required=!login;});
-  if($("dateOfBirth"))$("dateOfBirth").max=new Date().toISOString().slice(0,10);
+  if (mcGetById("confirmPassword")) mcGetById("confirmPassword").classList.toggle("hidden", login);
+  if (mcGetById("passwordStrength")) mcGetById("passwordStrength").classList.toggle("hidden", login);
+  [mcGetById("displayName"),mcGetById("registerEmail"),mcGetById("dateOfBirth"),mcGetById("gender"),mcGetById("confirmPassword")].forEach(el=>{if(el) el.required=!login;});
+  if(mcGetById("dateOfBirth"))mcGetById("dateOfBirth").max=new Date().toISOString().slice(0,10);
 
-  $("authSubmit").textContent = login ? "Login" : "Register";
-  $("authMsg").textContent = "";
+  mcGetById("authSubmit").textContent = login ? "Login" : "Register";
+  mcGetById("authMsg").textContent = "";
 }
 
-$("tabLogin").onclick = () => setAuthMode(true);
-$("tabRegister").onclick = () => setAuthMode(false);
+mcGetById("tabLogin").onclick = () => setAuthMode(true);
+mcGetById("tabRegister").onclick = () => setAuthMode(false);
 
 async function browserDeviceFingerprint(){
   const canvas=document.createElement('canvas');
@@ -929,33 +929,33 @@ async function browserDeviceFingerprint(){
   return btoa(unescape(encodeURIComponent(material))).slice(0,2000);
 }
 
-if ($("password")) $("password").addEventListener("input",()=>{
-  if ($("tabRegister").classList.contains("active")) {
-    const p=$("password").value; let score=0;
+if (mcGetById("password")) mcGetById("password").addEventListener("input",()=>{
+  if (mcGetById("tabRegister").classList.contains("active")) {
+    const p=mcGetById("password").value; let score=0;
     if(p.length>=8)score++; if(/[A-Z]/.test(p))score++; if(/[0-9]/.test(p))score++; if(/[^A-Za-z0-9]/.test(p))score++;
-    $("passwordStrength").textContent="Password strength: "+(["Weak","Fair","Good","Strong","Very strong"][score]);
+    mcGetById("passwordStrength").textContent="Password strength: "+(["Weak","Fair","Good","Strong","Very strong"][score]);
   }
 });
 
-$("authForm").onsubmit = async e => {
+mcGetById("authForm").onsubmit = async e => {
   e.preventDefault();
 
   try {
     const login =
-      $("tabLogin").classList.contains("active");
+      mcGetById("tabLogin").classList.contains("active");
 
     const result = await api(
       login ? "/api/login" : "/api/register",
       {
         method: "POST",
         body: JSON.stringify({
-          username: $("username").value.trim(),
-          displayName: $("displayName").value.trim(),
-          email: $("registerEmail")?.value.trim(),
-          dateOfBirth: $("dateOfBirth")?.value,
-          gender: $("gender")?.value,
-          password: $("password").value,
-          confirmPassword: $("confirmPassword")?.value,
+          username: mcGetById("username").value.trim(),
+          displayName: mcGetById("displayName").value.trim(),
+          email: mcGetById("registerEmail")?.value.trim(),
+          dateOfBirth: mcGetById("dateOfBirth")?.value,
+          gender: mcGetById("gender")?.value,
+          password: mcGetById("password").value,
+          confirmPassword: mcGetById("confirmPassword")?.value,
           deviceFingerprint: login ? undefined : await browserDeviceFingerprint()
         })
       }
@@ -981,7 +981,7 @@ $("authForm").onsubmit = async e => {
 
     await start();
   } catch (error) {
-    $("authMsg").textContent = error.message;
+    mcGetById("authMsg").textContent = error.message;
     if(/you have been banned/i.test(String(error.message||""))){showBanLock(error.reason||String(error.message).replace(/^.*you have been banned\s*/i,"").replace(/^[:.\-]\s*/,"")||"Community rules");}
     else if(/you have been kicked/i.test(String(error.message||"")) && error.kickedUntil){showKickLock(error.kickedUntil,error.reason||"Community rules");}
   }
@@ -990,7 +990,7 @@ $("authForm").onsubmit = async e => {
 // Mark the bundle ready only after the login handler has been registered.
 window.__MC_APP_READY__ = true;
 
-$("logout").onclick = async () => {
+mcGetById("logout").onclick = async () => {
   try {
     await api("/api/logout", {
       method: "POST"
@@ -1003,7 +1003,7 @@ $("logout").onclick = async () => {
 
 let actionLockTimer=null;
 function showKickLock(until,reason="Community rules"){
-  const box=$("actionLock"); if(!box)return;
+  const box=mcGetById("actionLock"); if(!box)return;
   if(actionLockTimer)clearTimeout(actionLockTimer);
   box.dataset.lockType="kick";
   const safeReason=esc(reason||"Community rules");
@@ -1020,13 +1020,13 @@ function showKickLock(until,reason="Community rules"){
   };refresh();
 }
 function showBanLock(reason="Community rules"){
-  const box=$("actionLock");if(!box)return;
+  const box=mcGetById("actionLock");if(!box)return;
   if(actionLockTimer)clearTimeout(actionLockTimer);
   box.dataset.lockType="ban";
   box.innerHTML=`<div class="action-lock-card action-lock-full"><div class="action-lock-icon">🚫</div><h1>You have been banned</h1><h2>Reason</h2><p class="action-lock-reason">${esc(reason||"Community rules")}</p></div>`;
   box.classList.remove("hidden");
 }
-function clearActionLock(){if(actionLockTimer)clearTimeout(actionLockTimer);actionLockTimer=null;const box=$("actionLock");if(box){box.classList.add("hidden");box.innerHTML="";box.dataset.lockType="";}}
+function clearActionLock(){if(actionLockTimer)clearTimeout(actionLockTimer);actionLockTimer=null;const box=mcGetById("actionLock");if(box){box.classList.add("hidden");box.innerHTML="";box.dataset.lockType="";}}
 
 // Socket.IO provides instant delivery; REST reconciliation is the safety net
 // for missed events, background suspension, and transient connection failures.
@@ -1040,7 +1040,7 @@ async function refreshRoomMessageList(roomId,{force=false}={}){
   const requestedRoom=String(roomId);
   const data=await api("/api/rooms/"+encodeURIComponent(requestedRoom)+"/messages");
   if(String(state.currentRoom)!==requestedRoom||!Array.isArray(data.messages))return false;
-  const list=$("messages");if(!list)return false;
+  const list=mcGetById("messages");if(!list)return false;
   const incoming=data.messages;
   // A history request can finish after a Socket.IO event has appended a newer
   // message. Merge by ID so a slower REST response cannot erase live delivery.
@@ -1079,7 +1079,7 @@ async function refreshActiveDMMessageList(peerId){
   const requestedPeer=String(peerId);
   const data=await api("/api/dm/"+encodeURIComponent(requestedPeer));
   if(String(state.dmUserId)!==requestedPeer||!Array.isArray(data.messages))return false;
-  const list=$("dmMessages");
+  const list=mcGetById("dmMessages");
   const incoming=data.messages;
   // Keep Socket.IO messages that arrived while this history request was in flight.
   const merged=new Map(incoming.map(message=>[String(message.id),message]));
@@ -1095,7 +1095,7 @@ async function refreshActiveDMMessageList(peerId){
     const nearBottom=list.scrollHeight-list.scrollTop-list.clientHeight<180;
     list.innerHTML=reconciled.length?reconciled.map(m=>dmMessageHTML(m,reconciled,state.dmPeerUser||{})).join(""):'<p class="muted">No private messages yet.</p>';
     if(nearBottom)list.scrollTop=list.scrollHeight;
-    const count=$("dmSearchCount");if(count)count.textContent=incoming.length+" messages";
+    const count=mcGetById("dmSearchCount");if(count)count.textContent=incoming.length+" messages";
   }
   return true;
 }
@@ -1133,7 +1133,7 @@ async function authenticateSocketAndJoinRoom(socket=state.socket, syncHistory=tr
           const data=await api("/api/rooms/"+encodeURIComponent(roomId)+"/messages");
           if(socket!==state.socket || !socket.connected || String(state.currentRoom)!==roomId){resolve(false);return;}
           state.messages=Array.isArray(data.messages)?data.messages:[];
-          const list=$("messages");
+          const list=mcGetById("messages");
           if(list){list.innerHTML=state.messages.map(messageHTML).join("");list.scrollTop=list.scrollHeight;}
         }catch(error){
           console.warn("Room message resync failed:",error?.message||error);
@@ -1152,8 +1152,8 @@ async function start() {
   checkUnderConstruction();
   if(constructionPoll)clearInterval(constructionPoll);
   constructionPoll=setInterval(checkUnderConstruction,15000);
-  $("auth").classList.add("hidden");
-  $("app").classList.remove("hidden");
+  mcGetById("auth").classList.add("hidden");
+  mcGetById("app").classList.remove("hidden");
 
   // Restore the saved device push subscription after every login/session restore.
   syncSiteNotificationState().catch(error=>console.warn("Push notification state restore failed:",error?.message||error));
@@ -1184,9 +1184,9 @@ async function start() {
   state.socket.on("under-construction:status",payload=>{
     if(payload?.enabled&&!isOwnerExempt())showConstructionPanel(payload.until);
     else hideConstructionPanel();
-    const toggle=$("staffUnderConstructionToggle");
+    const toggle=mcGetById("staffUnderConstructionToggle");
     if(toggle&&isOwnerExempt()){toggle.checked=!!payload?.enabled;toggle.setAttribute("aria-checked",toggle.checked?"true":"false");}
-    const statusLabel=$("staffConstructionStatus");
+    const statusLabel=mcGetById("staffConstructionStatus");
     if(statusLabel){statusLabel.textContent=payload?.enabled?"ON · Maintenance enabled":"OFF · Site open";statusLabel.classList.toggle("is-on",!!payload?.enabled);}
   });
   state.socket.on("room:theme",data=>{if(!data?.roomId||!data?.theme)return;const room=state.rooms.find(r=>String(r.id)===String(data.roomId));if(room)room.roomTheme=data.theme;});
@@ -1218,13 +1218,13 @@ async function start() {
     if(d?.roomId&&String(d.roomId)===String(state.currentRoom)){
       try{const access=JSON.parse(safeStorage.getItem("mc_room_join")||"null");if(String(access?.roomId)===String(d.roomId))safeStorage.removeItem("mc_room_join");}catch{}
       state.currentRoom=null;state.currentRoomRole="USER";state.messages=[];
-      if($("messages"))$("messages").innerHTML="";
+      if(mcGetById("messages"))mcGetById("messages").innerHTML="";
       try{const fallbackRoom=roomForAgeRouting();joinRoom(fallbackRoom.id).catch(()=>renderRooms());}catch{renderRooms();}
     }
   });
   state.socket.on("dm-typing",d=>{
     if(String(d?.recipientId||"")!==String(state.user?.id)||String(d?.userId||"")!==String(state.dmUserId))return;
-    const status=$("dmTypingStatus");
+    const status=mcGetById("dmTypingStatus");
     if(!status||!state.dmUserId)return;
     clearTimeout(state.dmTypingResetTimer);
     status.textContent=d?.typing?((typeof d.user==="string"?d.user:"Someone")+" is typing…"):"Quote a message to reply · Attach photos or files";
@@ -1261,7 +1261,7 @@ async function start() {
         }else renderRoomQuickNav();
       }catch{renderRoomQuickNav();}
     },450);
-    const onlinePanel=$("onlinePanel");
+    const onlinePanel=mcGetById("onlinePanel");
     if(onlinePanel && !onlinePanel.classList.contains("hidden")) renderOnline(onlinePanelTab);
     if(state.view==="users")loadUsers().catch(()=>{});
   });
@@ -1303,24 +1303,24 @@ async function start() {
     if(String(data?.roomId)!==String(state.currentRoom))return;
     try{const access=JSON.parse(safeStorage.getItem("mc_room_join")||"null");if(String(access?.roomId)===String(data.roomId))safeStorage.removeItem("mc_room_join");}catch{}
     state.currentRoom=null;state.currentRoomRole="USER";
-    $("viewRooms")?.classList.remove("chatting","main-room-chat");$("chatWrap")?.classList.add("hidden");
+    mcGetById("viewRooms")?.classList.remove("chatting","main-room-chat");mcGetById("chatWrap")?.classList.add("hidden");
     state.messages=[];
-    if($("messages"))$("messages").innerHTML="";
+    if(mcGetById("messages"))mcGetById("messages").innerHTML="";
     toast("You were removed from this room. Reason: "+String(data?.reason||"Room rules"));
     try{const fallbackRoom=roomForAgeRouting();if(String(fallbackRoom.id)!==String(state.currentRoom))joinRoom(fallbackRoom.id).catch(()=>renderRooms());}catch{renderRooms();}
   });
   state.socket.on("room:clear", () => {
     if (state.currentRoom) {
       state.messages=(state.messages||[]).filter(m=>String(m.roomId)!==String(state.currentRoom));
-      $("messages").innerHTML = "";
+      mcGetById("messages").innerHTML = "";
       toast("Room cleared by staff.");
     }
   });
-  state.socket.on("site:messages-cleared",()=>{state.messages=[];if($("messages"))$("messages").innerHTML="";if(state.dmUserId)openDM(state.dmUserId);if(state.currentRoom)toast("Owner cleared all site chat messages.");});
+  state.socket.on("site:messages-cleared",()=>{state.messages=[];if(mcGetById("messages"))mcGetById("messages").innerHTML="";if(state.dmUserId)openDM(state.dmUserId);if(state.currentRoom)toast("Owner cleared all site chat messages.");});
 
   state.socket.on("typing", data => {
     if(String(data?.roomId||"")!==String(state.currentRoom||""))return;
-    const indicator=$("typing");
+    const indicator=mcGetById("typing");
     if(!indicator)return;
     clearTimeout(state.roomTypingResetTimer);
     indicator.textContent=data?.typing? `${esc(data.user)} is typing…`:"";
@@ -1335,13 +1335,13 @@ async function start() {
   state.socket.on("room:announcement-delete",()=>{if(state.currentRoom)loadRoomAnnouncements(state.currentRoom)});
   state.socket.on("kick-lock", data => {
     safeStorage.removeItem("mc_token");safeStorage.removeItem("mc_room_join");
-    $("auth")?.classList.add("hidden");$("app")?.classList.add("hidden");
+    mcGetById("auth")?.classList.add("hidden");mcGetById("app")?.classList.add("hidden");
     showKickLock(data?.kickedUntil||data?.until,data?.reason);
     try{state.socket?.disconnect();}catch{}
   });
   state.socket.on("ban-lock", data => {
     safeStorage.removeItem("mc_token");safeStorage.removeItem("mc_room_join");
-    $("auth")?.classList.add("hidden");$("app")?.classList.add("hidden");
+    mcGetById("auth")?.classList.add("hidden");mcGetById("app")?.classList.add("hidden");
     showBanLock(data?.reason);
     try{state.socket?.disconnect();}catch{}
   });
@@ -1369,7 +1369,7 @@ async function start() {
     state.dmMessages=(state.dmMessages||[]).map(message=>String(message.id)===String(updated.id)?{...message,...updated}:message);
     const peer=String(state.dmUserId||""),from=String(updated.from??""),to=String(updated.to??"");
     if(peer&&(from===peer||to===peer)){
-      const list=$("dmMessages");
+      const list=mcGetById("dmMessages");
       if(list&&state.dmPeerUser){
         list.innerHTML=state.dmMessages.map(message=>dmMessageHTML(message,state.dmMessages,state.dmPeerUser)).join("")||'<p class="muted">No private messages yet.</p>';
         list.scrollTop=list.scrollHeight;
@@ -1391,7 +1391,7 @@ async function start() {
       state.dmMessages=Array.isArray(state.dmMessages)?state.dmMessages:[];
       if(!state.dmMessages.some(item=>String(item.id)===String(message.id))){
         state.dmMessages.push(message);
-        const list=$("dmMessages");
+        const list=mcGetById("dmMessages");
         if(list){
           const empty=list.querySelector(".muted");
           if(empty)empty.remove();
@@ -1414,7 +1414,7 @@ async function start() {
     state.dmMessages=(state.dmMessages||[]).map(message=>
       String(message.from)===from&&String(message.to)===to?{...message,read:true}:message
     );
-    const list=$("dmMessages");
+    const list=mcGetById("dmMessages");
     if(list&&state.dmPeerUser){
       list.innerHTML=state.dmMessages.map(message=>dmMessageHTML(message,state.dmMessages,state.dmPeerUser)).join("")||'<p class="muted">No private messages yet.</p>';
     }
@@ -1425,7 +1425,7 @@ async function start() {
   // screen flashing while the room list and join request are loading.
   state.view = "rooms";
   document.querySelectorAll(".view").forEach(view => view.classList.add("hidden"));
-  $("viewRooms")?.classList.add("hidden");
+  mcGetById("viewRooms")?.classList.add("hidden");
   document.querySelectorAll(".nav[data-view]").forEach(button => button.classList.toggle("active", button.dataset.view === "rooms"));
 
   await loadRooms();
@@ -1452,9 +1452,9 @@ async function start() {
   // The room directory is not part of the signed-in flow. The chat is now
   // a sibling of the directory, so keep the picker hidden after successful entry.
   if(joined){
-    $("viewRooms")?.classList.add("hidden");
+    mcGetById("viewRooms")?.classList.add("hidden");
   }else{
-    $("viewRooms")?.classList.add("hidden");
+    mcGetById("viewRooms")?.classList.add("hidden");
     console.error("Automatic age-room entry failed after retries:",lastJoinError);
     toast("We couldn't open your age-appropriate room automatically. Please contact staff. "+lastJoinError);
   }
@@ -1464,7 +1464,7 @@ async function start() {
   if(notificationPeer){
     await openDM(notificationPeer);
     window.history.replaceState({},document.title,window.location.pathname+window.location.hash);
-    requestAnimationFrame(()=>{$("dmText")?.focus();});
+    requestAnimationFrame(()=>{mcGetById("dmText")?.focus();});
   }
 }
 
@@ -1486,13 +1486,13 @@ async function bootstrap() {
     const error=lastError||new Error("Could not restore your session.");
     // A kicked or banned account is intentionally rejected by bootstrap.
     if(/you have been kicked/i.test(String(error?.message||""))&&error?.kickedUntil){
-      $("auth")?.classList.add("hidden");$("app")?.classList.add("hidden");
+      mcGetById("auth")?.classList.add("hidden");mcGetById("app")?.classList.add("hidden");
       showKickLock(error.kickedUntil,error.reason||"Community rules");
     }else if(/you have been banned/i.test(String(error?.message||""))){
-      $("auth")?.classList.add("hidden");$("app")?.classList.add("hidden");
+      mcGetById("auth")?.classList.add("hidden");mcGetById("app")?.classList.add("hidden");
       showBanLock(error.reason||"Community rules");
-    }else if($("authMsg")){
-      $("authMsg").textContent=Number(error?.status)===401
+    }else if(mcGetById("authMsg")){
+      mcGetById("authMsg").textContent=Number(error?.status)===401
         ?"Your session has expired. Please sign in again."
         :"Could not restore your session. Please try again. "+String(error?.message||"");
     }
@@ -1513,13 +1513,13 @@ async function bootstrap() {
 function updateNav() {
   if (!state.user) return;
 
-  $("meMini").innerHTML = `
+  mcGetById("meMini").innerHTML = `
     ${avatar(state.user)}
     <div class="me-mini-copy"><b>${esc(state.user.displayName)}</b><small>${rank(state.user.rank)} · Lv ${state.user.level || 1}</small></div>
   `;
 
-  if ($("topProfile")) {
-    $("topProfile").innerHTML = avatar(state.user, "top-avatar");
+  if (mcGetById("topProfile")) {
+    mcGetById("topProfile").innerHTML = avatar(state.user, "top-avatar");
   }
 
   const staffSpaceLabels={MOD:"Moderator Space",ADMIN:"Admin Space",SUPER_ADMIN:"Superadmin Space",COMMISSOR:"Commissor Space",INSTRUCTOR:"Instructor Space",COOWNER:"Coowner Space",OWNER:"Owner Space",DEVELOPER:"Developer Space"};
@@ -1530,9 +1530,9 @@ function updateNav() {
   document.querySelectorAll(".staff-only").forEach(el =>
     el.classList.toggle("hidden", !canOpenStaffSpace)
   );
-  const managementLabel=$("managementSpaceNavLabel");
+  const managementLabel=mcGetById("managementSpaceNavLabel");
   if(managementLabel) managementLabel.textContent=staffSpaceLabels[currentStaffRank]||"Staff Dashboard";
-  const reportButton=$("topFlag");
+  const reportButton=mcGetById("topFlag");
   if(reportButton) reportButton.classList.toggle("hidden", !can("MOD")&&!canFeature("view_staff_dashboard"));
 
   document
@@ -1554,9 +1554,9 @@ function updateNav() {
 
   // News publishing follows the actual feature-grant policy, not a hard-coded
   // ADMIN class. This keeps the button in sync with Owner Space grants.
-  const newsPublishButton=$("publishNews");
+  const newsPublishButton=mcGetById("publishNews");
   if(newsPublishButton)newsPublishButton.classList.toggle("hidden",!canFeature("publish_news"));
-  const brandNewsPublishButton=$("publishBrandNews");
+  const brandNewsPublishButton=mcGetById("publishBrandNews");
   if(brandNewsPublishButton)brandNewsPublishButton.classList.toggle("hidden",!canFeature("publish_news"));
 
   // Room creation is Premium+ by default; staff ranks are explicitly eligible too.
@@ -1569,7 +1569,7 @@ function updateNav() {
 }
 
 function renderSidebarRoomList(){
-  const root=$("roomsNavList");
+  const root=mcGetById("roomsNavList");
   if(!root)return;
   const rooms=sortRoomsForNavigation((Array.isArray(state.rooms)?state.rooms:[]).filter(room=>!isParallelSplitRoom(room)));
   const roomItems=rooms.map(room=>{
@@ -1586,22 +1586,22 @@ function renderSidebarRoomList(){
     '<button type="button" class="rooms-nav-more" id="roomsNavMore" aria-haspopup="dialog" aria-controls="roomsMorePanel"><span>⋯</span><span>More</span></button>';
 }
 function openRoomsMorePanel(){
-  const panel=$("roomsMorePanel");
-  const content=$("roomsMoreContent");
+  const panel=mcGetById("roomsMorePanel");
+  const content=mcGetById("roomsMoreContent");
   if(!panel||!content)return;
-  ["mcRoomSearchRow","mcRoomAccess"].forEach(id=>{const el=$(id);if(el&&el.parentElement!==content)content.appendChild(el);});
+  ["mcRoomSearchRow","mcRoomAccess"].forEach(id=>{const el=mcGetById(id);if(el&&el.parentElement!==content)content.appendChild(el);});
   const actions=document.querySelector("#viewRooms .discover-actions");
   if(actions&&actions.parentElement!==content)content.appendChild(actions);
   panel.classList.remove("hidden");
   panel.setAttribute("aria-hidden","false");
-  $("closeRoomsMore")?.focus({preventScroll:true});
+  mcGetById("closeRoomsMore")?.focus({preventScroll:true});
 }
 function closeRoomsMorePanel(){
-  const panel=$("roomsMorePanel");
+  const panel=mcGetById("roomsMorePanel");
   if(!panel)return;
   panel.classList.add("hidden");
   panel.setAttribute("aria-hidden","true");
-  $("roomsNavMore")?.focus({preventScroll:true});
+  mcGetById("roomsNavMore")?.focus({preventScroll:true});
 }
 // Rooms is an inline navigation section (not a separate view). Use delegated
 // handling so the control keeps working if the sidebar is re-rendered.
@@ -1610,7 +1610,7 @@ document.addEventListener("click",async event=>{
   if(!toggle)return;
   event.preventDefault();
   event.stopPropagation();
-  const list=$("roomsNavList");
+  const list=mcGetById("roomsNavList");
   if(!list)return;
   const opening=list.classList.contains("hidden");
   list.classList.toggle("hidden",!opening);
@@ -1627,19 +1627,19 @@ document.addEventListener("click",async event=>{
     renderSidebarRoomList();
   }
 },true);
-$("roomsNavList")?.addEventListener("click",event=>{
+mcGetById("roomsNavList")?.addEventListener("click",event=>{
   const more=event.target instanceof Element?event.target.closest("#roomsNavMore"):null;
   if(more){event.preventDefault();event.stopPropagation();openRoomsMorePanel();return;}
   const button=event.target instanceof Element?event.target.closest("[data-sidebar-room-id]"):null;
   if(!button)return;
   const roomId=button.dataset.sidebarRoomId;
   if(!roomId)return;
-  $("sidebar")?.classList.remove("open");
+  mcGetById("sidebar")?.classList.remove("open");
   joinRoom(roomId);
 });
-$("closeRoomsMore")?.addEventListener("click",closeRoomsMorePanel);
-$("roomsMorePanel")?.addEventListener("click",event=>{if(event.target===$("roomsMorePanel"))closeRoomsMorePanel();});
-document.addEventListener("keydown",event=>{if(event.key==="Escape"&&!$("roomsMorePanel")?.classList.contains("hidden"))closeRoomsMorePanel();});
+mcGetById("closeRoomsMore")?.addEventListener("click",closeRoomsMorePanel);
+mcGetById("roomsMorePanel")?.addEventListener("click",event=>{if(event.target===mcGetById("roomsMorePanel"))closeRoomsMorePanel();});
+document.addEventListener("keydown",event=>{if(event.key==="Escape"&&!mcGetById("roomsMorePanel")?.classList.contains("hidden"))closeRoomsMorePanel();});
 
 document
   .querySelectorAll(".nav[data-view]")
@@ -1655,7 +1655,7 @@ document
 
       // Close the mobile navigation immediately so it cannot cover the selected view
       // while profile/settings data is loading.
-      $("sidebar")?.classList.remove("open");
+      mcGetById("sidebar")?.classList.remove("open");
 
       document
         .querySelectorAll(".nav[data-view]")
@@ -1670,7 +1670,7 @@ document
 
       // Defensive mobile recovery: ensure My Profile never opens as an empty black view.
       if (state.view === "profile") {
-        const profileRoot = $("profile");
+        const profileRoot = mcGetById("profile");
         if (profileRoot && !profileRoot.children.length) {
           try {
             if (state.user) loadProfile(state.user);
@@ -1688,15 +1688,15 @@ document
         }
       }
 
-      $("sidebar").classList.remove("open");
+      mcGetById("sidebar").classList.remove("open");
     };
   });
 
 async function renderView() {
   // The People directory is the existing room-side panel, not a standalone .view.
   if(state.view==="users"){
-    $("sidebar")?.classList.remove("open");
-    $("onlinePanel")?.classList.add("mobile-open");
+    mcGetById("sidebar")?.classList.remove("open");
+    mcGetById("onlinePanel")?.classList.add("mobile-open");
     return renderOnline("all");
   }
   document
@@ -1706,7 +1706,7 @@ async function renderView() {
   const id =
     `view${state.view[0].toUpperCase()}${state.view.slice(1)}`;
 
-  const view = state.view==="wallFriends"?$("viewWall"):$(id);
+  const view = state.view==="wallFriends"?mcGetById("viewWall"):mcGetById(id);
 
   if (!view) return;
 
@@ -1730,11 +1730,11 @@ async function renderView() {
     case "brandNews":
       return loadBrandNews();
     case "wall":
-      $("wallViewTitle") && ($("wallViewTitle").textContent="🌘 Shadow Feed");
+      mcGetById("wallViewTitle") && (mcGetById("wallViewTitle").textContent="🌘 Shadow Feed");
       wallShowingFriends=false;wallShowingSaved=false;wallShowingReels=false;updateWallModeButtons();
       return loadWall();
     case "wallFriends":
-      $("wallViewTitle") && ($("wallViewTitle").textContent="💜 Shadow Friends Wall");
+      mcGetById("wallViewTitle") && (mcGetById("wallViewTitle").textContent="💜 Shadow Friends Wall");
       wallShowingFriends=true;wallShowingSaved=false;wallShowingReels=false;updateWallModeButtons();
       return loadWall();
 
@@ -1779,7 +1779,7 @@ async function renderView() {
         console.error("Could not refresh account for My Profile", error);
       }
       if (!state.user) {
-        const root = $("profile");
+        const root = mcGetById("profile");
         if (root) root.innerHTML = '<section class="card profile-load-message"><h2>My Profile</h2><p>Your account details could not be loaded. Please refresh the page and try again.</p><button class="primary" type="button" onclick="location.reload()">Refresh profile</button></section>';
         return;
       }
@@ -1787,7 +1787,7 @@ async function renderView() {
         return loadProfile(state.user);
       } catch (error) {
         console.error("My Profile failed to render", error);
-        const root = $("profile");
+        const root = mcGetById("profile");
         if (root) root.innerHTML = '<section class="card profile-load-message"><h2>My Profile</h2><p>The profile editor hit an error while loading. Your account has not been changed. Please refresh and try again.</p><button class="primary" type="button" onclick="location.reload()">Refresh profile</button></section>';
       }
       return;
@@ -1816,12 +1816,12 @@ async function renderView() {
         return loadRooms();
       }
       const [icon,label]=labels[rank];
-      const title=$("managementSpaceTitle"), description=$("managementSpaceDescription"), navLabel=$("managementSpaceNavLabel");
+      const title=mcGetById("managementSpaceTitle"), description=mcGetById("managementSpaceDescription"), navLabel=mcGetById("managementSpaceNavLabel");
       if(title)title.textContent=icon+" "+label;
       if(navLabel)navLabel.textContent=label;
       if(description)description.textContent="Staff Dashboard tools and rank-authorized controls, all in one place.";
       const ownerEligible=["OWNER","DEVELOPER"].includes(rank);
-      $("owner")?.classList.toggle("hidden",!ownerEligible);
+      mcGetById("owner")?.classList.toggle("hidden",!ownerEligible);
       await loadStaff();
       if(ownerEligible) await loadOwner();
       return;
@@ -1829,16 +1829,16 @@ async function renderView() {
   }
 }
 
-$("mobileMenu").onclick = () => {
-  $("sidebar").classList.toggle("open");
+mcGetById("mobileMenu").onclick = () => {
+  mcGetById("sidebar").classList.toggle("open");
 };
-const chatToolsToggle=$("chatToolsToggle");
-if(chatToolsToggle) chatToolsToggle.onclick=()=>$("chatToolsDrawer")?.classList.toggle("open");
+const chatToolsToggle=mcGetById("chatToolsToggle");
+if(chatToolsToggle) chatToolsToggle.onclick=()=>mcGetById("chatToolsDrawer")?.classList.toggle("open");
 
 // Main-room attachment control: keep ordinary file uploads separate from YouTube sharing.
-const roomFileInput=$("file");
-const roomAttachButton=$("attach");
-const roomFileLabel=$("fileName");
+const roomFileInput=mcGetById("file");
+const roomAttachButton=mcGetById("attach");
+const roomFileLabel=mcGetById("fileName");
 if(roomAttachButton && roomFileInput && !roomAttachButton.dataset.bound){
   roomAttachButton.dataset.bound="true";
   roomAttachButton.addEventListener("click",()=>{
@@ -1850,46 +1850,46 @@ if(roomFileInput && !roomFileInput.dataset.labelBound){
   roomFileInput.dataset.labelBound="true";
   roomFileInput.addEventListener("change",()=>{
     if(roomFileLabel)roomFileLabel.textContent=roomFileInput.files?.[0]?.name||"";
-    if(roomFileInput.files?.[0] && $("chatToolsDrawer"))$("chatToolsDrawer").classList.remove("open");
+    if(roomFileInput.files?.[0] && mcGetById("chatToolsDrawer"))mcGetById("chatToolsDrawer").classList.remove("open");
   });
 }
 
-if ($("backRooms")) {
-  $("backRooms").onclick = () => {
-    $("viewRooms").classList.remove("chatting");
-    $("chatWrap").classList.add("hidden");
+if (mcGetById("backRooms")) {
+  mcGetById("backRooms").onclick = () => {
+    mcGetById("viewRooms").classList.remove("chatting");
+    mcGetById("chatWrap").classList.add("hidden");
     renderRooms();
     loadRooms().catch(()=>renderRooms());
   };
 }
 
 // Floating mobile quick actions reuse the existing, tested room and People controls.
-$("floatingRoomsBtn")?.addEventListener("click",()=> $("backRooms")?.click());
-$("floatingPeopleBtn")?.addEventListener("click",()=>{
-  const panel=$("onlinePanel");
+mcGetById("floatingRoomsBtn")?.addEventListener("click",()=> mcGetById("backRooms")?.click());
+mcGetById("floatingPeopleBtn")?.addEventListener("click",()=>{
+  const panel=mcGetById("onlinePanel");
   if(!panel)return;
   panel.classList.toggle("mobile-open");
   if(panel.classList.contains("mobile-open"))renderOnline();
 });
 
-if ($("topMessages")) $("topMessages").onclick = () => toggleMessagesDropdown();
-if ($("topFriends")) $("topFriends").onclick = () => toggleFriendsDropdown();
-if ($("topNotifications")) $("topNotifications").onclick = () => { $("topFriendsDropdown")?.classList.add("hidden"); $("topMessagesDropdown")?.classList.add("hidden"); $("reportDropdown")?.classList.add("hidden"); toggleNotificationDropdown(); };
-if ($("topFlag")) $("topFlag").onclick = () => { $("topFriendsDropdown")?.classList.add("hidden"); $("topMessagesDropdown")?.classList.add("hidden"); $("notificationDropdown")?.classList.add("hidden"); toggleReportDropdown(); };
-if ($("topProfile")) $("topProfile").onclick = () => {
-  const box=$("topProfileDropdown");if(!box)return;
+if (mcGetById("topMessages")) mcGetById("topMessages").onclick = () => toggleMessagesDropdown();
+if (mcGetById("topFriends")) mcGetById("topFriends").onclick = () => toggleFriendsDropdown();
+if (mcGetById("topNotifications")) mcGetById("topNotifications").onclick = () => { mcGetById("topFriendsDropdown")?.classList.add("hidden"); mcGetById("topMessagesDropdown")?.classList.add("hidden"); mcGetById("reportDropdown")?.classList.add("hidden"); toggleNotificationDropdown(); };
+if (mcGetById("topFlag")) mcGetById("topFlag").onclick = () => { mcGetById("topFriendsDropdown")?.classList.add("hidden"); mcGetById("topMessagesDropdown")?.classList.add("hidden"); mcGetById("notificationDropdown")?.classList.add("hidden"); toggleReportDropdown(); };
+if (mcGetById("topProfile")) mcGetById("topProfile").onclick = () => {
+  const box=mcGetById("topProfileDropdown");if(!box)return;
   const opening=box.classList.contains("hidden");
-  ["topMessagesDropdown","topFriendsDropdown","notificationDropdown","reportDropdown"].forEach(id=>$(id)?.classList.add("hidden"));
+  ["topMessagesDropdown","topFriendsDropdown","notificationDropdown","reportDropdown"].forEach(id=>mcGetById(id)?.classList.add("hidden"));
   box.classList.toggle("hidden",!opening);
 };
-document.addEventListener("click",e=>{if(!e.target.closest("#topProfile")&&!e.target.closest("#topProfileDropdown"))$("topProfileDropdown")?.classList.add("hidden");});
-function openMyProfileFromHeader(){ $("topProfileDropdown")?.classList.add("hidden"); state.view="profile"; document.querySelectorAll(".nav[data-view]").forEach(x=>x.classList.toggle("active",x.dataset.view==="profile")); renderView(); }
-$("profileLevelInfo")?.addEventListener("click",()=>{ $("topProfileDropdown")?.classList.add("hidden"); const u=state.user||{}; modal(`<div class="profile-level-info"><h2>🏅 Level info</h2><div class="card"><small class="muted">CURRENT LEVEL</small><h1>Level ${Number(u.level||1).toLocaleString()}</h1><p><b>${Number(u.xp||0).toLocaleString()} XP</b> earned</p></div><p class="muted">Your level and experience progress.</p><button class="primary" type="button" onclick="closeModal();state.view='leaderboard';renderView()">View leaderboard</button></div>`); });
-$("profileWallet")?.addEventListener("click",()=>{ $("topProfileDropdown")?.classList.add("hidden"); const u=state.user||{}; modal(`<div class="profile-wallet-shortcut"><h2>💰 Wallet</h2><div class="wallet-balance-grid"><div class="card"><span>🪙 Gold</span><strong>${Number(u.gold||0).toLocaleString()}</strong></div><div class="card"><span>💎 Diamonds</span><strong>${Number(u.diamonds||0).toLocaleString()}</strong></div></div><button class="primary" type="button" id="openFullWallet">Open full wallet</button></div>`); $("openFullWallet")?.addEventListener("click",()=>{closeModal();state.view="wallet";document.querySelectorAll(".nav[data-view]").forEach(x=>x.classList.toggle("active",x.dataset.view==="wallet"));renderView();}); });
-$("profileEdit")?.addEventListener("click",()=>{ $("topProfileDropdown")?.classList.add("hidden"); openProfileEditMenu(); });
-$("profileLogout")?.addEventListener("click",()=>{ $("topProfileDropdown")?.classList.add("hidden"); $("logout")?.click(); });
+document.addEventListener("click",e=>{if(!e.target.closest("#topProfile")&&!e.target.closest("#topProfileDropdown"))mcGetById("topProfileDropdown")?.classList.add("hidden");});
+function openMyProfileFromHeader(){ mcGetById("topProfileDropdown")?.classList.add("hidden"); state.view="profile"; document.querySelectorAll(".nav[data-view]").forEach(x=>x.classList.toggle("active",x.dataset.view==="profile")); renderView(); }
+mcGetById("profileLevelInfo")?.addEventListener("click",()=>{ mcGetById("topProfileDropdown")?.classList.add("hidden"); const u=state.user||{}; modal(`<div class="profile-level-info"><h2>🏅 Level info</h2><div class="card"><small class="muted">CURRENT LEVEL</small><h1>Level ${Number(u.level||1).toLocaleString()}</h1><p><b>${Number(u.xp||0).toLocaleString()} XP</b> earned</p></div><p class="muted">Your level and experience progress.</p><button class="primary" type="button" onclick="closeModal();state.view='leaderboard';renderView()">View leaderboard</button></div>`); });
+mcGetById("profileWallet")?.addEventListener("click",()=>{ mcGetById("topProfileDropdown")?.classList.add("hidden"); const u=state.user||{}; modal(`<div class="profile-wallet-shortcut"><h2>💰 Wallet</h2><div class="wallet-balance-grid"><div class="card"><span>🪙 Gold</span><strong>${Number(u.gold||0).toLocaleString()}</strong></div><div class="card"><span>💎 Diamonds</span><strong>${Number(u.diamonds||0).toLocaleString()}</strong></div></div><button class="primary" type="button" id="openFullWallet">Open full wallet</button></div>`); mcGetById("openFullWallet")?.addEventListener("click",()=>{closeModal();state.view="wallet";document.querySelectorAll(".nav[data-view]").forEach(x=>x.classList.toggle("active",x.dataset.view==="wallet"));renderView();}); });
+mcGetById("profileEdit")?.addEventListener("click",()=>{ mcGetById("topProfileDropdown")?.classList.add("hidden"); openProfileEditMenu(); });
+mcGetById("profileLogout")?.addEventListener("click",()=>{ mcGetById("topProfileDropdown")?.classList.add("hidden"); mcGetById("logout")?.click(); });
 async function loadSuggestions(){
-  const list=$('suggestionsList'),form=$('suggestionForm');
+  const list=mcGetById('suggestionsList'),form=mcGetById('suggestionForm');
   if(!list||!form)return;
   const developer=String(state.user?.username||'').toLowerCase()==='maleficent'||String(state.user?.rank||'').toUpperCase()==='DEVELOPER';
   try{
@@ -1903,10 +1903,10 @@ async function loadSuggestions(){
     form.classList.toggle('hidden',developer);
     form.onsubmit=async e=>{
       e.preventDefault();
-      const category=$('suggestionCategory')?.value||'',description=($('suggestionDescription')?.value||'').trim();
+      const category=mcGetById('suggestionCategory')?.value||'',description=(mcGetById('suggestionDescription')?.value||'').trim();
       if(!description){toast('Please describe your suggestion.');return;}
       const button=form.querySelector('button[type="submit"]');if(button)button.disabled=true;
-      try{await api('/api/suggestions',{method:'POST',body:JSON.stringify({category,description})});$('suggestionDescription').value='';toast('Suggestion submitted to the Developer.');await loadSuggestions();}
+      try{await api('/api/suggestions',{method:'POST',body:JSON.stringify({category,description})});mcGetById('suggestionDescription').value='';toast('Suggestion submitted to the Developer.');await loadSuggestions();}
       catch(err){toast(err.message||'Could not submit suggestion.');}
       finally{if(button)button.disabled=false;}
     };
@@ -1925,7 +1925,7 @@ let wallShowingSaved=false,wallShowingFriends=false,wallShowingReels=false;
 async function loadWall(){
   try {
     const endpoint=wallShowingSaved?'/api/wall/saved':(wallShowingFriends?'/api/wall/friends':'/api/wall');
-    const d=await api(endpoint),feed=$('wallFeed'); if(!feed)return;
+    const d=await api(endpoint),feed=mcGetById('wallFeed'); if(!feed)return;
     const emojis=['👍','❤️','😂','😮','🔥','👏'];
     const allWallPosts=d.posts||[];
     const isVideoPost=p=>/\.(mp4|webm|ogg)(\?|$)/i.test(String(p.media_url||""));
@@ -1965,10 +1965,10 @@ async function loadWall(){
         <div class="wall-comments hidden" id="wallComments-${esc(p.id)}"></div>
       </article>`;
     }).join('')||'<p class="muted">No wall posts yet.</p>';
-    $('shadowYourStory')?.addEventListener('click',()=> $('newWallPost')?.click());
+    mcGetById('shadowYourStory')?.addEventListener('click',()=> mcGetById('newWallPost')?.click());
     feed.querySelectorAll('[data-shadow-story]').forEach(b=>b.addEventListener('click',()=>{const card=feed.querySelector('[data-wall-id="'+CSS.escape(b.dataset.shadowStory)+'"]');card?.scrollIntoView({behavior:'smooth',block:'start'});card?.classList.add('shadow-story-highlight');setTimeout(()=>card?.classList.remove('shadow-story-highlight'),1200);}));
-    document.querySelectorAll('[data-wall-more]').forEach(b=>b.onclick=()=> $('wallOptions-'+b.dataset.wallMore)?.classList.toggle('hidden'));
-    feed.querySelectorAll('[data-wall-options]').forEach(b=>b.onclick=()=>{const box=$('wallOptions-'+b.dataset.wallOptions);if(!box)return;const opening=box.classList.contains('hidden');box.classList.toggle('hidden');b.setAttribute('aria-expanded',String(opening));});
+    document.querySelectorAll('[data-wall-more]').forEach(b=>b.onclick=()=> mcGetById('wallOptions-'+b.dataset.wallMore)?.classList.toggle('hidden'));
+    feed.querySelectorAll('[data-wall-options]').forEach(b=>b.onclick=()=>{const box=mcGetById('wallOptions-'+b.dataset.wallOptions);if(!box)return;const opening=box.classList.contains('hidden');box.classList.toggle('hidden');b.setAttribute('aria-expanded',String(opening));});
     document.querySelectorAll('[data-wall-save]').forEach(b=>b.onclick=async()=>{try{const r=await api('/api/wall/'+encodeURIComponent(b.dataset.wallSave)+'/save',{method:'POST',body:JSON.stringify({})});toast(r.saved?'Post saved.':'Post removed from saved posts.');await loadWall()}catch(e){toast(e.message||'Could not save post.')}});
     document.querySelectorAll('[data-wall-reaction]').forEach(b=>b.onclick=async()=>{try{await api('/api/wall/'+encodeURIComponent(b.dataset.wallId)+'/reaction',{method:'POST',body:JSON.stringify({emoji:b.dataset.wallReaction})});await loadWall()}catch(e){toast(e.message||'Could not send reaction.')}});
     document.querySelectorAll('[data-wall-share]').forEach(b=>b.onclick=async()=>{const id=b.dataset.wallShare;if(wallShowingReels){await sendReelToCurrentRoom(id);return;}const url=location.origin+'/#shadow-post='+encodeURIComponent(id);const title='Shadow Feed · Maleficent Chat';try{if(navigator.share){await navigator.share({title,text:'Check out this post on Maleficent Chat',url});}else if(navigator.clipboard?.writeText){await navigator.clipboard.writeText(url);toast('Post link copied.');}else{const field=document.createElement('textarea');field.value=url;document.body.appendChild(field);field.select();document.execCommand('copy');field.remove();toast('Post link copied.');}}catch(e){if(e?.name!=='AbortError')toast('Could not share this post.');}});
@@ -1978,7 +1978,7 @@ async function loadWall(){
     document.querySelectorAll('[data-wall-report]').forEach(b=>b.onclick=async()=>{try{await api('/api/wall/'+encodeURIComponent(b.dataset.wallReport)+'/report',{method:'POST',body:JSON.stringify({reason:'Reported by community member'})});toast('Wall post reported.')}catch(e){toast(e.message)}});
     document.querySelectorAll('[data-wall-delete]').forEach(b=>b.onclick=async()=>{const id=b.dataset.wallDelete;if(!confirm('Delete this Shadow Feed post?'))return;b.disabled=true;try{await api('/api/wall/'+encodeURIComponent(id),{method:'DELETE'});toast('Shadow Feed post deleted.');await loadWall()}catch(e){toast(e.message||'Could not delete Shadow Feed post.');b.disabled=false}});
     document.querySelectorAll('[data-wall-pin]').forEach(b=>b.onclick=async()=>{try{await api('/api/wall/'+encodeURIComponent(b.dataset.wallPin)+'/pin',{method:'POST'});toast('Post pinned.');await loadWall()}catch(e){toast(e.message)}});
-    document.querySelectorAll('[data-wall-comments]').forEach(b=>b.onclick=async()=>{const id=b.dataset.wallComments,box=$('wallComments-'+id);if(!box)return;box.classList.toggle('hidden');if(!box.classList.contains('hidden'))try{const d=await api('/api/wall/'+encodeURIComponent(id)+'/comments');box.innerHTML=`<div class="wall-comments-header"><strong>Comments</strong><button type="button" class="wall-comments-close" aria-label="Close comments">×</button></div>`+(d.comments||[]).map(v=>{const canDelete=String(v.user_id)===String(state.user?.id)||String(feed.querySelector('[data-wall-id="'+CSS.escape(id)+'"]')?.dataset.wallAuthor||'')===String(state.user?.id);return `<div class="news-comment wall-comment-item" data-wall-comment-id="${esc(v.id)}"><div class="wall-comment-avatar">${v.avatar?`<img src="${esc(v.avatar)}" alt="">`:'👤'}</div><div class="news-comment-main"><div class="news-comment-head"><b>@${esc(v.username||'Member')}</b><small>${esc(v.rank||'Member')}</small></div><div class="news-comment-text">${esc(v.content)}</div><div class="wall-comment-meta">${fmt(v.created_at)}</div></div>${canDelete?`<button type="button" class="wall-comment-delete" data-wall-comment-delete="${esc(v.id)}" aria-label="Delete comment" title="Delete comment">⌫</button>`:''}</div>`}).join('')+`<form class="wall-comment-form news-comment-form"><input placeholder="Add a comment…" maxlength="1000" required><button class="mini">Post</button></form>`;box.querySelector('.wall-comments-close')?.addEventListener('click',()=>box.classList.add('hidden'));box.querySelectorAll('[data-wall-comment-delete]').forEach(del=>del.addEventListener('click',async()=>{if(!confirm('Delete this comment?'))return;del.disabled=true;try{await api('/api/wall/'+encodeURIComponent(id)+'/comments/'+encodeURIComponent(del.dataset.wallCommentDelete),{method:'DELETE'});await loadWall();const post=feed.querySelector('[data-wall-id="'+CSS.escape(id)+'"]');post?.querySelector('[data-wall-comments]')?.click();}catch(err){toast(err.message||'Could not delete comment.');del.disabled=false}}));box.querySelector('form').onsubmit=async e=>{e.preventDefault();const input=e.currentTarget.querySelector('input');try{await api('/api/wall/'+encodeURIComponent(id)+'/comments',{method:'POST',body:JSON.stringify({content:input.value})});await loadWall();$('wallComments-'+id)?.classList.remove('hidden')}catch(err){toast(err.message)}}}catch(e){toast(e.message)}});
+    document.querySelectorAll('[data-wall-comments]').forEach(b=>b.onclick=async()=>{const id=b.dataset.wallComments,box=mcGetById('wallComments-'+id);if(!box)return;box.classList.toggle('hidden');if(!box.classList.contains('hidden'))try{const d=await api('/api/wall/'+encodeURIComponent(id)+'/comments');box.innerHTML=`<div class="wall-comments-header"><strong>Comments</strong><button type="button" class="wall-comments-close" aria-label="Close comments">×</button></div>`+(d.comments||[]).map(v=>{const canDelete=String(v.user_id)===String(state.user?.id)||String(feed.querySelector('[data-wall-id="'+CSS.escape(id)+'"]')?.dataset.wallAuthor||'')===String(state.user?.id);return `<div class="news-comment wall-comment-item" data-wall-comment-id="${esc(v.id)}"><div class="wall-comment-avatar">${v.avatar?`<img src="${esc(v.avatar)}" alt="">`:'👤'}</div><div class="news-comment-main"><div class="news-comment-head"><b>@${esc(v.username||'Member')}</b><small>${esc(v.rank||'Member')}</small></div><div class="news-comment-text">${esc(v.content)}</div><div class="wall-comment-meta">${fmt(v.created_at)}</div></div>${canDelete?`<button type="button" class="wall-comment-delete" data-wall-comment-delete="${esc(v.id)}" aria-label="Delete comment" title="Delete comment">⌫</button>`:''}</div>`}).join('')+`<form class="wall-comment-form news-comment-form"><input placeholder="Add a comment…" maxlength="1000" required><button class="mini">Post</button></form>`;box.querySelector('.wall-comments-close')?.addEventListener('click',()=>box.classList.add('hidden'));box.querySelectorAll('[data-wall-comment-delete]').forEach(del=>del.addEventListener('click',async()=>{if(!confirm('Delete this comment?'))return;del.disabled=true;try{await api('/api/wall/'+encodeURIComponent(id)+'/comments/'+encodeURIComponent(del.dataset.wallCommentDelete),{method:'DELETE'});await loadWall();const post=feed.querySelector('[data-wall-id="'+CSS.escape(id)+'"]');post?.querySelector('[data-wall-comments]')?.click();}catch(err){toast(err.message||'Could not delete comment.');del.disabled=false}}));box.querySelector('form').onsubmit=async e=>{e.preventDefault();const input=e.currentTarget.querySelector('input');try{await api('/api/wall/'+encodeURIComponent(id)+'/comments',{method:'POST',body:JSON.stringify({content:input.value})});await loadWall();mcGetById('wallComments-'+id)?.classList.remove('hidden')}catch(err){toast(err.message)}}}catch(e){toast(e.message)}});
   } catch(e){toast(e.message||'Could not load Shadow Feed.')}
 }
 async function sendReelToCurrentRoom(postId){
@@ -1994,58 +1994,58 @@ async function sendReelToCurrentRoom(postId){
   }catch(error){toast(error.message||"Could not send this Reel to the current room.");}
 }
 function updateWallModeButtons(){
-  const saved=$('wallSavedToggle'),friends=$('wallFriendsToggle'),reels=$('wallReelsToggle');
+  const saved=mcGetById('wallSavedToggle'),friends=mcGetById('wallFriendsToggle'),reels=mcGetById('wallReelsToggle');
   if(saved){saved.textContent=wallShowingSaved?'← Community feed':'🔖 Saved posts';saved.setAttribute('aria-pressed',String(wallShowingSaved));}
   if(friends){friends.textContent=wallShowingFriends?'✓ Friends activity':'💜 Friends activity';friends.setAttribute('aria-pressed',String(wallShowingFriends));}
   if(reels){reels.textContent=wallShowingReels?'✓ Reels':'🎬 Reels';reels.setAttribute('aria-pressed',String(wallShowingReels));}
 }
-$('wallSavedToggle')?.addEventListener('click',async()=>{wallShowingSaved=!wallShowingSaved;if(wallShowingSaved){wallShowingFriends=false;wallShowingReels=false;}updateWallModeButtons();await loadWall();});
-$('wallFriendsToggle')?.addEventListener('click',async()=>{wallShowingFriends=!wallShowingFriends;if(wallShowingFriends){wallShowingSaved=false;wallShowingReels=false;}updateWallModeButtons();await loadWall();});
-$('wallReelsToggle')?.addEventListener('click',async()=>{wallShowingReels=!wallShowingReels;if(wallShowingReels){wallShowingSaved=false;wallShowingFriends=false;}updateWallModeButtons();await loadWall();});
-$('newWallReel')?.addEventListener('click',()=>{
+mcGetById('wallSavedToggle')?.addEventListener('click',async()=>{wallShowingSaved=!wallShowingSaved;if(wallShowingSaved){wallShowingFriends=false;wallShowingReels=false;}updateWallModeButtons();await loadWall();});
+mcGetById('wallFriendsToggle')?.addEventListener('click',async()=>{wallShowingFriends=!wallShowingFriends;if(wallShowingFriends){wallShowingSaved=false;wallShowingReels=false;}updateWallModeButtons();await loadWall();});
+mcGetById('wallReelsToggle')?.addEventListener('click',async()=>{wallShowingReels=!wallShowingReels;if(wallShowingReels){wallShowingSaved=false;wallShowingFriends=false;}updateWallModeButtons();await loadWall();});
+mcGetById('newWallReel')?.addEventListener('click',()=>{
   modal('<div class="new-reel-modal"><h2>🎬 Create a Shadow Reel</h2><p class="muted">Share a vertical video with the community. Your Reel will also appear in the Reels tab.</p><textarea id="wallReelCaption" maxlength="1000" placeholder="Write a caption…"></textarea><label class="stack">Choose video<input id="wallReelFile" type="file" accept="video/mp4,video/webm,video/ogg"></label><small class="muted">MP4, WebM or OGG · maximum upload size 15 MB</small><div id="wallReelPreview" class="media-preview"></div><label class="stack">Who can see this Reel?<select id="wallReelAudience"><option value="friends">All accepted friends</option><option value="close_friends">💚 Close Friends only</option></select></label><label class="stack">Reel duration<select id="wallReelExpiry"><option value="0">Keep on Shadow Feed</option><option value="24">Disappear after 24 hours</option><option value="72">Disappear after 3 days</option><option value="168">Disappear after 7 days</option></select></label><button class="primary" id="wallReelPublish" type="button">Upload & Publish Reel</button></div>');
-  $('wallReelFile')?.addEventListener('change',()=>{const file=$('wallReelFile').files?.[0],preview=$('wallReelPreview');if(!preview)return;if(!file){preview.innerHTML='';return;}if(!file.type.startsWith('video/')){preview.innerHTML='<p class="error">Choose a video file.</p>';return;}const url=URL.createObjectURL(file);preview.innerHTML='<video class="shadow-reel-video" controls playsinline src="'+esc(url)+'"></video>';});
-  $('wallReelPublish')?.addEventListener('click',async buttonEvent=>{const button=$('wallReelPublish'),file=$('wallReelFile')?.files?.[0];if(!file){toast('Choose a video before publishing.');return;}if(!file.type.startsWith('video/')){toast('Choose a supported video file.');return;}if(file.size>15*1024*1024){toast('Reels must be 15 MB or smaller.');return;}button.disabled=true;button.textContent='Uploading…';try{const form=new FormData();form.append('content',$('wallReelCaption')?.value||'');form.append('expiresInHours',$('wallReelExpiry')?.value||'0');form.append('audience',$('wallReelAudience')?.value||'friends');form.append('file',file);const data=await api('/api/wall/post',{method:'POST',body:form,uploadProgress:true});closeModal();wallShowingReels=true;wallShowingSaved=false;wallShowingFriends=false;updateWallModeButtons();await loadWall();toast('Your Reel is live on Shadow Feed! 🎬');}catch(error){toast(error.message||'Could not publish Reel.');button.disabled=false;button.textContent='Upload & Publish Reel';}});
+  mcGetById('wallReelFile')?.addEventListener('change',()=>{const file=mcGetById('wallReelFile').files?.[0],preview=mcGetById('wallReelPreview');if(!preview)return;if(!file){preview.innerHTML='';return;}if(!file.type.startsWith('video/')){preview.innerHTML='<p class="error">Choose a video file.</p>';return;}const url=URL.createObjectURL(file);preview.innerHTML='<video class="shadow-reel-video" controls playsinline src="'+esc(url)+'"></video>';});
+  mcGetById('wallReelPublish')?.addEventListener('click',async buttonEvent=>{const button=mcGetById('wallReelPublish'),file=mcGetById('wallReelFile')?.files?.[0];if(!file){toast('Choose a video before publishing.');return;}if(!file.type.startsWith('video/')){toast('Choose a supported video file.');return;}if(file.size>15*1024*1024){toast('Reels must be 15 MB or smaller.');return;}button.disabled=true;button.textContent='Uploading…';try{const form=new FormData();form.append('content',mcGetById('wallReelCaption')?.value||'');form.append('expiresInHours',mcGetById('wallReelExpiry')?.value||'0');form.append('audience',mcGetById('wallReelAudience')?.value||'friends');form.append('file',file);const data=await api('/api/wall/post',{method:'POST',body:form,uploadProgress:true});closeModal();wallShowingReels=true;wallShowingSaved=false;wallShowingFriends=false;updateWallModeButtons();await loadWall();toast('Your Reel is live on Shadow Feed! 🎬');}catch(error){toast(error.message||'Could not publish Reel.');button.disabled=false;button.textContent='Upload & Publish Reel';}});
 });
 async function openCloseFriendsManager(){
   try{
     const data=await api('/api/close-friends');
     const friends=data.friends||[];
     modal(`<div class="close-friends-manager"><h2>💚 Close Friends</h2><p class="muted">Choose the accepted friends who can see posts marked “Close Friends only”. You can change this list any time.</p><div class="close-friends-list">${friends.map(friend=>`<label class="close-friend-option"><input type="checkbox" value="${esc(friend.id)}" ${friend.isCloseFriend?'checked':''}><span class="close-friend-avatar">${friend.avatar?`<img src="${esc(friend.avatar)}" alt="">`:'👤'}</span><span><b>${esc(friend.username||'Member')}</b><small>${esc(friend.rank||'Member')}</small></span></label>`).join('')||'<p class="muted">You do not have any accepted friends yet. Accept a friend request first.</p>'}</div><div class="toolbar"><button class="mini" type="button" id="closeFriendsCancel">Cancel</button><button class="primary" type="button" id="closeFriendsSave" ${friends.length?'':'disabled'}>Save Close Friends</button></div></div>`);
-    $('closeFriendsCancel')?.addEventListener('click',closeModal);
-    $('closeFriendsSave')?.addEventListener('click',async()=>{
+    mcGetById('closeFriendsCancel')?.addEventListener('click',closeModal);
+    mcGetById('closeFriendsSave')?.addEventListener('click',async()=>{
       const friendIds=[...document.querySelectorAll('.close-friend-option input:checked')].map(input=>Number(input.value));
-      const button=$('closeFriendsSave');button.disabled=true;button.textContent='Saving…';
+      const button=mcGetById('closeFriendsSave');button.disabled=true;button.textContent='Saving…';
       try{await api('/api/close-friends',{method:'PUT',body:JSON.stringify({friendIds})});closeModal();toast('Close Friends list updated.');}
       catch(error){toast(error.message||'Could not save Close Friends.');button.disabled=false;button.textContent='Save Close Friends';}
     });
   }catch(error){toast(error.message||'Could not load your accepted friends.');}
 }
-$('manageCloseFriends')?.addEventListener('click',openCloseFriendsManager);
+mcGetById('manageCloseFriends')?.addEventListener('click',openCloseFriendsManager);
 
-if($('newWallAdd'))$('newWallAdd').addEventListener('click',()=>{modal('<div class="shadow-add-picker"><h2>＋ Add to Shadow</h2><p class="muted">What would you like to share?</p><div class="shadow-add-options"><button type="button" class="primary" id="shadowAddPost">✍️ Shadow Post</button><button type="button" class="primary" id="shadowAddReel">🎬 Shadow Reel</button></div></div>');$('shadowAddPost')?.addEventListener('click',()=>$('newWallPost')?.click());$('shadowAddReel')?.addEventListener('click',()=>$('newWallReel')?.click());});
-if($('newWallPost'))$('newWallPost').onclick=async()=>{
+if(mcGetById('newWallAdd'))mcGetById('newWallAdd').addEventListener('click',()=>{modal('<div class="shadow-add-picker"><h2>＋ Add to Shadow</h2><p class="muted">What would you like to share?</p><div class="shadow-add-options"><button type="button" class="primary" id="shadowAddPost">✍️ Shadow Post</button><button type="button" class="primary" id="shadowAddReel">🎬 Shadow Reel</button></div></div>');mcGetById('shadowAddPost')?.addEventListener('click',()=>mcGetById('newWallPost')?.click());mcGetById('shadowAddReel')?.addEventListener('click',()=>mcGetById('newWallReel')?.click());});
+if(mcGetById('newWallPost'))mcGetById('newWallPost').onclick=async()=>{
   modal(`<h2>New Shadow Feed Post</h2><textarea id="wallPostText" maxlength="5000" placeholder="Share something with the community…"></textarea><label class="stack">Who can see this post?<select id="wallPostAudience"><option value="friends">All accepted friends</option><option value="close_friends">💚 Close Friends only</option></select></label><label class="stack">Post duration<select id="wallPostExpiry"><option value="0">Keep on Shadow Feed</option><option value="1">Disappear after 1 hour</option><option value="6">Disappear after 6 hours</option><option value="24">Disappear after 24 hours</option><option value="72">Disappear after 3 days</option><option value="168">Disappear after 7 days</option></select></label><input id="wallPostFile" type="file" accept="image/*,video/*"><div id="wallPreview" class="media-preview"></div><button class="primary" id="wallPostSend">Upload & Publish</button>`);
-  $('wallPostFile')?.addEventListener('change',()=>{const f=$('wallPostFile').files?.[0],box=$('wallPreview');if(!f){box.innerHTML='';return}const u=URL.createObjectURL(f);box.innerHTML=f.type.startsWith('video/')?`<video controls src="${u}"></video>`:`<img src="${u}">`;});
-  $('wallPostSend').onclick=async()=>{try{const fd=new FormData();fd.append('content',$('wallPostText').value);fd.append('expiresInHours',$('wallPostExpiry')?.value||'0');fd.append('audience',$('wallPostAudience')?.value||'friends');const f=$('wallPostFile').files?.[0];if(f)fd.append('file',f);await api('/api/wall/post',{method:'POST',body:fd,uploadProgress:true});closeModal();loadWall()}catch(e){toast(e.message)}};
+  mcGetById('wallPostFile')?.addEventListener('change',()=>{const f=mcGetById('wallPostFile').files?.[0],box=mcGetById('wallPreview');if(!f){box.innerHTML='';return}const u=URL.createObjectURL(f);box.innerHTML=f.type.startsWith('video/')?`<video controls src="${u}"></video>`:`<img src="${u}">`;});
+  mcGetById('wallPostSend').onclick=async()=>{try{const fd=new FormData();fd.append('content',mcGetById('wallPostText').value);fd.append('expiresInHours',mcGetById('wallPostExpiry')?.value||'0');fd.append('audience',mcGetById('wallPostAudience')?.value||'friends');const f=mcGetById('wallPostFile').files?.[0];if(f)fd.append('file',f);await api('/api/wall/post',{method:'POST',body:fd,uploadProgress:true});closeModal();loadWall()}catch(e){toast(e.message)}};
 };
 
 async function loadRankShop(){
-  const d=await api('/api/shop'); const c=$('rankShop'); if(!c)return;
+  const d=await api('/api/shop'); const c=mcGetById('rankShop'); if(!c)return;
   const rank=String(state.user?.rank||'').toUpperCase();
   const canBuyVip=rank==='MEMBER';
   const canBuyPremium=!['PREMIUM','MOD','MODERATOR','ADMIN','SUPER_ADMIN','SUPERADMIN','COMMISSOR','INSTRUCTOR','COOWNER','OWNER','DEVELOPER'].includes(rank);
   c.innerHTML=`<div class="panel shop-item"><div class="shop-icon">🏅</div><h3>Premium — $6 lifetime</h3><p>Request Premium from the owner, or unlock it instantly for 50,000 Diamonds.</p>${canBuyPremium?'<button class="primary" id="requestPremium">Request Premium — $6</button>':'<p class="muted">Premium purchase is unavailable for your current rank.</p>'}${canBuyPremium?'<button class="mini" id="buyPremiumDiamonds" style="margin-top:8px">💎 Buy with 50,000 Diamonds</button>':'<p class="muted">Premium purchase is unavailable for your current rank.</p>'}</div>${canBuyVip?d.vip.map(v=>`<div class="panel shop-item"><div class="shop-icon">💎</div><h3>VIP — ${v.label}</h3><p>${v.price} gold</p><button class="mini" data-vip-plan="${v.label.includes('7')?'7':v.label.includes('month')&&v.label.includes('3')?'90':v.label.includes('year')?'365':'30'}">${v.price} gold</button></div>`).join(''):'<div class="panel shop-item"><div class="shop-icon">💎</div><h3>VIP</h3><p>Higher ranks cannot buy VIP</p></div>'}`;
-  const requestPremiumButton=$('requestPremium');if(requestPremiumButton)requestPremiumButton.onclick=async()=>{try{await api('/api/shop/premium/request',{method:'POST'});toast('Premium request sent to owner.')}catch(e){toast(e.message)}};
-  const diamondPremiumButton=$('buyPremiumDiamonds'); if(diamondPremiumButton)diamondPremiumButton.onclick=async()=>{if(!confirm('Spend 50,000 Diamonds to activate lifetime Premium?'))return;diamondPremiumButton.disabled=true;try{const result=await api('/api/shop/premium/buy-diamonds',{method:'POST'});state.user.rank='PREMIUM';state.user.is_premium=true;state.user.isPremium=true;state.user.diamonds=Number(result.diamonds);toast('Premium activated! 50,000 Diamonds spent.');updateNav();await loadRankShop();}catch(e){toast(e.message);diamondPremiumButton.disabled=false;}};
+  const requestPremiumButton=mcGetById('requestPremium');if(requestPremiumButton)requestPremiumButton.onclick=async()=>{try{await api('/api/shop/premium/request',{method:'POST'});toast('Premium request sent to owner.')}catch(e){toast(e.message)}};
+  const diamondPremiumButton=mcGetById('buyPremiumDiamonds'); if(diamondPremiumButton)diamondPremiumButton.onclick=async()=>{if(!confirm('Spend 50,000 Diamonds to activate lifetime Premium?'))return;diamondPremiumButton.disabled=true;try{const result=await api('/api/shop/premium/buy-diamonds',{method:'POST'});state.user.rank='PREMIUM';state.user.is_premium=true;state.user.isPremium=true;state.user.diamonds=Number(result.diamonds);toast('Premium activated! 50,000 Diamonds spent.');updateNav();await loadRankShop();}catch(e){toast(e.message);diamondPremiumButton.disabled=false;}};
   document.querySelectorAll('[data-vip-plan]').forEach(b=>b.onclick=async()=>{try{const d=await api('/api/shop/vip',{method:'POST',body:JSON.stringify({plan:b.dataset.vipPlan})});state.user.gold=d.gold;toast('VIP activated.');updateNav();loadRankShop()}catch(e){toast(e.message)}});
 }
 
 async function loadGoldEconomy(){
-  const root=$('goldEconomyRoot'); if(!root)return;
+  const root=mcGetById('goldEconomyRoot'); if(!root)return;
   try{
     const data=await api('/api/economy/catalog');
-    const balance=$('economyGoldBalance'); if(balance)balance.textContent=Number(data.gold||0).toLocaleString();
+    const balance=mcGetById('economyGoldBalance'); if(balance)balance.textContent=Number(data.gold||0).toLocaleString();
     const inventoryIds=new Set((data.inventory||[]).map(x=>x.id));
     const categoryLabel={frame:'Profile Frames',theme:'Profile Themes',badge:'Collectible Badges'};
     const items=(data.items||[]).map(item=>{
@@ -2066,7 +2066,7 @@ async function loadGoldEconomy(){
       try{const result=await api('/api/economy/equip',{method:'POST',body:JSON.stringify({itemId:button.dataset.equipCosmetic})});if(state.user)state.user.equippedCosmetics=result.equippedCosmetics||[];toast('Cosmetic equipped.');await loadGoldEconomy();if(state.view==='profile')await loadProfile(state.user);}
       catch(error){toast(error.message);button.disabled=false;}
     }));
-  }catch(error){root.innerHTML=`<p class="muted">Could not load the Gold Boutique: ${esc(error.message)}</p><button class="mini" id="retryGoldEconomy">Retry</button>`;$('retryGoldEconomy')?.addEventListener('click',loadGoldEconomy);}
+  }catch(error){root.innerHTML=`<p class="muted">Could not load the Gold Boutique: ${esc(error.message)}</p><button class="mini" id="retryGoldEconomy">Retry</button>`;mcGetById('retryGoldEconomy')?.addEventListener('click',loadGoldEconomy);}
 }
 
 async function claimDailyReward(){try{const r=await api("/api/daily/claim",{method:"POST"});state.user.gold=r.gold;state.user.xp=r.xp;state.user.diamonds=r.diamonds;updateNav();const b=document.querySelector("[data-daily-reward]");if(b){b.disabled=true;b.querySelector("small").textContent="Already claimed today";}toast("🎁 Daily reward: +"+r.diamondAmount+" Diamonds, +"+r.amount+" Gold, +"+r.xpAmount+" XP · Streak "+r.streak);return r;}catch(e){toast(e.message);return null;}}
@@ -2094,7 +2094,7 @@ async function openGifPicker(){
   let hasMore=false;
   const initialCost=Number(state.gifCost||10);
   modal(`<div class="gif-picker"><h2>GIFs · 🪙 ${initialCost} gold each</h2><input id="gifSearch" placeholder="Search GIFs…" autocomplete="off" aria-label="Search GIFs"><div id="gifRecent" class="gif-recent"></div><div id="gifSelected" class="gif-selected hidden"></div><div id="gifResults" class="gif-results" aria-live="polite"><p class="muted">Loading GIFs…</p></div><div class="gif-more-wrap"><button type="button" id="gifLoadMore" class="mini hidden">Load more GIFs</button></div><p id="gifBalance" class="muted">Your balance: 🪙 ${Number(state.user?.gold||0)}</p></div>`);
-  const input=$("gifSearch"), results=$("gifResults"), recentBox=$("gifRecent"), selectedBox=$("gifSelected"), moreButton=$("gifLoadMore");
+  const input=mcGetById("gifSearch"), results=mcGetById("gifResults"), recentBox=mcGetById("gifRecent"), selectedBox=mcGetById("gifSelected"), moreButton=mcGetById("gifLoadMore");
   if(!input||!results||!selectedBox||!moreButton)return;
   const renderRecent=()=>{
     const items=getRecentGifSearches();
@@ -2105,12 +2105,12 @@ async function openGifPicker(){
     if(!selectedGif||sending)return;
     if(String(state.currentRoom)!==roomIdAtOpen){toast("Your room changed. Reopen the GIF picker in the room you want.");return;}
     sending=true;
-    const sendButton=$("gifSendSelected");
+    const sendButton=mcGetById("gifSendSelected");
     if(sendButton){sendButton.disabled=true;sendButton.textContent="Sending…";}
     try{
       const r=await api(`/api/rooms/${encodeURIComponent(roomIdAtOpen)}/gif`,{method:"POST",body:JSON.stringify({url:selectedGif.url})});
       if(state.user&&r.gold!==undefined){state.user.gold=r.gold;updateNav();}
-      const balance=$("gifBalance");
+      const balance=mcGetById("gifBalance");
       if(balance)balance.textContent=`Your balance: 🪙 ${Number(state.user?.gold||0)}`;
       if(r.message&&String(state.currentRoom)===String(r.message.roomId))appendMessage(r.message);
       closeModal();
@@ -2127,7 +2127,7 @@ async function openGifPicker(){
     moreButton.classList.add("hidden");
     try{
       const d=await api('/api/gifs/search?q='+encodeURIComponent(term)+'&offset='+String(offset));
-      if(version!==searchVersion||!$("gifResults"))return;
+      if(version!==searchVersion||!mcGetById("gifResults"))return;
       state.gifCost=Number(d.cost??state.gifCost??10);
       const heading=document.querySelector(".gif-picker h2");
       if(heading)heading.textContent=`GIFs · 🪙 ${state.gifCost} gold each`;
@@ -2141,9 +2141,9 @@ async function openGifPicker(){
       if(term)saveRecentGifSearch(term);
       renderRecent();
     }catch(e){
-      if(version!==searchVersion||!$("gifResults"))return;
+      if(version!==searchVersion||!mcGetById("gifResults"))return;
       if(!append)results.innerHTML=`<p class="muted">Could not load GIFs: ${esc(e.message||"Please try again.")}</p><button type="button" id="gifRetry" class="mini">Retry</button>`;
-      $("gifRetry")?.addEventListener("click",()=>search(0,false),{once:true});
+      mcGetById("gifRetry")?.addEventListener("click",()=>search(0,false),{once:true});
     }
   };
   input.addEventListener("input",()=>{
@@ -2163,7 +2163,7 @@ async function openGifPicker(){
     selectedBox.innerHTML=`<img src="${esc(selectedGif.preview)}" alt="" loading="lazy"><div class="gif-selected-copy"><strong>${esc(selectedGif.title)}</strong><span>Preview selected GIF before sending</span><button type="button" id="gifSendSelected" class="mini">Send GIF · 🪙 ${state.gifCost}</button></div>`;
     selectedBox.classList.remove("hidden");
     results.querySelectorAll(".gif-choice").forEach(choice=>choice.classList.toggle("selected",choice===button));
-    $("gifSendSelected")?.addEventListener("click",sendSelected);
+    mcGetById("gifSendSelected")?.addEventListener("click",sendSelected);
   });
   moreButton.addEventListener("click",()=>{if(!sending&&hasMore)search(nextOffset,true,input.value.trim());});
   renderRecent();
@@ -2208,7 +2208,7 @@ function roomForAgeRouting() {
   return room;
 }
 async function goToMainRoomFromRoomRefresh() {
-  const button = $("refreshRoomsBtn");
+  const button = mcGetById("refreshRoomsBtn");
   if (button) button.disabled = true;
   try {
     await loadRooms();
@@ -2295,21 +2295,21 @@ function sortRoomsForNavigation(input){
 function isParallelSplitRoom(room){return !!(room&&(room.splitParentId!=null||String(room.category||"").toLowerCase()==="parallel"||String(room.name||"").trim().startsWith("⧉")));}
 
 function renderRooms() {
-  const search=(($('roomSearch')?.value)||'').trim().toLowerCase();
+  const search=((mcGetById('roomSearch')?.value)||'').trim().toLowerCase();
   const visited=joinedRoomIds();
   const normalizedRoomRank=String(state.user?.rank||"").toUpperCase().replace(/[\s_-]/g,"");
   const canManagePins=["COOWNER","OWNER","DEVELOPER"].includes(normalizedRoomRank);
   const allRooms=sortRoomsForNavigation((Array.isArray(state.rooms)?state.rooms:[]).filter(room=>!isParallelSplitRoom(room)));
   const canViewHiddenRooms=["OWNER","DEVELOPER"].includes(String(state.user?.rank||"").toUpperCase());
   const hiddenRooms=allRooms.filter(room=>room.public===false);
-  const hiddenToggle=$("hiddenRoomsToggle");
+  const hiddenToggle=mcGetById("hiddenRoomsToggle");
   if(hiddenToggle){
     hiddenToggle.classList.remove("hidden");
     hiddenToggle.textContent=canViewHiddenRooms
       ?(state.showHiddenRoomsOnly?"← All rooms · "+hiddenRooms.length+" hidden":"🔒 Hidden rooms · "+hiddenRooms.length)
       :"♛ Secret rooms";
     hiddenToggle.setAttribute("aria-pressed",canViewHiddenRooms&&state.showHiddenRoomsOnly?"true":"false");
-    hiddenToggle.setAttribute("aria-expanded",!canViewHiddenRooms&&!$("mcRoomAccess")?.classList.contains("hidden")?"true":"false");
+    hiddenToggle.setAttribute("aria-expanded",!canViewHiddenRooms&&!mcGetById("mcRoomAccess")?.classList.contains("hidden")?"true":"false");
   }
   const baseRooms=allRooms.filter(room=>{
     if(canViewHiddenRooms&&state.showHiddenRoomsOnly&&room.public!==false)return false;
@@ -2345,20 +2345,20 @@ function renderRooms() {
         </div>`:""}
       </article>`;
   };
-  const pinnedRoot=$("pinnedRooms");
+  const pinnedRoot=mcGetById("pinnedRooms");
   if(pinnedRoot)pinnedRoot.innerHTML=pinned.map(renderCard).join("");
-  const pinnedSection=$("roomsPinnedSection");
+  const pinnedSection=mcGetById("roomsPinnedSection");
   if(pinnedSection)pinnedSection.classList.toggle("hidden",pinned.length===0);
-  const pinnedCount=$("pinnedRoomCount");
+  const pinnedCount=mcGetById("pinnedRoomCount");
   if(pinnedCount)pinnedCount.textContent=pinned.length+" "+(pinned.length===1?"room":"rooms");
-  const roomsRoot=$("rooms");
+  const roomsRoot=mcGetById("rooms");
   if(roomsRoot)roomsRoot.innerHTML=directory.map(renderCard).join("")||(
     search?'<div class="room-empty"><b>No matching rooms</b><span>Try a different search.</span></div>':
     filter==="mine"?'<div class="room-empty"><b>No rooms in My rooms yet</b><span>Join a room to keep it in this list.</span></div>':
     filter==="active"?'<div class="room-empty"><b>No active rooms right now</b><span>Check All rooms to discover a conversation.</span></div>':
     '<div class="room-empty"><b>No other rooms available</b><span>New community rooms will appear here.</span></div>'
   );
-  const allCount=$("allRoomCount");
+  const allCount=mcGetById("allRoomCount");
   if(allCount)allCount.textContent=directory.length+" "+(directory.length===1?"room":"rooms");
   document.querySelectorAll("[data-room-filter]").forEach(button=>{
     const active=button.dataset.roomFilter===filter;
@@ -2373,7 +2373,7 @@ window.setDiscoverRoomFilter=function(mode){
 };
 
 window.refreshDiscoverRooms=async function(){
-  const button=$("mcRoomRefresh");
+  const button=mcGetById("mcRoomRefresh");
   if(button?.disabled)return;
   const currentFilter=state.roomListMode||"all";
   if(button){button.disabled=true;button.classList.add("is-refreshing");button.setAttribute("aria-busy","true");}
@@ -2393,7 +2393,7 @@ window.__mcRoomJoinTokens=window.__mcRoomJoinTokens||{};
 let lastResolvedRoomCode="";
 async function resolveSecretRoomCode(rawValue){
   const digits=String(rawValue||"").replace(/\D/g,"");
-  const feedback=$("roomCodeFeedback");
+  const feedback=mcGetById("roomCodeFeedback");
   if(digits.length!==10||digits===lastResolvedRoomCode)return;
   lastResolvedRoomCode=digits;
   if(feedback)feedback.textContent="Checking room code…";
@@ -2403,7 +2403,7 @@ async function resolveSecretRoomCode(rawValue){
     const room={...result.room};
     window.__mcRoomJoinTokens[String(room.id)]=String(result.joinToken);
     state.rooms=[...(state.rooms||[]).filter(item=>String(item.id)!==String(room.id)),room];
-    if($("roomSearch"))$("roomSearch").value="";
+    if(mcGetById("roomSearch"))mcGetById("roomSearch").value="";
     if(feedback)feedback.textContent="Found: "+String(room.name||"Secret room")+" · shown below";
     renderRooms();
     toast("Room found. Tap it in the room list to enter.");
@@ -2416,7 +2416,7 @@ async function resolveSecretRoomCode(rawValue){
 function handleRoomCodeInput(input){
   const digits=String(input.value||"").replace(/\D/g,"").slice(0,10);
   input.value=digits.length>5?digits.slice(0,5)+" "+digits.slice(5):digits;
-  const feedback=$("roomCodeFeedback");
+  const feedback=mcGetById("roomCodeFeedback");
   if(feedback)feedback.textContent=digits.length===10?"Checking code…":"Enter the 10-digit room code";
   if(digits.length<10)lastResolvedRoomCode="";
   if(digits.length===10)resolveSecretRoomCode(digits);
@@ -2425,28 +2425,28 @@ function handleRoomCodeInput(input){
 function toggleHiddenRoomsView(){
   if(!["OWNER","DEVELOPER"].includes(String(state.user?.rank||"").toUpperCase()))return;
   state.showHiddenRoomsOnly=!state.showHiddenRoomsOnly;
-  if($("roomSearch"))$("roomSearch").value="";
+  if(mcGetById("roomSearch"))mcGetById("roomSearch").value="";
   renderRooms();
 }
 function toggleRoomAccess(){
   const isPrivileged=["OWNER","DEVELOPER"].includes(String(state.user?.rank||"").toUpperCase());
   if(isPrivileged){toggleHiddenRoomsView();return;}
-  const panel=$("mcRoomAccess");
-  const button=$("hiddenRoomsToggle");
+  const panel=mcGetById("mcRoomAccess");
+  const button=mcGetById("hiddenRoomsToggle");
   if(!panel)return;
   panel.classList.toggle("hidden");
   if(button){
     const expanded=!panel.classList.contains("hidden");
     button.setAttribute("aria-expanded",expanded?"true":"false");
     button.setAttribute("aria-pressed",expanded?"true":"false");
-    if(expanded) $("roomCodeSearch")?.focus();
+    if(expanded) mcGetById("roomCodeSearch")?.focus();
   }
 }
 window.toggleHiddenRoomsView=toggleHiddenRoomsView;
 window.toggleRoomAccess=toggleRoomAccess;
 
 function renderRoomQuickNav() {
-  const nav = $('roomQuickNav');
+  const nav = mcGetById('roomQuickNav');
   if (!nav) return;
   const rooms = sortRoomsForNavigation((Array.isArray(state.rooms) ? state.rooms : []).filter(room=>!isParallelSplitRoom(room)));
   if (!rooms.length) {
@@ -2470,21 +2470,21 @@ async function deleteRoomById(id){
     if(state.currentRoom===id){
       if(state.socket)state.socket.emit("leave-room",id);
       state.currentRoom=null;
-      $("viewRooms")?.classList.remove("chatting");
-      $("chatWrap").classList.add("hidden");
+      mcGetById("viewRooms")?.classList.remove("chatting");
+      mcGetById("chatWrap").classList.add("hidden");
     }
     await loadRooms(); renderRooms(); toast("Room deleted.");
   }catch(e){toast(e.message)}
 }
 
-$("roomSearch").oninput = renderRooms;
-$("roomCodeSearch")?.addEventListener("input",event=>handleRoomCodeInput(event.currentTarget));
+mcGetById("roomSearch").oninput = renderRooms;
+mcGetById("roomCodeSearch")?.addEventListener("input",event=>handleRoomCodeInput(event.currentTarget));
 
 async function loadRoomAnnouncements(roomId){
   try{
     const r=await api(`/api/rooms/${encodeURIComponent(roomId)}/announcements`);
     const items=r.announcements||[];
-    const el=$("announcement");
+    const el=mcGetById("announcement");
     if(!items.length){el.classList.add("hidden");el.replaceChildren();return;}
     el.classList.remove("hidden");
     const canDelete=can("COMMISSOR");
@@ -2570,18 +2570,18 @@ async function joinRoom(id, options = {}) {
       if(!socketJoined)console.warn("Room socket subscription was not confirmed; reconnect recovery will retry.");
     }
 
-    $("chatWrap").classList.remove("hidden");
-    $("viewRooms").classList.add("chatting");
-    $("viewRooms").classList.toggle("main-room-chat",!!(room.isDefault||/^(main room|teen chat)$/i.test(String(room.name||"").trim())));
+    mcGetById("chatWrap").classList.remove("hidden");
+    mcGetById("viewRooms").classList.add("chatting");
+    mcGetById("viewRooms").classList.toggle("main-room-chat",!!(room.isDefault||/^(main room|teen chat)$/i.test(String(room.name||"").trim())));
 
-    $("roomName").textContent =
+    mcGetById("roomName").textContent =
       `${room.icon || "💬"} ${room.name}`;
 
-    $("roomDesc").textContent =
+    mcGetById("roomDesc").textContent =
       room.description || "";
 
-    $("announcement").textContent = room.announcement || "";
-    $("announcement").classList.toggle("hidden", !room.announcement);
+    mcGetById("announcement").textContent = room.announcement || "";
+    mcGetById("announcement").classList.toggle("hidden", !room.announcement);
     await loadRoomAnnouncements(id);
 
    const data =
@@ -2589,13 +2589,13 @@ async function joinRoom(id, options = {}) {
 
 state.messages = data.messages || [];
 
-$("messages").innerHTML =
+mcGetById("messages").innerHTML =
   state.messages
     .map(messageHTML)
     .join("");
 
-    $("messages").scrollTop =
-      $("messages").scrollHeight;
+    mcGetById("messages").scrollTop =
+      mcGetById("messages").scrollHeight;
 
     renderOnline();
     renderRooms();
@@ -2664,8 +2664,8 @@ async function renderOnline(tab=onlinePanelTab,searchQuery=""){
     else list.sort((a,b)=>(Number(b.online)-Number(a.online))||((rankOrder[b.rank]??-1)-(rankOrder[a.rank]??-1))||a.username.localeCompare(b.username));
 
     const count=online.length;
-    $("onlinePanelTitle").innerHTML=`${esc(title)} <span class="online-badge">${count}</span>`;
-    $("onlineUsers").innerHTML=`<div class="online-user-grid">${list.map(user=>`
+    mcGetById("onlinePanelTitle").innerHTML=`${esc(title)} <span class="online-badge">${count}</span>`;
+    mcGetById("onlineUsers").innerHTML=`<div class="online-user-grid">${list.map(user=>`
       <div class="online-user ${String(user.id)===String(state.user?.id)?"is-current-user ":""}${user.online?'is-online':'is-offline'}" onclick="openQuickUserCard('${esc(user.id)}')">
         ${avatar(user)}${String(user.id)===String(state.user?.id) ? '<button type="button" class="my-status-toggle" id="myStatusToggle" aria-haspopup="true" aria-expanded="false" onclick="toggleMyStatusMenu(event)"><span id="myStatusGlyph">⚙</span><b id="myStatusLabel">Online</b><span>⌄</span></button><div class="my-status-options hidden" id="myStatusOptions" role="menu" onclick="event.stopPropagation()"></div>' : '<span class="user-mood-indicator" title="'+esc(user.mood||user.customStatus|| (user.online?'Online':'Away'))+'">'+(user.mood?moodEmoji(user.mood):statusEmoji(user.customStatus|| (user.online?'Online':'Away')))+'</span>'}
         <div class="online-user-copy">
@@ -2678,8 +2678,8 @@ async function renderOnline(tab=onlinePanelTab,searchQuery=""){
         
       </div>
     `).join("") || `<div class="online-empty"><div>${tab==="staff"?"🛡️":tab==="friends"?"💜":"👥"}</div><b>No users here</b><span>Try another tab.</span></div>`}</div>`;
-    const sortSelect=$("onlineSortMode");if(sortSelect){sortSelect.value=onlineSortMode;sortSelect.onchange=()=>{onlineSortMode=sortSelect.value;renderOnline(onlinePanelTab);};}
-    const statusToggle=$("myStatusToggle"),statusOptions=$("myStatusOptions");
+    const sortSelect=mcGetById("onlineSortMode");if(sortSelect){sortSelect.value=onlineSortMode;sortSelect.onchange=()=>{onlineSortMode=sortSelect.value;renderOnline(onlinePanelTab);};}
+    const statusToggle=mcGetById("myStatusToggle"),statusOptions=mcGetById("myStatusOptions");
     const statusChoices=[["Online","🟢"],["Away","🕒"],["Busy","⛔"],["Working","⚙️"],["Happy","😊"],["Sad","😔"],["Angry","🔥"],["Listening to music","🎧"],["Birthday","🎂"],["Friendly","💬"],["Watching video","▶️"],["Eating","🍜"],["Gaming","🎮"]];
     if(statusToggle&&statusOptions){
       const current=state.user?.customStatus||"Online";statusToggle.querySelector("#myStatusGlyph").textContent=statusEmoji(current);statusToggle.querySelector("#myStatusLabel").textContent=current;
@@ -2690,7 +2690,7 @@ async function renderOnline(tab=onlinePanelTab,searchQuery=""){
       statusOptions.setAttribute("aria-label","Choose your status");
     }
 
-    $("onlineCount").textContent=`${count} online`;
+    mcGetById("onlineCount").textContent=`${count} online`;
     document.querySelectorAll("#onlineTabs [data-online-tab]").forEach(b=>b.classList.toggle("active",b.dataset.onlineTab===onlinePanelTab));
   }catch{}
 }
@@ -2712,12 +2712,12 @@ function returnToMainRoomAfterPanelClose(){
     if(view.id==="viewRooms")view.classList.remove("hidden");
     else view.classList.add("hidden");
   });
-  $("chatWrap")?.classList.remove("hidden");
-  $("onlinePanel")?.classList.remove("mobile-open");
+  mcGetById("chatWrap")?.classList.remove("hidden");
+  mcGetById("onlinePanel")?.classList.remove("mobile-open");
 }
 
-$("openOnlinePanel")?.addEventListener("click",()=>{
-  const panel=$("onlinePanel");
+mcGetById("openOnlinePanel")?.addEventListener("click",()=>{
+  const panel=mcGetById("onlinePanel");
   if(!panel)return;
   panel.classList.toggle("mobile-open");
   if(panel.classList.contains("mobile-open"))renderOnline();
@@ -2957,7 +2957,7 @@ function messageHTML(message) {
         <div class="msg-top">
           <span class="msg-time-side">${fmt(message.time)}${message.edited ? " · edited" : ""}</span>
           <span class="msg-author-group"><button class="message-author tag-author" type="button" title="Tag @${esc(message.username)}" onclick="tagUserFromMessage('${esc(message.username)}')" style="color:${esc(message.usernameColor||state.user?.settings?.usernameColor||'var(--username-color)')}">${esc(message.displayName)}</button>
-            ${($("viewRooms")?.classList.contains("main-room-chat") || !!state.currentRoom?.isDefault || /^(main room|teen chat)$/i.test(String(state.currentRoom?.name||"").trim())) ? `<span class="online-user-rank-badge" title="${esc(String(message.rank||"MEMBER").replaceAll("_"," "))}" aria-label="${esc(String(message.rank||"MEMBER").replaceAll("_"," "))}"><span class="mc-rank-ring" aria-hidden="true"></span><span class="mc-rank-glyph">${rankIcon[String(message.rank||"MEMBER").toUpperCase().replace(/[ -]+/g,"_")]||"⚡"}</span></span>` : ''}
+            ${(mcGetById("viewRooms")?.classList.contains("main-room-chat") || !!state.currentRoom?.isDefault || /^(main room|teen chat)$/i.test(String(state.currentRoom?.name||"").trim())) ? `<span class="online-user-rank-badge" title="${esc(String(message.rank||"MEMBER").replaceAll("_"," "))}" aria-label="${esc(String(message.rank||"MEMBER").replaceAll("_"," "))}"><span class="mc-rank-ring" aria-hidden="true"></span><span class="mc-rank-glyph">${rankIcon[String(message.rank||"MEMBER").toUpperCase().replace(/[ -]+/g,"_")]||"⚡"}</span></span>` : ''}
 
           </span>
           <span class="msg-header-right">
@@ -3059,7 +3059,7 @@ function messageHTML(message) {
 
 function tagUserFromMessage(username){
   if(!username) return;
-  const input=$("message");
+  const input=mcGetById("message");
   if(!input) return;
   const value=input.value||"";
   const sep=value && !/[\s]$/.test(value)?" ":"";
@@ -3329,7 +3329,7 @@ function openMessageMenu(menu,id){
   requestAnimationFrame(()=>positionMessageMenu(menu,id));
 }
 function toggleMessageMenu(id){
-  const menu=$(`message-menu-${id}`);
+  const menu=mcGetById(`message-menu-${id}`);
   if(!menu)return;
   const wasHidden=menu.classList.contains("hidden");
   closeMessageMenus();
@@ -3352,13 +3352,13 @@ function showStefanOptions(){
     canDelete ? `<button class="stefan-option danger" onclick="deleteRoom();closeStefanCard()">🗑️ Delete room</button>` : ""
   ].filter(Boolean).join("");
   const id="stefan-options-"+Date.now();
-  $("messages").insertAdjacentHTML("beforeend",`
+  mcGetById("messages").insertAdjacentHTML("beforeend",`
     <div class="stefan-card" id="${id}">
       <div class="stefan-card-head"><span>🧛‍♂️ <b>Stefan</b></span><button class="mini" onclick="closeStefanCard('${id}')">×</button></div>
       <div class="muted stefan-sub">Main Room tools · available according to your feature permissions</div>
       <div class="stefan-options">${options}</div>
     </div>`);
-  $("messages").scrollTop=$("messages").scrollHeight;
+  mcGetById("messages").scrollTop=mcGetById("messages").scrollHeight;
 }
 function closeStefanCard(id){
   if(id){ document.getElementById(id)?.remove(); return; }
@@ -3376,13 +3376,13 @@ function appendMessage(message) {
 
   state.messages.push(message);
 
-  $("messages").insertAdjacentHTML(
+  mcGetById("messages").insertAdjacentHTML(
     "beforeend",
     messageHTML(message)
   );
 
-  $("messages").scrollTop =
-    $("messages").scrollHeight;
+  mcGetById("messages").scrollTop =
+    mcGetById("messages").scrollHeight;
   if(message.expiresAt){
     const remaining=Number(message.expiresAt)-Date.now();
     if(remaining<=0){
@@ -3452,8 +3452,8 @@ function openPresenceModes(){
     <p class="muted" id="modePopupStatus" aria-live="polite" style="font-size:12px;line-height:1.4;min-height:14px;margin:0;overflow-wrap:anywhere"></p>
     <div class="toolbar" style="display:flex;flex-wrap:wrap;gap:8px"><button type="button" class="primary" id="applyModePopup">Apply mode</button><button type="button" class="mini" onclick="closeModal()">Cancel</button></div>
   </div>`);
-  const hide=$("modePopupHide"),dead=$("modePopupDead"),invisible=$("modePopupInvisible"),apply=$("applyModePopup");
-  const partyToggle=$("togglePartyMode");
+  const hide=mcGetById("modePopupHide"),dead=mcGetById("modePopupDead"),invisible=mcGetById("modePopupInvisible"),apply=mcGetById("applyModePopup");
+  const partyToggle=mcGetById("togglePartyMode");
   if(partyToggle){
     partyToggle.textContent=isPartyModeActive()?"🎉 Turn Party Mode Off":"🎉 Turn Party Mode On";
     partyToggle.addEventListener("click",()=>setPartyMode(!isPartyModeActive()));
@@ -3461,7 +3461,7 @@ function openPresenceModes(){
   const boxes=[hide,dead,invisible].filter(Boolean);
   boxes.forEach(box=>box.addEventListener("change",()=>{if(box.checked)boxes.filter(other=>other!==box).forEach(other=>other.checked=false);}));
   apply?.addEventListener("click",async()=>{
-    const status=$("modePopupStatus");apply.disabled=true;if(status)status.textContent="Saving…";
+    const status=mcGetById("modePopupStatus");apply.disabled=true;if(status)status.textContent="Saving…";
     try{
       let result;
       if(dead.checked){
@@ -3521,7 +3521,7 @@ function setPartyMode(enabled){
 /* ---------------- MALefICENT ARCADE ---------------- */
 let arcadeGameTimer=null,arcadeInterval=null;
 function renderArcade(){
-  const root=$("gamesRoot");if(!root)return;
+  const root=mcGetById("gamesRoot");if(!root)return;
   if(arcadeGameTimer){clearTimeout(arcadeGameTimer);arcadeGameTimer=null;}if(arcadeInterval){clearInterval(arcadeInterval);arcadeInterval=null;}
   root.innerHTML=`
     <section class="arcade-home">
@@ -3536,7 +3536,7 @@ function renderArcade(){
   root.querySelectorAll("[data-arcade-game]").forEach(btn=>btn.onclick=()=>launchArcadeGame(btn.dataset.arcadeGame));
 }
 async function loadDoodleLibrary(){
-  const list=$("doodleLibrary");if(!list)return;
+  const list=mcGetById("doodleLibrary");if(!list)return;
   try{
     const data=await api("/api/doodles");
     const drawings=Array.isArray(data.doodles)?data.doodles:[];
@@ -3547,8 +3547,8 @@ async function loadDoodleLibrary(){
         const result=await api("/api/doodles/"+encodeURIComponent(btn.dataset.doodleView)+"/image");
         if(!/^data:image\/png;base64,/.test(String(result.image||"")))throw Error("Saved drawing image is invalid.");
         modal(`<div class="doodle-preview"><div class="news-card-top"><h3>${esc(result.title||"Saved doodle")}</h3><button type="button" class="mini" id="doodlePreviewClose">×</button></div><img id="doodlePreviewImage" src="${esc(result.image)}" alt="Saved doodle preview"><p class="muted" id="doodlePreviewStatus">Loading saved drawing…</p></div>`);
-        $("doodlePreviewClose")?.addEventListener("click",closeModal);
-        const preview=$("doodlePreviewImage"),status=$("doodlePreviewStatus");
+        mcGetById("doodlePreviewClose")?.addEventListener("click",closeModal);
+        const preview=mcGetById("doodlePreviewImage"),status=mcGetById("doodlePreviewStatus");
         preview?.addEventListener("load",()=>{if(status)status.remove();});
         preview?.addEventListener("error",()=>{if(status)status.textContent="This saved drawing image could not be decoded. Your saved record has not been deleted.";});
         // Data URLs can finish decoding before listeners are attached on fast devices.
@@ -3565,7 +3565,7 @@ async function loadDoodleLibrary(){
   }catch(e){list.innerHTML='<p class="error">'+esc(e.message||"Could not load saved drawings.")+'</p>';}
 }
 function launchArcadeGame(game){
-  const root=$("gamesRoot");if(!root)return;
+  const root=mcGetById("gamesRoot");if(!root)return;
   if(arcadeGameTimer){clearTimeout(arcadeGameTimer);arcadeGameTimer=null;}if(arcadeInterval){clearInterval(arcadeInterval);arcadeInterval=null;}
   const back='<button class="mini arcade-back" data-arcade-back>← All games</button>';
   if(game==="memory"){
@@ -3584,7 +3584,7 @@ function launchArcadeGame(game){
   }
   if(game==="reaction"){
     let phase="ready",started=0,delay=0;
-    const draw=(message)=>{root.innerHTML='<section class="arcade-play-view">'+back+'<header class="arcade-game-heading"><span>⚡</span><div><h2>Reaction Rush</h2><p>Tap only when the panel turns green.</p></div></header><button class="reaction-pad '+phase+'" id="reactionPad">'+(phase==="ready"?"Start test":phase==="wait"?"Wait for green…":phase==="go"?"TAP NOW!":phase==="early"?"Too early! Try again":message||"Your time")+'</button><p class="arcade-status" id="reactionResult">'+(phase==="result"?message:"Keep your eyes on the signal.")+'</p></section>';bindBack();const pad=$("reactionPad");if(pad)pad.onclick=()=>{if(phase==="ready"||phase==="early"||phase==="result"){phase="wait";draw();delay=900+Math.random()*2600;arcadeGameTimer=setTimeout(()=>{phase="go";started=Date.now();draw()},delay)}else if(phase==="wait"){if(arcadeGameTimer)clearTimeout(arcadeGameTimer);phase="early";draw()}else if(phase==="go"){const ms=Date.now()-started;phase="result";draw(ms+" ms — "+(ms<250?"Lightning fast!":ms<400?"Nice reflexes!":"Try to beat that time."))}}};
+    const draw=(message)=>{root.innerHTML='<section class="arcade-play-view">'+back+'<header class="arcade-game-heading"><span>⚡</span><div><h2>Reaction Rush</h2><p>Tap only when the panel turns green.</p></div></header><button class="reaction-pad '+phase+'" id="reactionPad">'+(phase==="ready"?"Start test":phase==="wait"?"Wait for green…":phase==="go"?"TAP NOW!":phase==="early"?"Too early! Try again":message||"Your time")+'</button><p class="arcade-status" id="reactionResult">'+(phase==="result"?message:"Keep your eyes on the signal.")+'</p></section>';bindBack();const pad=mcGetById("reactionPad");if(pad)pad.onclick=()=>{if(phase==="ready"||phase==="early"||phase==="result"){phase="wait";draw();delay=900+Math.random()*2600;arcadeGameTimer=setTimeout(()=>{phase="go";started=Date.now();draw()},delay)}else if(phase==="wait"){if(arcadeGameTimer)clearTimeout(arcadeGameTimer);phase="early";draw()}else if(phase==="go"){const ms=Date.now()-started;phase="result";draw(ms+" ms — "+(ms<250?"Lightning fast!":ms<400?"Nice reflexes!":"Try to beat that time."))}}};
     draw();return;
   }
   if(game==="number"){
@@ -3592,13 +3592,13 @@ function launchArcadeGame(game){
     const question=()=>{const a=1+Math.floor(Math.random()*20),b=1+Math.floor(Math.random()*20),op=Math.random()<.5?"+":"−";return {text:a+" "+op+" "+b,value:op==="+"?a+b:a-b,options:[]}};
     const draw=()=>{if(ended){root.innerHTML='<section class="arcade-play-view">'+back+'<header class="arcade-game-heading"><span>🔢</span><div><h2>Number Sprint</h2><p>Round complete.</p></div></header><div class="number-finish"><b>'+score+'</b><span>correct answers</span></div><button class="primary" data-number-restart>Run it back</button></section>';bindBack();root.querySelector('[data-number-restart]').onclick=()=>launchArcadeGame('number');return}
       if(!current)current=question();const opts=[current.value,current.value+1,current.value-2,current.value+3].sort(()=>Math.random()-.5);
-      root.innerHTML='<section class="arcade-play-view">'+back+'<header class="arcade-game-heading"><span>🔢</span><div><h2>Number Sprint</h2><p>Answer as many as you can in 30 seconds.</p></div></header><div class="number-stats"><span>Score <b>'+score+'</b></span><span>Time <b>'+left+'s</b></span></div><div class="number-question">'+current.text+' = ?</div><div class="number-options">'+opts.map(n=>'<button data-number="'+n+'">'+n+'</button>').join('')+'</div><p class="arcade-status" id="numberStatus">Choose the correct answer.</p></section>';bindBack();root.querySelectorAll('[data-number]').forEach(b=>b.onclick=()=>{if(Number(b.dataset.number)===current.value){score++;current=null;}else{const status=$("numberStatus");if(status)status.textContent="Not quite — keep going!";return}draw()});
+      root.innerHTML='<section class="arcade-play-view">'+back+'<header class="arcade-game-heading"><span>🔢</span><div><h2>Number Sprint</h2><p>Answer as many as you can in 30 seconds.</p></div></header><div class="number-stats"><span>Score <b>'+score+'</b></span><span>Time <b>'+left+'s</b></span></div><div class="number-question">'+current.text+' = ?</div><div class="number-options">'+opts.map(n=>'<button data-number="'+n+'">'+n+'</button>').join('')+'</div><p class="arcade-status" id="numberStatus">Choose the correct answer.</p></section>';bindBack();root.querySelectorAll('[data-number]').forEach(b=>b.onclick=()=>{if(Number(b.dataset.number)===current.value){score++;current=null;}else{const status=mcGetById("numberStatus");if(status)status.textContent="Not quite — keep going!";return}draw()});
     };
     draw();arcadeInterval=setInterval(()=>{left--;if(left<=0){clearInterval(arcadeInterval);arcadeInterval=null;ended=true;draw()}else{const time=root.querySelector('.number-stats b:last-child');if(time)time.textContent=left+'s'}},1000);
     return;
   }
 }
-function bindBack(){const b=$("gamesRoot")?.querySelector("[data-arcade-back]");if(b)b.onclick=renderArcade;}
+function bindBack(){const b=mcGetById("gamesRoot")?.querySelector("[data-arcade-back]");if(b)b.onclick=renderArcade;}
 function openDoodleComposer(){
   const canSave=canFeature('doodle_studio_save'),canShare=!!state.currentRoom&&canFeature('doodle_studio_share');
   if(!canSave&&!canShare){toast('Doodle Studio is not available for your account.');return;}
@@ -3606,7 +3606,7 @@ function openDoodleComposer(){
     <div class="doodle-tools"><label class="doodle-title-field">Title <input id="doodleTitle" type="text" maxlength="80" value="Untitled doodle" placeholder="Name your drawing"></label><button type="button" id="doodlePen">🖌️ Pen</button><button type="button" id="doodleEraser">🧽 Eraser</button><label>Color <input type="color" id="doodleColor" value="#111111"></label><label>Size <input type="range" id="doodleSize" min="2" max="24" value="5"></label><button type="button" id="doodleUndo">↶ Undo</button><button type="button" id="doodleClear">🗑 Clear</button></div>
     <canvas id="doodleCanvas" width="900" height="620" aria-label="Draw your doodle here"></canvas>
     <div class="doodle-footer"><span class="muted">Save a private copy or share it with your current room.</span>${canSave?'<button type="button" id="doodleSave">💾 Save drawing</button>':''}${canShare?'<button type="button" class="primary" id="doodleSend">➤ Send to Room</button>':''}</div></div>`);
-  const canvas=$('doodleCanvas'),ctx=canvas.getContext('2d');canvas.style.touchAction='none';canvas.style.userSelect='none';ctx.fillStyle='#ffffff';ctx.fillRect(0,0,canvas.width,canvas.height);
+  const canvas=mcGetById('doodleCanvas'),ctx=canvas.getContext('2d');canvas.style.touchAction='none';canvas.style.userSelect='none';ctx.fillStyle='#ffffff';ctx.fillRect(0,0,canvas.width,canvas.height);
   let drawing=false,erase=false,color='#111111',size=5,history=[];
   const snapshot=()=>{try{history.push(ctx.getImageData(0,0,canvas.width,canvas.height));if(history.length>20)history.shift()}catch{}};
   snapshot();
@@ -3614,17 +3614,17 @@ function openDoodleComposer(){
   canvas.onpointerdown=e=>{e.preventDefault();drawing=true;canvas.setPointerCapture?.(e.pointerId);const p=point(e);ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineCap='round';ctx.lineJoin='round';ctx.strokeStyle=erase?'#ffffff':color;ctx.lineWidth=size;ctx.lineTo(p.x+.01,p.y+.01);ctx.stroke();};
   canvas.onpointermove=e=>{if(!drawing)return;e.preventDefault();const p=point(e);ctx.strokeStyle=erase?'#ffffff':color;ctx.lineWidth=size;ctx.lineTo(p.x,p.y);ctx.stroke();};
   const finish=()=>{if(drawing){drawing=false;snapshot()}};canvas.onpointerup=finish;canvas.onpointercancel=finish;
-  $('doodlePen').onclick=()=>erase=false;$('doodleEraser').onclick=()=>erase=true;$('doodleColor').oninput=e=>{color=e.target.value;erase=false};$('doodleSize').oninput=e=>size=Number(e.target.value);
-  $('doodleUndo').onclick=()=>{if(history.length>1){history.pop();ctx.putImageData(history[history.length-1],0,0)}};
-  $('doodleClear').onclick=()=>{ctx.fillStyle='#ffffff';ctx.fillRect(0,0,canvas.width,canvas.height);snapshot()};
-  $('doodleClose').onclick=closeModal;
-  $('doodleSave')?.addEventListener('click',async()=>{const btn=$('doodleSave');btn.disabled=true;btn.textContent='Saving…';try{
+  mcGetById('doodlePen').onclick=()=>erase=false;mcGetById('doodleEraser').onclick=()=>erase=true;mcGetById('doodleColor').oninput=e=>{color=e.target.value;erase=false};mcGetById('doodleSize').oninput=e=>size=Number(e.target.value);
+  mcGetById('doodleUndo').onclick=()=>{if(history.length>1){history.pop();ctx.putImageData(history[history.length-1],0,0)}};
+  mcGetById('doodleClear').onclick=()=>{ctx.fillStyle='#ffffff';ctx.fillRect(0,0,canvas.width,canvas.height);snapshot()};
+  mcGetById('doodleClose').onclick=closeModal;
+  mcGetById('doodleSave')?.addEventListener('click',async()=>{const btn=mcGetById('doodleSave');btn.disabled=true;btn.textContent='Saving…';try{
     const image=canvas.toDataURL('image/png');
-    const title=($('doodleTitle')?.value||'Untitled doodle').trim().slice(0,80)||'Untitled doodle';
+    const title=(mcGetById('doodleTitle')?.value||'Untitled doodle').trim().slice(0,80)||'Untitled doodle';
     await api('/api/doodles',{method:'POST',body:JSON.stringify({title,image})});
     toast('Doodle saved to your personal library.');await loadDoodleLibrary();btn.textContent='✓ Saved';
   }catch(e){toast(e.message||'Could not save doodle.');btn.disabled=false;btn.textContent='💾 Save drawing';}});
-  $('doodleSend')?.addEventListener('click',async()=>{const btn=$('doodleSend');btn.disabled=true;btn.textContent='Sending…';try{
+  mcGetById('doodleSend')?.addEventListener('click',async()=>{const btn=mcGetById('doodleSend');btn.disabled=true;btn.textContent='Sending…';try{
     const blob=await new Promise((resolve,reject)=>canvas.toBlob(b=>b?resolve(b):reject(Error('Could not export the doodle.')),'image/png'));
     const file=new File([blob],'maleficent-doodle.png',{type:'image/png'}),form=new FormData();form.append('text','');form.append('file',file);
     const data=await api('/api/rooms/'+encodeURIComponent(state.currentRoom)+'/messages',{method:'POST',body:form});
@@ -3632,7 +3632,7 @@ function openDoodleComposer(){
     closeModal();toast('Doodle sent to the room!');
   }catch(e){btn.disabled=false;btn.textContent='➤ Send to Main Chat';toast(e.message||'Could not send doodle.')}});
 }
-$('doodleBtn')?.addEventListener('click',openDoodleComposer);
+mcGetById('doodleBtn')?.addEventListener('click',openDoodleComposer);
 
 
 async function openReelSharePicker(){
@@ -3646,16 +3646,16 @@ async function openReelSharePicker(){
     document.querySelectorAll('[data-share-reel]').forEach(button=>button.addEventListener('click',async()=>{button.disabled=true;const postId=button.dataset.shareReel;closeModal();await sendReelToCurrentRoom(postId);}));
   }catch(error){toast(error.message||"Could not load Reels.");}
 }
-$('reelComposerBtn')?.addEventListener('click',openReelSharePicker);
+mcGetById('reelComposerBtn')?.addEventListener('click',openReelSharePicker);
 
-const composer=$("composer");
+const composer=mcGetById("composer");
 if(composer && !composer.dataset.submitBound){
   composer.dataset.submitBound="true";
   composer.addEventListener("submit",async e=>{
     e.preventDefault();
     if(!state.user){toast("Your session is not ready. Please log in again.");return;}
     if(!state.currentRoom){toast("Join a room before sending a message.");return;}
-    const input=$("message"),fileInput=$("file"),sendButton=composer.querySelector(".send");
+    const input=mcGetById("message"),fileInput=mcGetById("file"),sendButton=composer.querySelector(".send");
     const textValue=(input?.value||"").trim(),file=fileInput?.files?.[0];
     // /clear uses the same permission-checked, evidence-preserving room clear endpoint as the room controls.
     if(/^\/clear(?:\s|$)/i.test(textValue)){
@@ -3665,7 +3665,7 @@ if(composer && !composer.dataset.submitBound){
       try{
         const result=await api(`/api/rooms/${encodeURIComponent(state.currentRoom)}/clear`,{method:"POST"});
         state.messages=(state.messages||[]).filter(m=>String(m.roomId)!==String(state.currentRoom));
-        if($("messages"))$("messages").innerHTML="";
+        if(mcGetById("messages"))mcGetById("messages").innerHTML="";
         toast("Room cleared. "+Number(result.removed||0)+" messages removed.");
       }catch(error){
         toast(error.message||"Could not clear room.");
@@ -3700,7 +3700,7 @@ if(composer && !composer.dataset.submitBound){
       // The API response renders the sender copy; Socket.IO delivers it to other room members.
       if(input)input.value="";
       if(fileInput)fileInput.value="";
-      const fileName=$("fileName");if(fileName)fileName.textContent="";
+      const fileName=mcGetById("fileName");if(fileName)fileName.textContent="";
       if(state.replyTo!==null&&typeof cancelReply==="function")cancelReply();
       input?.focus();
     }catch(error){
@@ -3715,7 +3715,7 @@ if(composer && !composer.dataset.submitBound){
   });
 }
 
-$("message").oninput = () => {
+mcGetById("message").oninput = () => {
   if (
     state.socket &&
     state.currentRoom
@@ -3724,7 +3724,7 @@ $("message").oninput = () => {
       roomId: state.currentRoom,
       user: state.user.displayName,
       typing:
-        $("message").value.length > 0
+        mcGetById("message").value.length > 0
     });
   }
 };
@@ -3759,7 +3759,7 @@ function replyMsg(id) {
       ? "📎 Attachment"
       : "Message");
 
-  $("replyBar").innerHTML = `
+  mcGetById("replyBar").innerHTML = `
     <div class="replybar-content">
       <div>
         <strong>↪ Replying to ${esc(author)}</strong>
@@ -3778,9 +3778,9 @@ function replyMsg(id) {
     </div>
   `;
 
-  $("replyBar").classList.remove("hidden");
+  mcGetById("replyBar").classList.remove("hidden");
 
-  $("message").focus();
+  mcGetById("message").focus();
 }
 
 
@@ -3811,9 +3811,9 @@ function replyMsg(id) {
 function cancelReply() {
   state.replyTo = null;
 
-  $("replyBar").innerHTML = "";
+  mcGetById("replyBar").innerHTML = "";
 
-  $("replyBar").classList.add(
+  mcGetById("replyBar").classList.add(
     "hidden"
   );
 }
@@ -4069,9 +4069,9 @@ async function openQuickUserCard(id){
     <button class="quick-user-row" id="quickViewProfile"><span>👤</span><b>View profile</b><i>›</i></button>
     ${!isSelf?`<button class="quick-user-row" id="quickPrivate"><span>🟢</span><b>Private</b><i>›</i></button><button class="quick-user-row" id="quickAction"><span>✔️</span><b>Action</b><i>›</i></button>`:`<button class="quick-user-row" id="quickAction"><span>⚙️</span><b>Account actions</b><i>›</i></button>`}
   </div>`);
-  $('quickViewProfile')?.addEventListener('click',()=>{openUser(user.id)});
-  $('quickPrivate')?.addEventListener('click',()=>{closeModal();openDM(user.id)});
-  $('quickAction')?.addEventListener('click',()=>{openProfileActionDrawer(user,data)});
+  mcGetById('quickViewProfile')?.addEventListener('click',()=>{openUser(user.id)});
+  mcGetById('quickPrivate')?.addEventListener('click',()=>{closeModal();openDM(user.id)});
+  mcGetById('quickAction')?.addEventListener('click',()=>{openProfileActionDrawer(user,data)});
 }
 
 async function openUser(id) {
@@ -4198,7 +4198,7 @@ function renderUserProfileModal(user,data={}){
       if(event.key==='Enter'||event.key===' '){openProfileAvatar(event);}
     });
   }
-  const profileMusicAudio=$('profileMusicAudio'),profileMusicToggle=$('profileMusicToggle');
+  const profileMusicAudio=mcGetById('profileMusicAudio'),profileMusicToggle=mcGetById('profileMusicToggle');
   if(profileMusicAudio&&profileMusicToggle){
     const syncMusic=()=>{const playing=!profileMusicAudio.paused&&!profileMusicAudio.ended;profileMusicToggle.textContent=playing?'Ⅱ':'▶';profileMusicToggle.setAttribute('aria-label',playing?'Pause profile music':'Play profile music');profileMusicToggle.classList.toggle('playing',playing);};
     profileMusicToggle.addEventListener('click',async()=>{try{if(profileMusicAudio.paused)await profileMusicAudio.play();else profileMusicAudio.pause();}catch{toast('This audio link could not be played.');}syncMusic();});
@@ -4206,7 +4206,7 @@ function renderUserProfileModal(user,data={}){
   }
   const renderTab=(tab)=>{
     document.querySelectorAll('.profile-tab').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));
-    const box=$('profileTabContent');
+    const box=mcGetById('profileTabContent');
     if(tab==='info') { box.innerHTML=`
       <div class="profile-info-row"><b>👤 Username</b><span>@${esc(user.username)}</span></div>
       <div class="profile-info-row"><b>🏅 Rank</b><span>${rank(user.rank)}</span></div>
@@ -4220,12 +4220,12 @@ function renderUserProfileModal(user,data={}){
       <div class="profile-achievement-showcase" id="profileAchievementShowcase"></div><div class="profile-actions"><button class="mini" id="profileAchievementsBtn">🏆 Achievement Collection</button>${!isSelf&&canFeature('profile_note')?`<button class="mini" id="profileNoteBtn">📝 Add Note <span id="profileNoteDot" style="display:none">●</span></button>${canFeature('profile_note')?'<button class="mini" id="profileFeatureBlockBtn">🚫 Feature Block</button>':''}`:''}<div class="profile-action-hint">Tap ☰ above for profile actions.</div></div>`;
     if(user.privacy?.achievements!==false){
       api('/api/achievements/'+encodeURIComponent(user.id)).then(result=>{
-        const panel=$('profileAchievementShowcase');if(!panel)return;
+        const panel=mcGetById('profileAchievementShowcase');if(!panel)return;
         const icons={'First Message':'💬','Chatterbox':'🗣️','Chatterbox+':'📣','Legendary Chatter':'🌌','Gamer':'🎮','Game Night':'🕹️','Arcade Legend':'👾','Popular':'💜','Beloved':'💎','Rising Star':'✨','Veteran':'⚔️','Mythic Soul':'🔮'};
         const featured=(result.showcase||[]).slice(0,3);
         panel.innerHTML=featured.length?'<b>✦ Featured Trophies</b><div class="ac-featured">'+featured.map(name=>'<span class="ac-feature-chip">'+(icons[name]||'🏆')+' '+esc(name)+'</span>').join('')+'</div>':'';
       }).catch(()=>{});
-    }else{const panel=$('profileAchievementShowcase');if(panel)panel.remove();}
+    }else{const panel=mcGetById('profileAchievementShowcase');if(panel)panel.remove();}
     } else if(tab==='about' && user.privacy?.bio!==false) box.innerHTML=`<div class="about-card"><h3>About Me</h3><p>${esc(user.bio||'This user has not written an About Me yet.')}</p>${user.privacy?.country!==false&&user.country?`<div class="profile-info-row"><b>🌍 Country</b><span>${esc(countryFlagFor(user.country))} ${esc(user.country)}</span></div>`:''}${user.privacy?.pronouns!==false&&user.pronouns?`<div class="profile-info-row"><b>Pronouns</b><span>${esc(user.pronouns)}</span></div>`:''}${user.privacy?.interests!==false&&user.interests?.length?`<div class="tag-list">${user.interests.map(x=>`<span class="tag">${esc(x)}</span>`).join('')}</div>`:''}${isSelf?`<button class="primary" id="editAboutBtn">✏️ Edit About Me</button>`:''}</div>`;
     else if(tab==='about') box.innerHTML='';
     else if(tab==='photos') renderProfilePhotos();
@@ -4240,14 +4240,14 @@ function renderUserProfileModal(user,data={}){
         box.innerHTML='<section class="about-card scrapbook scrapbook-theme-'+theme+' scrapbook-layout-'+layout+'"><div class="scrapbook-heading"><div><h3>📚 '+esc(book.title||'My Scrapbook')+'</h3><p class="muted">'+(isSelf?'Your memories, notes and saved moments.':'Memories shared by @'+esc(user.username)+'.')+'</p></div></div>'+
           (isSelf?'<form id="scrapbookSettingsForm" class="scrapbook-settings"><label>Title<input id="scrapbookTitle" maxlength="100" value="'+esc(book.title||'My Scrapbook')+'"></label><label>Layout<select id="scrapbookLayout">'+[['polaroid','Polaroid'],['journal','Journal'],['collage','Collage'],['timeline','Timeline'],['minimal','Minimal']].map(([v,n])=>'<option value="'+v+'" '+(layout===v?'selected':'')+'>'+n+'</option>').join('')+'</select></label><label>Visibility<select id="scrapbookVisibility">'+[['public','Everyone'],['friends','Friends only'],['private','Only me']].map(([v,n])=>'<option value="'+v+'" '+(book.visibility===v?'selected':'')+'>'+n+'</option>').join('')+'</select></label><label class="scrapbook-comments-toggle"><input id="scrapbookAllowComments" type="checkbox" '+(canComment?'checked':'')+'> Allow comments</label><button class="mini primary" type="submit">Save scrapbook settings</button></form><form id="scrapbookNoteForm" class="scrapbook-note-form"><input id="scrapbookNoteTitle" maxlength="120" placeholder="Memory title (optional)"><textarea id="scrapbookNoteBody" rows="3" maxlength="4000" placeholder="Write a memory…"></textarea><button class="primary" type="submit">＋ Add memory</button></form>':'')+
           '<div class="scrapbook-entry-grid">'+(entries.length?entries.map(entry=>'<article class="scrapbook-entry">'+(entry.entry_type==='media'&&entry.media_key?'<img src="/uploads/'+esc(entry.media_key)+'" alt="Scrapbook memory" loading="lazy">':entry.entry_type==='sticker'?'<div class="scrapbook-sticker">'+esc(entry.sticker||'✦')+'</div>':'')+'<div class="scrapbook-entry-copy">'+(entry.title?'<b>'+esc(entry.title)+'</b>':'')+(entry.body?'<p>'+esc(entry.body)+'</p>':'')+'<small>'+esc(fmt(entry.created_at))+'</small></div>'+(isSelf?'<button type="button" class="mini danger" data-scrapbook-delete="'+esc(entry.id)+'">Delete</button>':'')+'</article>').join(''):'<p class="muted">No scrapbook memories yet.</p>')+'</div></section>';
-        $('scrapbookSettingsForm')?.addEventListener('submit',async event=>{
+        mcGetById('scrapbookSettingsForm')?.addEventListener('submit',async event=>{
           event.preventDefault();const button=event.currentTarget.querySelector('button[type="submit"]');button.disabled=true;
-          try{await api('/api/social/scrapbooks/settings',{method:'PUT',body:JSON.stringify({title:$('scrapbookTitle').value.trim(),theme:theme,layout:$('scrapbookLayout').value,visibility:$('scrapbookVisibility').value,allowComments:$('scrapbookAllowComments').checked})});toast('Scrapbook settings saved.');renderTab('scrapbook');}
+          try{await api('/api/social/scrapbooks/settings',{method:'PUT',body:JSON.stringify({title:mcGetById('scrapbookTitle').value.trim(),theme:theme,layout:mcGetById('scrapbookLayout').value,visibility:mcGetById('scrapbookVisibility').value,allowComments:mcGetById('scrapbookAllowComments').checked})});toast('Scrapbook settings saved.');renderTab('scrapbook');}
           catch(error){toast(error.message||'Could not save scrapbook settings.');button.disabled=false;}
         });
-        $('scrapbookNoteForm')?.addEventListener('submit',async event=>{
-          event.preventDefault();const body=$('scrapbookNoteBody').value.trim();if(!body){toast('Write a memory before saving.');return;}const button=event.currentTarget.querySelector('button[type="submit"]');button.disabled=true;
-          try{await api('/api/social/scrapbooks/entries',{method:'POST',body:JSON.stringify({type:'note',title:$('scrapbookNoteTitle').value.trim(),body})});toast('Memory added to your scrapbook.');renderTab('scrapbook');}
+        mcGetById('scrapbookNoteForm')?.addEventListener('submit',async event=>{
+          event.preventDefault();const body=mcGetById('scrapbookNoteBody').value.trim();if(!body){toast('Write a memory before saving.');return;}const button=event.currentTarget.querySelector('button[type="submit"]');button.disabled=true;
+          try{await api('/api/social/scrapbooks/entries',{method:'POST',body:JSON.stringify({type:'note',title:mcGetById('scrapbookNoteTitle').value.trim(),body})});toast('Memory added to your scrapbook.');renderTab('scrapbook');}
           catch(error){toast(error.message||'Could not add memory.');button.disabled=false;}
         });
         box.querySelectorAll('[data-scrapbook-delete]').forEach(button=>button.addEventListener('click',async()=>{if(!confirm('Delete this scrapbook memory?'))return;try{await api('/api/social/scrapbooks/entries/'+encodeURIComponent(button.dataset.scrapbookDelete),{method:'DELETE'});renderTab('scrapbook');toast('Memory deleted.');}catch(error){toast(error.message||'Could not delete memory.');}}));
@@ -4257,11 +4257,11 @@ function renderUserProfileModal(user,data={}){
       box.innerHTML=`<div class="profile-friends-grid-wrap"><div class="profile-friends-grid" id="profileFriendsGrid"><span class="muted">Loading friends…</span></div></div>`;
       api('/api/users/'+encodeURIComponent(user.id)+'/friends').then(result=>{
         if(!box.isConnected)return;
-        const grid=$('profileFriendsGrid'),friends=result.users||[];if(!grid)return;
+        const grid=mcGetById('profileFriendsGrid'),friends=result.users||[];if(!grid)return;
         if(result.hidden){box.innerHTML='<div class="about-card"><p class="muted">This user has hidden their friends list.</p></div>';return;}
         grid.innerHTML=friends.length?friends.map(friend=>`<button type="button" class="profile-friend-tile" data-friend-profile="${esc(friend.id)}" title="${esc(friend.displayName||friend.username)}"><span class="profile-friend-photo">${avatar(friend)}</span><span class="profile-friend-name">${esc(friend.displayName||friend.username)}</span></button>`).join(''):'<p class="muted">No friends to show yet.</p>';
         grid.querySelectorAll('[data-friend-profile]').forEach(button=>button.addEventListener('click',()=>openUser(button.dataset.friendProfile)));
-      }).catch(error=>{const grid=$('profileFriendsGrid');if(grid)grid.innerHTML='<p class="muted">'+esc(error.message||'Could not load friends.')+'</p>';});
+      }).catch(error=>{const grid=mcGetById('profileFriendsGrid');if(grid)grid.innerHTML='<p class="muted">'+esc(error.message||'Could not load friends.')+'</p>';});
     }
     else if(tab==='guestbook'){
       box.innerHTML='<div class="about-card"><h3>📖 Guestbook</h3><p class="muted">Loading messages…</p></div>';
@@ -4276,15 +4276,15 @@ function renderUserProfileModal(user,data={}){
           (ownerControls?'<label class="guestbook-visibility"><input type="checkbox" id="guestbookVisibilityToggle" '+(user.privacy?.showGuestbook===false?'':'checked')+'> Show my guestbook on my profile</label>':'')+
           (result.canPost?'<form id="guestbookPostForm" class="guestbook-compose"><textarea id="guestbookMessage" maxlength="500" rows="3" placeholder="Write a kind message…"></textarea><div class="guestbook-compose-footer"><small>Up to 500 characters · visible after approval</small><button class="primary" type="submit">Leave message</button></div></form>':(!ownerControls?'<p class="guestbook-note">Anyone can leave a message here.</p>':''))+
           '<div class="guestbook-list">'+(entries.length?entries.map(entry=>'<article class="guestbook-entry"><div class="guestbook-entry-head"><div class="guestbook-author">'+avatar({username:entry.authorUsername,avatar:entry.authorAvatar})+'<span><b>'+esc(entry.authorDisplayName||entry.authorUsername)+'</b><small>@'+esc(entry.authorUsername)+' · '+esc(dateLabel(entry.createdAt))+'</small></span></div>'+(ownerControls?'<span class="guestbook-status">'+esc(statusLabel(entry.status))+'</span>':'')+'</div><p class="guestbook-message">'+esc(entry.message)+'</p>'+(ownerControls?'<div class="guestbook-actions">'+(entry.status!=='APPROVED'?'<button type="button" class="mini" data-guestbook-action="APPROVED" data-entry-id="'+esc(entry.id)+'">✓ Approve</button>':'')+(entry.status!=='HIDDEN'?'<button type="button" class="mini" data-guestbook-action="HIDDEN" data-entry-id="'+esc(entry.id)+'">Hide</button>':'')+'<button type="button" class="mini danger" data-guestbook-delete="'+esc(entry.id)+'">Delete</button></div>':'')+'</article>').join(''):'<p class="guestbook-empty">'+(ownerControls?'No guestbook messages yet. Share your profile with friends!':'No approved messages yet. Be the first to leave a note!')+'</p>')+'</div></div>';
-        $('guestbookVisibilityToggle')?.addEventListener('change',async event=>{
+        mcGetById('guestbookVisibilityToggle')?.addEventListener('change',async event=>{
           const previous=!event.target.checked;
           try{await api('/api/profile',{method:'PUT',body:JSON.stringify({privacy:{showGuestbook:event.target.checked}})});user.privacy={...(user.privacy||{}),showGuestbook:event.target.checked};if(state.user&&String(state.user.id)===String(user.id))state.user.privacy={...(state.user.privacy||{}),showGuestbook:event.target.checked};toast(event.target.checked?'Guestbook is visible on your profile.':'Guestbook is hidden from your profile.');}
           catch(error){event.target.checked=previous;toast(error.message||'Could not update guestbook privacy.');}
         });
-        $('guestbookPostForm')?.addEventListener('submit',async event=>{
+        mcGetById('guestbookPostForm')?.addEventListener('submit',async event=>{
           event.preventDefault();
           const form=event.currentTarget;
-          const field=$('guestbookMessage');
+          const field=mcGetById('guestbookMessage');
           const message=field?.value||'';
           if(!message.trim()){field?.focus();return;}
           const button=form.querySelector('button[type="submit"]');
@@ -4322,22 +4322,22 @@ function renderUserProfileModal(user,data={}){
           (isSelf?'<label class="gift-visibility-toggle"><input type="checkbox" id="giftVisibilityToggle" '+(user.privacy?.showGifts===false?'':'checked')+'> Show my gifts on my public profile</label>':'')+
           (!isSelf?'<button class="primary gift-open-send" id="sendGiftFromProfile">🎁 Send a gift · Use gold</button>':'')+
           '<div class="gift-profile-list">'+(gifts.length?gifts.map(g=>'<article class="gift-profile-item"><span class="gift-profile-icon">'+esc(g.gift_icon||'🎁')+'</span><div class="gift-profile-copy"><b>'+esc(g.gift_name)+'</b><small>From @'+esc(g.sender_username||'deleted')+' · 🪙 '+Number(g.goldCost||0).toLocaleString()+'</small>'+(g.message?'<p>'+esc(g.message)+'</p>':'')+'</div></article>').join(''):'<p class="muted">No gifts yet. Send the first one! 💜</p>')+'</div></div>';
-        $('giftVisibilityToggle')?.addEventListener('change',async e=>{try{await api('/api/users/me/gift-visibility',{method:'PATCH',body:JSON.stringify({showGifts:e.target.checked})});user.privacy={...(user.privacy||{}),showGifts:e.target.checked};if(state.user&&String(state.user.id)===String(user.id))state.user.privacy={...(state.user.privacy||{}),showGifts:e.target.checked};toast(e.target.checked?'Gifts are visible on your profile.':'Gifts are now hidden from your profile.');}catch(err){e.target.checked=!e.target.checked;toast(err.message)}});
-        $('sendGiftFromProfile')?.addEventListener('click',()=>openGiftPicker(user,catalog));
+        mcGetById('giftVisibilityToggle')?.addEventListener('change',async e=>{try{await api('/api/users/me/gift-visibility',{method:'PATCH',body:JSON.stringify({showGifts:e.target.checked})});user.privacy={...(user.privacy||{}),showGifts:e.target.checked};if(state.user&&String(state.user.id)===String(user.id))state.user.privacy={...(state.user.privacy||{}),showGifts:e.target.checked};toast(e.target.checked?'Gifts are visible on your profile.':'Gifts are now hidden from your profile.');}catch(err){e.target.checked=!e.target.checked;toast(err.message)}});
+        mcGetById('sendGiftFromProfile')?.addEventListener('click',()=>openGiftPicker(user,catalog));
       }).catch(e=>{if(box.isConnected)box.innerHTML='<div class="about-card"><h3>🎁 Gifts</h3><p class="muted">'+esc(e.message||'Could not load gifts.')+'</p></div>';});
     }
     else box.innerHTML=`<div class="about-card"><div class="profile-info-row"><b>📜 Username history</b><span>${(user.usernameHistory||[]).length} changes</span></div><div class="profile-info-row"><b>🔗 Profile ID</b><span>${esc(user.id)}</span></div>${can('MOD')&&canAccessStaffTarget(user)?`<div class="toolbar"><button class="mini" id="profileHistoryBtn">📜 Staff action history</button><button class="mini" id="profileIpInsightsBtn">🔎 View insights</button></div><div id="profileHistoryBox"></div>`:''}<div class="profile-actions">${can('COOWNER')&&canAccessStaffTarget(user)?'<button class="mini danger" id="profileDeleteAccountBtn">🗑️ Delete account</button>':''}${!isSelf?'<button class="mini danger" id="profileReportBtn">⚑ Report user</button>':''}</div></div>`;
-    if(tab==='more' && can('MOD')) $('profileHistoryBtn')?.addEventListener('click',()=>showUserActionHistory(user.id));
-    if(tab==='more' && can('MOD') && !isSelf) $('profileIpInsightsBtn')?.addEventListener('click',()=>showIpInsights(user));
-    if(tab==='info'&&!isSelf&&canFeature('profile_note'))api(`/api/staff/user/${encodeURIComponent(user.id)}/note`).then(n=>{if($('profileNoteDot'))$('profileNoteDot').style.display=n.hasNote?'inline-block':'none';}).catch(()=>{});
+    if(tab==='more' && can('MOD')) mcGetById('profileHistoryBtn')?.addEventListener('click',()=>showUserActionHistory(user.id));
+    if(tab==='more' && can('MOD') && !isSelf) mcGetById('profileIpInsightsBtn')?.addEventListener('click',()=>showIpInsights(user));
+    if(tab==='info'&&!isSelf&&canFeature('profile_note'))api(`/api/staff/user/${encodeURIComponent(user.id)}/note`).then(n=>{if(mcGetById('profileNoteDot'))mcGetById('profileNoteDot').style.display=n.hasNote?'inline-block':'none';}).catch(()=>{});
     wireProfileTabActions();
   };
   async function renderProfilePhotos(){
-    const box=$('profileTabContent');
+    const box=mcGetById('profileTabContent');
     if(!box)return;
     const canStaffRemove=!isSelf&&can('MOD')&&canAccessStaffTarget(user);
     box.innerHTML='<div class="about-card profile-photos-card"><div class="profile-photos-heading"><div><h3>📷 Photos</h3><p class="muted">Up to 10 square photos on this profile.</p></div>'+(isSelf?'<button type="button" class="mini primary profile-photo-add" id="profilePhotoAddBtn">＋ Add photo</button>':'')+'</div>'+(isSelf?'<input id="profilePhotoUpload" class="profile-photo-file" type="file" accept="image/jpeg,image/png,image/webp,image/gif" aria-label="Choose a profile photo">':'')+'<div class="profile-photo-grid" id="profilePhotoGrid"><p class="muted">Loading photos…</p></div></div>';
-    const grid=$('profilePhotoGrid');
+    const grid=mcGetById('profilePhotoGrid');
     const load=async()=>{
       try{
         const result=await api('/api/users/'+encodeURIComponent(user.id)+'/profile-photos');
@@ -4353,8 +4353,8 @@ function renderUserProfileModal(user,data={}){
       }catch(error){if(grid?.isConnected)grid.innerHTML='<p class="muted">'+esc(error.message||'Could not load photos.')+'</p>';}
     };
     await load();
-    const picker=$('profilePhotoUpload');
-    $('profilePhotoAddBtn')?.addEventListener('click',()=>picker?.click());
+    const picker=mcGetById('profilePhotoUpload');
+    mcGetById('profilePhotoAddBtn')?.addEventListener('click',()=>picker?.click());
     picker?.addEventListener('change',async()=>{
       const file=picker.files?.[0];if(!file)return;
       const form=new FormData();form.append('file',file);
@@ -4370,17 +4370,17 @@ function renderUserProfileModal(user,data={}){
     if(!Array.isArray(catalog)||!catalog.length){toast('No gifts are available right now.');return;}
     modal('<div class="gift-picker"><h2>🎁 Send a gift</h2><p class="muted">Choose a gift for @'+esc(target.username)+'. Your gold balance: 🪙 '+Number(state.user?.gold||0).toLocaleString()+'</p><div class="gift-picker-grid">'+catalog.map(g=>'<button type="button" class="gift-choice" data-gift-id="'+esc(g.id)+'"><span>'+esc(g.icon||'🎁')+'</span><b>'+esc(g.name)+'</b><small>🪙 '+Number(g.price||0).toLocaleString()+'</small></button>').join('')+'</div><label for="giftMessage">Add a note (optional)</label><textarea id="giftMessage" maxlength="180" rows="2" placeholder="A little something for you…"></textarea><div class="toolbar"><button class="primary" id="giftSendConfirm" disabled>Send gift</button><button class="mini" id="giftSendCancel">Cancel</button></div><p id="giftPickerStatus" class="muted"></p></div>');
     let selected=null;
-    document.querySelectorAll('.gift-choice').forEach(btn=>btn.addEventListener('click',()=>{selected=btn.dataset.giftId;document.querySelectorAll('.gift-choice').forEach(x=>x.classList.toggle('selected',x===btn));$('giftSendConfirm').disabled=false;}));
-    $('giftSendCancel').onclick=closeModal;
-    $('giftSendConfirm').onclick=async()=>{
+    document.querySelectorAll('.gift-choice').forEach(btn=>btn.addEventListener('click',()=>{selected=btn.dataset.giftId;document.querySelectorAll('.gift-choice').forEach(x=>x.classList.toggle('selected',x===btn));mcGetById('giftSendConfirm').disabled=false;}));
+    mcGetById('giftSendCancel').onclick=closeModal;
+    mcGetById('giftSendConfirm').onclick=async()=>{
       if(!selected)return;
-      const btn=$('giftSendConfirm');btn.disabled=true;btn.textContent='Sending…';
-      try{const result=await api('/api/users/'+encodeURIComponent(target.id)+'/gifts',{method:'POST',body:JSON.stringify({giftId:selected,message:$('giftMessage')?.value||''})});state.user.gold=result.gold;updateNav();closeModal();toast('Gift sent! 🎁');}
-      catch(e){$('giftPickerStatus').textContent=e.message||'Could not send gift.';btn.disabled=false;btn.textContent='Send gift';}
+      const btn=mcGetById('giftSendConfirm');btn.disabled=true;btn.textContent='Sending…';
+      try{const result=await api('/api/users/'+encodeURIComponent(target.id)+'/gifts',{method:'POST',body:JSON.stringify({giftId:selected,message:mcGetById('giftMessage')?.value||''})});state.user.gold=result.gold;updateNav();closeModal();toast('Gift sent! 🎁');}
+      catch(e){mcGetById('giftPickerStatus').textContent=e.message||'Could not send gift.';btn.disabled=false;btn.textContent='Send gift';}
     };
   }
   function wireProfileTabActions(){
-    $('profileDeleteAccountBtn')?.addEventListener('click',async()=>{
+    mcGetById('profileDeleteAccountBtn')?.addEventListener('click',async()=>{
       const expected=String(user.username||'');
       const entered=prompt('Permanently delete @'+expected+'? This cannot be undone. Type the exact username to confirm:');
       if(entered===null)return;
@@ -4391,11 +4391,11 @@ function renderUserProfileModal(user,data={}){
         toast('Account @'+expected+' deleted.');
       }catch(e){toast(e.message||'Could not delete this account.');}
     });
-    $('profileAchievementsBtn')?.addEventListener('click',()=>showAchievements(user));
-    $('profileNoteBtn')?.addEventListener('click',()=>staffProfileNoteModal(user));
-    $('profileFeatureBlockBtn')?.addEventListener('click',()=>staffFeatureBlockModal(user));
-    $('selfAchievementsBtn')?.addEventListener('click',()=>showAchievements(user));
-    $('profileLikeBtn')?.addEventListener('click',async(event)=>{
+    mcGetById('profileAchievementsBtn')?.addEventListener('click',()=>showAchievements(user));
+    mcGetById('profileNoteBtn')?.addEventListener('click',()=>staffProfileNoteModal(user));
+    mcGetById('profileFeatureBlockBtn')?.addEventListener('click',()=>staffFeatureBlockModal(user));
+    mcGetById('selfAchievementsBtn')?.addEventListener('click',()=>showAchievements(user));
+    mcGetById('profileLikeBtn')?.addEventListener('click',async(event)=>{
       const button=event.currentTarget;
       if(button.disabled)return;
       button.disabled=true;
@@ -4415,15 +4415,15 @@ function renderUserProfileModal(user,data={}){
         button.disabled=false;
       }
     });
-    $('profileMessageBtn')?.addEventListener('click',()=>{closeModal();openDM(user.id);});
-    $('profileFriendBtn')?.addEventListener('click',async()=>{if(data.friendship==='ACCEPTED'){toast('Already friends.');return;}try{await friend(user.id);data.friendship='PENDING';renderTab('info');}catch(e){}});
-    $('profileBlockBtn')?.addEventListener('click',async()=>{await block(user.id);closeModal();});
-    $('profileGoldBtn')?.addEventListener('click',()=>shareWalletModal(user));
-    $('profileNicknameBtn')?.addEventListener('click',()=>nicknameModal(user));
-    $('profileModerateBtn')?.addEventListener('click',()=>moderate(user.id));
+    mcGetById('profileMessageBtn')?.addEventListener('click',()=>{closeModal();openDM(user.id);});
+    mcGetById('profileFriendBtn')?.addEventListener('click',async()=>{if(data.friendship==='ACCEPTED'){toast('Already friends.');return;}try{await friend(user.id);data.friendship='PENDING';renderTab('info');}catch(e){}});
+    mcGetById('profileBlockBtn')?.addEventListener('click',async()=>{await block(user.id);closeModal();});
+    mcGetById('profileGoldBtn')?.addEventListener('click',()=>shareWalletModal(user));
+    mcGetById('profileNicknameBtn')?.addEventListener('click',()=>nicknameModal(user));
+    mcGetById('profileModerateBtn')?.addEventListener('click',()=>moderate(user.id));
 
-    $('profileSendPM')?.addEventListener('click',()=>{closeModal();openDM(user.id);});
-    const profileFriendButton=$('profileAddFriend');
+    mcGetById('profileSendPM')?.addEventListener('click',()=>{closeModal();openDM(user.id);});
+    const profileFriendButton=mcGetById('profileAddFriend');
     if(profileFriendButton){
       const syncProfileFriendButton=async()=>{
         try{
@@ -4456,15 +4456,15 @@ function renderUserProfileModal(user,data={}){
         finally{profileFriendButton.disabled=profileFriendButton.dataset.friendState==='outgoing';}
       });
     }
-    $('profileMenuBtn')?.addEventListener('click',()=>openProfileActionDrawer(user,data));
-    $('profileRankBtn')?.addEventListener('click',()=>rankFromProfile(user));
-    $('profileEditBtn')?.addEventListener('click',()=>openProfileEditMenu());
-    $('staffProfileEditBtn')?.addEventListener('click',()=>openProfileEditMenu(user));
+    mcGetById('profileMenuBtn')?.addEventListener('click',()=>openProfileActionDrawer(user,data));
+    mcGetById('profileRankBtn')?.addEventListener('click',()=>rankFromProfile(user));
+    mcGetById('profileEditBtn')?.addEventListener('click',()=>openProfileEditMenu());
+    mcGetById('staffProfileEditBtn')?.addEventListener('click',()=>openProfileEditMenu(user));
 
-    $('editProfileFromModal')?.addEventListener('click',()=>{closeModal();state.view='profile';renderView();});
-    $('editAboutBtn')?.addEventListener('click',()=>{modal(`<h2>Edit About Me</h2><textarea id="aboutEdit" rows="7">${esc(state.user.bio||'')}</textarea><div class="toolbar"><button class="primary" id="saveAbout">Save</button></div>`);$('saveAbout').onclick=async()=>{try{const r=await api('/api/profile',{method:'PUT',body:JSON.stringify({bio:$('aboutEdit').value})});state.user=r.user;closeModal();toast('About Me saved.');}catch(e){toast(e.message)}};});
-    $('viewFriendsBtn')?.addEventListener('click',()=>{closeModal();state.view='friends';renderView();});
-    $('profileReportBtn')?.addEventListener('click',()=>{const reason=prompt('Why are you reporting this user?','Rule breaking behavior');if(reason)api('/api/reports',{method:'POST',body:JSON.stringify({target:user.id,reason})}).then(()=>toast('Report submitted.')).catch(e=>toast(e.message));});
+    mcGetById('editProfileFromModal')?.addEventListener('click',()=>{closeModal();state.view='profile';renderView();});
+    mcGetById('editAboutBtn')?.addEventListener('click',()=>{modal(`<h2>Edit About Me</h2><textarea id="aboutEdit" rows="7">${esc(state.user.bio||'')}</textarea><div class="toolbar"><button class="primary" id="saveAbout">Save</button></div>`);mcGetById('saveAbout').onclick=async()=>{try{const r=await api('/api/profile',{method:'PUT',body:JSON.stringify({bio:mcGetById('aboutEdit').value})});state.user=r.user;closeModal();toast('About Me saved.');}catch(e){toast(e.message)}};});
+    mcGetById('viewFriendsBtn')?.addEventListener('click',()=>{closeModal();state.view='friends';renderView();});
+    mcGetById('profileReportBtn')?.addEventListener('click',()=>{const reason=prompt('Why are you reporting this user?','Rule breaking behavior');if(reason)api('/api/reports',{method:'POST',body:JSON.stringify({target:user.id,reason})}).then(()=>toast('Report submitted.')).catch(e=>toast(e.message));});
   }
   document.querySelectorAll('.profile-tab').forEach(b=>b.addEventListener('click',()=>renderTab(b.dataset.tab)));
   renderTab('info');
@@ -4506,7 +4506,7 @@ async function loadFriends() {
   try {
     const data=await api("/api/friends");
     const friends=data.users||[], incoming=data.incoming||[], outgoing=data.outgoing||[];
-    $("friends").innerHTML=`
+    mcGetById("friends").innerHTML=`
       <div class="social-summary">
         <div><b>${friends.length}</b><span>Friends</span></div>
         <div><b>${incoming.length}</b><span>Requests</span></div>
@@ -4522,11 +4522,11 @@ async function loadFriends() {
 }
 
 async function acceptFriend(id){
-  try{await api(`/api/friends/${encodeURIComponent(id)}/accept`,{method:"POST"});toast("Friend request accepted.");if(!$("topFriendsDropdown")?.classList.contains("hidden"))await toggleFriendsDropdown(true);await loadNotifications();if(state.currentRoom)renderOnline("friends");}catch(e){toast(e.message)}
+  try{await api(`/api/friends/${encodeURIComponent(id)}/accept`,{method:"POST"});toast("Friend request accepted.");if(!mcGetById("topFriendsDropdown")?.classList.contains("hidden"))await toggleFriendsDropdown(true);await loadNotifications();if(state.currentRoom)renderOnline("friends");}catch(e){toast(e.message)}
 }
 async function removeFriend(id){
   if(!confirm("Remove this friendship/request?")) return;
-  try{await api(`/api/friends/${encodeURIComponent(id)}`,{method:"DELETE"});toast("Updated.");if(!$("topFriendsDropdown")?.classList.contains("hidden"))await toggleFriendsDropdown(true);await loadNotifications();if(state.currentRoom)renderOnline("friends");}catch(e){toast(e.message)}
+  try{await api(`/api/friends/${encodeURIComponent(id)}`,{method:"DELETE"});toast("Updated.");if(!mcGetById("topFriendsDropdown")?.classList.contains("hidden"))await toggleFriendsDropdown(true);await loadNotifications();if(state.currentRoom)renderOnline("friends");}catch(e){toast(e.message)}
 }
 
 /* ---------------- PRIVATE MESSAGES ---------------- */
@@ -4535,8 +4535,8 @@ function dmPrefs(){try{return JSON.parse(safeStorage.getItem("mc_dm_prefs_"+Stri
 function saveDMPrefs(p){safeStorage.setItem("mc_dm_prefs_"+String(state.user?.id||"guest"),JSON.stringify(p))}
 function dmSetPref(kind,id,value){const p=dmPrefs();p[kind]=p[kind]||{};if(value)p[kind][String(id)]=true;else delete p[kind][String(id)];saveDMPrefs(p)}
 async function loadDMList() {
-  if(!$("dmList")){
-    if(!$("topMessagesDropdown")?.classList.contains("hidden")) await toggleMessagesDropdown(true);
+  if(!mcGetById("dmList")){
+    if(!mcGetById("topMessagesDropdown")?.classList.contains("hidden")) await toggleMessagesDropdown(true);
     return;
   }
   try {
@@ -4559,7 +4559,7 @@ async function loadDMList() {
     };
     const searchBox='<div class="dm-inbox-toolbar"><input id="dmInboxSearch" placeholder="Search conversations…" autocomplete="off"><div class="dm-inbox-tabs">'+[['all','All'],['unread','Unread'],['pinned','Pinned'],['archived','Archived']].map(([v,l])=>'<button class="mini '+(activeTab===v?'active':'')+'" data-dm-tab="'+v+'">'+l+'</button>').join('')+'</div></div>';
     const render=()=>{
-      const q=($("dmInboxSearch")?.value||"").trim().toLowerCase(),p=dmPrefs();
+      const q=(mcGetById("dmInboxSearch")?.value||"").trim().toLowerCase(),p=dmPrefs();
       let rows=conversations.filter(c=>{const id=String(c.user.id),name=(privateNicknames[id]||c.user.displayName||c.user.username)+" "+c.user.username,unread=Number(c.unreadCount||0)>0,pinned=!!p.pinned?.[id],archived=!!p.archived?.[id];
         if(activeTab==="unread"&&!unread)return false;if(activeTab==="pinned"&&!pinned)return false;if(activeTab==="archived"&&!archived)return false;if(activeTab!=="archived"&&activeTab!=="all"&&archived)return false;
         return name.toLowerCase().includes(q)||(c.lastMessage?.text||"").toLowerCase().includes(q);
@@ -4574,16 +4574,16 @@ async function loadDMList() {
         return priority(b)-priority(a) || messageTime(b)-messageTime(a);
       });
       const list=rows.map(card).join('');
-      $("dmList").innerHTML=searchBox+'<div class="dm-inbox-list">'+(list||'<p class="muted dm-empty">No conversations here yet.</p>')+'</div>';
-      $("dmInboxSearch").value=q;
-      $("dmInboxSearch").addEventListener("input",()=>{const val=$("dmInboxSearch").value;render();const el=$("dmInboxSearch");el.focus();el.setSelectionRange(val.length,val.length)});
+      mcGetById("dmList").innerHTML=searchBox+'<div class="dm-inbox-list">'+(list||'<p class="muted dm-empty">No conversations here yet.</p>')+'</div>';
+      mcGetById("dmInboxSearch").value=q;
+      mcGetById("dmInboxSearch").addEventListener("input",()=>{const val=mcGetById("dmInboxSearch").value;render();const el=mcGetById("dmInboxSearch");el.focus();el.setSelectionRange(val.length,val.length)});
       document.querySelectorAll("[data-dm-tab]").forEach(btn=>btn.addEventListener("click",()=>{safeStorage.setItem("mc_dm_tab_"+String(state.user?.id||""),btn.dataset.dmTab);loadDMList()}));
       document.querySelectorAll("[data-dm-pref]").forEach(btn=>btn.addEventListener("click",()=>{const kind=btn.dataset.dmPref,id=btn.dataset.id,p=dmPrefs();dmSetPref(kind,id,!p[kind]?.[id]);loadDMList()}));
     };
     render();
-    const search=async()=>{const q=$("dmUserSearch").value.trim();if(!q){$("dmSearchResults").innerHTML='';return;}const u=await api(`/api/users?q=${encodeURIComponent(q)}`);$("dmSearchResults").innerHTML=(u.users||[]).filter(x=>x.id!==state.user.id&&x.username.toLowerCase().includes(q.toLowerCase())).map(x=>`<div class="user-card">${avatar(x)}<div style="flex:1"><b>${esc(x.displayName)}</b><small>@${esc(x.username)}</small></div><button class="primary" onclick="openDM('${esc(x.id)}')">Chat</button></div>`).join('')||'<p class="muted">No matching username.</p>';};
-    if($("dmSearchBtn"))$("dmSearchBtn").onclick=search;
-    if($("dmUserSearch"))$("dmUserSearch").onkeydown=e=>{if(e.key==='Enter')search()};
+    const search=async()=>{const q=mcGetById("dmUserSearch").value.trim();if(!q){mcGetById("dmSearchResults").innerHTML='';return;}const u=await api(`/api/users?q=${encodeURIComponent(q)}`);mcGetById("dmSearchResults").innerHTML=(u.users||[]).filter(x=>x.id!==state.user.id&&x.username.toLowerCase().includes(q.toLowerCase())).map(x=>`<div class="user-card">${avatar(x)}<div style="flex:1"><b>${esc(x.displayName)}</b><small>@${esc(x.username)}</small></div><button class="primary" onclick="openDM('${esc(x.id)}')">Chat</button></div>`).join('')||'<p class="muted">No matching username.</p>';};
+    if(mcGetById("dmSearchBtn"))mcGetById("dmSearchBtn").onclick=search;
+    if(mcGetById("dmUserSearch"))mcGetById("dmUserSearch").onkeydown=e=>{if(e.key==='Enter')search()};
   } catch (error) { toast(error.message); }
 }
 
@@ -4772,36 +4772,36 @@ async function openDM(id) {
       </form>
     `);
 
-    const dmTargetId=String(user.id),dmSettings=$('dmChatSettingsMenu'),dmSettingsBtn=$('dmChatSettingsBtn');
+    const dmTargetId=String(user.id),dmSettings=mcGetById('dmChatSettingsMenu'),dmSettingsBtn=mcGetById('dmChatSettingsBtn');
     dmSettingsBtn?.addEventListener('click',()=>{dmSettings?.classList.toggle('hidden');dmSettingsBtn.setAttribute('aria-expanded',String(!dmSettings?.classList.contains('hidden')));});
-    $('dmChatCloseBtn')?.addEventListener('click',closeModal);
-    $('dmChatMinimizeBtn')?.addEventListener('click',event=>{
+    mcGetById('dmChatCloseBtn')?.addEventListener('click',closeModal);
+    mcGetById('dmChatMinimizeBtn')?.addEventListener('click',event=>{
       event.preventDefault();
       event.stopPropagation();
       minimizeActiveDM();
     });
-    $('dmSearchToggle')?.addEventListener('click',()=>{
-      const panel=$('dmMessageSearchPanel'),toggle=$('dmSearchToggle');
+    mcGetById('dmSearchToggle')?.addEventListener('click',()=>{
+      const panel=mcGetById('dmMessageSearchPanel'),toggle=mcGetById('dmSearchToggle');
       panel?.classList.toggle('hidden');
       const opened=!!panel&&!panel.classList.contains('hidden');
       toggle?.setAttribute('aria-expanded',String(opened));
-      if(opened)$('dmMessageSearch')?.focus();
-      else if($('dmMessageSearch')){$('dmMessageSearch').value='';$('dmMessageSearch').dispatchEvent(new Event('input',{bubbles:true}));}
+      if(opened)mcGetById('dmMessageSearch')?.focus();
+      else if(mcGetById('dmMessageSearch')){mcGetById('dmMessageSearch').value='';mcGetById('dmMessageSearch').dispatchEvent(new Event('input',{bubbles:true}));}
     });
-    $('dmMessages')?.addEventListener('click',event=>{
+    mcGetById('dmMessages')?.addEventListener('click',event=>{
       const profile=event.target.closest('[data-dm-open-profile]');
       if(profile){event.preventDefault();openUser(profile.dataset.dmOpenProfile);return;}
       if(event.target.closest('.dm-message-actions'))return;
       const message=event.target.closest('.dm-msg');
       if(!message)return;
       const wasActive=message.classList.contains('dm-actions-open');
-      $('dmMessages')?.querySelectorAll('.dm-msg.dm-actions-open').forEach(node=>node.classList.remove('dm-actions-open'));
+      mcGetById('dmMessages')?.querySelectorAll('.dm-msg.dm-actions-open').forEach(node=>node.classList.remove('dm-actions-open'));
       if(!wasActive)message.classList.add('dm-actions-open');
     });
     document.querySelectorAll('[data-dm-open-profile]').forEach(link=>link.addEventListener('click',event=>{
       event.preventDefault();openUser(link.dataset.dmOpenProfile);
     }));
-    $('dmMessages')?.addEventListener("click",async event=>{
+    mcGetById('dmMessages')?.addEventListener("click",async event=>{
       const button=event.target?.closest?.("[data-dm-delete]");
       if(!button)return;
       const messageId=String(button.dataset.dmDelete||"");
@@ -4813,7 +4813,7 @@ async function openDM(id) {
         const result=await api("/api/dm/messages/"+encodeURIComponent(messageId),{method:"DELETE"});
         const updated=result.message||{...message,text:"",attachment:null,deleted:true,deletedAt:Date.now()};
         state.dmMessages=(state.dmMessages||[]).map(item=>String(item.id)===messageId?{...item,...updated}:item);
-        const list=$("dmMessages");
+        const list=mcGetById("dmMessages");
         if(list&&state.dmPeerUser){list.innerHTML=state.dmMessages.map(item=>dmMessageHTML(item,state.dmMessages,state.dmPeerUser)).join("");list.scrollTop=list.scrollHeight;}
         toast("Private message deleted.");
         loadDMList().catch(()=>{});
@@ -4821,18 +4821,18 @@ async function openDM(id) {
     });
     dmSettings?.querySelectorAll('[data-dm-action]').forEach(btn=>btn.addEventListener('click',async()=>{
       const action=btn.dataset.dmAction;dmSettings.classList.add('hidden');
-      if(action==='nickname'){modal(`<h2>Set nickname for this user</h2><p class="muted">Only you can see this nickname. Their username and account identity stay unchanged.</p><input id="privateNicknameInput" maxlength="50" value="${esc(privateNickname)}" placeholder="Private nickname"><div class="toolbar"><button class="primary" id="savePrivateNicknameBtn">Save</button></div>`);$('savePrivateNicknameBtn').onclick=async()=>{try{await api('/api/private-nickname',{method:'POST',body:JSON.stringify({targetId:user.id,nickname:$('privateNicknameInput').value.trim()})});closeModal();openDM(user.id);}catch(e){toast(e.message)}};return;}
+      if(action==='nickname'){modal(`<h2>Set nickname for this user</h2><p class="muted">Only you can see this nickname. Their username and account identity stay unchanged.</p><input id="privateNicknameInput" maxlength="50" value="${esc(privateNickname)}" placeholder="Private nickname"><div class="toolbar"><button class="primary" id="savePrivateNicknameBtn">Save</button></div>`);mcGetById('savePrivateNicknameBtn').onclick=async()=>{try{await api('/api/private-nickname',{method:'POST',body:JSON.stringify({targetId:user.id,nickname:mcGetById('privateNicknameInput').value.trim()})});closeModal();openDM(user.id);}catch(e){toast(e.message)}};return;}
       if(action==='ignore'){try{await block(user.id);closeModal();toast('User ignored.');}catch(e){toast(e.message)}return;}
       if(action==='mute'){const muted=!!dmPrefs().muted?.[dmTargetId];dmSetPref('muted',dmTargetId,!muted);toast(muted?'Conversation unmuted.':'Conversation muted.');return;}
       if(action==='archive'){const archived=!!dmPrefs().archived?.[dmTargetId];dmSetPref('archived',dmTargetId,!archived);closeModal();toast(archived?'Conversation unarchived.':'Conversation archived.');return;}
       if(action==='report'){const reason=prompt('Reason for reporting this private conversation:','Inappropriate private message');if(reason===null)return;try{await api('/api/report',{method:'POST',body:JSON.stringify({reportedUserId:user.id,conversationWithId:state.user.id,reason})});toast('Report submitted.');}catch(e){toast(e.message)}}
     }));
-    const box = $("dmMessages");
+    const box = mcGetById("dmMessages");
     if (box) box.scrollTop = box.scrollHeight;
     // The conversation DOM now exists. Fetch again now so a message that arrived
     // while the contact list/modal was loading appears without reopening the DM.
     // The active conversation receives incoming messages directly via Socket.IO.
-    const dmSearch=$("dmMessageSearch");
+    const dmSearch=mcGetById("dmMessageSearch");
     dmSearch?.addEventListener("input",()=>{
       const q=dmSearch.value.trim().toLowerCase();
       let visible=0;
@@ -4841,10 +4841,10 @@ async function openDM(id) {
         node.hidden=!match;
         if(match) visible++;
       });
-      if($("dmSearchCount")) $("dmSearchCount").textContent=q?(`${visible} match${visible===1?"":"es"}`):(`${messages.length} messages`);
+      if(mcGetById("dmSearchCount")) mcGetById("dmSearchCount").textContent=q?(`${visible} match${visible===1?"":"es"}`):(`${messages.length} messages`);
     });
     document.querySelectorAll("[data-dm-emoji]").forEach(button=>button.addEventListener("click",()=>{
-      const input=$("dmText"); if(!input)return;
+      const input=mcGetById("dmText"); if(!input)return;
       const start=input.selectionStart??input.value.length, end=input.selectionEnd??input.value.length, emoji=button.dataset.dmEmoji;
       input.value=input.value.slice(0,start)+emoji+input.value.slice(end);
       input.focus(); input.setSelectionRange(start+emoji.length,start+emoji.length);
@@ -4859,18 +4859,18 @@ async function openDM(id) {
       console.warn("Could not mark opened conversation as read:",error?.message||error);
     }
 
-    $("dmFile")?.addEventListener("change",()=>{
-      const f=$("dmFile").files?.[0];
-      if($("dmFileName")) $("dmFileName").textContent=f?`📎 ${f.name}`:"";
+    mcGetById("dmFile")?.addEventListener("change",()=>{
+      const f=mcGetById("dmFile").files?.[0];
+      if(mcGetById("dmFileName")) mcGetById("dmFileName").textContent=f?`📎 ${f.name}`:"";
     });
 
     const draftKey="mc_dm_draft_"+String(state.user?.id||"")+"_"+String(id);
-    const dmInput=$("dmText");
+    const dmInput=mcGetById("dmText");
     if(dmInput){dmInput.value=safeStorage.getItem(draftKey)||"";dmInput.addEventListener("input",()=>{if(dmInput.value)safeStorage.setItem(draftKey,dmInput.value);else safeStorage.removeItem(draftKey);if(state.socket?.connected)state.socket.emit("dm-typing",{userId:id,user:state.user?.displayName||state.user?.username,typing:!!dmInput.value.trim()});});}
-    $("dmForm").onsubmit = async e => {
+    mcGetById("dmForm").onsubmit = async e => {
       e.preventDefault();
-      const input = $("dmText");
-      const file = $("dmFile")?.files?.[0];
+      const input = mcGetById("dmText");
+      const file = mcGetById("dmFile")?.files?.[0];
       const text = input.value.trim();
       if (!text && !file) return;
       try {
@@ -4887,19 +4887,19 @@ async function openDM(id) {
           state.dmMessages=Array.isArray(state.dmMessages)?state.dmMessages:[];
           if(!state.dmMessages.some(item=>String(item.id)===String(sent.message.id))){
             state.dmMessages.push(sent.message);
-            const list=$("dmMessages");
+            const list=mcGetById("dmMessages");
             if(list){list.querySelector(".muted")?.remove();list.insertAdjacentHTML("beforeend",dmMessageHTML(sent.message,state.dmMessages,state.dmPeerUser||user));list.scrollTop=list.scrollHeight;}
           }
         }
-        input.value=""; safeStorage.removeItem(draftKey); if(state.socket?.connected)state.socket.emit("dm-typing",{userId:id,user:state.user?.displayName||state.user?.username,typing:false}); if($("dmFile")) $("dmFile").value=""; if($("dmFileName")) $("dmFileName").textContent="";
+        input.value=""; safeStorage.removeItem(draftKey); if(state.socket?.connected)state.socket.emit("dm-typing",{userId:id,user:state.user?.displayName||state.user?.username,typing:false}); if(mcGetById("dmFile")) mcGetById("dmFile").value=""; if(mcGetById("dmFileName")) mcGetById("dmFileName").textContent="";
         state.dmReplyTo=null; state.dmReplyUser=null; state.dmReplyAuthor=null; state.dmReplyText=null;
-        const count=$("dmSearchCount");if(count)count.textContent=(state.dmMessages||[]).length+" messages";
+        const count=mcGetById("dmSearchCount");if(count)count.textContent=(state.dmMessages||[]).length+" messages";
         // The API response renders the sender copy; Socket.IO delivers it to the recipient and other devices.
         loadDMList().catch(()=>{});
       } catch(error){ toast(error.message); }
     };
-    $("reportDmBtn")?.addEventListener("click",async()=>{const reason=prompt("Reason for reporting this private conversation:","Inappropriate private message");if(reason===null)return;try{await api("/api/report",{method:"POST",body:JSON.stringify({reportedUserId:id,conversationWithId:state.user.id,reason})});toast("Report submitted.");}catch(e){toast(e.message)}});
-    $("dmText")?.focus();
+    mcGetById("reportDmBtn")?.addEventListener("click",async()=>{const reason=prompt("Reason for reporting this private conversation:","Inappropriate private message");if(reason===null)return;try{await api("/api/report",{method:"POST",body:JSON.stringify({reportedUserId:id,conversationWithId:state.user.id,reason})});toast("Report submitted.");}catch(e){toast(e.message)}});
+    mcGetById("dmText")?.focus();
   } catch (error) {
     toast(error.message);
   }
@@ -4983,7 +4983,7 @@ async function loadSavedMessages(){
   try{
     const data=await api('/api/saved-messages');
     const messages=data.messages||[];
-    $('saved').innerHTML=messages.length?messages.map(m=>messageResultHTML(m,{saved:true})).join(''):`<div class="room-empty"><div>🔖</div><b>No saved messages yet</b><span>Use the 🔖 button on any message to save it here.</span></div>`;
+    mcGetById('saved').innerHTML=messages.length?messages.map(m=>messageResultHTML(m,{saved:true})).join(''):`<div class="room-empty"><div>🔖</div><b>No saved messages yet</b><span>Use the 🔖 button on any message to save it here.</span></div>`;
   }catch(e){toast(e.message)}
 }
 
@@ -4991,22 +4991,22 @@ async function loadSearchRooms(){
   try{
     const data=await api('/api/rooms');
     const rooms=data.rooms||[];
-    const sel=$('sr');
+    const sel=mcGetById('sr');
     const old=sel.value;
     sel.innerHTML='<option value="">All rooms</option>'+rooms.map(r=>`<option value="${esc(r.id)}">${esc(r.name)}</option>`).join('');
     sel.value=old;
   }catch(e){toast(e.message)}
 }
 
-$('searchForm').onsubmit=async e=>{
+mcGetById('searchForm').onsubmit=async e=>{
   e.preventDefault();
   try{
-    const q=encodeURIComponent($('sq').value.trim());
-    const author=encodeURIComponent($('sa').value.trim());
-    const roomId=encodeURIComponent($('sr').value);
+    const q=encodeURIComponent(mcGetById('sq').value.trim());
+    const author=encodeURIComponent(mcGetById('sa').value.trim());
+    const roomId=encodeURIComponent(mcGetById('sr').value);
     const data=await api(`/api/search/messages?q=${q}&author=${author}&roomId=${roomId}`);
     const messages=data.messages||[];
-    $('searchResults').innerHTML=messages.length?messages.map(m=>messageResultHTML(m)).join(''):`<div class="room-empty"><div>🔎</div><b>No matching messages</b><span>Try a different keyword, author or room.</span></div>`;
+    mcGetById('searchResults').innerHTML=messages.length?messages.map(m=>messageResultHTML(m)).join(''):`<div class="room-empty"><div>🔎</div><b>No matching messages</b><span>Try a different keyword, author or room.</span></div>`;
   }catch(e){toast(e.message)}
 };
 
@@ -5028,7 +5028,7 @@ async function openResultMessage(id,roomId){
 async function loadNews() {
   try {
     const data=await api("/api/news");
-    $("news").innerHTML=(data.news||[]).map(n=>{
+    mcGetById("news").innerHTML=(data.news||[]).map(n=>{
       const comments=n.comments||[], likes=Array.isArray(n.likes)?n.likes.map(String):[];
       const liked=likes.includes(String(state.user?.id));
       const authorButton=n.authorId? `<button type="button" class="news-author-link" data-news-author="${esc(n.authorId)}"><span class="news-author-avatar">${n.avatar?`<img src="${esc(n.avatar)}" alt="">`:'📰'}</span><span><b>${esc(n.author||'Maleficent Chat')}</b><small>${fmt(n.time)}</small></span></button>`:`<div class="news-author-link"><span class="news-author-avatar">${n.avatar?`<img src="${esc(n.avatar)}" alt="">`:'📰'}</span><span><b>${esc(n.author||'Maleficent Chat')}</b><small>${fmt(n.time)}</small></span></div>`;
@@ -5041,7 +5041,7 @@ async function loadNews() {
         <div class="social-post-options hidden" id="newsOptions-${esc(n.id)}"><button type="button" data-news-report="${esc(n.id)}">⚑ Report</button></div>
       </article>`;
     }).join("")||`<div class="news-empty-state"><span>✦</span><b>Nothing new just yet</b><p>Community announcements will appear here.</p></div>`;
-    document.querySelectorAll('[data-news-more]').forEach(b=>b.onclick=()=>{$('newsOptions-'+b.dataset.newsMore)?.classList.toggle('hidden')});
+    document.querySelectorAll('[data-news-more]').forEach(b=>b.onclick=()=>{mcGetById('newsOptions-'+b.dataset.newsMore)?.classList.toggle('hidden')});
     document.querySelectorAll('[data-news-report]').forEach(b=>b.onclick=async()=>{const id=b.dataset.newsReport;try{await api('/api/news/'+encodeURIComponent(id)+'/report',{method:'POST',body:JSON.stringify({reason:'Reported by community member'})});toast('Report submitted.')}catch(e){toast(e.message||'Reporting is unavailable for this post.')}});
     document.querySelectorAll('[data-news-like]').forEach(b=>b.onclick=async()=>{b.disabled=true;try{await api('/api/news/'+encodeURIComponent(b.dataset.newsLike)+'/like',{method:'POST',body:JSON.stringify({})});await loadNews()}catch(e){toast(e.message||'Could not like this post.')}finally{b.disabled=false}});
     document.querySelectorAll('[data-news-likes]').forEach(b=>b.onclick=()=>openNewsLikes(b.dataset.newsLikes));
@@ -5081,9 +5081,9 @@ function openPublishNews(){
       <p id="newsComposeError" class="error" role="status" aria-live="polite"></p>
     </form>
   </div>`);
-  const form=$('newsForm'),photo=$('nphoto'),preview=$('newsPhotoPreview'),previewImage=$('newsPhotoPreviewImage');
-  const publish=$('newsComposePublish'),errorBox=$('newsComposeError');
-  $('newsComposeCancel')?.addEventListener('click',closeModal);
+  const form=mcGetById('newsForm'),photo=mcGetById('nphoto'),preview=mcGetById('newsPhotoPreview'),previewImage=mcGetById('newsPhotoPreviewImage');
+  const publish=mcGetById('newsComposePublish'),errorBox=mcGetById('newsComposeError');
+  mcGetById('newsComposeCancel')?.addEventListener('click',closeModal);
   photo?.addEventListener('change',()=>{
     const file=photo.files?.[0];
     if(!file){preview?.classList.add('hidden');return;}
@@ -5094,15 +5094,15 @@ function openPublishNews(){
     reader.onerror=()=>toast('Could not preview this image.');
     reader.readAsDataURL(file);
   });
-  $('newsPhotoRemove')?.addEventListener('click',()=>{
+  mcGetById('newsPhotoRemove')?.addEventListener('click',()=>{
     if(photo)photo.value='';
     if(previewImage)previewImage.removeAttribute('src');
     preview?.classList.add('hidden');
   });
   const publishPost=async()=>{
     if(publish?.disabled)return;
-    const title=$('nt')?.value.trim()||'';
-    const body=$('nb')?.value.trim()||'';
+    const title=mcGetById('nt')?.value.trim()||'';
+    const body=mcGetById('nb')?.value.trim()||'';
     const file=photo?.files?.[0];
     if(!body&&!file){if(errorBox)errorBox.textContent='Write an update or attach a photo before publishing.';return;}
     if(file&&(!file.type.startsWith('image/')||file.size>10*1024*1024)){
@@ -5173,7 +5173,7 @@ function brandNewsCanPublish(){
   return !!state.user && canFeature("publish_news");
 }
 async function loadBrandNews(){
-  const root=$("brandNewsFeed");if(!root)return;
+  const root=mcGetById("brandNewsFeed");if(!root)return;
   root.innerHTML='<div class="brand-news-empty">Gathering official updates…</div>';
   try{
     const result=await api("/api/brand-news");
@@ -5197,7 +5197,7 @@ async function loadBrandNews(){
     }));
   }catch(error){
     root.innerHTML='<div class="brand-news-empty"><b>Brand News could not load.</b><p>'+esc(error.message||"Please try again.")+'</p><button type="button" class="mini" id="brandNewsRetry">Retry</button></div>';
-    $("brandNewsRetry")?.addEventListener("click",loadBrandNews);
+    mcGetById("brandNewsRetry")?.addEventListener("click",loadBrandNews);
   }
 }
 function openBrandNewsComposer(){
@@ -5216,25 +5216,25 @@ function openBrandNewsComposer(){
       <div class="brand-news-compose-actions"><button type="button" class="mini" id="brandNewsCancel">Cancel</button><button type="submit" class="primary" id="brandNewsSubmit">Publish official update</button></div>
     </form>
   </section>`);
-  const form=$("brandNewsForm"),file=$("brandNewsImage"),submit=$("brandNewsSubmit"),error=$("brandNewsError");
-  file?.addEventListener("change",()=>{const selected=file.files?.[0];$("brandNewsImageName").textContent=selected?selected.name+" · "+(selected.size/1024/1024).toFixed(1)+" MB":"No artwork selected";});
-  $("brandNewsCancel")?.addEventListener("click",closeModal);
+  const form=mcGetById("brandNewsForm"),file=mcGetById("brandNewsImage"),submit=mcGetById("brandNewsSubmit"),error=mcGetById("brandNewsError");
+  file?.addEventListener("change",()=>{const selected=file.files?.[0];mcGetById("brandNewsImageName").textContent=selected?selected.name+" · "+(selected.size/1024/1024).toFixed(1)+" MB":"No artwork selected";});
+  mcGetById("brandNewsCancel")?.addEventListener("click",closeModal);
   form?.addEventListener("submit",async event=>{
     event.preventDefault();if(submit.disabled)return;
-    const headline=$("brandNewsHeadline").value.trim(),summary=$("brandNewsSummary").value.trim(),body=$("brandNewsBody").value.trim(),image=file.files?.[0];
-    const linkLabel=$("brandNewsLinkLabel").value.trim(),linkUrl=$("brandNewsLinkUrl").value.trim();
+    const headline=mcGetById("brandNewsHeadline").value.trim(),summary=mcGetById("brandNewsSummary").value.trim(),body=mcGetById("brandNewsBody").value.trim(),image=file.files?.[0];
+    const linkLabel=mcGetById("brandNewsLinkLabel").value.trim(),linkUrl=mcGetById("brandNewsLinkUrl").value.trim();
     if(!headline||!summary||!body){error.textContent="Add a headline, short introduction and full announcement.";return;}
     if(linkUrl){try{const parsed=new URL(linkUrl);if(!["http:","https:"].includes(parsed.protocol))throw new Error();}catch{error.textContent="Enter a valid https:// or http:// destination.";return;}}
     if(image&&(!image.type.startsWith("image/")||image.size>10*1024*1024)){error.textContent="Choose an image up to 10 MB.";return;}
     submit.disabled=true;submit.textContent="Publishing…";error.textContent="";
     try{
-      const payload=new FormData();payload.append("category",$("brandNewsCategory").value);payload.append("headline",headline);payload.append("summary",summary);payload.append("body",body);payload.append("linkLabel",linkLabel);payload.append("linkUrl",linkUrl);if(image)payload.append("file",image);
+      const payload=new FormData();payload.append("category",mcGetById("brandNewsCategory").value);payload.append("headline",headline);payload.append("summary",summary);payload.append("body",body);payload.append("linkLabel",linkLabel);payload.append("linkUrl",linkUrl);if(image)payload.append("file",image);
       await api("/api/brand-news",{method:"POST",body:payload,uploadProgress:true});
       closeModal();await loadBrandNews();toast("Official Brand News update published.");
     }catch(err){error.textContent=err.message||"Could not publish this update.";toast(error.textContent);submit.disabled=false;submit.textContent="Publish official update";}
   });
 }
-$("publishBrandNews")?.addEventListener("click",openBrandNewsComposer);
+mcGetById("publishBrandNews")?.addEventListener("click",openBrandNewsComposer);
 
 async function openNewsComments(id){
   try{
@@ -5246,17 +5246,17 @@ async function openNewsComments(id){
       <div class="news-comment-main"><div><button type="button" class="news-comment-name-link" data-news-comment-user="${esc(c.userId||"")}">${esc(c.displayName||c.username)}</button> <span class="muted">${c.time?esc(new Date(c.time).toLocaleDateString()):""}</span></div><p>${esc(c.text)}</p></div>
       ${(c.userId===state.user.id||can("MOD"))?`<button class="mini danger" onclick="deleteNewsComment('${esc(id)}','${esc(c.id)}')">×</button>`:""}
     </div>`).join("")||`<div class="news-empty-comments">No comments yet. Be the first to comment.</div>`;
-    const host=$("newsCommentsPanel");
+    const host=mcGetById("newsCommentsPanel");
     if(!host)throw new Error("News comments panel is unavailable.");
     host.innerHTML=`<div class="news-comments-panel-head"><div><h2>${esc(n.title)}</h2><p class="muted">Join the conversation</p></div><div class="news-comments-panel-actions"><span class="news-count">💬 ${(data.comments||[]).length}</span><button type="button" class="news-comments-panel-close" id="closeNewsComments" aria-label="Close comments">×</button></div></div><div class="news-comments-panel-content"><div class="news-comments-list" id="commentsList">${render(data.comments)}</div><form id="commentForm" class="news-comment-form"><input id="commentText" maxlength="1000" placeholder="Type your comment" required><button class="primary">Post</button></form></div>`;
     host.classList.remove("hidden");
     host.onclick=event=>{const profileLink=event.target.closest("[data-news-comment-user]");if(profileLink){const userId=profileLink.dataset.newsCommentUser;if(userId){event.preventDefault();openUser(userId);}}};
-    $("closeNewsComments")?.addEventListener("click",()=>{host.classList.add("hidden");host.innerHTML="";});
-    $("commentForm").onsubmit=async e=>{
+    mcGetById("closeNewsComments")?.addEventListener("click",()=>{host.classList.add("hidden");host.innerHTML="";});
+    mcGetById("commentForm").onsubmit=async e=>{
       e.preventDefault();
-      const input=$("commentText"),text=input?.value.trim(); if(!text)return;
-      const submit=e.submitter||$("commentForm").querySelector("button");if(submit){submit.disabled=true;submit.textContent="Posting…";}
-      try{await api(`/api/news/${encodeURIComponent(id)}/comments`,{method:"POST",body:JSON.stringify({text})});input.value="";const r=await api(`/api/news/${encodeURIComponent(id)}/comments`);$("commentsList").innerHTML=render(r.comments);host.querySelector(".news-count").textContent="💬 "+(r.comments||[]).length;await loadNews();}
+      const input=mcGetById("commentText"),text=input?.value.trim(); if(!text)return;
+      const submit=e.submitter||mcGetById("commentForm").querySelector("button");if(submit){submit.disabled=true;submit.textContent="Posting…";}
+      try{await api(`/api/news/${encodeURIComponent(id)}/comments`,{method:"POST",body:JSON.stringify({text})});input.value="";const r=await api(`/api/news/${encodeURIComponent(id)}/comments`);mcGetById("commentsList").innerHTML=render(r.comments);host.querySelector(".news-count").textContent="💬 "+(r.comments||[]).length;await loadNews();}
       catch(err){toast(err.message);}
       finally{if(submit){submit.disabled=false;submit.textContent="Post";}}
     };
@@ -5281,7 +5281,7 @@ async function loadLeaderboard() {
     const users =
       data.users || [];
 
-    $("leaderboard").innerHTML = `
+    mcGetById("leaderboard").innerHTML = `
       <section class="card leaderboard-category">
 
         <h3>Top XP</h3>
@@ -5360,7 +5360,7 @@ async function loadLeaderboard() {
 
 /* ---------------- PROFILE ---------------- */
 
-async function staffProfileNoteModal(user){try{const d=await api('/api/staff/user/'+encodeURIComponent(user.id)+'/note');const note=d.note||'';modal('<div class="staff-note-modal"><h2>📝 Staff Profile Note</h2><p class="muted">Confidential staff-only context for @'+esc(user.username)+'. Do not record passwords or unnecessary sensitive personal information.</p>'+(note?'<article class="staff-note-entry"><div class="staff-note-entry-head"><b>Latest note</b><span class="muted">'+esc(d.updatedAt?new Date(d.updatedAt).toLocaleString():'Date unavailable')+'</span></div><div class="staff-note-author">Added by <b>@'+esc(d.updatedBy||'Unknown staff member')+'</b></div><p class="staff-note-message">'+esc(note)+'</p></article>':'<div class="staff-note-empty">No staff note has been added for this account.</div>')+'<label>Add a new note<textarea id="staffProfileNote" rows="5" maxlength="4000" placeholder="Write clear, factual staff context…"></textarea></label><div class="toolbar"><button class="primary" id="saveStaffProfileNote">Add note</button><button class="mini" type="button" onclick="closeModal()">Close</button></div></div>');$('saveStaffProfileNote').onclick=async()=>{const value=$('staffProfileNote').value.trim();if(!value){toast('Write a note before saving.');return;}try{await api('/api/staff/user/'+encodeURIComponent(user.id)+'/note',{method:'PATCH',body:JSON.stringify({note:value})});closeModal();toast('Staff note added.');}catch(e){toast(e.message)}};}catch(e){toast(e.message)}}
+async function staffProfileNoteModal(user){try{const d=await api('/api/staff/user/'+encodeURIComponent(user.id)+'/note');const note=d.note||'';modal('<div class="staff-note-modal"><h2>📝 Staff Profile Note</h2><p class="muted">Confidential staff-only context for @'+esc(user.username)+'. Do not record passwords or unnecessary sensitive personal information.</p>'+(note?'<article class="staff-note-entry"><div class="staff-note-entry-head"><b>Latest note</b><span class="muted">'+esc(d.updatedAt?new Date(d.updatedAt).toLocaleString():'Date unavailable')+'</span></div><div class="staff-note-author">Added by <b>@'+esc(d.updatedBy||'Unknown staff member')+'</b></div><p class="staff-note-message">'+esc(note)+'</p></article>':'<div class="staff-note-empty">No staff note has been added for this account.</div>')+'<label>Add a new note<textarea id="staffProfileNote" rows="5" maxlength="4000" placeholder="Write clear, factual staff context…"></textarea></label><div class="toolbar"><button class="primary" id="saveStaffProfileNote">Add note</button><button class="mini" type="button" onclick="closeModal()">Close</button></div></div>');mcGetById('saveStaffProfileNote').onclick=async()=>{const value=mcGetById('staffProfileNote').value.trim();if(!value){toast('Write a note before saving.');return;}try{await api('/api/staff/user/'+encodeURIComponent(user.id)+'/note',{method:'PATCH',body:JSON.stringify({note:value})});closeModal();toast('Staff note added.');}catch(e){toast(e.message)}};}catch(e){toast(e.message)}}
 
 async function staffFeatureBlockModal(user){
   try{
@@ -5372,10 +5372,10 @@ async function staffFeatureBlockModal(user){
       return '<section class="feature-block-category"><h3>'+esc(category)+'</h3>'+rows.map(f=>'<label class="feature-block-row"><span><b>'+esc(f.name)+'</b><small>'+(blocked[f.key]?'Blocked for this user':'Available to this user')+'</small></span><input class="feature-block-toggle" type="checkbox" data-feature="'+esc(f.key)+'" '+(blocked[f.key]?'checked':'')+'><i></i></label>').join('')+'</section>';
     }).join('');
     modal('<div class="staff-feature-block-modal"><h2>🚫 Feature Block</h2><p class="muted">Choose which site features @'+esc(user.username)+' can use. Turning a feature off blocks its supported server actions for this account; other users are not affected.</p><div class="feature-block-list">'+featureRows+'</div><div class="toolbar"><button class="primary" id="saveFeatureBlocks">Save changes</button><button class="mini" type="button" onclick="closeModal()">Cancel</button></div></div>');
-    $('saveFeatureBlocks').onclick=async()=>{
+    mcGetById('saveFeatureBlocks').onclick=async()=>{
       const next={};
       document.querySelectorAll('.feature-block-toggle').forEach(el=>{if(el.checked)next[el.dataset.feature]=true;});
-      const btn=$('saveFeatureBlocks');if(btn){btn.disabled=true;btn.textContent='Saving…';}
+      const btn=mcGetById('saveFeatureBlocks');if(btn){btn.disabled=true;btn.textContent='Saving…';}
       try{
         await api('/api/staff/user/'+encodeURIComponent(user.id)+'/feature-blocks',{method:'PUT',body:JSON.stringify({blocked:next})});
         closeModal();toast('Feature blocks saved for @'+user.username+'.');
@@ -5398,10 +5398,10 @@ function rankFromProfile(user){
   const ceiling=isOwner?rankOrder.DEVELOPER:(isCoowner?rankOrder.INSTRUCTOR:rankOrder.MOD);
   const allowed=isOwner ? ranks : ranks.filter(r=>rankOrder[r]<=ceiling && rankOrder[r]<rankOrder[actorRank]);
   modal(`<h2>🏅 Change rank for @${esc(user.username)}</h2><p class="muted">${isOwner?"Owner control: you may assign any rank, including OWNER.":(isCoowner?"Co-owner control: you may assign Instructor or below.":"Staff control: you may assign MOD or below.")}</p><select id="profileRankSelect">${allowed.map(r=>`<option value="${r}" ${r===user.rank?'selected':''}>${rankIcon[r]||''} ${r}</option>`).join('')}</select><div class="toolbar"><button class="primary" id="saveProfileRank">Save rank</button></div>`);
-  $('saveProfileRank').onclick=async()=>{
+  mcGetById('saveProfileRank').onclick=async()=>{
     try{
       const endpoint=isOwner?`/api/owner/user/${encodeURIComponent(user.id)}/rank`:`/api/staff/user/${encodeURIComponent(user.id)}/rank`;
-      const r=await api(endpoint,{method:"PATCH",body:JSON.stringify({rank:$('profileRankSelect').value})});
+      const r=await api(endpoint,{method:"PATCH",body:JSON.stringify({rank:mcGetById('profileRankSelect').value})});
       closeModal(); toast(`@${user.username} is now ${r.user.rank}.`);
     }catch(e){toast(e.message)}
   };
@@ -5409,30 +5409,30 @@ function rankFromProfile(user){
 
 function nicknameModal(user){
   modal(`<h2>Personalized nickname</h2><p class="muted">Only you and @${esc(user.username)} can see this nickname.</p><input id="nicknameInput" maxlength="40" placeholder="Nickname"><div class="toolbar"><button class="primary" id="saveNickname">Save</button><button class="mini danger" id="removeNickname">Remove</button></div>`);
-  api('/api/friends/'+encodeURIComponent(user.id)+'/nickname').then(r=>$('nicknameInput').value=r.nickname||'');
-  $('saveNickname').onclick=async()=>{try{await api('/api/friends/'+encodeURIComponent(user.id)+'/nickname',{method:'PUT',body:JSON.stringify({nickname:$('nicknameInput').value.trim()})});closeModal();toast('Nickname saved.');}catch(e){toast(e.message)}};
-  $('removeNickname').onclick=async()=>{try{await api('/api/friends/'+encodeURIComponent(user.id)+'/nickname',{method:'DELETE'});closeModal();toast('Nickname removed.');}catch(e){toast(e.message)}};
+  api('/api/friends/'+encodeURIComponent(user.id)+'/nickname').then(r=>mcGetById('nicknameInput').value=r.nickname||'');
+  mcGetById('saveNickname').onclick=async()=>{try{await api('/api/friends/'+encodeURIComponent(user.id)+'/nickname',{method:'PUT',body:JSON.stringify({nickname:mcGetById('nicknameInput').value.trim()})});closeModal();toast('Nickname saved.');}catch(e){toast(e.message)}};
+  mcGetById('removeNickname').onclick=async()=>{try{await api('/api/friends/'+encodeURIComponent(user.id)+'/nickname',{method:'DELETE'});closeModal();toast('Nickname removed.');}catch(e){toast(e.message)}};
 }
 function shareWalletModal(user){
   const balances={DIAMONDS:Number(state.user?.diamonds||0),GOLD:Number(state.user?.gold||0)};
   modal("<div class='wallet-transfer-modal'><h2>💝 Share Wallet</h2><p class='muted'>Send currency to @"+esc(user.username||"member")+".</p><label>Currency<select id='walletShareCurrency'><option value='DIAMONDS'>💎 Diamonds</option><option value='GOLD'>🪙 Gold</option></select></label><div class='wallet-share-balance' id='walletShareBalance'></div><label>Amount<input id='walletShareAmount' type='number' min='1' step='1' placeholder='Enter amount'></label><label>Message (optional)<input id='walletShareNote' maxlength='160' placeholder='A little gift for you…'></label><p class='wallet-transfer-limit'>Daily limit: 100 Diamonds or 10,000 Gold.</p><button class='primary' id='sendWalletBtn'>Send</button></div>");
-  const currency=$("walletShareCurrency"),amount=$("walletShareAmount"),balance=$("walletShareBalance");
+  const currency=mcGetById("walletShareCurrency"),amount=mcGetById("walletShareAmount"),balance=mcGetById("walletShareBalance");
   const sync=()=>{const key=currency.value,unit=key==="DIAMONDS"?"Diamonds":"Gold",available=balances[key];balance.textContent="Available: "+available.toLocaleString()+" "+unit;amount.max=String(available);amount.placeholder="Up to "+available.toLocaleString();};
   currency.onchange=sync;sync();
-  $("sendWalletBtn").onclick=async()=>{const selected=currency.value,value=Number(amount.value);if(!Number.isSafeInteger(value)||value<1){toast("Enter a whole positive amount.");return;}try{const result=await api("/api/users/"+encodeURIComponent(user.id)+"/wallet/share",{method:"POST",body:JSON.stringify({currency:selected,amount:value,note:$("walletShareNote").value.trim()})});if(result.from){state.user.diamonds=Number(result.from.diamonds||0);state.user.gold=Number(result.from.gold||0);}updateNav();closeModal();toast(value.toLocaleString()+" "+(selected==="DIAMONDS"?"Diamonds":"Gold")+" sent to @"+user.username+".");if(state.view==="wallet")loadWallet();}catch(error){toast(error.message)}};
+  mcGetById("sendWalletBtn").onclick=async()=>{const selected=currency.value,value=Number(amount.value);if(!Number.isSafeInteger(value)||value<1){toast("Enter a whole positive amount.");return;}try{const result=await api("/api/users/"+encodeURIComponent(user.id)+"/wallet/share",{method:"POST",body:JSON.stringify({currency:selected,amount:value,note:mcGetById("walletShareNote").value.trim()})});if(result.from){state.user.diamonds=Number(result.from.diamonds||0);state.user.gold=Number(result.from.gold||0);}updateNav();closeModal();toast(value.toLocaleString()+" "+(selected==="DIAMONDS"?"Diamonds":"Gold")+" sent to @"+user.username+".");if(state.view==="wallet")loadWallet();}catch(error){toast(error.message)}};
 }
 function openWalletShareByUsername(){
   modal("<div class='wallet-transfer-modal'><h2>💝 Share Wallet</h2><p class='muted'>Find a member to send Diamonds or Gold.</p><input id='walletRecipientSearch' maxlength='26' placeholder='Search username…'><div id='walletRecipientResults' class='wallet-recipient-results'></div></div>");
-  const input=$("walletRecipientSearch"),results=$("walletRecipientResults");let version=0;
+  const input=mcGetById("walletRecipientSearch"),results=mcGetById("walletRecipientResults");let version=0;
   input.oninput=async()=>{const q=input.value.trim(),request=++version;if(q.length<2){results.innerHTML="<p class='muted'>Enter at least 2 characters.</p>";return;}results.innerHTML="<p class='muted'>Searching…</p>";try{const data=await api("/api/wallet/recipients?q="+encodeURIComponent(q));if(request!==version)return;results.innerHTML=(data.users||[]).map(user=>"<button type='button' class='wallet-recipient' data-wallet-recipient='"+esc(user.id)+"'><span>👤</span><b>@"+esc(user.username)+"</b><i>›</i></button>").join("")||"<p class='muted'>No members found.</p>";results.querySelectorAll("[data-wallet-recipient]").forEach(button=>button.onclick=()=>{const user=(data.users||[]).find(item=>String(item.id)===button.dataset.walletRecipient);if(user)shareWalletModal(user);});}catch(error){results.innerHTML="<p class='error'>"+esc(error.message)+"</p>";}};
 }
 function openWalletConvertModal(){
   modal("<div class='wallet-transfer-modal'><h2>🔄 Convert Diamonds</h2><p class='muted'>1 Diamond = 100 Gold.</p><div class='wallet-share-balance'>Available: "+Number(state.user?.diamonds||0).toLocaleString()+" 💎</div><label>Diamonds to convert<input id='walletConvertAmount' type='number' min='1' step='1' placeholder='Enter whole Diamonds'></label><div class='wallet-convert-preview' id='walletConvertPreview'>You will receive 0 Gold.</div><button class='primary' id='walletConvertSubmit'>Convert</button></div>");
-  const amount=$("walletConvertAmount"),preview=$("walletConvertPreview");amount.max=String(Math.max(1,Number(state.user?.diamonds||0)));amount.oninput=()=>{const value=Number(amount.value);preview.textContent="You will receive "+(Number.isSafeInteger(value)&&value>0?(value*100).toLocaleString():"0")+" Gold.";};
-  $("walletConvertSubmit").onclick=async()=>{const value=Number(amount.value);if(!Number.isSafeInteger(value)||value<1){toast("Enter a whole positive Diamond amount.");return;}try{const result=await api("/api/wallet/convert",{method:"POST",body:JSON.stringify({amount:value})});state.user.diamonds=result.wallet.diamonds;state.user.gold=result.wallet.gold;updateNav();closeModal();toast("Converted "+value+" Diamonds into "+(value*100).toLocaleString()+" Gold.");if(state.view==="wallet")loadWallet();}catch(error){toast(error.message)}};
+  const amount=mcGetById("walletConvertAmount"),preview=mcGetById("walletConvertPreview");amount.max=String(Math.max(1,Number(state.user?.diamonds||0)));amount.oninput=()=>{const value=Number(amount.value);preview.textContent="You will receive "+(Number.isSafeInteger(value)&&value>0?(value*100).toLocaleString():"0")+" Gold.";};
+  mcGetById("walletConvertSubmit").onclick=async()=>{const value=Number(amount.value);if(!Number.isSafeInteger(value)||value<1){toast("Enter a whole positive Diamond amount.");return;}try{const result=await api("/api/wallet/convert",{method:"POST",body:JSON.stringify({amount:value})});state.user.diamonds=result.wallet.diamonds;state.user.gold=result.wallet.gold;updateNav();closeModal();toast("Converted "+value+" Diamonds into "+(value*100).toLocaleString()+" Gold.");if(state.view==="wallet")loadWallet();}catch(error){toast(error.message)}};
 }
 async function loadWallet(){
-  const root=$("walletRoot");if(!root)return;root.innerHTML="<div class='wallet-loading'>Opening your MC Bank…</div>";
+  const root=mcGetById("walletRoot");if(!root)return;root.innerHTML="<div class='wallet-loading'>Opening your MC Bank…</div>";
   try{
     const pair=await Promise.all([api("/api/wallet"),api("/api/daily/status")]),data=pair[0],daily=pair[1];
     state.user.diamonds=Number(data.wallet?.diamonds||0);state.user.gold=Number(data.wallet?.gold||0);updateNav();
@@ -5441,10 +5441,10 @@ async function loadWallet(){
     const rewardDays=schedule.map((value,index)=>"<div class='wallet-reward-day'><small>DAY "+(index+1)+"</small><b>💎 "+value+"</b></div>").join("");
     const staffPanel=canReward?"<section class='wallet-panel wallet-staff-panel'><div class='wallet-panel-heading'><div><span>🛡️ STAFF TOOLS</span><h3>Grant Gold &amp; Diamonds</h3></div></div><form id='walletStaffRewardForm' class='wallet-staff-form'><label>Member username<input id='walletRewardUser' maxlength='26' placeholder='@username' required></label><label>Currency<select id='walletRewardCurrency'><option value='DIAMONDS'>💎 Diamonds</option><option value='GOLD'>🪙 Gold</option></select></label><label>Amount<input id='walletRewardAmount' type='number' min='1' max='"+(rank==="COOWNER"?10:rank==="OWNER"?100:Number.MAX_SAFE_INTEGER)+"' step='1' required></label><label>Reason<input id='walletRewardReason' maxlength='240' placeholder='Reason for reward' required></label><button class='primary' type='submit'>Grant currency</button></form><small class='muted'>"+(rank==="COOWNER"?"Coowner limit: 10 Diamonds per reward.":rank==="OWNER"?"Owner limit: 100 Diamonds per reward.":"Developer reward authority.")+"</small></section>":"";
     root.innerHTML="<section class='wallet-hero'><div class='wallet-hero-copy'><span class='wallet-eyebrow'>MALEFICENT CHAT · PRIVATE BANK</span><h3>Your Wallet</h3><p>Collect Diamonds, convert them into Gold, and share either currency with your friends.</p></div><div class='wallet-balance-grid'><article class='wallet-balance-card wallet-diamond-card'><span>💎</span><small>DIAMONDS</small><strong>"+state.user.diamonds.toLocaleString()+"</strong></article><article class='wallet-balance-card wallet-gold-card'><span>🪙</span><small>GOLD</small><strong>"+state.user.gold.toLocaleString()+"</strong></article></div><div class='wallet-actions'><button type='button' class='primary' id='walletShareOpen'>💝 Share Wallet</button><button type='button' class='mini' id='walletConvertOpen'>🔄 Convert Diamonds</button><button type='button' class='mini' id='walletRefresh'>↻ Refresh</button></div></section><div class='wallet-content-grid'><section class='wallet-panel'><div class='wallet-panel-heading'><div><span>🎁 DAILY LOGIN</span><h3>Diamond Rewards</h3></div><b>7-day cycle</b></div><div class='wallet-reward-days'>"+rewardDays+"</div><p class='muted'>Claim once every day. Miss a day and your streak starts again.</p><button type='button' class='primary' id='walletDailyClaim' "+(daily.claimed?"disabled":"")+">"+(daily.claimed?"✓ Already claimed today":"Claim +"+(daily.nextDiamonds||2)+" Diamonds")+"</button></section></div>"+staffPanel+"<details class='wallet-panel wallet-history-panel wallet-history-details'><summary class='wallet-panel-heading'><div><span>📜 WALLET ACTIVITY</span><h3>Transaction History</h3></div><span class='wallet-history-chevron'>⌄</span></summary><div class='wallet-transactions'>"+txHtml+"</div></details>";
-    $("walletShareOpen").onclick=openWalletShareByUsername;$("walletConvertOpen").onclick=openWalletConvertModal;$("walletRefresh").onclick=loadWallet;
-    $("walletDailyClaim")?.addEventListener("click",async()=>{const result=await claimDailyReward();if(result)await loadWallet();});
-    $("walletStaffRewardForm")?.addEventListener("submit",async event=>{event.preventDefault();const button=event.currentTarget.querySelector("button[type='submit']");if(button){button.disabled=true;button.textContent="Granting…";}try{const result=await api("/api/wallet/reward",{method:"POST",body:JSON.stringify({username:$("walletRewardUser").value.trim().replace(/^@/,""),currency:$("walletRewardCurrency").value,amount:Number($("walletRewardAmount").value),reason:$("walletRewardReason").value.trim()})});toast("Granted "+result.amount+" "+(result.currency==="GOLD"?"gold":"Diamonds")+" to @"+result.recipient.username+".");await loadWallet();}catch(error){toast(error.message);if(button){button.disabled=false;button.textContent="Grant currency";}}});
-  }catch(error){root.innerHTML="<section class='wallet-panel'><p class='error'>Could not load your wallet: "+esc(error.message)+"</p><button class='mini' id='walletRetry'>Retry</button></section>";$("walletRetry")?.addEventListener("click",loadWallet);}
+    mcGetById("walletShareOpen").onclick=openWalletShareByUsername;mcGetById("walletConvertOpen").onclick=openWalletConvertModal;mcGetById("walletRefresh").onclick=loadWallet;
+    mcGetById("walletDailyClaim")?.addEventListener("click",async()=>{const result=await claimDailyReward();if(result)await loadWallet();});
+    mcGetById("walletStaffRewardForm")?.addEventListener("submit",async event=>{event.preventDefault();const button=event.currentTarget.querySelector("button[type='submit']");if(button){button.disabled=true;button.textContent="Granting…";}try{const result=await api("/api/wallet/reward",{method:"POST",body:JSON.stringify({username:mcGetById("walletRewardUser").value.trim().replace(/^@/,""),currency:mcGetById("walletRewardCurrency").value,amount:Number(mcGetById("walletRewardAmount").value),reason:mcGetById("walletRewardReason").value.trim()})});toast("Granted "+result.amount+" "+(result.currency==="GOLD"?"gold":"Diamonds")+" to @"+result.recipient.username+".");await loadWallet();}catch(error){toast(error.message);if(button){button.disabled=false;button.textContent="Grant currency";}}});
+  }catch(error){root.innerHTML="<section class='wallet-panel'><p class='error'>Could not load your wallet: "+esc(error.message)+"</p><button class='mini' id='walletRetry'>Retry</button></section>";mcGetById("walletRetry")?.addEventListener("click",loadWallet);}
 }
 
 
@@ -5494,8 +5494,8 @@ async function showAchievements(user){
           else {toast('Your profile can showcase up to three achievements.');return;}
           render();
         }));
-        $('acSaveShowcase')?.addEventListener('click',async()=>{
-          const button=$('acSaveShowcase');button.disabled=true;button.textContent='Saving…';
+        mcGetById('acSaveShowcase')?.addEventListener('click',async()=>{
+          const button=mcGetById('acSaveShowcase');button.disabled=true;button.textContent='Saving…';
           try{const result=await api('/api/achievements/showcase',{method:'PUT',body:JSON.stringify({achievementNames:selected})});selected=result.showcase||selected;toast('Your achievement showcase is updated!');render();}
           catch(error){toast(error.message);button.disabled=false;button.textContent='Save showcase';}
         });
@@ -5531,9 +5531,9 @@ async function openProfileActionDrawer(user,data={}){
   if(isSelf||actorIsStaff){try{staffPointInfo=await api('/api/staff-points/'+encodeURIComponent(user.id));}catch{}}
   if(isSelf){
     mountProfileActionDrawer(`<div class="profile-drawer"><h2>Account actions</h2><button class="quick-user-row" id="drawerEdit">✏️ Edit profile</button><button class="quick-user-row" id="drawerBlocked">🚫 Blocked users</button><div class="staff-points-action-row" style="display:flex;gap:8px;align-items:center"><button class="quick-user-row" id="drawerStaffPoints" style="flex:1"><span>🏅</span><b>Staff Points</b><i>›</i></button>${canEditStaffPoints?'<button class="mini" id="drawerEditStaffPoints" type="button" aria-label="Edit staff points" title="Edit staff points">✏️</button>':''}</div></div>`);
-    $('drawerEdit')?.addEventListener('click',()=>{closeModal();state.view='profile';renderView()});$('drawerBlocked')?.addEventListener('click',showBlockedUsers);
-    $('drawerStaffPoints')?.addEventListener('click',()=>modal(`<div class="profile-drawer"><h2>🏅 Staff Points</h2><div class="profile-info-row"><b>Your points</b><strong>${Number(staffPointInfo?.staffPoints||0).toLocaleString()}</strong></div><p class="muted">Points are earned when your suggestions are accepted or approved.</p></div>`));
-    $('drawerEditStaffPoints')?.addEventListener('click',()=>openStaffPointsEditor(user,staffPointInfo?.staffPoints||0));return;
+    mcGetById('drawerEdit')?.addEventListener('click',()=>{closeModal();state.view='profile';renderView()});mcGetById('drawerBlocked')?.addEventListener('click',showBlockedUsers);
+    mcGetById('drawerStaffPoints')?.addEventListener('click',()=>modal(`<div class="profile-drawer"><h2>🏅 Staff Points</h2><div class="profile-info-row"><b>Your points</b><strong>${Number(staffPointInfo?.staffPoints||0).toLocaleString()}</strong></div><p class="muted">Points are earned when your suggestions are accepted or approved.</p></div>`));
+    mcGetById('drawerEditStaffPoints')?.addEventListener('click',()=>openStaffPointsEditor(user,staffPointInfo?.staffPoints||0));return;
   }
   const prefs=dmPrefs(),id=String(user.id),muted=!!prefs.muted?.[id],archived=!!prefs.archived?.[id],blocked=(state.user.blocked||[]).map(String).includes(id);
   const isOwner=String(state.user?.rank||'').toUpperCase()==='DEVELOPER' || (state.user?.username==='Maleficent' && String(state.user?.rank||'').toUpperCase()==='OWNER');
@@ -5558,13 +5558,13 @@ async function openProfileActionDrawer(user,data={}){
      ${canRoomRank||canRoomModerate?'<button class="quick-user-row" id="drawerRoomAction"><span>✨</span><b>Room Action</b><i>›</i></button>':''}
       ${canSeeStaffPoints?`<div class="staff-points-action-row" style="display:flex;gap:8px;align-items:center"><button class="quick-user-row" id="drawerStaffPoints" style="flex:1"><span>🏅</span><b>Staff Points</b><i>›</i></button>${canEditTargetPoints?'<button class="mini" id="drawerEditStaffPoints" type="button" aria-label="Edit staff points" title="Edit staff points">✏️</button>':''}</div>`:''}
    </div>`);
-  $('drawerAddFriend')?.addEventListener('click',async()=>{try{await friend(id);closeModal();}catch(e){toast(e.message)}});
-  $('drawerBlock')?.addEventListener('click',async()=>{try{await block(id);closeModal();}catch(e){toast(e.message)}});
-  $('drawerWallet')?.addEventListener('click',event=>{event.preventDefault();event.stopPropagation();shareWalletModal(user);});
-  $('drawerRoomAction')?.addEventListener('click',()=>roomActionModal(user,{canRoomRank,canRoomModerate}));
-  $('drawerModerateUser')?.addEventListener('click',()=>moderate(id));
-  $('drawerStaffPoints')?.addEventListener('click',()=>modal(`<div class="profile-drawer"><h2>🏅 Staff Points · @${esc(user.username)}</h2><div class="profile-info-row"><b>Total points</b><strong>${Number(staffPointInfo?.staffPoints||0).toLocaleString()}</strong></div></div>`));
-   $('drawerEditStaffPoints')?.addEventListener('click',()=>openStaffPointsEditor(user,staffPointInfo?.staffPoints||0));
+  mcGetById('drawerAddFriend')?.addEventListener('click',async()=>{try{await friend(id);closeModal();}catch(e){toast(e.message)}});
+  mcGetById('drawerBlock')?.addEventListener('click',async()=>{try{await block(id);closeModal();}catch(e){toast(e.message)}});
+  mcGetById('drawerWallet')?.addEventListener('click',event=>{event.preventDefault();event.stopPropagation();shareWalletModal(user);});
+  mcGetById('drawerRoomAction')?.addEventListener('click',()=>roomActionModal(user,{canRoomRank,canRoomModerate}));
+  mcGetById('drawerModerateUser')?.addEventListener('click',()=>moderate(id));
+  mcGetById('drawerStaffPoints')?.addEventListener('click',()=>modal(`<div class="profile-drawer"><h2>🏅 Staff Points · @${esc(user.username)}</h2><div class="profile-info-row"><b>Total points</b><strong>${Number(staffPointInfo?.staffPoints||0).toLocaleString()}</strong></div></div>`));
+   mcGetById('drawerEditStaffPoints')?.addEventListener('click',()=>openStaffPointsEditor(user,staffPointInfo?.staffPoints||0));
 }
 
 
@@ -5572,7 +5572,7 @@ async function openProfileActionDrawer(user,data={}){
 if(!window.__mcAccountDrawerOutsideCloseBound){
   window.__mcAccountDrawerOutsideCloseBound=true;
   document.addEventListener("pointerdown",event=>{
-    const overlay=$("modal"),layer=overlay?.querySelector(".profile-action-drawer-layer");
+    const overlay=mcGetById("modal"),layer=overlay?.querySelector(".profile-action-drawer-layer");
     if(!overlay||overlay.classList.contains("hidden")||!layer)return;
     if(layer.contains(event.target))return;
     layer.remove();
@@ -5581,15 +5581,15 @@ if(!window.__mcAccountDrawerOutsideCloseBound){
 
 function openStaffPointsEditor(user,currentPoints=0){
   modal(`<h2>✏️ Edit Staff Points</h2><p class="muted">Set the total staff points for @${esc(user.username||'user')}.</p><label>Points<input id="staffPointsValue" type="number" min="0" max="1000000" step="1" value="${Number(currentPoints)||0}"></label><button class="primary" id="saveStaffPoints">Save points</button>`);
-  $('saveStaffPoints')?.addEventListener('click',async()=>{const points=Number($('staffPointsValue')?.value);if(!Number.isInteger(points)||points<0||points>1000000){toast('Enter a whole number from 0 to 1,000,000.');return;}try{await api('/api/staff-points/'+encodeURIComponent(user.id),{method:'PATCH',body:JSON.stringify({points})});toast('Staff points updated.');closeModal();}catch(e){toast(e.message||'Could not update points.');}});
+  mcGetById('saveStaffPoints')?.addEventListener('click',async()=>{const points=Number(mcGetById('staffPointsValue')?.value);if(!Number.isInteger(points)||points<0||points>1000000){toast('Enter a whole number from 0 to 1,000,000.');return;}try{await api('/api/staff-points/'+encodeURIComponent(user.id),{method:'PATCH',body:JSON.stringify({points})});toast('Staff points updated.');closeModal();}catch(e){toast(e.message||'Could not update points.');}});
 }
 function roomActionModal(user,permissions){
   const actions=[];
   if(permissions.canRoomRank)actions.push('<button type="button" class="quick-user-row" id="roomActionRank"><span>✨</span><b>Room rank</b><i>›</i></button>');
   if(permissions.canRoomModerate)actions.push('<button type="button" class="quick-user-row" id="roomActionModerate"><span>🛡️</span><b>Room moderation</b><i>›</i></button>');
   modal('<div class="profile-drawer quick-action-menu"><h2>Room Action · @'+esc(user.username||'user')+'</h2>'+actions.join('')+'</div>');
-  $('roomActionRank')?.addEventListener('click',()=>roomRankModal(user));
-  $('roomActionModerate')?.addEventListener('click',()=>roomModerationModal(user));
+  mcGetById('roomActionRank')?.addEventListener('click',()=>roomRankModal(user));
+  mcGetById('roomActionModerate')?.addEventListener('click',()=>roomModerationModal(user));
 }
 async function roomModerationModal(user){
   const room=state.rooms.find(r=>String(r.id)===String(state.currentRoom));
@@ -5599,7 +5599,7 @@ async function roomModerationModal(user){
     <label>Mute duration (minutes)<input id="roomModMinutes" type="number" min="1" max="60" value="5"></label>
     <label>Reason<textarea id="roomModReason" maxlength="240" placeholder="Explain the room rule violation"></textarea></label>
     <button class="primary" id="submitRoomMod">Apply action</button>`);
-  $('submitRoomMod').onclick=async()=>{const action=$('roomModAction').value,reason=$('roomModReason').value.trim();if(!reason){toast('Please provide a reason.');return;}try{await api(`/api/rooms/${encodeURIComponent(room.id)}/staff-action`,{method:'POST',body:JSON.stringify({userId:user.id,action,minutes:Number($('roomModMinutes').value)||5,reason})});closeModal();toast('Room moderation action recorded.');}catch(e){toast(e.message)}};
+  mcGetById('submitRoomMod').onclick=async()=>{const action=mcGetById('roomModAction').value,reason=mcGetById('roomModReason').value.trim();if(!reason){toast('Please provide a reason.');return;}try{await api(`/api/rooms/${encodeURIComponent(room.id)}/staff-action`,{method:'POST',body:JSON.stringify({userId:user.id,action,minutes:Number(mcGetById('roomModMinutes').value)||5,reason})});closeModal();toast('Room moderation action recorded.');}catch(e){toast(e.message)}};
 }
 async function editCurrentRoomRules(){const room=state.rooms.find(r=>String(r.id)===String(state.currentRoom));if(!room)return toast("Join a room first.");try{const d=await api("/api/rooms/"+encodeURIComponent(room.id)+"/rules");const rules=prompt("Room rules for "+room.name,d.rules||"");if(rules===null)return;await api("/api/rooms/"+encodeURIComponent(room.id)+"/rules",{method:"PUT",body:JSON.stringify({rules})});toast("Room rules saved.");}catch(e){toast(e.message);}}
 async function viewCurrentRoomModerationLog(){const room=state.rooms.find(r=>String(r.id)===String(state.currentRoom));if(!room)return toast("Join a room first.");try{const d=await api("/api/rooms/"+encodeURIComponent(room.id)+"/moderation-log");const rows=(d.logs||[]).map(x=>esc(x.action||"ACTION")+" · "+esc(x.actorUsername||"Staff")+" → "+esc(x.targetUsername||"User")+" · "+fmt(x.time)+" · "+esc(x.reason||x.role||"")).join("\n");alert(room.name+" moderation log\n\n"+(rows||"No room moderation actions recorded."));}catch(e){toast(e.message);}}
@@ -5610,7 +5610,7 @@ async function roomRankModal(user){
   let current='USER';
   try{const d=await api(`/api/rooms/${encodeURIComponent(room.id)}/staff`);current=d.staff?.find(x=>String(x.user.id)===String(user.id))?.role||'USER';}catch(e){toast(e.message);return;}
   modal(`<h2>✨ Room rank</h2><p class="muted">Set @${esc(user.username)}'s rank in <b>${esc(room.name)}</b> only. Their global rank is unchanged.</p><label>Room rank<select id="roomRankChoice">${roleOptions.map(([v,label])=>`<option value="${v}" ${current===v?'selected':''}>${label}</option>`).join('')}</select></label><button class="primary" id="saveRoomRank">Save room rank</button>`);
-  $('saveRoomRank').onclick=async()=>{try{const role=$('roomRankChoice').value;await api(`/api/rooms/${encodeURIComponent(room.id)}/staff/${encodeURIComponent(user.id)}`,{method:'PUT',body:JSON.stringify({role})});closeModal();toast('Room rank updated.');await loadRooms();}catch(e){toast(e.message)}};
+  mcGetById('saveRoomRank').onclick=async()=>{try{const role=mcGetById('roomRankChoice').value;await api(`/api/rooms/${encodeURIComponent(room.id)}/staff/${encodeURIComponent(user.id)}`,{method:'PUT',body:JSON.stringify({role})});closeModal();toast('Room rank updated.');await loadRooms();}catch(e){toast(e.message)}};
 }
 async function showBlockedUsers(){
   try{const r=await api('/api/users/blocked'); modal(`<h2>🚫 Blocked users</h2><div class="stack">${(r.users||[]).map(u=>`<div class="card blocked-user-row">${avatar(u)}<div><b>${esc(u.displayName)}</b><small>@${esc(u.username)}</small></div><button class="mini" onclick="unblockFromList('${esc(u.id)}')">Unblock</button></div>`).join('')||'<p class="muted">You have not blocked anyone.</p>'}</div>`);}catch(e){toast(e.message)}}
@@ -5628,7 +5628,7 @@ async function loadProfile(user){
   const profileTheme=cosmetics.find(x=>x.category==='theme');
   const profileBadge=cosmetics.find(x=>x.category==='badge');
   const banner=user.banner?`style="background-image:linear-gradient(180deg,rgba(0, 0, 0, .05),rgba(0, 0, 0, .72)),url('${esc(user.banner)}')"`:'';
-  $('profile').innerHTML=`<div class="my-profile-wrap"><div class="profile-settings-card ${profileTheme?esc(profileTheme.id):''} profile-theme-${['obsidian','midnight','rose','emerald'].includes(user.theme)?esc(user.theme):'obsidian'}">
+  mcGetById('profile').innerHTML=`<div class="my-profile-wrap"><div class="profile-settings-card ${profileTheme?esc(profileTheme.id):''} profile-theme-${['obsidian','midnight','rose','emerald'].includes(user.theme)?esc(user.theme):'obsidian'}">
     <div class="profile-settings-head" ${banner}>
       ${user.banner?'<img class="profile-cover-image" src="'+esc(user.banner)+'" alt="" aria-hidden="true" loading="eager">':''}
       <div class="profile-settings-top"><span>⭐ ${user.level||1}</span><span>❤️ ${user.profileLikes||0}</span><button class="mini profile-edit-launch" onclick="openProfileEditMenu()" title="Edit account" aria-label="Edit account">✏️</button><button class="mini" id="myProfileMenuBtn" title="More">☰</button></div>
@@ -5641,7 +5641,7 @@ async function loadProfile(user){
     <div class="settings-tabs"><button class="settings-tab active" data-st="account">Account</button><button class="settings-tab" data-st="more">More</button></div>
     <div id="myProfileSettings"></div>
   </div></div>`;
-  const content=$('myProfileSettings');
+  const content=mcGetById('myProfileSettings');
   api('/api/daily/status').then(d=>{const b=document.querySelector('[data-daily-reward]');if(b){b.disabled=!!d.claimed;b.querySelector('small').textContent=d.claimed?'Already claimed today':`Claim ${d.nextDiamonds||2} Diamonds + daily Gold and XP`;}}).catch(()=>{});
   const render=(tab)=>{
     document.querySelectorAll('.settings-tab').forEach(b=>b.classList.toggle('active',b.dataset.st===tab));
@@ -5661,15 +5661,15 @@ async function loadProfile(user){
       <button class="settings-row danger-row" onclick="deleteAccount()"><span>⊘</span><b>Delete account</b><small>This action is permanent</small><strong>›</strong></button>
     </div>`;}
   };
-  document.querySelectorAll('.settings-tab').forEach(b=>b.addEventListener('click',()=>render(b.dataset.st))); $('myProfileMenuBtn')?.addEventListener('click',()=>openProfileActionDrawer(state.user,{})); render('account');
+  document.querySelectorAll('.settings-tab').forEach(b=>b.addEventListener('click',()=>render(b.dataset.st))); mcGetById('myProfileMenuBtn')?.addEventListener('click',()=>openProfileActionDrawer(state.user,{})); render('account');
 }
 
 async function saveMyProfile(fields,message){try{const r=await api('/api/profile',{method:'PUT',body:JSON.stringify(fields)});state.user=r.user;applyTheme(state.user?.settings?.theme||state.user?.theme||'obsidian');renderMessages();closeModal();updateNav();await loadProfile(state.user);toast(message||'Saved.');}catch(e){toast(e.message)}}
 function editProfileMusic(){
  const u=state.user||{};
  modal(`<div class="profile-music-upload"><h2>🎵 Profile music</h2><p class="muted">Choose an audio file from your device. It will be uploaded to your profile so visitors can play it there.</p>${u.profileMusicUrl?`<div class="profile-music-current">Current: <b>${esc(u.profileMusicTitle||'Profile music')}</b></div>`:''}<label class="profile-music-file-label" for="profileMusicFile">🎧 Choose music file</label><input id="profileMusicFile" type="file" accept=".mp3,.m4a,.aac,.ogg,.oga,.wav,.webm,.opus,.flac,audio/*"><small class="muted">MP3, M4A, AAC, OGG, WAV, WebM, OPUS or FLAC · maximum 15 MB</small><div class="toolbar"><button class="mini danger" id="clearProfileMusic" type="button">Remove music</button><button class="primary" id="uploadProfileMusic" type="button">Upload music</button></div></div>`);
- $('clearProfileMusic')?.addEventListener('click',async()=>{try{const result=await api('/api/me/profile-music',{method:'DELETE'});state.user=result.user;closeModal();updateNav();await loadProfile(state.user);toast('Profile music removed.');}catch(error){toast(error.message)}});
- $('uploadProfileMusic')?.addEventListener('click',()=>sendUpload('/api/me/profile-music','profileMusicFile'));
+ mcGetById('clearProfileMusic')?.addEventListener('click',async()=>{try{const result=await api('/api/me/profile-music',{method:'DELETE'});state.user=result.user;closeModal();updateNav();await loadProfile(state.user);toast('Profile music removed.');}catch(error){toast(error.message)}});
+ mcGetById('uploadProfileMusic')?.addEventListener('click',()=>sendUpload('/api/me/profile-music','profileMusicFile'));
 }
 function editProfileInfo(){
  const u=state.user||{},birth=String(u.birthDate||u.dateOfBirth||u.birth_date||u.birthday||'').slice(0,10);
@@ -5684,24 +5684,24 @@ function editProfileInfo(){
  <label>Website<input id="piWebsite" maxlength="180" value="${esc(u.website||'')}" placeholder="Website URL"></label>
  <label>Interests<input id="piInterests" value="${esc((u.interests||[]).join(', '))}" placeholder="Interests, separated by commas"></label>
  <button class="primary" id="savePI">Save details</button></div>`);
- $('piGender').value=u.gender||'';
- const updateAge=()=>{const value=$('piBirthday').value;if(!value){$('piAgePreview').textContent='Age is calculated from your birthday.';return;}const d=new Date(value+'T00:00:00'),now=new Date();let age=now.getFullYear()-d.getFullYear();if(now.getMonth()<d.getMonth()||(now.getMonth()===d.getMonth()&&now.getDate()<d.getDate()))age--;$('piAgePreview').textContent=age>=0&&age<=120?'Age: '+age+' years old':'Please enter a valid birthday.';};
- $('piBirthday').addEventListener('change',updateAge);updateAge();
- $('savePI').onclick=()=>saveMyProfile({displayName:$('piName').value.trim(),gender:$('piGender').value,birthDate:$('piBirthday').value,pronouns:$('piPronouns').value.trim(),country:$('piCountry').value.trim(),location:$('piLocation').value.trim(),website:$('piWebsite').value.trim(),interests:$('piInterests').value.split(',').map(x=>x.trim()).filter(Boolean)},'Profile details saved.');
+ mcGetById('piGender').value=u.gender||'';
+ const updateAge=()=>{const value=mcGetById('piBirthday').value;if(!value){mcGetById('piAgePreview').textContent='Age is calculated from your birthday.';return;}const d=new Date(value+'T00:00:00'),now=new Date();let age=now.getFullYear()-d.getFullYear();if(now.getMonth()<d.getMonth()||(now.getMonth()===d.getMonth()&&now.getDate()<d.getDate()))age--;mcGetById('piAgePreview').textContent=age>=0&&age<=120?'Age: '+age+' years old':'Please enter a valid birthday.';};
+ mcGetById('piBirthday').addEventListener('change',updateAge);updateAge();
+ mcGetById('savePI').onclick=()=>saveMyProfile({displayName:mcGetById('piName').value.trim(),gender:mcGetById('piGender').value,birthDate:mcGetById('piBirthday').value,pronouns:mcGetById('piPronouns').value.trim(),country:mcGetById('piCountry').value.trim(),location:mcGetById('piLocation').value.trim(),website:mcGetById('piWebsite').value.trim(),interests:mcGetById('piInterests').value.split(',').map(x=>x.trim()).filter(Boolean)},'Profile details saved.');
 }
-function editRelationship(){modal(`<h2>Edit relationship</h2><select id="rel"><option value="">Not set</option><option>Single</option><option>In a relationship</option><option>Complicated</option><option>Prefer not to say</option></select><button class="primary" id="saveRel">Save</button>`);$('rel').value=state.user.relationship||'';$('saveRel').onclick=()=>saveMyProfile({relationship:$('rel').value},'Relationship saved.');}
-function editUsername(){modal(`<h2>Edit username</h2><input id="newUsername" maxlength="24" value="${esc(state.user.username)}"><p class="muted">3–24 letters, numbers and underscores.</p><button class="primary" id="saveUsername">Save</button>`);$('saveUsername').onclick=()=>saveMyProfile({username:$('newUsername').value.trim()},'Username saved.');}
-function editAboutMe(){modal(`<h2>Edit about me</h2><textarea id="aboutMeEdit" rows="7" maxlength="500">${esc(state.user.bio||'')}</textarea><button class="primary" id="saveAboutMe">Save</button>`);$('saveAboutMe').onclick=()=>saveMyProfile({bio:$('aboutMeEdit').value},'About Me saved.');}
+function editRelationship(){modal(`<h2>Edit relationship</h2><select id="rel"><option value="">Not set</option><option>Single</option><option>In a relationship</option><option>Complicated</option><option>Prefer not to say</option></select><button class="primary" id="saveRel">Save</button>`);mcGetById('rel').value=state.user.relationship||'';mcGetById('saveRel').onclick=()=>saveMyProfile({relationship:mcGetById('rel').value},'Relationship saved.');}
+function editUsername(){modal(`<h2>Edit username</h2><input id="newUsername" maxlength="24" value="${esc(state.user.username)}"><p class="muted">3–24 letters, numbers and underscores.</p><button class="primary" id="saveUsername">Save</button>`);mcGetById('saveUsername').onclick=()=>saveMyProfile({username:mcGetById('newUsername').value.trim()},'Username saved.');}
+function editAboutMe(){modal(`<h2>Edit about me</h2><textarea id="aboutMeEdit" rows="7" maxlength="500">${esc(state.user.bio||'')}</textarea><button class="primary" id="saveAboutMe">Save</button>`);mcGetById('saveAboutMe').onclick=()=>saveMyProfile({bio:mcGetById('aboutMeEdit').value},'About Me saved.');}
 function editMood(){
   const presets=[["😊","Happy"],["😌","Chill"],["🥰","Loved"],["⚡","Energetic"],["🎧","Listening to music"],["🎮","Gaming"],["🌙","Quiet mode"],["🧠","Focused"],["☕","Taking a break"],["🥱","Sleepy"],["✨","Feeling magical"],["🚫","Do not disturb"]];
   modal(`<div class="mood-status-editor"><h2>☻ Your mood</h2><p class="muted">Pick a vibe or write your own status. It appears on your public profile and on your user card in the right-side people panel.</p><div class="mood-status-grid">${presets.map(([emoji,label])=>`<button type="button" class="mood-preset" data-mood="${esc(label)}"><span>${emoji}</span><b>${esc(label)}</b></button>`).join('')}</div><label class="mood-custom-label">Custom status<input id="moodEdit" maxlength="80" value="${esc(state.user.mood||'')}" placeholder="What's your vibe today?"></label><div class="toolbar"><button class="primary" id="saveMood">Save mood</button><button class="mini" id="clearMood">Clear</button></div></div>`);
-  document.querySelectorAll(".mood-preset").forEach(btn=>{btn.onclick=()=>{document.querySelectorAll(".mood-preset").forEach(x=>x.classList.remove("selected"));btn.classList.add("selected");$("moodEdit").value=btn.dataset.mood;};});
-  $("clearMood").onclick=()=>{$("moodEdit").value="";};
-  $("saveMood").onclick=async()=>{const button=$("saveMood");button.disabled=true;try{await saveMyProfile({mood:$("moodEdit").value.trim()},'Mood saved.');}finally{if(button.isConnected)button.disabled=false;}};
+  document.querySelectorAll(".mood-preset").forEach(btn=>{btn.onclick=()=>{document.querySelectorAll(".mood-preset").forEach(x=>x.classList.remove("selected"));btn.classList.add("selected");mcGetById("moodEdit").value=btn.dataset.mood;};});
+  mcGetById("clearMood").onclick=()=>{mcGetById("moodEdit").value="";};
+  mcGetById("saveMood").onclick=async()=>{const button=mcGetById("saveMood");button.disabled=true;try{await saveMyProfile({mood:mcGetById("moodEdit").value.trim()},'Mood saved.');}finally{if(button.isConnected)button.disabled=false;}};
 }
 window.__mcRoomContext=()=>({userId:String(state.user?.id||''),roomId:String(state.currentRoom||''),socket:state.socket});
 function addProfileEditPanelClose(){
-  const body=$('modalBody');
+  const body=mcGetById('modalBody');
   if(!body||body.querySelector(':scope > .profile-edit-panel-close'))return;
   const close=document.createElement('button');
   close.type='button';
@@ -5735,16 +5735,16 @@ function openProfileEditMenu(targetUser=null){
   ].filter(x=>x.show);
   modal(`<div class="profile-edit-menu"><h2>✏️ ${self?'Edit account':`Edit @${esc(user.username||'member')}`}</h2><p class="muted">Only actions you are allowed to use are shown here.</p><div class="profile-edit-menu-grid">${sections.map(x=>`<button class="settings-row" id="${x.id}" type="button"><span>${x.icon}</span><b>${x.title}</b><small>${x.desc}</small><strong>›</strong></button>`).join('')}</div></div>`);
   addProfileEditPanelClose();
-  $('editUpload')?.addEventListener('click',()=>openAccountUploadMenu(self?null:user));
-  $('removeProfilePicture')?.addEventListener('click',()=>self?deleteAvatar():deleteStaffProfileMedia(user,'avatar'));
-  $('removeProfileBackground')?.addEventListener('click',()=>self?deleteBanner():deleteStaffProfileMedia(user,'banner'));
-  $('profileMusic')?.addEventListener('click',openAccountProfileMusicMenu);
-  $('editName')?.addEventListener('click',()=>openAccountNameEditor(self?null:user));
-  $('editEmail')?.addEventListener('click',()=>openAccountEmailEditor(self?null:user));
-  $('editPassword')?.addEventListener('click',()=>openAccountPasswordEditor(self?null:user));
-  $('editDetails')?.addEventListener('click',()=>openAccountDetailsEditor(self?null:user));
-  $('viewAccount')?.addEventListener('click',()=>viewAccountDetails(self?null:user));
-  $('deleteAccount')?.addEventListener('click',()=>confirmAccountDeletion(self?null:user));
+  mcGetById('editUpload')?.addEventListener('click',()=>openAccountUploadMenu(self?null:user));
+  mcGetById('removeProfilePicture')?.addEventListener('click',()=>self?deleteAvatar():deleteStaffProfileMedia(user,'avatar'));
+  mcGetById('removeProfileBackground')?.addEventListener('click',()=>self?deleteBanner():deleteStaffProfileMedia(user,'banner'));
+  mcGetById('profileMusic')?.addEventListener('click',openAccountProfileMusicMenu);
+  mcGetById('editName')?.addEventListener('click',()=>openAccountNameEditor(self?null:user));
+  mcGetById('editEmail')?.addEventListener('click',()=>openAccountEmailEditor(self?null:user));
+  mcGetById('editPassword')?.addEventListener('click',()=>openAccountPasswordEditor(self?null:user));
+  mcGetById('editDetails')?.addEventListener('click',()=>openAccountDetailsEditor(self?null:user));
+  mcGetById('viewAccount')?.addEventListener('click',()=>viewAccountDetails(self?null:user));
+  mcGetById('deleteAccount')?.addEventListener('click',()=>confirmAccountDeletion(self?null:user));
 }
 function openAccountUploadMenu(targetUser=null){
   const self=!targetUser;
@@ -5755,10 +5755,10 @@ function openAccountUploadMenu(targetUser=null){
     ${self&&state.user?.banner?'<button class="settings-row danger-row" id="removeAccountBackground"><span>🗑️</span><b>Remove background</b><small>Clear your current profile background or banner</small><strong>›</strong></button>':''}
   </div></div>`);
   addProfileEditPanelClose();
-  $('uploadAccountAvatar')?.addEventListener('click',()=>self?uploadAvatar():pickStaffAccountImage(targetUser,'avatar'));
-  $('uploadAccountBackground')?.addEventListener('click',()=>self?uploadBanner():pickStaffAccountImage(targetUser,'banner'));
-  $('removeAccountAvatar')?.addEventListener('click',deleteAvatar);
-  $('removeAccountBackground')?.addEventListener('click',deleteBanner);
+  mcGetById('uploadAccountAvatar')?.addEventListener('click',()=>self?uploadAvatar():pickStaffAccountImage(targetUser,'avatar'));
+  mcGetById('uploadAccountBackground')?.addEventListener('click',()=>self?uploadBanner():pickStaffAccountImage(targetUser,'banner'));
+  mcGetById('removeAccountAvatar')?.addEventListener('click',deleteAvatar);
+  mcGetById('removeAccountBackground')?.addEventListener('click',deleteBanner);
 }
 function openAccountProfileMusicMenu(){
   const hasMusic=!!state.user?.profileMusicUrl;
@@ -5767,7 +5767,7 @@ function openAccountProfileMusicMenu(){
     ${hasMusic?'<button class="settings-row danger-row" id="removeProfileMusic"><span>🗑️</span><b>Remove profile music</b><small>Clear your current profile music</small><strong>›</strong></button>':''}
   </div></div>`);
   addProfileEditPanelClose();
-  $('uploadProfileMusic')?.addEventListener('click',()=>{
+  mcGetById('uploadProfileMusic')?.addEventListener('click',()=>{
     const picker=document.createElement('input');picker.type='file';picker.accept='.mp3,.m4a,.aac,.ogg,.opus,.wav,.flac,.weba,audio/*';
     picker.onchange=async()=>{const file=picker.files?.[0];if(!file)return;
       if(file.size>15*1024*1024){toast('Profile music must be 15 MB or smaller.');return;}
@@ -5776,7 +5776,7 @@ function openAccountProfileMusicMenu(){
       catch(error){toast(error.message||'Could not upload profile music.');}
     };picker.click();
   });
-  $('removeProfileMusic')?.addEventListener('click',async()=>{
+  mcGetById('removeProfileMusic')?.addEventListener('click',async()=>{
     if(!confirm('Remove your profile music?'))return;
     try{const result=await api('/api/me/profile-music',{method:'DELETE'});state.user=result.user;closeModal();updateNav();await loadProfile(state.user);toast('Profile music removed.');}
     catch(error){toast(error.message||'Could not remove profile music.');}
@@ -5797,9 +5797,9 @@ function openAccountNameEditor(targetUser=null){
   const canUsername=self||canFeature('manage_staff_accounts'),canDisplay=self||canFeature('account_modifications');
   modal(`<h2>✏️ Edit Name</h2>${canUsername?`<label>Username<input id="accountUsername" maxlength="24" value="${esc(u.username||'')}"></label>`:''}${canDisplay?`<label>Display name<input id="accountDisplayName" maxlength="32" value="${esc(u.displayName||'')}"></label>`:''}<p class="muted">Username: 3–24 letters, numbers or underscores.</p><div class="toolbar"><button class="primary" id="saveAccountName">Save</button></div>`);
   addProfileEditPanelClose();
-  $('saveAccountName').onclick=async()=>{try{
-    if(canUsername){const username=$('accountUsername')?.value.trim();if(!/^[A-Za-z0-9_]{3,24}$/.test(username||''))throw new Error('Username must be 3–24 letters, numbers or underscores.');if(self)await api('/api/profile',{method:'PUT',body:JSON.stringify({username})});else await api('/api/staff/user/'+encodeURIComponent(u.id)+'/account',{method:'PATCH',body:JSON.stringify({username})});}
-    if(canDisplay){const displayName=$('accountDisplayName')?.value.trim();if(!displayName)throw new Error('Display name cannot be empty.');if(self){const r=await api('/api/profile',{method:'PUT',body:JSON.stringify({displayName})});state.user=r.user;}else{const r=await api('/api/staff/user/'+encodeURIComponent(u.id)+'/profile',{method:'PATCH',body:JSON.stringify({displayName})});Object.assign(u,r.user||{});}}
+  mcGetById('saveAccountName').onclick=async()=>{try{
+    if(canUsername){const username=mcGetById('accountUsername')?.value.trim();if(!/^[A-Za-z0-9_]{3,24}$/.test(username||''))throw new Error('Username must be 3–24 letters, numbers or underscores.');if(self)await api('/api/profile',{method:'PUT',body:JSON.stringify({username})});else await api('/api/staff/user/'+encodeURIComponent(u.id)+'/account',{method:'PATCH',body:JSON.stringify({username})});}
+    if(canDisplay){const displayName=mcGetById('accountDisplayName')?.value.trim();if(!displayName)throw new Error('Display name cannot be empty.');if(self){const r=await api('/api/profile',{method:'PUT',body:JSON.stringify({displayName})});state.user=r.user;}else{const r=await api('/api/staff/user/'+encodeURIComponent(u.id)+'/profile',{method:'PATCH',body:JSON.stringify({displayName})});Object.assign(u,r.user||{});}}
     closeModal();if(self){await loadProfile(state.user);updateNav();}else await openUser(u.id);toast('Name updated.');
   }catch(e){toast(e.message);}};
 }
@@ -5808,14 +5808,14 @@ function openAccountEmailEditor(targetUser=null){
   (async()=>{try{const currentEmail=self?(await api('/api/me/email')).email:(await api('/api/staff/user/'+encodeURIComponent(u.id)+'/email-history')).email;
     modal(`<h2>✉️ Edit email</h2><label>Email address<input id="accountEmail" type="email" maxlength="160" value="${esc(currentEmail||'')}" placeholder="name@example.com"></label><div class="toolbar"><button class="primary" id="saveAccountEmail">Save email</button></div>`);
   addProfileEditPanelClose();
-    $('saveAccountEmail').onclick=async()=>{try{const email=$('accountEmail').value.trim();if(self)await api('/api/me/email',{method:'PUT',body:JSON.stringify({email})});else await api('/api/staff/user/'+encodeURIComponent(u.id)+'/email',{method:'PATCH',body:JSON.stringify({email})});closeModal();if(self){await loadProfile(state.user);}else await openUser(u.id);toast('Email updated.');}catch(e){toast(e.message);}};
+    mcGetById('saveAccountEmail').onclick=async()=>{try{const email=mcGetById('accountEmail').value.trim();if(self)await api('/api/me/email',{method:'PUT',body:JSON.stringify({email})});else await api('/api/staff/user/'+encodeURIComponent(u.id)+'/email',{method:'PATCH',body:JSON.stringify({email})});closeModal();if(self){await loadProfile(state.user);}else await openUser(u.id);toast('Email updated.');}catch(e){toast(e.message);}};
   }catch(e){toast(e.message);}})();
 }
 function openAccountPasswordEditor(targetUser=null){
   const self=!targetUser,u=self?(state.user||{}):targetUser;
   modal(`<h2>🔒 Edit password</h2>${self?'<label>Current password<input id="accountCurrentPassword" type="password" autocomplete="current-password"></label>':''}<label>New password<input id="accountNewPassword" type="password" minlength="8" autocomplete="new-password"></label><label>Confirm new password<input id="accountConfirmPassword" type="password" minlength="8" autocomplete="new-password"></label><p class="muted">Use at least 8 characters. The existing password is never displayed.</p><button class="primary" id="saveAccountPassword">Change password</button>`);
   addProfileEditPanelClose();
-  $('saveAccountPassword').onclick=async()=>{const password=$('accountNewPassword').value;if(password.length<8){toast('Password must be at least 8 characters.');return;}if(password!==$('accountConfirmPassword').value){toast('Passwords do not match.');return;}try{if(self)await api('/api/password/change',{method:'POST',body:JSON.stringify({currentPassword:$('accountCurrentPassword').value,newPassword:password})});else await api('/api/staff/user/'+encodeURIComponent(u.id)+'/password',{method:'PATCH',body:JSON.stringify({password})});closeModal();toast('Password changed.');}catch(e){toast(e.message);}};
+  mcGetById('saveAccountPassword').onclick=async()=>{const password=mcGetById('accountNewPassword').value;if(password.length<8){toast('Password must be at least 8 characters.');return;}if(password!==mcGetById('accountConfirmPassword').value){toast('Passwords do not match.');return;}try{if(self)await api('/api/password/change',{method:'POST',body:JSON.stringify({currentPassword:mcGetById('accountCurrentPassword').value,newPassword:password})});else await api('/api/staff/user/'+encodeURIComponent(u.id)+'/password',{method:'PATCH',body:JSON.stringify({password})});closeModal();toast('Password changed.');}catch(e){toast(e.message);}};
 }
 function openAccountDetailsEditor(targetUser=null){
   const self=!targetUser,u=self?(state.user||{}):targetUser;
@@ -5833,7 +5833,7 @@ function openAccountDetailsEditor(targetUser=null){
     <label>Mood<input id="detailMood" maxlength="80" value="${esc(u.mood||'')}"></label>
     <div class="toolbar"><button class="primary" id="saveAccountDetails">Save details</button></div></div>`);
   addProfileEditPanelClose();
-  $('saveAccountDetails').onclick=async()=>{const changes={gender:$('detailGender').value.trim(),location:$('detailLocation').value.trim(),website:$('detailWebsite').value.trim(),pronouns:$('detailPronouns').value.trim(),country:$('detailCountry').value.trim(),bio:$('detailBio').value,interests:$('detailInterests').value.split(',').map(x=>x.trim()).filter(Boolean),relationship:$('detailRelationship').value.trim(),mood:$('detailMood').value.trim()};
+  mcGetById('saveAccountDetails').onclick=async()=>{const changes={gender:mcGetById('detailGender').value.trim(),location:mcGetById('detailLocation').value.trim(),website:mcGetById('detailWebsite').value.trim(),pronouns:mcGetById('detailPronouns').value.trim(),country:mcGetById('detailCountry').value.trim(),bio:mcGetById('detailBio').value,interests:mcGetById('detailInterests').value.split(',').map(x=>x.trim()).filter(Boolean),relationship:mcGetById('detailRelationship').value.trim(),mood:mcGetById('detailMood').value.trim()};
     try{if(self){const r=await api('/api/profile',{method:'PUT',body:JSON.stringify(changes)});state.user=r.user;await loadProfile(state.user);}else{const r=await api('/api/staff/user/'+encodeURIComponent(u.id)+'/profile',{method:'PATCH',body:JSON.stringify(changes)});Object.assign(u,r.user||{});await openUser(u.id);}closeModal();toast('Account details saved.');}catch(e){toast(e.message);}};
 }
 async function viewAccountDetails(targetUser=null){
@@ -5854,8 +5854,8 @@ async function confirmAccountDeletion(targetUser=null){
   try{if(self)await api('/api/me',{method:'DELETE'});else{const typed=prompt('Type the exact username to confirm deletion: '+u.username);if(typed!==u.username){toast('Username did not match. Account was not deleted.');return;}await api('/api/staff/users/'+encodeURIComponent(u.id),{method:'DELETE',body:JSON.stringify({confirmUsername:typed})});}location.reload();}
   catch(e){toast(e.message);}
 }
-async function editEmail(){try{const r=await api('/api/me/email');modal(`<h2>Edit email</h2><p class="muted">Email is optional. It is not required on the registration screen.</p><input id="emailEdit" type="email" value="${esc(r.email||'')}" placeholder="Email address"><div class="toolbar"><button class="primary" id="saveEmail">Save</button></div>`);$('saveEmail').onclick=async()=>{try{await api('/api/me/email',{method:'PUT',body:JSON.stringify({email:$('emailEdit').value.trim()})});closeModal();toast('Email saved.');}catch(e){toast(e.message)}}}catch(e){toast(e.message)}}
-function changePasswordModal(){modal(`<h2>Change password</h2><input id="oldPassword" type="password" placeholder="Current password"><input id="newPassword" type="password" placeholder="New password (8+ characters)"><button class="primary" id="savePassword">Change password</button>`);$('savePassword').onclick=async()=>{try{await api('/api/password/change',{method:'POST',body:JSON.stringify({currentPassword:$('oldPassword').value,newPassword:$('newPassword').value})});closeModal();toast('Password changed.');}catch(e){toast(e.message)}}}
+async function editEmail(){try{const r=await api('/api/me/email');modal(`<h2>Edit email</h2><p class="muted">Email is optional. It is not required on the registration screen.</p><input id="emailEdit" type="email" value="${esc(r.email||'')}" placeholder="Email address"><div class="toolbar"><button class="primary" id="saveEmail">Save</button></div>`);mcGetById('saveEmail').onclick=async()=>{try{await api('/api/me/email',{method:'PUT',body:JSON.stringify({email:mcGetById('emailEdit').value.trim()})});closeModal();toast('Email saved.');}catch(e){toast(e.message)}}}catch(e){toast(e.message)}}
+function changePasswordModal(){modal(`<h2>Change password</h2><input id="oldPassword" type="password" placeholder="Current password"><input id="newPassword" type="password" placeholder="New password (8+ characters)"><button class="primary" id="savePassword">Change password</button>`);mcGetById('savePassword').onclick=async()=>{try{await api('/api/password/change',{method:'POST',body:JSON.stringify({currentPassword:mcGetById('oldPassword').value,newPassword:mcGetById('newPassword').value})});closeModal();toast('Password changed.');}catch(e){toast(e.message)}}}
 
 function uploadAvatar() {
   const hasAvatar=!!state.user?.avatar;
@@ -5908,7 +5908,7 @@ function uploadBanner() {
     </div>
   `);
   addProfileEditPanelClose();
-  $('removeProfileBanner')?.addEventListener('click',deleteBanner);
+  mcGetById('removeProfileBanner')?.addEventListener('click',deleteBanner);
 }
 async function deleteBanner(){
   if(!confirm("Remove your profile background?"))return;
@@ -5920,7 +5920,7 @@ async function deleteBanner(){
 }
 
 async function sendUpload(url, id) {
-  const file = $(id).files[0];
+  const file = mcGetById(id).files[0];
 
   if (!file) {
     toast("Choose a file first.");
@@ -5954,8 +5954,8 @@ function privacyModal() {
   const u=state.user||{},p={lastSeen:true,online:true,country:true,location:true,website:true,bio:true,pronouns:true,relationship:true,mood:true,interests:true,photos:true,friends:true,showGuestbook:true,showGifts:true,showScrapbook:true,...(u.privacy||{})};
   const options=[['country','🌍 Country and flag','Show my country and its flag on my profile'],['location','📍 City / location','Show the location field'],['website','🔗 Website','Show my website link'],['bio','📝 About Me','Show my bio'],['pronouns','🪪 Pronouns','Show my pronouns'],['relationship','♥ Relationship','Show relationship status'],['mood','☻ Mood','Show my mood'],['interests','✨ Interests','Show my interests'],['photos','📷 Photos','Show my profile photo gallery'],['friends','👥 Friends','Show your friends list on your profile'],['showGuestbook','📖 Guestbook','Show your guestbook to other members'],['showGifts','🎁 Gifts','Show gifts received on your profile'],['online','🟢 Online status','Let others see when I am online'],['lastSeen','◉ Last seen','Show my last-seen time']];
   modal(`<div class="privacy-control-modal"><h2>🔒 Privacy Control</h2><p class="muted">Choose exactly which details appear to other members. Changes are saved to your account.</p><div class="privacy-control-list">${options.map(([key,title,desc])=>`<label class="privacy-control-row"><span><b>${title}</b><small>${desc}</small></span><input type="checkbox" data-privacy-key="${key}" ${p[key]!==false?'checked':''}></label>`).join('')}</div><div class="toolbar"><button class="mini" id="privacyCancel">Cancel</button><button class="primary" id="privacySave">Save privacy</button></div></div>`);
-  $('privacyCancel').onclick=closeModal;
-  $('privacySave').onclick=async()=>{const privacy={};document.querySelectorAll('[data-privacy-key]').forEach(el=>privacy[el.dataset.privacyKey]=el.checked);try{const r=await api('/api/profile',{method:'PUT',body:JSON.stringify({privacy})});state.user=r.user;closeModal();await loadProfile(state.user);toast('Privacy settings saved.');}catch(e){toast(e.message)}};
+  mcGetById('privacyCancel').onclick=closeModal;
+  mcGetById('privacySave').onclick=async()=>{const privacy={};document.querySelectorAll('[data-privacy-key]').forEach(el=>privacy[el.dataset.privacyKey]=el.checked);try{const r=await api('/api/profile',{method:'PUT',body:JSON.stringify({privacy})});state.user=r.user;closeModal();await loadProfile(state.user);toast('Privacy settings saved.');}catch(e){toast(e.message)}};
 }
 
 function usernameHistory() {
@@ -6012,9 +6012,9 @@ async function doModerate(id, action) {
         body: JSON.stringify({
           userId: id,
           reason:
-            $("modReason")?.value || "",
+            mcGetById("modReason")?.value || "",
           minutes:
-            $("modMinutes")?.value || ""
+            mcGetById("modMinutes")?.value || ""
         })
       }
     );
@@ -6149,7 +6149,7 @@ function renderAuditRow(x) {
 
 /* ---------------- STAFF APPLICATION ---------------- */
 async function loadStaffApplication(){
-  const root=$("staffApplicationFormRoot"); if(!root)return;
+  const root=mcGetById("staffApplicationFormRoot"); if(!root)return;
   root.innerHTML='<section class="card staff-application-card"><p class="muted">Loading your application…</p></section>';
   try{
     const data=await api('/api/staff-applications/mine');
@@ -6177,10 +6177,10 @@ async function loadStaffApplication(){
         <p id="staffAppMessage" class="muted" aria-live="polite"></p>
       </form>`}
     </section>`;
-    $('staffApplicationForm')?.addEventListener('submit',async e=>{
-      e.preventDefault();const button=e.currentTarget.querySelector('button[type="submit"]'),message=$('staffAppMessage');
+    mcGetById('staffApplicationForm')?.addEventListener('submit',async e=>{
+      e.preventDefault();const button=e.currentTarget.querySelector('button[type="submit"]'),message=mcGetById('staffAppMessage');
       button.disabled=true;message.textContent='Submitting…';
-      try{await api('/api/staff-applications',{method:'POST',body:JSON.stringify({requestedRank:$('staffAppRank').value,activity:$('staffAppActivity').value.trim(),reason:$('staffAppWhy').value.trim(),experience:$('staffAppExperience').value.trim()})});toast('Staff application submitted.');await loadStaffApplication();}
+      try{await api('/api/staff-applications',{method:'POST',body:JSON.stringify({requestedRank:mcGetById('staffAppRank').value,activity:mcGetById('staffAppActivity').value.trim(),reason:mcGetById('staffAppWhy').value.trim(),experience:mcGetById('staffAppExperience').value.trim()})});toast('Staff application submitted.');await loadStaffApplication();}
       catch(err){message.textContent=err.message||'Could not submit your application.';button.disabled=false;}
     });
   }catch(e){root.innerHTML='<section class="card"><p class="error">'+esc(e.message||'Could not load staff application.')+'</p></section>';}
@@ -6194,7 +6194,7 @@ async function renderStaffApplications(){
   // Staff applications: compact applicant rows with a separate full-form viewer.
   const staffApps=await api('/api/staff/applications').catch(()=>({applications:[]}));
   const appRows=staffApps.applications||[];
-  const appList=$('staffApplicationsList'),appCount=$('staffApplicationCount');
+  const appList=mcGetById('staffApplicationsList'),appCount=mcGetById('staffApplicationCount');
   if(appCount)appCount.textContent=String(appRows.filter(x=>x.status==='PENDING').length)+' pending · '+appRows.length+' total';
   const developerCanDelete=String(state.user?.rank||"").toUpperCase()==="DEVELOPER";
   if(appList)appList.innerHTML=appRows.map(x=>`<div class="staff-application-row"><div class="staff-application-user"><div class="staff-application-avatar">${esc((x.displayName||x.username||'?').slice(0,1).toUpperCase())}</div><div><b>${esc(x.displayName||x.username)}</b><div class="muted">@${esc(x.username)} · ${esc(x.requestedRank.replace(/_/g,' '))}</div><small class="staff-application-status-text">${esc(x.status)} · ${fmt(x.createdAt)}</small></div></div><div class="toolbar"><button class="mini primary" type="button" data-staff-app-form="${esc(x.id)}">Form</button>${developerCanDelete?`<button class="mini danger" type="button" data-staff-app-delete="${esc(x.id)}" title="Permanently delete this application">Delete</button>`:""}</div></div>`).join('')||'<p class="muted">No staff applications yet.</p>';
@@ -6216,16 +6216,16 @@ async function renderStaffApplications(){
     <div class="staff-application-answer"><small>PAST MODERATION EXPERIENCE</small><p>${esc(x.experience)}</p></div>
     ${x.status==='PENDING'?'<label>Rank to grant<select id="staffAppGrantRank"><option value="MOD">Moderator</option><option value="ADMIN">Admin</option><option value="SUPER_ADMIN">Super Admin</option><option value="COMMISSOR">Commissor</option>'+(String(state.user?.rank||"").toUpperCase()==="COOWNER"?'<option value="INSTRUCTOR">Instructor</option>':'')+'<option value="COOWNER">Co-owner</option></select></label><div class="toolbar staff-application-review-actions"><button class="mini danger" id="staffAppReject">Reject</button><button class="primary" id="staffAppGrant">Grant Rank</button></div><p id="staffAppReviewMessage" class="muted"></p>':'<p class="muted">This application has already been reviewed.</p>'}
     </div>`);
-    $('staffAppReject')?.addEventListener('click',async()=>{const b=$('staffAppReject');b.disabled=true;try{await api('/api/staff/applications/'+encodeURIComponent(x.id)+'/reject',{method:'POST'});closeModal();toast('Application rejected.');await loadStaff();}catch(e){$('staffAppReviewMessage').textContent=e.message;b.disabled=false;}});
-    $('staffAppGrant')?.addEventListener('click',async()=>{const b=$('staffAppGrant');b.disabled=true;try{await api('/api/staff/applications/'+encodeURIComponent(x.id)+'/grant',{method:'POST',body:JSON.stringify({rank:$('staffAppGrantRank').value})});closeModal();toast('Rank granted and application approved.');await loadStaff();}catch(e){$('staffAppReviewMessage').textContent=e.message;b.disabled=false;}});
+    mcGetById('staffAppReject')?.addEventListener('click',async()=>{const b=mcGetById('staffAppReject');b.disabled=true;try{await api('/api/staff/applications/'+encodeURIComponent(x.id)+'/reject',{method:'POST'});closeModal();toast('Application rejected.');await loadStaff();}catch(e){mcGetById('staffAppReviewMessage').textContent=e.message;b.disabled=false;}});
+    mcGetById('staffAppGrant')?.addEventListener('click',async()=>{const b=mcGetById('staffAppGrant');b.disabled=true;try{await api('/api/staff/applications/'+encodeURIComponent(x.id)+'/grant',{method:'POST',body:JSON.stringify({rank:mcGetById('staffAppGrantRank').value})});closeModal();toast('Rank granted and application approved.');await loadStaff();}catch(e){mcGetById('staffAppReviewMessage').textContent=e.message;b.disabled=false;}});
   });
-  }catch(e){const list=$('staffApplicationsList');if(list)list.innerHTML='<p class="muted">'+esc(e.message||'Could not load applications.')+'</p>';}
+  }catch(e){const list=mcGetById('staffApplicationsList');if(list)list.innerHTML='<p class="muted">'+esc(e.message||'Could not load applications.')+'</p>';}
 }
 
 async function hardRefreshSiteCache(){
   const savedAuthToken=safeStorage.getItem("mc_token");
   if(!confirm("Hard refresh Maleficent Chat on this device?\n\nThis clears cached website files and reloads the site. It does NOT delete room messages, private messages, accounts, profiles, ranks, gold, settings, or saved records. Your notification subscription will be kept."))return;
-  const button=$("hardRefreshSiteButton");
+  const button=mcGetById("hardRefreshSiteButton");
   if(button){button.disabled=true;button.textContent="⟳ Clearing cache…";}
   try{
     if("caches" in window){
@@ -6245,7 +6245,7 @@ async function hardRefreshSiteCache(){
 }
 
 async function loadClearedRoomEvidence(query=''){
-  const target=$('clearedRoomEvidenceList');if(!target)return;
+  const target=mcGetById('clearedRoomEvidenceList');if(!target)return;
   target.innerHTML='<p class="muted">Loading cleared-room evidence…</p>';
   try{
     const data=await api('/api/staff/cleared-room-evidence?q='+encodeURIComponent(String(query||'').trim()));
@@ -6276,19 +6276,19 @@ async function deleteClearedRoomEvidence(id){
   try{
     await api('/api/staff/cleared-room-evidence/'+encodeURIComponent(id),{method:'DELETE'});
     toast('Cleared-room evidence deleted.');
-    await loadClearedRoomEvidence($('clearedRoomEvidenceQuery')?.value||'');
+    await loadClearedRoomEvidence(mcGetById('clearedRoomEvidenceQuery')?.value||'');
   }catch(error){toast(error.message||'Could not delete evidence.');}
 }
 
 async function loadStaffFilterManagement(){
-  const host=$("staffFilterManagement");if(!host)return;
+  const host=mcGetById("staffFilterManagement");if(!host)return;
   let words=[];
   const render=()=>{
-    const q=String($("staffFilterSearch")?.value||"").trim().toLowerCase();
+    const q=String(mcGetById("staffFilterSearch")?.value||"").trim().toLowerCase();
     const shown=words.filter(x=>String(x.word||"").toLowerCase().includes(q));
     host.innerHTML='<p class="muted">Manage chat filters, automatic report triggers, restricted usernames, and OCR-based restricted-media phrases. Changes save immediately. Add <code>p: phrase</code> to block images containing readable matching text. SUPER_ADMIN and higher bypass this media rule.</p><label>Add entries<textarea id="staffFilterBulkWords" rows="3" placeholder="ordinaryword&#10;r: reportword&#10;u: restrictedname&#10;p: restricted text inside images"></textarea></label><div class="toolbar"><button type="button" class="primary" id="staffAddFilterEntries">＋ Add entries</button><input id="staffFilterSearch" type="search" placeholder="Search entries…" value="'+esc(q)+'"></div><p class="muted">Total: '+words.length+' · Showing: '+shown.length+'</p>'+shown.map(x=>'<div class="card toolbar" style="justify-content:space-between"><div><b>'+esc(/^r\s*:/i.test(x.word)?'Auto System Report Words':(/^u\s*:/i.test(x.word)?'Restricted Usernames & Display Names':(/^p\s*:/i.test(x.word)?'Restricted Media OCR Phrases':'Filter Words')))+'</b><br><code>'+esc(x.word)+'</code></div><button type="button" class="mini danger" data-staff-filter-delete="'+esc(x.id)+'">Delete</button></div>').join("");
-    $("staffFilterSearch")?.addEventListener("input",()=>render());
-    $("staffAddFilterEntries")?.addEventListener("click",async()=>{const input=$("staffFilterBulkWords"),text=String(input?.value||"").trim();if(!text){toast("Enter at least one filter entry.");return;}try{await api("/api/filter-words/bulk",{method:"POST",body:JSON.stringify({text})});toast("Filter entries saved.");await refresh();}catch(e){toast(e.message||"Could not save filter entries.");}});
+    mcGetById("staffFilterSearch")?.addEventListener("input",()=>render());
+    mcGetById("staffAddFilterEntries")?.addEventListener("click",async()=>{const input=mcGetById("staffFilterBulkWords"),text=String(input?.value||"").trim();if(!text){toast("Enter at least one filter entry.");return;}try{await api("/api/filter-words/bulk",{method:"POST",body:JSON.stringify({text})});toast("Filter entries saved.");await refresh();}catch(e){toast(e.message||"Could not save filter entries.");}});
     host.querySelectorAll("[data-staff-filter-delete]").forEach(b=>b.addEventListener("click",async()=>{if(!confirm("Delete this filter entry?"))return;try{await api("/api/filter-words/"+encodeURIComponent(b.dataset.staffFilterDelete),{method:"DELETE"});toast("Filter entry deleted.");await refresh();}catch(e){toast(e.message||"Could not delete filter entry.");}}));
   };
   const refresh=async()=>{try{const d=await api("/api/filter-words");words=Array.isArray(d.words)?d.words:[];render();}catch(e){host.innerHTML='<p class="muted">'+esc(e.message||"Could not load filter management.")+'</p>';}};
@@ -6304,7 +6304,7 @@ async function loadStaff() {
     // caused the entire dashboard to stay blank.
     if(staffRank==='MOD'){
       const stats=data.stats||{};
-      $('staff').innerHTML=`
+      mcGetById('staff').innerHTML=`
         <section class="card moderator-statistics-card">
           <h3>📊 Moderator Statistics</h3>
           <p class="muted">Read-only community overview for Moderators.</p>
@@ -6315,7 +6315,7 @@ async function loadStaff() {
             <div class="card"><h3>🚩 Open Reports</h3><p>${Number(stats.reportsOpen||0)}</p></div>
           </div>
         </section>`;
-      $('owner')?.classList.add('hidden');
+      mcGetById('owner')?.classList.add('hidden');
       return;
     }
 
@@ -6328,7 +6328,7 @@ async function loadStaff() {
 
 
 
-    $('staff').innerHTML=`
+    mcGetById('staff').innerHTML=`
       ${['INSTRUCTOR','COOWNER','OWNER','DEVELOPER'].includes(String(state.user?.rank||'').toUpperCase()) ? '<details class="staff-compact-dropdown"><summary>🗃️ Cleared Room Messages Inspection</summary><section class="card cleared-room-evidence-card"><div class="toolbar" style="justify-content:space-between;align-items:flex-start"><div><h3>🗃️ Cleared Room Messages Inspection</h3><p class="muted">Review archived messages from rooms that were cleared. New clears are archived automatically before messages are removed.</p></div><button class="mini" type="button" id="refreshClearedRoomEvidence">↻ Refresh</button></div><form id="clearedRoomEvidenceSearch" class="toolbar"><input id="clearedRoomEvidenceQuery" maxlength="100" placeholder="Filter by room name or staff username"><button class="mini primary" type="submit">Search</button></form><div id="clearedRoomEvidenceList"><p class="muted">Loading cleared-room evidence…</p></div></section></details>' : ''}
       ${canHardRefreshSite ? '<section class="card site-hard-refresh-card"><div><h3>⟳ Site Refresh</h3><p class="muted">Clear cached website files on this device and reload Maleficent Chat. All account data and messages remain stored safely.</p></div><button class="primary" type="button" id="hardRefreshSiteButton">⟳ Hard Refresh Site</button></section>' : ''}
       ${(String(state.user?.rank||'').toUpperCase()==='DEVELOPER'||String(state.user?.rank||'').toUpperCase()==='OWNER') ? '<details class="staff-compact-dropdown"><summary>🚧 Under Construction</summary><section class="card under-construction-admin-card"><div class="under-construction-admin-heading"><div><h3>🚧 Under Construction</h3><p class="muted">Switch maintenance mode ON to block regular users. Create a shutdown code when enabling; the same code is required to switch it OFF. Owner and Developer accounts remain exempt.</p></div><span class="construction-status-pill" id="staffConstructionStatus" aria-live="polite">Checking status…</span></div><div class="construction-switch-row"><span><b>Maintenance mode</b><small>OFF = site open · ON = maintenance screen</small></span><span class="construction-switch"><input type="checkbox" id="staffUnderConstructionToggle" role="switch" aria-label="Under Construction mode" aria-checked="false" onchange="toggleUnderConstruction(this.checked)"><span class="construction-switch-track" aria-hidden="true"></span></span></div><div class="construction-message-box"><label for="staffConstructionMessage">Maintenance message for users</label><textarea id="staffConstructionMessage" maxlength="1000" rows="3" placeholder="Write the message users should see above the shutdown code box"></textarea><small class="muted">This message will appear on the maintenance screen above the Shutdown Code field.</small></div><div class="construction-code-box"><label for="staffConstructionCode" id="staffConstructionCodeLabel">Create shutdown code<input type="password" id="staffConstructionCode" minlength="4" maxlength="128" autocomplete="new-password" placeholder="Create a code to switch ON" aria-describedby="staffConstructionCodeHelp"></label><small id="staffConstructionCodeHelp" class="muted">Use 4–128 characters. When maintenance is ON, enter this same code before switching it OFF.</small></div><p class="muted construction-last-result" id="staffConstructionResult" aria-live="polite">The saved server setting will be checked before displaying the current state.</p></section></details>' : ''}
@@ -6372,9 +6372,9 @@ async function loadStaff() {
 `;
 
     // Put staff dashboard sections in the numbered order requested in the mobile screenshot.
-    const staffRoot=$("staff");
+    const staffRoot=mcGetById("staff");
     if(!["COOWNER","OWNER","DEVELOPER"].includes(String(state.user?.rank||"").toUpperCase()))staffRoot?.querySelector("#systemNotificationsDropdown")?.remove();
-    const developerNetworkConsole=$("developerNetworkConsole");
+    const developerNetworkConsole=mcGetById("developerNetworkConsole");
     if(developerNetworkConsole&&!(String(state.user?.rank||"").toUpperCase()==="DEVELOPER"&&String(state.user?.username||"")==="Maleficent"))developerNetworkConsole.remove();
     staffRoot?.querySelector("#staffFilterManagementDropdown")?.remove();
     const canManageGuidesAndFilters=["COMMISSOR","INSTRUCTOR","COOWNER","OWNER","DEVELOPER"].includes(staffRank);
@@ -6401,21 +6401,21 @@ async function loadStaff() {
     ];
     orderedStaffSections.forEach(([node,cls])=>{if(node){node.classList.add(cls);staffRoot.appendChild(node);}});
     if(statsGrid&&!statsGrid.children.length)statsGrid.remove();
-    $("hardRefreshSiteButton")?.addEventListener("click",hardRefreshSiteCache);
+    mcGetById("hardRefreshSiteButton")?.addEventListener("click",hardRefreshSiteCache);
     if(['INSTRUCTOR','COOWNER','OWNER','DEVELOPER'].includes(String(state.user?.rank||'').toUpperCase())){
-      $('refreshClearedRoomEvidence')?.addEventListener('click',()=>loadClearedRoomEvidence());
-      $('clearedRoomEvidenceSearch')?.addEventListener('submit',e=>{e.preventDefault();loadClearedRoomEvidence($('clearedRoomEvidenceQuery')?.value||'');});
+      mcGetById('refreshClearedRoomEvidence')?.addEventListener('click',()=>loadClearedRoomEvidence());
+      mcGetById('clearedRoomEvidenceSearch')?.addEventListener('submit',e=>{e.preventDefault();loadClearedRoomEvidence(mcGetById('clearedRoomEvidenceQuery')?.value||'');});
       loadClearedRoomEvidence();
     }
     document.querySelectorAll("[data-assign-report]").forEach(button=>button.onclick=()=>assignReport(button.dataset.assignReport));
     await renderStaffApplications();
-    $('systemNotificationForm')?.addEventListener('submit',async e=>{
+    mcGetById('systemNotificationForm')?.addEventListener('submit',async e=>{
       e.preventDefault();
-      const button=$('sendSystemNotification'),status=$('systemNotificationStatus');
-      const title=$('systemNotificationTitle')?.value.trim()||'';
-      const message=$('systemNotificationMessage')?.value.trim()||'';
-      const targetRank=$('systemNotificationRank')?.value||'ALL';
-      const targetRange=$('systemNotificationRange')?.value||'EXACT';
+      const button=mcGetById('sendSystemNotification'),status=mcGetById('systemNotificationStatus');
+      const title=mcGetById('systemNotificationTitle')?.value.trim()||'';
+      const message=mcGetById('systemNotificationMessage')?.value.trim()||'';
+      const targetRank=mcGetById('systemNotificationRank')?.value||'ALL';
+      const targetRange=mcGetById('systemNotificationRange')?.value||'EXACT';
       if(!title||!message){if(status)status.textContent='Enter a title and message.';return;}
       const rangeLabel=targetRank==='ALL'?'all users':(targetRank.replace(/_/g,' ')+(targetRange==='AND_ABOVE'?' and higher ranks':targetRange==='AND_BELOW'?' and lower ranks':''));
       if(!confirm('Send this notification to '+rangeLabel+'?'))return;
@@ -6423,12 +6423,12 @@ async function loadStaff() {
       try{
         const result=await api('/api/staff/system-notifications',{method:'POST',body:JSON.stringify({title,message,targetRank,targetRange})});
         if(status)status.textContent='Sent to '+result.sent+' account'+(result.sent===1?'':'s')+'.';
-        $('systemNotificationTitle').value='';$('systemNotificationMessage').value='';
+        mcGetById('systemNotificationTitle').value='';mcGetById('systemNotificationMessage').value='';
         toast('System notification sent to '+result.sent+' account'+(result.sent===1?'':'s')+'.');
       }catch(err){if(status)status.textContent=err.message||'Could not send notification.';toast(err.message||'Could not send notification.');}
       finally{button.disabled=false;}
     });
-    const ipSearch=$('ipInspectionSearch'), ipSuggestions=$('ipInspectionSuggestions');
+    const ipSearch=mcGetById('ipInspectionSearch'), ipSuggestions=mcGetById('ipInspectionSuggestions');
     let ipSuggestTimer;
     ipSearch?.addEventListener('input',()=>{
       clearTimeout(ipSuggestTimer);
@@ -6446,60 +6446,60 @@ async function loadStaff() {
     });
     ipSuggestions?.addEventListener('click',e=>{const btn=e.target.closest('[data-ip-user]');if(!btn)return;ipSearch.value='@'+btn.dataset.ipUser;ipSuggestions.hidden=true;loadIpInspection(btn.dataset.ipUser);});
     ipSearch?.addEventListener('focus',()=>{if(ipSearch.value.trim())ipSearch.dispatchEvent(new Event('input'));});
-    $('ipInspectionForm')?.addEventListener('submit',e=>{e.preventDefault();loadIpInspection((ipSearch?.value||'').trim().replace(/^@/,''));});
+    mcGetById('ipInspectionForm')?.addEventListener('submit',e=>{e.preventDefault();loadIpInspection((ipSearch?.value||'').trim().replace(/^@/,''));});
 
     const developerOnly=String(state.user?.rank||"").toUpperCase()==="DEVELOPER";
-    if(!developerOnly)$('developerNetworkConsole')?.remove();
+    if(!developerOnly)mcGetById('developerNetworkConsole')?.remove();
     async function loadDeveloperNetworkConfig(){
       if(!developerOnly)return;
       try{
         const d=await api('/api/developer/network-security'),c=d.config||{};
-        const list=$('devIpRulesList');
+        const list=mcGetById('devIpRulesList');
         if(list)list.innerHTML=(c.ipRules||[]).map(r=>'<div class="about-card"><b>'+esc(r.pattern)+'</b><small>'+esc(r.reason||'No reason')+'</small><button type="button" class="secondary" data-remove-ip-rule="'+esc(r.id)+'">Remove rule</button></div>').join('')||'<p class="muted">No IP/range bans configured.</p>';
-        if($('devBlockVpn'))$('devBlockVpn').checked=!!c.blockVpn;
-        if($('devAllowedCountries'))$('devAllowedCountries').value=(c.allowedCountries||[]).join(', ');
-        if($('devBlockedCountries'))$('devBlockedCountries').value=(c.blockedCountries||[]).join(', ');
-        if($('devBlockedRegions'))$('devBlockedRegions').value=(c.blockedRegions||[]).join(', ');
-      }catch(e){const list=$('devIpRulesList');if(list)list.innerHTML='<p class="muted">'+esc(e.message||'Developer security settings unavailable')+'</p>';}
+        if(mcGetById('devBlockVpn'))mcGetById('devBlockVpn').checked=!!c.blockVpn;
+        if(mcGetById('devAllowedCountries'))mcGetById('devAllowedCountries').value=(c.allowedCountries||[]).join(', ');
+        if(mcGetById('devBlockedCountries'))mcGetById('devBlockedCountries').value=(c.blockedCountries||[]).join(', ');
+        if(mcGetById('devBlockedRegions'))mcGetById('devBlockedRegions').value=(c.blockedRegions||[]).join(', ');
+      }catch(e){const list=mcGetById('devIpRulesList');if(list)list.innerHTML='<p class="muted">'+esc(e.message||'Developer security settings unavailable')+'</p>';}
     }
-    $('devIpRuleForm')?.addEventListener('submit',async e=>{
+    mcGetById('devIpRuleForm')?.addEventListener('submit',async e=>{
       e.preventDefault();
-      try{await api('/api/developer/network-security/rules',{method:'POST',body:JSON.stringify({pattern:$('devIpRulePattern')?.value,reason:$('devIpRuleReason')?.value})});if($('devIpRulePattern'))$('devIpRulePattern').value='';if($('devIpRuleReason'))$('devIpRuleReason').value='';toast('IP/range rule added');await loadDeveloperNetworkConfig();}
+      try{await api('/api/developer/network-security/rules',{method:'POST',body:JSON.stringify({pattern:mcGetById('devIpRulePattern')?.value,reason:mcGetById('devIpRuleReason')?.value})});if(mcGetById('devIpRulePattern'))mcGetById('devIpRulePattern').value='';if(mcGetById('devIpRuleReason'))mcGetById('devIpRuleReason').value='';toast('IP/range rule added');await loadDeveloperNetworkConfig();}
       catch(err){toast(err.message||'Could not add IP rule');}
     });
-    $('devIpRulesList')?.addEventListener('click',async e=>{
+    mcGetById('devIpRulesList')?.addEventListener('click',async e=>{
       const btn=e.target.closest('[data-remove-ip-rule]');if(!btn)return;
       try{await api('/api/developer/network-security/rules/'+encodeURIComponent(btn.dataset.removeIpRule),{method:'DELETE'});toast('IP/range rule removed');await loadDeveloperNetworkConfig();}catch(err){toast(err.message||'Could not remove IP rule');}
     });
-    $('devNetworkPolicyForm')?.addEventListener('submit',async e=>{
+    mcGetById('devNetworkPolicyForm')?.addEventListener('submit',async e=>{
       e.preventDefault();
-      try{await api('/api/developer/network-security/policy',{method:'PUT',body:JSON.stringify({blockVpn:$('devBlockVpn')?.checked,allowedCountries:$('devAllowedCountries')?.value||'',blockedCountries:$('devBlockedCountries')?.value||'',blockedRegions:$('devBlockedRegions')?.value||''})});toast('Network restrictions saved');}
+      try{await api('/api/developer/network-security/policy',{method:'PUT',body:JSON.stringify({blockVpn:mcGetById('devBlockVpn')?.checked,allowedCountries:mcGetById('devAllowedCountries')?.value||'',blockedCountries:mcGetById('devBlockedCountries')?.value||'',blockedRegions:mcGetById('devBlockedRegions')?.value||''})});toast('Network restrictions saved');}
       catch(err){toast(err.message||'Could not save network restrictions');}
     });
-    $('devNetworkAccountForm')?.addEventListener('submit',async e=>{
-      e.preventDefault();const out=$('devNetworkAccountResults');if(!out)return;
+    mcGetById('devNetworkAccountForm')?.addEventListener('submit',async e=>{
+      e.preventDefault();const out=mcGetById('devNetworkAccountResults');if(!out)return;
       out.innerHTML='<p class="muted">Loading IP history and risk signals…</p>';
-      try{const d=await api('/api/developer/network-security/timeline?q='+encodeURIComponent($('devNetworkAccountSearch')?.value||''));out.innerHTML='<div class="about-card"><h4>@'+esc(d.username)+' · Local risk score '+esc(d.riskScore)+'/100</h4><p>'+esc((d.riskSignals||[]).join(' · ')||'No heuristic risk signals detected')+'</p><p class="muted">'+esc(d.distinctIpCount)+' distinct IP addresses recorded. Device fingerprint registered: '+(d.deviceFingerprintRegistered?'Yes':'No')+'.</p><div class="ip-inspection-table-wrap"><table class="ip-inspection-table"><thead><tr><th>IP</th><th>Approx. location / ISP</th><th>Event</th><th>Time</th><th>Map</th></tr></thead><tbody>'+(d.events||[]).map(r=>{const n=r.network||{},ip=esc(r.ip_address||'Unavailable'),xy=String(n.coordinates||'').split(','),map=xy.length===2&&xy.every(v=>Number.isFinite(Number(v)))?'https://www.openstreetmap.org/?mlat='+encodeURIComponent(xy[0])+'&mlon='+encodeURIComponent(xy[1])+'#map=10/'+encodeURIComponent(xy[0])+'/'+encodeURIComponent(xy[1]):'';return '<tr><td><code>'+ip+'</code></td><td>'+esc([n.city,n.region,n.country,n.networkProvider].filter(Boolean).join(', ')||'Unavailable')+(n.vpnDetected?'<small>⚠ VPN/proxy signal</small>':'')+'</td><td>'+esc(r.event_type||'Unknown')+'</td><td>'+esc(r.recorded_at?fmt(new Date(r.recorded_at).getTime()):'Unknown')+'</td><td>'+(map?'<a href="'+esc(map)+'" target="_blank" rel="noopener">Open map</a>':'Unavailable')+'</td></tr>';}).join('')+'</tbody></table></div><p class="muted">'+esc(d.disclaimer||'IP location is approximate.')+'</p></div>';}
+      try{const d=await api('/api/developer/network-security/timeline?q='+encodeURIComponent(mcGetById('devNetworkAccountSearch')?.value||''));out.innerHTML='<div class="about-card"><h4>@'+esc(d.username)+' · Local risk score '+esc(d.riskScore)+'/100</h4><p>'+esc((d.riskSignals||[]).join(' · ')||'No heuristic risk signals detected')+'</p><p class="muted">'+esc(d.distinctIpCount)+' distinct IP addresses recorded. Device fingerprint registered: '+(d.deviceFingerprintRegistered?'Yes':'No')+'.</p><div class="ip-inspection-table-wrap"><table class="ip-inspection-table"><thead><tr><th>IP</th><th>Approx. location / ISP</th><th>Event</th><th>Time</th><th>Map</th></tr></thead><tbody>'+(d.events||[]).map(r=>{const n=r.network||{},ip=esc(r.ip_address||'Unavailable'),xy=String(n.coordinates||'').split(','),map=xy.length===2&&xy.every(v=>Number.isFinite(Number(v)))?'https://www.openstreetmap.org/?mlat='+encodeURIComponent(xy[0])+'&mlon='+encodeURIComponent(xy[1])+'#map=10/'+encodeURIComponent(xy[0])+'/'+encodeURIComponent(xy[1]):'';return '<tr><td><code>'+ip+'</code></td><td>'+esc([n.city,n.region,n.country,n.networkProvider].filter(Boolean).join(', ')||'Unavailable')+(n.vpnDetected?'<small>⚠ VPN/proxy signal</small>':'')+'</td><td>'+esc(r.event_type||'Unknown')+'</td><td>'+esc(r.recorded_at?fmt(new Date(r.recorded_at).getTime()):'Unknown')+'</td><td>'+(map?'<a href="'+esc(map)+'" target="_blank" rel="noopener">Open map</a>':'Unavailable')+'</td></tr>';}).join('')+'</tbody></table></div><p class="muted">'+esc(d.disclaimer||'IP location is approximate.')+'</p></div>';}
       catch(err){out.innerHTML='<p class="muted">'+esc(err.message||'Could not load timeline')+'</p>';}
     });
-    $('devIpLookupForm')?.addEventListener('submit',async e=>{
-      e.preventDefault();const out=$('devIpLookupResults');if(!out)return;out.innerHTML='<p class="muted">Looking up network…</p>';
-      try{const d=await api('/api/developer/network-security/lookup?ip='+encodeURIComponent($('devIpLookupAddress')?.value||'')),n=d.network||{};out.innerHTML='<div class="about-card"><h4>'+esc(d.ip)+' · Local risk '+esc(d.riskScore)+'/100</h4><p>'+esc([n.city,n.region,n.country].filter(Boolean).join(', ')||'Location unavailable')+'</p><p>ISP / organization: '+esc(n.networkProvider||n.organization||'Unavailable')+' · ASN: '+esc(n.asn||'Unavailable')+'</p><p>Signals: '+esc((d.riskSignals||[]).join(', ')||'No local risk signals')+'</p>'+(d.mapUrl?'<p><a href="'+esc(d.mapUrl)+'" target="_blank" rel="noopener">🗺️ Open approximate map pin</a></p>':'<p class="muted">No map coordinates returned by the provider.</p>')+'<p class="muted">Provider results can be inaccurate. This is not a global blacklist lookup.</p></div>';}
+    mcGetById('devIpLookupForm')?.addEventListener('submit',async e=>{
+      e.preventDefault();const out=mcGetById('devIpLookupResults');if(!out)return;out.innerHTML='<p class="muted">Looking up network…</p>';
+      try{const d=await api('/api/developer/network-security/lookup?ip='+encodeURIComponent(mcGetById('devIpLookupAddress')?.value||'')),n=d.network||{};out.innerHTML='<div class="about-card"><h4>'+esc(d.ip)+' · Local risk '+esc(d.riskScore)+'/100</h4><p>'+esc([n.city,n.region,n.country].filter(Boolean).join(', ')||'Location unavailable')+'</p><p>ISP / organization: '+esc(n.networkProvider||n.organization||'Unavailable')+' · ASN: '+esc(n.asn||'Unavailable')+'</p><p>Signals: '+esc((d.riskSignals||[]).join(', ')||'No local risk signals')+'</p>'+(d.mapUrl?'<p><a href="'+esc(d.mapUrl)+'" target="_blank" rel="noopener">🗺️ Open approximate map pin</a></p>':'<p class="muted">No map coordinates returned by the provider.</p>')+'<p class="muted">Provider results can be inaccurate. This is not a global blacklist lookup.</p></div>';}
       catch(err){out.innerHTML='<p class="muted">'+esc(err.message||'IP lookup failed')+'</p>';}
     });
     if(developerOnly)loadDeveloperNetworkConfig();
 
     if(String(state.user?.rank||'').toUpperCase()==='DEVELOPER'&&String(state.user?.username||'')==='Maleficent'){
       loadDeveloperNetworkSecurity('',true);
-      $('devIpRuleForm')?.addEventListener('submit',async e=>{e.preventDefault();try{await api('/api/developer/network-security/ip-rules',{method:'POST',body:JSON.stringify({pattern:$('devIpRulePattern').value.trim(),reason:$('devIpRuleReason').value.trim()})});$('devIpRulePattern').value='';$('devIpRuleReason').value='';toast('IP / range ban added.');await loadDeveloperNetworkSecurity();}catch(err){toast(err.message);}});
-      $('devIpRulesList')?.addEventListener('click',async e=>{const btn=e.target.closest('[data-dev-delete-ip-rule]');if(!btn)return;try{await api('/api/developer/network-security/ip-rules/'+encodeURIComponent(btn.dataset.devDeleteIpRule),{method:'DELETE'});toast('IP / range ban removed.');await loadDeveloperNetworkSecurity();}catch(err){toast(err.message);}});
-      $('devNetworkPolicyForm')?.addEventListener('submit',async e=>{e.preventDefault();try{await api('/api/developer/network-security',{method:'PUT',body:JSON.stringify({blockVpn:$('devBlockVpn').checked,allowedCountries:$('devAllowedCountries').value,blockedCountries:$('devBlockedCountries').value,blockedVpnCountries:$('devBlockedVpnCountries').value,blockedRegions:$('devBlockedRegions').value})});toast('Network restrictions saved.');await loadDeveloperNetworkSecurity('',true);}catch(err){toast(err.message);}});
-      $('devNetworkAccountForm')?.addEventListener('submit',e=>{e.preventDefault();loadDeveloperNetworkSecurity(($('devNetworkAccountSearch').value||'').trim().replace(/^@/,''));});
-      $('devIpLookupForm')?.addEventListener('submit',e=>{e.preventDefault();lookupDeveloperIp(($('devIpLookupAddress').value||'').trim());});
+      mcGetById('devIpRuleForm')?.addEventListener('submit',async e=>{e.preventDefault();try{await api('/api/developer/network-security/ip-rules',{method:'POST',body:JSON.stringify({pattern:mcGetById('devIpRulePattern').value.trim(),reason:mcGetById('devIpRuleReason').value.trim()})});mcGetById('devIpRulePattern').value='';mcGetById('devIpRuleReason').value='';toast('IP / range ban added.');await loadDeveloperNetworkSecurity();}catch(err){toast(err.message);}});
+      mcGetById('devIpRulesList')?.addEventListener('click',async e=>{const btn=e.target.closest('[data-dev-delete-ip-rule]');if(!btn)return;try{await api('/api/developer/network-security/ip-rules/'+encodeURIComponent(btn.dataset.devDeleteIpRule),{method:'DELETE'});toast('IP / range ban removed.');await loadDeveloperNetworkSecurity();}catch(err){toast(err.message);}});
+      mcGetById('devNetworkPolicyForm')?.addEventListener('submit',async e=>{e.preventDefault();try{await api('/api/developer/network-security',{method:'PUT',body:JSON.stringify({blockVpn:mcGetById('devBlockVpn').checked,allowedCountries:mcGetById('devAllowedCountries').value,blockedCountries:mcGetById('devBlockedCountries').value,blockedVpnCountries:mcGetById('devBlockedVpnCountries').value,blockedRegions:mcGetById('devBlockedRegions').value})});toast('Network restrictions saved.');await loadDeveloperNetworkSecurity('',true);}catch(err){toast(err.message);}});
+      mcGetById('devNetworkAccountForm')?.addEventListener('submit',e=>{e.preventDefault();loadDeveloperNetworkSecurity((mcGetById('devNetworkAccountSearch').value||'').trim().replace(/^@/,''));});
+      mcGetById('devIpLookupForm')?.addEventListener('submit',e=>{e.preventDefault();lookupDeveloperIp((mcGetById('devIpLookupAddress').value||'').trim());});
     }
 
     if(canUseAdminPanel){
-      const auditTarget=$('systemAuditRows');
+      const auditTarget=mcGetById('systemAuditRows');
       const loadAdminActivityLogs=async(query='')=>{
         if(!auditTarget)return;
         auditTarget.innerHTML='<p class="muted">Loading admin activity logs…</p>';
@@ -6510,45 +6510,45 @@ async function loadStaff() {
       };
       loadAdminActivityLogs();
     }
-    $('refreshSystemCenter')?.addEventListener('click',()=>loadStaff());
-    $('showAllAuditRows')?.addEventListener('click',async()=>{try{const d=await api('/api/staff/system-center/audit');const target=$('systemAuditRows');target.innerHTML=(d.audit||[]).map(renderAuditRow).join('')||'<p class="muted">No audit events recorded.</p>';if($('systemAuditSearch'))$('systemAuditSearch').value='';}catch(err){toast(err.message);}});
-    $('staffAdminSearchForm')?.addEventListener('submit',async e=>{
-      e.preventDefault();const target=$('staffAdminUsers');target.innerHTML='<p class="muted">Searching…</p>';
-      try{const d=await api('/api/staff/admin/users?q='+encodeURIComponent(($('staffAdminSearch').value||'').trim()));
+    mcGetById('refreshSystemCenter')?.addEventListener('click',()=>loadStaff());
+    mcGetById('showAllAuditRows')?.addEventListener('click',async()=>{try{const d=await api('/api/staff/system-center/audit');const target=mcGetById('systemAuditRows');target.innerHTML=(d.audit||[]).map(renderAuditRow).join('')||'<p class="muted">No audit events recorded.</p>';if(mcGetById('systemAuditSearch'))mcGetById('systemAuditSearch').value='';}catch(err){toast(err.message);}});
+    mcGetById('staffAdminSearchForm')?.addEventListener('submit',async e=>{
+      e.preventDefault();const target=mcGetById('staffAdminUsers');target.innerHTML='<p class="muted">Searching…</p>';
+      try{const d=await api('/api/staff/admin/users?q='+encodeURIComponent((mcGetById('staffAdminSearch').value||'').trim()));
       target.innerHTML=(d.users||[]).map(u=>`<div class="user-card system-admin-user" data-admin-user="${esc(u.id)}"><div style="flex:1;min-width:0"><b>${esc(u.displayName||u.username)}</b> @${esc(u.username)}<div class="muted">${esc(u.rank)} · ${u.online?'Online':'Offline'} ${u.banned?'· BANNED':''}</div></div><select class="system-admin-action"><option>WARN</option><option>MUTE</option><option>KICK</option><option>BAN</option></select><label class="system-admin-duration-label">Duration (min)<input class="system-admin-duration" type="number" min="1" max="10080" value="10" aria-label="Duration minutes"></label><input class="system-admin-reason" maxlength="240" placeholder="Reason"><button class="mini primary system-admin-apply">Apply</button></div>`).join('')||'<p class="muted">No matching accounts.</p>';
       target.querySelectorAll('[data-admin-user]').forEach(row=>{const select=row.querySelector('.system-admin-action'),input=row.querySelector('.system-admin-duration'),label=row.querySelector('.system-admin-duration-label');const sync=()=>{const needed=['MUTE','KICK'].includes(select.value);input.disabled=!needed;label.firstChild.nodeValue=needed?'Duration (min)':'No duration needed';};select.addEventListener('change',sync);sync();});
       target.querySelectorAll('.system-admin-apply').forEach(btn=>btn.onclick=async()=>{const row=btn.closest('[data-admin-user]'),action=row.querySelector('.system-admin-action').value,needsDuration=['MUTE','KICK'].includes(action),minutes=Number(row.querySelector('.system-admin-duration').value),reason=row.querySelector('.system-admin-reason').value.trim();if(!reason){toast('Enter a reason.');return;}if(needsDuration&&(!Number.isFinite(minutes)||minutes<1||minutes>10080)){toast('Duration must be 1–10080 minutes for mute/kick.');return;}btn.disabled=true;try{await api('/api/moderation/'+action,{method:'POST',body:JSON.stringify({userId:row.dataset.adminUser,minutes:needsDuration?minutes:0,reason})});toast(action+' applied.');await loadStaff();}catch(err){toast(err.message);btn.disabled=false;}});
       }catch(err){target.innerHTML='<p class="muted">'+esc(err.message)+'</p>';}
     });
-    $('systemAuditSearchForm')?.addEventListener('submit',async e=>{e.preventDefault();const target=$('systemAuditRows');target.innerHTML='<p class="muted">Loading…</p>';try{const d=await api('/api/staff/system-center/audit?q='+encodeURIComponent(($('systemAuditSearch').value||'').trim()));target.innerHTML=(d.audit||[]).map(renderAuditRow).join('')||'<p class="muted">No matches.</p>';}catch(err){target.innerHTML='<p class="muted">'+esc(err.message)+'</p>';}});
+    mcGetById('systemAuditSearchForm')?.addEventListener('submit',async e=>{e.preventDefault();const target=mcGetById('systemAuditRows');target.innerHTML='<p class="muted">Loading…</p>';try{const d=await api('/api/staff/system-center/audit?q='+encodeURIComponent((mcGetById('systemAuditSearch').value||'').trim()));target.innerHTML=(d.audit||[]).map(renderAuditRow).join('')||'<p class="muted">No matches.</p>';}catch(err){target.innerHTML='<p class="muted">'+esc(err.message)+'</p>';}});
     const renderActiveActions=()=>{
-      const filter=$("staffActionFilter")?.value||"";
+      const filter=mcGetById("staffActionFilter")?.value||"";
       const rows=(data.activeActions||[]).filter(x=>!filter||(filter==="BANNED"&&x.banned)||(filter==="MUTED"&&x.mutedUntil)||(filter==="KICKED"&&x.kickedUntil));
-      const activeActionTarget=$("activeActionUsers");
+      const activeActionTarget=mcGetById("activeActionUsers");
       // This optional widget is absent from the current dashboard layout; skip it safely.
       if(!activeActionTarget)return;
       activeActionTarget.innerHTML=rows.map(x=>`<div class="user-card"><div style="flex:1"><b>${esc(x.displayName)}</b> @${esc(x.username)}<div class="muted">${rank(x.rank)} · ${x.banned?"Banned":x.kickedUntil?"Kicked until "+fmt(x.kickedUntil):"Muted until "+fmt(x.mutedUntil)}</div><div class="muted">${esc(x.reason||"")}</div></div><button class="mini" onclick="openUser('${esc(x.id)}')">Open</button></div>`).join("")||'<p class="muted">No users currently have this action.</p>';
     };
-    $("staffActionFilter")?.addEventListener("change",renderActiveActions);
+    mcGetById("staffActionFilter")?.addEventListener("change",renderActiveActions);
     renderActiveActions();
   }catch(e){toast(e.message)}
 }
 
 async function loadDeveloperNetworkSecurity(query='',populatePolicy=false){
-  const root=$('developerNetworkConsole');
+  const root=mcGetById('developerNetworkConsole');
   if(!root||String(state.user?.rank||'').toUpperCase()!=='DEVELOPER'||String(state.user?.username||'')!=='Maleficent')return;
   try{
     const url='/api/developer/network-security'+(query?'?q='+encodeURIComponent(query):'');
     const d=await api(url),cfg=d.config||{};
     if(populatePolicy){
-      $('devBlockVpn').checked=!!cfg.blockVpn;
-      $('devAllowedCountries').value=(cfg.allowedCountries||[]).join('\n');
-      $('devBlockedCountries').value=(cfg.blockedCountries||[]).join('\n');
-      $('devBlockedVpnCountries').value=(cfg.blockedVpnCountries||[]).join('\n');
-      $('devBlockedRegions').value=(cfg.blockedRegions||[]).join('\n');
+      mcGetById('devBlockVpn').checked=!!cfg.blockVpn;
+      mcGetById('devAllowedCountries').value=(cfg.allowedCountries||[]).join('\n');
+      mcGetById('devBlockedCountries').value=(cfg.blockedCountries||[]).join('\n');
+      mcGetById('devBlockedVpnCountries').value=(cfg.blockedVpnCountries||[]).join('\n');
+      mcGetById('devBlockedRegions').value=(cfg.blockedRegions||[]).join('\n');
     }
     const rules=cfg.ipRules||[];
-    $('devIpRulesList').innerHTML=rules.length?rules.map(rule=>'<div class="about-card" style="margin-top:8px"><div class="profile-info-row"><b><code>'+esc(rule.pattern)+'</code></b><button class="mini danger" type="button" data-dev-delete-ip-rule="'+esc(rule.id)+'">Remove</button></div><p class="muted">'+esc(rule.reason||'Blocked by Developer')+' · '+esc(rule.createdBy||'Developer')+'</p></div>').join(''):'<p class="muted">No IP or range bans configured.</p>';
+    mcGetById('devIpRulesList').innerHTML=rules.length?rules.map(rule=>'<div class="about-card" style="margin-top:8px"><div class="profile-info-row"><b><code>'+esc(rule.pattern)+'</code></b><button class="mini danger" type="button" data-dev-delete-ip-rule="'+esc(rule.id)+'">Remove</button></div><p class="muted">'+esc(rule.reason||'Blocked by Developer')+' · '+esc(rule.createdBy||'Developer')+'</p></div>').join(''):'<p class="muted">No IP or range bans configured.</p>';
     if(d.account){
       const risk=d.risk||{score:0,level:'Low',reasons:[]};
       const deviceRows=(d.deviceSignals||[]).map(item=>'<div class="profile-info-row"><b>'+esc(item.label)+'</b><span>'+esc(item.value)+'</span></div>').join('');
@@ -6557,14 +6557,14 @@ async function loadDeveloperNetworkSecurity(query='',populatePolicy=false){
         const map=hasCoords?'<a href="https://www.openstreetmap.org/?mlat='+encodeURIComponent(coords.split(',')[0])+'&mlon='+encodeURIComponent(coords.split(',')[1])+'&zoom=10" target="_blank" rel="noopener">Open map pin</a>':'';
         return '<tr><td><code>'+esc(row.ip_address||'Unavailable')+'</code></td><td>'+esc([n.city,n.region,n.country].filter(Boolean).join(', ')||'Unavailable')+(map?'<small>'+map+'</small>':'')+'</td><td>'+esc([n.networkProvider,n.asn].filter(Boolean).join(' · ')||'Unavailable')+'</td><td>'+esc(n.vpnDetected?((n.vpnSignals||[]).join(', ')||'Possible VPN / proxy'):'No VPN signal')+'</td><td>'+esc(row.event_type||'event')+'<small>'+esc(row.recorded_at?fmt(new Date(row.recorded_at).getTime()):'Unknown')+'</small></td></tr>';
       }).join('');
-      $('devNetworkAccountResults').innerHTML='<div class="about-card" style="margin-top:10px"><div class="profile-info-row"><b>@'+esc(d.account.username)+'</b><span>Registered '+esc(d.account.registeredAt?fmt(new Date(d.account.registeredAt).getTime()):'Unknown')+'</span></div><div class="profile-info-row"><b>Local IP risk score</b><span>'+esc(risk.score)+'/100 · '+esc(risk.level)+'</span></div><p class="muted">'+esc((risk.reasons||[]).join(' · ')||'No strong local risk signals found.')+'</p><p class="muted">'+esc(d.disclaimer||'Local signals only; not a global reputation feed.')+'</p><h4>Device + IP correlation</h4>'+deviceRows+'</div><div class="ip-inspection-table-wrap" style="margin-top:10px"><table class="ip-inspection-table"><thead><tr><th>IP / time</th><th>Approximate location</th><th>ISP / ASN</th><th>VPN signal</th><th>Event</th></tr></thead><tbody>'+timeline+'</tbody></table></div>'+(timeline?'':'<p class="muted">No IP history is recorded for this account yet.</p>');
+      mcGetById('devNetworkAccountResults').innerHTML='<div class="about-card" style="margin-top:10px"><div class="profile-info-row"><b>@'+esc(d.account.username)+'</b><span>Registered '+esc(d.account.registeredAt?fmt(new Date(d.account.registeredAt).getTime()):'Unknown')+'</span></div><div class="profile-info-row"><b>Local IP risk score</b><span>'+esc(risk.score)+'/100 · '+esc(risk.level)+'</span></div><p class="muted">'+esc((risk.reasons||[]).join(' · ')||'No strong local risk signals found.')+'</p><p class="muted">'+esc(d.disclaimer||'Local signals only; not a global reputation feed.')+'</p><h4>Device + IP correlation</h4>'+deviceRows+'</div><div class="ip-inspection-table-wrap" style="margin-top:10px"><table class="ip-inspection-table"><thead><tr><th>IP / time</th><th>Approximate location</th><th>ISP / ASN</th><th>VPN signal</th><th>Event</th></tr></thead><tbody>'+timeline+'</tbody></table></div>'+(timeline?'':'<p class="muted">No IP history is recorded for this account yet.</p>');
     }else if(query){
-      $('devNetworkAccountResults').innerHTML='<p class="muted">No matching account was found.</p>';
+      mcGetById('devNetworkAccountResults').innerHTML='<p class="muted">No matching account was found.</p>';
     }
-  }catch(e){const target=$('devNetworkAccountResults');if(target)target.innerHTML='<p class="muted">'+esc(e.message||'Could not load Developer network security data.')+'</p>';toast(e.message||'Developer network security load failed.');}
+  }catch(e){const target=mcGetById('devNetworkAccountResults');if(target)target.innerHTML='<p class="muted">'+esc(e.message||'Could not load Developer network security data.')+'</p>';toast(e.message||'Developer network security load failed.');}
 }
 async function lookupDeveloperIp(ip){
-  const out=$('devIpLookupResults');if(!out)return;
+  const out=mcGetById('devIpLookupResults');if(!out)return;
   out.innerHTML='<p class="muted">Looking up network details…</p>';
   try{
     const d=await api('/api/developer/network-security/lookup?ip='+encodeURIComponent(ip));
@@ -6574,7 +6574,7 @@ async function lookupDeveloperIp(ip){
 }
 
 async function loadIpInspection(query=''){
-  const results=$('ipInspectionResults'); if(!results)return;
+  const results=mcGetById('ipInspectionResults'); if(!results)return;
   results.innerHTML='<p class="muted">Loading IP history and approximate network details…</p>';
   try{
     const d=await api('/api/staff/ip-inspection?q='+encodeURIComponent(query));
@@ -6613,8 +6613,8 @@ async function showIpInsights(user){
       return '<div class="about-card" style="margin-top:10px"><div class="profile-info-row"><b>👤 @'+esc(m.username)+'</b><span>Registered '+esc(fmtDate(m.registeredAt))+'</span></div><div class="profile-info-row"><b>Shared-IP events</b><span>'+esc(m.sharedIpEvents)+'</span></div><div style="margin-top:8px"><b>📜 Previous usernames</b>'+names+'</div></div>';
     }).join(''):'<p class="muted">No other accounts with a matching recorded IP were found.</p>';
     modal('<div class="profile-drawer"><h2>🔎 View insights · @'+esc(d.user?.username||user.username)+'</h2><div class="about-card"><div class="profile-info-row"><b>📅 Registration date</b><span>'+esc(fmtDate(d.user?.registeredAt))+'</span></div><h3>📜 Previous usernames</h3>'+historyHtml+'</div><h3 style="margin-top:16px">🔗 Accounts with matching IP ('+matches.length+')</h3>'+matchHtml+'<p class="muted" style="margin-top:12px">'+esc(d.note||'IP matches are not proof of common ownership.')+'</p><div class="toolbar"><button class="primary" id="closeIpInsights">Close</button></div></div>');
-    $('closeIpInsights')?.addEventListener('click',closeModal);
-  }catch(e){modal('<div class="about-card"><h2>🔎 Account insights</h2><p class="muted">'+esc(e.message||'Could not load insights.')+'</p><button class="primary" id="closeIpInsightsError">Close</button></div>');$('closeIpInsightsError')?.addEventListener('click',closeModal);}
+    mcGetById('closeIpInsights')?.addEventListener('click',closeModal);
+  }catch(e){modal('<div class="about-card"><h2>🔎 Account insights</h2><p class="muted">'+esc(e.message||'Could not load insights.')+'</p><button class="primary" id="closeIpInsightsError">Close</button></div>');mcGetById('closeIpInsightsError')?.addEventListener('click',closeModal);}
 }
 
 function findUserName(id){
@@ -6679,7 +6679,7 @@ async function resolveReport(id) {
     await api(`/api/staff/reports/${encodeURIComponent(id)}/resolve`,{method:"POST",body:JSON.stringify({status:"RESOLVED",resolutionNote})});
     toast("Report resolved and note saved.");
     if(state.view==="management") await loadStaff();
-    const box=$("reportDropdown");
+    const box=mcGetById("reportDropdown");
     if(box&&!box.classList.contains("hidden")) await toggleReportDropdown(true);
     await loadNotifications();
   } catch (error) { toast(error.message); }
@@ -6770,40 +6770,40 @@ async function checkUnderConstruction(){
     const configured=Boolean(status.configuredEnabled??status.enabled);
     if(status.enabled&&!status.exempt)showConstructionPanel(status.until,status.message||"");
     else hideConstructionPanel();
-    const toggle=$("staffUnderConstructionToggle");
+    const toggle=mcGetById("staffUnderConstructionToggle");
     if(toggle&&isOwnerExempt()){
       toggle.checked=configured;
       toggle.setAttribute("aria-checked",configured?"true":"false");
     }
-    const label=$("staffConstructionStatus");
+    const label=mcGetById("staffConstructionStatus");
     if(label){
       label.textContent=configured?"ON · Maintenance enabled":"OFF · Site open";
       label.classList.toggle("is-on",configured);
     }
-    const codeInput=$("staffConstructionCode");
-    const codeLabel=$("staffConstructionCodeLabel");
-    const codeHelp=$("staffConstructionCodeHelp");
+    const codeInput=mcGetById("staffConstructionCode");
+    const codeLabel=mcGetById("staffConstructionCodeLabel");
+    const codeHelp=mcGetById("staffConstructionCodeHelp");
     if(codeInput){
       codeInput.placeholder=configured?"Enter the code to switch OFF":"Create a code to switch ON";
       codeInput.autocomplete=configured?"current-password":"new-password";
     }
     if(codeLabel)codeLabel.firstChild.textContent=configured?"Code required to turn OFF":"Create shutdown code";
     if(codeHelp)codeHelp.textContent=configured?"Enter the exact code used when you enabled maintenance mode.":"Use 4–128 characters. You will need this exact code to turn maintenance mode OFF.";
-    const result=$("staffConstructionResult");
+    const result=mcGetById("staffConstructionResult");
     if(result)result.textContent="Server status verified: "+(configured?"ON · regular users are blocked; shutdown code required":"OFF · site is open")+" · "+new Date().toLocaleTimeString();
   }catch(error){
     console.warn("Under Construction status check failed:",error?.message||error);
-    const label=$("staffConstructionStatus");if(label)label.textContent="Status unavailable";
-    const result=$("staffConstructionResult");if(result)result.textContent="Could not read the saved status: "+(error?.message||"Unknown server error");
+    const label=mcGetById("staffConstructionStatus");if(label)label.textContent="Status unavailable";
+    const result=mcGetById("staffConstructionResult");if(result)result.textContent="Could not read the saved status: "+(error?.message||"Unknown server error");
   }
 }
 async function toggleUnderConstruction(requestedEnabled){
   if(constructionWriteInFlight)return;
-  const toggle=$("staffUnderConstructionToggle");
-  const codeInput=$("staffConstructionCode");
+  const toggle=mcGetById("staffUnderConstructionToggle");
+  const codeInput=mcGetById("staffConstructionCode");
   const enabled=Boolean(requestedEnabled);
   const code=String(codeInput?.value||"");
-  const manualMessage=String($("staffConstructionMessage")?.value||"").trim();
+  const manualMessage=String(mcGetById("staffConstructionMessage")?.value||"").trim();
   if(code.length<1 || (enabled&&code.length<4) || code.length>128){
     if(toggle)toggle.checked=!enabled;
     if(toggle)toggle.setAttribute("aria-checked",enabled?"false":"true");
@@ -6819,9 +6819,9 @@ async function toggleUnderConstruction(requestedEnabled){
     const active=Boolean(result.enabled);
     if(toggle){toggle.checked=active;toggle.setAttribute("aria-checked",active?"true":"false");}
     if(codeInput&&!result.codeConfigured)codeInput.value="";
-    const resultLabel=$("staffConstructionResult");
+    const resultLabel=mcGetById("staffConstructionResult");
     if(resultLabel)resultLabel.textContent=result.codeConfigured?"Legacy maintenance session secured. The code is ready; switch OFF again to confirm it.":active?"Server saved ON. A shutdown code is now required to turn it OFF. Verifying the persisted setting…":"Server saved OFF after code verification. Verifying the persisted setting…";
-    const statusLabel=$("staffConstructionStatus");
+    const statusLabel=mcGetById("staffConstructionStatus");
     if(statusLabel){
       statusLabel.textContent=active?"ON · Maintenance enabled":"OFF · Site open";
       statusLabel.classList.toggle("is-on",active);
@@ -6830,7 +6830,7 @@ async function toggleUnderConstruction(requestedEnabled){
   }catch(e){
     if(toggle)toggle.checked=!enabled;
     if(toggle)toggle.setAttribute("aria-checked",enabled?"false":"true");
-    const resultLabel=$("staffConstructionResult");
+    const resultLabel=mcGetById("staffConstructionResult");
     if(resultLabel)resultLabel.textContent="Save failed: "+(e.message||"Unknown server error");
     toast(e.message||"Could not change Under Construction mode.");
   }finally{
@@ -6843,7 +6843,7 @@ async function toggleUnderConstruction(requestedEnabled){
 
 
 async function loadGuide(){
-  const host=$("guideContent");if(!host)return;
+  const host=mcGetById("guideContent");if(!host)return;
   host.innerHTML='<div class="card"><p class="muted">Loading your rank guide…</p></div>';
   try{
     const data=await api("/api/guide");
@@ -6854,7 +6854,7 @@ async function loadGuide(){
 }
 
 async function loadCommunityRules(){
- const host=$('communityRules');if(!host)return;
+ const host=mcGetById('communityRules');if(!host)return;
  const owner=['INSTRUCTOR','COMMISSOR','COOWNER','OWNER','DEVELOPER'].includes(String(state.user?.rank||'').toUpperCase());
  try{
   const data=await api('/api/community-rules');let rules=(data.rules||[]).map(r=>({id:String(r.id),text:String(r.text||'')}));
@@ -6864,8 +6864,8 @@ async function loadCommunityRules(){
    const cards=rules.map((r,i)=>{const isEditing=editMode&&editing.has(r.id),text=isEditing?(drafts.get(r.id)??r.text):r.text;return '<article class="community-rule-card"><div class="community-rule-head"><h3>MC RULE '+(i+1)+'</h3>'+(editMode?'<div class="toolbar">'+(isEditing?'<button type="button" class="mini primary" data-save-rule="'+esc(r.id)+'">Save</button><button type="button" class="mini" data-cancel-rule="'+esc(r.id)+'">Cancel</button>':'<button type="button" class="mini" data-edit-rule="'+esc(r.id)+'">✏️ Edit</button>')+'<button type="button" class="mini danger" data-remove-rule="'+esc(r.id)+'">Remove</button></div>':'')+'</div>'+(isEditing?'<textarea rows="4" maxlength="2000" data-community-rule="'+esc(r.id)+'" placeholder="Write the rule…">'+esc(text)+'</textarea>':'<p class="community-rule-text">'+(r.text.trim()?esc(r.text):'<span class="muted">This rule is empty. Use Edit rules to add its text.</span>')+'</p>')+'</article>';}).join('');
    host.innerHTML=toolbar+(cards||'<div class="card"><p class="muted">No community rules have been published yet.</p>'+(owner?'<button type="button" class="primary" id="addCommunityRule">＋ Add the first rule</button>':'')+'</div>');
    if(!owner)return;
-   $('toggleCommunityRuleEdit')?.addEventListener('click',()=>{editMode=!editMode;editing.clear();drafts.clear();render();});
-   $('addCommunityRule')?.addEventListener('click',()=>{const id='draft-'+Date.now()+'-'+Math.random().toString(36).slice(2);rules.push({id,text:''});editMode=true;editing.add(id);drafts.set(id,'');render();host.querySelector('[data-community-rule="'+CSS.escape(id)+'"]')?.focus();});
+   mcGetById('toggleCommunityRuleEdit')?.addEventListener('click',()=>{editMode=!editMode;editing.clear();drafts.clear();render();});
+   mcGetById('addCommunityRule')?.addEventListener('click',()=>{const id='draft-'+Date.now()+'-'+Math.random().toString(36).slice(2);rules.push({id,text:''});editMode=true;editing.add(id);drafts.set(id,'');render();host.querySelector('[data-community-rule="'+CSS.escape(id)+'"]')?.focus();});
    host.querySelectorAll('[data-edit-rule]').forEach(btn=>btn.onclick=()=>{const id=btn.dataset.editRule;editing.add(id);drafts.set(id,rules.find(r=>r.id===id)?.text||'');render();});
    host.querySelectorAll('[data-community-rule]').forEach(area=>area.addEventListener('input',()=>drafts.set(area.dataset.communityRule,area.value)));
    host.querySelectorAll('[data-cancel-rule]').forEach(btn=>btn.onclick=()=>{const id=btn.dataset.cancelRule,rule=rules.find(r=>r.id===id);if(id.startsWith('draft-')&&!rule?.text)rules=rules.filter(r=>r.id!==id);editing.delete(id);drafts.delete(id);render();});
@@ -6882,7 +6882,7 @@ async function loadOwner() {
       await api("/api/owner/overview");
     const premiumRequests = await api("/api/owner/premium-requests").catch(()=>({requests:[]}));
 
-    $("owner").innerHTML = `
+    mcGetById("owner").innerHTML = `
       <div class="card">
 
               
@@ -6990,24 +6990,24 @@ async function loadOwner() {
     
     
     // Keep these management tools exclusively in Staff Dashboard, never Owner Space.
-    const ownerRoot=$("owner");
+    const ownerRoot=mcGetById("owner");
     ownerRoot?.querySelectorAll("details").forEach(section=>{
       const heading=String(section.querySelector("summary")?.textContent||"").toLowerCase();
       if(heading.includes("guide management")||heading.includes("filter management"))section.remove();
     });
     ownerRoot?.querySelector(".owner-filter-management")?.remove();
-    $("ownerClearAllMessages")?.addEventListener("click",async()=>{
+    mcGetById("ownerClearAllMessages")?.addEventListener("click",async()=>{
       const confirmation="PERMANENTLY DELETE EVERY ROOM CHAT MESSAGE AND EVERY PRIVATE MESSAGE FOR ALL USERS?\n\nThis cannot be undone. Accounts, passwords, ranks, gold, settings, rooms, reports, and moderation/audit history will remain. Type CLEAR in the next prompt to continue.";
       if(!window.confirm(confirmation))return;
       if(window.prompt("Type CLEAR to permanently remove all room and private messages:")!=="CLEAR")return;
-      const button=$("ownerClearAllMessages"),status=$("ownerClearAllMessagesStatus");
+      const button=mcGetById("ownerClearAllMessages"),status=mcGetById("ownerClearAllMessagesStatus");
       if(button){button.disabled=true;button.textContent="⏳ Clearing messages…";}
       if(status)status.textContent="Deleting stored chat messages…";
       try{
         const result=await api("/api/owner/refresh-site-messages",{method:"POST"});
         state.messages=[];state.privateMessages=[];
-        if($("messages"))$("messages").innerHTML="";
-        if($("dmMessages"))$("dmMessages").innerHTML="";
+        if(mcGetById("messages"))mcGetById("messages").innerHTML="";
+        if(mcGetById("dmMessages"))mcGetById("dmMessages").innerHTML="";
         toast("Cleared "+Number(result.roomMessagesRemoved||0)+" room messages and "+Number(result.privateMessagesRemoved||0)+" private messages.");
         if(status)status.textContent="All room and private messages were permanently cleared.";
       }catch(error){
@@ -7018,18 +7018,18 @@ async function loadOwner() {
 
     // Owner controls are injected dynamically; sync the toggle with persisted server state after rendering.
     await checkUnderConstruction();
-    for(const key of ['multi_account','ban_evasion','spam_flood','vpn_proxy']){const actionSelect=$('sm_'+key+'_action'),durationInput=$('sm_'+key+'_duration'),label=durationInput?.closest('label');const sync=()=>{const needed=['MUTE','KICK'].includes(actionSelect?.value);if(durationInput)durationInput.disabled=!needed;if(label)label.firstChild.nodeValue=needed?'Duration (minutes)':'No duration required';};actionSelect?.addEventListener('change',sync);sync();}
-    if($('saveSystemModeration')) $('saveSystemModeration').onclick=async()=>{
+    for(const key of ['multi_account','ban_evasion','spam_flood','vpn_proxy']){const actionSelect=mcGetById('sm_'+key+'_action'),durationInput=mcGetById('sm_'+key+'_duration'),label=durationInput?.closest('label');const sync=()=>{const needed=['MUTE','KICK'].includes(actionSelect?.value);if(durationInput)durationInput.disabled=!needed;if(label)label.firstChild.nodeValue=needed?'Duration (minutes)':'No duration required';};actionSelect?.addEventListener('change',sync);sync();}
+    if(mcGetById('saveSystemModeration')) mcGetById('saveSystemModeration').onclick=async()=>{
       const rules={};
       for(const key of ['multi_account','ban_evasion','spam_flood','vpn_proxy']){
-        const action=$('sm_'+key+'_action').value;
+        const action=mcGetById('sm_'+key+'_action').value;
         const needsDuration=['MUTE','KICK'].includes(action);
-        const duration=needsDuration?Number($('sm_'+key+'_duration').value):0;
-        const reason=$('sm_'+key+'_reason').value.trim();
+        const duration=needsDuration?Number(mcGetById('sm_'+key+'_duration').value):0;
+        const reason=mcGetById('sm_'+key+'_reason').value.trim();
         if(!['WARN','MUTE','KICK','BAN'].includes(action)){toast('Choose a valid action.');return;}
         if(needsDuration&&(!Number.isFinite(duration)||duration<1||duration>10080)){toast('Duration must be between 1 and 10080 minutes for mute/kick.');return;}
         if(!reason){toast('Enter a reason for each System Moderation rule.');return;}
-        rules[key]={enabled:$('sm_'+key+'_enabled').checked,action,durationMinutes:needsDuration?duration:0,reason};
+        rules[key]={enabled:mcGetById('sm_'+key+'_enabled').checked,action,durationMinutes:needsDuration?duration:0,reason};
       }
       try{await api('/api/owner/settings',{method:'PATCH',body:JSON.stringify({systemModeration:rules})});toast('System Moderation settings saved.');}
       catch(e){toast(e.message);}
@@ -7056,37 +7056,37 @@ async function loadOwner() {
     const defaultAuditVisibility = Object.fromEntries(auditTypes.map(([key])=>[key,{enabled:true,minimumRank:"ADMIN"}]));
     const auditVisibility = {...defaultAuditVisibility,...(data.settings?.audit_log_visibility||{})};
     const renderOwnerAuditVisibility = (query="") => {
-      const host=$("ownerAuditVisibilityRows"); if(!host)return;
+      const host=mcGetById("ownerAuditVisibilityRows"); if(!host)return;
       const q=query.trim().toLowerCase();
       host.innerHTML=auditTypes.filter(([key,label,actions])=>!q||(key+" "+label+" "+actions).toLowerCase().includes(q)).map(([key,label,actions])=>{
         const rule={...defaultAuditVisibility[key],...(auditVisibility[key]||{})};
         return '<div class="owner-audit-rule" data-audit-rule="'+esc(key)+'"><div class="owner-audit-rule-main"><b>'+esc(label)+'</b><small>Events: '+esc(actions.split(", ").join(" · "))+'</small></div><label class="owner-audit-toggle"><input type="checkbox" data-audit-enabled="'+esc(key)+'" '+(rule.enabled!==false?'checked':'')+'><span>Visible</span></label><label class="owner-audit-rank-label">Minimum rank<select data-audit-rank="'+esc(key)+'">'+auditRanks.map(rankName=>'<option value="'+rankName+'" '+(String(rule.minimumRank||"ADMIN").toUpperCase()===rankName?'selected':'')+'>'+rankName.replace(/_/g," ")+'</option>').join("")+'</select></label></div>';
       }).join("")||'<p class="muted">No event types match your search.</p>';
-      host.querySelectorAll("[data-audit-enabled]").forEach(el=>el.addEventListener("change",()=>{auditVisibility[el.dataset.auditEnabled]={...(auditVisibility[el.dataset.auditEnabled]||{}),enabled:el.checked};$("ownerAuditSaveStatus").textContent="Unsaved changes";}));
-      host.querySelectorAll("[data-audit-rank]").forEach(el=>el.addEventListener("change",()=>{auditVisibility[el.dataset.auditRank]={...(auditVisibility[el.dataset.auditRank]||{}),minimumRank:el.value};$("ownerAuditSaveStatus").textContent="Unsaved changes";}));
+      host.querySelectorAll("[data-audit-enabled]").forEach(el=>el.addEventListener("change",()=>{auditVisibility[el.dataset.auditEnabled]={...(auditVisibility[el.dataset.auditEnabled]||{}),enabled:el.checked};mcGetById("ownerAuditSaveStatus").textContent="Unsaved changes";}));
+      host.querySelectorAll("[data-audit-rank]").forEach(el=>el.addEventListener("change",()=>{auditVisibility[el.dataset.auditRank]={...(auditVisibility[el.dataset.auditRank]||{}),minimumRank:el.value};mcGetById("ownerAuditSaveStatus").textContent="Unsaved changes";}));
     };
     renderOwnerAuditVisibility();
-    $("ownerAuditTypeSearch")?.addEventListener("input",e=>renderOwnerAuditVisibility(e.target.value));
-    $("ownerAuditAllOn")?.addEventListener("click",()=>{auditTypes.forEach(([key])=>auditVisibility[key]={...(auditVisibility[key]||{}),enabled:true});renderOwnerAuditVisibility($("ownerAuditTypeSearch")?.value||"");$("ownerAuditSaveStatus").textContent="Unsaved changes";});
-    $("ownerAuditAllOff")?.addEventListener("click",()=>{auditTypes.forEach(([key])=>auditVisibility[key]={...(auditVisibility[key]||{}),enabled:false});renderOwnerAuditVisibility($("ownerAuditTypeSearch")?.value||"");$("ownerAuditSaveStatus").textContent="Unsaved changes";});
-    $("saveOwnerAuditVisibility")?.addEventListener("click",async()=>{
-      const btn=$("saveOwnerAuditVisibility");btn.disabled=true;
-      try{const result=await api("/api/owner/settings",{method:"PATCH",body:JSON.stringify({auditLogVisibility:auditVisibility})});Object.assign(auditVisibility,result.settings?.audit_log_visibility||{});$("ownerAuditSaveStatus").textContent="Saved successfully.";toast("Audit log visibility settings saved.");}
-      catch(error){$("ownerAuditSaveStatus").textContent="Save failed: "+(error.message||"Unknown error");toast(error.message||"Could not save audit settings.");}
+    mcGetById("ownerAuditTypeSearch")?.addEventListener("input",e=>renderOwnerAuditVisibility(e.target.value));
+    mcGetById("ownerAuditAllOn")?.addEventListener("click",()=>{auditTypes.forEach(([key])=>auditVisibility[key]={...(auditVisibility[key]||{}),enabled:true});renderOwnerAuditVisibility(mcGetById("ownerAuditTypeSearch")?.value||"");mcGetById("ownerAuditSaveStatus").textContent="Unsaved changes";});
+    mcGetById("ownerAuditAllOff")?.addEventListener("click",()=>{auditTypes.forEach(([key])=>auditVisibility[key]={...(auditVisibility[key]||{}),enabled:false});renderOwnerAuditVisibility(mcGetById("ownerAuditTypeSearch")?.value||"");mcGetById("ownerAuditSaveStatus").textContent="Unsaved changes";});
+    mcGetById("saveOwnerAuditVisibility")?.addEventListener("click",async()=>{
+      const btn=mcGetById("saveOwnerAuditVisibility");btn.disabled=true;
+      try{const result=await api("/api/owner/settings",{method:"PATCH",body:JSON.stringify({auditLogVisibility:auditVisibility})});Object.assign(auditVisibility,result.settings?.audit_log_visibility||{});mcGetById("ownerAuditSaveStatus").textContent="Saved successfully.";toast("Audit log visibility settings saved.");}
+      catch(error){mcGetById("ownerAuditSaveStatus").textContent="Save failed: "+(error.message||"Unknown error");toast(error.message||"Could not save audit settings.");}
       finally{btn.disabled=false;}
     });
-    if($('ownerUserSearch')) $('ownerUserSearch').oninput=()=>{const q=$('ownerUserSearch').value.trim().toLowerCase();const rows=[...document.querySelectorAll('.owner-user-control-row')];let showing=0;rows.forEach(row=>{const match=(row.dataset.userSearch||'').includes(q);row.style.display=match?'':'none';if(match)showing++});if($('ownerUserSearchCount'))$('ownerUserSearchCount').textContent=q?(`${showing} of ${rows.length} users`):(`${rows.length} users`)};
-    if($('addBulkFilter')) $('addBulkFilter').onclick=async()=>{try{await api('/api/filter-words/bulk',{method:'POST',body:JSON.stringify({text:$('bulkFilterWords').value})});$('bulkFilterWords').value='';toast('Filter entries saved.');await loadOwner();}catch(e){toast(e.message)}};
-    const addQuickFilterEntry=async(inputId,prefix,label)=>{const input=$(inputId),value=String(input?.value||'').trim();if(!value){toast('Enter a word or phrase first.');input?.focus();return;}const entry=prefix+value;const button=input?.parentElement?.nextElementSibling;try{if(button){button.disabled=true;button.textContent='Saving…';}await api('/api/filter-words/bulk',{method:'POST',body:JSON.stringify({text:entry})});toast(label+' saved.');await loadOwner();}catch(e){toast(e.message||'Could not save filter entry.');}finally{if(button){button.disabled=false;button.textContent=label;}}};
-    if($('filterSearch')) $('filterSearch').oninput=()=>{const q=$('filterSearch').value.toLowerCase();const rows=[...document.querySelectorAll('.filter-table-row')];let showing=0;rows.forEach(r=>{const show=r.dataset.word.toLowerCase().includes(q);r.style.display=show?'':'none';if(show)showing++});$('filterCounts').textContent=`Total: ${rows.length} | Showing: ${showing}`};
+    if(mcGetById('ownerUserSearch')) mcGetById('ownerUserSearch').oninput=()=>{const q=mcGetById('ownerUserSearch').value.trim().toLowerCase();const rows=[...document.querySelectorAll('.owner-user-control-row')];let showing=0;rows.forEach(row=>{const match=(row.dataset.userSearch||'').includes(q);row.style.display=match?'':'none';if(match)showing++});if(mcGetById('ownerUserSearchCount'))mcGetById('ownerUserSearchCount').textContent=q?(`${showing} of ${rows.length} users`):(`${rows.length} users`)};
+    if(mcGetById('addBulkFilter')) mcGetById('addBulkFilter').onclick=async()=>{try{await api('/api/filter-words/bulk',{method:'POST',body:JSON.stringify({text:mcGetById('bulkFilterWords').value})});mcGetById('bulkFilterWords').value='';toast('Filter entries saved.');await loadOwner();}catch(e){toast(e.message)}};
+    const addQuickFilterEntry=async(inputId,prefix,label)=>{const input=mcGetById(inputId),value=String(input?.value||'').trim();if(!value){toast('Enter a word or phrase first.');input?.focus();return;}const entry=prefix+value;const button=input?.parentElement?.nextElementSibling;try{if(button){button.disabled=true;button.textContent='Saving…';}await api('/api/filter-words/bulk',{method:'POST',body:JSON.stringify({text:entry})});toast(label+' saved.');await loadOwner();}catch(e){toast(e.message||'Could not save filter entry.');}finally{if(button){button.disabled=false;button.textContent=label;}}};
+    if(mcGetById('filterSearch')) mcGetById('filterSearch').oninput=()=>{const q=mcGetById('filterSearch').value.toLowerCase();const rows=[...document.querySelectorAll('.filter-table-row')];let showing=0;rows.forEach(r=>{const show=r.dataset.word.toLowerCase().includes(q);r.style.display=show?'':'none';if(show)showing++});mcGetById('filterCounts').textContent=`Total: ${rows.length} | Showing: ${showing}`};
 
     const commandKeys=["rose","bread","brain","welcome","ship","bank","steal","roast","aura","anonymous","abrakadabra","clear"],rankChoices=["MEMBER","VIP","PREMIUM","ROYAL","MOD","ADMIN","SUPER_ADMIN","COMMISSOR","INSTRUCTOR","COOWNER","OWNER","DEVELOPER"],commandLabels={rose:"Rose",bread:"Bread",brain:"Brain",welcome:"Welcome",ship:"Ship",bank:"Bank",steal:"Steal",roast:"Roast",aura:"Aura",anonymous:"Anonymous message",abrakadabra:"Abrakadabra",clear:"Clear room"};
-    const commandData=(await api("/api/owner/command-management").catch(()=>({commands:{}}))).commands||{},commandHost=$("ownerCommandManagementRows");
+    const commandData=(await api("/api/owner/command-management").catch(()=>({commands:{}}))).commands||{},commandHost=mcGetById("ownerCommandManagementRows");
     if(commandHost)commandHost.innerHTML=commandKeys.map(key=>{const item=commandData[key]||{name:key,ranks:rankChoices},chosen=Array.isArray(item.ranks)?item.ranks:rankChoices;return '<div class="card" style="margin:8px 0"><b>'+esc(commandLabels[key]||key)+'</b><label>Command name<input data-command-name="'+key+'" maxlength="24" value="'+esc(item.name||key)+'"></label><div class="rank-check-grid">'+rankChoices.map(rank=>'<label><input type="checkbox" data-command-rank="'+key+'" value="'+rank+'" '+(chosen.includes(rank)?'checked':'')+'> '+rank+'</label>').join('')+'</div></div>';}).join('');
-    $("saveOwnerCommandManagement")?.addEventListener("click",async()=>{const commands={};commandKeys.forEach(key=>commands[key]={name:$('[data-command-name="'+key+'"]')?.value||key,ranks:[...document.querySelectorAll('[data-command-rank="'+key+'"]:checked')].map(x=>x.value)});const status=$("ownerCommandManagementStatus");try{await api("/api/owner/settings",{method:"PATCH",body:JSON.stringify({commandManagement:commands})});if(status)status.textContent="Saved.";toast("Command settings saved.");}catch(e){if(status)status.textContent=e.message;toast(e.message);}});
-    const modeData=(await api("/api/owner/mode-management").catch(()=>({modes:{}}))).modes||{},modeLabels={ghost:"👻 Ghost Mode",dead:"💀 Dead Mode",invisible:"😈 Invisible Mode"},modeHost=$("ownerModeManagementRows");
+    mcGetById("saveOwnerCommandManagement")?.addEventListener("click",async()=>{const commands={};commandKeys.forEach(key=>commands[key]={name:mcGetById('[data-command-name="'+key+'"]')?.value||key,ranks:[...document.querySelectorAll('[data-command-rank="'+key+'"]:checked')].map(x=>x.value)});const status=mcGetById("ownerCommandManagementStatus");try{await api("/api/owner/settings",{method:"PATCH",body:JSON.stringify({commandManagement:commands})});if(status)status.textContent="Saved.";toast("Command settings saved.");}catch(e){if(status)status.textContent=e.message;toast(e.message);}});
+    const modeData=(await api("/api/owner/mode-management").catch(()=>({modes:{}}))).modes||{},modeLabels={ghost:"👻 Ghost Mode",dead:"💀 Dead Mode",invisible:"😈 Invisible Mode"},modeHost=mcGetById("ownerModeManagementRows");
     if(modeHost)modeHost.innerHTML=Object.keys(modeLabels).map(key=>{const chosen=Array.isArray(modeData[key])?modeData[key]:(key==="invisible"?["OWNER"]:["OWNER"]);return '<div class="card" style="margin:8px 0"><b>'+modeLabels[key]+'</b><div class="rank-check-grid">'+rankChoices.map(rank=>'<label><input type="checkbox" data-mode-rank="'+key+'" value="'+rank+'" '+(chosen.includes(rank)?'checked':'')+'> '+rank+'</label>').join('')+'</div></div>';}).join('');
-    $("saveOwnerModeManagement")?.addEventListener("click",async()=>{const modes={};Object.keys(modeLabels).forEach(key=>{modes[key]=[...document.querySelectorAll('[data-mode-rank="'+key+'"]:checked')].map(x=>x.value);});const status=$("ownerModeManagementStatus");try{await api("/api/owner/settings",{method:"PATCH",body:JSON.stringify({modeManagement:modes})});if(status)status.textContent="Saved.";toast("Mode settings saved.");}catch(e){if(status)status.textContent=e.message;toast(e.message);}});
+    mcGetById("saveOwnerModeManagement")?.addEventListener("click",async()=>{const modes={};Object.keys(modeLabels).forEach(key=>{modes[key]=[...document.querySelectorAll('[data-mode-rank="'+key+'"]:checked')].map(x=>x.value);});const status=mcGetById("ownerModeManagementStatus");try{await api("/api/owner/settings",{method:"PATCH",body:JSON.stringify({modeManagement:modes})});if(status)status.textContent="Saved.";toast("Mode settings saved.");}catch(e){if(status)status.textContent=e.message;toast(e.message);}});
     document.querySelectorAll('[data-filter-delete]').forEach(b=>b.onclick=async()=>{try{await api('/api/filter-words/'+b.dataset.filterDelete,{method:'DELETE'});loadOwner()}catch(e){toast(e.message)}});
     document.querySelectorAll('[data-grant-premium]').forEach(b=>b.onclick=async()=>{try{await api('/api/owner/premium-requests/'+b.dataset.grantPremium+'/grant',{method:'POST'});toast('Premium granted.');loadOwner()}catch(e){toast(e.message)}});
 document.querySelectorAll('[data-cancel-premium]').forEach(b=>b.onclick=async()=>{try{const r=await api('/api/premium/cancel',{method:'POST',body:JSON.stringify({userId:b.dataset.cancelPremium})});b.closest('.hub-row')?.remove();toast('Premium cancelled.');}catch(e){toast(e.message)}});
@@ -7185,7 +7185,7 @@ async function ownerEdit(id) {
 async function saveOwnerUser(id) {
   try {
     if(!(id===state.user?.id && state.user?.username==="Maleficent" && state.user?.rank==="OWNER")){
-      await api(`/api/owner/user/${id}/rank`,{method:"PATCH",body:JSON.stringify({rank:$("orank").value})});
+      await api(`/api/owner/user/${id}/rank`,{method:"PATCH",body:JSON.stringify({rank:mcGetById("orank").value})});
     }
 
     await api(
@@ -7193,13 +7193,13 @@ async function saveOwnerUser(id) {
       {
         method: "PATCH",
         body: JSON.stringify({
-          amount: $("ogold").value
+          amount: mcGetById("ogold").value
         })
       }
     );
 
-    await api(`/api/owner/user/${id}/diamonds`,{method:"PATCH",body:JSON.stringify({amount:$("odiamonds").value})});
-    if($("oxp") && $("olevel")) await api(`/api/owner/user/${id}/progress`,{method:"PATCH",body:JSON.stringify({xp:$("oxp").value,level:$("olevel").value})});
+    await api(`/api/owner/user/${id}/diamonds`,{method:"PATCH",body:JSON.stringify({amount:mcGetById("odiamonds").value})});
+    if(mcGetById("oxp") && mcGetById("olevel")) await api(`/api/owner/user/${id}/progress`,{method:"PATCH",body:JSON.stringify({xp:mcGetById("oxp").value,level:mcGetById("olevel").value})});
 
     if(id===state.user?.id){const refreshed=await api("/api/me");if(refreshed.user){state.user=refreshed.user;updateNav();}}
     closeModal();
@@ -7239,7 +7239,7 @@ async function inspectDMs(){
   try{
     modal(`<h2>Private-message inspection</h2><p class="muted">Restricted to Owner and Developer. Owner can inspect their own conversations and users below Owner. Developer can inspect their own conversations and users below Developer. Equal- and higher-rank accounts are protected.</p><div class="dm-inspection-fields"><div class="dm-inspection-picker"><label for="dmSearch1">Account 1</label><input id="dmSearch1" value="${esc(state.user?.username||'')}" placeholder="Type @ or username" autocomplete="off"><div id="dmSuggestions1" class="ip-inspection-suggestions" hidden></div></div><div class="dm-inspection-picker"><label for="dmSearch2">Account 2 (optional)</label><input id="dmSearch2" placeholder="Optional: second user" autocomplete="off"><div id="dmSuggestions2" class="ip-inspection-suggestions" hidden></div></div><div class="dm-inspection-picker"><label for="dmKeyword">Search message text</label><input id="dmKeyword" type="search" placeholder="Search for a particular word or phrase…" autocomplete="off"></div><button class="primary" id="dmSearchBtn" type="button">Inspect messages</button></div><div id="ownerDmResults" class="stack" aria-live="polite"><p class="muted">Loading your conversations…</p></div>`);
     const wirePicker=(inputId,suggestId)=>{
-      const input=$(inputId),suggestions=$(suggestId);let timer;
+      const input=mcGetById(inputId),suggestions=mcGetById(suggestId);let timer;
       input?.addEventListener('input',()=>{
         clearTimeout(timer);const term=(input.value||'').trim().replace(/^@/,'');
         if(!term){suggestions.hidden=true;suggestions.innerHTML='';return;}
@@ -7255,10 +7255,10 @@ async function inspectDMs(){
     };
     wirePicker('dmSearch1','dmSuggestions1');wirePicker('dmSearch2','dmSuggestions2');
     const load=async()=>{
-      const user1=($('dmSearch1')?.value||'').trim().replace(/^@/,'');
-      const user2=($('dmSearch2')?.value||'').trim().replace(/^@/,'');
-      const keyword=($('dmKeyword')?.value||'').trim();
-      const target=$('ownerDmResults'),button=$('dmSearchBtn');if(!target)return;
+      const user1=(mcGetById('dmSearch1')?.value||'').trim().replace(/^@/,'');
+      const user2=(mcGetById('dmSearch2')?.value||'').trim().replace(/^@/,'');
+      const keyword=(mcGetById('dmKeyword')?.value||'').trim();
+      const target=mcGetById('ownerDmResults'),button=mcGetById('dmSearchBtn');if(!target)return;
       if(!user1){target.innerHTML='<p class="error">Select or enter the first username.</p>';return;}
       if(button){button.disabled=true;button.textContent='Inspecting…';}
       target.innerHTML='<p class="muted">Loading private messages…</p>';
@@ -7276,10 +7276,10 @@ async function inspectDMs(){
       }catch(e){target.innerHTML='<p class="error">Inspection failed: '+esc(e.message||'Could not inspect private messages.')+'</p>';}
       finally{if(button){button.disabled=false;button.textContent='Inspect messages';}}
     };
-    $('dmSearchBtn')?.addEventListener('click',load);
-    $('dmSearch1')?.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();load();}});
-    $('dmSearch2')?.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();load();}});
-    $('dmKeyword')?.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();load();}});
+    mcGetById('dmSearchBtn')?.addEventListener('click',load);
+    mcGetById('dmSearch1')?.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();load();}});
+    mcGetById('dmSearch2')?.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();load();}});
+    mcGetById('dmKeyword')?.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();load();}});
     // Show the signed-in Owner/Developer's own conversation history immediately.
     // The user no longer has to discover that a prefilled username still needs a click.
     load();
@@ -7291,8 +7291,8 @@ async function openBotManagementBot(botId){
     const d=await api('/api/bots'); const bot=(d.bots||[]).find(x=>String(x.id)===String(botId));
     if(bot){
       modal(`<div class="bot-management"><h2>🤖 ${esc(bot.name)} Management</h2><label>Name<input id="editBotName" value="${esc(bot.name)}"></label><label>Avatar<input id="editBotAvatar" value="${esc(bot.avatar||'')}"></label><label>Auto reply<textarea id="editBotReply">${esc(bot.auto_reply||'')}</textarea></label><label class="check-row"><input id="editBotActive" type="checkbox" ${bot.is_active?'checked':''}> Active</label><div class="toolbar"><button class="primary" id="saveBotEdit">Save</button><button class="mini danger" id="deleteBotEdit">Delete</button></div></div>`);
-      $('saveBotEdit').onclick=async()=>{try{await api('/api/bots/'+bot.id,{method:'PUT',body:JSON.stringify({name:$('editBotName').value,avatar:$('editBotAvatar').value,auto_reply:$('editBotReply').value,is_active:$('editBotActive').checked})});closeModal();loadOwner();toast('Bot updated.')}catch(e){toast(e.message)}};
-      $('deleteBotEdit').onclick=async()=>{if(!confirm('Delete this bot?'))return;try{await api('/api/bots/'+bot.id,{method:'DELETE'});closeModal();loadOwner();toast('Bot deleted.')}catch(e){toast(e.message)}};
+      mcGetById('saveBotEdit').onclick=async()=>{try{await api('/api/bots/'+bot.id,{method:'PUT',body:JSON.stringify({name:mcGetById('editBotName').value,avatar:mcGetById('editBotAvatar').value,auto_reply:mcGetById('editBotReply').value,is_active:mcGetById('editBotActive').checked})});closeModal();loadOwner();toast('Bot updated.')}catch(e){toast(e.message)}};
+      mcGetById('deleteBotEdit').onclick=async()=>{if(!confirm('Delete this bot?'))return;try{await api('/api/bots/'+bot.id,{method:'DELETE'});closeModal();loadOwner();toast('Bot deleted.')}catch(e){toast(e.message)}};
       return;
     }
   }catch(e){toast(e.message)}
@@ -7316,11 +7316,11 @@ function openCommandGuide(){
 }
 
 async function openBotsManagement(){
-  try{const d=await api('/api/bots');modal(`<div class="bot-management"><h2>🤖 Bots Management</h2><p class="muted">Create and manage community bots. Active bots can reply when their configured name is mentioned.</p><div class="card"><h3>➕ Add Bot</h3><input id="newBotName" placeholder="Bot name"><input id="newBotAvatar" placeholder="Avatar URL or emoji"><textarea id="newBotReply" placeholder="Automatic reply text"></textarea><button class="primary" id="addBotBtn">Add Bot</button></div><div class="card"><h3>Current bots</h3><div class="stack">${(d.bots||[]).map(b=>`<div class="hub-row"><span>🤖 <b>${esc(b.name)}</b> · ${b.is_active?'Active':'Disabled'}</span><div class="toolbar"><button class="mini" data-bot-edit="${b.id}">Edit</button><button class="mini" data-bot-toggle="${b.id}">${b.is_active?'Disable':'Enable'}</button><button class="mini danger" data-bot-delete="${b.id}">Delete</button></div></div>`).join('')||'<p class="muted">No bots yet.</p>'}</div></div></div>`);$('addBotBtn').onclick=async()=>{try{const name=$('newBotName').value.trim();if(!name)throw Error('Bot name required.');await api('/api/bots',{method:'POST',body:JSON.stringify({name,avatar:$('newBotAvatar').value,auto_reply:$('newBotReply').value})});openBotsManagement()}catch(e){toast(e.message)}};document.querySelectorAll('[data-bot-edit]').forEach(b=>b.onclick=()=>openBotManagementBot(b.dataset.botEdit));document.querySelectorAll('[data-bot-toggle]').forEach(b=>b.onclick=async()=>{try{await api('/api/bots/'+b.dataset.botToggle+'/toggle',{method:'POST'});openBotsManagement()}catch(e){toast(e.message)}});document.querySelectorAll('[data-bot-delete]').forEach(b=>b.onclick=async()=>{if(!confirm('Delete this bot?'))return;try{await api('/api/bots/'+b.dataset.botDelete,{method:'DELETE'});openBotsManagement()}catch(e){toast(e.message)}});}catch(e){toast(e.message)}}
+  try{const d=await api('/api/bots');modal(`<div class="bot-management"><h2>🤖 Bots Management</h2><p class="muted">Create and manage community bots. Active bots can reply when their configured name is mentioned.</p><div class="card"><h3>➕ Add Bot</h3><input id="newBotName" placeholder="Bot name"><input id="newBotAvatar" placeholder="Avatar URL or emoji"><textarea id="newBotReply" placeholder="Automatic reply text"></textarea><button class="primary" id="addBotBtn">Add Bot</button></div><div class="card"><h3>Current bots</h3><div class="stack">${(d.bots||[]).map(b=>`<div class="hub-row"><span>🤖 <b>${esc(b.name)}</b> · ${b.is_active?'Active':'Disabled'}</span><div class="toolbar"><button class="mini" data-bot-edit="${b.id}">Edit</button><button class="mini" data-bot-toggle="${b.id}">${b.is_active?'Disable':'Enable'}</button><button class="mini danger" data-bot-delete="${b.id}">Delete</button></div></div>`).join('')||'<p class="muted">No bots yet.</p>'}</div></div></div>`);mcGetById('addBotBtn').onclick=async()=>{try{const name=mcGetById('newBotName').value.trim();if(!name)throw Error('Bot name required.');await api('/api/bots',{method:'POST',body:JSON.stringify({name,avatar:mcGetById('newBotAvatar').value,auto_reply:mcGetById('newBotReply').value})});openBotsManagement()}catch(e){toast(e.message)}};document.querySelectorAll('[data-bot-edit]').forEach(b=>b.onclick=()=>openBotManagementBot(b.dataset.botEdit));document.querySelectorAll('[data-bot-toggle]').forEach(b=>b.onclick=async()=>{try{await api('/api/bots/'+b.dataset.botToggle+'/toggle',{method:'POST'});openBotsManagement()}catch(e){toast(e.message)}});document.querySelectorAll('[data-bot-delete]').forEach(b=>b.onclick=async()=>{if(!confirm('Delete this bot?'))return;try{await api('/api/bots/'+b.dataset.botDelete,{method:'DELETE'});openBotsManagement()}catch(e){toast(e.message)}});}catch(e){toast(e.message)}}
 
 async function saveOwnerSiteState(){
   try{
-    await api("/api/settings/save",{method:"POST",body:JSON.stringify({gifCost:$("ownerGifCost")?.value||10,goldPerMessage:$("ownerGoldPerMessage")?.value||0,xpPerMessage:$("ownerXpPerMessage")?.value||5,dailyXpLimit:$("ownerDailyXp")?.value||500,filterAffectedRanks:[...document.querySelectorAll('[data-filter-rank]:checked')].map(x=>x.value),filterMuteDuration:$("ownerFilterDuration")?.value||5,dailyRewardGold:$("ownerDailyRewardGold")?.value||25,dailyRewardXp:$("ownerDailyRewardXp")?.value||15})});
+    await api("/api/settings/save",{method:"POST",body:JSON.stringify({gifCost:mcGetById("ownerGifCost")?.value||10,goldPerMessage:mcGetById("ownerGoldPerMessage")?.value||0,xpPerMessage:mcGetById("ownerXpPerMessage")?.value||5,dailyXpLimit:mcGetById("ownerDailyXp")?.value||500,filterAffectedRanks:[...document.querySelectorAll('[data-filter-rank]:checked')].map(x=>x.value),filterMuteDuration:mcGetById("ownerFilterDuration")?.value||5,dailyRewardGold:mcGetById("ownerDailyRewardGold")?.value||25,dailyRewardXp:mcGetById("ownerDailyRewardXp")?.value||15})});
     toast("Site settings saved.");
   }catch(e){toast(e.message)}
 }
@@ -7396,14 +7396,14 @@ async function ownerFeatureGrants(){
     }
     const grouped=Object.entries(categories).map(([name,items])=>'<details class="grant-category" '+(name==='Chat & media'?'open':'')+'><summary>'+esc(name)+' <span class="muted">('+items.length+')</span></summary>'+items.map(renderRow).join('')+'</details>').join('');
     modal('<div class="feature-grant-modal feature-grant-simple"><h2>🧩 Feature Access</h2><p class="muted">Choose the exact ranks allowed to use each feature. Select multiple ranks when needed. Developer and the protected owner account keep built-in access.</p><label class="feature-grant-search-label">🔎 Find a feature<input id="featureGrantSearch" type="search" placeholder="Search messages, rooms, gold, reports…"></label><div class="feature-grant-summary">'+keys.length+' feature controls · Changes are saved together</div><div id="featureGrantCategories">'+(grouped||'<p class="muted">No feature controls are available.</p>')+'</div><div class="toolbar feature-grant-footer"><button class="primary" id="saveAllFeatureGrants">Save all changes</button><button class="mini" id="closeFeatureGrants">Close</button></div><p class="muted feature-grant-note">These are exact rank permissions. Individual account exceptions are managed separately in User Permissions.</p></div>');
-    const search=$('featureGrantSearch');
+    const search=mcGetById('featureGrantSearch');
     search?.addEventListener('input',()=>{
       const query=search.value.trim().toLowerCase();
       document.querySelectorAll('[data-feature-row]').forEach(el=>{el.hidden=!!query&&!el.dataset.featureSearch.includes(query);});
       document.querySelectorAll('#featureGrantCategories .grant-category').forEach(el=>{const visible=el.querySelectorAll('[data-feature-row]:not([hidden])').length;el.hidden=visible===0;if(query&&visible)el.open=true;});
     });
-    $('closeFeatureGrants')?.addEventListener('click',()=>$('modal')?.classList.add('hidden'));
-    $('saveAllFeatureGrants')?.addEventListener('click',async event=>{
+    mcGetById('closeFeatureGrants')?.addEventListener('click',()=>mcGetById('modal')?.classList.add('hidden'));
+    mcGetById('saveAllFeatureGrants')?.addEventListener('click',async event=>{
       const button=event.currentTarget;button.disabled=true;button.textContent='Saving…';
       try{
         const grants={};keys.forEach(key=>{grants[key]=[...document.querySelectorAll('[data-grant-rank="'+key+'"]:checked')].map(input=>input.value);});
@@ -7414,9 +7414,9 @@ async function ownerFeatureGrants(){
   }catch(error){toast(error.message||'Could not load feature access.');}
 }
 async function toggleFriendsDropdown(refresh=false){
-  const box=$("topFriendsDropdown");if(!box)return;
+  const box=mcGetById("topFriendsDropdown");if(!box)return;
   if(!refresh&&!box.classList.contains("hidden")){box.classList.add("hidden");return;}
-  $("topMessagesDropdown")?.classList.add("hidden");$("notificationDropdown")?.classList.add("hidden");$("reportDropdown")?.classList.add("hidden");
+  mcGetById("topMessagesDropdown")?.classList.add("hidden");mcGetById("notificationDropdown")?.classList.add("hidden");mcGetById("reportDropdown")?.classList.add("hidden");
   try{
     const d=await api("/api/friends");
     const incoming=d.incoming||[],outgoing=d.outgoing||[];
@@ -7448,9 +7448,9 @@ async function toggleFriendsDropdown(refresh=false){
   }catch(e){box.innerHTML=`<div class="notification-dropdown-head"><b>Friends</b></div><p class="muted">${esc(e.message||"Could not load friends.")}</p>`;box.classList.remove("hidden");}
 }
 async function toggleMessagesDropdown(refresh=false){
-  const box=$("topMessagesDropdown");if(!box)return;
+  const box=mcGetById("topMessagesDropdown");if(!box)return;
   if(!refresh&&!box.classList.contains("hidden")){box.classList.add("hidden");return;}
-  $("topFriendsDropdown")?.classList.add("hidden");$("notificationDropdown")?.classList.add("hidden");$("reportDropdown")?.classList.add("hidden");
+  mcGetById("topFriendsDropdown")?.classList.add("hidden");mcGetById("notificationDropdown")?.classList.add("hidden");mcGetById("reportDropdown")?.classList.add("hidden");
   try{
     const d=await api("/api/dm/conversations");
     const prefs=dmPrefs();
@@ -7505,7 +7505,7 @@ async function toggleMessagesDropdown(refresh=false){
 }
 
 async function toggleReportDropdown(refresh=false){
-  const box=$("reportDropdown"); if(!box)return;
+  const box=mcGetById("reportDropdown"); if(!box)return;
   if(!refresh&&!box.classList.contains("hidden")){box.classList.add("hidden");return;}
   try{
     const d=await api("/api/staff/dashboard");
@@ -7568,7 +7568,7 @@ async function toggleReportDropdown(refresh=false){
 }
 
 async function toggleNotificationDropdown(){
-  const box=$('notificationDropdown'); if(!box)return;
+  const box=mcGetById('notificationDropdown'); if(!box)return;
   if(!box.classList.contains('hidden')){box.classList.add('hidden');return;}
   box.innerHTML='<div class="notification-dropdown-head"><b>🔔 Notifications</b></div><p class="muted notification-empty">Loading notifications…</p>';
   box.classList.remove('hidden');
@@ -7581,7 +7581,7 @@ async function toggleNotificationDropdown(){
     box.querySelectorAll('[data-dropdown-notif]').forEach(b=>b.onclick=async()=>{
       try{await api('/api/notifications/'+encodeURIComponent(b.dataset.dropdownNotif)+'/read',{method:'PATCH'});b.classList.remove('unread');loadNotifications();toggleNotificationDropdown();}catch(e){toast(e.message)}
     });
-    $('dropdownMarkAll')?.addEventListener('click',async e=>{e.stopPropagation();try{await api('/api/notifications/read',{method:'POST'});box.classList.add('hidden');loadNotifications();toast('All notifications marked as read.');}catch(err){toast(err.message)}});
+    mcGetById('dropdownMarkAll')?.addEventListener('click',async e=>{e.stopPropagation();try{await api('/api/notifications/read',{method:'POST'});box.classList.add('hidden');loadNotifications();toast('All notifications marked as read.');}catch(err){toast(err.message)}});
   }catch(e){
     box.innerHTML='<div class="notification-dropdown-head"><b>🔔 Notifications</b></div><p class="muted notification-empty">'+esc(e.message||'Could not load notifications.')+'</p>';
     box.classList.remove('hidden');
@@ -7601,7 +7601,7 @@ async function refreshTopDMUnreadBadge(){
     const conversations=Array.isArray(data.conversations)?data.conversations:[];
     const count=conversations.reduce((total,conversation)=>total+Math.max(0,Number(conversation.unreadCount)||0),0);
     for(const id of ["topDmDot","dmDot"]){
-      const el=$(id);if(!el)continue;
+      const el=mcGetById(id);if(!el)continue;
       el.textContent=count>99?"99+":String(count);
       el.classList.toggle("count-badge",count>0);
       el.style.setProperty("display",count>0?"inline-flex":"none","important");
@@ -7654,7 +7654,7 @@ async function loadNotifications() {
     const reportCount=Math.max(Number(staffCounts.reports||0),notificationStaffCount);
     const counts={dm:Number(dm.count||0),report:reportCount,all:unread.length,friends:(friendsData.incoming||[]).length};
     const setBubble=(id,count)=>{
-      const el=$(id);
+      const el=mcGetById(id);
       if(!el)return;
       el.textContent=count>99?'99+':String(count);
       el.classList.toggle('count-badge',count>0);
@@ -7668,7 +7668,7 @@ async function loadNotifications() {
     setBubble("dmDot",counts.dm);
     setBubble("reportDot",counts.report);
     setBubble("topReportDot",counts.report);
-    if($("topNotifDot")) $("topNotifDot").classList.toggle("green",counts.all>0);
+    if(mcGetById("topNotifDot")) mcGetById("topNotifDot").classList.toggle("green",counts.all>0);
   } catch(error) {
     console.warn("Notification refresh failed",error);
     // Keep the last known badge if a transient request fails; retry on resume.
@@ -7692,7 +7692,7 @@ setInterval(()=>{if(state.user)refreshTopDMUnreadBadge();},15000);
 setTimeout(()=>{if(state.user){loadNotifications();refreshTopDMUnreadBadge();}},1200);
 
 async function openNotificationCenter(){
-  const button=$("notifications");
+  const button=mcGetById("notifications");
   if(button){button.disabled=true;button.setAttribute("aria-busy","true");}
   // Show the centre immediately. A slow or rejected API request must not make
   // the navigation button appear dead.
@@ -7708,13 +7708,13 @@ async function openNotificationCenter(){
     document.querySelectorAll('[data-notif-delete]').forEach(b=>b.onclick=async()=>{
       try{await api('/api/notifications/'+encodeURIComponent(b.dataset.notifDelete),{method:'DELETE'});b.closest('.notification-card')?.remove();await loadNotifications();}catch(e){toast(e.message||'Could not delete notification.');}
     });
-    $('markAllNotifications')?.addEventListener('click',async()=>{try{await api('/api/notifications/read',{method:'POST'});closeModal();await loadNotifications();toast('Notifications marked as read.');}catch(e){toast(e.message);}});
-    $('clearNotifications')?.addEventListener('click',async()=>{if(!confirm('Clear all notifications?'))return;try{await api('/api/notifications',{method:'DELETE'});closeModal();await loadNotifications();toast('Notifications cleared.');}catch(e){toast(e.message);}});
+    mcGetById('markAllNotifications')?.addEventListener('click',async()=>{try{await api('/api/notifications/read',{method:'POST'});closeModal();await loadNotifications();toast('Notifications marked as read.');}catch(e){toast(e.message);}});
+    mcGetById('clearNotifications')?.addEventListener('click',async()=>{if(!confirm('Clear all notifications?'))return;try{await api('/api/notifications',{method:'DELETE'});closeModal();await loadNotifications();toast('Notifications cleared.');}catch(e){toast(e.message);}});
     await loadNotifications();
   }catch(e){
     const message=esc(e?.message||'Could not load notifications.');
     modal(`<div class="notification-center"><div class="notification-head"><h2>🔔 Notifications</h2></div><p class="muted">Could not load notifications: ${message}</p><button class="mini" id="retryNotifications" type="button">Retry</button></div>`);
-    $('retryNotifications')?.addEventListener('click',()=>openNotificationCenter());
+    mcGetById('retryNotifications')?.addEventListener('click',()=>openNotificationCenter());
   }finally{
     if(button){button.disabled=false;button.removeAttribute("aria-busy");}
   }
@@ -7746,7 +7746,7 @@ function extractYoutubeVideoId(value){
 }
 function openYoutubePanel(){
   modal(`<div class="youtube-panel"><h2>▶️ YouTube</h2><p class="muted">Search for a video or paste a YouTube video, Shorts or live link.</p><div class="toolbar"><input id="ytQuery" placeholder="Search or paste YouTube URL…" autocomplete="off"><button class="primary" id="ytSearch" type="button">Search</button></div><div id="ytResults" class="youtube-results"><p class="muted">Choose a video to preview it before sharing.</p></div><div id="ytSelected" class="youtube-selected" aria-live="polite"></div></div>`);
-  const query=$("ytQuery"),searchButton=$("ytSearch"),results=$("ytResults"),selected=$("ytSelected");
+  const query=mcGetById("ytQuery"),searchButton=mcGetById("ytSearch"),results=mcGetById("ytResults"),selected=mcGetById("ytSelected");
   let chosen=null;
   const selectVideo=(video)=>{
     if(!video||! /^[A-Za-z0-9_-]{11}$/.test(String(video.id||"")))return;
@@ -7863,7 +7863,7 @@ document.addEventListener("click", async event => {
 window.__MC_ROOM_MENU_HANDLER_READY__ = true;
 
 function applyRoomTheme(){
- const root=$("viewRooms");if(root){root.removeAttribute("data-room-theme");root.style.removeProperty("--room-theme-bg");root.style.removeProperty("--room-theme-bubble");root.style.removeProperty("--room-theme-accent");}
+ const root=mcGetById("viewRooms");if(root){root.removeAttribute("data-room-theme");root.style.removeProperty("--room-theme-bg");root.style.removeProperty("--room-theme-bubble");root.style.removeProperty("--room-theme-accent");}
 }
 async function openRoomThemePicker(){
  const selected=String(state.user?.settings?.theme||state.user?.theme||"obsidian").toLowerCase();
@@ -7888,7 +7888,7 @@ async function clearRoom() {
       }
     );
     state.messages=(state.messages||[]).filter(m=>String(m.roomId)!==String(state.currentRoom));
-    $("messages").innerHTML="";
+    mcGetById("messages").innerHTML="";
     closeModal();
     toast("Room cleared. "+Number(result.removed||0)+" messages removed.");
   } catch (error) {
@@ -7948,7 +7948,7 @@ function editRoom() {
       </div><p class="room-editor-help">Slow mode sets the minimum delay between messages from the same user. Use 0 to turn it off.</p></section>
       <footer class="room-editor-footer"><span class="room-editor-owner">Owner: @${esc(room.creator||"Unknown")}</span><button type="button" class="mini" onclick="closeModal()">Cancel</button><button type="button" class="primary" id="saveRoomChanges">Save changes</button></footer>
     </div>`);
-  $("saveRoomChanges").onclick=saveRoom;
+  mcGetById("saveRoomChanges").onclick=saveRoom;
 }
 
 async function saveRoom() {
@@ -7958,18 +7958,18 @@ async function saveRoom() {
       {
         method: "PUT",
         body: JSON.stringify({
-          name: $("rn").value,
-          icon: $("ri").value,
-          description: $("rd").value,
-          category: $("rc").value.trim() || "Community",
-          slowMode: Number($("rs").value || 0),
-          limit: Math.max(2, Math.min(500, Number($("rLimit").value || 100))),
-          banner: $("rBanner").value.trim(),
-          public: $("rPublic").value === "true",
-          rankRequired: $("rRankRequired").value,
-          ageCriteria: $("rAgeCriteria").value,
-          friendsOnly: $("rFriendsOnly").value === "true",
-          password: $("rp").value
+          name: mcGetById("rn").value,
+          icon: mcGetById("ri").value,
+          description: mcGetById("rd").value,
+          category: mcGetById("rc").value.trim() || "Community",
+          slowMode: Number(mcGetById("rs").value || 0),
+          limit: Math.max(2, Math.min(500, Number(mcGetById("rLimit").value || 100))),
+          banner: mcGetById("rBanner").value.trim(),
+          public: mcGetById("rPublic").value === "true",
+          rankRequired: mcGetById("rRankRequired").value,
+          ageCriteria: mcGetById("rAgeCriteria").value,
+          friendsOnly: mcGetById("rFriendsOnly").value === "true",
+          password: mcGetById("rp").value
         })
       }
     );
@@ -8007,9 +8007,9 @@ async function deleteRoom() {
     }
 
     state.currentRoom = null;
-    $("viewRooms")?.classList.remove("chatting");
+    mcGetById("viewRooms")?.classList.remove("chatting");
 
-    $("chatWrap").classList.add(
+    mcGetById("chatWrap").classList.add(
       "hidden"
     );
 
@@ -8031,7 +8031,7 @@ async function showInvite(roomOrId=state.currentRoom) {
   const code=String(room.roomCode||"").trim();
   if(!/^\d{5} \d{5}$/.test(code)){toast("Room code is not available yet. Refresh the room list and try again.");return;}
   modal("<div class=\"room-code-share\"><h2>🔐 Room code</h2><p class=\"muted\">Share this 10-digit code. They can enter it in the code bar above the room list.</p><div class=\"room-code-display\" id=\"roomCodeDisplay\">"+esc(code)+"</div><div class=\"toolbar\"><button type=\"button\" class=\"primary\" id=\"copyRoomCode\">Copy room code</button></div></div>");
-  $("copyRoomCode")?.addEventListener("click",async()=>{try{await navigator.clipboard.writeText(code);toast("Room code copied.");}catch{toast("Room code: "+code);}});
+  mcGetById("copyRoomCode")?.addEventListener("click",async()=>{try{await navigator.clipboard.writeText(code);toast("Room code copied.");}catch{toast("Room code: "+code);}});
 }
 /* ---------------- CREATE ROOM ---------------- */
 
@@ -8061,17 +8061,17 @@ function openRoomCreationModal() {
         <footer class="room-editor-footer"><button type="button" class="mini" onclick="closeModal()">Cancel</button><button class="primary" type="submit">＋ Create room</button></footer>
       </form>
     </div>`);
-  $("roomForm").onsubmit=async e=>{
+  mcGetById("roomForm").onsubmit=async e=>{
     e.preventDefault();
     const submit=e.currentTarget.querySelector('[type="submit"]');
     if(submit){submit.disabled=true;submit.textContent="Creating…";}
     try{
       const created=await api("/api/rooms",{method:"POST",body:JSON.stringify({
-        name:$("rn").value.trim(),icon:$("ri").value.trim()||"💬",description:$("rd").value.trim(),
-        category:$("rc").value.trim()||"Community",password:$("rp").value,public:$("rVisibility").value!=="secret",
-        rankRequired:$("rr").value,friendsOnly:$("rFriendsOnlyCreate").value==="true",
-        limit:Math.max(2,Math.min(500,Number($("rl").value)||100)),
-        slowMode:Math.max(0,Math.min(3600,Number($("rs").value)||0))
+        name:mcGetById("rn").value.trim(),icon:mcGetById("ri").value.trim()||"💬",description:mcGetById("rd").value.trim(),
+        category:mcGetById("rc").value.trim()||"Community",password:mcGetById("rp").value,public:mcGetById("rVisibility").value!=="secret",
+        rankRequired:mcGetById("rr").value,friendsOnly:mcGetById("rFriendsOnlyCreate").value==="true",
+        limit:Math.max(2,Math.min(500,Number(mcGetById("rl").value)||100)),
+        slowMode:Math.max(0,Math.min(3600,Number(mcGetById("rs").value)||0))
       })});
       await loadRooms();closeModal();renderRooms();toast("Room created.");
       if(created.room?.public===false&&created.room?.id)await showInvite(created.room);
@@ -8097,7 +8097,7 @@ async function loadSettings(){
   const s=r.settings||{};
   const np=s.notificationPrefs||{};
   const sessions=(await api('/api/security/sessions').catch(()=>({sessions:[]}))).sessions||[];
-  $('settings').innerHTML=`
+  mcGetById('settings').innerHTML=`
     <div class="grid2">
       <div class="panel"><h3>👤 Account</h3><p class="muted">Manage the information connected to your account.</p><div class="settings-list">
         <button class="settings-row" onclick="editProfileInfo()"><span>🪪</span><b>Profile information</b><small>Display name, pronouns and basic details</small><strong>›</strong></button>
@@ -8112,10 +8112,10 @@ async function loadSettings(){
 <div class="panel danger-panel"><h3>⚠️ Account actions</h3><p class="muted">Deleting your account removes your account and personal conversations permanently.</p><button class="mini danger" onclick="deleteAccount()">Delete my account</button></div>
 `;
   applyTheme(s.theme||state.user?.theme||'obsidian');
-   $('savePrivacy').onclick=async()=>{try{await api('/api/profile',{method:'PUT',body:JSON.stringify({privacy:{lastSeen:$('setLastSeen').checked,online:$('setOnline').checked}})});toast('Privacy saved.');}catch(e){toast(e.message)}};
-  $('saveNotifications').onclick=async()=>{await api('/api/notifications/preferences',{method:'PUT',body:JSON.stringify({messages:$('nMessages').checked,mentions:$('nMentions').checked,replies:$('nReplies').checked,security:$('nSecurity').checked,staff:$('nStaff').checked,gamification:$('nGamification').checked,other:$('nOther').checked})});toast('Notification preferences saved.');};
-  $('viewLoginHistory').onclick=async()=>{const h=await api('/api/security/login-history');modal(`<h2>Login history</h2>${(h.history||[]).map(x=>`<div class="card"><b>${fmt(x.time)}</b><div class="muted">${esc(x.ip||'Unknown device')}</div></div>`).join('')||'<p class="muted">No login history.</p>'}`);};
-  $('logoutAllDevices').onclick=async()=>{if(!confirm('Log out all sessions?'))return;try{await api('/api/security/logout-all',{method:'POST'});location.reload();}catch(e){toast(e.message)}};
+   mcGetById('savePrivacy').onclick=async()=>{try{await api('/api/profile',{method:'PUT',body:JSON.stringify({privacy:{lastSeen:mcGetById('setLastSeen').checked,online:mcGetById('setOnline').checked}})});toast('Privacy saved.');}catch(e){toast(e.message)}};
+  mcGetById('saveNotifications').onclick=async()=>{await api('/api/notifications/preferences',{method:'PUT',body:JSON.stringify({messages:mcGetById('nMessages').checked,mentions:mcGetById('nMentions').checked,replies:mcGetById('nReplies').checked,security:mcGetById('nSecurity').checked,staff:mcGetById('nStaff').checked,gamification:mcGetById('nGamification').checked,other:mcGetById('nOther').checked})});toast('Notification preferences saved.');};
+  mcGetById('viewLoginHistory').onclick=async()=>{const h=await api('/api/security/login-history');modal(`<h2>Login history</h2>${(h.history||[]).map(x=>`<div class="card"><b>${fmt(x.time)}</b><div class="muted">${esc(x.ip||'Unknown device')}</div></div>`).join('')||'<p class="muted">No login history.</p>'}`);};
+  mcGetById('logoutAllDevices').onclick=async()=>{if(!confirm('Log out all sessions?'))return;try{await api('/api/security/logout-all',{method:'POST'});location.reload();}catch(e){toast(e.message)}};
 }
 
 
