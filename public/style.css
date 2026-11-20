@@ -10057,3 +10057,37 @@ html{scroll-behavior:smooth;}
     padding-bottom:10px!important;
   }
 }
+
+
+/* 2026-11-20 — refine Main Room sender alignment: consistent avatar/body gutter and a compact, vertically centered sender row. */
+#viewRooms.main-room-chat #messages > .msg:not(.dm-msg){
+  gap:18px!important;
+}
+#viewRooms.main-room-chat #messages > .msg:not(.dm-msg) .msg-top{
+  display:flex!important;
+  align-items:center!important;
+  min-height:56px!important;
+  margin:0 0 14px!important;
+  padding:0!important;
+  gap:10px!important;
+}
+#viewRooms.main-room-chat #messages > .msg:not(.dm-msg) .msg-author-group{
+  align-items:center!important;
+  gap:12px!important;
+}
+#viewRooms.main-room-chat #messages > .msg:not(.dm-msg) .msg-author-group .message-rank-floating{
+  margin:0 3px 0 0!important;
+  align-self:center!important;
+}
+#viewRooms.main-room-chat #messages > .msg:not(.dm-msg) .msg-time-side{
+  align-self:center!important;
+  line-height:1.2!important;
+}
+@media(max-width:700px){
+  #viewRooms.main-room-chat #messages > .msg:not(.dm-msg){gap:18px!important}
+  #viewRooms.main-room-chat #messages > .msg:not(.dm-msg) .msg-top{
+    min-height:56px!important;
+    margin-bottom:14px!important;
+  }
+  #viewRooms.main-room-chat #messages > .msg:not(.dm-msg) .msg-author-group{gap:12px!important}
+}
