@@ -2985,8 +2985,18 @@ function messageHTML(message) {
           `;
         }
 
+        const quotedAuthor = {
+          id: quoted.userId,
+          username: quoted.username || "Member",
+          displayName: quoted.displayName || quoted.username || "Member",
+          avatar: quoted.avatar || ""
+        };
         return `
           <div class="quoted" onclick="jumpToMessage('${esc(quoted.id)}')" title="Jump to original message">
+            <div class="quoted-author">
+              <span class="quoted-avatar">${avatar(quotedAuthor)}</span>
+              <span class="quoted-author-name">${esc(quotedAuthor.displayName)}</span>
+            </div>
             <div class="quoted-text">${
               quoted.text ? esc(quoted.text) : quoted.attachment ? "📎 Attachment" : "Message"
             }</div>
