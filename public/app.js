@@ -2548,6 +2548,7 @@ function statusEmoji(status){
   const icons={"Online":"🟢","Available":"🟢","Away":"🕒","Busy":"⛔","Do Not Disturb":"⛔","Working":"⚙️","Happy":"😊","Sad":"😔","Angry":"🔥","Listening to music":"🎧","Birthday":"🎂","Friendly":"💬","Watching video":"▶️","Eating":"🍜","Gaming":"🎮"};
   return icons[String(status||"Online")]||"💬";
 }
+function moodEmoji(value){const s=String(value||'').toLowerCase();const map=[['happy','😊'],['chill','😌'],['loved','🥰'],['energetic','⚡'],['listening','🎧'],['gaming','🎮'],['quiet','🌙'],['focused','🧠'],['break','☕'],['sleepy','🥱'],['magical','✨'],['disturb','🚫'],['birthday','🎂']];return map.find(([k])=>s.includes(k))?.[1]||'☻';}
 function isStaffUser(user){
   return ["MOD","ADMIN","SUPER_ADMIN","COMMISSOR","INSTRUCTOR","COOWNER","OWNER","DEVELOPER"].includes(user.rank);
 }
@@ -2596,7 +2597,7 @@ async function renderOnline(tab=onlinePanelTab,searchQuery=""){
     $("onlinePanelTitle").innerHTML=`${esc(title)} <span class="online-badge">${count}</span>`;
     $("onlineUsers").innerHTML=`<div class="online-user-grid">${list.map(user=>`
       <div class="online-user ${String(user.id)===String(state.user?.id)?"is-current-user ":""}${user.online?'is-online':'is-offline'}" onclick="openQuickUserCard('${esc(user.id)}')">
-        ${avatar(user)}${String(user.id)===String(state.user?.id) ? '<button type="button" class="my-status-toggle" id="myStatusToggle" aria-haspopup="true" aria-expanded="false" onclick="event.stopPropagation()"><span id="myStatusGlyph">⚙</span><b id="myStatusLabel">Online</b><span>⌄</span></button><div class="my-status-options hidden" id="myStatusOptions" role="menu" onclick="event.stopPropagation()"></div>' : '<span class="user-mood-indicator" title="'+esc(user.customStatus|| (user.online?'Online':'Away'))+'">'+statusEmoji(user.customStatus|| (user.online?'Online':'Away'))+'</span>'}
+        ${avatar(user)}${String(user.id)===String(state.user?.id) ? '<button type="button" class="my-status-toggle" id="myStatusToggle" aria-haspopup="true" aria-expanded="false" onclick="event.stopPropagation()"><span id="myStatusGlyph">⚙</span><b id="myStatusLabel">Online</b><span>⌄</span></button><div class="my-status-options hidden" id="myStatusOptions" role="menu" onclick="event.stopPropagation()"></div>' : '<span class="user-mood-indicator" title="'+esc(user.mood||user.customStatus|| (user.online?'Online':'Away'))+'">'+(user.mood?moodEmoji(user.mood):statusEmoji(user.customStatus|| (user.online?'Online':'Away')))+'</span>'}
         <div class="online-user-copy">
           <div class="online-user-heading">
             <b>@${esc(user.username)}</b>
@@ -5554,16 +5555,33 @@ function editProfileMusic(){
  $('clearProfileMusic')?.addEventListener('click',async()=>{try{const result=await api('/api/me/profile-music',{method:'DELETE'});state.user=result.user;closeModal();updateNav();await loadProfile(state.user);toast('Profile music removed.');}catch(error){toast(error.message)}});
  $('uploadProfileMusic')?.addEventListener('click',()=>sendUpload('/api/me/profile-music','profileMusicFile'));
 }
-function editProfileInfo(){const u=state.user||{};modal(`<h2>Edit info</h2><input id="piName" value="${esc(u.displayName||'')}" placeholder="Display name"><input id="piPronouns" value="${esc(u.pronouns||'')}" placeholder="Pronouns"><input id="piCountry" maxlength="80" value="${esc(u.country||'')}" placeholder="Country (e.g. India)"><input id="piLocation" value="${esc(u.location||'')}" placeholder="City / location"><input id="piWebsite" value="${esc(u.website||'')}" placeholder="Website URL"><input id="piInterests" value="${esc((u.interests||[]).join(', '))}" placeholder="Interests, separated by commas"><button class="primary" id="savePI">Save</button>`);$('savePI').onclick=()=>saveMyProfile({displayName:$('piName').value.trim(),pronouns:$('piPronouns').value.trim(),country:$('piCountry').value.trim(),location:$('piLocation').value.trim(),website:$('piWebsite').value.trim(),interests:$('piInterests').value.split(',').map(x=>x.trim()).filter(Boolean)},'Info saved.');}
+function editProfileInfo(){
+ const u=state.user||{},birth=String(u.birthDate||u.dateOfBirth||u.birth_date||u.birthday||'').slice(0,10);
+ modal(`<div class="profile-info-editor"><h2>Edit info</h2>
+ <label>Display name<input id="piName" maxlength="40" value="${esc(u.displayName||'')}" placeholder="Display name"></label>
+ <label>Gender<select id="piGender"><option value="">Prefer not to say</option><option value="Woman">Woman</option><option value="Man">Man</option><option value="Non-binary">Non-binary</option><option value="Other">Other</option></select></label>
+ <label>Birthday<input id="piBirthday" type="date" max="${new Date().toISOString().slice(0,10)}" value="${esc(birth)}"></label>
+ <small class="muted" id="piAgePreview">Age is calculated from your birthday.</small>
+ <label>Pronouns<input id="piPronouns" maxlength="40" value="${esc(u.pronouns||'')}" placeholder="Pronouns"></label>
+ <label>Country<input id="piCountry" maxlength="80" value="${esc(u.country||'')}" placeholder="Country (e.g. India)"></label>
+ <label>City / location<input id="piLocation" maxlength="100" value="${esc(u.location||'')}" placeholder="City / location"></label>
+ <label>Website<input id="piWebsite" maxlength="180" value="${esc(u.website||'')}" placeholder="Website URL"></label>
+ <label>Interests<input id="piInterests" value="${esc((u.interests||[]).join(', '))}" placeholder="Interests, separated by commas"></label>
+ <button class="primary" id="savePI">Save details</button></div>`);
+ $('piGender').value=u.gender||'';
+ const updateAge=()=>{const value=$('piBirthday').value;if(!value){$('piAgePreview').textContent='Age is calculated from your birthday.';return;}const d=new Date(value+'T00:00:00'),now=new Date();let age=now.getFullYear()-d.getFullYear();if(now.getMonth()<d.getMonth()||(now.getMonth()===d.getMonth()&&now.getDate()<d.getDate()))age--;$('piAgePreview').textContent=age>=0&&age<=120?'Age: '+age+' years old':'Please enter a valid birthday.';};
+ $('piBirthday').addEventListener('change',updateAge);updateAge();
+ $('savePI').onclick=()=>saveMyProfile({displayName:$('piName').value.trim(),gender:$('piGender').value,birthDate:$('piBirthday').value,pronouns:$('piPronouns').value.trim(),country:$('piCountry').value.trim(),location:$('piLocation').value.trim(),website:$('piWebsite').value.trim(),interests:$('piInterests').value.split(',').map(x=>x.trim()).filter(Boolean)},'Profile details saved.');
+}
 function editRelationship(){modal(`<h2>Edit relationship</h2><select id="rel"><option value="">Not set</option><option>Single</option><option>In a relationship</option><option>Complicated</option><option>Prefer not to say</option></select><button class="primary" id="saveRel">Save</button>`);$('rel').value=state.user.relationship||'';$('saveRel').onclick=()=>saveMyProfile({relationship:$('rel').value},'Relationship saved.');}
 function editUsername(){modal(`<h2>Edit username</h2><input id="newUsername" maxlength="24" value="${esc(state.user.username)}"><p class="muted">3–24 letters, numbers and underscores.</p><button class="primary" id="saveUsername">Save</button>`);$('saveUsername').onclick=()=>saveMyProfile({username:$('newUsername').value.trim()},'Username saved.');}
 function editAboutMe(){modal(`<h2>Edit about me</h2><textarea id="aboutMeEdit" rows="7" maxlength="500">${esc(state.user.bio||'')}</textarea><button class="primary" id="saveAboutMe">Save</button>`);$('saveAboutMe').onclick=()=>saveMyProfile({bio:$('aboutMeEdit').value},'About Me saved.');}
 function editMood(){
   const presets=[["😊","Happy"],["😌","Chill"],["🥰","Loved"],["⚡","Energetic"],["🎧","Listening to music"],["🎮","Gaming"],["🌙","Quiet mode"],["🧠","Focused"],["☕","Taking a break"],["🥱","Sleepy"],["✨","Feeling magical"],["🚫","Do not disturb"]];
-  modal(`<div class="mood-status-editor"><h2>☻ Your mood</h2><p class="muted">Pick a vibe or write your own status. It appears on your profile when mood visibility is enabled.</p><div class="mood-status-grid">${presets.map(([emoji,label])=>`<button type="button" class="mood-preset" data-mood="${esc(label)}"><span>${emoji}</span><b>${esc(label)}</b></button>`).join('')}</div><label class="mood-custom-label">Custom status<input id="moodEdit" maxlength="80" value="${esc(state.user.mood||'')}" placeholder="What's your vibe today?"></label><div class="toolbar"><button class="primary" id="saveMood">Save mood</button><button class="mini" id="clearMood">Clear</button></div></div>`);
+  modal(`<div class="mood-status-editor"><h2>☻ Your mood</h2><p class="muted">Pick a vibe or write your own status. It appears on your public profile and on your user card in the right-side people panel.</p><div class="mood-status-grid">${presets.map(([emoji,label])=>`<button type="button" class="mood-preset" data-mood="${esc(label)}"><span>${emoji}</span><b>${esc(label)}</b></button>`).join('')}</div><label class="mood-custom-label">Custom status<input id="moodEdit" maxlength="80" value="${esc(state.user.mood||'')}" placeholder="What's your vibe today?"></label><div class="toolbar"><button class="primary" id="saveMood">Save mood</button><button class="mini" id="clearMood">Clear</button></div></div>`);
   document.querySelectorAll(".mood-preset").forEach(btn=>{btn.onclick=()=>{document.querySelectorAll(".mood-preset").forEach(x=>x.classList.remove("selected"));btn.classList.add("selected");$("moodEdit").value=btn.dataset.mood;};});
   $("clearMood").onclick=()=>{$("moodEdit").value="";};
-  $("saveMood").onclick=()=>saveMyProfile({mood:$("moodEdit").value.trim()},'Mood saved.');
+  $("saveMood").onclick=async()=>{const button=$("saveMood");button.disabled=true;try{await saveMyProfile({mood:$("moodEdit").value.trim()},'Mood saved.');}finally{if(button.isConnected)button.disabled=false;}};
 }
 window.__mcRoomContext=()=>({userId:String(state.user?.id||''),roomId:String(state.currentRoom||''),socket:state.socket});
 function addProfileEditPanelClose(){
