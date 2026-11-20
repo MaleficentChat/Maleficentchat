@@ -4591,8 +4591,14 @@ async function openDM(id) {
       return;
     }
 
-    state.dmUserId = String(id);
-    state.dmPeerUser = user;
+    const nextPeerId=String(id);
+    if(String(state.dmUserId||"")!==nextPeerId){
+      // Never let a recovery request for the newly selected peer merge with
+      // the previous conversation's messages while the new history is loading.
+      state.dmMessages=[];
+    }
+    state.dmUserId=nextPeerId;
+    state.dmPeerUser=user;
     // Remember the most recently opened conversation for inbox ordering.
     if(state.user?.id)safeStorage.setItem("mc_dm_last_opened_"+String(state.user.id),String(id));
 
