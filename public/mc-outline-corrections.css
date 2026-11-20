@@ -964,3 +964,32 @@ body [data-room-filter]:active{
  width:16px!important;height:18px!important;font-size:12px!important;
 }
 #onlineUsers .online-user-grid .online-user{min-height:55px!important;height:auto!important}
+
+
+/* 20 Nov 2026 hotfix: enforce compact rank glyph sizing in every People-panel layout. */
+#onlineUsers .online-user,
+#onlinePanel #onlineUsers .online-user,
+#onlinePanel .online-user-grid>.online-user{
+  min-height:55px!important;height:auto!important;
+}
+#onlineUsers .online-user-copy,
+#onlinePanel #onlineUsers .online-user-copy{
+  padding-right:28px!important;min-width:0!important;
+}
+#onlineUsers .online-user-rank-badge,
+#onlinePanel #onlineUsers .online-user-rank-badge,
+#onlinePanel .online-user-grid .online-user-rank-badge{
+  position:absolute!important;right:8px!important;left:auto!important;
+  top:50%!important;bottom:auto!important;transform:translateY(-50%)!important;
+  display:inline-flex!important;align-items:center!important;justify-content:center!important;
+  box-sizing:border-box!important;width:18px!important;min-width:18px!important;
+  max-width:18px!important;height:18px!important;min-height:18px!important;
+  max-height:18px!important;padding:0!important;margin:0!important;
+  font-size:13px!important;line-height:18px!important;overflow:hidden!important;
+}
+#onlineUsers .online-user-grid .online-user-rank-badge,
+#onlinePanel .online-user-grid .online-user-rank-badge{
+  width:16px!important;min-width:16px!important;max-width:16px!important;
+  height:16px!important;min-height:16px!important;max-height:16px!important;
+  font-size:12px!important;line-height:16px!important;
+}
