@@ -1530,3 +1530,32 @@ body [data-room-filter]:active{
     animation:mcMainChatHaloVisibleSpin 1.8s linear infinite!important;
   }
 }
+
+/* 20 Nov 2026 positioning correction: inset must be set BEFORE left/top.
+   Keep the 28px halo centred on the 22px badge and spin via transform. */
+@keyframes mcMainChatHaloCenteredFinal {
+  from { transform:translate(-50%,-50%) rotate(0turn); }
+  to   { transform:translate(-50%,-50%) rotate(1turn); }
+}
+#viewRooms.chatting #messages > .msg:not(.dm-msg):not(.system-message) .msg-author-group .message-rank-floating{
+  position:relative!important;
+  overflow:visible!important;
+}
+#viewRooms.chatting #messages > .msg:not(.dm-msg):not(.system-message) .msg-author-group .message-rank-floating .mc-rank-ring{
+  position:absolute!important;display:block!important;
+  inset:auto!important;left:50%!important;top:50%!important;right:auto!important;bottom:auto!important;
+  width:28px!important;height:28px!important;min-width:28px!important;min-height:28px!important;
+  max-width:28px!important;max-height:28px!important;aspect-ratio:1/1!important;
+  box-sizing:border-box!important;border:1.7px solid transparent!important;
+  border-top-color:#ffe08a!important;border-right-color:#f6a23b!important;
+  border-bottom-color:rgba(255,190,88,.82)!important;border-left-color:transparent!important;
+  border-radius:50%!important;transform-origin:50% 50%!important;
+  animation:mcMainChatHaloCenteredFinal 1.8s linear infinite!important;
+  opacity:1!important;visibility:visible!important;
+  filter:drop-shadow(0 0 3px rgba(255,174,45,.9))!important;
+}
+@media(prefers-reduced-motion:reduce){
+  #viewRooms.chatting #messages > .msg:not(.dm-msg):not(.system-message) .msg-author-group .message-rank-floating .mc-rank-ring{
+    animation:none!important;transform:translate(-50%,-50%)!important;
+  }
+}
