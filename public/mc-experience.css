@@ -1625,6 +1625,8 @@ body{background-image:radial-gradient(ellipse at 70% -15%,rgba(77,143,216,.18),t
 
 
 /* Public profile action buttons: blue + gold, consistent with the site palette. */
+.profile-modal.kp-public-profile{position:relative!important;isolation:isolate!important;}
+
 .profile-modal.kp-public-profile .profile-primary-actions{
   display:flex!important;visibility:visible!important;opacity:1!important;
   position:relative!important;z-index:5!important;align-items:stretch!important;
