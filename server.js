@@ -2158,6 +2158,23 @@ app.delete('/api/me/avatar',auth,(req,res)=>{
   res.json({ok:true,user:safeUser(u)});
 });
 
+app.post('/api/me/profile-music',auth,upload.single("file"),async(req,res)=>{
+  if(!req.file)return res.status(400).json({error:"Choose an audio file to upload."});
+  if(!String(req.file.mimetype||"").startsWith("audio/")){await discardUploadedMedia(req.file);return res.status(415).json({error:"Profile music must be an audio file (MP3, M4A, AAC, OGG, WAV or FLAC)."});}
+  const u=current(req);
+  u.profileMusicUrl="/uploads/"+req.file.filename;
+  u.profileMusicTitle=String(req.file.originalname||"Profile music").replace(/\\.[^.]+$/,"").slice(0,80)||"Profile music";
+  save();
+  res.json({ok:true,user:safeUser(u)});
+});
+app.delete('/api/me/profile-music',auth,(req,res)=>{
+  const u=current(req);
+  u.profileMusicUrl="";
+  u.profileMusicTitle="";
+  save();
+  res.json({ok:true,user:safeUser(u)});
+});
+
 app.delete('/api/me/banner',auth,(req,res)=>{
   const u=current(req);
   u.banner='';
