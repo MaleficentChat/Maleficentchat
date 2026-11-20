@@ -1118,3 +1118,72 @@ body [data-room-filter]:active{
   background-size:160% 160%!important;
   isolation:isolate;
 }
+
+
+/* 2026-11-20: animated halo ring behind each rank glyph.
+   The badge stays stationary/readable; only the independent ring rotates. */
+@keyframes mcRankHaloOrbit {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+.message-rank-floating,
+.rank,
+.room-user-rank,
+.profile-rank .rank,
+.profile-rank-badge,
+.rank-badge,
+.rank-icon,
+#onlineUsers .online-user-rank-badge,
+#onlinePanel #onlineUsers .online-user-rank-badge,
+#onlinePanel .online-user-grid .online-user-rank-badge {
+  position:relative!important;
+  isolation:isolate!important;
+  overflow:visible!important;
+  background-image:none!important;
+  animation:none!important;
+  rotate:none!important;
+}
+.message-rank-floating::before,
+.rank::before,
+.room-user-rank::before,
+.profile-rank .rank::before,
+.profile-rank-badge::before,
+.rank-badge::before,
+.rank-icon::before,
+#onlineUsers .online-user-rank-badge::before,
+#onlinePanel #onlineUsers .online-user-rank-badge::before,
+#onlinePanel .online-user-grid .online-user-rank-badge::before {
+  content:"";
+  position:absolute;
+  inset:-7px;
+  box-sizing:border-box;
+  border:2px solid transparent;
+  border-top-color:#ffd36a;
+  border-right-color:#ff9d24;
+  border-bottom-color:rgba(255,190,65,.72);
+  border-radius:50%;
+  pointer-events:none;
+  z-index:-1;
+  filter:drop-shadow(0 0 3px rgba(255,174,45,.9));
+  animation:mcRankHaloOrbit 1.8s linear infinite!important;
+}
+#onlineUsers .online-user-rank-badge::before,
+#onlinePanel #onlineUsers .online-user-rank-badge::before,
+#onlinePanel .online-user-grid .online-user-rank-badge::before {
+  inset:-7px;
+  border-width:1.5px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .message-rank-floating::before,
+  .rank::before,
+  .room-user-rank::before,
+  .profile-rank .rank::before,
+  .profile-rank-badge::before,
+  .rank-badge::before,
+  .rank-icon::before,
+  #onlineUsers .online-user-rank-badge::before,
+  #onlinePanel #onlineUsers .online-user-rank-badge::before,
+  #onlinePanel .online-user-grid .online-user-rank-badge::before {
+    animation:none!important;
+  }
+}
