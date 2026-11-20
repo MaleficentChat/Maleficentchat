@@ -2493,7 +2493,7 @@ async function joinRoom(id, options = {}) {
 
     $("chatWrap").classList.remove("hidden");
     $("viewRooms").classList.add("chatting");
-    $("viewRooms").classList.toggle("main-room-chat",!!(room.isDefault||/^main room$/i.test(String(room.name||"").trim())));
+    $("viewRooms").classList.toggle("main-room-chat",!!(room.isDefault||/^(main room|teen chat)$/i.test(String(room.name||"").trim())));
 
     $("roomName").textContent =
       `${room.icon || "💬"} ${room.name}`;
@@ -2873,7 +2873,7 @@ function messageHTML(message) {
         <div class="msg-top">
           <span class="msg-time-side">${fmt(message.time)}${message.edited ? " · edited" : ""}</span>
           <span class="msg-author-group">
-            ${($("viewRooms")?.classList.contains("main-room-chat") || !!state.currentRoom?.isDefault || /^(main room|teen chat)$/i.test(String(state.currentRoom?.name||"").trim())) ? `<span class="message-rank-floating" style="display:inline-flex!important;order:0!important;flex:0 0 auto!important;float:none!important;margin:0 5px 0 0!important;color:#ff4fd8!important;font-size:13px!important;line-height:1!important;visibility:visible!important;opacity:1!important" title="${esc(message.rank||"MEMBER")}" aria-label="${esc(message.rank||"MEMBER")}">${rankIcon[String(message.rank||"MEMBER").toUpperCase()]||"⚡"}</span>` : ''}
+            ${($("viewRooms")?.classList.contains("main-room-chat") || !!state.currentRoom?.isDefault || /^(main room|teen chat)$/i.test(String(state.currentRoom?.name||"").trim())) ? `<span class="message-rank-floating" style="display:inline-flex!important;align-items:center!important;justify-content:center!important;order:0!important;flex:0 0 16px!important;width:16px!important;min-width:16px!important;height:18px!important;float:none!important;margin:0 8px 0 0!important;color:#ff4fd8!important;font-size:13px!important;line-height:1!important;visibility:visible!important;opacity:1!important;position:relative!important;z-index:2!important" title="${esc(message.rank||"MEMBER")}" aria-label="${esc(message.rank||"MEMBER")}">🛠️</span>` : ''}
             <button class="message-author tag-author" type="button" title="Tag @${esc(message.username)}" onclick="tagUserFromMessage('${esc(message.username)}')" style="color:${esc(message.usernameColor||state.user?.settings?.usernameColor||'var(--username-color)')}">${esc(message.displayName)}</button>
           </span>
           <span class="msg-header-right">
