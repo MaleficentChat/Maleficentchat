@@ -1,5 +1,48 @@
 const $ = id => document.getElementById(id);
 
+// Reliable status picker: capture taps before the clickable online-user card can react.
+document.addEventListener("click", event => {
+  const target = event.target instanceof Element ? event.target : null;
+  if (!target) return;
+  const toggle = target.closest("#myStatusToggle");
+  const option = target.closest("#myStatusOptions [data-status]");
+  const menu = document.getElementById("myStatusOptions");
+  const button = document.getElementById("myStatusToggle");
+  if (toggle && menu && button) {
+    event.preventDefault();
+    event.stopPropagation();
+    const opening = menu.classList.contains("hidden");
+    menu.classList.toggle("hidden", !opening);
+    button.setAttribute("aria-expanded", opening ? "true" : "false");
+    return;
+  }
+  if (option && menu && button) {
+    event.preventDefault();
+    event.stopPropagation();
+    if (option.disabled) return;
+    option.disabled = true;
+    (async () => {
+      try {
+        const result = await api("/api/me/status", {method:"POST", body:JSON.stringify({status:option.dataset.status})});
+        state.user.customStatus = result.status;
+        menu.classList.add("hidden");
+        button.setAttribute("aria-expanded","false");
+        toast("Status updated.");
+        await renderOnline(onlinePanelTab);
+      } catch (error) {
+        option.disabled = false;
+        toast(error.message || "Could not update status.");
+      }
+    })();
+    return;
+  }
+  if (menu && !menu.classList.contains("hidden") && !target.closest("#myStatusOptions")) {
+    menu.classList.add("hidden");
+    button?.setAttribute("aria-expanded","false");
+  }
+}, true);
+
+
 // Register room creation before the rest of the app initializes. Event delegation also
 // survives room-list rerenders and does not depend on the button retaining its onclick.
 document.addEventListener("click", event => {
@@ -2629,8 +2672,10 @@ async function renderOnline(tab=onlinePanelTab,searchQuery=""){
     if(statusToggle&&statusOptions){
       const current=state.user?.customStatus||"Online";statusToggle.querySelector("#myStatusGlyph").textContent=statusEmoji(current);statusToggle.querySelector("#myStatusLabel").textContent=current;
       statusOptions.innerHTML=statusChoices.map(([label,emoji])=>'<button type="button" class="my-status-option" role="menuitem" data-status="'+esc(label)+'"><span>'+emoji+'</span>'+esc(label)+'</button>').join("");
-      statusToggle.onclick=event=>{event.preventDefault();event.stopPropagation();const opening=statusOptions.classList.contains("hidden");statusOptions.classList.toggle("hidden",!opening);statusToggle.setAttribute("aria-expanded",opening?"true":"false");};
-      statusOptions.querySelectorAll("[data-status]").forEach(button=>button.onclick=async()=>{try{const result=await api("/api/me/status",{method:"POST",body:JSON.stringify({status:button.dataset.status})});state.user.customStatus=result.status;statusOptions.classList.add("hidden");statusToggle.setAttribute("aria-expanded","false");toast("Status updated.");await renderOnline(onlinePanelTab);}catch(e){toast(e.message||"Could not update status.");}});
+      // Status clicks are handled once at document capture level so the parent
+      // online-user card cannot swallow taps on the picker or its options.
+      statusToggle.setAttribute("aria-controls","myStatusOptions");
+      statusOptions.setAttribute("aria-label","Choose your status");
     }
 
     $("onlineCount").textContent=`${count} online`;
