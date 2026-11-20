@@ -6972,7 +6972,24 @@ io.on(
       "auth",
       async(credentials, acknowledge)=>{
         const ack=typeof acknowledge==="function"?acknowledge:()=>{};
-        const claims=verifyToken(typeof credentials==="string"?credentials:credentials?.token);
+        // Match HTTP authentication: prefer the explicitly supplied app token,
+        // but fall back to the first-party HttpOnly cookie when browser storage
+        // is unavailable or contains an expired token. This keeps Socket.IO
+        // authenticated in the same sessions where the API already works.
+        const suppliedToken=typeof credentials==="string"?credentials:credentials?.token;
+        const cookieHeader=String(socket.request?.headers?.cookie||"");
+        let cookieToken="";
+        for(const part of cookieHeader.split(";")){
+          const entry=part.trim();
+          if(entry.startsWith("mc_auth=")){
+            try{cookieToken=decodeURIComponent(entry.slice("mc_auth=".length));}catch{}
+            break;
+          }
+        }
+        const claims=[suppliedToken,cookieToken]
+          .filter(Boolean)
+          .map(token=>verifyToken(token))
+          .find(Boolean);
         if(!claims){ack({ok:false,error:"Authentication failed"});return socket.disconnect(true);}
         const userId=String(claims.sub);
         const u=findUser(userId);
