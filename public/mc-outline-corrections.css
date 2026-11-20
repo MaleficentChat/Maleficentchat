@@ -1317,3 +1317,27 @@ body [data-room-filter]:active{
   align-items:center!important;
   justify-content:center!important;
 }
+
+
+/* 2026-11-20 verified fix: the chat's base stylesheet sets .msg-author-group
+   to overflow:hidden. The earlier halo override was scoped to .main-room-chat,
+   a class not consistently present on #viewRooms, so it never won there.
+   Override the actual active-chat selector so the full orbit can render. */
+#viewRooms.chatting #messages > .msg:not(.dm-msg):not(.system-message) .msg-top,
+#viewRooms.chatting #messages > .msg:not(.dm-msg):not(.system-message) .msg-author-group,
+#viewRooms.chatting #messages > .msg:not(.dm-msg):not(.system-message) .msg-body{
+  overflow:visible!important;
+}
+#viewRooms.chatting #messages > .msg:not(.dm-msg):not(.system-message) .msg-author-group{
+  min-width:0!important;
+}
+#viewRooms.chatting #messages > .msg:not(.dm-msg):not(.system-message) .msg-author-group .message-rank-floating{
+  box-sizing:border-box!important;
+  width:22px!important;min-width:22px!important;max-width:22px!important;
+  height:22px!important;min-height:22px!important;max-height:22px!important;
+  flex:0 0 22px!important;overflow:visible!important;
+  margin:0 2px 0 0!important;
+}
+#viewRooms.chatting #messages > .msg:not(.dm-msg):not(.system-message) .msg-author-group .message-rank-floating .mc-rank-ring{
+  inset:-2px!important;
+}
