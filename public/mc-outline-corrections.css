@@ -1099,3 +1099,22 @@ body [data-room-filter]:active{
     rotate:none!important;
   }
 }
+
+
+/* Animated transparent GIF aura for rank badges (6-frame seamless loop). */
+.message-rank-floating,
+.rank,
+.room-user-rank,
+.profile-rank .rank,
+.profile-rank-badge,
+.rank-badge,
+.rank-icon,
+#onlineUsers .online-user-rank-badge,
+#onlinePanel #onlineUsers .online-user-rank-badge,
+#onlinePanel .online-user-grid .online-user-rank-badge {
+  background-image:url('/images/mc-rank-aura.gif')!important;
+  background-position:center!important;
+  background-repeat:no-repeat!important;
+  background-size:160% 160%!important;
+  isolation:isolate;
+}
