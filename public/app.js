@@ -5560,6 +5560,18 @@ function editMood(){
   $("saveMood").onclick=()=>saveMyProfile({mood:$("moodEdit").value.trim()},'Mood saved.');
 }
 window.__mcRoomContext=()=>({userId:String(state.user?.id||''),roomId:String(state.currentRoom||''),socket:state.socket});
+function addProfileEditPanelClose(){
+  const body=$('modalBody');
+  if(!body||body.querySelector(':scope > .profile-edit-panel-close'))return;
+  const close=document.createElement('button');
+  close.type='button';
+  close.className='profile-edit-panel-close';
+  close.setAttribute('aria-label','Close this edit panel');
+  close.title='Close panel';
+  close.textContent='×';
+  close.addEventListener('click',()=>closeModal());
+  body.appendChild(close);
+}
 function openProfileEditMenu(targetUser=null){
   const self=!targetUser||String(targetUser.id)===String(state.user?.id);
   const user=self?(state.user||{}):targetUser;
@@ -5582,6 +5594,7 @@ function openProfileEditMenu(targetUser=null){
     {id:'deleteAccount',icon:'🗑️',title:'Delete account',desc:'Permanently delete this account',show:canDelete}
   ].filter(x=>x.show);
   modal(`<div class="profile-edit-menu"><h2>✏️ ${self?'Edit account':`Edit @${esc(user.username||'member')}`}</h2><p class="muted">Only actions you are allowed to use are shown here.</p><div class="profile-edit-menu-grid">${sections.map(x=>`<button class="settings-row" id="${x.id}" type="button"><span>${x.icon}</span><b>${x.title}</b><small>${x.desc}</small><strong>›</strong></button>`).join('')}</div></div>`);
+  addProfileEditPanelClose();
   $('editUpload')?.addEventListener('click',()=>openAccountUploadMenu(self?null:user));
   $('removeProfilePicture')?.addEventListener('click',()=>self?deleteAvatar():deleteStaffProfileMedia(user,'avatar'));
   $('removeProfileBackground')?.addEventListener('click',()=>self?deleteBanner():deleteStaffProfileMedia(user,'banner'));
@@ -5601,6 +5614,7 @@ function openAccountUploadMenu(targetUser=null){
     ${self&&state.user?.avatar?'<button class="settings-row danger-row" id="removeAccountAvatar"><span>🗑️</span><b>Remove profile picture</b><small>Clear your current profile photo</small><strong>›</strong></button>':''}
     ${self&&state.user?.banner?'<button class="settings-row danger-row" id="removeAccountBackground"><span>🗑️</span><b>Remove background</b><small>Clear your current profile background or banner</small><strong>›</strong></button>':''}
   </div></div>`);
+  addProfileEditPanelClose();
   $('uploadAccountAvatar')?.addEventListener('click',()=>self?uploadAvatar():pickStaffAccountImage(targetUser,'avatar'));
   $('uploadAccountBackground')?.addEventListener('click',()=>self?uploadBanner():pickStaffAccountImage(targetUser,'banner'));
   $('removeAccountAvatar')?.addEventListener('click',deleteAvatar);
@@ -5612,6 +5626,7 @@ function openAccountProfileMusicMenu(){
     <button class="settings-row" id="uploadProfileMusic"><span>📤</span><b>Upload profile music</b><small>Add or replace the music on your profile</small><strong>›</strong></button>
     ${hasMusic?'<button class="settings-row danger-row" id="removeProfileMusic"><span>🗑️</span><b>Remove profile music</b><small>Clear your current profile music</small><strong>›</strong></button>':''}
   </div></div>`);
+  addProfileEditPanelClose();
   $('uploadProfileMusic')?.addEventListener('click',()=>{
     const picker=document.createElement('input');picker.type='file';picker.accept='.mp3,.m4a,.aac,.ogg,.opus,.wav,.flac,.weba,audio/*';
     picker.onchange=async()=>{const file=picker.files?.[0];if(!file)return;
@@ -5641,6 +5656,7 @@ function openAccountNameEditor(targetUser=null){
   const self=!targetUser,u=self?(state.user||{}):targetUser;
   const canUsername=self||canFeature('manage_staff_accounts'),canDisplay=self||canFeature('account_modifications');
   modal(`<h2>✏️ Edit Name</h2>${canUsername?`<label>Username<input id="accountUsername" maxlength="24" value="${esc(u.username||'')}"></label>`:''}${canDisplay?`<label>Display name<input id="accountDisplayName" maxlength="32" value="${esc(u.displayName||'')}"></label>`:''}<p class="muted">Username: 3–24 letters, numbers or underscores.</p><div class="toolbar"><button class="primary" id="saveAccountName">Save</button></div>`);
+  addProfileEditPanelClose();
   $('saveAccountName').onclick=async()=>{try{
     if(canUsername){const username=$('accountUsername')?.value.trim();if(!/^[A-Za-z0-9_]{3,24}$/.test(username||''))throw new Error('Username must be 3–24 letters, numbers or underscores.');if(self)await api('/api/profile',{method:'PUT',body:JSON.stringify({username})});else await api('/api/staff/user/'+encodeURIComponent(u.id)+'/account',{method:'PATCH',body:JSON.stringify({username})});}
     if(canDisplay){const displayName=$('accountDisplayName')?.value.trim();if(!displayName)throw new Error('Display name cannot be empty.');if(self){const r=await api('/api/profile',{method:'PUT',body:JSON.stringify({displayName})});state.user=r.user;}else{const r=await api('/api/staff/user/'+encodeURIComponent(u.id)+'/profile',{method:'PATCH',body:JSON.stringify({displayName})});Object.assign(u,r.user||{});}}
@@ -5651,12 +5667,14 @@ function openAccountEmailEditor(targetUser=null){
   const self=!targetUser,u=self?(state.user||{}):targetUser;
   (async()=>{try{const currentEmail=self?(await api('/api/me/email')).email:(await api('/api/staff/user/'+encodeURIComponent(u.id)+'/email-history')).email;
     modal(`<h2>✉️ Edit email</h2><label>Email address<input id="accountEmail" type="email" maxlength="160" value="${esc(currentEmail||'')}" placeholder="name@example.com"></label><div class="toolbar"><button class="primary" id="saveAccountEmail">Save email</button></div>`);
+  addProfileEditPanelClose();
     $('saveAccountEmail').onclick=async()=>{try{const email=$('accountEmail').value.trim();if(self)await api('/api/me/email',{method:'PUT',body:JSON.stringify({email})});else await api('/api/staff/user/'+encodeURIComponent(u.id)+'/email',{method:'PATCH',body:JSON.stringify({email})});closeModal();if(self){await loadProfile(state.user);}else await openUser(u.id);toast('Email updated.');}catch(e){toast(e.message);}};
   }catch(e){toast(e.message);}})();
 }
 function openAccountPasswordEditor(targetUser=null){
   const self=!targetUser,u=self?(state.user||{}):targetUser;
   modal(`<h2>🔒 Edit password</h2>${self?'<label>Current password<input id="accountCurrentPassword" type="password" autocomplete="current-password"></label>':''}<label>New password<input id="accountNewPassword" type="password" minlength="8" autocomplete="new-password"></label><label>Confirm new password<input id="accountConfirmPassword" type="password" minlength="8" autocomplete="new-password"></label><p class="muted">Use at least 8 characters. The existing password is never displayed.</p><button class="primary" id="saveAccountPassword">Change password</button>`);
+  addProfileEditPanelClose();
   $('saveAccountPassword').onclick=async()=>{const password=$('accountNewPassword').value;if(password.length<8){toast('Password must be at least 8 characters.');return;}if(password!==$('accountConfirmPassword').value){toast('Passwords do not match.');return;}try{if(self)await api('/api/password/change',{method:'POST',body:JSON.stringify({currentPassword:$('accountCurrentPassword').value,newPassword:password})});else await api('/api/staff/user/'+encodeURIComponent(u.id)+'/password',{method:'PATCH',body:JSON.stringify({password})});closeModal();toast('Password changed.');}catch(e){toast(e.message);}};
 }
 function openAccountDetailsEditor(targetUser=null){
@@ -5674,6 +5692,7 @@ function openAccountDetailsEditor(targetUser=null){
     <label>Relationship<input id="detailRelationship" maxlength="80" value="${esc(u.relationship||'')}" placeholder="Relationship status"></label>
     <label>Mood<input id="detailMood" maxlength="80" value="${esc(u.mood||'')}"></label>
     <div class="toolbar"><button class="primary" id="saveAccountDetails">Save details</button></div></div>`);
+  addProfileEditPanelClose();
   $('saveAccountDetails').onclick=async()=>{const changes={gender:$('detailGender').value.trim(),location:$('detailLocation').value.trim(),website:$('detailWebsite').value.trim(),pronouns:$('detailPronouns').value.trim(),country:$('detailCountry').value.trim(),bio:$('detailBio').value,interests:$('detailInterests').value.split(',').map(x=>x.trim()).filter(Boolean),relationship:$('detailRelationship').value.trim(),mood:$('detailMood').value.trim()};
     try{if(self){const r=await api('/api/profile',{method:'PUT',body:JSON.stringify(changes)});state.user=r.user;await loadProfile(state.user);}else{const r=await api('/api/staff/user/'+encodeURIComponent(u.id)+'/profile',{method:'PATCH',body:JSON.stringify(changes)});Object.assign(u,r.user||{});await openUser(u.id);}closeModal();toast('Account details saved.');}catch(e){toast(e.message);}};
 }
@@ -5684,6 +5703,7 @@ async function viewAccountDetails(targetUser=null){
     const x=self?(account.account||{}):(account.user||u);
     const rows=[['Username',x.username||u.username],['Display name',x.displayName||u.displayName],['Email',email.email||'Not available'],['Date of birth',x.dateOfBirth||x.birthDate||x.birth_date||'Not provided'],['Gender',x.gender||'Not provided'],['Country',x.country||'Not provided'],['Location',x.location||'Not provided'],['Pronouns',x.pronouns||'Not provided'],['Website',x.website||'Not provided'],['Joined',x.createdAt?new Date(x.createdAt).toLocaleString():(x.created_at?new Date(x.created_at).toLocaleString():'Not available')],['Rank',x.rank||u.rank],['User ID',x.id||u.id]];
     modal(`<div class="profile-edit-menu"><h2>👁️ Account details</h2><div class="profile-account-details">${rows.map(([k,v])=>`<div class="profile-info-row"><b>${esc(k)}</b><span>${esc(String(v??'Not provided'))}</span></div>`).join('')}</div></div>`);
+  addProfileEditPanelClose();
   }catch(e){toast(e.message);}
 }
 async function confirmAccountDeletion(targetUser=null){
@@ -5710,6 +5730,7 @@ function uploadAvatar() {
       
     </div>
   `);
+  addProfileEditPanelClose();
 }
 
 async function deleteStaffProfileMedia(user,kind){
@@ -5746,6 +5767,7 @@ function uploadBanner() {
       ${state.user?.banner?'<button class="mini danger" type="button" id="removeProfileBanner">Remove background</button>':''}
     </div>
   `);
+  addProfileEditPanelClose();
   $('removeProfileBanner')?.addEventListener('click',deleteBanner);
 }
 async function deleteBanner(){
