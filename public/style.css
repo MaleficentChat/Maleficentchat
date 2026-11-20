@@ -10693,3 +10693,38 @@ html{scroll-behavior:smooth;}
   pointer-events:auto!important;
   cursor:pointer!important;
 }
+
+
+/* Main Chat quote attribution: compact original sender identity row. */
+#viewRooms.main-room-chat #messages .quoted .quoted-author{
+  display:flex!important;
+  align-items:center!important;
+  gap:7px!important;
+  min-width:0!important;
+  margin:0 0 5px!important;
+  line-height:1.2!important;
+}
+#viewRooms.main-room-chat #messages .quoted .quoted-avatar,
+#viewRooms.main-room-chat #messages .quoted .quoted-avatar img{
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  width:20px!important;
+  height:20px!important;
+  min-width:20px!important;
+  min-height:20px!important;
+  border-radius:50%!important;
+  overflow:hidden!important;
+  object-fit:cover!important;
+}
+#viewRooms.main-room-chat #messages .quoted .quoted-author-name{
+  min-width:0!important;
+  font-size:11px!important;
+  font-weight:700!important;
+  line-height:1.2!important;
+  color:var(--text-primary,#e7edf7)!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+  white-space:nowrap!important;
+}
+#viewRooms.main-room-chat #messages .quoted .quoted-text{margin:0!important}
