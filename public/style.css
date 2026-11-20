@@ -10131,3 +10131,145 @@ html{scroll-behavior:smooth;}
   overflow:visible!important;
   z-index:120!important;
 }
+
+
+/* 2026-11-20: Main Chat message header — compact rank badge and aligned controls.
+   This final override replaces the older oversized 56–84px header spacing. */
+#viewRooms.main-room-chat #messages > .msg:not(.dm-msg) .msg-top{
+  display:flex!important;
+  align-items:center!important;
+  flex-wrap:nowrap!important;
+  gap:8px!important;
+  width:100%!important;
+  min-height:28px!important;
+  height:auto!important;
+  margin:0 0 7px!important;
+  padding:0!important;
+  box-sizing:border-box!important;
+}
+#viewRooms.main-room-chat #messages > .msg:not(.dm-msg) .msg-author-group{
+  order:0!important;
+  display:inline-flex!important;
+  flex:0 1 auto!important;
+  align-items:center!important;
+  justify-content:flex-start!important;
+  gap:6px!important;
+  min-width:0!important;
+  max-width:calc(100% - 100px)!important;
+  margin:0!important;
+  padding:0!important;
+  line-height:1!important;
+}
+#viewRooms.main-room-chat #messages > .msg:not(.dm-msg) .msg-author-group .message-rank-floating{
+  order:-1!important;
+  display:inline-flex!important;
+  flex:0 0 20px!important;
+  align-items:center!important;
+  justify-content:center!important;
+  width:20px!important;
+  min-width:20px!important;
+  height:20px!important;
+  min-height:20px!important;
+  box-sizing:border-box!important;
+  margin:0!important;
+  padding:0!important;
+  border:1px solid var(--border-strong,rgba(255,255,255,.22))!important;
+  border-radius:6px!important;
+  background:var(--panel-2,rgba(255,255,255,.07))!important;
+  color:var(--text,#f2f4f7)!important;
+  font-size:12px!important;
+  line-height:1!important;
+  letter-spacing:0!important;
+  float:none!important;
+  white-space:nowrap!important;
+  overflow:hidden!important;
+}
+#viewRooms.main-room-chat #messages > .msg:not(.dm-msg) .message-rank-floating .mc-rank-ring{
+  display:none!important;
+}
+#viewRooms.main-room-chat #messages > .msg:not(.dm-msg) .message-rank-floating .mc-rank-glyph{
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  width:100%!important;
+  height:100%!important;
+  font-size:12px!important;
+  line-height:1!important;
+}
+#viewRooms.main-room-chat #messages > .msg:not(.dm-msg) .msg-author-group .message-author{
+  order:0!important;
+  display:inline-block!important;
+  flex:0 1 auto!important;
+  min-width:0!important;
+  max-width:min(48vw,320px)!important;
+  margin:0!important;
+  padding:0!important;
+  font-size:13px!important;
+  line-height:1.25!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+  white-space:nowrap!important;
+}
+#viewRooms.main-room-chat #messages > .msg:not(.dm-msg) .msg-time-side{
+  order:1!important;
+  display:inline-flex!important;
+  flex:0 0 auto!important;
+  align-items:center!important;
+  align-self:center!important;
+  margin:0 0 0 auto!important;
+  padding:0!important;
+  font-size:10px!important;
+  line-height:1.2!important;
+  white-space:nowrap!important;
+}
+#viewRooms.main-room-chat #messages > .msg:not(.dm-msg) .msg-header-right{
+  order:2!important;
+  display:inline-flex!important;
+  flex:0 0 24px!important;
+  align-items:center!important;
+  justify-content:center!important;
+  width:24px!important;
+  height:24px!important;
+  margin:0!important;
+  padding:0!important;
+}
+#viewRooms.main-room-chat #messages > .msg:not(.dm-msg) .msg-header-right .message-more-button{
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  flex:0 0 24px!important;
+  width:24px!important;
+  height:24px!important;
+  min-width:24px!important;
+  min-height:24px!important;
+  margin:0!important;
+  padding:0!important;
+  border:0!important;
+  border-radius:7px!important;
+  background:transparent!important;
+  color:var(--muted,#a8b0bc)!important;
+  font-size:19px!important;
+  line-height:1!important;
+}
+#viewRooms.main-room-chat #messages > .msg:not(.dm-msg) .msg-body{
+  min-width:0!important;
+}
+#viewRooms.main-room-chat #messages > .msg:not(.dm-msg) .msg-text{
+  margin-top:0!important;
+  overflow-wrap:anywhere!important;
+}
+@media(max-width:700px){
+  #viewRooms.main-room-chat #messages > .msg:not(.dm-msg) .msg-top{
+    min-height:26px!important;
+    margin-bottom:6px!important;
+    gap:6px!important;
+  }
+  #viewRooms.main-room-chat #messages > .msg:not(.dm-msg) .msg-author-group{gap:5px!important;max-width:calc(100% - 82px)!important}
+  #viewRooms.main-room-chat #messages > .msg:not(.dm-msg) .msg-author-group .message-rank-floating{
+    flex-basis:18px!important;width:18px!important;min-width:18px!important;height:18px!important;min-height:18px!important;
+  }
+  #viewRooms.main-room-chat #messages > .msg:not(.dm-msg) .msg-author-group .message-rank-floating .mc-rank-glyph{font-size:11px!important}
+  #viewRooms.main-room-chat #messages > .msg:not(.dm-msg) .msg-author-group .message-author{font-size:12px!important;max-width:42vw!important}
+  #viewRooms.main-room-chat #messages > .msg:not(.dm-msg) .msg-header-right,
+  #viewRooms.main-room-chat #messages > .msg:not(.dm-msg) .msg-header-right .message-more-button{width:22px!important;height:22px!important;min-width:22px!important;min-height:22px!important;flex-basis:22px!important}
+}
