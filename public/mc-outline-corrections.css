@@ -940,3 +940,10 @@ body [data-room-filter]:active{
   color:#ff4fd8!important;filter:drop-shadow(0 0 4px rgba(255,79,216,.45))!important;
 }
 #viewRooms.main-room-chat #messages > .msg:not(.dm-msg):not(.system-message) .message-author{order:0!important;}
+
+/* Corrected 20 Nov 2026: rank badge LEFT of username in main-room messages. */
+#viewRooms.main-room-chat #messages > .msg:not(.dm-msg):not(.system-message) .msg-author-group .message-rank-floating{
+  order:0!important;flex:0 0 auto!important;float:none!important;margin:0!important;
+  color:#ff4fd8!important;filter:drop-shadow(0 0 4px rgba(255,79,216,.45))!important;
+}
+#viewRooms.main-room-chat #messages > .msg:not(.dm-msg):not(.system-message) .msg-author-group .message-author{order:1!important;}
