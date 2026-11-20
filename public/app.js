@@ -4209,15 +4209,22 @@ function renderUserProfileModal(user,data={}){
     document.querySelectorAll('.profile-tab').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));
     const box=mcGetById('profileTabContent');
     if(tab==='info') { box.innerHTML=`
-      <div class="profile-info-row"><b>👤 Username</b><span>@${esc(user.username)}</span></div>
-      <div class="profile-info-row"><b>🏅 Rank</b><span>${rank(user.rank)}</span></div>
-      <div class="profile-info-row"><b>⭐ Level</b><span>${user.level||1} · ${user.xp||0} XP</span></div>
-      <div class="profile-info-row"><b>💎 Diamonds</b><span>${Number(user.diamonds||0).toLocaleString()}</span></div>
-      <div class="profile-info-row"><b>🪙 Gold</b><span>${Number(user.gold||0).toLocaleString()}</span></div>
-      <div class="profile-info-row"><b>📅 Member since</b><span>${esc(memberSince)}</span></div>
-      <div class="profile-info-row"><b>🏠 Status</b><span class="profile-live-status">${user.online?'Online':'Offline'}</span></div>
-      <div class="profile-info-row"><b>🚪 Room</b><span class="profile-live-room">${user.online&&user.currentRoom?(user.currentRoom.icon?esc(user.currentRoom.icon)+' ':'')+esc(user.currentRoom.name||'Chat'):'Not in a room'}</span></div>
-      <div class="profile-info-row"><b>◉ Last seen</b><span>${esc(lastSeen)}</span></div>
+      <div class="profile-account-details public-profile-account-list">
+        <div class="profile-info-row"><b>👤 Username</b><span>@${esc(user.username)}</span></div>
+        <div class="profile-info-row"><b>Display name</b><span>${esc(user.displayName||user.username)}</span></div>
+        <div class="profile-info-row"><b>🏅 Rank</b><span>${rank(user.rank)}</span></div>
+        <div class="profile-info-row"><b>⭐ Level</b><span>${user.level||1} · ${Number(user.xp||0).toLocaleString()} XP</span></div>
+        <div class="profile-info-row"><b>💎 Diamonds</b><span>${Number(user.diamonds||0).toLocaleString()}</span></div>
+        <div class="profile-info-row"><b>🪙 Gold</b><span>${Number(user.gold||0).toLocaleString()}</span></div>
+        <div class="profile-info-row"><b>📅 Member since</b><span>${esc(memberSince)}</span></div>
+        <div class="profile-info-row"><b>🏠 Status</b><span class="profile-live-status">${user.online?'Online':'Offline'}</span></div>
+        <div class="profile-info-row"><b>🚪 Room</b><span class="profile-live-room">${user.online&&user.currentRoom?(user.currentRoom.icon?esc(user.currentRoom.icon)+' ':'')+esc(user.currentRoom.name||'Chat'):'Not in a room'}</span></div>
+        ${user.privacy?.lastSeen!==false?'<div class="profile-info-row"><b>◉ Last seen</b><span>'+esc(lastSeen)+'</span></div>':''}
+        ${user.privacy?.country!==false&&user.country?'<div class="profile-info-row"><b>🌍 Country</b><span>'+esc(countryFlagFor(user.country))+' '+esc(user.country)+'</span></div>':''}
+        ${user.privacy?.location!==false&&user.location?'<div class="profile-info-row"><b>Location</b><span>'+esc(user.location)+'</span></div>':''}
+        ${user.privacy?.pronouns!==false&&user.pronouns?'<div class="profile-info-row"><b>Pronouns</b><span>'+esc(user.pronouns)+'</span></div>':''}
+        ${user.privacy?.website!==false&&user.website?'<div class="profile-info-row"><b>Website</b><span>'+esc(user.website)+'</span></div>':''}
+      </div>
       <div class="profile-achievement-showcase" id="profileAchievementShowcase"></div><div class="profile-actions"><button class="mini" id="profileAchievementsBtn">🏆 Achievement Collection</button>${!isSelf&&canFeature('profile_note')?`<button class="mini" id="profileNoteBtn">📝 Add Note <span id="profileNoteDot" style="display:none">●</span></button>${canFeature('profile_note')?'<button class="mini" id="profileFeatureBlockBtn">🚫 Feature Block</button>':''}`:''}<div class="profile-action-hint">Tap ☰ above for profile actions.</div></div>`;
     if(user.privacy?.achievements!==false){
       api('/api/achievements/'+encodeURIComponent(user.id)).then(result=>{
