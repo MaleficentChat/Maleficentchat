@@ -1060,3 +1060,42 @@ body [data-room-filter]:active{
     transform:none!important;
   }
 }
+
+
+/* 20 Nov 2026 hotfix: animate the independent CSS rotate property.
+   Earlier transform-based keyframes were blocked by existing !important
+   translate/transform rules, leaving the rank glyphs visually stationary. */
+@keyframes mcRankBadgeFlipVisible {
+  from { rotate: y 0deg; }
+  to   { rotate: y 360deg; }
+}
+.message-rank-floating,
+.rank,
+.room-user-rank,
+.profile-rank .rank,
+.profile-rank-badge,
+.rank-badge,
+.rank-icon,
+#onlineUsers .online-user-rank-badge,
+#onlinePanel #onlineUsers .online-user-rank-badge,
+#onlinePanel .online-user-grid .online-user-rank-badge {
+  transform-style:preserve-3d!important;
+  backface-visibility:visible!important;
+  -webkit-backface-visibility:visible!important;
+  animation:mcRankBadgeFlipVisible 2.4s linear infinite!important;
+}
+@media (prefers-reduced-motion: reduce) {
+  .message-rank-floating,
+  .rank,
+  .room-user-rank,
+  .profile-rank .rank,
+  .profile-rank-badge,
+  .rank-badge,
+  .rank-icon,
+  #onlineUsers .online-user-rank-badge,
+  #onlinePanel #onlineUsers .online-user-rank-badge,
+  #onlinePanel .online-user-grid .online-user-rank-badge {
+    animation:none!important;
+    rotate:none!important;
+  }
+}
