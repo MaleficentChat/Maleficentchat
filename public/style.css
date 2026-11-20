@@ -9922,3 +9922,38 @@ html{scroll-behavior:smooth;}
   #modal .profile-modal .profile-banner .big-avatar{width:68px!important;height:68px!important;min-width:68px!important}
   #modal .profile-modal .profile-name{font-size:19px!important}
 }
+
+
+/* Keep the public-profile close control visible on narrow screens.
+   The stats and action buttons may wrap instead of pushing Close outside the card. */
+#modal .profile-modal .profile-stats{
+  display:flex!important;
+  flex-wrap:wrap!important;
+  align-items:center!important;
+  justify-content:center!important;
+  width:100%!important;
+  max-width:100%!important;
+  box-sizing:border-box!important;
+  overflow:visible!important;
+}
+#modal .profile-modal .profile-stats>.profile-stat{
+  flex:1 1 58px!important;
+  min-width:0!important;
+  text-align:center!important;
+}
+#modal .profile-modal .profile-stats>.profile-rank-btn,
+#modal .profile-modal .profile-stats>.profile-edit-btn,
+#modal .profile-modal .profile-stats>.profile-hamburger,
+#modal .profile-modal .profile-stats>.profile-inline-close{
+  flex:0 0 34px!important;
+  min-width:34px!important;
+  width:34px!important;
+  max-width:34px!important;
+  position:static!important;
+  transform:none!important;
+  visibility:visible!important;
+  opacity:1!important;
+}
+#modal .profile-modal .profile-stats>.profile-inline-close{
+  order:99!important;
+}
