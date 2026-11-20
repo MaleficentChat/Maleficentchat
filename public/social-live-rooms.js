@@ -1,7 +1,7 @@
 /* Shared room experiences: small-group voice and YouTube listening queue. */
 (()=> {
   if(window.__mcRoomExperiencesLoaded)return;window.__mcRoomExperiencesLoaded=true;
-  const $=id=>document.getElementById(id);
+  const mcRoomGetById =id=>document.getElementById(id);
   const root=document.createElement("div");root.id="mcRoomExperiences";
   root.innerHTML=`
     <section class="mcre-panel" id="mcrePanel" hidden>
@@ -23,7 +23,7 @@
     </section>`;
   document.body.appendChild(root);
   const css=document.createElement("link");css.rel="stylesheet";css.href="/room-experiences.css?v=5";document.head.appendChild(css);
-  const panel=$("mcrePanel"),voicePane=$("mcreVoicePane"),musicPane=$("mcreMusicPane");
+  const panel=mcRoomGetById("mcrePanel"),voicePane=mcRoomGetById("mcreVoicePane"),musicPane=mcRoomGetById("mcreMusicPane");
   let socket=null,authed=false,ownUserId="",activeRoom="",localStream=null,joined=false,muted=false,peers=new Map(),peerNames=new Map(),pendingIce=new Map(),musicState={queue:[],current:null};
   let rtc={iceServers:[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}]};
   function refreshRtcConfig(){
@@ -35,8 +35,8 @@
       });
     });
   }
-  function error(message){$("mcreError").textContent=message||"";}
-  function status(message){$("mcreVoiceStatus").textContent=message;}
+  function error(message){mcRoomGetById("mcreError").textContent=message||"";}
+  function status(message){mcRoomGetById("mcreVoiceStatus").textContent=message;}
   function token(){try{return localStorage.getItem("mc_token")||"";}catch{return "";}}
   function auth(){
     if(!socket?.connected)return;const t=token();if(!t){authed=false;error("Please log in to use room experiences.");return;}
@@ -69,14 +69,14 @@
     const pc=new RTCPeerConnection(rtc);
     if(localStream)localStream.getTracks().forEach(track=>pc.addTrack(track,localStream));
     pc.onicecandidate=e=>{if(e.candidate&&socket)socket.emit("group-voice:signal",{roomId:activeRoom,toId:id,signal:{type:"candidate",candidate:e.candidate.toJSON()}});};
-    pc.ontrack=e=>{let audio=$("mcre-audio-"+id);if(!audio){audio=document.createElement("audio");audio.id="mcre-audio-"+id;audio.autoplay=true;audio.playsInline=true;$("mcreAudio").appendChild(audio);}audio.srcObject=e.streams[0];audio.play().catch(()=>{});};
+    pc.ontrack=e=>{let audio=mcRoomGetById("mcre-audio-"+id);if(!audio){audio=document.createElement("audio");audio.id="mcre-audio-"+id;audio.autoplay=true;audio.playsInline=true;mcRoomGetById("mcreAudio").appendChild(audio);}audio.srcObject=e.streams[0];audio.play().catch(()=>{});};
     pc.onconnectionstatechange=()=>{if(["failed","closed","disconnected"].includes(pc.connectionState)&&pc.connectionState!=="disconnected")closePeer(id);};
     peers.set(id,pc);return pc;
   }
   async function offerTo(id){const pc=ensurePeer(id);const offer=await pc.createOffer();await pc.setLocalDescription(offer);socket.emit("group-voice:signal",{roomId:activeRoom,toId:id,signal:{type:"offer",sdp:offer.sdp}});}
-  function closePeer(id){const pc=peers.get(id);if(pc){pc.ontrack=null;pc.close();peers.delete(id);}pendingIce.delete(id);const audio=$("mcre-audio-"+id);if(audio){audio.srcObject=null;audio.remove();}}
+  function closePeer(id){const pc=peers.get(id);if(pc){pc.ontrack=null;pc.close();peers.delete(id);}pendingIce.delete(id);const audio=mcRoomGetById("mcre-audio-"+id);if(audio){audio.srcObject=null;audio.remove();}}
   function renderParticipants(){
-    const box=$("mcreParticipants");box.innerHTML="";
+    const box=mcRoomGetById("mcreParticipants");box.innerHTML="";
     for(const [id] of peers){const chip=document.createElement("span");chip.className="mcre-person";chip.textContent="● "+(peerNames.get(id)||id);box.appendChild(chip);}
     if(joined){const me=document.createElement("span");me.className="mcre-person self";me.textContent="● You";box.prepend(me);}
   }
@@ -89,7 +89,7 @@
     catch(e){error("Microphone permission is needed: "+(e.message||"permission denied"));return;}
     socket.emit("group-voice:join",{roomId:activeRoom},async r=>{
       if(!r?.ok){localStream.getTracks().forEach(t=>t.stop());localStream=null;error(r?.error||"Could not join group voice.");return;}
-      joined=true;$("mcreJoinVoice").hidden=true;$("mcreLeaveVoice").hidden=false;$("mcreMute").hidden=false;
+      joined=true;mcRoomGetById("mcreJoinVoice").hidden=true;mcRoomGetById("mcreLeaveVoice").hidden=false;mcRoomGetById("mcreMute").hidden=false;
       status("Connected · "+(r.participants.length+1)+" / 6 participants");renderParticipants();
       try{for(const p of r.participants||[]){peerNames.set(String(p.userId),String(p.displayName||p.username||p.userId));await offerTo(String(p.userId));}renderParticipants();}catch(e){error("Could not start voice connection: "+(e.message||"retry"));}
     });
@@ -98,17 +98,17 @@
     if(notify&&socket&&joined)socket.emit("group-voice:leave");
     for(const id of [...peers.keys()])closePeer(id);peerNames.clear();pendingIce.clear();
     if(localStream){localStream.getTracks().forEach(t=>t.stop());localStream=null;}
-    joined=false;muted=false;$("mcreJoinVoice").hidden=false;$("mcreLeaveVoice").hidden=true;$("mcreMute").hidden=true;$("mcreMute").textContent="Mute mic";
+    joined=false;muted=false;mcRoomGetById("mcreJoinVoice").hidden=false;mcRoomGetById("mcreLeaveVoice").hidden=true;mcRoomGetById("mcreMute").hidden=true;mcRoomGetById("mcreMute").textContent="Mute mic";
     status("Not connected to group voice.");renderParticipants();
   }
   function renderNowPlaying(item,by){
-    const now=$("mcreNowPlaying"),embed=$("mcreEmbed");embed.innerHTML="";
+    const now=mcRoomGetById("mcreNowPlaying"),embed=mcRoomGetById("mcreEmbed");embed.innerHTML="";
     if(!item){now.textContent="Nothing selected yet.";return;}
     now.textContent="Selected by "+(by||"room member")+" · "+item.title;
     const frame=document.createElement("iframe");frame.title="YouTube listening room player";frame.loading="lazy";frame.allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share";frame.src="https://www.youtube-nocookie.com/embed/"+encodeURIComponent(item.videoId)+"?playsinline=1&rel=0";frame.width="100%";frame.height="220";frame.style.border="0";frame.style.borderRadius="12px";embed.appendChild(frame);
   }
   function renderQueue(){
-    const box=$("mcreQueue");box.innerHTML="";
+    const box=mcRoomGetById("mcreQueue");box.innerHTML="";
     (musicState.queue||[]).forEach(item=>{
       const row=document.createElement("div");row.className="mcre-queue-item";
       const label=document.createElement("span");label.textContent=item.title+" · added by "+item.addedBy;
@@ -125,12 +125,12 @@
     socket.emit("music-room:get",{},r=>{if(r?.ok){musicState=r;renderQueue();}else error(r?.error||"Could not load room music.");});
   }
   function openVideoPicker(){
-    $("mcrePicker").hidden=false;$("mcreVideoSearch").focus();
+    mcRoomGetById("mcrePicker").hidden=false;mcRoomGetById("mcreVideoSearch").focus();
   }
-  function closeVideoPicker(){$("mcrePicker").hidden=true;}
+  function closeVideoPicker(){mcRoomGetById("mcrePicker").hidden=true;}
   async function searchRoomVideos(){
-    const query=$("mcreVideoSearch").value.trim();if(!query)return error("Search for a video first.");
-    const results=$("mcreVideoResults"),button=$("mcreVideoSearchBtn");button.disabled=true;button.textContent="Searching…";
+    const query=mcRoomGetById("mcreVideoSearch").value.trim();if(!query)return error("Search for a video first.");
+    const results=mcRoomGetById("mcreVideoResults"),button=mcRoomGetById("mcreVideoSearchBtn");button.disabled=true;button.textContent="Searching…";
     results.innerHTML="";const loading=document.createElement("p");loading.className="mcre-note";loading.textContent="Finding videos…";results.appendChild(loading);
     try{
       const response=await fetch("/api/youtube/search?q="+encodeURIComponent(query),{headers:{Authorization:"Bearer "+token()}});
@@ -154,15 +154,15 @@
     }catch(e){results.replaceChildren();const note=document.createElement("p");note.className="mcre-note";note.textContent=e.message||"YouTube search failed.";results.appendChild(note);}
     finally{button.disabled=false;button.textContent="Search";}
   }
-  $("mcreOpenPicker").onclick=openVideoPicker;$("mcrePickerClose").onclick=closeVideoPicker;
-  $("mcreVideoSearchBtn").onclick=searchRoomVideos;
-  $("mcreVideoSearch").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();searchRoomVideos();}});
-  $("mcreJoinVoice").onclick=joinVoice;$("mcreLeaveVoice").onclick=()=>stopVoice(true);
-  $("mcreMute").onclick=()=>{muted=!muted;(localStream?.getAudioTracks()||[]).forEach(t=>t.enabled=!muted);$("mcreMute").textContent=muted?"Unmute mic":"Mute mic";};
-  $("mcreClose").onclick=()=>{panel.hidden=true;};
+  mcRoomGetById("mcreOpenPicker").onclick=openVideoPicker;mcRoomGetById("mcrePickerClose").onclick=closeVideoPicker;
+  mcRoomGetById("mcreVideoSearchBtn").onclick=searchRoomVideos;
+  mcRoomGetById("mcreVideoSearch").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();searchRoomVideos();}});
+  mcRoomGetById("mcreJoinVoice").onclick=joinVoice;mcRoomGetById("mcreLeaveVoice").onclick=()=>stopVoice(true);
+  mcRoomGetById("mcreMute").onclick=()=>{muted=!muted;(localStream?.getAudioTracks()||[]).forEach(t=>t.enabled=!muted);mcRoomGetById("mcreMute").textContent=muted?"Unmute mic":"Mute mic";};
+  mcRoomGetById("mcreClose").onclick=()=>{panel.hidden=true;};
   document.querySelectorAll("#mcrePanel [data-tab]").forEach(btn=>btn.onclick=()=>{
     document.querySelectorAll("#mcrePanel [data-tab]").forEach(x=>x.classList.toggle("active",x===btn));
-    const music=btn.dataset.tab==="music";voicePane.hidden=music;musicPane.hidden=!music;$("mcreTitle").textContent=music?"YouTube Listening Room":"Group Voice Room";
+    const music=btn.dataset.tab==="music";voicePane.hidden=music;musicPane.hidden=!music;mcRoomGetById("mcreTitle").textContent=music?"YouTube Listening Room":"Group Voice Room";
     if(music)loadMusic();error("");
   });
   function openExperience(tab){
@@ -176,8 +176,8 @@
     const wrap=document.createElement("span");wrap.className="mcre-launch-actions";
     wrap.innerHTML='<button type="button" class="mcre-launch-icon" id="mcreYoutubeLaunch" title="YouTube listening room" aria-label="Open YouTube listening room">▶</button><button type="button" class="mcre-launch-icon" id="mcreVoiceLaunch" title="Group voice room" aria-label="Open group voice room">☎</button>';
     actions.appendChild(wrap);
-    $("mcreYoutubeLaunch").onclick=()=>openExperience("music");
-    $("mcreVoiceLaunch").onclick=()=>openExperience("voice");
+    mcRoomGetById("mcreYoutubeLaunch").onclick=()=>openExperience("music");
+    mcRoomGetById("mcreVoiceLaunch").onclick=()=>openExperience("voice");
     return true;
   }
   if(!addLaunchers()){const observer=new MutationObserver(()=>{if(addLaunchers())observer.disconnect();});observer.observe(document.body,{childList:true,subtree:true});setTimeout(()=>observer.disconnect(),12000);}
