@@ -1417,3 +1417,24 @@ body [data-room-filter]:active{
     animation:none!important;transform:translate(-50%,-50%)!important;
   }
 }
+
+
+/* 20 Nov 2026 — match the People-panel halo's smooth 1.8s rotation;
+   slightly reduce the main-chat ring while keeping it perfectly centred. */
+@keyframes mcMainChatHaloMatchPeople {
+  from { transform:translate(-50%,-50%) rotate(0turn); }
+  to   { transform:translate(-50%,-50%) rotate(1turn); }
+}
+#viewRooms.chatting #messages > .msg:not(.dm-msg):not(.system-message) .msg-author-group .message-rank-floating .mc-rank-ring{
+  width:28px!important;height:28px!important;min-width:28px!important;min-height:28px!important;
+  max-width:28px!important;max-height:28px!important;aspect-ratio:1/1!important;
+  border-radius:50%!important;
+  transform:translate(-50%,-50%) rotate(0turn)!important;
+  transform-origin:50% 50%!important;
+  animation:mcMainChatHaloMatchPeople 1.8s linear infinite!important;
+}
+@media(prefers-reduced-motion:reduce){
+  #viewRooms.chatting #messages > .msg:not(.dm-msg):not(.system-message) .msg-author-group .message-rank-floating .mc-rank-ring{
+    animation:none!important;transform:translate(-50%,-50%)!important;
+  }
+}
