@@ -1665,3 +1665,85 @@ body [data-room-filter]:active{
 #app .mc-rank-ring{display:none!important}
 #app #onlineUsers .online-user-rank-badge .mc-rank-ring{display:block!important}
 #app #viewRooms.chatting #messages > .msg:not(.dm-msg):not(.system-message) .msg-author-group .message-rank-floating .mc-rank-ring{display:block!important}
+
+
+/* 20 Nov 2026 — public profiles use the same silver/steel accent as the live chat.
+   Remove the previous green/gold and monochrome-black button treatment. */
+.profile-modal.kp-public-profile{
+  --mc-profile-accent:#a7a7a7;
+  --mc-profile-accent-bright:#c1c1c1;
+  --mc-profile-accent-soft:rgba(161,161,161,.16);
+  --mc-profile-line:rgba(193,193,193,.24);
+  background:linear-gradient(155deg,#242424 0%,#1b1b1b 55%,#171717 100%)!important;
+  border:1px solid var(--mc-profile-line)!important;
+  color:#f4f4f4!important;
+  box-shadow:0 24px 75px rgba(0,0,0,.48),0 0 34px rgba(161,161,161,.09)!important;
+}
+.profile-modal.kp-public-profile .profile-banner{
+  background-color:#292929!important;
+  background-image:radial-gradient(ellipse at 50% 0%,rgba(177,177,177,.22),transparent 68%),linear-gradient(180deg,rgba(30,30,30,.05),rgba(20,20,20,.78))!important;
+  border-bottom:1px solid var(--mc-profile-line)!important;
+}
+.profile-modal.kp-public-profile .profile-stats .profile-stat,
+.profile-modal.kp-public-profile .profile-social-stat,
+.profile-modal.kp-public-profile .profile-section,
+.profile-modal.kp-public-profile .profile-info-card,
+.profile-modal.kp-public-profile .about-card,
+.profile-modal.kp-public-profile .profile-music-card,
+.profile-modal.kp-public-profile .profile-friend-tile{
+  border-color:var(--mc-profile-line)!important;
+  background:linear-gradient(145deg,rgba(62,62,62,.72),rgba(35,35,35,.94))!important;
+  color:#f3f3f3!important;
+}
+.profile-modal.kp-public-profile .profile-name{color:#fff!important;text-shadow:0 2px 18px rgba(0,0,0,.65)!important}
+.profile-modal.kp-public-profile .profile-handle,
+.profile-modal.kp-public-profile .profile-social-stat small{color:#c2c2c2!important}
+.profile-modal.kp-public-profile .profile-rank .rank{
+  border-color:rgba(193,193,193,.42)!important;
+  background:linear-gradient(135deg,rgba(100,100,100,.9),rgba(48,48,48,.96))!important;
+  color:#fff!important;
+}
+.profile-modal.kp-public-profile .profile-primary-actions button,
+.profile-modal.kp-public-profile .profile-primary-actions .profile-social-button,
+.profile-modal.kp-public-profile .profile-primary-actions .profile-message-button,
+.profile-modal.kp-public-profile button:not(.modal-close),
+.profile-modal.kp-public-profile a[role="button"]{
+  border:1px solid rgba(193,193,193,.38)!important;
+  background:linear-gradient(115deg,#626262,#999 62%,#b8b8b8)!important;
+  color:#111!important;
+  box-shadow:0 6px 18px rgba(120,120,120,.18)!important;
+  text-shadow:none!important;
+}
+.profile-modal.kp-public-profile .profile-primary-actions button:hover,
+.profile-modal.kp-public-profile button:not(.modal-close):hover,
+.profile-modal.kp-public-profile a[role="button"]:hover{
+  background:linear-gradient(115deg,#777,#b0b0b0 62%,#cecece)!important;
+  border-color:rgba(220,220,220,.58)!important;
+  transform:translateY(-1px);
+}
+.profile-modal.kp-public-profile .kp-profile-tabs-label,
+.profile-modal.kp-public-profile .profile-tabs{
+  background:rgba(48,48,48,.92)!important;
+  border-color:var(--mc-profile-line)!important;
+  color:#ededed!important;
+}
+.profile-modal.kp-public-profile .profile-tab{color:#c5c5c5!important;background:transparent!important}
+.profile-modal.kp-public-profile .profile-tab.active,
+.profile-modal.kp-public-profile .profile-tab:hover{
+  color:#fff!important;
+  background:linear-gradient(135deg,rgba(145,145,145,.3),rgba(193,193,193,.12))!important;
+  box-shadow:inset 0 -2px #bcbcbc!important;
+}
+.profile-modal.kp-public-profile .profile-info,
+.profile-modal.kp-public-profile .profile-tab-content{
+  background:linear-gradient(160deg,#242424,#1a1a1a)!important;
+  color:#ededed!important;
+}
+.profile-modal.kp-public-profile .profile-info-row{border-color:rgba(193,193,193,.15)!important}
+.profile-modal.kp-public-profile .profile-info-row b{color:#d0d0d0!important}
+.profile-modal.kp-public-profile .profile-info-row span{color:#e0e0e0!important}
+.profile-modal.kp-public-profile .modal-close{
+  border:1px solid rgba(193,193,193,.4)!important;
+  background:linear-gradient(135deg,#555,#333)!important;
+  color:#fff!important;
+}
