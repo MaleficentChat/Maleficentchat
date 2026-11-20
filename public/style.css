@@ -9846,4 +9846,9 @@ html{scroll-behavior:smooth;}
 
 /* Single public-profile close button sits after Edit Profile and the actions menu. */
 #modal .profile-modal .profile-stats>.profile-inline-close{position:static!important;inset:auto!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;flex:0 0 34px!important;width:34px!important;height:34px!important;min-width:34px!important;margin:0!important;padding:0!important;border:1px solid rgba(226,196,125,.72)!important;border-radius:10px!important;background:linear-gradient(145deg,#24496a,#132d46)!important;color:#fff!important;font-size:25px!important;line-height:1!important;}
-#modal:has(.profile-action-drawer-layer) .profile-modal .profile-inline-close{display:none!important;}
+
+
+/* Each Edit Account submenu has its own close control inside the panel. */
+#modal #modalBody{position:relative;}
+#modal #modalBody>.profile-edit-panel-close{position:absolute!important;top:10px!important;right:10px!important;z-index:30!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;width:36px!important;height:36px!important;min-width:36px!important;margin:0!important;padding:0!important;border:1px solid rgba(226,196,125,.78)!important;border-radius:11px!important;background:linear-gradient(145deg,#24496a,#132d46)!important;color:#fff!important;font-size:25px!important;line-height:1!important;box-shadow:0 4px 12px rgba(0,0,0,.28)!important;}
+#modal #modalBody>.profile-edit-menu{padding-top:12px!important;}
