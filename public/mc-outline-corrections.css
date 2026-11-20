@@ -2266,3 +2266,13 @@ body [data-room-filter]:active{
   #modal:has(.profile-modal) .profile-actions>button,
   #modal:has(.profile-modal) .profile-actions>a{flex-basis:100%!important}
 }
+
+
+/* Keep the public-profile action controls in their original header row.
+   Preserve the current blue/gold button appearance and dimensions; do not
+   let the hamburger's auto margin push it away from the neighboring controls. */
+#modal .profile-modal.kp-public-profile .profile-stats .profile-hamburger{
+  flex:0 0 42px!important;
+  margin-left:0!important;
+  align-self:center!important;
+}
