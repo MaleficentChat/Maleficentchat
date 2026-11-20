@@ -1187,3 +1187,103 @@ body [data-room-filter]:active{
     animation:none!important;
   }
 }
+
+
+/* 2026-11-20 corrective pass: real ring elements attached to the rendered rank glyphs.
+   This avoids pseudo-elements being buried by badge stacking contexts. */
+.message-rank-floating,
+#onlineUsers .online-user-rank-badge {
+  position:relative!important;
+  isolation:isolate!important;
+  overflow:visible!important;
+  background:none!important;
+  background-image:none!important;
+}
+.message-rank-floating::before,
+#onlineUsers .online-user-rank-badge::before { content:none!important; }
+.mc-rank-ring {
+  position:absolute!important;
+  inset:-5px!important;
+  display:block!important;
+  box-sizing:border-box!important;
+  border:1.6px solid transparent!important;
+  border-top-color:#ffe08a!important;
+  border-right-color:#f6a23b!important;
+  border-bottom-color:rgba(255,190,88,.82)!important;
+  border-radius:50%!important;
+  pointer-events:none!important;
+  z-index:0!important;
+  opacity:1!important;
+  filter:drop-shadow(0 0 3px rgba(255,174,45,.82))!important;
+  transform-origin:50% 50%!important;
+  animation:mcRankHaloOrbit 1.35s linear infinite!important;
+}
+.mc-rank-glyph {
+  position:relative!important;
+  z-index:1!important;
+  display:block!important;
+  line-height:1!important;
+}
+#onlineUsers .online-user-rank-badge .mc-rank-ring {
+  inset:-4px!important;
+  border-width:1.25px!important;
+}
+#onlineUsers .online-user-rank-badge .mc-rank-glyph {
+  font-size:10px!important;
+}
+@media(prefers-reduced-motion:reduce){
+  .mc-rank-ring{animation:none!important}
+}
+
+/* Restore intentional color accents on high-visibility controls and bot commands.
+   The neutral outline system remains in place everywhere else. */
+#auth #authSubmit.primary {
+  background:linear-gradient(110deg,#765126,#b98538 55%,#e0bd76)!important;
+  background-color:#9b6c31!important;
+  background-image:linear-gradient(110deg,#765126,#b98538 55%,#e0bd76)!important;
+  color:#17120a!important;
+  border:1px solid rgba(238,199,125,.72)!important;
+  box-shadow:0 7px 22px rgba(192,137,55,.24)!important;
+  text-shadow:0 1px rgba(255,235,190,.18)!important;
+  filter:none!important;
+}
+#auth .auth-tabs button {color:#c9b58f!important;border-color:rgba(201,165,103,.22)!important}
+#auth .auth-tabs button.active {
+  color:#fff1d1!important;
+  background:linear-gradient(110deg,rgba(126,83,35,.42),rgba(183,132,57,.2))!important;
+  border-color:rgba(224,185,112,.58)!important;
+}
+#messages .bot-welcome-message .bot-welcome-bubble {
+  opacity:1!important;
+  filter:none!important;
+  mix-blend-mode:normal!important;
+}
+#messages .bot-welcome-message .bot-welcome-glow {
+  opacity:1!important;
+  filter:none!important;
+  mix-blend-mode:normal!important;
+  text-shadow:0 0 12px currentColor!important;
+}
+#messages .bot-join-chat-message .bot-welcome-glow {
+  color:#f1d18c!important;
+  text-shadow:0 0 12px rgba(218,174,91,.72)!important;
+}
+#messages .bot-join-chat-message .bot-welcome-bubble {
+  border-color:rgba(218,174,91,.55)!important;
+  box-shadow:0 0 14px rgba(218,174,91,.16),inset 0 0 22px rgba(218,174,91,.04)!important;
+}
+#messages .bot-rose-message .bot-welcome-glow {
+  color:#ff8adf!important;
+  text-shadow:0 0 12px rgba(255,23,68,.85)!important;
+}
+#messages .bot-rose-message .bot-welcome-bubble {
+  border-color:#ff4fd8!important;
+  box-shadow:0 0 16px rgba(255,23,68,.28)!important;
+}
+#viewRooms .kp-room-eyebrow {color:#b8d8c7!important}
+#viewRooms .kp-live-dot {
+  background:#57dfa0!important;
+  box-shadow:0 0 0 3px rgba(87,223,160,.14),0 0 12px rgba(87,223,160,.72)!important;
+  opacity:1!important;
+  filter:none!important;
+}
