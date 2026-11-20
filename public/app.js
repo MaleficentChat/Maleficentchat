@@ -2629,7 +2629,7 @@ async function renderOnline(tab=onlinePanelTab,searchQuery=""){
     if(statusToggle&&statusOptions){
       const current=state.user?.customStatus||"Online";statusToggle.querySelector("#myStatusGlyph").textContent=statusEmoji(current);statusToggle.querySelector("#myStatusLabel").textContent=current;
       statusOptions.innerHTML=statusChoices.map(([label,emoji])=>'<button type="button" class="my-status-option" role="menuitem" data-status="'+esc(label)+'"><span>'+emoji+'</span>'+esc(label)+'</button>').join("");
-      statusToggle.onclick=()=>{const opening=statusOptions.classList.contains("hidden");statusOptions.classList.toggle("hidden",!opening);statusToggle.setAttribute("aria-expanded",opening?"true":"false");};
+      statusToggle.onclick=event=>{event.preventDefault();event.stopPropagation();const opening=statusOptions.classList.contains("hidden");statusOptions.classList.toggle("hidden",!opening);statusToggle.setAttribute("aria-expanded",opening?"true":"false");};
       statusOptions.querySelectorAll("[data-status]").forEach(button=>button.onclick=async()=>{try{const result=await api("/api/me/status",{method:"POST",body:JSON.stringify({status:button.dataset.status})});state.user.customStatus=result.status;statusOptions.classList.add("hidden");statusToggle.setAttribute("aria-expanded","false");toast("Status updated.");await renderOnline(onlinePanelTab);}catch(e){toast(e.message||"Could not update status.");}});
     }
 
