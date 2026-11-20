@@ -2053,3 +2053,160 @@ body [data-room-filter]:active{
   background:linear-gradient(135deg,#1a3858,#102439)!important;
   color:#f6f9fd!important;box-shadow:0 4px 12px rgba(0,0,0,.24)!important;
 }
+
+
+/* 2026-11-20 — public profile controls use the site's blue-and-gold system.
+   Includes the lifetime journey card and an in-profile action drawer. */
+#modal .profile-modal.kp-public-profile{
+  --profile-blue:#629ddc;
+  --profile-blue-deep:#3d71a8;
+  --profile-gold:#e5c17e;
+  --profile-navy:#0b1520;
+  --profile-panel:#111f2d;
+  --profile-panel-2:#172c43;
+  background:var(--profile-navy)!important;
+  color:#f2f7fc!important;
+  position:relative!important;
+}
+#modal .profile-modal.kp-public-profile .profile-tabs{
+  background:linear-gradient(135deg,#10243a,#172f49)!important;
+  border-top:1px solid rgba(98,157,220,.5)!important;
+  border-bottom:1px solid rgba(229,193,126,.55)!important;
+  padding:9px 8px!important;
+  gap:7px!important;
+  scrollbar-color:#629ddc #10243a!important;
+}
+#modal .profile-modal.kp-public-profile .profile-tab{
+  flex:0 0 auto!important;
+  border:1px solid rgba(98,157,220,.68)!important;
+  border-radius:12px!important;
+  padding:10px 13px!important;
+  background:linear-gradient(145deg,#193754,#12283e)!important;
+  color:#dceafa!important;
+  font-weight:750!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.08),0 3px 9px rgba(0,0,0,.22)!important;
+}
+#modal .profile-modal.kp-public-profile .profile-tab.active,
+#modal .profile-modal.kp-public-profile .profile-tab[aria-selected="true"]{
+  border:1px solid #e5c17e!important;
+  background:linear-gradient(145deg,#477fb6,#234b72)!important;
+  color:#fff!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 0 0 2px rgba(229,193,126,.13),0 5px 14px rgba(0,0,0,.3)!important;
+}
+#modal .profile-modal.kp-public-profile .profile-tab:hover{
+  border-color:#e5c17e!important;filter:brightness(1.12)!important;
+}
+#modal .profile-modal.kp-public-profile .profile-info,
+#modal .profile-modal.kp-public-profile #profileTabContent{
+  background:linear-gradient(180deg,#0e1b29,#101f2e)!important;
+  color:#e8f1fb!important;
+}
+#modal .profile-modal.kp-public-profile .profile-info-row{
+  border-bottom:1px solid rgba(98,157,220,.22)!important;
+}
+#modal .profile-modal.kp-public-profile .profile-info-row b{color:#e5c17e!important}
+#modal .profile-modal.kp-public-profile .profile-info-row span{color:#e0ebf7!important}
+#modal .profile-modal.kp-public-profile .legacy-xp-card{
+  margin:12px 14px!important;
+  padding:15px 16px!important;
+  border:1px solid rgba(229,193,126,.58)!important;
+  border-radius:18px!important;
+  background:linear-gradient(145deg,#172f49,#0d1c2b)!important;
+  color:#f4f8fd!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.07),0 8px 22px rgba(0,0,0,.24)!important;
+}
+#modal .profile-modal.kp-public-profile .legacy-xp-head small{
+  color:#e5c17e!important;letter-spacing:.18em!important;font-weight:900!important;
+}
+#modal .profile-modal.kp-public-profile .legacy-xp-head strong{color:#f4f8fd!important}
+#modal .profile-modal.kp-public-profile .legacy-xp-total{color:#e5c17e!important}
+#modal .profile-modal.kp-public-profile .legacy-xp-track{
+  height:11px!important;background:#263e56!important;border:1px solid rgba(98,157,220,.35)!important;border-radius:99px!important;overflow:hidden!important;
+}
+#modal .profile-modal.kp-public-profile .legacy-xp-track span{
+  display:block!important;height:100%!important;border-radius:99px!important;
+  background:linear-gradient(90deg,#3d71a8,#629ddc,#e5c17e)!important;
+}
+#modal .profile-modal.kp-public-profile .legacy-xp-foot{color:#c8d9ec!important}
+#modal .profile-modal.kp-public-profile .profile-primary-actions{
+  display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  gap:10px!important;margin:13px 14px 15px!important;
+}
+#modal .profile-modal.kp-public-profile .profile-primary-actions .profile-social-button,
+#modal .profile-modal.kp-public-profile #profileSendPM,
+#modal .profile-modal.kp-public-profile #profileAddFriend{
+  display:inline-flex!important;visibility:visible!important;opacity:1!important;
+  min-width:0!important;min-height:44px!important;width:100%!important;
+  align-items:center!important;justify-content:center!important;gap:8px!important;
+  padding:11px 12px!important;box-sizing:border-box!important;
+  border:1px solid #629ddc!important;border-radius:13px!important;
+  background:linear-gradient(145deg,#2d5f91,#173653)!important;
+  color:#fff!important;font-size:14px!important;font-weight:800!important;
+  text-shadow:0 1px 2px rgba(0,0,0,.35)!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.14),0 5px 13px rgba(0,0,0,.28)!important;
+}
+#modal .profile-modal.kp-public-profile .profile-primary-actions #profileAddFriend{
+  border-color:#e5c17e!important;
+  background:linear-gradient(145deg,#9b7843,#614a2b)!important;
+}
+#modal .profile-modal.kp-public-profile .profile-stats .profile-hamburger,
+#modal .profile-modal.kp-public-profile .profile-stats .profile-rank-btn,
+#modal .profile-modal.kp-public-profile .profile-stats .profile-edit-btn{
+  display:inline-grid!important;place-items:center!important;
+  width:42px!important;height:42px!important;min-width:42px!important;
+  border:1px solid rgba(229,193,126,.7)!important;border-radius:13px!important;
+  background:linear-gradient(145deg,#234c73,#12283e)!important;
+  color:#fff!important;box-shadow:0 4px 12px rgba(0,0,0,.28)!important;
+}
+#modal .profile-modal.kp-public-profile .profile-actions{
+  display:flex!important;flex-wrap:wrap!important;gap:9px!important;
+  padding:12px 0 5px!important;
+}
+#modal .profile-modal.kp-public-profile .profile-actions button{
+  display:inline-flex!important;align-items:center!important;justify-content:center!important;
+  min-height:40px!important;padding:9px 13px!important;
+  border:1px solid rgba(98,157,220,.78)!important;border-radius:12px!important;
+  background:linear-gradient(145deg,#234d74,#142d45)!important;
+  color:#f5f8fc!important;font-weight:800!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.1),0 4px 11px rgba(0,0,0,.25)!important;
+}
+#modal .profile-modal.kp-public-profile .profile-actions button:hover,
+#modal .profile-modal.kp-public-profile .profile-primary-actions button:hover{
+  border-color:#e5c17e!important;filter:brightness(1.13)!important;transform:translateY(-1px)!important;
+}
+#modal .profile-modal.kp-public-profile .profile-actions button:active,
+#modal .profile-modal.kp-public-profile .profile-primary-actions button:active{
+  transform:scale(.97)!important;
+}
+#modal .profile-action-drawer-layer{
+  position:absolute!important;inset:0!important;z-index:80!important;
+  display:flex!important;align-items:flex-start!important;justify-content:flex-end!important;
+  padding:58px 12px 14px!important;box-sizing:border-box!important;
+  border-radius:inherit!important;background:rgba(3,10,19,.58)!important;
+  backdrop-filter:blur(3px)!important;
+}
+#modal .profile-action-drawer-layer .profile-drawer{
+  position:relative!important;width:min(330px,100%)!important;max-height:calc(100% - 8px)!important;
+  overflow:auto!important;padding:18px 14px 14px!important;
+  border:1px solid rgba(229,193,126,.72)!important;border-radius:17px!important;
+  background:linear-gradient(150deg,#193653,#0d1b29)!important;color:#f3f7fc!important;
+  box-shadow:0 14px 36px rgba(0,0,0,.48)!important;
+}
+#modal .profile-action-drawer-layer .profile-drawer h2{color:#e5c17e!important;margin:0 38px 12px 0!important}
+#modal .profile-action-drawer-layer .profile-drawer .quick-user-row{
+  display:flex!important;width:100%!important;min-height:44px!important;align-items:center!important;
+  margin:7px 0!important;padding:10px 12px!important;box-sizing:border-box!important;
+  border:1px solid rgba(98,157,220,.65)!important;border-radius:11px!important;
+  background:linear-gradient(145deg,#234d74,#142b42)!important;color:#fff!important;
+}
+#modal .profile-action-drawer-close{
+  position:absolute!important;top:9px!important;right:9px!important;z-index:2!important;
+  width:32px!important;height:32px!important;border:1px solid #e5c17e!important;
+  border-radius:10px!important;background:#142b42!important;color:#fff!important;
+  font-size:22px!important;line-height:1!important;
+}
+@media(max-width:520px){
+  #modal .profile-action-drawer-layer{padding:54px 9px 10px!important}
+  #modal .profile-action-drawer-layer .profile-drawer{width:min(310px,100%)!important}
+  #modal .profile-modal.kp-public-profile .profile-primary-actions{gap:8px!important;margin-inline:10px!important}
+}
