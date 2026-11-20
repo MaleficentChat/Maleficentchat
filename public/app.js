@@ -2550,7 +2550,8 @@ function statusEmoji(status){
 }
 function moodEmoji(value){const s=String(value||'').toLowerCase();const map=[['happy','😊'],['chill','😌'],['loved','🥰'],['energetic','⚡'],['listening','🎧'],['gaming','🎮'],['quiet','🌙'],['focused','🧠'],['break','☕'],['sleepy','🥱'],['magical','✨'],['disturb','🚫'],['birthday','🎂']];return map.find(([k])=>s.includes(k))?.[1]||'☻';}
 function isStaffUser(user){
-  return ["MOD","ADMIN","SUPER_ADMIN","COMMISSOR","INSTRUCTOR","COOWNER","OWNER","DEVELOPER"].includes(user.rank);
+  const rankName=String(user?.rank||"").toUpperCase().replace(/[\\s-]+/g,"_");
+  return ["MOD","MODERATOR","ADMIN","SUPER_ADMIN","SUPERADMIN","COMMISSOR","INSTRUCTOR","COOWNER","OWNER","DEVELOPER"].includes(rankName);
 }
 
 let onlineSortMode="online-rank";
