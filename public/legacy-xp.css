@@ -10,3 +10,35 @@
 @media(max-width:480px){.legacy-xp-card{padding:11px}.legacy-xp-head strong{font-size:13px}.legacy-xp-total{font-size:11px}}
 /* Keep the Lifetime Journey card directly below the profile tabs. */
 .profile-modal>.legacy-xp-card{margin:12px 18px 0;}
+
+
+/* Lifetime Journey — match the live Maleficent Chat blue-and-gold profile theme. */
+.profile-modal .legacy-xp-card{
+  border:1px solid rgba(98,157,220,.42)!important;
+  border-radius:16px!important;
+  background:
+    radial-gradient(ellipse at 8% 0%,rgba(55,117,184,.18),transparent 60%),
+    linear-gradient(145deg,#12263a 0%,#0d1927 100%)!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.055),0 8px 24px rgba(0,0,0,.22)!important;
+}
+.profile-modal .legacy-xp-head small{
+  color:#a9c6e5!important;letter-spacing:.18em!important;
+}
+.profile-modal .legacy-xp-head strong{
+  color:#f4f7fc!important;
+}
+.profile-modal .legacy-xp-total{
+  color:#e8c77f!important;font-weight:850!important;
+}
+.profile-modal .legacy-xp-track{
+  height:9px!important;
+  background:rgba(98,157,220,.20)!important;
+  border:1px solid rgba(98,157,220,.28)!important;
+}
+.profile-modal .legacy-xp-track span{
+  background:linear-gradient(90deg,#347fca 0%,#6eafe8 48%,#e5c17e 100%)!important;
+  box-shadow:0 0 13px rgba(98,157,220,.42),0 0 9px rgba(229,193,126,.24)!important;
+}
+.profile-modal .legacy-xp-foot{
+  color:#c4d3e3!important;font-size:11px!important;
+}
