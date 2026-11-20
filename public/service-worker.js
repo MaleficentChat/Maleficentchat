@@ -1,4 +1,4 @@
-const CACHE="maleficent-chat-v27-socket-only-live-chat";
+const CACHE="maleficent-chat-v28-helper-isolation-20261121";
 const ASSETS=["/","/style.css","/app.js","/manifest.json","/favicon.svg","/robots.txt","/sitemap.xml","/doodle-studio.js"];
 
 self.addEventListener("install",event=>{
