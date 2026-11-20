@@ -21,10 +21,10 @@
       <div class="mc-call-incoming" id="mcCallIncoming" hidden><b id="mcCallIncomingText">Incoming call</b><div><button type="button" id="mcCallAccept" class="mc-call-primary">Accept</button><button type="button" id="mcCallDecline" class="mc-call-danger">Decline</button></div></div>
     </section>`;
   document.body.appendChild(root);
-  const $=id=>document.getElementById(id);
-  const panel=$("mcCallPanel"),startBox=$("mcCallStart"),status=$("mcCallStatus"),media=$("mcCallMedia"),controls=$("mcCallControls"),incoming=$("mcCallIncoming");
+  const mcCallGetById =id=>document.getElementById(id);
+  const panel=mcCallGetById("mcCallPanel"),startBox=mcCallGetById("mcCallStart"),status=mcCallGetById("mcCallStatus"),media=mcCallGetById("mcCallMedia"),controls=mcCallGetById("mcCallControls"),incoming=mcCallGetById("mcCallIncoming");
   // Place the call launcher in the Online Users panel, away from the message composer.
-  const callLauncher=$("mcCallLaunch");
+  const callLauncher=mcCallGetById("mcCallLaunch");
   const onlinePanel=document.getElementById("onlinePanel");
   const onlineHeading=onlinePanel?.querySelector("#onlinePanelTitle")?.closest(".panel-head");
   if(callLauncher&&onlineHeading){
@@ -49,14 +49,14 @@
       });
     });
   }
-  function show(){panel.hidden=false;$("mcCallTarget").focus();}
+  function show(){panel.hidden=false;mcCallGetById("mcCallTarget").focus();}
   function resetUI(message){
     if(peer){peer.ontrack=null;peer.onicecandidate=null;peer.close();peer=null;}pendingCandidates=[];
     if(localStream){localStream.getTracks().forEach(t=>t.stop());localStream=null;}
-    $("mcCallRemote").srcObject=null;$("mcCallLocal").srcObject=null;
+    mcCallGetById("mcCallRemote").srcObject=null;mcCallGetById("mcCallLocal").srcObject=null;
     activeCall=null;pendingIncoming=null;muted=false;cameraOff=false;
     startBox.hidden=false;media.hidden=true;controls.hidden=true;incoming.hidden=true;status.hidden=!message;
-    status.textContent=message||"";$("mcCallMute").textContent="Mute";$("mcCallCamera").textContent="Camera off";
+    status.textContent=message||"";mcCallGetById("mcCallMute").textContent="Mute";mcCallGetById("mcCallCamera").textContent="Camera off";
   }
   function say(message){status.hidden=false;status.textContent=message;}
   function authSocket(){
@@ -72,7 +72,7 @@
     socket.on("call:incoming",data=>{
       if(activeCall||pendingIncoming){socket.emit("call:respond",{callId:data.callId,accept:false});return;}
       pendingIncoming=data;show();startBox.hidden=true;incoming.hidden=false;status.hidden=true;
-      $("mcCallIncomingText").textContent=(data.fromName||"Someone")+" is calling you ("+(data.mode==="video"?"video":"voice")+")";
+      mcCallGetById("mcCallIncomingText").textContent=(data.fromName||"Someone")+" is calling you ("+(data.mode==="video"?"video":"voice")+")";
     });
     socket.on("call:accepted",async data=>{
       if(!activeCall||activeCall.callId!==data.callId)return;
@@ -80,9 +80,9 @@
       try{
         await refreshRtcConfig();
         localStream=await navigator.mediaDevices.getUserMedia({audio:true,video:activeCall.mode==="video"});
-        $("mcCallLocal").srcObject=localStream;$("mcCallLocal").hidden=activeCall.mode!=="video";
+        mcCallGetById("mcCallLocal").srcObject=localStream;mcCallGetById("mcCallLocal").hidden=activeCall.mode!=="video";
         peer=new RTCPeerConnection(rtcConfig);localStream.getTracks().forEach(track=>peer.addTrack(track,localStream));
-        peer.ontrack=event=>{$("mcCallRemote").srcObject=event.streams[0];};
+        peer.ontrack=event=>{mcCallGetById("mcCallRemote").srcObject=event.streams[0];};
         pendingCandidates=[];peer.onicecandidate=event=>{if(event.candidate)socket.emit("call:signal",{callId:activeCall.callId,signal:{type:"candidate",candidate:event.candidate}});};
         if(activeCall.initiator){const offer=await peer.createOffer();await peer.setLocalDescription(offer);socket.emit("call:signal",{callId:activeCall.callId,signal:{type:"offer",sdp:offer.sdp}});}
         say("Connected · "+(activeCall.mode==="video"?"Video call":"Voice call"));
@@ -96,9 +96,9 @@
           await refreshRtcConfig();
           if(!peer){
             localStream=await navigator.mediaDevices.getUserMedia({audio:true,video:activeCall.mode==="video"});
-            $("mcCallLocal").srcObject=localStream;$("mcCallLocal").hidden=activeCall.mode!=="video";
+            mcCallGetById("mcCallLocal").srcObject=localStream;mcCallGetById("mcCallLocal").hidden=activeCall.mode!=="video";
             peer=new RTCPeerConnection(rtcConfig);localStream.getTracks().forEach(track=>peer.addTrack(track,localStream));
-            peer.ontrack=event=>{$("mcCallRemote").srcObject=event.streams[0];};
+            peer.ontrack=event=>{mcCallGetById("mcCallRemote").srcObject=event.streams[0];};
             peer.onicecandidate=event=>{if(event.candidate)socket.emit("call:signal",{callId:activeCall.callId,signal:{type:"candidate",candidate:event.candidate}});};
           }
           await peer.setRemoteDescription({type:"offer",sdp:signal.sdp});for(const candidate of pendingCandidates.splice(0)){await peer.addIceCandidate(candidate);}const answer=await peer.createAnswer();await peer.setLocalDescription(answer);socket.emit("call:signal",{callId:activeCall.callId,signal:{type:"answer",sdp:answer.sdp}});
@@ -109,27 +109,27 @@
     socket.on("call:ended",data=>{if(activeCall?.callId===data.callId||pendingIncoming?.callId===data.callId)resetUI(data.reason==="declined"?"Call declined.":data.reason==="no-answer"?"No answer.":"Call ended.");});
     if(socket.connected)authSocket();
   }
-  $("mcCallLaunch").addEventListener("click",()=>{show();ensureSocket();});
-  $("mcCallClose").addEventListener("click",()=>{panel.hidden=true;});
-  $("mcCallStartBtn").addEventListener("click",()=>{
+  mcCallGetById("mcCallLaunch").addEventListener("click",()=>{show();ensureSocket();});
+  mcCallGetById("mcCallClose").addEventListener("click",()=>{panel.hidden=true;});
+  mcCallGetById("mcCallStartBtn").addEventListener("click",()=>{
     ensureSocket();if(!authed){say("Please wait for your account to connect, then try again.");authSocket();return;}
-    const to=$("mcCallTarget").value.trim();if(!to){say("Enter a username first.");return;}
-    const mode=$("mcCallMode").value;
-    $("mcCallStartBtn").disabled=true;
+    const to=mcCallGetById("mcCallTarget").value.trim();if(!to){say("Enter a username first.");return;}
+    const mode=mcCallGetById("mcCallMode").value;
+    mcCallGetById("mcCallStartBtn").disabled=true;
     socket.emit("call:invite",{to,mode},result=>{
-      $("mcCallStartBtn").disabled=false;
+      mcCallGetById("mcCallStartBtn").disabled=false;
       if(!result?.ok){say(result?.error||"Could not start the call.");return;}
       activeCall={callId:result.callId,mode,initiator:true};startBox.hidden=true;say("Calling "+to+"… waiting for them to answer.");
     });
   });
-  $("mcCallAccept").addEventListener("click",()=>{
+  mcCallGetById("mcCallAccept").addEventListener("click",()=>{
     if(!pendingIncoming||!authed)return;
     const call=pendingIncoming;activeCall={callId:call.callId,mode:call.mode,initiator:false};pendingIncoming=null;
     socket.emit("call:respond",{callId:call.callId,accept:true},result=>{if(!result?.ok)resetUI(result?.error||"Could not accept the call.");});
   });
-  $("mcCallDecline").addEventListener("click",()=>{if(pendingIncoming)socket.emit("call:respond",{callId:pendingIncoming.callId,accept:false});resetUI("Call declined.");});
-  $("mcCallHangup").addEventListener("click",()=>{if(activeCall&&socket)socket.emit("call:end",{callId:activeCall.callId});resetUI("Call ended.");});
-  $("mcCallMute").addEventListener("click",()=>{muted=!muted;(localStream?.getAudioTracks()||[]).forEach(t=>t.enabled=!muted);$("mcCallMute").textContent=muted?"Unmute":"Mute";});
-  $("mcCallCamera").addEventListener("click",()=>{cameraOff=!cameraOff;(localStream?.getVideoTracks()||[]).forEach(t=>t.enabled=!cameraOff);$("mcCallCamera").textContent=cameraOff?"Camera on":"Camera off";});
+  mcCallGetById("mcCallDecline").addEventListener("click",()=>{if(pendingIncoming)socket.emit("call:respond",{callId:pendingIncoming.callId,accept:false});resetUI("Call declined.");});
+  mcCallGetById("mcCallHangup").addEventListener("click",()=>{if(activeCall&&socket)socket.emit("call:end",{callId:activeCall.callId});resetUI("Call ended.");});
+  mcCallGetById("mcCallMute").addEventListener("click",()=>{muted=!muted;(localStream?.getAudioTracks()||[]).forEach(t=>t.enabled=!muted);mcCallGetById("mcCallMute").textContent=muted?"Unmute":"Mute";});
+  mcCallGetById("mcCallCamera").addEventListener("click",()=>{cameraOff=!cameraOff;(localStream?.getVideoTracks()||[]).forEach(t=>t.enabled=!cameraOff);mcCallGetById("mcCallCamera").textContent=cameraOff?"Camera on":"Camera off";});
   ensureSocket();setInterval(()=>{if(socket&&!authed)authSocket();},1500);
 })();
