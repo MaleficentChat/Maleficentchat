@@ -1000,7 +1000,7 @@ body [data-room-filter]:active{
 #onlinePanel #onlineUsers .online-user-grid > .online-user > .online-user-rank-badge{
   position:absolute!important;
   right:9px!important;left:auto!important;top:50%!important;bottom:auto!important;
-  transform:translateY(-50%)!important;
+  top:0!important;bottom:0!important;margin-top:auto!important;margin-bottom:auto!important;
   display:inline-flex!important;align-items:center!important;justify-content:center!important;
   box-sizing:border-box!important;
   width:12px!important;min-width:12px!important;max-width:12px!important;
@@ -1009,4 +1009,49 @@ body [data-room-filter]:active{
   background:transparent!important;box-shadow:none!important;
   font-size:10px!important;line-height:12px!important;
   overflow:visible!important;
+}
+
+
+/* 20 Nov 2026 — smooth horizontal 3D spin for rank badges everywhere.
+   Animate only the badge glyphs; never scale or reposition their layout. */
+@keyframes mcRankBadgeSpin {
+  from { transform: perspective(520px) rotateY(0deg); }
+  to   { transform: perspective(520px) rotateY(360deg); }
+}
+@keyframes mcPeopleRankBadgeSpin {
+  from { transform: perspective(520px) translateY(-50%) rotateY(0deg); }
+  to   { transform: perspective(520px) translateY(-50%) rotateY(360deg); }
+}
+.message-rank-floating,
+.room-user-rank,
+.profile-rank .rank,
+.profile-rank-badge,
+.rank-badge,
+.rank-icon {
+  transform-style:preserve-3d!important;
+  transform-origin:center center!important;
+  backface-visibility:hidden;
+  animation:mcRankBadgeSpin 3.6s linear infinite;
+}
+#onlineUsers .online-user-rank-badge,
+#onlinePanel #onlineUsers .online-user-rank-badge,
+#onlinePanel .online-user-grid .online-user-rank-badge {
+  transform-style:preserve-3d!important;
+  transform-origin:center center!important;
+  backface-visibility:hidden;
+  animation:mcPeopleRankBadgeSpin 3.6s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .message-rank-floating,
+  .room-user-rank,
+  .profile-rank .rank,
+  .profile-rank-badge,
+  .rank-badge,
+  .rank-icon,
+  #onlineUsers .online-user-rank-badge,
+  #onlinePanel #onlineUsers .online-user-rank-badge,
+  #onlinePanel .online-user-grid .online-user-rank-badge {
+    animation:none!important;
+    transform:none!important;
+  }
 }
