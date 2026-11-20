@@ -5562,6 +5562,7 @@ function openProfileEditMenu(targetUser=null){
     {id:'editUpload',icon:'📤',title:'Upload',desc:'Profile picture or profile background',show:self||canModify},
     {id:'removeProfilePicture',icon:'🗑️',title:'Remove profile picture',desc:self?'Clear your current profile photo':'Remove this member\'s profile photo',show:self||(!self&&canModify&&canAccessStaffTarget(user))},
     {id:'removeProfileBackground',icon:'🗑️',title:'Remove background',desc:self?'Clear your current profile background':'Remove this member\'s profile background',show:self||(!self&&canModify&&canAccessStaffTarget(user))},
+    {id:'profileMusic',icon:'🎵',title:'Profile music',desc:'Upload or remove the music on your profile',show:self},
     {id:'editName',icon:'✏️',title:'Edit Name',desc:'Username and display name',show:canEditUsername||canModify},
     {id:'editEmail',icon:'✉️',title:'Edit email',desc:'Change account email address',show:canEditEmail},
     {id:'editPassword',icon:'🔒',title:'Edit password',desc:'Set a new account password',show:canChangePassword},
@@ -5573,6 +5574,7 @@ function openProfileEditMenu(targetUser=null){
   $('editUpload')?.addEventListener('click',()=>openAccountUploadMenu(self?null:user));
   $('removeProfilePicture')?.addEventListener('click',()=>self?deleteAvatar():deleteStaffProfileMedia(user,'avatar'));
   $('removeProfileBackground')?.addEventListener('click',()=>self?deleteBanner():deleteStaffProfileMedia(user,'banner'));
+  $('profileMusic')?.addEventListener('click',openAccountProfileMusicMenu);
   $('editName')?.addEventListener('click',()=>openAccountNameEditor(self?null:user));
   $('editEmail')?.addEventListener('click',()=>openAccountEmailEditor(self?null:user));
   $('editPassword')?.addEventListener('click',()=>openAccountPasswordEditor(self?null:user));
@@ -5592,6 +5594,27 @@ function openAccountUploadMenu(targetUser=null){
   $('uploadAccountBackground')?.addEventListener('click',()=>self?uploadBanner():pickStaffAccountImage(targetUser,'banner'));
   $('removeAccountAvatar')?.addEventListener('click',deleteAvatar);
   $('removeAccountBackground')?.addEventListener('click',deleteBanner);
+}
+function openAccountProfileMusicMenu(){
+  const hasMusic=!!state.user?.profileMusicUrl;
+  modal(`<div class="profile-edit-menu"><h2>🎵 Profile music</h2><div class="profile-edit-menu-grid">
+    <button class="settings-row" id="uploadProfileMusic"><span>📤</span><b>Upload profile music</b><small>Add or replace the music on your profile</small><strong>›</strong></button>
+    ${hasMusic?'<button class="settings-row danger-row" id="removeProfileMusic"><span>🗑️</span><b>Remove profile music</b><small>Clear your current profile music</small><strong>›</strong></button>':''}
+  </div></div>`);
+  $('uploadProfileMusic')?.addEventListener('click',()=>{
+    const picker=document.createElement('input');picker.type='file';picker.accept='.mp3,.m4a,.aac,.ogg,.opus,.wav,.flac,.weba,audio/*';
+    picker.onchange=async()=>{const file=picker.files?.[0];if(!file)return;
+      if(file.size>15*1024*1024){toast('Profile music must be 15 MB or smaller.');return;}
+      const form=new FormData();form.append('file',file);
+      try{const result=await api('/api/me/profile-music',{method:'POST',body:form,uploadProgress:true});state.user=result.user;closeModal();updateNav();await loadProfile(state.user);toast('Profile music uploaded.');}
+      catch(error){toast(error.message||'Could not upload profile music.');}
+    };picker.click();
+  });
+  $('removeProfileMusic')?.addEventListener('click',async()=>{
+    if(!confirm('Remove your profile music?'))return;
+    try{const result=await api('/api/me/profile-music',{method:'DELETE'});state.user=result.user;closeModal();updateNav();await loadProfile(state.user);toast('Profile music removed.');}
+    catch(error){toast(error.message||'Could not remove profile music.');}
+  });
 }
 function pickStaffAccountImage(user,kind){
   const picker=document.createElement('input');picker.type='file';picker.accept='image/png,image/jpeg,image/gif,image/webp,image/avif';
