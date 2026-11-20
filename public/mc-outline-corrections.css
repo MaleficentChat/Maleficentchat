@@ -1023,6 +1023,7 @@ body [data-room-filter]:active{
   to   { transform: perspective(520px) translateY(-50%) rotateY(360deg); }
 }
 .message-rank-floating,
+.rank,
 .room-user-rank,
 .profile-rank .rank,
 .profile-rank-badge,
@@ -1043,6 +1044,7 @@ body [data-room-filter]:active{
 }
 @media (prefers-reduced-motion: reduce) {
   .message-rank-floating,
+  .rank,
   .room-user-rank,
   .profile-rank .rank,
   .profile-rank-badge,
