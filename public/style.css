@@ -10120,3 +10120,14 @@ html{scroll-behavior:smooth;}
 #topFriendsDropdown .friend-request-empty>b{font-size:12px}
 #topFriendsDropdown .friend-request-empty>small{font-size:10px;color:var(--muted)}
 @media(max-width:520px){#topFriendsDropdown .friend-request-card{padding:10px!important}#topFriendsDropdown .friend-request-person>.avatar{width:38px;height:38px;flex-basis:38px}}
+
+
+/* Keep the status picker visible above the current-user card and prevent it being clipped. */
+#onlineUsers .online-user-grid .online-user:has(.my-status-options:not(.hidden)){
+  overflow:visible!important;
+  z-index:120!important;
+}
+#viewRooms.chatting .online-panel #onlineUsers .online-user-grid .online-user:has(.my-status-options:not(.hidden)){
+  overflow:visible!important;
+  z-index:120!important;
+}
