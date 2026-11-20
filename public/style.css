@@ -9957,3 +9957,49 @@ html{scroll-behavior:smooth;}
 #modal .profile-modal .profile-stats>.profile-inline-close{
   order:99!important;
 }
+
+
+/* Center the complete public-profile stats/actions strip as one group. */
+#modal .profile-modal .profile-stats{
+  left:0!important;
+  right:0!important;
+  width:100%!important;
+  max-width:100%!important;
+  margin-left:auto!important;
+  margin-right:auto!important;
+  padding:0 8px!important;
+  box-sizing:border-box!important;
+  justify-content:center!important;
+  align-content:center!important;
+  gap:7px!important;
+}
+#modal .profile-modal .profile-stats>.profile-stat{
+  flex:0 1 auto!important;
+  min-width:0!important;
+  white-space:nowrap!important;
+}
+#modal .profile-modal .profile-stats>.profile-rank-btn,
+#modal .profile-modal .profile-stats>.profile-edit-btn,
+#modal .profile-modal .profile-stats>.profile-hamburger,
+#modal .profile-modal .profile-stats>.profile-inline-close{
+  margin:0!important;
+  flex:0 0 34px!important;
+}
+@media(max-width:700px){
+  #modal .profile-modal .profile-stats{
+    left:0!important;right:0!important;width:100%!important;
+    padding:0 6px!important;gap:5px!important;
+    justify-content:center!important;
+  }
+  #modal .profile-modal .profile-stats>.profile-stat{
+    padding:4px 6px!important;font-size:10px!important;
+  }
+}
+
+/* Give the Main Room username a little breathing room from its rank badge. */
+#viewRooms.main-room-chat #messages > .msg:not(.dm-msg) .msg-author-group{
+  gap:9px!important;
+}
+#viewRooms.main-room-chat #messages > .msg:not(.dm-msg) .msg-author-group .message-rank-floating{
+  margin-right:2px!important;
+}
