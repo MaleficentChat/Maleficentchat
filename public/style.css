@@ -11035,3 +11035,16 @@ html{scroll-behavior:smooth;}
   font-size:12px!important;
   line-height:1!important;
 }
+
+
+/* Final People-card badge placement: a direct card child avoids heading/layout overrides. */
+#onlineUsers .online-user-grid .online-user{position:relative!important;}
+#onlineUsers .online-user-grid .online-user-copy{padding-right:42px!important;min-width:0!important;}
+#onlineUsers .online-user-grid .online-user>.online-user-rank-badge{
+  display:inline-flex!important;position:absolute!important;top:50%!important;right:12px!important;left:auto!important;
+  inset-inline:auto 12px!important;transform:translateY(-50%)!important;z-index:5!important;
+  align-items:center!important;justify-content:center!important;flex:0 0 24px!important;
+  width:24px!important;min-width:24px!important;height:24px!important;min-height:24px!important;
+  margin:0!important;font-size:12px!important;line-height:1!important;
+}
+#onlineUsers .online-user-grid .online-user>.online-user-rank-badge .mc-rank-glyph{font-size:12px!important;line-height:1!important;}
