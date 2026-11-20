@@ -10728,3 +10728,49 @@ html{scroll-behavior:smooth;}
   white-space:nowrap!important;
 }
 #viewRooms.main-room-chat #messages .quoted .quoted-text{margin:0!important}
+
+
+/* Quoted reply: sender avatar sits beside the original message, not above it. */
+#viewRooms.main-room-chat #messages .quoted{
+  display:flex!important;
+  align-items:center!important;
+  gap:9px!important;
+}
+#viewRooms.main-room-chat #messages .quoted .quoted-avatar{
+  display:block!important;
+  flex:0 0 28px!important;
+  width:28px!important;
+  height:28px!important;
+  min-width:28px!important;
+  min-height:28px!important;
+  margin:0!important;
+}
+#viewRooms.main-room-chat #messages .quoted .quoted-avatar .avatar,
+#viewRooms.main-room-chat #messages .quoted .quoted-avatar .avatar img{
+  display:flex!important;
+  width:28px!important;
+  height:28px!important;
+  min-width:28px!important;
+  min-height:28px!important;
+  border-radius:50%!important;
+  object-fit:cover!important;
+  overflow:hidden!important;
+}
+#viewRooms.main-room-chat #messages .quoted .quoted-content{
+  display:flex!important;
+  flex:1 1 auto!important;
+  flex-direction:column!important;
+  gap:3px!important;
+  min-width:0!important;
+}
+#viewRooms.main-room-chat #messages .quoted .quoted-author-name{
+  margin:0!important;
+  font-size:11px!important;
+  font-weight:700!important;
+  line-height:1.2!important;
+}
+#viewRooms.main-room-chat #messages .quoted .quoted-text{
+  min-width:0!important;
+  line-height:1.35!important;
+  overflow-wrap:anywhere!important;
+}
