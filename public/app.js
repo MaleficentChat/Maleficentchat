@@ -5372,12 +5372,31 @@ async function showAchievements(user){
 }
 
 async function openProfileActionDrawer(user,data={}){
+  const mountProfileActionDrawer=(markup)=>{
+    const profile=document.querySelector('#modal .profile-modal');
+    if(!profile){modal(markup);return null;}
+    profile.querySelector('.profile-action-drawer-layer')?.remove();
+    const layer=document.createElement('div');
+    layer.className='profile-action-drawer-layer';
+    layer.innerHTML=markup;
+    const drawer=layer.querySelector('.profile-drawer');
+    if(drawer){
+      const close=document.createElement('button');
+      close.type='button';close.className='profile-action-drawer-close';
+      close.setAttribute('aria-label','Close user actions');close.textContent='×';
+      close.addEventListener('click',()=>layer.remove());
+      drawer.prepend(close);
+    }
+    layer.addEventListener('pointerdown',event=>{if(event.target===layer)layer.remove();});
+    profile.appendChild(layer);
+    return layer;
+  };
   const isSelf=String(user.id)===String(state.user.id);
   const actorRank=String(state.user?.rank||'').toUpperCase(),canEditStaffPoints=['OWNER','DEVELOPER'].includes(actorRank),actorIsStaff=(rankOrder[actorRank]??-1)>=(rankOrder.MOD??4);
   let staffPointInfo=null;
   if(isSelf||actorIsStaff){try{staffPointInfo=await api('/api/staff-points/'+encodeURIComponent(user.id));}catch{}}
   if(isSelf){
-    modal(`<div class="profile-drawer"><h2>Account actions</h2><button class="quick-user-row" id="drawerEdit">✏️ Edit profile</button><button class="quick-user-row" id="drawerBlocked">🚫 Blocked users</button><div class="staff-points-action-row" style="display:flex;gap:8px;align-items:center"><button class="quick-user-row" id="drawerStaffPoints" style="flex:1"><span>🏅</span><b>Staff Points</b><i>›</i></button>${canEditStaffPoints?'<button class="mini" id="drawerEditStaffPoints" type="button" aria-label="Edit staff points" title="Edit staff points">✏️</button>':''}</div></div>`);
+    mountProfileActionDrawer(`<div class="profile-drawer"><h2>Account actions</h2><button class="quick-user-row" id="drawerEdit">✏️ Edit profile</button><button class="quick-user-row" id="drawerBlocked">🚫 Blocked users</button><div class="staff-points-action-row" style="display:flex;gap:8px;align-items:center"><button class="quick-user-row" id="drawerStaffPoints" style="flex:1"><span>🏅</span><b>Staff Points</b><i>›</i></button>${canEditStaffPoints?'<button class="mini" id="drawerEditStaffPoints" type="button" aria-label="Edit staff points" title="Edit staff points">✏️</button>':''}</div></div>`);
     $('drawerEdit')?.addEventListener('click',()=>{closeModal();state.view='profile';renderView()});$('drawerBlocked')?.addEventListener('click',showBlockedUsers);
     $('drawerStaffPoints')?.addEventListener('click',()=>modal(`<div class="profile-drawer"><h2>🏅 Staff Points</h2><div class="profile-info-row"><b>Your points</b><strong>${Number(staffPointInfo?.staffPoints||0).toLocaleString()}</strong></div><p class="muted">Points are earned when your suggestions are accepted or approved.</p></div>`));
     $('drawerEditStaffPoints')?.addEventListener('click',()=>openStaffPointsEditor(user,staffPointInfo?.staffPoints||0));return;
@@ -5397,7 +5416,7 @@ async function openProfileActionDrawer(user,data={}){
   const canModerate=canActOnTarget&&(canFeature('moderate_user')||canFeature('moderate_users'))&&canAccessStaffTarget(user);
   const canHistory=canActOnTarget&&canFeature('view_user_history')&&canAccessStaffTarget(user);
   const canSeeStaffPoints=!!staffPointInfo,canEditTargetPoints=canEditStaffPoints&&canSeeStaffPoints;
-  modal(`<div class="profile-drawer quick-action-menu"><h2>Actions · @${esc(user.username||'user')}</h2>
+  mountProfileActionDrawer(`<div class="profile-drawer quick-action-menu"><h2>Actions · @${esc(user.username||'user')}</h2>
      <button class="quick-user-row" id="drawerAddFriend"><span>👥</span><b>Add friend</b><i>›</i></button>
      ${canShareWallet?'<button class="quick-user-row" id="drawerWallet"><span>🏧</span><b>Share Wallet</b><i>›</i></button>':''}
      <button class="quick-user-row" id="drawerBlock"><span>🚫</span><b>Block</b><i>›</i></button>
@@ -5415,16 +5434,14 @@ async function openProfileActionDrawer(user,data={}){
 }
 
 
-/* Close the account-action drawer on the very first outside tap. Do not let
-   modal history restore the quick-profile card underneath it. */
+/* Dismiss only the in-profile action layer; keep the public profile open. */
 if(!window.__mcAccountDrawerOutsideCloseBound){
   window.__mcAccountDrawerOutsideCloseBound=true;
   document.addEventListener("pointerdown",event=>{
-    const overlay=$("modal"),drawer=overlay?.querySelector(".profile-drawer");
-    if(!overlay||overlay.classList.contains("hidden")||!drawer)return;
-    if(drawer.contains(event.target))return;
-    modalHistory.length=0;
-    closeModal();
+    const overlay=$("modal"),layer=overlay?.querySelector(".profile-action-drawer-layer");
+    if(!overlay||overlay.classList.contains("hidden")||!layer)return;
+    if(layer.contains(event.target))return;
+    layer.remove();
   },true);
 }
 
