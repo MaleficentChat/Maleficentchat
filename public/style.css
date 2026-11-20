@@ -9840,8 +9840,9 @@ html{scroll-behavior:smooth;}
 #onlineUsers .online-user-copy{padding-right:27px}
 
 
-/* Public profile close button belongs to the profile action row, not a floating corner. */
-#modal:has(.profile-modal) .profile-modal .profile-stats{display:flex!important;flex-wrap:wrap!important;align-items:center!important;gap:7px!important;}
-#modal:has(.profile-modal) .profile-modal .profile-stats>.modal-close{position:static!important;inset:auto!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;flex:0 0 34px!important;width:34px!important;height:34px!important;min-width:34px!important;margin:0!important;padding:0!important;border:1px solid rgba(226,196,125,.72)!important;border-radius:10px!important;background:linear-gradient(145deg,#24496a,#132d46)!important;color:#fff!important;font-size:25px!important;line-height:1!important;}
-/* When a profile action drawer is open, show its own close control only. */
-#modal:has(.profile-action-drawer-layer) .profile-stats>.modal-close{display:none!important;}
+
+
+/* Dedicated public-profile close control: visible with the profile, hidden while its action drawer is open. */
+#modal .modal-card>.modal-close.profile-native-close-hidden{display:none!important;}
+#modal .profile-modal .profile-inline-close{position:static!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;flex:0 0 34px!important;width:34px!important;height:34px!important;min-width:34px!important;height:34px!important;margin:0!important;padding:0!important;border:1px solid rgba(226,196,125,.72)!important;border-radius:10px!important;background:linear-gradient(145deg,#24496a,#132d46)!important;color:#fff!important;font-size:25px!important;line-height:1!important;}
+#modal .profile-modal:has(.profile-action-drawer-layer) .profile-inline-close{display:none!important;}
