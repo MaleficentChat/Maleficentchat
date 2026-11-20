@@ -10467,3 +10467,32 @@ html{scroll-behavior:smooth;}
 }
 #onlineUsers .online-user-grid .online-user.is-current-user .my-status-options.hidden{display:none!important}
 #onlineUsers .online-user-grid .online-user.is-current-user .my-status-option{position:relative!important;z-index:1!important}
+
+
+/* 2026-11-20 corrective pass: message header spacing, single menu trigger,
+   message-tap action panel, and status picker visibility. */
+#viewRooms.main-room-chat #messages>.msg:not(.dm-msg) .msg-author-group{
+  flex-direction:row!important;
+  gap:10px!important;
+}
+#viewRooms.main-room-chat #messages>.msg:not(.dm-msg) .msg-author-group .online-user-rank-badge{
+  order:1!important;
+  margin-left:2px!important;
+}
+#viewRooms.main-room-chat #messages>.msg:not(.dm-msg) .msg-author-group .message-author{
+  order:0!important;
+}
+@media(max-width:700px){
+  #viewRooms.main-room-chat #messages>.msg:not(.dm-msg) .msg-author-group{gap:8px!important}
+}
+#viewRooms.chatting #messages>.msg:not(.dm-msg) .msg-actions>.message-more-button{display:none!important}
+#viewRooms.chatting .message-actions-menu{
+  z-index:2147483000!important;
+}
+#onlineUsers .online-user.is-current-user .my-status-toggle,
+#onlineUsers .online-user.is-current-user .my-status-options,
+#onlineUsers .online-user.is-current-user .my-status-option{
+  pointer-events:auto!important;
+  touch-action:manipulation!important;
+}
+#onlineUsers .online-user.is-current-user .my-status-options.hidden{display:none!important}
