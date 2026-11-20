@@ -993,3 +993,20 @@ body [data-room-filter]:active{
   height:16px!important;min-height:16px!important;max-height:16px!important;
   font-size:12px!important;line-height:16px!important;
 }
+
+
+/* 20 Nov 2026 — final People-panel badge size override: tiny icon, not a badge tile. */
+#onlineUsers .online-user-grid > .online-user > .online-user-rank-badge,
+#onlinePanel #onlineUsers .online-user-grid > .online-user > .online-user-rank-badge{
+  position:absolute!important;
+  right:9px!important;left:auto!important;top:50%!important;bottom:auto!important;
+  transform:translateY(-50%)!important;
+  display:inline-flex!important;align-items:center!important;justify-content:center!important;
+  box-sizing:border-box!important;
+  width:12px!important;min-width:12px!important;max-width:12px!important;
+  height:12px!important;min-height:12px!important;max-height:12px!important;
+  padding:0!important;margin:0!important;border:0!important;border-radius:0!important;
+  background:transparent!important;box-shadow:none!important;
+  font-size:10px!important;line-height:12px!important;
+  overflow:visible!important;
+}
