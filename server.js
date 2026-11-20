@@ -578,7 +578,7 @@ function safeUser(u){
     pronouns:u.pronouns||"",
     relationship:u.relationship||"",
     mood:u.mood||"",
-    birthday:u.birthday||"",
+    birthday:u.birthDate||u.dateOfBirth||u.birthday||"",
     banner:u.banner||"",
     profilePhotos:Array.isArray(u.profilePhotos)?u.profilePhotos.slice(0,10).map(p=>({id:String(p.id),url:String(p.url)})):[],
     theme:u.settings?.theme||u.theme||"obsidian",
@@ -7346,7 +7346,7 @@ app.put('/api/profile',auth,(req,res)=>{
     u.privacy={...(u.privacy||{lastSeen:true,online:true})};
     for(const key of ['lastSeen','online','country','location','website','bio','pronouns','relationship','mood','interests','photos','friends','showGuestbook','showGifts','showScrapbook']) if(req.body.privacy[key]!==undefined)u.privacy[key]=!!req.body.privacy[key];
   }
-  const next={displayName:req.body.displayName,gender:req.body.gender,bio:req.body.bio,pronouns:req.body.pronouns,relationship:req.body.relationship,mood:req.body.mood,country:req.body.country,location:req.body.location,website:req.body.website,interests:req.body.interests,profileColor:req.body.profileColor,profileAccentColor:req.body.profileAccentColor,theme:req.body.theme,badge:req.body.badge,banner:req.body.banner};
+  const next={displayName:req.body.displayName,gender:req.body.gender,birthDate:req.body.birthDate??req.body.dateOfBirth??req.body.birthday,bio:req.body.bio,pronouns:req.body.pronouns,relationship:req.body.relationship,mood:req.body.mood,country:req.body.country,location:req.body.location,website:req.body.website,interests:req.body.interests,profileColor:req.body.profileColor,profileAccentColor:req.body.profileAccentColor,theme:req.body.theme,badge:req.body.badge,banner:req.body.banner};
   for(const [k,v] of Object.entries(next)) if(v!==undefined){
     if(k==='displayName') u[k]=String(v).trim().slice(0,40);
     else if(k==='interests') u[k]=Array.isArray(v)?v.map(x=>String(x).slice(0,40)).slice(0,20):String(v).split(',').map(x=>x.trim()).filter(Boolean).slice(0,20);
@@ -7356,6 +7356,12 @@ app.put('/api/profile',auth,(req,res)=>{
       u[k]=color;
     } else if(k==='banner') u[k]=String(v).trim().slice(0,500);
     else if(k==='country') u[k]=cleanText(v).slice(0,80);
+    else if(k==='gender') u.gender=cleanText(v).slice(0,40);
+    else if(k==='birthDate'){
+      const date=String(v||'').trim();
+      if(date && (!/^\\d{4}-\\d{2}-\\d{2}$/.test(date)||Number.isNaN(Date.parse(date+'T00:00:00'))||new Date(date+'T00:00:00')>new Date()))return res.status(400).json({error:'Enter a valid birthday that is not in the future.'});
+      u.birthDate=date;u.dateOfBirth=date;u.birthday=date;
+    }
     else if(k==='socials') { const s=v&&typeof v==='object'?v:{}; u.socials={instagram:cleanText(s.instagram||'').slice(0,180),discord:cleanText(s.discord||'').slice(0,180),tiktok:cleanText(s.tiktok||'').slice(0,180),youtube:cleanText(s.youtube||'').slice(0,180)}; }
     else u[k]=cleanText(v).slice(0,500);
   }
