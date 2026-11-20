@@ -4007,7 +4007,7 @@ function renderUserProfileModal(user,data={}){
   const bannerStyle=user.banner?`style="--profile-cover:url('${esc(user.banner)}')"`:'';
   const isSelf=user.id===state.user.id;
   const liked=!!data.likedByMe;
-  modal(`<div class="profile-modal" data-sf-user-id="${esc(user.id)}" data-sf-is-self="${isSelf?'true':'false'}" >
+  modal(`<div class="profile-modal kp-public-profile" data-sf-user-id="${esc(user.id)}" data-sf-is-self="${isSelf?'true':'false'}" >
     <div class="profile-banner" ${bannerStyle}>
       ${user.banner?`<img class="public-profile-cover-image" src="${esc(user.banner)}" alt="" aria-hidden="true" loading="eager">`: ""}
       <div class="equipped-profile-frame ${frame?esc(frame.id):''}" title="${frame?esc(frame.name):'Profile avatar'}">${avatar(user,'big-avatar')}</div>
