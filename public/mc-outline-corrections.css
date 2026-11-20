@@ -1747,3 +1747,173 @@ body [data-room-filter]:active{
   background:linear-gradient(135deg,#555,#333)!important;
   color:#fff!important;
 }
+
+
+/* 20 Nov 2026 — jewel-toned public profile + tactile controls.
+   Scoped to profile UI only; account data and uploaded media are untouched. */
+.profile-modal.kp-public-profile{
+  --mc-p-bg:#10201e;
+  --mc-p-panel:#17312d;
+  --mc-p-panel-2:#1d3d37;
+  --mc-p-line:rgba(91,220,174,.28);
+  --mc-p-mint:#65e6b5;
+  --mc-p-mint-bright:#9af2cf;
+  --mc-p-gold:#f0c477;
+  background:
+    radial-gradient(ellipse at 12% 0%,rgba(41,173,132,.22),transparent 42%),
+    radial-gradient(ellipse at 92% 18%,rgba(222,169,88,.12),transparent 38%),
+    linear-gradient(155deg,#142b28 0%,#10211f 54%,#111b1c 100%)!important;
+  border:1px solid rgba(101,230,181,.34)!important;
+  color:#f4fff9!important;
+  box-shadow:0 24px 75px rgba(0,0,0,.58),0 0 36px rgba(42,190,143,.13)!important;
+}
+.profile-modal.kp-public-profile .profile-banner{
+  background-color:#163a33!important;
+  background-image:
+    radial-gradient(ellipse at 50% 0%,rgba(81,220,166,.32),transparent 66%),
+    linear-gradient(180deg,rgba(8,28,24,.04),rgba(9,25,23,.78))!important;
+  border-bottom:1px solid var(--mc-p-line)!important;
+}
+.profile-modal.kp-public-profile .profile-stats .profile-stat,
+.profile-modal.kp-public-profile .profile-social-stat,
+.profile-modal.kp-public-profile .profile-section,
+.profile-modal.kp-public-profile .profile-info-card,
+.profile-modal.kp-public-profile .about-card,
+.profile-modal.kp-public-profile .profile-music-card,
+.profile-modal.kp-public-profile .profile-friend-tile{
+  border:1px solid rgba(101,230,181,.22)!important;
+  background:linear-gradient(145deg,rgba(31,75,65,.94),rgba(20,48,44,.97))!important;
+  color:#f3fff9!important;
+  box-shadow:inset 0 1px rgba(255,255,255,.045),0 7px 18px rgba(0,0,0,.12)!important;
+}
+.profile-modal.kp-public-profile .profile-name{
+  color:#f7fff9!important;
+  text-shadow:0 2px 18px rgba(0,0,0,.65)!important;
+}
+.profile-modal.kp-public-profile .profile-handle,
+.profile-modal.kp-public-profile .profile-social-stat small{color:#b8d9cc!important}
+.profile-modal.kp-public-profile .profile-rank .rank{
+  border:1px solid rgba(240,196,119,.58)!important;
+  background:linear-gradient(135deg,#74552b,#a27a3c 58%,#614727)!important;
+  color:#fff3d8!important;
+  box-shadow:0 4px 14px rgba(190,139,65,.18)!important;
+}
+.profile-modal.kp-public-profile .profile-tabs{
+  display:flex!important;
+  gap:8px!important;
+  padding:12px!important;
+  background:rgba(12,31,28,.96)!important;
+  border:1px solid rgba(101,230,181,.2)!important;
+}
+.profile-modal.kp-public-profile .profile-tab{
+  flex:0 0 auto!important;
+  min-height:42px!important;
+  padding:10px 15px!important;
+  border:1px solid rgba(101,230,181,.25)!important;
+  border-radius:12px!important;
+  background:linear-gradient(145deg,rgba(34,79,68,.86),rgba(22,51,47,.96))!important;
+  color:#c8e9dc!important;
+  box-shadow:0 4px 12px rgba(0,0,0,.16),inset 0 1px rgba(255,255,255,.05)!important;
+  font-weight:750!important;
+  transition:transform .18s ease,background .18s ease,border-color .18s ease,box-shadow .18s ease!important;
+}
+.profile-modal.kp-public-profile .profile-tab.active,
+.profile-modal.kp-public-profile .profile-tab[aria-selected="true"]{
+  border-color:rgba(240,196,119,.72)!important;
+  background:linear-gradient(120deg,#24765e,#2c9b75 58%,#b07e3d)!important;
+  color:#fff!important;
+  box-shadow:0 6px 18px rgba(31,161,116,.24),inset 0 1px rgba(255,255,255,.2)!important;
+}
+.profile-modal.kp-public-profile .profile-info,
+.profile-modal.kp-public-profile .profile-tab-content{
+  background:linear-gradient(160deg,#142b28,#101e1e)!important;
+  color:#effbf5!important;
+}
+.profile-modal.kp-public-profile .profile-info-row{border-color:rgba(101,230,181,.16)!important}
+.profile-modal.kp-public-profile .profile-info-row b{color:#8ce9c3!important}
+.profile-modal.kp-public-profile .profile-info-row span{color:#d6eee3!important}
+
+/* Every actionable control in the public profile gets a visible button surface:
+   message/friend, edit/rank actions, tabs, and any additional profile options. */
+.profile-modal.kp-public-profile button:not(.modal-close),
+.profile-modal.kp-public-profile a[role="button"],
+.profile-modal.kp-public-profile [role="button"],
+.profile-actions button,
+.profile-actions a,
+#profileEditBtn,
+#staffProfileEditBtn,
+#rankFromProfile,
+#profileGiveRankBtn,
+#editProfileFromModal{
+  min-height:38px!important;
+  padding:9px 14px!important;
+  border:1px solid rgba(101,230,181,.38)!important;
+  border-radius:12px!important;
+  background:linear-gradient(135deg,#225f50,#27866a 62%,#a8793d)!important;
+  color:#f7fff9!important;
+  box-shadow:0 5px 15px rgba(0,0,0,.22),inset 0 1px rgba(255,255,255,.12)!important;
+  text-shadow:none!important;
+  font-weight:750!important;
+  text-decoration:none!important;
+  cursor:pointer!important;
+  transition:transform .16s ease,filter .16s ease,box-shadow .16s ease,border-color .16s ease!important;
+}
+.profile-modal.kp-public-profile .profile-primary-actions{
+  display:flex!important;
+  flex-wrap:wrap!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:12px!important;
+  padding:14px 16px 18px!important;
+}
+.profile-modal.kp-public-profile .profile-primary-actions button{
+  flex:1 1 140px!important;
+  min-height:46px!important;
+  padding:11px 18px!important;
+  border-radius:14px!important;
+  font-size:15px!important;
+}
+.profile-modal.kp-public-profile .profile-primary-actions .profile-message-button{
+  background:linear-gradient(120deg,#267a69,#2caa83)!important;
+  border-color:rgba(133,242,202,.58)!important;
+}
+.profile-modal.kp-public-profile .profile-primary-actions .profile-friend-button{
+  background:linear-gradient(120deg,#74552e,#b18545)!important;
+  border-color:rgba(255,216,151,.56)!important;
+  color:#fff8e9!important;
+}
+.profile-modal.kp-public-profile button:not(.modal-close):hover,
+.profile-modal.kp-public-profile a[role="button"]:hover,
+.profile-modal.kp-public-profile [role="button"]:hover,
+.profile-actions button:hover,
+.profile-actions a:hover,
+#profileEditBtn:hover,
+#staffProfileEditBtn:hover,
+#rankFromProfile:hover,
+#profileGiveRankBtn:hover,
+#editProfileFromModal:hover{
+  filter:brightness(1.14)!important;
+  border-color:rgba(240,196,119,.72)!important;
+  transform:translateY(-2px)!important;
+  box-shadow:0 9px 22px rgba(0,0,0,.28),0 0 15px rgba(69,206,157,.13)!important;
+}
+.profile-modal.kp-public-profile button:not(.modal-close):active,
+.profile-actions button:active,
+#profileEditBtn:active,
+#staffProfileEditBtn:active,
+#rankFromProfile:active{
+  transform:translateY(0) scale(.98)!important;
+  filter:brightness(.96)!important;
+}
+.profile-modal.kp-public-profile .modal-close{
+  border:1px solid rgba(101,230,181,.38)!important;
+  border-radius:11px!important;
+  background:linear-gradient(135deg,#214d42,#17352f)!important;
+  color:#eafff5!important;
+  box-shadow:0 4px 12px rgba(0,0,0,.2)!important;
+}
+@media(prefers-reduced-motion:reduce){
+  .profile-modal.kp-public-profile button,
+  .profile-modal.kp-public-profile .profile-tab,
+  .profile-actions button{transition:none!important}
+}
