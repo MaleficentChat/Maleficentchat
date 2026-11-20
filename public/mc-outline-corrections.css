@@ -1380,3 +1380,40 @@ body [data-room-filter]:active{
 #sidebar #roomsNavList.hidden{display:none!important}
 #sidebar #roomsNavList .rooms-nav-item,#sidebar #roomsNavList .rooms-nav-more{flex:0 0 42px!important}
 #sidebar .nav-group[open]{flex:0 0 auto!important}
+
+
+/* 20 Nov 2026 correction: main-room rank badge stays LEFT of the username.
+   Spin the circular ring itself around its own centre; keep the glyph stationary. */
+@keyframes mcRankHaloSpinCentered {
+  from { transform:translate(-50%,-50%) rotate(0turn); }
+  to   { transform:translate(-50%,-50%) rotate(1turn); }
+}
+#viewRooms.chatting #messages > .msg:not(.dm-msg):not(.system-message) .msg-author-group{
+  display:inline-flex!important;
+  flex-direction:row!important;
+  align-items:center!important;
+  justify-content:flex-start!important;
+  gap:0!important;
+}
+#viewRooms.chatting #messages > .msg:not(.dm-msg):not(.system-message) .msg-author-group .message-rank-floating{
+  order:-1!important;
+  margin:0 8px 0 2px!important;
+  flex:0 0 22px!important;
+}
+#viewRooms.chatting #messages > .msg:not(.dm-msg):not(.system-message) .msg-author-group .message-author{
+  order:0!important;
+}
+#viewRooms.chatting #messages > .msg:not(.dm-msg):not(.system-message) .msg-author-group .message-rank-floating .mc-rank-ring{
+  left:50%!important;top:50%!important;right:auto!important;bottom:auto!important;
+  width:30px!important;height:30px!important;min-width:30px!important;min-height:30px!important;
+  max-width:30px!important;max-height:30px!important;aspect-ratio:1/1!important;
+  box-sizing:border-box!important;border-radius:50%!important;
+  transform:translate(-50%,-50%) rotate(0turn)!important;
+  transform-origin:50% 50%!important;
+  animation:mcRankHaloSpinCentered 1.8s linear infinite!important;
+}
+@media(prefers-reduced-motion:reduce){
+  #viewRooms.chatting #messages > .msg:not(.dm-msg):not(.system-message) .msg-author-group .message-rank-floating .mc-rank-ring{
+    animation:none!important;transform:translate(-50%,-50%)!important;
+  }
+}
