@@ -2322,3 +2322,49 @@ body [data-room-filter]:active{
   #modal .profile-modal.kp-public-profile .profile-actions>button.mini{flex:1 1 140px!important}
   #modal .profile-modal.kp-public-profile .profile-primary-actions .profile-social-button{flex-basis:100%!important}
 }
+
+
+/* Public profile compact action row + centered quick-actions panel. */
+#modal .profile-modal.kp-public-profile .profile-primary-actions{
+  display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  align-items:stretch!important;justify-content:stretch!important;
+  width:calc(100% - 28px)!important;max-width:460px!important;
+  gap:8px!important;margin:14px auto 0!important;
+}
+#modal .profile-modal.kp-public-profile .profile-primary-actions .profile-social-button{
+  width:100%!important;min-width:0!important;max-width:none!important;
+  flex:none!important;min-height:42px!important;padding:9px 8px!important;
+  white-space:nowrap!important;font-size:13px!important;
+}
+#modal .profile-modal.kp-public-profile .profile-stats{
+  right:48px!important;align-items:center!important;flex-wrap:nowrap!important;
+}
+#modal .modal-card:has(#modalBody .profile-modal)>.modal-close{
+  position:absolute!important;top:10px!important;right:10px!important;
+  display:grid!important;place-items:center!important;
+  width:28px!important;height:28px!important;min-width:28px!important;
+  padding:0!important;margin:0!important;box-sizing:border-box!important;
+  border:1px solid rgba(229,193,126,.72)!important;border-radius:9px!important;
+  background:linear-gradient(145deg,#234c73,#12283e)!important;
+  color:#fff!important;font-size:19px!important;line-height:1!important;
+  z-index:20!important;
+}
+#modal .profile-action-drawer-layer{
+  align-items:center!important;justify-content:center!important;
+  padding:12px!important;
+}
+#modal .profile-action-drawer-layer .profile-drawer{
+  width:min(330px,100%)!important;max-height:calc(100% - 24px)!important;
+  margin:auto!important;
+}
+@media(max-width:480px){
+  #modal .profile-modal.kp-public-profile .profile-primary-actions{
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+    width:calc(100% - 20px)!important;gap:7px!important;
+  }
+  #modal .profile-modal.kp-public-profile .profile-primary-actions .profile-social-button{
+    flex:none!important;min-width:0!important;padding:8px 5px!important;font-size:12px!important;
+  }
+  #modal .profile-modal.kp-public-profile .profile-stats{right:44px!important;}
+  #modal .profile-action-drawer-layer{padding:10px!important;}
+}
