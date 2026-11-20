@@ -1,44 +1,49 @@
 const $ = id => document.getElementById(id);
 
-// Reliable status picker: capture taps before the clickable online-user card can react.
+// Reliable status picker: handle taps before the clickable People card can intercept them.
 document.addEventListener("click", event => {
   const target = event.target instanceof Element ? event.target : null;
   if (!target) return;
-  const toggle = target.closest("#myStatusToggle");
+  const button = target.closest("#myStatusToggle");
   const option = target.closest("#myStatusOptions [data-status]");
   const menu = document.getElementById("myStatusOptions");
-  const button = document.getElementById("myStatusToggle");
-  if (toggle && menu && button) {
+  const toggle = document.getElementById("myStatusToggle");
+  if (button && menu && toggle) {
     event.preventDefault();
     event.stopPropagation();
+    event.stopImmediatePropagation();
     const opening = menu.classList.contains("hidden");
     menu.classList.toggle("hidden", !opening);
-    button.setAttribute("aria-expanded", opening ? "true" : "false");
+    toggle.setAttribute("aria-expanded", opening ? "true" : "false");
     return;
   }
-  if (option && menu && button) {
+  if (option && menu && toggle) {
     event.preventDefault();
     event.stopPropagation();
+    event.stopImmediatePropagation();
     if (option.disabled) return;
     option.disabled = true;
     (async () => {
       try {
-        const result = await api("/api/me/status", {method:"POST", body:JSON.stringify({status:option.dataset.status})});
+        const result = await api("/api/me/status", {
+          method: "POST",
+          body: JSON.stringify({status: option.dataset.status})
+        });
         state.user.customStatus = result.status;
         menu.classList.add("hidden");
-        button.setAttribute("aria-expanded","false");
+        toggle.setAttribute("aria-expanded", "false");
         toast("Status updated.");
         await renderOnline(onlinePanelTab);
       } catch (error) {
         option.disabled = false;
-        toast(error.message || "Could not update status.");
+        toast(error?.message || "Could not update status.");
       }
     })();
     return;
   }
   if (menu && !menu.classList.contains("hidden") && !target.closest("#myStatusOptions")) {
     menu.classList.add("hidden");
-    button?.setAttribute("aria-expanded","false");
+    toggle?.setAttribute("aria-expanded", "false");
   }
 }, true);
 
@@ -2945,7 +2950,7 @@ function messageHTML(message) {
         <div class="msg-top">
           <span class="msg-time-side">${fmt(message.time)}${message.edited ? " · edited" : ""}</span>
           <span class="msg-author-group"><button class="message-author tag-author" type="button" title="Tag @${esc(message.username)}" onclick="tagUserFromMessage('${esc(message.username)}')" style="color:${esc(message.usernameColor||state.user?.settings?.usernameColor||'var(--username-color)')}">${esc(message.displayName)}</button>
-            ${($("viewRooms")?.classList.contains("main-room-chat") || !!state.currentRoom?.isDefault || /^(main room|teen chat)$/i.test(String(state.currentRoom?.name||"").trim())) ? `<span class="message-rank-floating" title="${esc(message.rank||"MEMBER")}" aria-label="${esc(message.rank||"MEMBER")}"><span class="mc-rank-ring" aria-hidden="true"></span><span class="mc-rank-glyph">${rankIcon[String(message.rank||"MEMBER").toUpperCase().replace(/[ -]+/g,"_")]||"⚡"}</span></span>` : ''}
+            ${($("viewRooms")?.classList.contains("main-room-chat") || !!state.currentRoom?.isDefault || /^(main room|teen chat)$/i.test(String(state.currentRoom?.name||"").trim())) ? `<span class="online-user-rank-badge" title="${esc(String(message.rank||"MEMBER").replaceAll("_"," "))}" aria-label="${esc(String(message.rank||"MEMBER").replaceAll("_"," "))}"><span class="mc-rank-ring" aria-hidden="true"></span><span class="mc-rank-glyph">${rankIcon[String(message.rank||"MEMBER").toUpperCase().replace(/[ -]+/g,"_")]||"⚡"}</span></span>` : ''}
 
           </span>
           <span class="msg-header-right">
@@ -4374,7 +4379,26 @@ function renderUserProfileModal(user,data={}){
     $('profileNoteBtn')?.addEventListener('click',()=>staffProfileNoteModal(user));
     $('profileFeatureBlockBtn')?.addEventListener('click',()=>staffFeatureBlockModal(user));
     $('selfAchievementsBtn')?.addEventListener('click',()=>showAchievements(user));
-    $('profileLikeBtn')?.addEventListener('click',async()=>{try{const r=await api(`/api/users/${user.id}/like`,{method:'POST'});data.likedByMe=r.liked;user.profileLikes=r.likes;$('profileLikeBtn').innerHTML=`${r.liked?'❤️ Unlike':'❤️ Like'} <span id="likeCount">${r.likes}</span>`;document.querySelector('.profile-stats .profile-stat:last-child').textContent=`❤️ ${r.likes}`;}catch(e){toast(e.message)}});
+    $('profileLikeBtn')?.addEventListener('click',async(event)=>{
+      const button=event.currentTarget;
+      if(button.disabled)return;
+      button.disabled=true;
+      try{
+        const r=await api(`/api/users/${encodeURIComponent(user.id)}/like`,{method:'POST'});
+        data.likedByMe=!!r.liked;
+        data.profileLikes=Number(r.likes||0);
+        user.profileLikes=Number(r.likes||0);
+        button.setAttribute('aria-pressed',r.liked?'true':'false');
+        button.innerHTML=`<span>${r.liked?'❤️':'♡'}</span> ${r.liked?'Unlike':'Like'} <span class="profile-like-count">${Number(r.likes||0).toLocaleString()}</span>`;
+        const count=document.querySelector('#modal .profile-social-stat:nth-child(3) b');
+        if(count)count.textContent='❤️ '+Number(r.likes||0).toLocaleString();
+        toast(r.liked?'Profile liked.':'Like removed.');
+      }catch(error){
+        toast(error?.message||'Could not update profile like.');
+      }finally{
+        button.disabled=false;
+      }
+    });
     $('profileMessageBtn')?.addEventListener('click',()=>{closeModal();openDM(user.id);});
     $('profileFriendBtn')?.addEventListener('click',async()=>{if(data.friendship==='ACCEPTED'){toast('Already friends.');return;}try{await friend(user.id);data.friendship='PENDING';renderTab('info');}catch(e){}});
     $('profileBlockBtn')?.addEventListener('click',async()=>{await block(user.id);closeModal();});
