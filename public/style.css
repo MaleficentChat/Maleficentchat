@@ -10003,3 +10003,21 @@ html{scroll-behavior:smooth;}
 #viewRooms.main-room-chat #messages > .msg:not(.dm-msg) .msg-author-group .message-rank-floating{
   margin-right:2px!important;
 }
+
+
+/* 2026-11-20 — add vertical breathing room between the Main Room rank/name line and message bubble,
+   while also keeping a clear horizontal gap between the rank badge and username. */
+#viewRooms.main-room-chat #messages > .msg:not(.dm-msg) .msg-top{
+  margin-bottom:8px!important;
+}
+#viewRooms.main-room-chat #messages > .msg:not(.dm-msg) .msg-author-group{
+  gap:10px!important;
+}
+#viewRooms.main-room-chat #messages > .msg:not(.dm-msg) .msg-author-group .message-rank-floating{
+  margin-right:2px!important;
+}
+@media(max-width:700px){
+  #viewRooms.main-room-chat #messages > .msg:not(.dm-msg) .msg-top{
+    margin-bottom:7px!important;
+  }
+}
