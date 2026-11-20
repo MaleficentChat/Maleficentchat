@@ -10021,3 +10021,24 @@ html{scroll-behavior:smooth;}
     margin-bottom:7px!important;
   }
 }
+
+
+/* 2026-11-20 — contain the oversized rank emblem inside the sender header so it never touches the message bubble. */
+#viewRooms.main-room-chat #messages > .msg:not(.dm-msg) .msg-top{
+  min-height:58px!important;
+  margin:0 0 12px!important;
+  align-items:center!important;
+}
+#viewRooms.main-room-chat #messages > .msg:not(.dm-msg) .msg-author-group{
+  gap:16px!important;
+}
+#viewRooms.main-room-chat #messages > .msg:not(.dm-msg) .msg-author-group .message-rank-floating{
+  margin-right:4px!important;
+}
+@media(max-width:700px){
+  #viewRooms.main-room-chat #messages > .msg:not(.dm-msg) .msg-top{
+    min-height:58px!important;
+    margin-bottom:12px!important;
+  }
+  #viewRooms.main-room-chat #messages > .msg:not(.dm-msg) .msg-author-group{gap:14px!important}
+}
