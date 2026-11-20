@@ -1438,3 +1438,23 @@ body [data-room-filter]:active{
     animation:none!important;transform:translate(-50%,-50%)!important;
   }
 }
+
+
+/* 20 Nov 2026 hotfix — animate the independent rotate property.
+   Keep translate centering fixed; !important transform declarations must not
+   override the ring's rotation animation. */
+@keyframes mcMainChatHaloRotateOnly {
+  from { rotate:0deg; }
+  to   { rotate:360deg; }
+}
+#viewRooms.chatting #messages > .msg:not(.dm-msg):not(.system-message) .msg-author-group .message-rank-floating .mc-rank-ring{
+  transform:translate(-50%,-50%)!important;
+  transform-origin:50% 50%!important;
+  rotate:0deg;
+  animation:mcMainChatHaloRotateOnly 1.8s linear infinite!important;
+}
+@media(prefers-reduced-motion:reduce){
+  #viewRooms.chatting #messages > .msg:not(.dm-msg):not(.system-message) .msg-author-group .message-rank-floating .mc-rank-ring{
+    animation:mcMainChatHaloRotateOnly 1.8s linear infinite!important;
+  }
+}
