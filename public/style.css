@@ -10774,3 +10774,45 @@ html{scroll-behavior:smooth;}
   line-height:1.35!important;
   overflow-wrap:anywhere!important;
 }
+
+
+/* Match the quoted-message reference: avatar beside sender name, text below. */
+#viewRooms.main-room-chat #messages .quoted{
+  display:flex!important;
+  align-items:flex-start!important;
+  gap:10px!important;
+}
+#viewRooms.main-room-chat #messages .quoted .quoted-avatar,
+#viewRooms.main-room-chat #messages .quoted .quoted-avatar .avatar,
+#viewRooms.main-room-chat #messages .quoted .quoted-avatar .avatar img{
+  display:flex!important;
+  flex:0 0 40px!important;
+  width:40px!important;
+  height:40px!important;
+  min-width:40px!important;
+  min-height:40px!important;
+  margin:0!important;
+  border-radius:50%!important;
+  object-fit:cover!important;
+  overflow:hidden!important;
+}
+#viewRooms.main-room-chat #messages .quoted .quoted-content{
+  display:flex!important;
+  flex:1 1 auto!important;
+  flex-direction:column!important;
+  align-items:flex-start!important;
+  gap:2px!important;
+  min-width:0!important;
+}
+#viewRooms.main-room-chat #messages .quoted .quoted-author-name{
+  margin:0!important;
+  font-size:15px!important;
+  font-weight:700!important;
+  line-height:1.25!important;
+}
+#viewRooms.main-room-chat #messages .quoted .quoted-text{
+  margin:0!important;
+  font-size:15px!important;
+  line-height:1.35!important;
+  overflow-wrap:anywhere!important;
+}
