@@ -1012,8 +1012,9 @@ body [data-room-filter]:active{
 }
 
 
-/* 20 Nov 2026 — smooth horizontal 3D spin for rank badges everywhere.
-   Animate only the badge glyphs; never scale or reposition their layout. */
+/* 20 Nov 2026 — smooth horizontal 3D flip for rank badges everywhere.
+   Keep the back face visible so the badge appears mirrored halfway through,
+   then returns to its normal front face. Only the badge itself rotates. */
 @keyframes mcRankBadgeSpin {
   from { transform: perspective(520px) rotateY(0deg); }
   to   { transform: perspective(520px) rotateY(360deg); }
@@ -1031,7 +1032,8 @@ body [data-room-filter]:active{
 .rank-icon {
   transform-style:preserve-3d!important;
   transform-origin:center center!important;
-  backface-visibility:hidden;
+  backface-visibility:visible!important;
+  -webkit-backface-visibility:visible!important;
   animation:mcRankBadgeSpin 3.6s linear infinite;
 }
 #onlineUsers .online-user-rank-badge,
@@ -1039,7 +1041,8 @@ body [data-room-filter]:active{
 #onlinePanel .online-user-grid .online-user-rank-badge {
   transform-style:preserve-3d!important;
   transform-origin:center center!important;
-  backface-visibility:hidden;
+  backface-visibility:visible!important;
+  -webkit-backface-visibility:visible!important;
   animation:mcPeopleRankBadgeSpin 3.6s linear infinite;
 }
 @media (prefers-reduced-motion: reduce) {
