@@ -1,57 +1,42 @@
 const $ = id => document.getElementById(id);
 
-// Status picker: resolve controls inside the current-user People card and handle
-// taps before the card's own profile-opening click handler.
-document.addEventListener("click", event => {
-  const target = event.target instanceof Element ? event.target : event.target?.parentElement;
-  if (!target) return;
-  const toggle = target.closest("#myStatusToggle, .my-status-toggle");
-  const option = target.closest("#myStatusOptions [data-status], .my-status-options [data-status]");
-  const card = toggle?.closest(".online-user") || option?.closest(".online-user");
-  const menu = card?.querySelector(".my-status-options");
-  const button = card?.querySelector(".my-status-toggle");
-  if (toggle && menu && button) {
-    event.preventDefault();
-    event.stopPropagation();
-    event.stopImmediatePropagation();
-    const opening = menu.classList.contains("hidden");
-    menu.classList.toggle("hidden", !opening);
-    button.setAttribute("aria-expanded", opening ? "true" : "false");
-    return;
+const $ = id => document.getElementById(id);
+
+// Explicit handlers for the personal status control. Keeping the click action
+// on the control itself avoids the People-card click delegate swallowing taps.
+function toggleMyStatusMenu(event){
+  event?.preventDefault?.(); event?.stopPropagation?.();
+  const button=event?.currentTarget||event?.target?.closest?.(".my-status-toggle");
+  const card=button?.closest(".online-user"),menu=card?.querySelector(".my-status-options");
+  if(!button||!menu)return;
+  const opening=menu.classList.contains("hidden");
+  menu.classList.toggle("hidden",!opening);
+  button.setAttribute("aria-expanded",opening?"true":"false");
+}
+async function chooseMyStatus(status,event){
+  event?.preventDefault?.(); event?.stopPropagation?.();
+  const option=event?.currentTarget||event?.target?.closest?.("[data-status]");
+  const card=option?.closest(".online-user"),menu=card?.querySelector(".my-status-options"),button=card?.querySelector(".my-status-toggle");
+  if(!option||!menu||!button||option.disabled)return;
+  option.disabled=true;
+  try{
+    const result=await api("/api/me/status",{method:"POST",body:JSON.stringify({status:String(status||option.dataset.status||"")})});
+    state.user.customStatus=result.status||status||option.dataset.status;
+    menu.classList.add("hidden");button.setAttribute("aria-expanded","false");
+    const glyph=button.querySelector("#myStatusGlyph"),label=button.querySelector("#myStatusLabel");
+    if(glyph)glyph.textContent=statusEmoji(state.user.customStatus);
+    if(label)label.textContent=state.user.customStatus;
+    toast("Status updated.");await renderOnline(onlinePanelTab);
+  }catch(error){option.disabled=false;toast(error?.message||"Could not update status.");}
+}
+document.addEventListener("click",event=>{
+  const target=event.target instanceof Element?event.target:event.target?.parentElement;
+  if(!target)return;
+  if(!target.closest(".my-status-toggle,.my-status-options")){
+    document.querySelectorAll(".my-status-options:not(.hidden)").forEach(menu=>menu.classList.add("hidden"));
+    document.querySelectorAll(".my-status-toggle[aria-expanded='true']").forEach(button=>button.setAttribute("aria-expanded","false"));
   }
-  if (option && menu && button) {
-    event.preventDefault();
-    event.stopPropagation();
-    event.stopImmediatePropagation();
-    if (option.disabled) return;
-    option.disabled = true;
-    (async () => {
-      try {
-        const result = await api("/api/me/status", {
-          method: "POST",
-          body: JSON.stringify({status: option.dataset.status})
-        });
-        state.user.customStatus = result.status || option.dataset.status;
-        menu.classList.add("hidden");
-        button.setAttribute("aria-expanded", "false");
-        const glyph = button.querySelector("#myStatusGlyph");
-        const label = button.querySelector("#myStatusLabel");
-        if (glyph) glyph.textContent = statusEmoji(state.user.customStatus);
-        if (label) label.textContent = state.user.customStatus;
-        toast("Status updated.");
-        await renderOnline(onlinePanelTab);
-      } catch (error) {
-        option.disabled = false;
-        toast(error?.message || "Could not update status.");
-      }
-    })();
-    return;
-  }
-  if (menu && !menu.classList.contains("hidden") && !target.closest(".my-status-options")) {
-    menu.classList.add("hidden");
-    button?.setAttribute("aria-expanded", "false");
-  }
-}, true);
+},false);
 
 // Message action panel: open by tapping the message itself (or its top ⋯),
 // and close it when tapping anywhere outside the message or panel.
@@ -2684,14 +2669,15 @@ async function renderOnline(tab=onlinePanelTab,searchQuery=""){
     $("onlinePanelTitle").innerHTML=`${esc(title)} <span class="online-badge">${count}</span>`;
     $("onlineUsers").innerHTML=`<div class="online-user-grid">${list.map(user=>`
       <div class="online-user ${String(user.id)===String(state.user?.id)?"is-current-user ":""}${user.online?'is-online':'is-offline'}" onclick="openQuickUserCard('${esc(user.id)}')">
-        ${avatar(user)}${String(user.id)===String(state.user?.id) ? '<button type="button" class="my-status-toggle" id="myStatusToggle" aria-haspopup="true" aria-expanded="false" onclick="event.stopPropagation()"><span id="myStatusGlyph">⚙</span><b id="myStatusLabel">Online</b><span>⌄</span></button><div class="my-status-options hidden" id="myStatusOptions" role="menu" onclick="event.stopPropagation()"></div>' : '<span class="user-mood-indicator" title="'+esc(user.mood||user.customStatus|| (user.online?'Online':'Away'))+'">'+(user.mood?moodEmoji(user.mood):statusEmoji(user.customStatus|| (user.online?'Online':'Away')))+'</span>'}
+        ${avatar(user)}${String(user.id)===String(state.user?.id) ? '<button type="button" class="my-status-toggle" id="myStatusToggle" aria-haspopup="true" aria-expanded="false" onclick="toggleMyStatusMenu(event)"><span id="myStatusGlyph">⚙</span><b id="myStatusLabel">Online</b><span>⌄</span></button><div class="my-status-options hidden" id="myStatusOptions" role="menu" onclick="event.stopPropagation()"></div>' : '<span class="user-mood-indicator" title="'+esc(user.mood||user.customStatus|| (user.online?'Online':'Away'))+'">'+(user.mood?moodEmoji(user.mood):statusEmoji(user.customStatus|| (user.online?'Online':'Away')))+'</span>'}
         <div class="online-user-copy">
           <div class="online-user-heading">
+            <span class="online-user-rank-badge" title="${esc(String(user.rank||'MEMBER').replaceAll('_',' '))}" aria-label="${esc(String(user.rank||'MEMBER').replaceAll('_',' '))}"><span class="mc-rank-ring" aria-hidden="true"></span><span class="mc-rank-glyph">${rankIcon[String(user.rank||'MEMBER').toUpperCase()]||'⚡'}</span></span>
             <b>@${esc(user.username)}</b>
           </div>
           <small>${esc(user.displayName)} ${invisibleDot(user)} ${moderationStatusTags(user)}${user.invisible?"":" · "+(user.customStatus||(user.online?"Available":"Away"))}</small>
         </div>
-        <span class="online-user-rank-badge" title="${esc(String(user.rank||'MEMBER').replaceAll('_',' '))}" aria-label="${esc(String(user.rank||'MEMBER').replaceAll('_',' '))}"><span class="mc-rank-ring" aria-hidden="true"></span><span class="mc-rank-glyph">${rankIcon[String(user.rank||'MEMBER').toUpperCase()]||'⚡'}</span></span>
+        
       </div>
     `).join("") || `<div class="online-empty"><div>${tab==="staff"?"🛡️":tab==="friends"?"💜":"👥"}</div><b>No users here</b><span>Try another tab.</span></div>`}</div>`;
     const sortSelect=$("onlineSortMode");if(sortSelect){sortSelect.value=onlineSortMode;sortSelect.onchange=()=>{onlineSortMode=sortSelect.value;renderOnline(onlinePanelTab);};}
@@ -2699,7 +2685,7 @@ async function renderOnline(tab=onlinePanelTab,searchQuery=""){
     const statusChoices=[["Online","🟢"],["Away","🕒"],["Busy","⛔"],["Working","⚙️"],["Happy","😊"],["Sad","😔"],["Angry","🔥"],["Listening to music","🎧"],["Birthday","🎂"],["Friendly","💬"],["Watching video","▶️"],["Eating","🍜"],["Gaming","🎮"]];
     if(statusToggle&&statusOptions){
       const current=state.user?.customStatus||"Online";statusToggle.querySelector("#myStatusGlyph").textContent=statusEmoji(current);statusToggle.querySelector("#myStatusLabel").textContent=current;
-      statusOptions.innerHTML=statusChoices.map(([label,emoji])=>'<button type="button" class="my-status-option" role="menuitem" data-status="'+esc(label)+'"><span>'+emoji+'</span>'+esc(label)+'</button>').join("");
+      statusOptions.innerHTML=statusChoices.map(([label,emoji])=>'<button type="button" class="my-status-option" role="menuitem" data-status="'+esc(label)+'" onclick="chooseMyStatus(\''+esc(label)+'\',event)"><span>'+emoji+'</span>'+esc(label)+'</button>').join("");
       // Status clicks are handled once at document capture level so the parent
       // online-user card cannot swallow taps on the picker or its options.
       statusToggle.setAttribute("aria-controls","myStatusOptions");
