@@ -9852,3 +9852,27 @@ html{scroll-behavior:smooth;}
 #modal #modalBody{position:relative;}
 #modal #modalBody>.profile-edit-panel-close{position:absolute!important;top:10px!important;right:10px!important;z-index:30!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;width:36px!important;height:36px!important;min-width:36px!important;margin:0!important;padding:0!important;border:1px solid rgba(226,196,125,.78)!important;border-radius:11px!important;background:linear-gradient(145deg,#24496a,#132d46)!important;color:#fff!important;font-size:25px!important;line-height:1!important;box-shadow:0 4px 12px rgba(0,0,0,.28)!important;}
 #modal #modalBody>.profile-edit-menu{padding-top:12px!important;}
+
+
+/* Compact public profile vertically without changing its content or horizontal layout. */
+.modal-card:has(.profile-modal){max-height:86dvh!important;}
+.profile-modal .profile-banner{padding:58px 14px 14px!important;gap:5px!important;}
+.profile-modal .profile-banner .big-avatar{width:82px!important;height:82px!important;}
+.profile-modal .profile-rank{margin-top:0!important;font-size:12px!important;line-height:1.15!important;}
+.profile-modal .profile-name{font-size:clamp(19px,3.8vw,25px)!important;line-height:1.1!important;margin-top:1px!important;}
+.profile-modal .profile-handle{font-size:13px!important;margin-top:0!important;line-height:1.1!important;}
+.profile-modal .profile-music-pill{margin:3px auto!important;padding:7px 10px!important;min-height:34px!important;}
+.profile-modal .profile-social-stats{gap:7px!important;margin-top:5px!important;}
+.profile-modal .profile-social-stat{padding:8px 10px!important;min-height:58px!important;}
+.profile-modal .profile-primary-actions{margin-top:7px!important;gap:7px!important;}
+.profile-modal .profile-primary-actions .profile-social-button{min-height:36px!important;padding:7px 10px!important;}
+.profile-modal .profile-tabs{min-height:52px!important;}
+.profile-modal .profile-tab{padding:10px 13px!important;}
+.profile-modal .profile-info{padding:13px!important;}
+@media(max-width:700px){
+ .modal-card:has(.profile-modal){max-height:84dvh!important;}
+ .profile-modal .profile-banner{padding:56px 11px 12px!important;gap:4px!important;}
+ .profile-modal .profile-banner .big-avatar{width:76px!important;height:76px!important;}
+ .profile-modal .profile-social-stat{padding:7px 8px!important;min-height:52px!important;}
+ .profile-modal .profile-tab{padding:9px 11px!important;}
+}
