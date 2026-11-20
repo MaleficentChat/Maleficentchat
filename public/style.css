@@ -10042,3 +10042,18 @@ html{scroll-behavior:smooth;}
   }
   #viewRooms.main-room-chat #messages > .msg:not(.dm-msg) .msg-author-group{gap:14px!important}
 }
+
+
+/* 2026-11-20 — further clearance for the oversized Main Room rank emblem on mobile. */
+#viewRooms.main-room-chat #messages > .msg:not(.dm-msg) .msg-top{
+  min-height:84px!important;
+  margin-bottom:18px!important;
+  padding-bottom:8px!important;
+}
+@media(max-width:700px){
+  #viewRooms.main-room-chat #messages > .msg:not(.dm-msg) .msg-top{
+    min-height:84px!important;
+    margin-bottom:20px!important;
+    padding-bottom:10px!important;
+  }
+}
