@@ -1341,3 +1341,42 @@ body [data-room-filter]:active{
 #viewRooms.chatting #messages > .msg:not(.dm-msg):not(.system-message) .msg-author-group .message-rank-floating .mc-rank-ring{
   inset:-2px!important;
 }
+
+
+/* 20 Nov 2026 — rank badge follows the username; halo is a true circle. */
+@keyframes mcRankHaloCircleSpin { from { rotate:0deg; } to { rotate:360deg; } }
+#viewRooms.chatting #messages > .msg:not(.dm-msg):not(.system-message) .msg-author-group{
+  display:inline-flex!important;flex-direction:row!important;align-items:center!important;
+  justify-content:flex-start!important;gap:0!important;overflow:visible!important;
+}
+#viewRooms.chatting #messages > .msg:not(.dm-msg):not(.system-message) .msg-author-group .message-author{order:0!important;flex:0 1 auto!important}
+#viewRooms.chatting #messages > .msg:not(.dm-msg):not(.system-message) .msg-author-group .message-rank-floating{
+  order:1!important;position:relative!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;
+  box-sizing:border-box!important;width:22px!important;height:22px!important;min-width:22px!important;max-width:22px!important;
+  min-height:22px!important;max-height:22px!important;flex:0 0 22px!important;margin:0 0 0 8px!important;padding:0!important;
+  overflow:visible!important;isolation:isolate!important;line-height:1!important;
+}
+#viewRooms.chatting #messages > .msg:not(.dm-msg):not(.system-message) .msg-author-group .message-rank-floating .mc-rank-ring{
+  position:absolute!important;display:block!important;left:50%!important;top:50%!important;right:auto!important;bottom:auto!important;inset:auto!important;
+  width:30px!important;height:30px!important;min-width:30px!important;min-height:30px!important;max-width:30px!important;max-height:30px!important;
+  aspect-ratio:1/1!important;box-sizing:border-box!important;border-radius:50%!important;
+  transform:translate(-50%,-50%)!important;transform-origin:center center!important;
+  rotate:0deg;animation:mcRankHaloCircleSpin 1.35s linear infinite!important;
+}
+#viewRooms.chatting #messages > .msg:not(.dm-msg):not(.system-message) .msg-author-group .message-rank-floating .mc-rank-glyph{
+  position:relative!important;z-index:1!important;display:flex!important;align-items:center!important;justify-content:center!important;
+  width:100%!important;height:100%!important;line-height:1!important;
+}
+@media(prefers-reduced-motion:reduce){
+  #viewRooms.chatting #messages > .msg:not(.dm-msg):not(.system-message) .msg-author-group .message-rank-floating .mc-rank-ring{animation:none!important}
+}
+/* Prevent the expanded Rooms list from flex-shrinking when other groups open. */
+#sidebar.sidebar{overflow-y:auto!important;overscroll-behavior:contain!important}
+#sidebar .logo,#sidebar #roomsNavToggle,#sidebar .nav-group,#sidebar>.nav:not(#roomsNavToggle),#sidebar .side-spacer,#sidebar #meMini{flex-shrink:0!important}
+#sidebar #roomsNavList{
+  display:flex!important;flex:0 0 auto!important;flex-shrink:0!important;height:auto!important;min-height:0!important;
+  max-height:52dvh!important;overflow-x:hidden!important;overflow-y:auto!important;overscroll-behavior:contain!important;align-content:start!important;
+}
+#sidebar #roomsNavList.hidden{display:none!important}
+#sidebar #roomsNavList .rooms-nav-item,#sidebar #roomsNavList .rooms-nav-more{flex:0 0 42px!important}
+#sidebar .nav-group[open]{flex:0 0 auto!important}
