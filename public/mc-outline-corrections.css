@@ -1660,3 +1660,8 @@ body [data-room-filter]:active{
   border:1px solid rgba(226,189,115,.35)!important;
   background:rgba(10,27,19,.8)!important;color:#f4e6c5!important;
 }
+
+/* Explicit allow-list wins over the global ring cleanup. */
+#app .mc-rank-ring{display:none!important}
+#app #onlineUsers .online-user-rank-badge .mc-rank-ring{display:block!important}
+#app #viewRooms.chatting #messages > .msg:not(.dm-msg):not(.system-message) .msg-author-group .message-rank-floating .mc-rank-ring{display:block!important}
