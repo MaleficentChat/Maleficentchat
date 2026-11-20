@@ -4043,7 +4043,7 @@ function renderUserProfileModal(user,data={}){
         <span class="profile-social-stat"><b>👥 ${Number(user.friendsCount||user.friendCount||0).toLocaleString()}</b><small>Friends</small></span>
         <span class="profile-social-stat"><b>🏅 ${esc(String(user.rank||"MEMBER").replace(/_/g," "))}</b><small>Rank</small></span>
       </div>
-      ${!isSelf?`<div class="profile-primary-actions"><button class="profile-social-button profile-message-button" id="profileSendPM"><span>✉</span> Send PM</button><button class="profile-social-button profile-friend-button" id="profileAddFriend"><span>＋</span> Add Friend</button></div>`:""}
+      ${!isSelf?`<div class="profile-primary-actions"><button class="profile-social-button profile-message-button" id="profileSendPM"><span>✉</span> Send PM</button><button class="profile-social-button profile-friend-button" id="profileAddFriend"><span>＋</span> Add Friend</button><button class="profile-social-button profile-like-button" id="profileLikeBtn" aria-pressed="${liked}"><span>${liked?"❤️":"♡"}</span> ${liked?"Unlike":"Like"} <span class="profile-like-count">${Number(data.profileLikes??user.profileLikes??0).toLocaleString()}</span></button></div>`:""}
     </div>
     <div class="profile-tabs">
       <button class="profile-tab active" data-tab="info">Account</button>
