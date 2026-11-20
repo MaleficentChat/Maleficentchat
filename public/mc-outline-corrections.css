@@ -1559,3 +1559,104 @@ body [data-room-filter]:active{
     animation:none!important;transform:translate(-50%,-50%)!important;
   }
 }
+
+/* Rank halo policy: rings belong ONLY on online people badges and main-room
+   message badges. Disable the earlier broad pseudo-ring on profile/rank labels. */
+.message-rank-floating::before,
+.rank::before,
+.room-user-rank::before,
+.profile-rank .rank::before,
+.profile-rank-badge::before,
+.rank-badge::before,
+.rank-icon::before,
+#onlineUsers .online-user-rank-badge::before,
+#onlinePanel #onlineUsers .online-user-rank-badge::before,
+#onlinePanel .online-user-grid .online-user-rank-badge::before{
+  content:none!important;display:none!important;animation:none!important;
+}
+/* No actual halo element outside the two approved badge locations. */
+#app :not(#messages) .mc-rank-ring{display:none!important}
+#onlineUsers .online-user-rank-badge .mc-rank-ring,
+#viewRooms.chatting #messages > .msg:not(.dm-msg):not(.system-message) .msg-author-group .message-rank-floating .mc-rank-ring{
+  display:block!important;
+}
+
+/* Public profiles: replace the flat monochrome look with a deep evergreen
+   and antique-gold identity. Keep uploaded photos and media untouched. */
+.profile-modal.kp-public-profile{
+  --mc-profile-gold:#e2bd73;
+  --mc-profile-gold-soft:rgba(226,189,115,.16);
+  --mc-profile-green:#174c3b;
+  --mc-profile-green-bright:#2b8060;
+  background:linear-gradient(155deg,#14251f 0%,#101b17 52%,#0d1512 100%)!important;
+  border:1px solid rgba(226,189,115,.28)!important;
+  box-shadow:0 24px 75px rgba(0,0,0,.55),0 0 36px rgba(36,116,82,.13)!important;
+  color:#f4f0e6!important;
+}
+.profile-modal.kp-public-profile .profile-banner{
+  background-color:#16372b!important;
+  background-image:linear-gradient(180deg,rgba(8,23,17,.12),rgba(8,23,17,.9)),radial-gradient(ellipse at 50% 0%,rgba(67,145,103,.52),transparent 66%)!important;
+  border-bottom:1px solid rgba(226,189,115,.22)!important;
+}
+.profile-modal.kp-public-profile .profile-stats .profile-stat{
+  border-color:rgba(226,189,115,.25)!important;
+  background:rgba(9,25,18,.76)!important;color:#f2e8d2!important;
+}
+.profile-modal.kp-public-profile .profile-rank .rank{
+  border-color:rgba(226,189,115,.48)!important;
+  background:linear-gradient(135deg,rgba(38,89,65,.92),rgba(18,48,36,.94))!important;
+  color:#f0d49b!important;box-shadow:inset 0 1px rgba(255,255,255,.06)!important;
+}
+.profile-modal.kp-public-profile .profile-name{color:#fff8e9!important;text-shadow:0 2px 18px rgba(0,0,0,.7)!important}
+.profile-modal.kp-public-profile .profile-handle{color:#b9d2c3!important}
+.profile-modal.kp-public-profile .profile-social-stat{
+  border-color:rgba(226,189,115,.2)!important;
+  background:linear-gradient(145deg,rgba(32,78,57,.78),rgba(16,39,29,.94))!important;
+  color:#f4f0e6!important;
+}
+.profile-modal.kp-public-profile .profile-social-stat small{color:#c7d9cb!important}
+.profile-modal.kp-public-profile .profile-primary-actions .profile-social-button{
+  border:1px solid rgba(226,189,115,.38)!important;
+  background:linear-gradient(135deg,#286b4d,#174b37)!important;
+  color:#fff4d9!important;
+}
+.profile-modal.kp-public-profile .profile-primary-actions .profile-message-button{
+  background:linear-gradient(135deg,#a77b36,#755323)!important;color:#fff8e8!important;
+}
+.profile-modal.kp-public-profile .kp-profile-tabs-label{
+  background:#14251d!important;color:#e4c98f!important;
+}
+.profile-modal.kp-public-profile .kp-profile-tabs-label small{color:#b5cbb9!important}
+.profile-modal.kp-public-profile .profile-tabs{
+  border-color:rgba(226,189,115,.2)!important;
+  background:rgba(13,31,23,.97)!important;
+}
+.profile-modal.kp-public-profile .profile-tab{
+  color:#c5d5c9!important;background:transparent!important;
+}
+.profile-modal.kp-public-profile .profile-tab.active,
+.profile-modal.kp-public-profile .profile-tab:hover{
+  color:#fff0cf!important;
+  background:linear-gradient(135deg,rgba(43,128,96,.38),rgba(226,189,115,.12))!important;
+  box-shadow:inset 0 -2px #e2bd73!important;
+}
+.profile-modal.kp-public-profile .profile-info,
+.profile-modal.kp-public-profile .profile-tab-content{
+  background:linear-gradient(160deg,#14251f,#101a15)!important;color:#eee9dc!important;
+}
+.profile-modal.kp-public-profile .profile-info-row{border-color:rgba(226,189,115,.14)!important}
+.profile-modal.kp-public-profile .profile-info-row b{color:#f0d49b!important}
+.profile-modal.kp-public-profile .profile-info-row span{color:#d2dfd4!important}
+.profile-modal.kp-public-profile .about-card,
+.profile-modal.kp-public-profile .profile-music-card,
+.profile-modal.kp-public-profile .profile-friend-tile{
+  border-color:rgba(226,189,115,.2)!important;
+  background:rgba(28,67,49,.55)!important;color:#f1eddf!important;
+}
+.profile-modal.kp-public-profile button:not(.modal-close){
+  accent-color:#d8b66f;
+}
+.profile-modal.kp-public-profile .modal-close{
+  border:1px solid rgba(226,189,115,.35)!important;
+  background:rgba(10,27,19,.8)!important;color:#f4e6c5!important;
+}
