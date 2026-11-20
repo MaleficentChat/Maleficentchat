@@ -265,7 +265,10 @@ const rankOrder=Object.fromEntries(
 );
 
 function hasRank(u,r){
-  return !!u&&rankOrder[u.rank]>=rankOrder[r];
+  if(!u)return false;
+  const userRank=String(u.rank||"MEMBER").toUpperCase().replace(/[\\s-]+/g,"_");
+  const requiredRank=String(r||"").toUpperCase().replace(/[\\s-]+/g,"_");
+  return Number.isInteger(rankOrder[userRank])&&Number.isInteger(rankOrder[requiredRank])&&rankOrder[userRank]>=rankOrder[requiredRank];
 }
 
 // Staff may inspect or manage staff-only records only for accounts strictly below their rank.
