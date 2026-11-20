@@ -10816,3 +10816,57 @@ html{scroll-behavior:smooth;}
   line-height:1.35!important;
   overflow-wrap:anywhere!important;
 }
+
+
+
+/* 2026-11-21 correction: keep People-panel rank badges in their original
+   right-edge position; apply the spacing/compactness changes only to Main Chat. */
+#onlineUsers .online-user{position:relative!important;column-gap:10px!important}
+#onlineUsers .online-user-copy{padding-right:34px!important;min-width:0!important;flex:1 1 auto!important}
+#onlineUsers .online-user-heading{display:block!important;gap:normal!important}
+#onlineUsers .online-user-heading .online-user-rank-badge{
+  position:absolute!important;right:12px!important;top:50%!important;left:auto!important;inset-inline:auto 12px!important;
+  transform:translateY(-50%)!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;
+  order:initial!important;flex:0 0 26px!important;width:26px!important;min-width:26px!important;height:30px!important;min-height:30px!important;
+  margin:0!important;
+}
+#onlineUsers .online-user>.avatar,
+#onlineUsers .online-user>.user-avatar,
+#onlineUsers .online-user>img{transform:none!important;align-self:center!important}
+
+/* Main Chat only: restore clear avatar/name/rank separation and tighten each row. */
+#viewRooms.main-room-chat #messages>.msg:not(.dm-msg){
+  gap:12px!important;padding:2px 4px!important;margin:0 0 2px!important;
+}
+#viewRooms.main-room-chat #messages>.msg:not(.dm-msg)>.message-avatar-button{
+  flex:0 0 34px!important;width:34px!important;height:34px!important;margin:0 1px 0 0!important;
+}
+#viewRooms.main-room-chat #messages>.msg:not(.dm-msg)>.message-avatar-button .avatar,
+#viewRooms.main-room-chat #messages>.msg:not(.dm-msg)>.message-avatar-button img{
+  width:34px!important;height:34px!important;
+}
+#viewRooms.main-room-chat #messages>.msg:not(.dm-msg) .msg-author-group{
+  display:flex!important;align-items:center!important;gap:11px!important;overflow:visible!important;
+}
+#viewRooms.main-room-chat #messages>.msg:not(.dm-msg) .msg-author-group .online-user-rank-badge{
+  position:static!important;inset:auto!important;transform:none!important;display:inline-flex!important;
+  flex:0 0 22px!important;width:22px!important;min-width:22px!important;height:22px!important;min-height:22px!important;
+  margin:0 0 0 2px!important;
+}
+#viewRooms.main-room-chat #messages>.msg:not(.dm-msg) .msg-body{padding:0 0 1px!important}
+#viewRooms.main-room-chat #messages>.msg:not(.dm-msg) .msg-top{margin-bottom:3px!important}
+#viewRooms.main-room-chat #messages>.msg:not(.dm-msg) .quoted{
+  padding:6px 8px!important;margin:2px 0 4px!important;gap:7px!important;
+}
+#viewRooms.main-room-chat #messages>.msg:not(.dm-msg) .quoted .quoted-avatar,
+#viewRooms.main-room-chat #messages>.msg:not(.dm-msg) .quoted .quoted-avatar .avatar,
+#viewRooms.main-room-chat #messages>.msg:not(.dm-msg) .quoted .quoted-avatar img{
+  width:24px!important;height:24px!important;min-width:24px!important;min-height:24px!important;flex-basis:24px!important;
+}
+#viewRooms.main-room-chat #messages>.msg:not(.dm-msg) .quoted .quoted-content{gap:1px!important}
+#viewRooms.main-room-chat #messages>.msg:not(.dm-msg) .quoted .quoted-author-name{
+  font-size:11px!important;line-height:1.15!important;
+}
+#viewRooms.main-room-chat #messages>.msg:not(.dm-msg) .quoted .quoted-text{
+  font-size:11px!important;line-height:1.25!important;margin:0!important;
+}
