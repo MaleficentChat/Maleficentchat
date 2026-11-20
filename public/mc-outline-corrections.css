@@ -2368,3 +2368,44 @@ body [data-room-filter]:active{
   #modal .profile-modal.kp-public-profile .profile-stats{right:44px!important;}
   #modal .profile-action-drawer-layer{padding:10px!important;}
 }
+
+
+/* 2026-11-20 — keep the profile action controls in one continuous row:
+   Rank Giving → Edit Profile → hamburger → Close Profile. */
+#modal .profile-modal.kp-public-profile .profile-stats{
+  right:56px!important;
+  left:14px!important;
+  display:flex!important;
+  align-items:center!important;
+  flex-wrap:nowrap!important;
+}
+#modal .profile-modal.kp-public-profile #profileRankBtn,
+#modal .profile-modal.kp-public-profile #rankFromProfile,
+#modal .profile-modal.kp-public-profile #profileGiveRankBtn{order:4!important;}
+#modal .profile-modal.kp-public-profile #profileEditBtn,
+#modal .profile-modal.kp-public-profile #staffProfileEditBtn{order:5!important;}
+#modal .profile-modal.kp-public-profile #profileMenuBtn{order:6!important;}
+#modal .modal-card:has(#modalBody .profile-modal)>.modal-close{
+  position:absolute!important;
+  top:14px!important;
+  right:14px!important;
+  display:grid!important;
+  place-items:center!important;
+  width:32px!important;
+  height:32px!important;
+  min-width:32px!important;
+  padding:0!important;
+  margin:0!important;
+  box-sizing:border-box!important;
+  border:1px solid rgba(229,193,126,.72)!important;
+  border-radius:10px!important;
+  background:linear-gradient(145deg,#234c73,#12283e)!important;
+  color:#fff!important;
+  font-size:20px!important;
+  line-height:1!important;
+  z-index:20!important;
+}
+@media(max-width:480px){
+  #modal .profile-modal.kp-public-profile .profile-stats{right:54px!important;left:10px!important;}
+  #modal .modal-card:has(#modalBody .profile-modal)>.modal-close{top:14px!important;right:10px!important;}
+}
