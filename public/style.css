@@ -9844,4 +9844,4 @@ html{scroll-behavior:smooth;}
 #modal:has(.profile-modal) .profile-modal .profile-stats{display:flex!important;flex-wrap:wrap!important;align-items:center!important;gap:7px!important;}
 #modal:has(.profile-modal) .profile-modal .profile-stats>.modal-close{position:static!important;inset:auto!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;flex:0 0 34px!important;width:34px!important;height:34px!important;min-width:34px!important;margin:0!important;padding:0!important;border:1px solid rgba(226,196,125,.72)!important;border-radius:10px!important;background:linear-gradient(145deg,#24496a,#132d46)!important;color:#fff!important;font-size:25px!important;line-height:1!important;}
 /* When a profile action drawer is open, show its own close control only. */
-#modal:has(.profile-action-drawer-layer) .modal-card>.modal-close{display:none!important;}
+#modal:has(.profile-action-drawer-layer) .profile-stats>.modal-close{display:none!important;}
