@@ -1287,3 +1287,33 @@ body [data-room-filter]:active{
   opacity:1!important;
   filter:none!important;
 }
+
+
+/* 2026-11-20 — main-chat halo clearance.
+   Give the badge enough layout width for its orbit and prevent the message
+   header wrappers from clipping the ring at either edge. The glyph remains
+   16px and stays immediately before the username; People-panel sizing is untouched. */
+#viewRooms.main-room-chat #messages > .msg:not(.dm-msg):not(.system-message) .msg-top,
+#viewRooms.main-room-chat #messages > .msg:not(.dm-msg):not(.system-message) .msg-author-group{
+  overflow:visible!important;
+}
+#viewRooms.main-room-chat #messages > .msg:not(.dm-msg):not(.system-message) .msg-author-group .message-rank-floating{
+  box-sizing:border-box!important;
+  width:22px!important;
+  min-width:22px!important;
+  flex:0 0 22px!important;
+  height:22px!important;
+  margin:0 8px 0 2px!important;
+  overflow:visible!important;
+  z-index:3!important;
+}
+#viewRooms.main-room-chat #messages > .msg:not(.dm-msg):not(.system-message) .msg-author-group .message-rank-floating .mc-rank-ring{
+  inset:-2px!important;
+}
+#viewRooms.main-room-chat #messages > .msg:not(.dm-msg):not(.system-message) .msg-author-group .message-rank-floating .mc-rank-glyph{
+  display:flex!important;
+  width:100%!important;
+  height:100%!important;
+  align-items:center!important;
+  justify-content:center!important;
+}
