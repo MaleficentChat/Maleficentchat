@@ -988,11 +988,22 @@ async function refreshRoomMessageList(roomId,{force=false}={}){
   if(String(state.currentRoom)!==requestedRoom||!Array.isArray(data.messages))return false;
   const list=$("messages");if(!list)return false;
   const incoming=data.messages;
-  const signature=requestedRoom+":"+incoming.map(m=>JSON.stringify([m.id,m.text,m.edited,m.deleted,m.pinned,m.reactions,m.attachment,m.expiresAt])).join("|");
+  // A history request can finish after a Socket.IO event has appended a newer
+  // message. Merge by ID so a slower REST response cannot erase live delivery.
+  const merged=new Map(incoming.map(message=>[String(message.id),message]));
+  for(const liveMessage of (Array.isArray(state.messages)?state.messages:[])){
+    if(String(liveMessage.roomId)!==requestedRoom)continue;
+    const key=String(liveMessage.id),serverMessage=merged.get(key);
+    merged.set(key,serverMessage?{...serverMessage,...liveMessage}:liveMessage);
+  }
+  const reconciled=[...merged.values()]
+    .filter(message=>!message.expiresAt||Number(message.expiresAt)>Date.now())
+    .sort((a,b)=>Number(a.time||0)-Number(b.time||0));
+  const signature=requestedRoom+":"+reconciled.map(m=>JSON.stringify([m.id,m.text,m.edited,m.deleted,m.pinned,m.reactions,m.attachment,m.expiresAt])).join("|");
   if(!force&&signature===roomMessageSyncSignature)return true;
   const nearBottom=list.scrollHeight-list.scrollTop-list.clientHeight<180;
-  state.messages=incoming;
-  list.innerHTML=incoming.map(messageHTML).join("");
+  state.messages=reconciled;
+  list.innerHTML=reconciled.map(messageHTML).join("");
   roomMessageSyncSignature=signature;
   if(nearBottom)list.scrollTop=list.scrollHeight;
   return true;
@@ -1016,10 +1027,19 @@ async function refreshActiveDMMessageList(peerId){
   if(String(state.dmUserId)!==requestedPeer||!Array.isArray(data.messages))return false;
   const list=$("dmMessages");
   const incoming=data.messages;
-  state.dmMessages=incoming;
+  // Keep Socket.IO messages that arrived while this history request was in flight.
+  const merged=new Map(incoming.map(message=>[String(message.id),message]));
+  for(const liveMessage of (Array.isArray(state.dmMessages)?state.dmMessages:[])){
+    const key=String(liveMessage.id),serverMessage=merged.get(key);
+    merged.set(key,serverMessage
+      ?{...serverMessage,...liveMessage,read:!!(serverMessage.read||liveMessage.read),deleted:!!(serverMessage.deleted||liveMessage.deleted)}
+      :liveMessage);
+  }
+  const reconciled=[...merged.values()].sort((a,b)=>Number(a.time||0)-Number(b.time||0));
+  state.dmMessages=reconciled;
   if(list){
     const nearBottom=list.scrollHeight-list.scrollTop-list.clientHeight<180;
-    list.innerHTML=incoming.length?incoming.map(m=>dmMessageHTML(m,incoming,state.dmPeerUser||{})).join(""):'<p class="muted">No private messages yet.</p>';
+    list.innerHTML=reconciled.length?reconciled.map(m=>dmMessageHTML(m,reconciled,state.dmPeerUser||{})).join(""):'<p class="muted">No private messages yet.</p>';
     if(nearBottom)list.scrollTop=list.scrollHeight;
     const count=$("dmSearchCount");if(count)count.textContent=incoming.length+" messages";
   }
@@ -1213,21 +1233,16 @@ async function start() {
   state.socket.on("gravity:invite", invite => window.GravityRun && window.GravityRun.showInvite(invite));
 
   state.socket.on("message:update", message => {
-    const element =
-      document.querySelector(`[data-mid="${message.id}"]`);
-
-    if (element) {
-      element.outerHTML = messageHTML(message);
-    }
+    const index=(state.messages||[]).findIndex(item=>String(item.id)===String(message.id));
+    if(index>=0)state.messages[index]={...state.messages[index],...message};
+    const element=document.querySelector(`[data-mid="${message.id}"]`);
+    if(element)element.outerHTML=messageHTML(message);
   });
 
   state.socket.on("message:delete", data => {
-    const element =
-      document.querySelector(`[data-mid="${data.id}"]`);
-
-    if (element) {
-      element.remove();
-    }
+    state.messages=(state.messages||[]).filter(message=>String(message.id)!==String(data.id));
+    const element=document.querySelector(`[data-mid="${data.id}"]`);
+    if(element)element.remove();
   });
 
   state.socket.on("room:kicked", data => {
