@@ -11500,3 +11500,40 @@ html{scroll-behavior:smooth;}
  #viewRooms:not(.chatting) .room-card-action{width:30px!important;height:30px!important;min-width:30px!important;min-height:30px!important;font-size:15px!important}
  #modal .room-menu-actions>.room-menu-action{min-height:42px!important;padding:9px 12px!important;font-size:14px!important}
 }
+
+
+/* Final room-navigation and quick-action sizing requested: 15px icons, horizontal actions. */
+#viewRooms:not(.chatting) .room-card-gear{
+  top:8px!important;right:8px!important;
+  width:28px!important;min-width:28px!important;
+  height:28px!important;min-height:28px!important;
+  padding:0!important;border-radius:7px!important;
+  font-size:15px!important;line-height:1!important;
+}
+#viewRooms:not(.chatting) .discover-room-card{padding-right:42px!important}
+#viewRooms:not(.chatting) .room-card-actions{
+  top:42px!important;right:8px!important;
+  display:flex!important;flex-direction:row!important;
+  align-items:center!important;justify-content:center!important;
+  gap:3px!important;padding:3px!important;
+  border-radius:8px!important;
+}
+#viewRooms:not(.chatting) .room-card-action{
+  width:24px!important;height:24px!important;
+  min-width:24px!important;min-height:24px!important;
+  border-radius:5px!important;font-size:15px!important;
+}
+#roomsMorePanel .rooms-more-panel{max-height:88dvh!important}
+#roomsMorePanel .rooms-more-content{
+  display:flex!important;flex-direction:column!important;
+  gap:9px!important;min-height:0!important;overflow-y:auto!important;
+}
+#roomsMorePanel #roomsPinnedSection,
+#roomsMorePanel #roomsAllSection{display:block!important;min-height:0!important;overflow:visible!important}
+#roomsMorePanel #rooms,
+#roomsMorePanel #pinnedRooms{display:grid!important;grid-template-columns:minmax(0,1fr)!important;overflow:visible!important;max-height:none!important}
+@media(max-width:600px){
+  #viewRooms:not(.chatting) .room-card-gear{width:28px!important;height:28px!important;min-width:28px!important;min-height:28px!important;font-size:15px!important}
+  #viewRooms:not(.chatting) .room-card-actions{top:42px!important;right:8px!important;flex-direction:row!important}
+  #viewRooms:not(.chatting) .room-card-action{width:24px!important;height:24px!important;min-width:24px!important;min-height:24px!important;font-size:15px!important}
+}
