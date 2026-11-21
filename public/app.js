@@ -2518,6 +2518,15 @@ function roomInviteFromHash(){
     return roomId?{roomId,inviteToken:String(params.get("invite")||"")}:null;
   }catch{return null;}
 }
+function postRoomAnnouncementForRoom(roomId){
+  const announcementRank=String(state.user?.rank||"").toUpperCase().replace(/[\\s_-]/g,"");
+  if((rankOrder[announcementRank]??-1)<(rankOrder.COMMISSOR??7)){toast("Posting room announcements requires Commissor or higher.");return;}
+  const text=prompt("Share an announcement in this room:","");
+  if(!text?.trim())return;
+  api(`/api/rooms/${encodeURIComponent(roomId)}/announcements`,{method:"POST",body:JSON.stringify({text:text.trim()})})
+    .then(()=>{toast("Room announcement shared.");loadRoomAnnouncements(roomId);})
+    .catch(error=>toast(error.message||"Could not post an announcement."));
+}
 function postRoomAnnouncement(){
   const announcementRank=String(state.user?.rank||"").toUpperCase().replace(/[\s_-]/g,"");
   if((rankOrder[announcementRank]??-1)<(rankOrder.COMMISSOR??7)){toast("Posting room announcements requires Commissor or higher.");return;}
@@ -7741,7 +7750,7 @@ function extractYoutubeVideoId(value){
     return /^[A-Za-z0-9_-]{11}$/.test(String(id||""))?String(id):"";
   }catch{return "";}
 }
-function openYoutubePanel(){
+function openYoutubePanel(roomId=state.currentRoom){
   modal(`<div class="youtube-panel"><h2>▶️ YouTube</h2><p class="muted">Search for a video or paste a YouTube video, Shorts or live link.</p><div class="toolbar"><input id="ytQuery" placeholder="Search or paste YouTube URL…" autocomplete="off"><button class="primary" id="ytSearch" type="button">Search</button></div><div id="ytResults" class="youtube-results"><p class="muted">Choose a video to preview it before sharing.</p></div><div id="ytSelected" class="youtube-selected" aria-live="polite"></div></div>`);
   const query=mcGetById("ytQuery"),searchButton=mcGetById("ytSearch"),results=mcGetById("ytResults"),selected=mcGetById("ytSelected");
   let chosen=null;
@@ -7749,7 +7758,7 @@ function openYoutubePanel(){
     if(!video||! /^[A-Za-z0-9_-]{11}$/.test(String(video.id||"")))return;
     chosen={id:String(video.id),title:String(video.title||"YouTube video").slice(0,200)};
     selected.innerHTML=`<div class="youtube-selection-preview"><img src="https://i.ytimg.com/vi/${chosen.id}/hqdefault.jpg" alt=""><div><b>${esc(chosen.title)}</b><small>Ready to share in this room</small></div><button type="button" class="primary" id="ytShare">Share video</button></div>`;
-    selected.querySelector("#ytShare")?.addEventListener("click",()=>sendYoutube(chosen.id,chosen.title));
+    selected.querySelector("#ytShare")?.addEventListener("click",()=>sendYoutube(chosen.id,chosen.title,roomId));
   };
   const addResult=(video)=>{
     const button=document.createElement("button");
@@ -7778,10 +7787,10 @@ function openYoutubePanel(){
   query.addEventListener("keydown",event=>{if(event.key==="Enter"){event.preventDefault();search();}});
   query.focus();
 }
-async function sendYoutube(videoId,title){
+async function sendYoutube(videoId,title,roomId=state.currentRoom){
   try{
-    if(!state.currentRoom)throw new Error("Join a room before sharing a video.");
-    const result=await api(`/api/rooms/${encodeURIComponent(state.currentRoom)}/youtube`,{method:"POST",body:JSON.stringify({videoId,title,music:false})});
+    if(!roomId)throw new Error("Choose a room before sharing a video.");
+    const result=await api(`/api/rooms/${encodeURIComponent(roomId)}/youtube`,{method:"POST",body:JSON.stringify({videoId,title,music:false})});
     if(result.message&&!document.querySelector(`[data-mid="${CSS.escape(String(result.message.id))}"]`))appendMessage(result.message);
     closeModal();toast("YouTube video shared in chat.");
   }catch(error){toast(error.message||"Could not share this video.");}
@@ -7838,9 +7847,9 @@ document.addEventListener("click", async event => {
           else if (action==="edit") editRoomById(targetRoomId);
           else if (action==="pin") toggleRoomPinById(targetRoomId);
           else if (action==="delete") deleteRoomById(targetRoomId);
-          else if (action==="announcement") withRoomOptionsContext(targetRoomId,postRoomAnnouncement);
+          else if (action==="announcement") postRoomAnnouncementForRoom(targetRoomId);
           else if (action==="pinned") withRoomOptionsContext(targetRoomId,showPinnedMessages);
-          else if (action==="youtube") withRoomOptionsContext(targetRoomId,openYoutubePanel);
+          else if (action==="youtube") openYoutubePanel(targetRoomId);
           else if (action==="invite") showInvite(room);
           else if (action==="presence-settings") openPresenceModes();
         } catch (error) {
