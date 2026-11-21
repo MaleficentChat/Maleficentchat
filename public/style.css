@@ -11181,3 +11181,132 @@ html{scroll-behavior:smooth;}
   border-color:rgba(235,245,255,.34)!important;
 }
 .app button:disabled, #modal button:disabled{opacity:.48!important;}
+
+
+/* Create Room — compact unified form, with a lightweight device picture picker. */
+.room-editor-create{
+  width:min(100%,560px)!important;
+  max-height:min(84dvh,780px)!important;
+  overflow-y:auto!important;
+  gap:16px!important;
+  padding:4px 3px 6px!important;
+}
+.room-editor-create .room-create-heading{
+  display:grid;
+  gap:4px;
+  padding:2px 1px 10px;
+  border-bottom:1px solid var(--border,rgba(255,255,255,.14));
+}
+.room-editor-create .room-create-heading h2{
+  margin:0;
+  font-size:1.25rem;
+  line-height:1.25;
+}
+.room-editor-create .room-create-heading p{
+  margin:0;
+  color:var(--muted,#aab5c4);
+  font-size:.84rem;
+}
+.room-editor-create #roomForm,
+.room-editor-create .room-create-group{
+  display:grid;
+  gap:12px;
+  min-width:0;
+}
+.room-editor-create .room-create-group h3{
+  margin:0;
+  color:var(--text,#f7f7f7);
+  font-size:.92rem;
+  font-weight:750;
+}
+.room-editor-create .room-create-group>label{
+  display:grid;
+  gap:6px;
+  min-width:0;
+  color:var(--text,#f7f7f7);
+  font-size:.82rem;
+  font-weight:650;
+}
+.room-editor-create .room-create-group input:not([type=file]),
+.room-editor-create .room-create-group select,
+.room-editor-create .room-create-group textarea{
+  box-sizing:border-box;
+  width:100%;
+  min-width:0;
+  margin:0;
+  padding:11px 12px;
+  border:1px solid var(--border,rgba(255,255,255,.16));
+  border-radius:12px;
+  background:var(--panel-2,#10243d);
+  color:var(--text,#f7f7f7);
+  font:inherit;
+  font-weight:450;
+}
+.room-editor-create .room-create-group textarea{min-height:82px;resize:vertical}
+.room-editor-create .room-picture-field{
+  display:grid;
+  gap:6px;
+  color:var(--text,#f7f7f7);
+  font-size:.82rem;
+  font-weight:650;
+}
+.room-editor-create .room-picture-picker{
+  display:flex;
+  align-items:center;
+  flex-wrap:wrap;
+  gap:8px;
+  min-height:26px;
+}
+.room-editor-create .room-picture-choose{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  width:auto;
+  color:var(--accent,#b7c9df);
+  font-size:.86rem;
+  font-weight:700;
+  cursor:pointer;
+  text-decoration:underline;
+  text-underline-offset:3px;
+}
+.room-editor-create .room-picture-choose span{font-size:1.05rem}
+.room-editor-create .room-picture-optional,
+.room-editor-create .room-picture-filename{
+  color:var(--muted,#9eacbd);
+  font-size:.76rem;
+  font-weight:450;
+}
+.room-editor-create .room-picture-filename{overflow-wrap:anywhere}
+.room-editor-create .room-editor-footer{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:9px;
+  margin-top:2px;
+}
+.room-editor-create .room-editor-footer button{width:100%;min-height:42px}
+.rooms-nav-item-icon img,
+.room-quick-picture img,
+.room-title-picture{
+  display:block;
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  border-radius:inherit;
+}
+.rooms-nav-item-icon:has(img),
+.room-quick-picture:has(img){
+  overflow:hidden;
+  border-radius:50%;
+}
+.room-title-picture{
+  display:inline-block;
+  width:1.35em;
+  height:1.35em;
+  vertical-align:middle;
+  margin-right:5px;
+  border-radius:50%;
+}
+@media(max-width:600px){
+  .room-editor-create{max-height:calc(100dvh - 24px)!important;padding:3px 1px 5px!important}
+  .room-editor-create .room-editor-footer{grid-template-columns:1fr 1fr}
+}
