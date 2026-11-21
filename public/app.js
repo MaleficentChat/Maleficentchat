@@ -2519,7 +2519,7 @@ function roomInviteFromHash(){
   }catch{return null;}
 }
 function postRoomAnnouncementForRoom(roomId){
-  const announcementRank=String(state.user?.rank||"").toUpperCase().replace(/[\\s_-]/g,"");
+  const announcementRank=String(state.user?.rank||"").toUpperCase().replace(/[\s_-]/g,"");
   if((rankOrder[announcementRank]??-1)<(rankOrder.COMMISSOR??7)){toast("Posting room announcements requires Commissor or higher.");return;}
   const text=prompt("Share an announcement in this room:","");
   if(!text?.trim())return;
@@ -7791,7 +7791,7 @@ async function sendYoutube(videoId,title,roomId=state.currentRoom){
   try{
     if(!roomId)throw new Error("Choose a room before sharing a video.");
     const result=await api(`/api/rooms/${encodeURIComponent(roomId)}/youtube`,{method:"POST",body:JSON.stringify({videoId,title,music:false})});
-    if(result.message&&!document.querySelector(`[data-mid="${CSS.escape(String(result.message.id))}"]`))appendMessage(result.message);
+    if(String(state.currentRoom)===String(roomId)&&result.message&&!document.querySelector(`[data-mid="${CSS.escape(String(result.message.id))}"]`))appendMessage(result.message);
     closeModal();toast("YouTube video shared in chat.");
   }catch(error){toast(error.message||"Could not share this video.");}
 }
@@ -7819,7 +7819,7 @@ document.addEventListener("click", async event => {
     const roomName = esc(room?.name || "Current room");
     // Keep the dashboard and chat-header menus in sync, with permissions evaluated for this room.
     const actions=[];
-    const pinRank=String(state.user?.rank||"").toUpperCase().replace(/[\\s_-]/g,"");
+    const pinRank=String(state.user?.rank||"").toUpperCase().replace(/[\s_-]/g,"");
     const canPin=["COOWNER","OWNER","DEVELOPER"].includes(pinRank);
     const canEdit=canEditRoomFromMenu(room);
     const canDelete=canFeature("delete_room");
