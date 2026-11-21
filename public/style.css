@@ -11159,3 +11159,25 @@ html{scroll-behavior:smooth;}
   backdrop-filter:blur(12px) saturate(135%)!important;
   -webkit-backdrop-filter:blur(12px) saturate(135%)!important;
 }
+
+
+/* Site-wide compact glass button language: consistent sizing and translucent surfaces. */
+.app button:not(:disabled), #modal button:not(:disabled){
+  box-sizing:border-box!important;
+  min-height:28px!important;
+  padding:5px 9px!important;
+  border:1px solid rgba(225,239,255,.24)!important;
+  border-radius:8px!important;
+  background:rgba(210,228,245,.10)!important;
+  color:inherit!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.08),0 2px 7px rgba(0,0,0,.12)!important;
+  backdrop-filter:blur(11px) saturate(130%)!important;
+  -webkit-backdrop-filter:blur(11px) saturate(130%)!important;
+  font-size:12px!important;
+  line-height:1.2!important;
+}
+.app button:hover:not(:disabled), #modal button:hover:not(:disabled){
+  background:rgba(220,235,250,.17)!important;
+  border-color:rgba(235,245,255,.34)!important;
+}
+.app button:disabled, #modal button:disabled{opacity:.48!important;}
