@@ -201,11 +201,16 @@ button.top-profile#topProfile{display:grid!important;place-items:center!importan
 .system-message.system-message-with-avatar>.system-message-profile-avatar,
 .system-message.system-message-with-avatar>b{vertical-align:middle!important}
 
-/* One close control per panel: keep the modal's top-right close button.
-   Hide duplicate close controls rendered inside panel content. The compact
-   quick-user card keeps its own close because its outer modal close is hidden. */
-#modal .modal-card:not(:has(.quick-user-card)):not(:has(.dm-chat-header)) #modalBody button[class*="close" i],
-#modal .modal-card:not(:has(.quick-user-card)):not(:has(.dm-chat-header)) #modalBody button[aria-label*="close" i],
-#modal .modal-card:not(:has(.quick-user-card)):not(:has(.dm-chat-header)) #modalBody button[title*="close" i]{
+/* One close control everywhere inside a modal: the shared top-right
+   modal-close is the only close button. Hide all panel-specific duplicates,
+   including quick profile, private-message, settings and nested option panels. */
+#modal #modalBody button[class*="close" i],
+#modal #modalBody button[aria-label*="close" i],
+#modal #modalBody button[title*="close" i]{
   display:none!important;
+}
+#modal .modal-card>.modal-close{
+  display:grid!important;position:absolute!important;top:10px!important;right:10px!important;
+  z-index:10060!important;width:36px!important;height:36px!important;min-width:36px!important;
+  min-height:36px!important;padding:0!important;place-items:center!important;
 }
