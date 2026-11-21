@@ -11473,3 +11473,19 @@ html{scroll-behavior:smooth;}
  #viewRooms:not(.chatting) .discover-room-card{padding-right:58px!important}
  #modal .room-menu-actions>.room-menu-action{min-height:58px!important;padding:15px!important;font-size:16px!important}
 }
+
+
+/* Room-card gear opens only compact icon actions on that card. */
+#viewRooms:not(.chatting) .discover-room-card{position:relative!important;overflow:visible!important}
+#viewRooms:not(.chatting) .room-card-actions{position:absolute!important;z-index:8!important;top:58px!important;right:8px!important;display:flex!important;flex-direction:column!important;align-items:center!important;gap:7px!important;padding:8px!important;border:1px solid rgba(255,255,255,.14)!important;border-radius:14px!important;background:rgba(17,16,24,.97)!important;box-shadow:0 8px 24px rgba(0,0,0,.32)!important}
+#viewRooms:not(.chatting) .room-card-actions.hidden{display:none!important}
+#viewRooms:not(.chatting) .room-card-action{display:grid!important;place-items:center!important;width:44px!important;height:44px!important;min-width:44px!important;min-height:44px!important;padding:0!important;border:0!important;border-radius:11px!important;background:rgba(255,255,255,.08)!important;font-size:21px!important;line-height:1!important;cursor:pointer!important}
+#viewRooms:not(.chatting) .room-card-action:active{transform:scale(.96)}
+#modal .room-menu-panel{max-height:86dvh!important}
+#modal .room-menu-actions{gap:12px!important}
+#modal .room-menu-actions>.room-menu-action{min-height:72px!important;padding:18px 20px!important;font-size:18px!important;line-height:1.35!important;border-radius:15px!important}
+@media(max-width:600px){
+ #viewRooms:not(.chatting) .room-card-actions{top:58px!important;right:8px!important;gap:8px!important;padding:8px!important}
+ #viewRooms:not(.chatting) .room-card-action{width:46px!important;height:46px!important;min-width:46px!important;min-height:46px!important;font-size:22px!important}
+ #modal .room-menu-actions>.room-menu-action{min-height:74px!important;padding:18px!important;font-size:18px!important}
+}
