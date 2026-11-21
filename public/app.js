@@ -1605,9 +1605,24 @@ function openRoomsMorePanel(){
   const panel=mcGetById("roomsMorePanel");
   const content=mcGetById("roomsMoreContent");
   if(!panel||!content)return;
-  ["mcRoomSearchRow","mcRoomAccess"].forEach(id=>{const el=mcGetById(id);if(el&&el.parentElement!==content)content.appendChild(el);});
+  // Show the same room directory cards used in the Rooms page inside the sidebar's More panel.
+  ["mcRoomSearchRow","mcRoomAccess","roomsPinnedSection","roomsAllSection"].forEach(id=>{
+    const el=mcGetById(id);
+    if(!el||el.parentElement===content)return;
+    if(!el.__roomsMorePlaceholder){
+      el.__roomsMorePlaceholder=document.createComment("rooms-more-return");
+      el.parentNode.insertBefore(el.__roomsMorePlaceholder,el);
+    }
+    content.appendChild(el);
+  });
   const actions=document.querySelector("#viewRooms .discover-actions");
-  if(actions&&actions.parentElement!==content)content.appendChild(actions);
+  if(actions&&actions.parentElement!==content){
+    if(!actions.__roomsMorePlaceholder){
+      actions.__roomsMorePlaceholder=document.createComment("rooms-more-actions-return");
+      actions.parentNode.insertBefore(actions.__roomsMorePlaceholder,actions);
+    }
+    content.insertBefore(actions,content.firstChild);
+  }
   panel.classList.remove("hidden");
   panel.setAttribute("aria-hidden","false");
   mcGetById("closeRoomsMore")?.focus({preventScroll:true});
@@ -1615,6 +1630,12 @@ function openRoomsMorePanel(){
 function closeRoomsMorePanel(){
   const panel=mcGetById("roomsMorePanel");
   if(!panel)return;
+  ["mcRoomSearchRow","mcRoomAccess","roomsPinnedSection","roomsAllSection"].forEach(id=>{
+    const el=mcGetById(id),placeholder=el?.__roomsMorePlaceholder;
+    if(el&&placeholder?.parentNode){placeholder.parentNode.insertBefore(el,placeholder);placeholder.remove();delete el.__roomsMorePlaceholder;}
+  });
+  const actions=document.querySelector("#viewRooms .discover-actions"),actionPlaceholder=actions?.__roomsMorePlaceholder;
+  if(actions&&actionPlaceholder?.parentNode){actionPlaceholder.parentNode.insertBefore(actions,actionPlaceholder);actionPlaceholder.remove();delete actions.__roomsMorePlaceholder;}
   panel.classList.add("hidden");
   panel.setAttribute("aria-hidden","true");
   mcGetById("roomsNavMore")?.focus({preventScroll:true});
