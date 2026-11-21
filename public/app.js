@@ -1576,7 +1576,7 @@ function renderSidebarRoomList(){
     const active=String(state.currentRoom)===String(room.id);
     const locked=room.locked??!!room.passwordHash;
     return `<button type="button" class="rooms-nav-item ${active?'active':''}" data-sidebar-room-id="${esc(room.id)}" title="${esc(room.name)}">
-      <span class="rooms-nav-item-icon">${esc(room.icon||'💬')}</span>
+      <span class="rooms-nav-item-icon">${room.banner?`<img src="${esc(room.banner)}" alt="" loading="lazy">`:esc(room.icon||"💬")}</span>
       <span class="rooms-nav-item-name">${esc(room.name||'Chat')}</span>
       ${locked?'<span class="rooms-nav-item-lock">🔒</span>':''}
       <span class="rooms-nav-item-count">${Number(room.onlineCount||0)}</span>
@@ -2456,7 +2456,7 @@ function renderRoomQuickNav() {
   nav.innerHTML = rooms.map(room => {
     const id = String(room.id);
     const selected = String(state.currentRoom || '') === id;
-    return `<button type="button" class="room-quick-chip ${selected ? 'active' : ''}" data-quick-room-id="${esc(id)}" aria-current="${selected ? 'page' : 'false'}"><span>${esc(room.icon || '💬')}</span><span>${esc(room.name || 'Room')}</span>${room.public===false || room.locked || room.passwordHash ? '<span class="room-quick-lock">🔒</span>' : ''}</button>`;
+    return `<button type="button" class="room-quick-chip ${selected ? 'active' : ''}" data-quick-room-id="${esc(id)}" aria-current="${selected ? 'page' : 'false'}"><span class="room-quick-picture">${room.banner?`<img src="${esc(room.banner)}" alt="" loading="lazy">`:esc(room.icon||"💬")}</span><span>${esc(room.name || 'Room')}</span>${room.public===false || room.locked || room.passwordHash ? '<span class="room-quick-lock">🔒</span>' : ''}</button>`;
   }).join('');
   nav.querySelectorAll('[data-quick-room-id]').forEach(button => {
     button.addEventListener('click', () => joinRoom(String(button.dataset.quickRoomId)));
@@ -2574,8 +2574,7 @@ async function joinRoom(id, options = {}) {
     mcGetById("viewRooms").classList.add("chatting");
     mcGetById("viewRooms").classList.toggle("main-room-chat",!!(room.isDefault||/^(main room|teen chat)$/i.test(String(room.name||"").trim())));
 
-    mcGetById("roomName").textContent =
-      `${room.icon || "💬"} ${room.name}`;
+    mcGetById("roomName").innerHTML = `${room.banner?`<img class="room-title-picture" src="${esc(room.banner)}" alt="" loading="lazy">`:esc(room.icon||"💬")} <span>${esc(room.name||"")}</span>`;
 
     mcGetById("roomDesc").textContent =
       room.description || "";
