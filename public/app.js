@@ -7925,65 +7925,105 @@ function editRoom() {
   const savedRequiredRank=String(room.rankRequired||"MEMBER").toUpperCase();
   const rankChoices=ranks.includes(savedRequiredRank)?ranks:[savedRequiredRank,...ranks];
   const savedAgeCriteria=Number(room.minAge??0)>=20?"adult":Number(room.maxAge??120)<=19?"teen":"global";
+  const initialPhoto=String(room.banner||"");
   modal(`
     <div class="room-editor room-editor-edit">
-      <header class="room-editor-hero"><span class="room-editor-hero-icon">✏️</span><div><p class="room-editor-eyebrow">ROOM CONTROL</p><h2>Edit room</h2><p>Update this room’s look, access and limits.</p></div></header>
-      <section class="room-editor-section"><h3>✨ Identity</h3><div class="room-editor-grid room-editor-identity">
-        <label>Room name<input id="rn" maxlength="50" required value="${esc(room.name||"")}" placeholder="e.g. Midnight Lounge"></label>
-        <label>Room icon<input id="ri" maxlength="8" value="${esc(room.icon||"💬")}" placeholder="💬"></label>
-        <label class="room-editor-wide">Description<textarea id="rd" maxlength="300" rows="3" placeholder="What is this room for?">${esc(room.description||"")}</textarea></label>
-        <label>Topic / category<input id="rc" maxlength="40" value="${esc(room.category||"Community")}" placeholder="Community"></label>
-        <label>Banner image URL <span class="room-editor-optional">optional</span><input id="rBanner" type="url" value="${esc(room.banner||"")}" placeholder="https://…"></label>
-      </div></section>
-      <section class="room-editor-section"><h3>🔐 Access & privacy</h3>
+      <header class="room-editor-edit-head">
+        <p class="room-editor-eyebrow">ROOM CONTROL</p>
+        <h2>Manage your room settings.</h2>
+      </header>
+      <div class="room-editor-fields">
+        <label>Room name<input id="rn" maxlength="50" required value="${esc(room.name||"")}" placeholder="Room name"></label>
+        <div class="room-editor-photo-field">
+          <span class="room-editor-photo-label">Room profile photo</span>
+          <div class="room-editor-photo-row">
+            <div class="room-editor-photo-preview" id="roomPhotoPreview">${initialPhoto?`<img src="${esc(initialPhoto)}" alt="Room profile photo">`:'<span aria-hidden="true">▧</span>'}</div>
+            <input id="roomPictureEdit" type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/avif" hidden>
+            <div class="room-editor-photo-actions">
+              <button type="button" class="mini" id="addRoomPhoto">Add photo</button>
+              <button type="button" class="mini danger" id="deleteRoomPhoto" ${initialPhoto?'':'hidden'}>Delete photo</button>
+            </div>
+          </div>
+        </div>
+        <label>Description<textarea id="rd" maxlength="300" rows="3" placeholder="What is this room for?">${esc(room.description||"")}</textarea></label>
         <label>Who can discover this room<select id="rPublic"><option value="true" ${room.public!==false?"selected":""}>Public — listed for everyone</option><option value="false" ${room.public===false?"selected":""}>Private — not publicly listed</option></select></label>
         <label>Allowed age criteria<select id="rAgeCriteria"><option value="teen" ${savedAgeCriteria==="teen"?"selected":""}>Teen — 19 and younger</option><option value="adult" ${savedAgeCriteria==="adult"?"selected":""}>Adult — 20 and older</option><option value="global" ${savedAgeCriteria==="global"?"selected":""}>Global — all ages</option></select></label>
-        <p class="room-editor-help">Age access is checked when someone joins. Staff can still enter any room.</p>
         <label>Minimum rank to join<select id="rRankRequired">${rankChoices.map(r=>'<option value="'+r+'" '+(savedRequiredRank===r?'selected':'')+'>'+(rankLabels[r]||r.replaceAll("_"," "))+'</option>').join("")}</select></label>
         <label>Member access<select id="rFriendsOnly"><option value="false" ${room.friendsOnly?'':'selected'}>Anyone who meets the rank requirement</option><option value="true" ${room.friendsOnly?'selected':''}>Accepted friends only</option></select></label>
-        <label>Change room password <span class="room-editor-optional">leave blank to remove it</span><input id="rp" type="password" autocomplete="new-password" placeholder="Enter a new password"></label>
-      </section>
-      <section class="room-editor-section"><h3>⚙️ Room limits</h3><div class="room-editor-grid">
-        <label>Member limit<input id="rLimit" type="number" min="2" max="500" value="${Math.max(2,Math.min(500,Number(room.limit||100)))}"></label>
-        <label>Slow mode (seconds)<input id="rs" type="number" min="0" max="3600" value="${Math.max(0,Number(room.slowMode||0))}"></label>
-      </div><p class="room-editor-help">Slow mode sets the minimum delay between messages from the same user. Use 0 to turn it off.</p></section>
-      <footer class="room-editor-footer"><span class="room-editor-owner">Owner: @${esc(room.creator||"Unknown")}</span><button type="button" class="mini" onclick="closeModal()">Cancel</button><button type="button" class="primary" id="saveRoomChanges">Save changes</button></footer>
+        <label>Room password<input id="rp" type="password" autocomplete="new-password" placeholder="${room.locked?'••••••••':'Enter password'}"></label>
+      </div>
+      <footer class="room-editor-footer">
+        <span class="room-editor-owner">Owner: @${esc(room.creator||"Unknown")}</span>
+        <button type="button" class="mini" id="cancelRoomChanges">Cancel</button>
+        <button type="button" class="primary" id="saveRoomChanges">Save changes</button>
+      </footer>
     </div>`);
+  const pictureInput=mcGetById("roomPictureEdit");
+  const picturePreview=mcGetById("roomPhotoPreview");
+  const deletePhotoButton=mcGetById("deleteRoomPhoto");
+  const renderPhoto=(url)=>{
+    if(picturePreview)picturePreview.innerHTML=url?`<img src="${esc(url)}" alt="Room profile photo">`:'<span aria-hidden="true">▧</span>';
+  };
+  mcGetById("addRoomPhoto")?.addEventListener("click",()=>pictureInput?.click());
+  pictureInput?.addEventListener("change",()=>{
+    const file=pictureInput.files?.[0];
+    if(!file)return;
+    renderPhoto(URL.createObjectURL(file));
+    if(picturePreview)picturePreview.dataset.removeExisting="false";
+    if(deletePhotoButton)deletePhotoButton.hidden=false;
+  });
+  deletePhotoButton?.addEventListener("click",()=>{
+    if(pictureInput?.files?.length){
+      pictureInput.value="";
+      renderPhoto(initialPhoto);
+      if(picturePreview)picturePreview.dataset.removeExisting="false";
+      deletePhotoButton.hidden=!initialPhoto;
+      return;
+    }
+    if(initialPhoto){
+      renderPhoto("");
+      if(picturePreview)picturePreview.dataset.removeExisting="true";
+      deletePhotoButton.hidden=true;
+    }
+  });
+  mcGetById("cancelRoomChanges").onclick=closeModal;
   mcGetById("saveRoomChanges").onclick=saveRoom;
 }
 
 async function saveRoom() {
+  const saveButton=mcGetById("saveRoomChanges");
+  if(saveButton?.disabled)return;
+  if(saveButton){saveButton.disabled=true;saveButton.textContent="Saving…";}
   try {
-    await api(
-      `/api/rooms/${state.currentRoom}`,
-      {
-        method: "PUT",
-        body: JSON.stringify({
-          name: mcGetById("rn").value,
-          icon: mcGetById("ri").value,
-          description: mcGetById("rd").value,
-          category: mcGetById("rc").value.trim() || "Community",
-          slowMode: Number(mcGetById("rs").value || 0),
-          limit: Math.max(2, Math.min(500, Number(mcGetById("rLimit").value || 100))),
-          banner: mcGetById("rBanner").value.trim(),
-          public: mcGetById("rPublic").value === "true",
-          rankRequired: mcGetById("rRankRequired").value,
-          ageCriteria: mcGetById("rAgeCriteria").value,
-          friendsOnly: mcGetById("rFriendsOnly").value === "true",
-          password: mcGetById("rp").value
-        })
-      }
-    );
-
+    const roomId=String(state.currentRoom);
+    const pictureInput=mcGetById("roomPictureEdit");
+    const picturePreview=mcGetById("roomPhotoPreview");
+    const selectedPhoto=pictureInput?.files?.[0];
+    if(selectedPhoto){
+      const form=new FormData();
+      form.append("roomPicture",selectedPhoto);
+      await api(`/api/rooms/${encodeURIComponent(roomId)}/picture`,{method:"PUT",body:form,uploadProgress:true});
+    }else if(picturePreview?.dataset.removeExisting==="true"){
+      await api(`/api/rooms/${encodeURIComponent(roomId)}/picture`,{method:"DELETE"});
+    }
+    const changes={
+      name:mcGetById("rn").value,
+      description:mcGetById("rd").value,
+      public:mcGetById("rPublic").value==="true",
+      rankRequired:mcGetById("rRankRequired").value,
+      ageCriteria:mcGetById("rAgeCriteria").value,
+      friendsOnly:mcGetById("rFriendsOnly").value==="true"
+    };
+    const newPassword=mcGetById("rp").value;
+    if(newPassword)changes.password=newPassword;
+    await api(`/api/rooms/${encodeURIComponent(roomId)}`,{method:"PUT",body:JSON.stringify(changes)});
     await loadRooms();
-
     closeModal();
-
     renderRooms();
-
     toast("Room updated.");
   } catch (error) {
-    toast(error.message);
+    toast(error.message||"Could not update this room.");
+    if(saveButton){saveButton.disabled=false;saveButton.textContent="Save changes";}
   }
 }
 
