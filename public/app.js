@@ -7926,43 +7926,43 @@ function editRoom() {
   const rankChoices=ranks.includes(savedRequiredRank)?ranks:[savedRequiredRank,...ranks];
   const savedAgeCriteria=Number(room.minAge??0)>=20?"adult":Number(room.maxAge??120)<=19?"teen":"global";
   const initialPhoto=String(room.banner||"");
-  modal(\`
+  modal(`
     <div class="room-editor room-editor-edit">
       <header class="room-editor-edit-head">
         <p class="room-editor-eyebrow">ROOM CONTROL</p>
         <h2>Manage your room settings.</h2>
       </header>
       <div class="room-editor-fields">
-        <label>Room name<input id="rn" maxlength="50" required value="\${esc(room.name||"")}" placeholder="Room name"></label>
+        <label>Room name<input id="rn" maxlength="50" required value="${esc(room.name||"")}" placeholder="Room name"></label>
         <div class="room-editor-photo-field">
           <span class="room-editor-photo-label">Room profile photo</span>
           <div class="room-editor-photo-row">
-            <div class="room-editor-photo-preview" id="roomPhotoPreview">\${initialPhoto?\`<img src="\${esc(initialPhoto)}" alt="Room profile photo">\`:'<span aria-hidden="true">▧</span>'}</div>
+            <div class="room-editor-photo-preview" id="roomPhotoPreview">${initialPhoto?`<img src="${esc(initialPhoto)}" alt="Room profile photo">`:'<span aria-hidden="true">▧</span>'}</div>
             <input id="roomPictureEdit" type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/avif" hidden>
             <div class="room-editor-photo-actions">
               <button type="button" class="mini" id="addRoomPhoto">Add photo</button>
-              <button type="button" class="mini danger" id="deleteRoomPhoto" \${initialPhoto?'':'hidden'}>Delete photo</button>
+              <button type="button" class="mini danger" id="deleteRoomPhoto" ${initialPhoto?'':'hidden'}>Delete photo</button>
             </div>
           </div>
         </div>
-        <label>Description<textarea id="rd" maxlength="300" rows="3" placeholder="What is this room for?">\${esc(room.description||"")}</textarea></label>
-        <label>Who can discover this room<select id="rPublic"><option value="true" \${room.public!==false?"selected":""}>Public — listed for everyone</option><option value="false" \${room.public===false?"selected":""}>Private — not publicly listed</option></select></label>
-        <label>Allowed age criteria<select id="rAgeCriteria"><option value="teen" \${savedAgeCriteria==="teen"?"selected":""}>Teen — 19 and younger</option><option value="adult" \${savedAgeCriteria==="adult"?"selected":""}>Adult — 20 and older</option><option value="global" \${savedAgeCriteria==="global"?"selected":""}>Global — all ages</option></select></label>
-        <label>Minimum rank to join<select id="rRankRequired">\${rankChoices.map(r=>'<option value="'+r+'" '+(savedRequiredRank===r?'selected':'')+'>'+(rankLabels[r]||r.replaceAll("_"," "))+'</option>').join("")}</select></label>
-        <label>Member access<select id="rFriendsOnly"><option value="false" \${room.friendsOnly?'':'selected'}>Anyone who meets the rank requirement</option><option value="true" \${room.friendsOnly?'selected':''}>Accepted friends only</option></select></label>
-        <label>Room password<input id="rp" type="password" autocomplete="new-password" placeholder="\${room.locked?'••••••••':'Enter password'}"></label>
+        <label>Description<textarea id="rd" maxlength="300" rows="3" placeholder="What is this room for?">${esc(room.description||"")}</textarea></label>
+        <label>Who can discover this room<select id="rPublic"><option value="true" ${room.public!==false?"selected":""}>Public — listed for everyone</option><option value="false" ${room.public===false?"selected":""}>Private — not publicly listed</option></select></label>
+        <label>Allowed age criteria<select id="rAgeCriteria"><option value="teen" ${savedAgeCriteria==="teen"?"selected":""}>Teen — 19 and younger</option><option value="adult" ${savedAgeCriteria==="adult"?"selected":""}>Adult — 20 and older</option><option value="global" ${savedAgeCriteria==="global"?"selected":""}>Global — all ages</option></select></label>
+        <label>Minimum rank to join<select id="rRankRequired">${rankChoices.map(r=>'<option value="'+r+'" '+(savedRequiredRank===r?'selected':'')+'>'+(rankLabels[r]||r.replaceAll("_"," "))+'</option>').join("")}</select></label>
+        <label>Member access<select id="rFriendsOnly"><option value="false" ${room.friendsOnly?'':'selected'}>Anyone who meets the rank requirement</option><option value="true" ${room.friendsOnly?'selected':''}>Accepted friends only</option></select></label>
+        <label>Room password<input id="rp" type="password" autocomplete="new-password" placeholder="${room.locked?'••••••••':'Enter password'}"></label>
       </div>
       <footer class="room-editor-footer">
-        <span class="room-editor-owner">Owner: @\${esc(room.creator||"Unknown")}</span>
+        <span class="room-editor-owner">Owner: @${esc(room.creator||"Unknown")}</span>
         <button type="button" class="mini" id="cancelRoomChanges">Cancel</button>
         <button type="button" class="primary" id="saveRoomChanges">Save changes</button>
       </footer>
-    </div>\`);
+    </div>`);
   const pictureInput=mcGetById("roomPictureEdit");
   const picturePreview=mcGetById("roomPhotoPreview");
   const deletePhotoButton=mcGetById("deleteRoomPhoto");
   const renderPhoto=(url)=>{
-    if(picturePreview)picturePreview.innerHTML=url?\`<img src="\${esc(url)}" alt="Room profile photo">\`:'<span aria-hidden="true">▧</span>';
+    if(picturePreview)picturePreview.innerHTML=url?`<img src="${esc(url)}" alt="Room profile photo">`:'<span aria-hidden="true">▧</span>';
   };
   mcGetById("addRoomPhoto")?.addEventListener("click",()=>pictureInput?.click());
   pictureInput?.addEventListener("change",()=>{
@@ -8002,9 +8002,9 @@ async function saveRoom() {
     if(selectedPhoto){
       const form=new FormData();
       form.append("roomPicture",selectedPhoto);
-      await api(\`/api/rooms/\${encodeURIComponent(roomId)}/picture\`,{method:"PUT",body:form,uploadProgress:true});
+      await api(`/api/rooms/${encodeURIComponent(roomId)}/picture`,{method:"PUT",body:form,uploadProgress:true});
     }else if(picturePreview?.dataset.removeExisting==="true"){
-      await api(\`/api/rooms/\${encodeURIComponent(roomId)}/picture\`,{method:"DELETE"});
+      await api(`/api/rooms/${encodeURIComponent(roomId)}/picture`,{method:"DELETE"});
     }
     const changes={
       name:mcGetById("rn").value,
@@ -8016,7 +8016,7 @@ async function saveRoom() {
     };
     const newPassword=mcGetById("rp").value;
     if(newPassword)changes.password=newPassword;
-    await api(\`/api/rooms/\${encodeURIComponent(roomId)}\`,{method:"PUT",body:JSON.stringify(changes)});
+    await api(`/api/rooms/${encodeURIComponent(roomId)}`,{method:"PUT",body:JSON.stringify(changes)});
     await loadRooms();
     closeModal();
     renderRooms();
