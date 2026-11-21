@@ -2594,6 +2594,7 @@ function generateRoomCode(){return String(crypto.randomInt(0,10000000000)).padSt
 
 async function createRoomHandler(req,res){
   const u=current(req); if(!u)return res.status(401).json({error:"Login required"});
+  const rejectRoomCreation=async(status,message)=>{if(req.file)await discardUploadedMedia(req.file);return res.status(status).json({error:message});};
   if(req.file){
     if(await checkRestrictedMediaUpload(req,res,u,req.file))return;
     if(!/^image\/(png|jpe?g|gif|webp|avif)$/i.test(String(req.file.mimetype||""))){
@@ -2606,23 +2607,23 @@ async function createRoomHandler(req,res){
   // remain available for other accounts configured by the Owner/Developer.
   const roomCreatorRanks=["PREMIUM","ROYAL","MOD","MODERATOR","ADMIN","SUPER_ADMIN","SUPERADMIN","COMMISSOR","INSTRUCTOR","COOWNER","OWNER","DEVELOPER"];
   if(!roomCreatorRanks.includes(String(u.rank||"").toUpperCase()) && !(featureGrantAllowed(u,"create_rooms")||hasFeature(u,"create_room"))) {
-    return res.status(403).json({error:`Create room requires ${featureRank("create_room")} or an explicit create-room permission.`});
+    return rejectRoomCreation(403,`Create room requires ${featureRank("create_room")} or an explicit create-room permission.`);
   }
   const name=cleanText(req.body.name).trim().slice(0,50);
   const rankRequired=String(req.body.rankRequired||"MEMBER").toUpperCase();
   const limit=Number(req.body.limit??100),slowMode=Number(req.body.slowMode??0);
   // Room age restrictions have been retired. Every room is open to all ages.
   const minAge=0,maxAge=120;
-  if(!name)return res.status(400).json({error:"Room name is required."});
-  if(!ranks.includes(rankRequired))return res.status(400).json({error:"Choose a valid minimum rank for this room."});
-  if(!Number.isInteger(limit)||limit<2||limit>500)return res.status(400).json({error:"Member limit must be between 2 and 500."});
-  if(!Number.isInteger(slowMode)||slowMode<0||slowMode>3600)return res.status(400).json({error:"Slow mode must be between 0 and 3600 seconds."});
-  if(req.body.public!==undefined&&typeof req.body.public!=="boolean"&&!["true","false"].includes(String(req.body.public)))return res.status(400).json({error:"Room visibility must be public or private."});
-  if(req.body.friendsOnly!==undefined&&typeof req.body.friendsOnly!=="boolean"&&!["true","false"].includes(String(req.body.friendsOnly)))return res.status(400).json({error:"Friends-only access must be true or false."});
+  if(!name)return rejectRoomCreation(400,"Room name is required.");
+  if(!ranks.includes(rankRequired))return rejectRoomCreation(400,"Choose a valid minimum rank for this room.");
+  if(!Number.isInteger(limit)||limit<2||limit>500)return rejectRoomCreation(400,"Member limit must be between 2 and 500.");
+  if(!Number.isInteger(slowMode)||slowMode<0||slowMode>3600)return rejectRoomCreation(400,"Slow mode must be between 0 and 3600 seconds.");
+  if(req.body.public!==undefined&&typeof req.body.public!=="boolean"&&!["true","false"].includes(String(req.body.public)))return rejectRoomCreation(400,"Room visibility must be public or private.");
+  if(req.body.friendsOnly!==undefined&&typeof req.body.friendsOnly!=="boolean"&&!["true","false"].includes(String(req.body.friendsOnly)))return rejectRoomCreation(400,"Friends-only access must be true or false.");
   const roomIsPublic=!(req.body.public===false||String(req.body.public)==="false");
   const roomFriendsOnly=req.body.friendsOnly===true||String(req.body.friendsOnly)==="true";
   const roomPassword=String(req.body.password||"");
-  if(Buffer.byteLength(roomPassword,"utf8")>72)return res.status(400).json({error:"Room passwords must be no more than 72 bytes."});
+  if(Buffer.byteLength(roomPassword,"utf8")>72)return rejectRoomCreation(400,"Room passwords must be no more than 72 bytes.");
   const password=roomPassword?await bcrypt.hash(roomPassword,10):null;
   try{
     const roomCode=!roomIsPublic?generateRoomCode():null;
