@@ -2880,15 +2880,18 @@ function messageHTML(message) {
   }
   if(message.system){
     let systemBody=esc(message.text||'');
+    let systemAvatar='';
     if(message.profileUserId!=null){
       const announcement=String(message.text||'');
       const joinPhrase=' has joined the room ';
       const phraseAt=announcement.indexOf(joinPhrase);
       const roomSuffix=phraseAt>=0?announcement.slice(phraseAt):'';
       const profileName=String(message.profileDisplayName||announcement.slice(0,phraseAt>=0?phraseAt:announcement.length)||'Member');
+      const profilePhoto=String(message.profileAvatar||message.avatar||'');
+      systemAvatar=`<span class="system-message-profile-avatar">${avatar({displayName:profileName,avatar:profilePhoto})}</span>`;
       systemBody=`<button class="system-message-user-link" type="button" onclick="openUser('${esc(message.profileUserId)}')" aria-label="Open ${esc(profileName)}'s profile">${esc(profileName)}</button>${esc(roomSuffix)}`;
     }
-    return `<div class="system-message" data-mid="${esc(message.id)}"><span>✦</span><b>${systemBody}</b><small>${fmt(message.time)}</small></div>`;
+    return `<div class="system-message" data-mid="${esc(message.id)}"><span>✦</span>${systemAvatar}<b>${systemBody}</b><small>${fmt(message.time)}</small></div>`;
   }
   const user = {
     id: message.userId,
@@ -5296,8 +5299,6 @@ async function loadLeaderboard() {
         ${
           users.map((user, i) => `
             <div class="user-card">
-
-              <b>#${i + 1}</b>
 
               ${avatar(user)}
 
