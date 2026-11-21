@@ -142,3 +142,28 @@ button.top-profile#topProfile{display:grid!important;place-items:center!importan
   border:1px solid rgba(177,205,231,.42)!important;border-radius:10px!important;
   background:linear-gradient(145deg,rgba(29,58,86,.96),rgba(9,25,42,.99))!important;
 }
+
+
+/* Keep member-avatar room-join notices on one centred row. */
+.system-message.system-message-with-avatar{
+  display:flex!important;flex-wrap:nowrap!important;align-items:center!important;
+  justify-content:center!important;gap:7px!important;line-height:1.25!important;
+}
+.system-message.system-message-with-avatar>.system-message-profile-avatar{
+  display:inline-flex!important;align-items:center!important;justify-content:center!important;
+  align-self:center!important;flex:0 0 28px!important;width:28px!important;height:28px!important;
+  margin:0!important;vertical-align:middle!important;
+}
+.system-message.system-message-with-avatar>.system-message-profile-avatar>.avatar{
+  display:grid!important;place-items:center!important;width:28px!important;height:28px!important;
+  min-width:28px!important;min-height:28px!important;margin:0!important;line-height:1!important;
+}
+.system-message.system-message-with-avatar>.system-message-profile-avatar img{
+  display:block!important;width:100%!important;height:100%!important;object-fit:cover!important;
+}
+.system-message.system-message-with-avatar>b{
+  display:inline-flex!important;align-items:center!important;align-self:center!important;
+  min-width:0!important;line-height:1.25!important;margin:0!important;
+}
+.system-message.system-message-with-avatar>.system-message-profile-avatar,
+.system-message.system-message-with-avatar>b{vertical-align:middle!important}
