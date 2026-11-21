@@ -4121,28 +4121,6 @@ function renderUserProfileModal(user,data={}){
     </div>
     <div id="profileTabContent" class="profile-info"></div>
   </div>`);
-  // Keep the public-profile close control in the same action row as rank, edit and menu.
-  const profileStats=document.querySelector("#modal .profile-modal .profile-stats");
-  const nativeProfileClose=document.querySelector("#modal .modal-card > .modal-close");
-  profileStats?.querySelector(".profile-inline-close")?.remove();
-  if(profileStats){
-    let profileClose=nativeProfileClose||profileStats.querySelector(".profile-inline-close");
-    if(!profileClose){
-      profileClose=document.createElement("button");
-      profileClose.type="button";
-      profileClose.className="mini profile-inline-close";
-      profileClose.textContent="×";
-      profileClose.addEventListener("click",closeModal);
-    }
-    profileClose.classList.remove("profile-native-close-hidden");
-    profileClose.classList.add("mini","profile-inline-close");
-    profileClose.setAttribute("aria-label","Close public profile");
-    profileClose.title="Close public profile";
-    profileClose.style.display="inline-flex";
-    // Keep the close control as the final flex item in the same row:
-    // Rank Giving (when present) → Edit Profile → Actions → Close Profile.
-    (profileStats.querySelector(".profile-action-group")||profileStats).appendChild(profileClose);
-  }
   // Public profile avatar: bind to the frame itself, and resolve the image URL
   // at click time so lazy-loaded images and framed avatars both open reliably.
   const profileAvatarFrame=document.querySelector('#modal .profile-modal .equipped-profile-frame');
