@@ -205,3 +205,21 @@ body .mini:active,body .room-menu-action:active,body .wallet-actions button:acti
   .dm-chat-person .dm-profile-avatar{width:38px!important;height:38px!important;flex-basis:38px!important}
   #modal .modal-card:has(.dm-chat-header) .modal-close{display:none!important}
 }
+
+/* The private-message renderer uses .msg.dm-msg and .message-avatar-button. */
+#modal .dm-message-list>.dm-msg{
+  display:flex!important;align-items:center!important;gap:9px!important;
+}
+#modal .dm-message-list>.dm-msg>.dm-message-avatar{
+  display:grid!important;place-items:center!important;
+  align-self:center!important;flex:0 0 36px!important;
+  width:36px!important;height:36px!important;min-width:36px!important;
+  margin:0!important;overflow:hidden!important;border-radius:50%!important;
+}
+#modal .dm-message-list>.dm-msg>.dm-message-avatar img,
+#modal .dm-message-list>.dm-msg>.dm-message-avatar .avatar{
+  display:block!important;width:100%!important;height:100%!important;
+  min-width:100%!important;min-height:100%!important;object-fit:cover!important;
+  margin:0!important;border-radius:50%!important;
+}
+#modal .dm-message-list>.dm-msg>.msg-body{min-width:0!important;max-width:calc(100% - 46px)!important}
