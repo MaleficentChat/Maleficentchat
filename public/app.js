@@ -8026,39 +8026,55 @@ function openRoomCreationModal() {
   const rankLabels={MEMBER:"Member",VIP:"VIP",PREMIUM:"Premium",ROYAL:"Royal",MOD:"Moderator",ADMIN:"Admin",SUPER_ADMIN:"Super Admin",COMMISSOR:"Commissor",INSTRUCTOR:"Instructor",COOWNER:"Co-owner",OWNER:"Owner",DEVELOPER:"Developer"};
   modal(`
     <div class="room-editor room-editor-create">
-      <header class="room-editor-hero"><span class="room-editor-hero-icon">🌙</span><div><p class="room-editor-eyebrow">MAKE YOUR SPACE</p><h2>Create a room</h2><p>Set up a new corner of Maleficent Chat.</p></div></header>
+      <div class="room-create-heading">
+        <h2>Create Room</h2>
+        <p>Create your own space in Maleficent Chat.</p>
+      </div>
       <form id="roomForm">
-        <section class="room-editor-section"><h3>✨ The basics</h3><div class="room-editor-grid room-editor-identity">
-          <label>Room name<input id="rn" maxlength="50" required placeholder="e.g. Midnight Lounge"></label>
-          <label>Room icon<input id="ri" maxlength="8" value="💬" placeholder="💬"></label>
-          <label class="room-editor-wide">Description<textarea id="rd" maxlength="300" rows="3" placeholder="What will people chat about?"></textarea></label>
-          <label>Topic / category<input id="rc" maxlength="40" value="Community" placeholder="Community"></label>
-        </div></section>
-        <section class="room-editor-section"><h3>🔐 Who can join?</h3>
+        <div class="room-create-group">
+          <h3>Room details</h3>
+          <label>Room name<input id="rn" maxlength="50" required placeholder="Enter room name"></label>
+          <div class="room-picture-field">
+            <span class="room-picture-label">Room profile picture</span>
+            <div class="room-picture-picker">
+              <input id="roomPicture" name="roomPicture" type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/avif" hidden>
+              <label for="roomPicture" class="room-picture-choose"><span aria-hidden="true">▧</span> Choose a picture</label>
+              <span class="room-picture-optional">Optional</span>
+              <span id="roomPictureName" class="room-picture-filename" aria-live="polite"></span>
+            </div>
+          </div>
+          <label>Description<textarea id="rd" maxlength="300" rows="3" placeholder="Describe your room..."></textarea></label>
+        </div>
+        <div class="room-create-group">
+          <h3>Access settings</h3>
           <label>Room visibility<select id="rVisibility"><option value="public">Public — listed for everyone</option><option value="secret">Secret Society — hidden, invitation key required</option></select></label>
           <label>Minimum rank<select id="rr">${ranks.map(r=>'<option value="'+r+'" '+(r==="MEMBER"?"selected":"")+'>'+rankLabels[r]+'</option>').join("")}</select></label>
           <label>Member access<select id="rFriendsOnlyCreate"><option value="false">Anyone who meets the rank requirement</option><option value="true">Accepted friends only</option></select></label>
-          <label>Room password <span class="room-editor-optional">optional</span><input id="rp" type="password" autocomplete="new-password" placeholder="Leave blank for no password"></label>
-        </section>
-        <section class="room-editor-section"><h3>⚙️ Room capacity</h3><div class="room-editor-grid">
-          <label>Member limit<input id="rl" type="number" min="2" max="500" value="100" required></label>
-          <label>Slow mode (seconds)<input id="rs" type="number" min="0" max="3600" value="0" required></label>
-        </div><p class="room-editor-help">Slow mode sets the minimum delay between messages from the same user. Use 0 to turn it off.</p></section>
+          <label>Room password<input id="rp" type="password" autocomplete="new-password" placeholder="Enter room password" maxlength="72"></label>
+        </div>
         <footer class="room-editor-footer"><button type="button" class="mini" onclick="closeModal()">Cancel</button><button class="primary" type="submit">＋ Create room</button></footer>
       </form>
     </div>`);
+  const pictureInput=mcGetById("roomPicture");
+  pictureInput?.addEventListener("change",()=>{
+    const file=pictureInput.files?.[0];
+    const name=mcGetById("roomPictureName");
+    if(name)name.textContent=file?file.name:"";
+  });
   mcGetById("roomForm").onsubmit=async e=>{
     e.preventDefault();
     const submit=e.currentTarget.querySelector('[type="submit"]');
     if(submit){submit.disabled=true;submit.textContent="Creating…";}
     try{
-      const created=await api("/api/rooms",{method:"POST",body:JSON.stringify({
-        name:mcGetById("rn").value.trim(),icon:mcGetById("ri").value.trim()||"💬",description:mcGetById("rd").value.trim(),
-        category:mcGetById("rc").value.trim()||"Community",password:mcGetById("rp").value,public:mcGetById("rVisibility").value!=="secret",
-        rankRequired:mcGetById("rr").value,friendsOnly:mcGetById("rFriendsOnlyCreate").value==="true",
-        limit:Math.max(2,Math.min(500,Number(mcGetById("rl").value)||100)),
-        slowMode:Math.max(0,Math.min(3600,Number(mcGetById("rs").value)||0))
-      })});
+      const form=new FormData();
+      form.append("name",mcGetById("rn").value.trim());
+      form.append("description",mcGetById("rd").value.trim());
+      form.append("public",String(mcGetById("rVisibility").value!=="secret"));
+      form.append("rankRequired",mcGetById("rr").value);
+      form.append("friendsOnly",String(mcGetById("rFriendsOnlyCreate").value==="true"));
+      form.append("password",mcGetById("rp").value);
+      if(pictureInput?.files?.[0])form.append("roomPicture",pictureInput.files[0]);
+      const created=await api("/api/rooms",{method:"POST",body:form});
       await loadRooms();closeModal();renderRooms();toast("Room created.");
       if(created.room?.public===false&&created.room?.id)await showInvite(created.room);
     }catch(error){toast(error.message);if(submit){submit.disabled=false;submit.textContent="＋ Create room";}}
