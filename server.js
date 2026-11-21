@@ -2854,6 +2854,44 @@ app.put("/api/rooms/:id",auth,async(req,res)=>{
   res.json({room:{...r,passwordHash:undefined,inviteToken:undefined}});
 });
 
+app.put("/api/rooms/:id/picture",auth,upload.single("roomPicture"),async(req,res)=>{
+  const actor=current(req),room=db.rooms.find(item=>String(item.id)===String(req.params.id));
+  if(!room){if(req.file)await discardUploadedMedia(req.file);return res.status(404).json({error:"Room not found"});}
+  if(room.isDefault||/^main room$/i.test(String(room.name||"").trim())){if(req.file)await discardUploadedMedia(req.file);return res.status(403).json({error:"The permanent Main Room cannot be modified."});}
+  const canEdit=roomOwnerOrGlobal(actor,room)||roomRoleCan(room.id,actor.id,"edit_room")||featureGrantAllowed(actor,"edit_rooms")||featureGrantAllowed(actor,"edit_room");
+  if(!canEdit){if(req.file)await discardUploadedMedia(req.file);return res.status(403).json({error:"You do not have permission to change this room photo."});}
+  if(!req.file)return res.status(400).json({error:"Choose a room photo to upload."});
+  try{
+    const photoUrl="/uploads/"+req.file.filename;
+    const saved=await pool.query("UPDATE rooms SET banner=$1 WHERE id=$2 RETURNING banner",[photoUrl,Number(room.id)]);
+    if(!saved.rowCount){await discardUploadedMedia(req.file);return res.status(404).json({error:"Room was not found while saving its photo."});}
+    room.banner=saved.rows[0].banner;
+    save();log(actor,"ROOM_PHOTO_UPDATE",room.name,{photo:photoUrl});io.emit("rooms_updated");
+    return res.json({ok:true,room:{id:String(room.id),banner:room.banner}});
+  }catch(error){
+    await discardUploadedMedia(req.file);
+    console.error("Room photo upload failed:",error);
+    return res.status(500).json({error:"Could not save the room photo."});
+  }
+});
+app.delete("/api/rooms/:id/picture",auth,async(req,res)=>{
+  const actor=current(req),room=db.rooms.find(item=>String(item.id)===String(req.params.id));
+  if(!room)return res.status(404).json({error:"Room not found"});
+  if(room.isDefault||/^main room$/i.test(String(room.name||"").trim()))return res.status(403).json({error:"The permanent Main Room cannot be modified."});
+  const canEdit=roomOwnerOrGlobal(actor,room)||roomRoleCan(room.id,actor.id,"edit_room")||featureGrantAllowed(actor,"edit_rooms")||featureGrantAllowed(actor,"edit_room");
+  if(!canEdit)return res.status(403).json({error:"You do not have permission to change this room photo."});
+  try{
+    const saved=await pool.query("UPDATE rooms SET banner='' WHERE id=$1 RETURNING banner",[Number(room.id)]);
+    if(!saved.rowCount)return res.status(404).json({error:"Room was not found while removing its photo."});
+    room.banner="";
+    save();log(actor,"ROOM_PHOTO_REMOVE",room.name);io.emit("rooms_updated");
+    return res.json({ok:true,room:{id:String(room.id),banner:""}});
+  }catch(error){
+    console.error("Room photo removal failed:",error);
+    return res.status(500).json({error:"Could not remove the room photo."});
+  }
+});
+
 app.put("/api/rooms/:id/pin",auth,(req,res)=>{
   const actor=current(req),room=db.rooms.find(item=>String(item.id)===String(req.params.id));
   if(!room)return res.status(404).json({error:"Room not found"});
