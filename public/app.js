@@ -2354,11 +2354,7 @@ function renderRooms() {
             <span class="room-card-bottom"><span class="room-presence"><i></i>${count} members online</span><span class="room-join-label">Join <b>→</b></span></span>
           </span>
         </button>
-        ${(!isProtectedMainRoom&&(canManage||canManagePins))? `<div class="room-list-actions" aria-label="Room actions">
-          <button class="mini room-action-icon ${canManage?'':'hidden'}" type="button" title="Edit room" aria-label="Edit room" onclick="event.stopPropagation();editRoomById('${esc(room.id)}')">✎</button>
-          ${canManagePins&&!isProtectedMainRoom?`<button class="mini room-action-icon room-pin-toggle" type="button" title="Pin / unpin room" aria-label="Pin / unpin room" onclick="event.stopPropagation();toggleRoomPinById(&quot;${esc(room.id)}&quot;)">📌</button>`:""}
-          ${canManage&&canFeature("delete_room")?`<button class="mini danger room-action-icon" type="button" title="Delete room" aria-label="Delete room" onclick="event.stopPropagation();deleteRoomById('${esc(room.id)}')">⌫</button>`:""}
-        </div>`:""}
+        <button class="room-card-gear" type="button" title="Room options" aria-label="Open ${esc(room.name)} room options" onclick="event.stopPropagation();openRoomCardOptions('${esc(room.id)}')">⚙️</button>
       </article>`;
   };
   const pinnedRoot=mcGetById("pinnedRooms");
@@ -7795,39 +7791,36 @@ async function sendYoutube(videoId,title){
 // Use capture-phase delegation so taps still work if the chat header is
 // re-rendered, or another component stops bubbling before the button handler.
 document.addEventListener("click", async event => {
-  const trigger = event.target instanceof Element ? event.target.closest("#roomMenu") : null;
+  const trigger = event.target instanceof Element ? event.target.closest("#roomMenu, [data-room-card-menu]") : null;
   if (!trigger) return;
+  const targetRoomId=trigger.dataset.roomCardMenu||state?.currentRoom;
   event.preventDefault();
   event.stopPropagation();
   event.stopImmediatePropagation();
 
   try {
     const rooms = Array.isArray(state?.rooms) ? state.rooms : [];
-    const room = rooms.find(r => String(r.id) === String(state?.currentRoom));
+    const room = rooms.find(r => String(r.id) === String(targetRoomId));
     if (room && state.user) {
       try {
         const roomStaffInfo = await api(`/api/rooms/${encodeURIComponent(room.id)}/staff`);
-        state.currentRoomRole = roomStaffInfo.myRole || "USER";
+        room.myRole=roomStaffInfo.myRole||"USER";
       } catch (_) {}
     }
     const roomName = esc(room?.name || "Current room");
-    // Core options must always render; optional actions are added only when
-    // their permission checks complete successfully.
-    const actions = [
-      ["pinned","📌 Pinned messages"],
-      ["youtube","▶️ YouTube"],
-      ["invite","🔐 Room code"]
-    ];
-    try { const announcementRank=String(state.user?.rank||"").toUpperCase().replace(/[\s_-]/g,""); if ((rankOrder[announcementRank]??-1)>=(rankOrder.COMMISSOR??7)) actions.unshift(["announcement","📢 Room announcement"]); } catch (_) {}
-    try { if (canFeature("clear_room")) actions.unshift(["clear","🧹 Clear messages"]); } catch (_) {}
-    try { if (canEditRoomFromMenu(room)) actions.unshift(["edit","✏️ Edit room"]); } catch (_) {}
-    try { if (canFeature("delete_room")) actions.unshift(["delete","🗑 Delete room"]); } catch (_) {}
-    try { const pinRank=String(state.user?.rank||"").toUpperCase().replace(/[\s_-]/g,""); if (["COOWNER","OWNER","DEVELOPER"].includes(pinRank)) actions.unshift(["pin",room?.pinned?"📌 Unpin room":"📌 Pin room"]); } catch (_) {}
-    try {
-      if (["ghost","dead","invisible"].some(mode => canUsePresenceMode(mode))) {
-        actions.push(["presence-settings","⚙️ Presence mode settings"]);
-      }
-    } catch (_) {}
+    // Keep the dashboard and chat-header menus in sync, with permissions evaluated for this room.
+    const actions=[];
+    const pinRank=String(state.user?.rank||"").toUpperCase().replace(/[\\s_-]/g,"");
+    const canPin=["COOWNER","OWNER","DEVELOPER"].includes(pinRank);
+    const canEdit=canEditRoomFromMenu(room);
+    const canDelete=canFeature("delete_room");
+    if(canPin)actions.push(["pin",room?.pinned?"📌 Unpin room":"📌 Pin room"]);
+    if(canDelete)actions.push(["delete","🗑 Delete room"]);
+    if(canEdit)actions.push(["edit","✏️ Edit room"]);
+    if(canFeature("clear_room"))actions.push(["clear","🧹 Clear messages"]);
+    if((rankOrder[pinRank]??-1)>=(rankOrder.COMMISSOR??7))actions.push(["announcement","📢 Room announcement"]);
+    actions.push(["pinned","📌 Pinned messages"],["youtube","▶️ YouTube"],["invite","🔐 Room code"]);
+    if(["ghost","dead","invisible"].some(mode=>canUsePresenceMode(mode)))actions.push(["presence-settings","⚙️ Presence mode settings"]);
 
     const panel = document.getElementById("modal");
     const body = document.getElementById("modalBody");
@@ -7841,14 +7834,14 @@ document.addEventListener("click", async event => {
       button.addEventListener("click", () => {
         const action = button.dataset.roomMenuAction;
         try {
-          if (action==="clear") clearRoom();
-          else if (action==="edit") editRoom();
-          else if (action==="pin") toggleCurrentRoomPin();
-          else if (action==="delete") deleteRoom();
-          else if (action==="announcement") postRoomAnnouncement();
-          else if (action==="pinned") showPinnedMessages();
-          else if (action==="youtube") openYoutubePanel();
-          else if (action==="invite") showInvite();
+          if (action==="clear") withRoomOptionsContext(targetRoomId,clearRoom);
+          else if (action==="edit") editRoomById(targetRoomId);
+          else if (action==="pin") toggleRoomPinById(targetRoomId);
+          else if (action==="delete") deleteRoomById(targetRoomId);
+          else if (action==="announcement") withRoomOptionsContext(targetRoomId,postRoomAnnouncement);
+          else if (action==="pinned") withRoomOptionsContext(targetRoomId,showPinnedMessages);
+          else if (action==="youtube") withRoomOptionsContext(targetRoomId,openYoutubePanel);
+          else if (action==="invite") showInvite(room);
           else if (action==="presence-settings") openPresenceModes();
         } catch (error) {
           console.error("Room menu action failed:", error);
@@ -7861,6 +7854,25 @@ document.addEventListener("click", async event => {
     toast("Room options could not open: "+(error?.message || "unknown error"));
   }
 }, true);
+function withRoomOptionsContext(roomId,callback){
+  const previous=state.currentRoom;
+  state.currentRoom=String(roomId);
+  try{
+    const result=callback();
+    if(result&&typeof result.then==="function")return result.finally(()=>{state.currentRoom=previous;});
+    state.currentRoom=previous;
+    return result;
+  }catch(error){state.currentRoom=previous;throw error;}
+}
+window.openRoomCardOptions=function(roomId){
+  const trigger=document.createElement("button");
+  trigger.type="button";
+  trigger.dataset.roomCardMenu=String(roomId);
+  trigger.style.display="none";
+  document.body.appendChild(trigger);
+  trigger.click();
+  trigger.remove();
+};
 window.__MC_ROOM_MENU_HANDLER_READY__ = true;
 
 function applyRoomTheme(){
