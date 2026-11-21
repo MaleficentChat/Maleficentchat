@@ -204,8 +204,8 @@ button.top-profile#topProfile{display:grid!important;place-items:center!importan
 /* One close control per panel: keep the modal's top-right close button.
    Hide duplicate close controls rendered inside panel content. The compact
    quick-user card keeps its own close because its outer modal close is hidden. */
-#modal .modal-card:not(:has(.quick-user-card)) #modalBody button[class*="close" i],
-#modal .modal-card:not(:has(.quick-user-card)) #modalBody button[aria-label*="close" i],
-#modal .modal-card:not(:has(.quick-user-card)) #modalBody button[title*="close" i]{
+#modal .modal-card:not(:has(.quick-user-card)):not(:has(.dm-chat-header)) #modalBody button[class*="close" i],
+#modal .modal-card:not(:has(.quick-user-card)):not(:has(.dm-chat-header)) #modalBody button[aria-label*="close" i],
+#modal .modal-card:not(:has(.quick-user-card)):not(:has(.dm-chat-header)) #modalBody button[title*="close" i]{
   display:none!important;
 }
