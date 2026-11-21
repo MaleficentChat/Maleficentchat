@@ -2333,7 +2333,7 @@ function renderRooms() {
       <article class="room room-list-card discover-room-card ${isProtectedMainRoom?'protected-main-room':''} ${room.public===false?'secret-society':''} ${state.currentRoom===room.id?'selected':''}">
         <button class="room-open discover-room-open" onclick="joinRoom('${esc(room.id)}')">
           <span class="room-main discover-room-main">
-            <span class="room-title-row"><strong>${esc(room.name)}</strong>${room.public===false?'<span class="room-lock secret-society-label">♛ Private</span>':''}${locked?'<span class="room-lock">🔒</span>':''}</span>
+            <span class="room-title-row"><span class="discover-room-picture">${room.banner?`<img src="${esc(room.banner)}" alt="" loading="lazy">`:esc(room.icon||"💬")}</span><strong>${esc(room.name)}</strong>${room.public===false?'<span class="room-lock secret-society-label">♛ Private</span>':''}${locked?'<span class="room-lock">🔒</span>':''}</span>
             <span class="room-desc">${esc(room.description||"Community conversation")}</span>
             <span class="room-card-bottom"><span class="room-presence"><i></i>${count} members online</span><span class="room-join-label">Join <b>→</b></span></span>
           </span>
