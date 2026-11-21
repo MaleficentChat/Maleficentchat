@@ -214,3 +214,86 @@ button.top-profile#topProfile{display:grid!important;place-items:center!importan
   z-index:10060!important;width:36px!important;height:36px!important;min-width:36px!important;
   min-height:36px!important;padding:0!important;place-items:center!important;
 }
+
+/* FINAL: one shared top-right close control for every modal/panel.
+   Force the outer control visible even in quick-profile and DM panels;
+   hide all nested panel-specific X controls, including dynamically mounted
+   profile drawers and edit panels. */
+#modal .modal-card>.modal-close,
+#modal:has(.quick-user-card) .modal-card>.modal-close,
+#modal .modal-card:has(.dm-chat-header)>.modal-close{
+  display:grid!important;
+  position:absolute!important;
+  top:10px!important;
+  right:10px!important;
+  left:auto!important;
+  align-self:auto!important;
+  z-index:10060!important;
+  width:36px!important;height:36px!important;
+  min-width:36px!important;min-height:36px!important;
+  margin:0!important;padding:0!important;
+  place-items:center!important;
+  border-radius:10px!important;
+  line-height:1!important;
+}
+#modal #modalBody button[class*="close" i],
+#modal #modalBody button[aria-label*="close" i],
+#modal #modalBody button[title*="close" i],
+#modal #modalBody .quick-user-close,
+#modal #modalBody .profile-action-drawer-close,
+#modal #modalBody .profile-edit-panel-close,
+#modal #modalBody .dm-close-button,
+#modal #modalBody .parallel-room-close{
+  display:none!important;
+}
+
+/* Room-join announcements: keep icon, avatar, username, join text and time
+   on one horizontal line; allow the date itself to use two compact lines. */
+.system-message.system-message-with-avatar{
+  display:flex!important;
+  flex-flow:row nowrap!important;
+  align-items:center!important;
+  justify-content:center!important;
+  width:max-content!important;
+  max-width:calc(100% - 16px)!important;
+  gap:clamp(4px,1vw,10px)!important;
+  white-space:nowrap!important;
+  text-align:left!important;
+  box-sizing:border-box!important;
+}
+.system-message.system-message-with-avatar>b{
+  display:inline-flex!important;
+  flex:0 1 auto!important;
+  align-items:center!important;
+  min-width:0!important;
+  max-width:none!important;
+  white-space:nowrap!important;
+  overflow:visible!important;
+  line-height:1.2!important;
+  text-align:left!important;
+}
+.system-message.system-message-with-avatar>.system-message-profile-avatar{
+  flex:0 0 34px!important;width:34px!important;height:34px!important;
+}
+.system-message.system-message-with-avatar>small{
+  display:block!important;
+  flex:0 0 auto!important;
+  white-space:normal!important;
+  text-align:center!important;
+  line-height:1.2!important;
+  max-width:112px!important;
+  font-size:clamp(10px,1.15vw,13px)!important;
+}
+@media(max-width:600px){
+  .system-message.system-message-with-avatar{
+    gap:4px!important;
+    font-size:clamp(10px,2.65vw,13px)!important;
+    padding:6px 7px!important;
+  }
+  .system-message.system-message-with-avatar>.system-message-profile-avatar{
+    flex-basis:28px!important;width:28px!important;height:28px!important;
+  }
+  .system-message.system-message-with-avatar>small{
+    max-width:76px!important;font-size:9px!important;
+  }
+}
