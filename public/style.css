@@ -11056,3 +11056,30 @@ html{scroll-behavior:smooth;}
 #modal .profile-modal .profile-info .public-profile-account-list>.profile-info-row>b{flex:0 1 42%!important;min-width:0!important;text-align:left!important;color:var(--text,#f4f6fa)!important;font-weight:750!important;}
 #modal .profile-modal .profile-info .public-profile-account-list>.profile-info-row>span{flex:1 1 58%!important;min-width:0!important;text-align:right!important;overflow-wrap:anywhere!important;word-break:break-word!important;color:var(--muted,#c5ccd6)!important;}
 @media(max-width:700px){#modal .profile-modal .profile-info .public-profile-account-list>.profile-info-row{padding:10px 1px!important;gap:9px!important;font-size:12px!important;}#modal .profile-modal .profile-info .public-profile-account-list>.profile-info-row>b{flex-basis:40%!important;}#modal .profile-modal .profile-info .public-profile-account-list>.profile-info-row>span{flex-basis:60%!important;}}
+
+
+/* Public profile compact header: centre the action strip and remove the old stat tiles. */
+#modal .profile-modal .profile-stats{
+  position:relative!important;inset:auto!important;left:auto!important;right:auto!important;
+  display:flex!important;align-items:center!important;justify-content:center!important;
+  flex-wrap:wrap!important;gap:7px!important;width:100%!important;max-width:100%!important;
+  margin:0 auto 8px!important;transform:none!important;box-sizing:border-box!important;
+}
+#modal .profile-modal .profile-stats>.profile-stat{
+  display:inline-flex!important;align-items:center!important;justify-content:center!important;
+  min-height:34px!important;padding:5px 10px!important;white-space:nowrap!important;
+}
+#modal .profile-modal .profile-stats>.profile-like-trigger{
+  border:1px solid rgba(186,186,186,.38)!important;border-radius:999px!important;
+  background:rgba(19,19,19,.82)!important;color:#fff!important;font:inherit!important;
+  cursor:pointer!important;
+}
+#modal .profile-modal .profile-stats>.profile-like-trigger[aria-pressed="true"]{
+  border-color:rgba(255,105,135,.72)!important;background:rgba(130,35,62,.35)!important;
+}
+#modal .profile-modal .profile-social-stats{display:none!important;}
+#modal .profile-modal .profile-primary-actions{display:flex!important;justify-content:center!important;flex-wrap:wrap!important;gap:10px!important;}
+@media(max-width:700px){
+  #modal .profile-modal .profile-stats{gap:5px!important;margin-bottom:8px!important;}
+  #modal .profile-modal .profile-stats>.profile-stat{min-height:32px!important;padding:5px 8px!important;font-size:11px!important;}
+}
