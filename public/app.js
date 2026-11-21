@@ -561,35 +561,51 @@ function openParallelSplits(){
   if(!room){toast("Current room details are unavailable.");return;}
   modal(`
     <div class="parallel-split-panel dimension-panel">
-      <div class="parallel-split-heading"><div><small>BRANCH INTO ANOTHER WORLD</small><h2>✧ Alternate Dimensions</h2><p class="dimension-intro">Create a parallel space with its own name, members and message history.</p></div><span class="parallel-private-pill">CODE ACCESS</span></div>
-      <section class="parallel-split-card">
-        <h3>✧ Create a Dimension</h3>
-        <p>Branch away from <strong>${esc(room.name)}</strong> into a separate conversation universe. It will not appear in the room list.</p>
-        ${canCreate?`
-          <label for="parallelDimensionName">Dimension Name</label>
-          <input id="parallelDimensionName" maxlength="40" autocomplete="off" placeholder="E.G. The Velvet Nebula">
-          <label for="parallelCreateCode">Custom Dimension Code</label>
-          <input id="parallelCreateCode" maxlength="24" autocomplete="off" autocapitalize="characters" placeholder="E.G. NIGHTOWL24">
-          <small>4–24 letters or numbers. Codes are unique within this original room.</small><button type="button" class="primary-btn" id="parallelCreateBtn">Create Dimension</button>
-        `:`<p class="parallel-rank-note">Creating a split requires ${threshold} rank or above.</p>`}
-      </section>
-      <section class="parallel-split-card dimension-management-card">
-        <h3>✧ Dimensions</h3>
-        <p>Your dimensions appear here. You can delete dimensions you created; Owner and Developer can manage every dimension.</p>
-        <div id="parallelDimensionsList" class="parallel-dimensions-list"><small>Loading dimensions…</small></div>
-      </section>
-      <section class="parallel-split-card">
+      <div class="parallel-split-heading"><div><small>ALTERNATE CHAT SPACES</small><h2>✧ Alternate Dimensions</h2><p class="dimension-intro">Explore separate chat spaces branching from this room.</p></div><span class="parallel-private-pill">CODE ACCESS</span></div>
+
+      <section class="parallel-split-card dimension-enter-card">
         <h3>↗ Enter a Dimension</h3>
-        <p>Use the dimension code shared by its creator. You must have access to the original room first.</p>
+        <p>Enter a code shared by a dimension creator. You must have access to the original room first.</p>
         <label for="parallelJoinCode">Dimension Code</label>
-        <input id="parallelJoinCode" maxlength="24" autocomplete="off" autocapitalize="characters" placeholder="Enter Split Code">
+        <input id="parallelJoinCode" maxlength="24" autocomplete="off" autocapitalize="characters" placeholder="Enter dimension code">
         <button type="button" class="secondary-btn" id="parallelJoinBtn">Enter Dimension</button>
       </section>
+
+      <details class="parallel-dimension-dropdown">
+        <summary><span>✧ Create a Dimension</span><span class="parallel-dropdown-chevron" aria-hidden="true">⌄</span></summary>
+        <div class="parallel-dropdown-content">
+          <p>Branch away from <strong>${esc(room.name)}</strong> into a separate conversation universe. It will not appear in the room list.</p>
+          ${canCreate?`
+            <label for="parallelCreateCode">Custom Dimension Code</label>
+            <input id="parallelCreateCode" maxlength="24" autocomplete="off" autocapitalize="characters" placeholder="E.g. NIGHTOWL24">
+            <small>4–24 letters or numbers. Codes are unique within this original room.</small>
+            <label for="parallelDimensionName">Dimension Name</label>
+            <input id="parallelDimensionName" maxlength="40" autocomplete="off" placeholder="E.g. The Velvet Nebula">
+            <button type="button" class="primary-btn" id="parallelCreateBtn">Create Dimension</button>
+          `:`<p class="parallel-rank-note">Creating a dimension requires ${threshold} rank or above.</p>`}
+        </div>
+      </details>
+
+      <details class="parallel-dimension-dropdown">
+        <summary><span>✧ Your Dimensions</span><span class="parallel-dropdown-chevron" aria-hidden="true">⌄</span></summary>
+        <div class="parallel-dropdown-content">
+          <p>Your created and accessible dimensions appear here.</p>
+          <div id="parallelDimensionsList" class="parallel-dimensions-list"><small>Loading dimensions…</small></div>
+        </div>
+      </details>
       <p class="parallel-split-footnote">Every dimension keeps its own chat, member list and identity. The original room remains untouched; a dimension code never grants access to the original room.</p>
     </div>`);
   const createButton=document.getElementById("parallelCreateBtn");
   createButton?.addEventListener("click",createParallelSplit);
   document.getElementById("parallelJoinBtn")?.addEventListener("click",joinParallelSplit);
+  document.querySelectorAll(".parallel-dimension-dropdown").forEach(details=>{
+    details.addEventListener("toggle",()=>{
+      if(!details.open)return;
+      document.querySelectorAll(".parallel-dimension-dropdown").forEach(other=>{
+        if(other!==details)other.open=false;
+      });
+    });
+  });
   loadParallelDimensions();
 }
 async function createParallelSplit(){
