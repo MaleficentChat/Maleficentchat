@@ -2354,7 +2354,12 @@ function renderRooms() {
             <span class="room-card-bottom"><span class="room-presence"><i></i>${count} members online</span><span class="room-join-label">Join <b>→</b></span></span>
           </span>
         </button>
-        <button class="room-card-gear" type="button" title="Room options" aria-label="Open ${esc(room.name)} room options" onclick="event.stopPropagation();openRoomCardOptions('${esc(room.id)}')">⚙️</button>
+        <button class="room-card-gear" type="button" title="Quick room actions" aria-label="Show pin, delete and edit actions for ${esc(room.name)}" aria-expanded="false" onclick="event.stopPropagation();openRoomCardOptions('${esc(room.id)}',this)">⚙️</button>
+        <div class="room-card-actions hidden" data-room-card-actions>
+          ${canRoomCardPin(room)?'<button type="button" class="room-card-action" title="'+(room.pinned?'Unpin room':'Pin room')+'" aria-label="'+(room.pinned?'Unpin room':'Pin room')+'" onclick="event.stopPropagation();toggleRoomPinById(\''+esc(room.id)+'\')">'+(room.pinned?'📌':'📍')+'</button>':''}
+          ${canFeature("delete_room")?'<button type="button" class="room-card-action" title="Delete room" aria-label="Delete room" onclick="event.stopPropagation();deleteRoomById(\''+esc(room.id)+'\')">🗑️</button>':''}
+          ${canEditRoomFromMenu(room)?'<button type="button" class="room-card-action" title="Edit room" aria-label="Edit room" onclick="event.stopPropagation();editRoomById(\''+esc(room.id)+'\')">✏️</button>':''}
+        </div>
       </article>`;
   };
   const pinnedRoot=mcGetById("pinnedRooms");
@@ -7873,14 +7878,22 @@ function withRoomOptionsContext(roomId,callback){
     return result;
   }catch(error){state.currentRoom=previous;throw error;}
 }
-window.openRoomCardOptions=function(roomId){
-  const trigger=document.createElement("button");
-  trigger.type="button";
-  trigger.dataset.roomCardMenu=String(roomId);
-  trigger.style.display="none";
-  document.body.appendChild(trigger);
-  trigger.click();
-  trigger.remove();
+function canRoomCardPin(room){
+  const rank=String(state.user?.rank||"").toUpperCase().replace(/[\\s_-]/g,"");
+  return ["COOWNER","OWNER","DEVELOPER"].includes(rank);
+}
+window.openRoomCardOptions=function(roomId,gear){
+  const card=gear?.closest(".discover-room-card");
+  if(!card)return;
+  const actions=card.querySelector("[data-room-card-actions]");
+  if(!actions)return;
+  const willOpen=actions.classList.contains("hidden");
+  document.querySelectorAll("[data-room-card-actions]").forEach(node=>node.classList.add("hidden"));
+  document.querySelectorAll(".room-card-gear[aria-expanded]").forEach(node=>node.setAttribute("aria-expanded","false"));
+  if(willOpen){
+    actions.classList.remove("hidden");
+    gear.setAttribute("aria-expanded","true");
+  }
 };
 window.__MC_ROOM_MENU_HANDLER_READY__ = true;
 
