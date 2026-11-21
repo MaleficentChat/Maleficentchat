@@ -1,0 +1,207 @@
+/* 21 Nov 2026 — targeted mobile glass-button, popup spacing and avatar alignment fixes. */
+:root{
+  --mc-glass-bg:rgba(29,58,86,.58);
+  --mc-glass-bg-hover:rgba(43,78,111,.76);
+  --mc-glass-border:rgba(177,205,231,.28);
+  --mc-glass-highlight:rgba(255,255,255,.08);
+}
+/* Compact shared glass treatment for small actions and section tabs.
+   Text-only identity controls are intentionally excluded. */
+body .mini,
+body .toolbar>.mini,
+body .toolbar button:not(.primary),
+body .room-menu-action,
+body .discover-refresh,
+body .games-root button,
+body .wallet-actions button,
+body .ai-companion-shell .ai-tab,
+body .ai-companion-shell [role="tab"],
+body .ai-companion-shell .ai-companion-tabs button,
+body #settings button:not(.primary),
+body #sfConfLatest,
+body #sfConfPopular,
+body #sfConfMine,
+body .dm-chat-actions>button,
+body .rooms-more-header>button{
+  min-height:32px!important;
+  padding:6px 10px!important;
+  border:1px solid var(--mc-glass-border)!important;
+  border-radius:10px!important;
+  background:linear-gradient(145deg,var(--mc-glass-bg),rgba(13,34,55,.72))!important;
+  color:#eaf3fc!important;
+  box-shadow:inset 0 1px 0 var(--mc-glass-highlight),0 3px 10px rgba(0,0,0,.12)!important;
+  -webkit-backdrop-filter:blur(10px)!important;
+  backdrop-filter:blur(10px)!important;
+  transition:background .16s ease,border-color .16s ease,transform .16s ease!important;
+}
+body .mini:hover,
+body .toolbar>.mini:hover,
+body .toolbar button:not(.primary):hover,
+body .room-menu-action:hover,
+body .discover-refresh:hover,
+body .games-root button:hover,
+body .wallet-actions button:hover,
+body .ai-companion-shell .ai-tab:hover,
+body .ai-companion-shell [role="tab"]:hover,
+body .ai-companion-shell .ai-companion-tabs button:hover,
+body #settings button:not(.primary):hover,
+body #sfConfLatest:hover,
+body #sfConfPopular:hover,
+body #sfConfMine:hover,
+body .dm-chat-actions>button:hover{
+  background:linear-gradient(145deg,var(--mc-glass-bg-hover),rgba(17,42,66,.88))!important;
+  border-color:rgba(213,226,239,.48)!important;
+}
+body .mini:active,body .room-menu-action:active,body .wallet-actions button:active{
+  transform:translateY(1px)!important;
+}
+/* Never turn usernames/profile identity links into glass buttons. */
+.dm-profile-link,.dm-chat-person-copy .dm-profile-name,
+.system-message-user-link,.online-user-heading>b{
+  border:0!important;background:transparent!important;box-shadow:none!important;
+  -webkit-backdrop-filter:none!important;backdrop-filter:none!important;
+}
+/* Room options + liked-by dialog: reserve a dedicated close-button lane. */
+#modal .modal-card{position:relative}
+#modal .modal-close{
+  position:absolute!important;top:10px!important;right:10px!important;
+  z-index:40!important;width:36px!important;height:36px!important;
+  min-width:36px!important;min-height:36px!important;padding:0!important;
+  display:grid!important;place-items:center!important;
+  border:1px solid rgba(177,205,231,.42)!important;border-radius:11px!important;
+  background:linear-gradient(145deg,rgba(29,58,86,.94),rgba(9,25,42,.98))!important;
+  color:#f1f6fc!important;
+}
+#modal .modal-card:has(.room-menu-panel),
+#modal .modal-card:has(.news-likes-modal){padding-top:8px!important}
+#modal .room-menu-panel h2,
+#modal .news-likes-modal h2{
+  box-sizing:border-box!important;
+  min-height:40px!important;
+  padding:7px 54px 8px 0!important;
+  margin:0 0 12px!important;
+  line-height:1.25!important;
+}
+#modal .room-menu-actions{display:grid!important;gap:7px!important}
+#modal .room-menu-action{width:100%!important;min-height:34px!important;text-align:left!important}
+#modal .news-likes-list{display:grid!important;gap:6px!important}
+#modal .news-liker-row{min-width:0!important;min-height:48px!important}
+#modal .news-likes-modal{padding:4px 2px 2px!important}
+/* Main profile picture in the top navigation: stable, centered circle. */
+.top-header-actions{align-items:center!important}
+.top-profile{
+  align-self:center!important;display:grid!important;place-items:center!important;
+  width:38px!important;height:38px!important;min-width:38px!important;
+  padding:0!important;overflow:hidden!important;border-radius:50%!important;
+  flex:0 0 38px!important;line-height:0!important;
+}
+.top-profile img,.top-profile .avatar{
+  display:block!important;width:100%!important;height:100%!important;
+  min-width:100%!important;min-height:100%!important;object-fit:cover!important;
+  margin:0!important;border-radius:50%!important;
+}
+/* People panel profile/action popovers: keep controls inside their own bounds. */
+#onlinePanel .online-user{align-items:center!important}
+#onlinePanel .online-user>.avatar{align-self:center!important;flex:none!important}
+#onlinePanel .online-user-copy{min-width:0!important}
+#onlinePanel .online-user-heading{flex-wrap:nowrap!important}
+#onlinePanel .online-user-heading>b{flex:0 1 auto!important}
+#onlinePanel [role="menu"],#onlinePanel .user-action-menu,
+#onlinePanel .online-user-menu{max-width:min(280px,calc(100vw - 28px))!important;box-sizing:border-box!important}
+#onlinePanel [role="menu"] button,#onlinePanel .user-action-menu button,
+#onlinePanel .online-user-menu button{max-width:100%!important;white-space:normal!important}
+/* Confessions tabs use the same compact button treatment and do not stretch. */
+#viewConfessions .topbar .toolbar{display:flex!important;flex-wrap:wrap!important;gap:7px!important}
+#viewConfessions .topbar .toolbar button{flex:0 0 auto!important;min-width:0!important}
+/* Games: compact glass Play controls without changing game-card layout. */
+#viewGames .games-root button{min-height:30px!important;padding:5px 9px!important}
+/* Leaderboard: remove the detached rank-number gutter from Top XP entries. */
+#viewLeaderboard #leaderboard>.leaderboard-category:first-child .user-card>b:first-child{
+  display:none!important;
+}
+#viewLeaderboard #leaderboard>.leaderboard-category:first-child .user-card{
+  gap:10px!important;
+}
+/* Wallet action row: compact glass controls; keep the highlighted Share action. */
+#walletRoot .wallet-actions{display:flex!important;align-items:center!important;flex-wrap:wrap!important;gap:8px!important}
+#walletRoot .wallet-actions button{min-height:36px!important;padding:7px 12px!important}
+#walletRoot .wallet-actions #walletShareOpen{
+  border-color:rgba(232,204,145,.48)!important;
+  background:linear-gradient(115deg,rgba(40,91,133,.9),rgba(181,148,82,.82))!important;
+  color:#fff!important;
+}
+/* Profile settings: plain compact list, not a grid of large option cards. */
+#viewProfile #myProfileSettings .settings-list,
+#viewProfile .profile-settings-card .settings-list{
+  display:flex!important;flex-direction:column!important;gap:0!important;
+  padding:4px 12px 10px!important;
+}
+#viewProfile #myProfileSettings .settings-row,
+#viewProfile .profile-settings-card .settings-row{
+  display:grid!important;grid-template-columns:30px minmax(0,1fr) 16px!important;
+  grid-template-rows:auto auto!important;align-items:center!important;
+  min-height:52px!important;padding:8px 5px!important;
+  border:0!important;border-bottom:1px solid rgba(170,198,224,.14)!important;
+  border-radius:0!important;background:transparent!important;box-shadow:none!important;
+}
+#viewProfile #myProfileSettings .settings-row>span,
+#viewProfile .profile-settings-card .settings-row>span{
+  width:25px!important;height:25px!important;border:0!important;
+  background:transparent!important;box-shadow:none!important;
+}
+#viewProfile #myProfileSettings .settings-row:hover,
+#viewProfile .profile-settings-card .settings-row:hover{
+  transform:none!important;background:rgba(112,153,190,.07)!important;
+}
+/* AI companion tab row: consistent spacing and compact glass controls. */
+.ai-companion-shell .ai-companion-heading{min-width:0!important}
+.ai-companion-shell [role="tablist"],
+.ai-companion-shell .ai-companion-tabs,
+.ai-companion-shell .ai-tabs{
+  display:flex!important;flex-wrap:wrap!important;gap:7px!important;
+}
+.ai-companion-shell [role="tab"],
+.ai-companion-shell .ai-tab,
+.ai-companion-shell .ai-companion-tabs button{
+  flex:0 0 auto!important;min-height:32px!important;padding:6px 10px!important;
+}
+/* Private message header: keep the identity block and action buttons separate. */
+.dm-chat-header{
+  display:flex!important;align-items:center!important;justify-content:space-between!important;
+  gap:10px!important;min-width:0!important;padding-right:2px!important;
+}
+.dm-chat-person{display:flex!important;align-items:center!important;gap:9px!important;flex:1 1 auto!important;min-width:0!important}
+.dm-chat-person-copy{display:flex!important;flex-direction:column!important;justify-content:center!important;align-items:flex-start!important;gap:4px!important;min-width:0!important}
+.dm-chat-person-copy>span{display:block!important;line-height:1.25!important;white-space:normal!important}
+.dm-chat-actions{
+  display:flex!important;align-items:center!important;justify-content:flex-end!important;
+  flex:0 0 auto!important;flex-wrap:nowrap!important;gap:5px!important;min-width:max-content!important;
+}
+.dm-chat-actions>button{width:34px!important;height:34px!important;min-width:34px!important;min-height:34px!important;padding:0!important;flex:0 0 34px!important}
+.dm-chat-actions .dm-close-button{margin-left:1px!important;position:relative!important;right:auto!important;top:auto!important}
+.dm-chat-person .dm-profile-avatar{
+  display:grid!important;place-items:center!important;flex:0 0 42px!important;
+  width:42px!important;height:42px!important;overflow:hidden!important;border-radius:50%!important;
+}
+.dm-chat-person .dm-profile-avatar img,
+.dm-chat-person .dm-profile-avatar .avatar{
+  display:block!important;width:100%!important;height:100%!important;object-fit:cover!important;
+  margin:0!important;border-radius:50%!important;
+}
+/* Message avatars sit vertically centered beside their own bubbles. */
+#modal .dm-chat-body .dm-message,
+#modal .dm-chat-body .dm-message-row,
+#modal .dm-chat-body .dm-msg-row{align-items:center!important}
+#modal .dm-chat-body .dm-message-avatar,
+#modal .dm-chat-body .dm-msg-avatar,
+#modal .dm-chat-body .dm-message .avatar{
+  align-self:center!important;flex:0 0 auto!important;object-fit:cover!important;
+}
+@media(max-width:520px){
+  .dm-chat-header{gap:6px!important}
+  .dm-chat-person{gap:6px!important}
+  .dm-chat-actions{gap:3px!important}
+  .dm-chat-actions>button{width:31px!important;height:31px!important;min-width:31px!important;min-height:31px!important;flex-basis:31px!important}
+  .dm-chat-person .dm-profile-avatar{width:38px!important;height:38px!important;flex-basis:38px!important}
+  #modal .modal-card:has(.dm-chat-header) .modal-close{display:none!important}
+}
