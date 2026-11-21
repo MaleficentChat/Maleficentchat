@@ -7377,6 +7377,19 @@ app.put('/api/profile',auth,(req,res)=>{
 
 // Profile photo gallery: members manage their own uploads; staff can only remove photos
 // from accounts strictly below their rank. The existing user record stores the gallery.
+// Staff-only wallet peek: only MOD+ may view accounts strictly below their rank.
+app.get('/api/staff/user/:id/wallet',auth,async(req,res)=>{
+  const actor=current(req),target=findUser(req.params.id);
+  if(!target)return res.status(404).json({error:'User not found.'});
+  if(!hasRank(actor,'MOD')||!canAccessStaffTarget(actor,target))return res.status(403).json({error:'You can only view the wallet of a lower-rank member.'});
+  try{
+    const account=await pool.query('SELECT diamonds,gold FROM users WHERE id=$1',[Number(target.id)]);
+    if(!account.rowCount)return res.status(404).json({error:'Wallet account not found.'});
+    res.set('Cache-Control','no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.json({wallet:{diamonds:Number(account.rows[0].diamonds||0),gold:Number(account.rows[0].gold||0)}});
+  }catch(error){console.error('Staff wallet inspection failed:',error);res.status(500).json({error:'Could not load this member wallet.'});}
+});
+
 app.get('/api/users/:id/profile-photos',auth,(req,res)=>{
   const viewer=current(req),target=findUser(req.params.id);
   if(!target||(target.hideMode&&String(target.id)!==String(viewer.id)))return res.status(404).json({error:'User not found.'});
