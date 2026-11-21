@@ -2891,7 +2891,7 @@ function messageHTML(message) {
       systemAvatar=`<span class="system-message-profile-avatar">${avatar({displayName:profileName,avatar:profilePhoto})}</span>`;
       systemBody=`<button class="system-message-user-link" type="button" onclick="openUser('${esc(message.profileUserId)}')" aria-label="Open ${esc(profileName)}'s profile">${esc(profileName)}</button>${esc(roomSuffix)}`;
     }
-    return `<div class="system-message" data-mid="${esc(message.id)}"><span>✦</span>${systemAvatar}<b>${systemBody}</b><small>${fmt(message.time)}</small></div>`;
+    return `<div class="system-message${systemAvatar ? " system-message-with-avatar" : ""}" data-mid="${esc(message.id)}"><span>✦</span>${systemAvatar}<b>${systemBody}</b><small>${fmt(message.time)}</small></div>`;
   }
   const user = {
     id: message.userId,
