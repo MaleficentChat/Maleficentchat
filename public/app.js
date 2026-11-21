@@ -4100,17 +4100,11 @@ function renderUserProfileModal(user,data={}){
       ${user.banner?`<img class="public-profile-cover-image" src="${esc(user.banner)}" alt="" aria-hidden="true" loading="eager">`: ""}
       <div class="equipped-profile-frame ${frame?esc(frame.id):''}" title="${frame?esc(frame.name):'Profile avatar'}">${avatar(user,'big-avatar')}</div>
       ${user.profileMusicUrl?`<div class="profile-music-pill"><button type="button" class="profile-music-toggle" id="profileMusicToggle" aria-label="Play profile music">▶</button><span class="profile-music-bars" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span class="profile-music-title">${esc(user.profileMusicTitle||'Profile music')}</span><audio id="profileMusicAudio" preload="none" src="${esc(safeProfileUrl(user.profileMusicUrl))}"></audio></div>`:''}
-      <div class="profile-stats"><span class="profile-stat">⭐ ${user.level||1}</span><span class="profile-stat">XP ${user.xp||0}</span><span class="profile-stat">❤️ ${user.profileLikes||data.profileLikes||0}</span>${!isSelf && (String(state.user?.rank||"").toUpperCase()==="DEVELOPER" || (state.user?.username==="Maleficent" && String(state.user?.rank||"").toUpperCase()==="OWNER") || canFeature("staff_rank_assignment")) ? `<button class="mini profile-rank-btn" id="profileRankBtn" title="Change rank" aria-label="Change rank">🏅</button>` : ""}${isSelf?'<button class="mini profile-edit-btn" id="profileEditBtn" title="Edit account" aria-label="Edit account">✏️</button><button class="mini profile-hamburger" id="profileMenuBtn" title="Profile actions">☰</button>':((canFeature("account_modifications")||canFeature("edit_email")||canFeature("change_password")||canFeature("manage_staff_accounts")) && canAccessStaffTarget(user) ? '<button class="mini profile-edit-btn" id="staffProfileEditBtn" title="Edit this member account" aria-label="Edit this member account">✏️</button><button class="mini profile-hamburger" id="profileMenuBtn" title="Profile actions">☰</button>' : '')}</div>
+      <div class="profile-stats"><span class="profile-stat">⭐ ${user.level||1}</span><span class="profile-stat">XP ${user.xp||0}</span>${!isSelf?`<button type="button" class="profile-stat profile-like-trigger" id="profileLikeBtn" aria-label="Like profile" aria-pressed="${liked}">❤️ <span class="profile-like-count">${Number(data.profileLikes??user.profileLikes??0).toLocaleString()}</span></button>`:""}${!isSelf && (String(state.user?.rank||"").toUpperCase()==="DEVELOPER" || (state.user?.username==="Maleficent" && String(state.user?.rank||"").toUpperCase()==="OWNER") || canFeature("staff_rank_assignment")) ? `<button class="mini profile-rank-btn" id="profileRankBtn" title="Change rank" aria-label="Change rank">🏅</button>` : ""}${isSelf?'<button class="mini profile-edit-btn" id="profileEditBtn" title="Edit account" aria-label="Edit account">✏️</button><button class="mini profile-hamburger" id="profileMenuBtn" title="Profile actions">☰</button>':((canFeature("account_modifications")||canFeature("edit_email")||canFeature("change_password")||canFeature("manage_staff_accounts")) && canAccessStaffTarget(user) ? '<button class="mini profile-edit-btn" id="staffProfileEditBtn" title="Edit this member account" aria-label="Edit this member account">✏️</button><button class="mini profile-hamburger" id="profileMenuBtn" title="Profile actions">☰</button>' : '')}</div>
       <div class="profile-rank">${rank(user.rank)}${user.verified?' · ✓ Verified':''}${profileBadge?` <span class="equipped-profile-badge" title="${esc(profileBadge.name)}">${esc(profileBadge.icon)} ${esc(profileBadge.name)}</span>`:''}</div>
       <div class="profile-name">${esc(user.displayName)}${user._nickname?` <span class="nickname-badge">“${esc(user._nickname)}”</span>`:''}</div>
       <div class="profile-handle">@${esc(user.username)}</div>
-      <div class="profile-social-stats">
-        <span class="profile-social-stat"><b>🪙 ${Number(user.gold||0).toLocaleString()}</b><small>Gold</small></span>
-        <span class="profile-social-stat"><b>💎 ${Number(user.diamonds||0).toLocaleString()}</b><small>Diamonds</small></span>
-        <span class="profile-social-stat"><b>👥 ${Number(user.friendsCount||user.friendCount||0).toLocaleString()}</b><small>Friends</small></span>
-        <span class="profile-social-stat"><b>🏅 ${esc(String(user.rank||"MEMBER").replace(/_/g," "))}</b><small>Rank</small></span>
-      </div>
-      ${!isSelf?`<div class="profile-primary-actions"><button class="profile-social-button profile-message-button" id="profileSendPM"><span>✉</span> Send PM</button><button class="profile-social-button profile-friend-button" id="profileAddFriend"><span>＋</span> Add Friend</button><button class="profile-social-button profile-like-button" id="profileLikeBtn" aria-pressed="${liked}"><span>${liked?"❤️":"♡"}</span> ${liked?"Unlike":"Like"} <span class="profile-like-count">${Number(data.profileLikes??user.profileLikes??0).toLocaleString()}</span></button></div>`:""}
+      ${!isSelf?`<div class="profile-primary-actions"><button class="profile-social-button profile-message-button" id="profileSendPM"><span>✉</span> Send PM</button><button class="profile-social-button profile-friend-button" id="profileAddFriend"><span>＋</span> Add Friend</button></div>`:""}
     </div>
     <div class="profile-tabs">
       <button class="profile-tab active" data-tab="info">Account</button>
@@ -4413,9 +4407,8 @@ function renderUserProfileModal(user,data={}){
         data.profileLikes=Number(r.likes||0);
         user.profileLikes=Number(r.likes||0);
         button.setAttribute('aria-pressed',r.liked?'true':'false');
-        button.innerHTML=`<span>${r.liked?'❤️':'♡'}</span> ${r.liked?'Unlike':'Like'} <span class="profile-like-count">${Number(r.likes||0).toLocaleString()}</span>`;
-        const count=document.querySelector('#modal .profile-social-stat:nth-child(3) b');
-        if(count)count.textContent='❤️ '+Number(r.likes||0).toLocaleString();
+        button.innerHTML=`❤️ <span class="profile-like-count">${Number(r.likes||0).toLocaleString()}</span>`;
+        button.setAttribute('aria-label',r.liked?'Unlike profile':'Like profile');
         toast(r.liked?'Profile liked.':'Like removed.');
       }catch(error){
         toast(error?.message||'Could not update profile like.');
