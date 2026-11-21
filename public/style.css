@@ -11489,3 +11489,14 @@ html{scroll-behavior:smooth;}
  #viewRooms:not(.chatting) .room-card-action{width:46px!important;height:46px!important;min-width:46px!important;min-height:46px!important;font-size:22px!important}
  #modal .room-menu-actions>.room-menu-action{min-height:74px!important;padding:18px!important;font-size:18px!important}
 }
+
+/* Final compact sizing approved for room actions: tiny card icons, modestly larger menu rows. */
+#viewRooms:not(.chatting) .room-card-actions{gap:4px!important;padding:5px!important;border-radius:10px!important}
+#viewRooms:not(.chatting) .room-card-action{width:30px!important;height:30px!important;min-width:30px!important;min-height:30px!important;border-radius:7px!important;font-size:15px!important}
+#modal .room-menu-actions{gap:7px!important}
+#modal .room-menu-actions>.room-menu-action{min-height:42px!important;padding:9px 12px!important;font-size:14px!important;line-height:1.25!important;border-radius:10px!important;gap:9px!important}
+@media(max-width:600px){
+ #viewRooms:not(.chatting) .room-card-actions{gap:4px!important;padding:5px!important}
+ #viewRooms:not(.chatting) .room-card-action{width:30px!important;height:30px!important;min-width:30px!important;min-height:30px!important;font-size:15px!important}
+ #modal .room-menu-actions>.room-menu-action{min-height:42px!important;padding:9px 12px!important;font-size:14px!important}
+}
