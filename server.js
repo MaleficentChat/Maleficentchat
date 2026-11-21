@@ -2594,6 +2594,13 @@ function generateRoomCode(){return String(crypto.randomInt(0,10000000000)).padSt
 
 async function createRoomHandler(req,res){
   const u=current(req); if(!u)return res.status(401).json({error:"Login required"});
+  if(req.file){
+    if(await checkRestrictedMediaUpload(req,res,u,req.file))return;
+    if(!/^image\/(png|jpe?g|gif|webp|avif)$/i.test(String(req.file.mimetype||""))){
+      await discardUploadedMedia(req.file);
+      return res.status(415).json({error:"Room profile pictures must be PNG, JPG, GIF, WebP or AVIF images."});
+    }
+  }
   // Keep server authorization aligned with the room-creation UI.
   // Premium/Royal and designated staff ranks may create rooms; explicit feature grants
   // remain available for other accounts configured by the Owner/Developer.
@@ -2617,14 +2624,14 @@ async function createRoomHandler(req,res){
   const password=roomPassword?await bcrypt.hash(roomPassword,10):null;
   try{
     const roomCode=req.body.public===false?generateRoomCode():null;
-    const q=await pool.query(`INSERT INTO rooms(name,created_by,icon,description,category,is_public,password_hash,rank_required,room_limit,slow_mode,banner,invite_token,is_default,min_age,max_age,room_code) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,false,$13,$14,$15) RETURNING *, (SELECT username FROM users WHERE id=created_by) AS creator`,[name,Number(u.id),req.body.icon||"💬",cleanText(req.body.description).slice(0,300),cleanText(req.body.category).slice(0,40)||"Community",req.body.public!==false,password,rankRequired,limit,slowMode,req.body.banner||"",crypto.randomBytes(12).toString("hex"),minAge,maxAge,roomCode]);
+    const q=await pool.query(`INSERT INTO rooms(name,created_by,icon,description,category,is_public,password_hash,rank_required,room_limit,slow_mode,banner,invite_token,is_default,min_age,max_age,room_code) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,false,$13,$14,$15) RETURNING *, (SELECT username FROM users WHERE id=created_by) AS creator`,[name,Number(u.id),req.body.icon||"💬",cleanText(req.body.description).slice(0,300),cleanText(req.body.category).slice(0,40)||"Community",req.body.public!==false,password,rankRequired,limit,slowMode,(req.file?"/uploads/"+req.file.filename:(req.body.banner||"")),crypto.randomBytes(12).toString("hex"),minAge,maxAge,roomCode]);
     const r=q.rows[0]; const room={id:String(r.id),name:r.name,icon:r.icon||"💬",description:r.description||"",category:r.category||"Community",public:r.is_public!==false,passwordHash:r.password_hash||null,rankRequired:String(r.rank_required||"MEMBER").toUpperCase(),limit:Number(r.room_limit||100),slowMode:Number(r.slow_mode||0),announcement:r.announcement||"",ownerId:String(r.created_by),banner:r.banner||"",inviteToken:r.invite_token||"",creator:r.creator||u.username,isDefault:false,minAge:Number(r.min_age??0),maxAge:Number(r.max_age??120),friendsOnly:req.body.friendsOnly===true,roomCode:r.room_code?formatRoomCode(r.room_code):null};
     db.settings ||= {};db.settings.room_access ||= {};db.settings.room_access[String(room.id)]={friendsOnly:room.friendsOnly};
     db.rooms.push(room); db.settings ||= {}; db.settings.room_staff ||= {}; db.settings.room_staff[String(room.id)] ||= {}; db.settings.room_staff[String(room.id)][String(u.id)]="ROOM_OWNER"; save(); log(u,"ROOM_CREATE",room.name); io.emit('rooms_updated'); res.status(201).json({room:{...room,passwordHash:undefined,inviteToken:undefined}});
-  }catch(e){if(e.code==='23505')return res.status(409).json({error:'A room with that name already exists.'});console.error(e);res.status(500).json({error:'Could not create room.'});}
+  }catch(e){if(req.file)await discardUploadedMedia(req.file);if(e.code==='23505')return res.status(409).json({error:'A room with that name already exists.'});console.error(e);res.status(500).json({error:'Could not create room.'});}
 }
-app.post("/api/rooms",auth,createRoomHandler);
-app.post("/api/rooms/create",auth,createRoomHandler);
+app.post("/api/rooms",auth,upload.single("roomPicture"),createRoomHandler);
+app.post("/api/rooms/create",auth,upload.single("roomPicture"),createRoomHandler);
 app.post("/api/rooms/:id/invites",auth,(req,res)=>{
   const actor=current(req),room=db.rooms.find(item=>String(item.id)===String(req.params.id));
   if(!room)return res.status(404).json({error:"Room not found"});
