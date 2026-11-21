@@ -167,3 +167,36 @@ button.top-profile#topProfile{display:grid!important;place-items:center!importan
 }
 .system-message.system-message-with-avatar>.system-message-profile-avatar,
 .system-message.system-message-with-avatar>b{vertical-align:middle!important}
+
+/* Final Aurora/join notice avatar centering: neutralize inherited avatar offsets. */
+.system-message.system-message-with-avatar{
+  display:flex!important;align-items:center!important;flex-wrap:nowrap!important;
+}
+.system-message.system-message-with-avatar>.system-message-profile-avatar{
+  position:static!important;top:auto!important;bottom:auto!important;
+  transform:none!important;align-self:center!important;
+  display:flex!important;align-items:center!important;justify-content:center!important;
+  box-sizing:border-box!important;width:28px!important;height:28px!important;
+  min-width:28px!important;min-height:28px!important;flex:0 0 28px!important;
+  margin:0!important;padding:0!important;line-height:0!important;
+}
+.system-message.system-message-with-avatar>.system-message-profile-avatar>.avatar,
+.system-message.system-message-with-avatar>.system-message-profile-avatar img{
+  position:static!important;top:auto!important;bottom:auto!important;left:auto!important;
+  transform:none!important;float:none!important;vertical-align:middle!important;
+  display:block!important;box-sizing:border-box!important;
+  width:28px!important;height:28px!important;min-width:28px!important;min-height:28px!important;
+  max-width:28px!important;max-height:28px!important;margin:0!important;padding:0!important;
+  line-height:0!important;object-fit:cover!important;border-radius:50%!important;
+}
+.system-message.system-message-with-avatar>.system-message-profile-avatar .avatar{
+  overflow:hidden!important;
+}
+.system-message.system-message-with-avatar>b{
+  position:static!important;top:auto!important;bottom:auto!important;
+  transform:none!important;align-self:center!important;display:inline-flex!important;
+  align-items:center!important;min-height:28px!important;line-height:1.25!important;
+  margin:0!important;padding:0!important;
+}
+.system-message.system-message-with-avatar>.system-message-profile-avatar,
+.system-message.system-message-with-avatar>b{vertical-align:middle!important}
