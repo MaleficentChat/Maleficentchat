@@ -8279,24 +8279,36 @@ bootstrap();
 if(new URLSearchParams(location.search).get("parallelEmbed")==="1")startParallelEmbed();
 
 
-/* 2026-11-23: consistent close controls for every navigation view. */
-(function installNavigationPanelCloseControls(){
-  function install(){
-    document.querySelectorAll('.view').forEach(view=>{
-      const header=view.querySelector(':scope > .topbar');
-      if(!header || header.querySelector(':scope > .mc-panel-close')) return;
-      const close=document.createElement('button');
-      close.type='button'; close.className='mc-panel-close'; close.setAttribute('aria-label','Close panel'); close.title='Close panel'; close.textContent='×';
-      close.addEventListener('click',()=>{
-        document.querySelectorAll('.view').forEach(panel=>panel.classList.add('hidden'));
-        document.querySelectorAll('.nav.active, .nav[aria-current="page"]').forEach(item=>{item.classList.remove('active');item.removeAttribute('aria-current');});
-        const rooms=document.getElementById('viewRooms'); if(rooms) rooms.classList.remove('hidden');
+
+
+/* Navigation section close controls: attach to each real view header. */
+(function(){
+  function addCloseControls(){
+    document.querySelectorAll('main .view').forEach(function(view){
+      if(view.id==='viewRooms') return;
+      if(view.querySelector('.mc-nav-panel-close')) return;
+      var header=view.querySelector('.topbar') || view.firstElementChild;
+      if(!header) return;
+      var button=document.createElement('button');
+      button.type='button';
+      button.className='mc-nav-panel-close';
+      button.setAttribute('aria-label','Close section');
+      button.title='Close section';
+      button.textContent='×';
+      button.addEventListener('click',function(){
+        view.classList.add('hidden');
+        var rooms=document.getElementById('viewRooms');
+        if(rooms) rooms.classList.remove('hidden');
+        document.querySelectorAll('[data-view],.nav-item,.nav-link').forEach(function(item){
+          if(item.classList.contains('active')) item.classList.remove('active');
+          if(item.getAttribute('aria-current')==='page') item.removeAttribute('aria-current');
+        });
       });
-      header.appendChild(close);
-      header.classList.add('mc-has-panel-close');
+      header.appendChild(button);
+      header.classList.add('mc-nav-panel-close-host');
     });
   }
-  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',install,{once:true}); else install();
-  const observer=new MutationObserver(install);
-  observer.observe(document.documentElement,{childList:true,subtree:true});
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',addCloseControls);
+  else addCloseControls();
+  new MutationObserver(addCloseControls).observe(document.body,{childList:true,subtree:true});
 })();
