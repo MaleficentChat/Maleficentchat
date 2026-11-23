@@ -11571,3 +11571,23 @@ html{scroll-behavior:smooth;}
  .dm-message-list .dm-msg .dm-message-avatar,.dm-message-list .dm-msg .dm-message-avatar .avatar{flex-basis:36px!important;width:36px!important;height:36px!important;min-width:36px!important}
  .dm-message-list .dm-msg .msg-body{max-width:calc(100% - 46px)!important}
 }
+
+
+/* Final alignment pass: target the actual button-wrapped DM avatar and name markup. */
+.modal-card:has(.dm-chat-header) .dm-chat-person{align-items:center!important;min-width:0!important}
+.modal-card:has(.dm-chat-header) .dm-chat-person .dm-profile-avatar{display:grid!important;place-items:center!important;flex:0 0 44px!important;width:44px!important;height:44px!important;min-width:44px!important;min-height:44px!important;padding:0!important;overflow:hidden!important;border-radius:50%!important}
+.modal-card:has(.dm-chat-header) .dm-chat-person .dm-profile-avatar .avatar{width:100%!important;height:100%!important;min-width:0!important;min-height:0!important;margin:0!important;border-radius:50%!important;overflow:hidden!important}
+.modal-card:has(.dm-chat-header) .dm-chat-person-copy{display:flex!important;flex-direction:column!important;justify-content:center!important;align-items:flex-start!important;gap:3px!important;min-width:0!important}
+.modal-card:has(.dm-chat-header) .dm-chat-person-copy .dm-profile-name{display:block!important;max-width:100%!important;margin:0!important;padding:0!important;border:0!important;background:transparent!important;color:#f7f7f7!important;font-size:16px!important;font-weight:800!important;line-height:1.2!important;text-align:left!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
+.modal-card:has(.dm-chat-header) .dm-chat-person-copy>span{display:block!important;line-height:1.25!important;white-space:nowrap!important}
+.dm-message-list .dm-msg .dm-message-avatar{align-self:flex-start!important}
+#modalBody>.profile-modal .profile-banner{display:flex!important;flex-direction:column!important;align-items:center!important;text-align:center!important}
+#modalBody>.profile-modal .profile-banner .equipped-profile-frame{display:grid!important;place-items:center!important;margin-inline:auto!important}
+#modalBody>.profile-modal .profile-banner .profile-rank,
+#modalBody>.profile-modal .profile-banner .profile-name,
+#modalBody>.profile-modal .profile-banner .profile-handle{width:100%!important;text-align:center!important}
+@media(max-width:700px){
+ .modal-card:has(.dm-chat-header) .dm-chat-person .dm-profile-avatar{flex-basis:40px!important;width:40px!important;height:40px!important;min-width:40px!important;min-height:40px!important}
+ .modal-card:has(.dm-chat-header) .dm-chat-person-copy .dm-profile-name{font-size:14px!important}
+ .modal-card:has(.dm-chat-header) .dm-chat-actions{flex-wrap:nowrap!important}
+}
