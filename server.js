@@ -4255,8 +4255,27 @@ app.post("/api/dm/:id",auth,featureAllowed("private_messages"),upload.single("fi
   if(await checkRestrictedMediaUpload(req,res,u,req.file))return;
   if(privateMessagesBlocked(u,v))return res.status(403).json({error:"Messaging blocked"});
   if(req.file&&!/^(image|audio)\//i.test(String(req.file.mimetype||""))){await discardUploadedMedia(req.file);return res.status(415).json({error:"Private-message attachments must be image or audio files."});}
-  const m={id:id(),from:u.id,to:v.id,text:cleanText(req.body.text),attachment:req.file?{url:"/uploads/"+req.file.filename,type:req.file.mimetype,name:req.file.originalname}:null,replyTo:req.body.replyTo||null,time:Date.now(),read:false,delivered:true};
-  if(!m.text&&!m.attachment)return res.status(400).json({error:"Empty message"});
+  let gif=null,youtube=null;
+  if(req.body?.gifUrl){
+    if(!featureGrantAllowed(u,"gif_sending"))return res.status(403).json({error:"Your rank cannot send GIFs."});
+    let parsed;try{parsed=new URL(String(req.body.gifUrl));}catch{return res.status(400).json({error:"Invalid GIF URL."});}
+    const host=parsed.hostname.toLowerCase();
+    if(parsed.protocol!=="https:"||!(host==="giphy.com"||host.endsWith(".giphy.com")||host==="tenor.com"||host.endsWith(".tenor.com")))return res.status(400).json({error:"Choose a valid GIPHY or Tenor GIF."});
+    const cost=Math.max(0,Math.min(100000,Number(db.settings.gif_cost??10)));
+    if(Number(u.gold||0)<cost)return res.status(400).json({error:`You need ${cost} gold to send a GIF.`});
+    u.gold=Number(u.gold||0)-cost;
+    gif={url:parsed.toString()};
+    db.goldTransactions ||= [];
+    db.goldTransactions.push({id:id(),userId:u.id,amount:-cost,reason:"Private-message GIF sent",time:Date.now()});
+  }
+  if(req.body?.youtube){
+    if(!featureGrantAllowed(u,"use_youtube"))return res.status(403).json({error:"Your rank cannot share YouTube videos."});
+    const videoId=String(req.body.youtube.videoId||"").trim();
+    if(!/^[A-Za-z0-9_-]{11}$/.test(videoId))return res.status(400).json({error:"Invalid YouTube video ID."});
+    youtube={videoId,title:cleanText(req.body.youtube.title||"YouTube video").slice(0,200),platform:"youtube"};
+  }
+  const m={id:id(),from:u.id,to:v.id,text:cleanText(req.body.text),attachment:req.file?{url:"/uploads/"+req.file.filename,type:req.file.mimetype,name:req.file.originalname}:null,gif,youtube,replyTo:req.body.replyTo||null,time:Date.now(),read:false,delivered:true};
+  if(!m.text&&!m.attachment&&!m.gif&&!m.youtube)return res.status(400).json({error:"Empty message"});
   await pool.query(`INSERT INTO private_messages(id,sender_id,receiver_id,message,data,created_at) VALUES($1,$2,$3,$4,$5::jsonb,NOW())`,
     [m.id,Number(u.id),Number(v.id),m.text,JSON.stringify(m)]);
   // private_messages is already the durable source; avoid save(), which rewrites
