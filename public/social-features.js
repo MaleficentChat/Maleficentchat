@@ -15,7 +15,7 @@ function ensureView(){
  }
  if(!el("viewConfessions")){
   const view=document.createElement("section");view.id="viewConfessions";view.className="view hidden sf-view";
-  view.innerHTML='<div class="topbar"><div><h2>🥀 Anonymous Confessions</h2><p class="muted">Share thoughts without showing your public identity.</p></div><div class="toolbar" role="group" aria-label="Confession views"><button type="button" class="mini" data-conf-view="latest" id="sfConfLatest">Latest</button><button type="button" class="mini" data-conf-view="popular" id="sfConfPopular">Popular</button><button type="button" class="mini" data-conf-view="mine" id="sfConfMine">My submissions</button></div></div><div class="sf-content" id="sfConfContent"><p class="muted">Choose a confession view.</p></div>';
+  view.innerHTML='<div class="topbar sf-conf-topbar"><div><h2>🥀 Anonymous Confessions</h2><p class="muted">Share thoughts without showing your public identity.</p></div><div class="toolbar" role="group" aria-label="Confession views"><button type="button" class="mini" data-conf-view="latest" id="sfConfLatest">Latest</button><button type="button" class="mini" data-conf-view="popular" id="sfConfPopular">Popular</button><button type="button" class="mini" data-conf-view="mine" id="sfConfMine">My submissions</button></div><button type="button" class="mini sf-conf-close" data-conf-close aria-label="Close Confessions" title="Close Confessions">×</button></div><div class="sf-content" id="sfConfContent"><p class="muted">Choose a confession view.</p></div>';
   main.appendChild(view);
  }
 }
@@ -82,6 +82,8 @@ async function handleSubmit(form){
 }
 document.addEventListener("click",async event=>{
  const target=event.target instanceof Element?event.target:event.target?.parentElement;if(!target)return;
+ const close=target.closest("[data-conf-close]");
+ if(close){event.preventDefault();event.stopPropagation();const view=el("viewConfessions");view?.classList.add("hidden");document.querySelectorAll(".nav[data-view]").forEach(item=>item.classList.toggle("active",item.dataset.view==="rooms"));if(el("viewRooms"))el("viewRooms").classList.remove("hidden");if(state)state.view="rooms";return;}
  const nav=target.closest('.nav[data-view="confessions"]');
  if(nav){event.preventDefault();event.stopPropagation();event.stopImmediatePropagation();showView();await loadConfessions("latest");return;}
  const view=target.closest("[data-conf-view]");
