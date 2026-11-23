@@ -15,7 +15,7 @@ function addNav(){
   }
  }
  const main=document.querySelector(".main");if(!main)return;
- if(!el("sfConfessionsView")){
+ if(!el("viewConfessions")){
   const conf=document.createElement("section");conf.id="viewConfessions";conf.className="view hidden sf-view";
   conf.innerHTML='<div class="topbar"><div><h2>🥀 Anonymous Confessions</h2><p class="muted">Share thoughts without showing your public identity.</p></div><div class="toolbar"><button class="mini" id="sfConfLatest">Latest</button><button class="mini" id="sfConfPopular">Popular</button><button class="mini" id="sfConfMine">My submissions</button></div></div><div class="sf-content" id="sfConfContent"></div>';
   main.appendChild(conf);
@@ -60,6 +60,6 @@ async function loadMyConfessions(){
  try{const d=await request("/api/confessions/mine");const submissions=Array.isArray(d.confessions)?d.confessions:[];root.innerHTML='<h3>My submissions</h3>'+(submissions.length?submissions.map(c=>'<article class="sf-conf-card"><div class="sf-conf-meta">'+esc(c.category)+' · '+esc(c.status)+'</div><p>'+esc(c.body)+'</p><button class="mini danger" data-conf-delete="'+esc(c.id)+'">Delete</button></article>').join(""):'<p class="sf-empty">You have not submitted anything yet.</p>');root.querySelectorAll("[data-conf-delete]").forEach(b=>b.onclick=async()=>{if(!confirm("Delete this confession?"))return;try{await request("/api/confessions/"+b.dataset.confDelete,{method:"DELETE"});loadMyConfessions();}catch(e){say(e.message);}});}catch(e){root.textContent=e.message;}
 }
 
-document.addEventListener("click",e=>{if(e.target.closest("#sfConfLatest"))loadConfessions("latest");if(e.target.closest("#sfConfPopular"))loadConfessions("popular");if(e.target.closest("#sfConfMine"))loadMyConfessions();});
+document.addEventListener("click",e=>{if(e.target.closest("#sfConfLatest"))loadConfessions("latest");if(e.target.closest("#sfConfPopular"))loadConfessions("popular");if(e.target.closest("#sfConfMine"))loadConfessions("mine");});
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",addNav);else addNav();
 })();
