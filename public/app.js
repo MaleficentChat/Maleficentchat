@@ -4803,11 +4803,12 @@ async function openDM(id) {
         <div class="dm-tools-wrap">
           <button type="button" class="dm-upload-btn" id="dmAttachToggle" title="Attachments and chat tools" aria-label="Attachments and chat tools" aria-expanded="false">📎</button>
           <div class="dm-tools-menu hidden" id="dmToolsMenu" aria-label="Private message tools">
-            <button type="button" id="dmAttachFile">🖼️ <span>Photo / audio</span></button>
-            <button type="button" id="dmAttachYoutube">▶️ <span>YouTube</span></button>
-            <button type="button" id="dmAttachGif">🎞️ <span>GIF</span></button>
-            <button type="button" id="dmAttachDoodle">✏️ <span>Doodle</span></button>
-          </div>
+             <div class="dm-tools-heading"><strong>Quick actions</strong></div>
+             <button type="button" id="dmAttachFile"><span class="dm-tool-icon">🖼️</span><span><b>Photo / audio</b></span></button>
+             <button type="button" id="dmAttachYoutube"><span class="dm-tool-icon">▶️</span><span><b>YouTube</b></span></button>
+             <button type="button" id="dmAttachGif"><span class="dm-tool-icon">🎞️</span><span><b>GIFs</b></span></button>
+             <button type="button" id="dmAttachDoodle"><span class="dm-tool-icon">✏️</span><span><b>Doodle</b></span></button>
+           </div>
           <input id="dmFile" type="file" accept="image/*,audio/*" hidden>
         </div>
         <span id="dmFileName" class="muted dm-file-name"></span>
