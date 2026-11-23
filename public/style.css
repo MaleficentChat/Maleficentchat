@@ -11742,3 +11742,47 @@ html{scroll-behavior:smooth;}
 #modalBody>.profile-modal .profile-banner>.equipped-profile-frame:has(>.big-avatar){
   aspect-ratio:1/1!important;
 }
+
+
+/* Final, direct fixes for the requested controls. */
+#modal .modal-card:has(#modalBody .dm-chat-header) .dm-chat-actions{
+ display:flex!important;align-items:center!important;justify-content:flex-end!important;
+ flex-wrap:nowrap!important;gap:6px!important;min-width:0!important;
+}
+#modal .modal-card:has(#modalBody .dm-chat-header) .dm-chat-actions>.dm-settings-toggle,
+#modal .modal-card:has(#modalBody .dm-chat-header) .dm-chat-actions>.dm-search-toggle,
+#modal .modal-card:has(#modalBody .dm-chat-header) .dm-chat-actions>.dm-minimize-button,
+#modal .modal-card:has(#modalBody .dm-chat-header) .dm-chat-actions>.dm-close-button{
+ display:grid!important;visibility:visible!important;opacity:1!important;place-items:center!important;
+ flex:0 0 40px!important;width:40px!important;min-width:40px!important;max-width:40px!important;
+ height:40px!important;min-height:40px!important;max-height:40px!important;padding:0!important;
+ box-sizing:border-box!important;
+}
+#modal .modal-card:has(#modalBody .dm-chat-header) .dm-chat-actions>.dm-close-button{font-size:22px!important;line-height:1!important;}
+#modal .modal-card:has(#modalBody .dm-chat-header) .dm-chat-actions>.dm-minimize-button{font-size:20px!important;line-height:1!important;}
+@media(max-width:700px){
+ #modal .modal-card:has(#modalBody .dm-chat-header) .dm-chat-actions{gap:4px!important;}
+ #modal .modal-card:has(#modalBody .dm-chat-header) .dm-chat-actions>.dm-settings-toggle,
+ #modal .modal-card:has(#modalBody .dm-chat-header) .dm-chat-actions>.dm-search-toggle,
+ #modal .modal-card:has(#modalBody .dm-chat-header) .dm-chat-actions>.dm-minimize-button,
+ #modal .modal-card:has(#modalBody .dm-chat-header) .dm-chat-actions>.dm-close-button{
+  flex-basis:36px!important;width:36px!important;min-width:36px!important;max-width:36px!important;height:36px!important;min-height:36px!important;max-height:36px!important;
+ }
+}
+/* Confessions-style close button shared by all navigation sections. */
+main .view .mc-nav-panel-close-host{position:relative!important;padding-right:58px!important;}
+main .view .mc-nav-panel-close{
+ display:inline-flex!important;align-items:center!important;justify-content:center!important;
+ position:absolute!important;top:50%!important;right:8px!important;transform:translateY(-50%)!important;
+ width:42px!important;height:42px!important;min-width:42px!important;min-height:42px!important;
+ padding:0!important;border:1px solid rgba(120,169,216,.35)!important;border-radius:12px!important;
+ background:#204365!important;color:#f2f7ff!important;font-size:28px!important;font-weight:500!important;
+ line-height:1!important;box-shadow:none!important;cursor:pointer!important;
+}
+/* Keep the glass-effect public-profile close control; suppress the blue shell close only. */
+#modal:has(#modalBody>.profile-modal)>.modal-card>.modal-close{display:none!important;visibility:hidden!important;pointer-events:none!important;}
+#modalBody>.profile-modal .profile-inline-close{display:inline-flex!important;visibility:visible!important;opacity:1!important;pointer-events:auto!important;}
+#modalBody>.profile-modal .profile-edit-panel-close{display:none!important;}
+/* Ensure the small profile popup is centred in the modal viewport. */
+#modal:has(#modalBody>.quick-user-card){display:flex!important;align-items:center!important;justify-content:center!important;}
+#modal:has(#modalBody>.quick-user-card)>.modal-card{position:relative!important;left:auto!important;right:auto!important;margin:0 auto!important;transform:none!important;}
