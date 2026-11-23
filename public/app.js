@@ -2150,7 +2150,7 @@ async function openGifPicker(options={}){
       let r;
       if(dmPeerId){
         r=await api(`/api/dm/${encodeURIComponent(dmPeerId)}`,{method:"POST",body:JSON.stringify({text:"",gifUrl:selectedGif.url})});
-        if(r.message){state.dmMessages=Array.isArray(state.dmMessages)?state.dmMessages:[];state.dmMessages.push(r.message);const list=mcGetById("dmMessages");if(list&&String(state.dmUserId)===dmPeerId){list.insertAdjacentHTML("beforeend",dmMessageHTML(r.message,state.dmMessages,state.dmPeerUser||{}));list.scrollTop=list.scrollHeight;}}
+        if(r.message){state.dmMessages=Array.isArray(state.dmMessages)?state.dmMessages:[];if(!state.dmMessages.some(item=>String(item.id)===String(r.message.id))){state.dmMessages.push(r.message);const list=mcGetById("dmMessages");if(list&&String(state.dmUserId)===dmPeerId){list.querySelector(".muted")?.remove();list.insertAdjacentHTML("beforeend",dmMessageHTML(r.message,state.dmMessages,state.dmPeerUser||{}));list.scrollTop=list.scrollHeight;}}}
       }else{
         r=await api(`/api/rooms/${encodeURIComponent(roomIdAtOpen)}/gif`,{method:"POST",body:JSON.stringify({url:selectedGif.url})});
         if(r.message&&String(state.currentRoom)===String(r.message.roomId))appendMessage(r.message);
@@ -3686,7 +3686,7 @@ function openDoodleComposer(dmPeerId=null){
     if(dmPeerId){
       if(String(state.dmUserId)!==String(dmPeerId))throw new Error('Your private conversation changed. Reopen Doodle Studio.');
       const data=await api('/api/dm/'+encodeURIComponent(dmPeerId),{method:'POST',body:form});
-      if(data.message){state.dmMessages=Array.isArray(state.dmMessages)?state.dmMessages:[];state.dmMessages.push(data.message);const list=mcGetById('dmMessages');if(list){list.insertAdjacentHTML('beforeend',dmMessageHTML(data.message,state.dmMessages,state.dmPeerUser||{}));list.scrollTop=list.scrollHeight;}}
+      if(data.message){state.dmMessages=Array.isArray(state.dmMessages)?state.dmMessages:[];if(!state.dmMessages.some(item=>String(item.id)===String(data.message.id))){state.dmMessages.push(data.message);const list=mcGetById('dmMessages');if(list){list.querySelector('.muted')?.remove();list.insertAdjacentHTML('beforeend',dmMessageHTML(data.message,state.dmMessages,state.dmPeerUser||{}));list.scrollTop=list.scrollHeight;}}}
       closeModal();toast('Doodle sent privately.');loadDMList().catch(()=>{});
     }else{
       const data=await api('/api/rooms/'+encodeURIComponent(state.currentRoom)+'/messages',{method:'POST',body:form});
@@ -7833,7 +7833,7 @@ async function sendYoutubeToDM(videoId,title,peerId){
   try{
     if(!peerId||String(state.dmUserId)!==String(peerId))throw new Error("Open the intended private conversation before sharing a video.");
     const result=await api(`/api/dm/${encodeURIComponent(peerId)}`,{method:"POST",body:JSON.stringify({text:"",youtube:{videoId,title}})});
-    if(result.message){state.dmMessages=Array.isArray(state.dmMessages)?state.dmMessages:[];state.dmMessages.push(result.message);const list=mcGetById("dmMessages");if(list){list.insertAdjacentHTML("beforeend",dmMessageHTML(result.message,state.dmMessages,state.dmPeerUser||{}));list.scrollTop=list.scrollHeight;}}
+    if(result.message){state.dmMessages=Array.isArray(state.dmMessages)?state.dmMessages:[];if(!state.dmMessages.some(item=>String(item.id)===String(result.message.id))){state.dmMessages.push(result.message);const list=mcGetById("dmMessages");if(list){list.querySelector(".muted")?.remove();list.insertAdjacentHTML("beforeend",dmMessageHTML(result.message,state.dmMessages,state.dmPeerUser||{}));list.scrollTop=list.scrollHeight;}}}
     closeModal();toast("YouTube video sent privately.");loadDMList().catch(()=>{});
   }catch(error){toast(error.message||"Could not send the YouTube video.");}
 }
