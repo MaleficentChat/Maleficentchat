@@ -11706,3 +11706,39 @@ html{scroll-behavior:smooth;}
 .view>.topbar.mc-has-panel-close{position:relative!important;padding-right:54px!important;}
 .view>.topbar.mc-has-panel-close>.mc-panel-close{display:inline-flex!important;align-items:center!important;justify-content:center!important;position:absolute!important;top:50%!important;right:8px!important;transform:translateY(-50%)!important;width:42px!important;height:42px!important;min-width:42px!important;min-height:42px!important;padding:0!important;border:1px solid rgba(120,169,216,.35)!important;border-radius:12px!important;background:#204365!important;color:#f2f7ff!important;font-size:28px!important;font-weight:500!important;line-height:1!important;box-shadow:none!important;cursor:pointer!important;}
 @media(max-width:700px){#modal .modal-card:has(.dm-chat-header) .dm-chat-actions{gap:4px!important;}#modal .modal-card:has(.dm-chat-header) .dm-chat-actions>.dm-minimize-button,#modal .modal-card:has(.dm-chat-header) .dm-chat-actions>.dm-close-button{flex-basis:36px!important;width:36px!important;min-width:36px!important;max-width:36px!important;height:36px!important;min-height:36px!important;}}
+
+
+/* FINAL OVERRIDE 2026-11-23: public profile avatar and duplicate close button.
+   The older stylesheet later re-enabled the blue modal-shell close control;
+   keep the glass profile close control and suppress only that blue duplicate. */
+#modal:has(#modalBody>.profile-modal)>.modal-card>.modal-close,
+#modal:has(#modalBody .profile-modal) .modal-card>.modal-close{
+  display:none!important;visibility:hidden!important;pointer-events:none!important;
+}
+#modalBody>.profile-modal .profile-banner{
+  display:flex!important;flex-direction:column!important;align-items:center!important;
+  justify-content:flex-start!important;text-align:center!important;
+}
+#modalBody>.profile-modal .profile-banner>.equipped-profile-frame{
+  display:grid!important;place-items:center!important;align-self:center!important;
+  position:relative!important;inset:auto!important;float:none!important;
+  width:96px!important;height:96px!important;min-width:96px!important;min-height:96px!important;
+  flex:0 0 96px!important;margin:0 auto 8px!important;padding:3px!important;
+  border-radius:50%!important;overflow:hidden!important;box-sizing:border-box!important;
+}
+#modalBody>.profile-modal .profile-banner>.equipped-profile-frame>.big-avatar{
+  display:grid!important;place-items:center!important;position:relative!important;
+  width:100%!important;height:100%!important;min-width:0!important;min-height:0!important;
+  max-width:100%!important;max-height:100%!important;margin:0!important;padding:0!important;
+  border:0!important;border-radius:50%!important;overflow:hidden!important;box-sizing:border-box!important;
+}
+#modalBody>.profile-modal .profile-banner>.equipped-profile-frame>.big-avatar>img{
+  display:block!important;position:absolute!important;inset:0!important;
+  width:100%!important;height:100%!important;min-width:100%!important;min-height:100%!important;
+  max-width:none!important;max-height:none!important;object-fit:cover!important;
+  object-position:center center!important;border-radius:50%!important;
+}
+/* Do not let the framed-avatar artwork stretch the actual portrait. */
+#modalBody>.profile-modal .profile-banner>.equipped-profile-frame:has(>.big-avatar){
+  aspect-ratio:1/1!important;
+}
