@@ -2120,9 +2120,10 @@ function saveRecentGifSearch(query){
   const items=[q,...getRecentGifSearches().filter(x=>x.toLowerCase()!==q.toLowerCase())].slice(0,6);
   safeStorage.setItem("mc_gif_recent_searches",JSON.stringify(items));
 }
-async function openGifPicker(){
+async function openGifPicker(options={}){
+  const dmPeerId=options.dmPeerId?String(options.dmPeerId):null;
   const roomIdAtOpen=String(state.currentRoom||"");
-  if(!roomIdAtOpen){toast("Join a room before sending a GIF.");return;}
+  if(!dmPeerId&&!roomIdAtOpen){toast("Join a room before sending a GIF.");return;}
   let searchVersion=0;
   let searchTimer=null;
   let sending=false;
@@ -2140,18 +2141,23 @@ async function openGifPicker(){
   const clearSelection=()=>{selectedGif=null;selectedBox.innerHTML="";selectedBox.classList.add("hidden");};
   const sendSelected=async()=>{
     if(!selectedGif||sending)return;
-    if(String(state.currentRoom)!==roomIdAtOpen){toast("Your room changed. Reopen the GIF picker in the room you want.");return;}
+    if(dmPeerId&&String(state.dmUserId)!==dmPeerId){toast("Your conversation changed. Reopen the GIF picker.");return;}
+    if(!dmPeerId&&String(state.currentRoom)!==roomIdAtOpen){toast("Your room changed. Reopen the GIF picker in the room you want.");return;}
     sending=true;
     const sendButton=mcGetById("gifSendSelected");
     if(sendButton){sendButton.disabled=true;sendButton.textContent="Sending…";}
     try{
-      const r=await api(`/api/rooms/${encodeURIComponent(roomIdAtOpen)}/gif`,{method:"POST",body:JSON.stringify({url:selectedGif.url})});
+      let r;
+      if(dmPeerId){
+        r=await api(`/api/dm/${encodeURIComponent(dmPeerId)}`,{method:"POST",body:JSON.stringify({text:"",gifUrl:selectedGif.url})});
+        if(r.message){state.dmMessages=Array.isArray(state.dmMessages)?state.dmMessages:[];state.dmMessages.push(r.message);const list=mcGetById("dmMessages");if(list&&String(state.dmUserId)===dmPeerId){list.insertAdjacentHTML("beforeend",dmMessageHTML(r.message,state.dmMessages,state.dmPeerUser||{}));list.scrollTop=list.scrollHeight;}}
+      }else{
+        r=await api(`/api/rooms/${encodeURIComponent(roomIdAtOpen)}/gif`,{method:"POST",body:JSON.stringify({url:selectedGif.url})});
+        if(r.message&&String(state.currentRoom)===String(r.message.roomId))appendMessage(r.message);
+      }
       if(state.user&&r.gold!==undefined){state.user.gold=r.gold;updateNav();}
-      const balance=mcGetById("gifBalance");
-      if(balance)balance.textContent=`Your balance: 🪙 ${Number(state.user?.gold||0)}`;
-      if(r.message&&String(state.currentRoom)===String(r.message.roomId))appendMessage(r.message);
-      closeModal();
-      toast("GIF sent successfully.");
+      const balance=mcGetById("gifBalance");if(balance)balance.textContent=`Your balance: 🪙 ${Number(state.user?.gold||0)}`;
+      closeModal();toast("GIF sent successfully.");
     }catch(e){
       sending=false;
       if(sendButton){sendButton.disabled=false;sendButton.textContent="Send GIF";}
@@ -3649,13 +3655,13 @@ function launchArcadeGame(game){
   }
 }
 function bindBack(){const b=mcGetById("gamesRoot")?.querySelector("[data-arcade-back]");if(b)b.onclick=renderArcade;}
-function openDoodleComposer(){
-  const canSave=canFeature('doodle_studio_save'),canShare=!!state.currentRoom&&canFeature('doodle_studio_share');
-  if(!canSave&&!canShare){toast('Doodle Studio is not available for your account.');return;}
+function openDoodleComposer(dmPeerId=null){
+  const canSave=canFeature('doodle_studio_save'),canShareRoom=!!state.currentRoom&&canFeature('doodle_studio_share'),canShareDM=!!dmPeerId&&canFeature('doodle_studio_share');
+  if(!canSave&&!canShareRoom&&!canShareDM){toast('Doodle Studio is not available for your account.');return;}
   modal(`<div class="doodle-modal"><div class="doodle-head"><h2>🖌️ Doodle Studio</h2><button type="button" class="mini" id="doodleClose">×</button></div>
     <div class="doodle-tools"><label class="doodle-title-field">Title <input id="doodleTitle" type="text" maxlength="80" value="Untitled doodle" placeholder="Name your drawing"></label><button type="button" id="doodlePen">🖌️ Pen</button><button type="button" id="doodleEraser">🧽 Eraser</button><label>Color <input type="color" id="doodleColor" value="#111111"></label><label>Size <input type="range" id="doodleSize" min="2" max="24" value="5"></label><button type="button" id="doodleUndo">↶ Undo</button><button type="button" id="doodleClear">🗑 Clear</button></div>
     <canvas id="doodleCanvas" width="900" height="620" aria-label="Draw your doodle here"></canvas>
-    <div class="doodle-footer"><span class="muted">Save a private copy or share it with your current room.</span>${canSave?'<button type="button" id="doodleSave">💾 Save drawing</button>':''}${canShare?'<button type="button" class="primary" id="doodleSend">➤ Send to Room</button>':''}</div></div>`);
+    <div class="doodle-footer"><span class="muted">Save a private copy or share it in chat.</span>${canSave?'<button type="button" id="doodleSave">💾 Save drawing</button>':''}${canShareRoom||canShareDM?'<button type="button" class="primary" id="doodleSend">➤ Send to ${canShareDM?'Private Message':'Room'}</button>':''}</div></div>`);
   const canvas=mcGetById('doodleCanvas'),ctx=canvas.getContext('2d');canvas.style.touchAction='none';canvas.style.userSelect='none';ctx.fillStyle='#ffffff';ctx.fillRect(0,0,canvas.width,canvas.height);
   let drawing=false,erase=false,color='#111111',size=5,history=[];
   const snapshot=()=>{try{history.push(ctx.getImageData(0,0,canvas.width,canvas.height));if(history.length>20)history.shift()}catch{}};
@@ -3677,10 +3683,17 @@ function openDoodleComposer(){
   mcGetById('doodleSend')?.addEventListener('click',async()=>{const btn=mcGetById('doodleSend');btn.disabled=true;btn.textContent='Sending…';try{
     const blob=await new Promise((resolve,reject)=>canvas.toBlob(b=>b?resolve(b):reject(Error('Could not export the doodle.')),'image/png'));
     const file=new File([blob],'maleficent-doodle.png',{type:'image/png'}),form=new FormData();form.append('text','');form.append('file',file);
-    const data=await api('/api/rooms/'+encodeURIComponent(state.currentRoom)+'/messages',{method:'POST',body:form});
-    if(data.message&&String(data.message.roomId)===String(state.currentRoom))appendMessage(data.message);
-    closeModal();toast('Doodle sent to the room!');
-  }catch(e){btn.disabled=false;btn.textContent='➤ Send to Main Chat';toast(e.message||'Could not send doodle.')}});
+    if(dmPeerId){
+      if(String(state.dmUserId)!==String(dmPeerId))throw new Error('Your private conversation changed. Reopen Doodle Studio.');
+      const data=await api('/api/dm/'+encodeURIComponent(dmPeerId),{method:'POST',body:form});
+      if(data.message){state.dmMessages=Array.isArray(state.dmMessages)?state.dmMessages:[];state.dmMessages.push(data.message);const list=mcGetById('dmMessages');if(list){list.insertAdjacentHTML('beforeend',dmMessageHTML(data.message,state.dmMessages,state.dmPeerUser||{}));list.scrollTop=list.scrollHeight;}}
+      closeModal();toast('Doodle sent privately.');loadDMList().catch(()=>{});
+    }else{
+      const data=await api('/api/rooms/'+encodeURIComponent(state.currentRoom)+'/messages',{method:'POST',body:form});
+      if(data.message&&String(data.message.roomId)===String(state.currentRoom))appendMessage(data.message);
+      closeModal();toast('Doodle sent to the room!');
+    }
+  }catch(e){btn.disabled=false;btn.textContent=dmPeerId?'➤ Send to Private Message':'➤ Send to Room';toast(e.message||'Could not send doodle.')}});
 }
 mcGetById('doodleBtn')?.addEventListener('click',openDoodleComposer);
 
@@ -4676,19 +4689,9 @@ function dmMessageHTML(message, messages, user) {
 
         ${message.deleted ? '<div class="msg-text muted">This message was deleted.</div>' : ""}
 
-        ${
-          !message.deleted && message.attachment
-            ? `
-              <a
-                href="${esc(message.attachment.url)}"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                📎 ${esc(message.attachment.name || "Attachment")}
-              </a>
-            `
-            : ""
-        }
+        ${!message.deleted && message.gif?.url ? `<a class="dm-gif-attachment" href="${esc(message.gif.url)}" target="_blank" rel="noopener noreferrer"><img src="${esc(message.gif.url)}" alt="GIF" loading="lazy"></a>` : ""}
+        ${!message.deleted && message.youtube?.videoId ? `<div class="dm-youtube-attachment"><iframe src="https://www.youtube-nocookie.com/embed/${esc(message.youtube.videoId)}" title="${esc(message.youtube.title||"YouTube video")}" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe><b>${esc(message.youtube.title||"YouTube video")}</b></div>` : ""}
+        ${!message.deleted && message.attachment ? (String(message.attachment.type||"").startsWith("image/") ? `<a class="dm-image-attachment" href="${esc(message.attachment.url)}" target="_blank" rel="noopener noreferrer"><img src="${esc(message.attachment.url)}" alt="${esc(message.attachment.name||"Image attachment")}" loading="lazy"></a>` : `<a href="${esc(message.attachment.url)}" target="_blank" rel="noopener noreferrer">📎 ${esc(message.attachment.name || "Attachment")}</a>`) : ""}
 
         <div class="dm-message-meta">
           ${(()=>{const d=new Date(message.time);return Number.isNaN(d.getTime())?"":String(d.getDate()).padStart(2,"0")+"/"+String(d.getMonth()+1).padStart(2,"0")+" · "+String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0");})()}
@@ -4797,9 +4800,16 @@ async function openDM(id) {
       }
 
       <form id="dmForm" class="composer dm-composer">
-        <label class="dm-upload-btn" title="Attach photo, audio, video or file">📎
-          <input id="dmFile" type="file" accept="image/*,audio/*,video/*,.pdf,.txt" hidden>
-        </label>
+        <div class="dm-tools-wrap">
+          <button type="button" class="dm-upload-btn" id="dmAttachToggle" title="Attachments and chat tools" aria-label="Attachments and chat tools" aria-expanded="false">📎</button>
+          <div class="dm-tools-menu hidden" id="dmToolsMenu" aria-label="Private message tools">
+            <button type="button" id="dmAttachFile">🖼️ <span>Photo / audio</span></button>
+            <button type="button" id="dmAttachYoutube">▶️ <span>YouTube</span></button>
+            <button type="button" id="dmAttachGif">🎞️ <span>GIF</span></button>
+            <button type="button" id="dmAttachDoodle">✏️ <span>Doodle</span></button>
+          </div>
+          <input id="dmFile" type="file" accept="image/*,audio/*" hidden>
+        </div>
         <span id="dmFileName" class="muted dm-file-name"></span>
         <input id="dmText" placeholder="Write a private message…" maxlength="4000" autocomplete="off">
         <button class="send" type="submit">Send ↗</button>
@@ -4897,6 +4907,12 @@ async function openDM(id) {
       const f=mcGetById("dmFile").files?.[0];
       if(mcGetById("dmFileName")) mcGetById("dmFileName").textContent=f?`📎 ${f.name}`:"";
     });
+    const dmAttachToggle=mcGetById("dmAttachToggle"),dmToolsMenu=mcGetById("dmToolsMenu");
+    dmAttachToggle?.addEventListener("click",()=>{dmToolsMenu?.classList.toggle("hidden");dmAttachToggle.setAttribute("aria-expanded",String(!dmToolsMenu?.classList.contains("hidden")));});
+    mcGetById("dmAttachFile")?.addEventListener("click",()=>{dmToolsMenu?.classList.add("hidden");dmAttachToggle?.setAttribute("aria-expanded","false");mcGetById("dmFile")?.click();});
+    mcGetById("dmAttachYoutube")?.addEventListener("click",()=>{dmToolsMenu?.classList.add("hidden");dmAttachToggle?.setAttribute("aria-expanded","false");openYoutubePanel(null,dmTargetId);});
+    mcGetById("dmAttachGif")?.addEventListener("click",()=>{dmToolsMenu?.classList.add("hidden");dmAttachToggle?.setAttribute("aria-expanded","false");openGifPicker({dmPeerId:dmTargetId});});
+    mcGetById("dmAttachDoodle")?.addEventListener("click",()=>{dmToolsMenu?.classList.add("hidden");dmAttachToggle?.setAttribute("aria-expanded","false");openDoodleComposer(dmTargetId);});
 
     const draftKey="mc_dm_draft_"+String(state.user?.id||"")+"_"+String(id);
     const dmInput=mcGetById("dmText");
@@ -7776,15 +7792,15 @@ function extractYoutubeVideoId(value){
     return /^[A-Za-z0-9_-]{11}$/.test(String(id||""))?String(id):"";
   }catch{return "";}
 }
-function openYoutubePanel(roomId=state.currentRoom){
+function openYoutubePanel(roomId=state.currentRoom,dmPeerId=null){
   modal(`<div class="youtube-panel"><h2>▶️ YouTube</h2><p class="muted">Search for a video or paste a YouTube video, Shorts or live link.</p><div class="toolbar"><input id="ytQuery" placeholder="Search or paste YouTube URL…" autocomplete="off"><button class="primary" id="ytSearch" type="button">Search</button></div><div id="ytResults" class="youtube-results"><p class="muted">Choose a video to preview it before sharing.</p></div><div id="ytSelected" class="youtube-selected" aria-live="polite"></div></div>`);
   const query=mcGetById("ytQuery"),searchButton=mcGetById("ytSearch"),results=mcGetById("ytResults"),selected=mcGetById("ytSelected");
   let chosen=null;
   const selectVideo=(video)=>{
     if(!video||! /^[A-Za-z0-9_-]{11}$/.test(String(video.id||"")))return;
     chosen={id:String(video.id),title:String(video.title||"YouTube video").slice(0,200)};
-    selected.innerHTML=`<div class="youtube-selection-preview"><img src="https://i.ytimg.com/vi/${chosen.id}/hqdefault.jpg" alt=""><div><b>${esc(chosen.title)}</b><small>Ready to share in this room</small></div><button type="button" class="primary" id="ytShare">Share video</button></div>`;
-    selected.querySelector("#ytShare")?.addEventListener("click",()=>sendYoutube(chosen.id,chosen.title,roomId));
+    selected.innerHTML=`<div class="youtube-selection-preview"><img src="https://i.ytimg.com/vi/${chosen.id}/hqdefault.jpg" alt=""><div><b>${esc(chosen.title)}</b><small>Ready to share in ${dmPeerId?"this private conversation":"this room"}</small></div><button type="button" class="primary" id="ytShare">Share video</button></div>`;
+    selected.querySelector("#ytShare")?.addEventListener("click",()=>dmPeerId?sendYoutubeToDM(chosen.id,chosen.title,dmPeerId):sendYoutube(chosen.id,chosen.title,roomId));
   };
   const addResult=(video)=>{
     const button=document.createElement("button");
@@ -7812,6 +7828,14 @@ function openYoutubePanel(roomId=state.currentRoom){
   searchButton.addEventListener("click",search);
   query.addEventListener("keydown",event=>{if(event.key==="Enter"){event.preventDefault();search();}});
   query.focus();
+}
+async function sendYoutubeToDM(videoId,title,peerId){
+  try{
+    if(!peerId||String(state.dmUserId)!==String(peerId))throw new Error("Open the intended private conversation before sharing a video.");
+    const result=await api(`/api/dm/${encodeURIComponent(peerId)}`,{method:"POST",body:JSON.stringify({text:"",youtube:{videoId,title}})});
+    if(result.message){state.dmMessages=Array.isArray(state.dmMessages)?state.dmMessages:[];state.dmMessages.push(result.message);const list=mcGetById("dmMessages");if(list){list.insertAdjacentHTML("beforeend",dmMessageHTML(result.message,state.dmMessages,state.dmPeerUser||{}));list.scrollTop=list.scrollHeight;}}
+    closeModal();toast("YouTube video sent privately.");loadDMList().catch(()=>{});
+  }catch(error){toast(error.message||"Could not send the YouTube video.");}
 }
 async function sendYoutube(videoId,title,roomId=state.currentRoom){
   try{
