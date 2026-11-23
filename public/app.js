@@ -3661,7 +3661,7 @@ function openDoodleComposer(dmPeerId=null){
   modal(`<div class="doodle-modal"><div class="doodle-head"><h2>🖌️ Doodle Studio</h2><button type="button" class="mini" id="doodleClose">×</button></div>
     <div class="doodle-tools"><label class="doodle-title-field">Title <input id="doodleTitle" type="text" maxlength="80" value="Untitled doodle" placeholder="Name your drawing"></label><button type="button" id="doodlePen">🖌️ Pen</button><button type="button" id="doodleEraser">🧽 Eraser</button><label>Color <input type="color" id="doodleColor" value="#111111"></label><label>Size <input type="range" id="doodleSize" min="2" max="24" value="5"></label><button type="button" id="doodleUndo">↶ Undo</button><button type="button" id="doodleClear">🗑 Clear</button></div>
     <canvas id="doodleCanvas" width="900" height="620" aria-label="Draw your doodle here"></canvas>
-    <div class="doodle-footer"><span class="muted">Save a private copy or share it in chat.</span>${canSave?'<button type="button" id="doodleSave">💾 Save drawing</button>':''}${canShareRoom||canShareDM?'<button type="button" class="primary" id="doodleSend">➤ Send to ${canShareDM?'Private Message':'Room'}</button>':''}</div></div>`);
+    <div class="doodle-footer"><span class="muted">Save a private copy or share it in chat.</span>${canSave?'<button type="button" id="doodleSave">💾 Save drawing</button>':''}${canShareDM?'<button type="button" class="primary" id="doodleSend">➤ Send to Private Message</button>':canShareRoom?'<button type="button" class="primary" id="doodleSend">➤ Send to Room</button>':''}</div></div>`);
   const canvas=mcGetById('doodleCanvas'),ctx=canvas.getContext('2d');canvas.style.touchAction='none';canvas.style.userSelect='none';ctx.fillStyle='#ffffff';ctx.fillRect(0,0,canvas.width,canvas.height);
   let drawing=false,erase=false,color='#111111',size=5,history=[];
   const snapshot=()=>{try{history.push(ctx.getImageData(0,0,canvas.width,canvas.height));if(history.length>20)history.shift()}catch{}};
@@ -4647,7 +4647,7 @@ function dmMessageHTML(message, messages, user) {
     : null;
 
   const quoteText = quoted
-    ? (quoted.deleted ? "Deleted message" : (quoted.text || (quoted.attachment ? "📎 Attachment" : "Message")))
+    ? (quoted.deleted ? "Deleted message" : (quoted.text || (quoted.gif ? "🎞️ GIF" : quoted.youtube ? "▶️ YouTube video" : quoted.attachment ? "📎 Attachment" : "Message")))
     : null;
 
   const isMine=String(message.from)===String(state.user.id);
