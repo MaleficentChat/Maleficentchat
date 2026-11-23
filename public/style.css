@@ -11611,3 +11611,7 @@ html{scroll-behavior:smooth;}
  .modal-card:has(.dm-chat-header) .dm-chat-person .dm-profile-avatar{flex-basis:40px!important;width:40px!important;height:40px!important;min-width:40px!important;min-height:40px!important}
  .dm-message-list .dm-msg .message-avatar-button.dm-message-avatar{flex-basis:32px!important;width:32px!important;height:32px!important;min-width:32px!important;min-height:32px!important}
 }
+
+
+/* Public profile: keep the shared modal close control out of the profile header. */
+#modal .modal-card:has(#modalBody>.profile-modal)>.modal-close{display:none!important;}
