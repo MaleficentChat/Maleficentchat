@@ -4292,7 +4292,7 @@ app.post("/api/dm/:id",auth,featureAllowed("private_messages"),upload.single("fi
   // Send separately to both authenticated user rooms so every active device
   // for each participant receives the new private message.
   io.to("user:"+u.id).emit("dm",m);io.to("user:"+v.id).emit("dm",m);
-  res.json({message:m});
+  res.json({message:m,gold:u.gold});
 });
 
 app.delete("/api/dm/messages/:messageId",auth,featureAllowed("private_messages"),async(req,res)=>{
