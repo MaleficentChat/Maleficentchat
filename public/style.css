@@ -11606,7 +11606,6 @@ html{scroll-behavior:smooth;}
 .modal-card:has(.profile-modal) .profile-banner>.equipped-profile-frame{display:grid!important;place-items:center!important;margin:0 auto 3px!important}
 .modal-card:has(.profile-modal) .profile-banner .big-avatar{display:grid!important;place-items:center!important;margin:0 auto!important}
 .modal-card:has(.profile-modal) .profile-banner>.profile-rank,.modal-card:has(.profile-modal) .profile-banner>.profile-name,.modal-card:has(.profile-modal) .profile-banner>.profile-handle{width:100%!important;text-align:center!important}
-.modal-card:has(.profile-modal)>.modal-close{display:none!important}
 @media(max-width:600px){
  .modal-card:has(.dm-chat-header) .dm-chat-header{gap:8px!important;padding:12px!important}
  .modal-card:has(.dm-chat-header) .dm-chat-person .dm-profile-avatar{flex-basis:40px!important;width:40px!important;height:40px!important;min-width:40px!important;min-height:40px!important}
