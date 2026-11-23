@@ -4263,10 +4263,14 @@ app.post("/api/dm/:id",auth,featureAllowed("private_messages"),upload.single("fi
     if(parsed.protocol!=="https:"||!(host==="giphy.com"||host.endsWith(".giphy.com")||host==="tenor.com"||host.endsWith(".tenor.com")))return res.status(400).json({error:"Choose a valid GIPHY or Tenor GIF."});
     const cost=Math.max(0,Math.min(100000,Number(db.settings.gif_cost??10)));
     if(Number(u.gold||0)<cost)return res.status(400).json({error:`You need ${cost} gold to send a GIF.`});
-    u.gold=Number(u.gold||0)-cost;
+    const previousGold=Number(u.gold||0);
+    u.gold=previousGold-cost;
+    try{await pool.query("UPDATE users SET gold=$1 WHERE id=$2",[u.gold,Number(u.id)]);}
+    catch(error){u.gold=previousGold;throw error;}
     gif={url:parsed.toString()};
     db.goldTransactions ||= [];
     db.goldTransactions.push({id:id(),userId:u.id,amount:-cost,reason:"Private-message GIF sent",time:Date.now()});
+    io.to("user:"+u.id).emit("gold:update",{gold:u.gold});
   }
   if(req.body?.youtube){
     if(!featureGrantAllowed(u,"use_youtube"))return res.status(403).json({error:"Your rank cannot share YouTube videos."});
@@ -4281,7 +4285,6 @@ app.post("/api/dm/:id",auth,featureAllowed("private_messages"),upload.single("fi
   // private_messages is already the durable source; avoid save(), which rewrites
   // every user row and filter-word entry for each private message.
   db.privateMessages.push(m);
-  if(gif)save();
   const dmPreview=m.text?String(m.text).trim().slice(0,180):(m.attachment?"📎 Attachment":m.gif?"🎞️ GIF":m.youtube?"▶️ YouTube video":"New private message");
   notify(v.id,"private-message",`💌 @${u.username}`,`${u.displayName||u.username||"Someone"} has sent you a private message`,`/?dm=${encodeURIComponent(u.id)}`);
   // Notify every active device for both participants. The client deduplicates
