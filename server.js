@@ -7752,8 +7752,8 @@ const DEFAULT_GIFS=[
 ];
 app.get('/api/gifs/search',auth,async(req,res)=>{
   const q=String(req.query.q||'').trim().slice(0,80);
-  const offset=Math.max(0,Math.min(1000,Number.parseInt(String(req.query.offset||'0'),10)||0));
-  const limit=18;
+  const offset=Math.max(0,Math.min(5000,Number.parseInt(String(req.query.offset||'0'),10)||0));
+   const limit=30;
   if(process.env.GIPHY_API_KEY){
     try{
       const endpoint=q?'search':'trending';
