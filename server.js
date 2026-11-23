@@ -4281,7 +4281,8 @@ app.post("/api/dm/:id",auth,featureAllowed("private_messages"),upload.single("fi
   // private_messages is already the durable source; avoid save(), which rewrites
   // every user row and filter-word entry for each private message.
   db.privateMessages.push(m);
-  const dmPreview=m.text?String(m.text).trim().slice(0,180):(m.attachment?"📎 Attachment":"New private message");
+  if(gif)save();
+  const dmPreview=m.text?String(m.text).trim().slice(0,180):(m.attachment?"📎 Attachment":m.gif?"🎞️ GIF":m.youtube?"▶️ YouTube video":"New private message");
   notify(v.id,"private-message",`💌 @${u.username}`,`${u.displayName||u.username||"Someone"} has sent you a private message`,`/?dm=${encodeURIComponent(u.id)}`);
   // Notify every active device for both participants. The client deduplicates
   // by message ID, so the sender can safely reconcile the optimistic/API copy.
@@ -7735,7 +7736,16 @@ const DEFAULT_GIFS=[
   {url:'https://media.giphy.com/media/3o6Zt481isNVuQI1l6/giphy.gif',preview:'https://media.giphy.com/media/3o6Zt481isNVuQI1l6/200.gif',title:'Thumbs Up'},
   {url:'https://media.giphy.com/media/26gssIytJvy1b1THO/giphy.gif',preview:'https://media.giphy.com/media/26gssIytJvy1b1THO/200.gif',title:'Thinking'},
   {url:'https://media.giphy.com/media/3oEjI6SIIHBdRxXI40/giphy.gif',preview:'https://media.giphy.com/media/3oEjI6SIIHBdRxXI40/200.gif',title:'Loading'},
-  {url:'https://media.giphy.com/media/3o7TKTDn976rzVgky4/giphy.gif',preview:'https://media.giphy.com/media/3o7TKTDn976rzVgky4/200.gif',title:'No'}
+  {url:'https://media.giphy.com/media/3o7TKTDn976rzVgky4/giphy.gif',preview:'https://media.giphy.com/media/3o7TKTDn976rzVgky4/200.gif',title:'No'},
+  {url:'https://media.giphy.com/media/DpuW8uh3dtPTVACH76/giphy.gif',preview:'https://media.giphy.com/media/DpuW8uh3dtPTVACH76/200.gif',title:'Happy Dance'},
+  {url:'https://media.giphy.com/media/r2TuywbwMOW7zPsDN7/giphy.gif',preview:'https://media.giphy.com/media/r2TuywbwMOW7zPsDN7/200.gif',title:'Dance Party'},
+  {url:'https://media.giphy.com/media/jbjyN5fFq1UakJX4md/giphy.gif',preview:'https://media.giphy.com/media/jbjyN5fFq1UakJX4md/200.gif',title:'Funny Dance'},
+  {url:'https://media.giphy.com/media/PbQ3PWZD8jRiU76lTz/giphy.gif',preview:'https://media.giphy.com/media/PbQ3PWZD8jRiU76lTz/200.gif',title:'Celebration Dance'},
+  {url:'https://media.giphy.com/media/kPMBkmGYByXmJsGVL3/giphy.gif',preview:'https://media.giphy.com/media/kPMBkmGYByXmJsGVL3/200.gif',title:'Doodle Dance'},
+  {url:'https://media.giphy.com/media/UUnXmjJip7aQ7uoKvA/giphy.gif',preview:'https://media.giphy.com/media/UUnXmjJip7aQ7uoKvA/200.gif',title:'Yay'},
+  {url:'https://media.giphy.com/media/Zyvt3u6a0XSNXU81Q4/giphy.gif',preview:'https://media.giphy.com/media/Zyvt3u6a0XSNXU81Q4/200.gif',title:'Friday Dance'},
+  {url:'https://media.giphy.com/media/JKrUf8fiMZR3EafV97/giphy.gif',preview:'https://media.giphy.com/media/JKrUf8fiMZR3EafV97/200.gif',title:'Happy Reaction'},
+  {url:'https://media.giphy.com/media/xohQpueN0SZmsTZXlJ/giphy.gif',preview:'https://media.giphy.com/media/xohQpueN0SZmsTZXlJ/200.gif',title:'Dance Reaction'}
 ];
 app.get('/api/gifs/search',auth,async(req,res)=>{
   const q=String(req.query.q||'').trim().slice(0,80);
