@@ -11684,3 +11684,11 @@ html{scroll-behavior:smooth;}
   object-fit:cover!important;object-position:center center!important;
   border-radius:50%!important;
 }
+
+
+/* Confessions panel close control, aligned with other section headers. */
+#viewConfessions>.sf-conf-topbar{position:relative!important;padding-right:48px!important;align-items:flex-start!important;}
+#viewConfessions .sf-conf-close{position:absolute!important;top:8px!important;right:8px!important;z-index:6!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;width:34px!important;height:34px!important;min-width:34px!important;padding:0!important;border-radius:9px!important;font-size:22px!important;line-height:1!important;}
+#viewConfessions .sf-conf-topbar>.toolbar{display:flex!important;flex-wrap:wrap!important;gap:7px!important;max-width:100%!important;}
+#modalBody>.profile-modal .profile-inline-close,
+#modalBody>.profile-modal .profile-edit-panel-close{display:none!important;}
