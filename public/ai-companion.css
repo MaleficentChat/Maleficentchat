@@ -17,7 +17,7 @@
 .ai-option-tile.selected{border-color:var(--accent,#a1a1a1);background:rgba(140, 140, 140, .18);box-shadow:inset 0 0 0 1px var(--accent,#a1a1a1)}
 .ai-option-glyph{font-size:20px;color:var(--accent,#a1a1a1)}
 .ai-image-url{padding:12px 0}
-@media(max-width:720px){.ai-avatar-studio{grid-template-columns:1fr}.ai-avatar-preview-column{position:static}.ai-avatar-stage{min-height:300px}.ai-option-tiles{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:720px){.ai-avatar-preview-column{position:static}.ai-avatar-stage{min-height:300px}.ai-option-tiles{grid-template-columns:repeat(3,minmax(0,1fr))}}
 
 /* Interactive 3D anime companion studio */
 .ai-3d-stage{position:relative;min-height:390px;touch-action:pan-y;isolation:isolate}.ai-3d-canvas{display:block;width:100%;height:390px;max-width:100%;cursor:grab;touch-action:pan-y}.ai-3d-canvas:active{cursor:grabbing}.ai-3d-loading{position:absolute;inset:0;display:grid;place-items:center;color:rgba(255, 255, 255, .72);font-size:12px;text-align:center;pointer-events:none}.ai-3d-view-controls{position:absolute;z-index:2;left:50%;bottom:12px;transform:translateX(-50%);display:flex;gap:5px;padding:4px;border:1px solid rgba(255, 255, 255, .16);border-radius:24px;background:rgba(13, 13, 13, .72);backdrop-filter:blur(12px)}.ai-3d-view-controls button{border:0;border-radius:18px;padding:7px 12px;background:transparent;color:#ffffff;font-size:11px;cursor:pointer}.ai-3d-view-controls button.active{background:rgba(185, 185, 185, .3);box-shadow:inset 0 0 0 1px rgba(255, 255, 255, .22)}@media(max-width:720px){.ai-3d-stage{min-height:330px}.ai-3d-canvas{height:330px}}
@@ -60,7 +60,7 @@
 .ai-preview-caption{font-size:9px;opacity:.8}
 .ai-editor-section{background:linear-gradient(145deg,rgba(255, 255, 255, .035),rgba(255, 255, 255, .012));border-color:rgba(189, 189, 189, .2);box-shadow:0 8px 22px rgba(0, 0, 0, .08)}
 .ai-editor-section h4{font-size:15px;color:var(--accent,#b8b8b8)}
-.ai-option-tiles{grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}
+
 .ai-option-tile{min-height:92px;border-radius:14px;background:rgba(9, 9, 9, .25);border-color:rgba(212, 212, 212, .16);font-size:11px}
 .ai-option-tile.selected{background:linear-gradient(145deg,rgba(153, 153, 153, .24),rgba(90, 90, 90, .2));border-color:#b7b7b7;box-shadow:0 0 0 1px rgba(183, 183, 183, .4),0 5px 16px rgba(0, 0, 0, .16)}
 .ai-option-preview{height:58px;max-width:82px}
