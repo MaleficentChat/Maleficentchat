@@ -169,19 +169,10 @@
   visibility:hidden!important;
   pointer-events:none!important;
 }
-.message-actions-menu.hidden,
-.message-more-submenu.hidden{
-  display:none!important;
-  visibility:hidden!important;
-  pointer-events:none!important;
-}
-.message-actions-menu.is-floating:not(.hidden){
-  display:flex!important;
-  visibility:visible!important;
-  pointer-events:auto!important;
-}
+
+
 @media(max-width:800px){
-  #viewRooms.chatting .chat-card{padding-bottom:58px!important}
+  
   #viewRooms.chatting .chat-card>.composer{margin-bottom:0!important}
 }
 
