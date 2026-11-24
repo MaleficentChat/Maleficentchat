@@ -466,8 +466,14 @@ const friendsFeedStart=server.indexOf("app.get('/api/wall/friends'");
 const friendsFeedEnd=server.indexOf("app.post('/api/wall/:id/save'",friendsFeedStart);
 assert.ok(friendsFeedStart>=0&&friendsFeedEnd>friendsFeedStart,"accepted-friends feed route must exist");
 const friendsFeedRoute=server.slice(friendsFeedStart,friendsFeedEnd);
-assert.match(friendsFeedRoute,/status\|\|''\)\.toUpperCase\(\)==='ACCEPTED'/,
-  "Friends Activity must include accepted friends only");
+const acceptedWallFriendsStart=server.indexOf("function acceptedWallFriendIds(userId){");
+const acceptedWallFriendsEnd=server.indexOf("\\n}",acceptedWallFriendsStart);
+assert.ok(acceptedWallFriendsStart>=0&&acceptedWallFriendsEnd>acceptedWallFriendsStart,
+  "accepted wall-friend helper must exist");
+assert.match(server.slice(acceptedWallFriendsStart,acceptedWallFriendsEnd),/f\.status\|\|''\)\.toUpperCase\(\)==='ACCEPTED'/,
+  "Friends Activity must derive its audience from accepted friendships");
+assert.match(friendsFeedRoute,/acceptedWallFriendIds\(userId\)/,
+  "Friends Activity must use the accepted-friend helper");
 assert.match(friendsFeedRoute,/w\.user_id=ANY\(\$1::int\[\]\)/,
   "Friends Activity must query only accepted friends' posts");
 assert.match(server,/Your rank cannot create wall posts/,
