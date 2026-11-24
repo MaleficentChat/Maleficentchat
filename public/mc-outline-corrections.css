@@ -150,11 +150,7 @@ button.success,.success{border-color:rgba(170, 170, 170, .28)!important}
   visibility:hidden!important;
   pointer-events:none!important;
 }
-.message-actions-menu.is-floating:not(.hidden){
-  display:flex!important;
-  visibility:visible!important;
-  pointer-events:auto!important;
-}
+
 .message-actions-menu.is-floating:not(.hidden) .message-menu-item{
   display:flex!important;
   visibility:visible!important;
