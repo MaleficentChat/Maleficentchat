@@ -1076,7 +1076,7 @@ html,body,#app,.main{background-color:#0d0d0d!important;color:#f6f6f6!important}
   pointer-events:none!important;
 }
 /* Keep the profile tab order: Scrapbook immediately before More. */
-.profile-modal .profile-tabs{display:flex!important;flex-wrap:nowrap!important;align-items:center!important}
+
 .profile-modal .profile-tabs .profile-tab[data-tab="scrapbook"]{order:98!important}
 .profile-modal .profile-tabs .profile-tab[data-tab="more"]{order:99!important}
 /* Centre the avatar frame and the actual image as one fixed circular unit. */
@@ -1303,10 +1303,9 @@ button:active{
   text-overflow:ellipsis!important;
   white-space:nowrap!important;
 }
-#onlinePanel .online-user-copy>b{font-size:14px!important;line-height:1.2!important;font-weight:750!important}
-#onlinePanel .online-user-copy>small,
-#onlinePanel .online-user-copy .room-user-rank{font-size:11px!important;line-height:1.2!important}
-#onlinePanel .online-user>.status{flex:0 0 8px!important;margin-left:auto!important}
+
+
+
 @media(max-width:700px){
   #onlinePanel .online-user-grid{gap:8px!important}
   #onlinePanel .online-user{gap:8px!important;padding:9px!important}
@@ -1557,7 +1556,7 @@ body{background-image:radial-gradient(ellipse at 70% -15%,rgba(77,143,216,.18),t
 }
 #onlinePanel .online-user-copy>b{font-size:13px!important;font-weight:750!important}
 #onlinePanel .online-user-copy>small,#onlinePanel .online-user-copy .room-user-rank{font-size:10px!important}
-#onlinePanel .online-user>.status{flex:0 0 8px!important;margin-left:auto!important}
+
 #onlinePanel .online-user .my-status-toggle{flex:0 0 auto!important;width:auto!important;max-width:100px!important;height:27px!important;padding:0 6px!important;font-size:9px!important}
 #onlinePanel .online-user:hover,#onlinePanel .online-user:focus,#onlinePanel .online-user:active{background:#1b3e60!important;border-color:rgba(229,189,99,.4)!important;box-shadow:none!important;transform:none!important}
 #app :is(.top-header,.topbar){background:linear-gradient(105deg,#102b49,#173b5e 58%,#102541)!important;border-bottom:1px solid rgba(229,189,99,.32)!important}
