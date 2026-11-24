@@ -11577,3 +11577,17 @@ html{scroll-behavior:smooth;}
  .modal-card:has(.dm-chat-header) .dm-chat-person .dm-profile-avatar{flex-basis:40px!important;width:40px!important;height:40px!important;min-width:40px!important;min-height:40px!important}
  .modal-card:has(.dm-chat-header) .dm-chat-person-copy .dm-profile-name{font-size:14px!important}
  .modal-card:has(.dm-chat-header) .dm-chat-actions{flex-wrap:nowrap!important}
+
+
+/* PM reference alignment: display name, presence and handle stay in a single clear identity stack. */
+.modal-card:has(.dm-chat-header) .dm-chat-person{align-items:center!important;min-width:0!important}
+.modal-card:has(.dm-chat-header) .dm-chat-person-copy{min-width:0!important;max-width:100%!important}
+.modal-card:has(.dm-chat-header) .dm-chat-person-copy .dm-profile-name{display:block!important;margin:0!important;padding:0!important;text-align:left!important;line-height:1.2!important}
+.modal-card:has(.dm-chat-header) .dm-chat-person-copy>span{display:block!important;line-height:1.25!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
+.dm-message-list .dm-msg{align-items:flex-start!important;gap:8px!important}
+.dm-message-list .dm-msg .dm-message-avatar{align-self:flex-start!important;flex:0 0 34px!important;width:34px!important;height:34px!important;min-width:34px!important;margin:2px 0 0!important}
+.dm-message-list .dm-msg .dm-message-avatar .avatar{width:34px!important;height:34px!important;min-width:34px!important}
+.dm-message-list .dm-msg .msg-body{min-width:0!important;max-width:calc(100% - 42px)!important}
+.dm-message-sender{margin:0 0 4px 2px;color:#c9c9c9;font-size:11px;font-weight:700;line-height:1.2}
+.dm-message-meta{margin-top:6px!important;font-size:10px!important;line-height:1.2!important;color:#a9a9a9!important}
+@media(max-width:600px){.modal-card:has(.dm-chat-header) .dm-chat-header{gap:6px!important;padding:9px 9px!important}.modal-card:has(.dm-chat-header) .dm-chat-person{gap:7px!important}.modal-card:has(.dm-chat-header) .dm-profile-avatar{flex:0 0 38px!important;width:38px!important;height:38px!important;min-width:38px!important}.modal-card:has(.dm-chat-header) .dm-chat-actions .mini{flex:0 0 30px!important;width:30px!important;height:30px!important;min-height:30px!important}.dm-message-list .dm-msg .dm-message-avatar,.dm-message-list .dm-msg .dm-message-avatar .avatar{flex-basis:30px!important;width:30px!important;height:30px!important;min-width:30px!important}.dm-message-list .dm-msg .msg-body{max-width:calc(100% - 38px)!important}}
