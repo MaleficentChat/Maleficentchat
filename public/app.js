@@ -4690,7 +4690,6 @@ function dmMessageHTML(message, messages, user) {
             : ""
         }
 
-        <div class="dm-message-sender">${esc(isMine?"You":sender?.displayName||sender?.username||"Member")}</div>
         <div class="dm-message-meta">
           ${(()=>{const d=new Date(message.time);return Number.isNaN(d.getTime())?"":String(d.getDate()).padStart(2,"0")+"/"+String(d.getMonth()+1).padStart(2,"0")+" · "+String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0");})()}
           ${message.read ? " · read" : " · delivered"}
@@ -4743,12 +4742,12 @@ async function openDM(id) {
           <button type="button" class="dm-profile-link dm-profile-avatar" data-dm-open-profile="${esc(user.id)}" aria-label="Open ${esc(user.displayName)}'s profile">${avatar(user)}</button>
           <div class="dm-chat-person-copy">
             <button type="button" class="dm-profile-link dm-profile-name" data-dm-open-profile="${esc(user.id)}">${esc(privateNickname||user.displayName)}</button>
-            <span><i class="${user.online?'is-online':'is-offline'}"></i> ${user.online?'Online':'Offline'} · @${esc(user.username)}</span>
+            <span><i class="${user.online?'is-online':'is-offline'}"></i> ${user.online?'Online':'Offline'}</span>
           </div>
         </div>
         <div class="dm-chat-actions">
-          <button type="button" class="mini dm-settings-toggle" id="dmChatSettingsBtn" title="Conversation settings" aria-expanded="false">⚙️</button>
           <button type="button" class="mini dm-search-toggle" id="dmSearchToggle" title="Search conversation" aria-expanded="false" aria-controls="dmMessageSearchPanel">⌕</button>
+          <button type="button" class="mini dm-settings-toggle" id="dmChatSettingsBtn" title="Conversation settings" aria-expanded="false">⚙️</button>
           <button type="button" class="mini dm-minimize-button" id="dmChatMinimizeBtn" title="Minimize conversation" aria-label="Minimize conversation">—</button>
           <button type="button" class="mini dm-close-button" id="dmChatCloseBtn" title="Close conversation" aria-label="Close conversation">×</button>
           <div class="dm-settings-menu hidden" id="dmChatSettingsMenu">

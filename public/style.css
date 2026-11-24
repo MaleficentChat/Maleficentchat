@@ -11591,3 +11591,26 @@ html{scroll-behavior:smooth;}
 .dm-message-sender{margin:0 0 4px 2px;color:#c9c9c9;font-size:11px;font-weight:700;line-height:1.2}
 .dm-message-meta{margin-top:6px!important;font-size:10px!important;line-height:1.2!important;color:#a9a9a9!important}
 @media(max-width:600px){.modal-card:has(.dm-chat-header) .dm-chat-header{gap:6px!important;padding:9px 9px!important}.modal-card:has(.dm-chat-header) .dm-chat-person{gap:7px!important}.modal-card:has(.dm-chat-header) .dm-profile-avatar{flex:0 0 38px!important;width:38px!important;height:38px!important;min-width:38px!important}.modal-card:has(.dm-chat-header) .dm-chat-actions .mini{flex:0 0 30px!important;width:30px!important;height:30px!important;min-height:30px!important}.dm-message-list .dm-msg .dm-message-avatar,.dm-message-list .dm-msg .dm-message-avatar .avatar{flex-basis:30px!important;width:30px!important;height:30px!important;min-width:30px!important}.dm-message-list .dm-msg .msg-body{max-width:calc(100% - 38px)!important}}
+
+
+/* PM-only correction: circular avatar alignment and compact, ordered header controls. */
+.modal-card:has(.dm-chat-header) .dm-chat-header{flex-direction:row!important;align-items:center!important;justify-content:space-between!important;flex-wrap:nowrap!important}
+.modal-card:has(.dm-chat-header) .dm-chat-person{display:flex!important;align-items:center!important;flex:1 1 auto!important;min-width:0!important}
+.modal-card:has(.dm-chat-header) .dm-chat-person .dm-profile-avatar{display:grid!important;place-items:center!important;flex:0 0 44px!important;width:44px!important;height:44px!important;min-width:44px!important;min-height:44px!important;padding:0!important;border-radius:50%!important;overflow:hidden!important;line-height:0!important}
+.modal-card:has(.dm-chat-header) .dm-chat-person .dm-profile-avatar .avatar{display:block!important;width:100%!important;height:100%!important;min-width:100%!important;min-height:100%!important;margin:0!important;border-radius:50%!important;object-fit:cover!important;overflow:hidden!important}
+.modal-card:has(.dm-chat-header) .dm-chat-actions{display:flex!important;flex:0 0 auto!important;align-items:center!important;justify-content:flex-end!important;flex-wrap:nowrap!important;gap:6px!important;padding:0!important}
+.modal-card:has(.dm-chat-header) .dm-chat-actions>.mini{display:inline-flex!important;align-items:center!important;justify-content:center!important;flex:0 0 34px!important;width:34px!important;min-width:34px!important;height:34px!important;min-height:34px!important;padding:0!important;border-radius:10px!important;line-height:1!important}
+.modal-card:has(.dm-chat-header) .dm-chat-actions .dm-search-toggle{order:1!important}
+.modal-card:has(.dm-chat-header) .dm-chat-actions .dm-settings-toggle{order:2!important}
+.modal-card:has(.dm-chat-header) .dm-chat-actions .dm-minimize-button{order:3!important}
+.modal-card:has(.dm-chat-header) .dm-chat-actions .dm-close-button{order:4!important}
+.dm-message-list .dm-msg .dm-message-avatar{display:grid!important;place-items:center!important;flex:0 0 36px!important;width:36px!important;height:36px!important;min-width:36px!important;min-height:36px!important;padding:0!important;border-radius:50%!important;overflow:hidden!important;line-height:0!important}
+.dm-message-list .dm-msg .dm-message-avatar .avatar{display:block!important;width:100%!important;height:100%!important;min-width:100%!important;min-height:100%!important;margin:0!important;border-radius:50%!important;object-fit:cover!important;overflow:hidden!important}
+@media(max-width:700px){
+ .modal-card:has(.dm-chat-header) .dm-chat-header{flex-direction:row!important;align-items:center!important;flex-wrap:nowrap!important;padding:10px 9px!important;gap:6px!important}
+ .modal-card:has(.dm-chat-header) .dm-chat-person{gap:7px!important}
+ .modal-card:has(.dm-chat-header) .dm-chat-person .dm-profile-avatar{flex-basis:38px!important;width:38px!important;height:38px!important;min-width:38px!important;min-height:38px!important}
+ .modal-card:has(.dm-chat-header) .dm-chat-actions{width:auto!important;flex:0 0 auto!important;gap:4px!important}
+ .modal-card:has(.dm-chat-header) .dm-chat-actions>.mini{flex-basis:30px!important;width:30px!important;min-width:30px!important;height:30px!important;min-height:30px!important;font-size:14px!important}
+ .dm-message-list .dm-msg .dm-message-avatar,.dm-message-list .dm-msg .dm-message-avatar .avatar{flex-basis:30px!important;width:30px!important;height:30px!important;min-width:30px!important;min-height:30px!important}
+}
