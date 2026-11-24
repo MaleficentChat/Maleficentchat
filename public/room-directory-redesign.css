@@ -369,9 +369,9 @@
 #viewRooms:not(.chatting) .mc-room-code small{display:block!important;min-height:12px!important;overflow:visible!important}
 @media(max-width:620px){
 #viewRooms:not(.chatting) > .mc-room-directory{padding:10px 10px 22px!important}
-#viewRooms:not(.chatting) .discover-room-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px!important}
+
 #viewRooms:not(.chatting) .discover-room-card{height:82px!important;min-height:82px!important}
-#viewRooms:not(.chatting) .discover-room-open{padding:8px 9px!important}
+
 #viewRooms:not(.chatting) .mc-room-access{align-items:stretch!important}
 #viewRooms:not(.chatting) .mc-room-code{flex-basis:100%!important}
 }
