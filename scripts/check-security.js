@@ -71,6 +71,16 @@ assert.match(server, /roomDelivery\.emit\("message",m\)/,
 assert.match(server, /io\.to\("user:"\+v\.id\)\.emit\("dm",m\)/,
   "private messages must be pushed to the recipient's authenticated Socket.IO room");
 const activeClient = fs.readFileSync("public/app.js", "utf8");
+assert.match(activeClient,/const refreshNotificationBadges=\(\)=>\{[\s\S]*?if\(!state\.user\|\|document\.hidden\)return;[\s\S]*?loadNotifications\(\)[\s\S]*?refreshTopDMUnreadBadge\(\)/,
+  "notification badges must refresh immediately when the app returns to the foreground");
+assert.match(activeClient,/window\.addEventListener\("pageshow",refreshNotificationBadges\)/,
+  "notification badges must refresh after a page is restored");
+assert.match(activeClient,/document\.addEventListener\("visibilitychange",[\s\S]*?if\(!document\.hidden\)refreshNotificationBadges\(\)/,
+  "notification badges must refresh when a background tab becomes visible");
+assert.match(activeClient,/setInterval\(\(\)=>\{[\s\S]*?if\(!state\.user\|\|document\.hidden\)return;[\s\S]*?loadNotifications\(\);[\s\S]*?refreshTopDMUnreadBadge\(\);[\s\S]*?\},15000\)/,
+  "notification and DM badges must share one foreground-only polling timer");
+assert.doesNotMatch(activeClient,/setInterval\(\(\)=>\{if\(state\.user\)loadNotifications\(\);\},15000\)[\s\S]*?setInterval\(\(\)=>\{if\(state\.user\)refreshTopDMUnreadBadge\(\);\},15000\)/,
+  "separate background notification polling timers must not be reintroduced");
 const accountEditorStart = activeClient.indexOf("function openProfileEditMenu(targetUser=null){");
 const accountEditorEnd = activeClient.indexOf("function openAccountUploadMenu(targetUser=null){", accountEditorStart);
 assert.ok(accountEditorStart >= 0 && accountEditorEnd > accountEditorStart,
