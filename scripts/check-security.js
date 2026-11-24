@@ -81,6 +81,20 @@ assert.match(activeClient,/setInterval\(\(\)=>\{[\s\S]*?if\(!state\.user\|\|docu
   "notification and DM badges must share one foreground-only polling timer");
 assert.doesNotMatch(activeClient,/setInterval\(\(\)=>\{if\(state\.user\)loadNotifications\(\);\},15000\)[\s\S]*?setInterval\(\(\)=>\{if\(state\.user\)refreshTopDMUnreadBadge\(\);\},15000\)/,
   "separate background notification polling timers must not be reintroduced");
+const notificationWorkerStart=activeClient.indexOf("async function registerSiteNotificationWorker(){");
+const notificationWorkerEnd=activeClient.indexOf("\n}",notificationWorkerStart);
+assert.ok(notificationWorkerStart>=0&&notificationWorkerEnd>notificationWorkerStart,
+  "service-worker registration must have one shared helper");
+const notificationWorkerSource=activeClient.slice(notificationWorkerStart,notificationWorkerEnd+2);
+assert.match(notificationWorkerSource,/if\(siteNotificationRegistration\)return siteNotificationRegistration/);
+assert.match(notificationWorkerSource,/if\(siteNotificationRegistrationPromise\)return siteNotificationRegistrationPromise/,
+  "concurrent notification setup must reuse the in-flight service-worker registration");
+assert.match(notificationWorkerSource,/siteNotificationRegistrationPromise=\(async\(\)=>\{/,
+  "service-worker registration must be single-flight");
+assert.match(activeClient,/window\.addEventListener\("load",\(\)=>\{registerSiteNotificationWorker\(\);\}\)/,
+  "page-load registration must use the shared service-worker helper");
+assert.doesNotMatch(activeClient,/navigator\.serviceWorker\.register\("\/service-worker\.js"\)\.catch/,
+  "a second direct service-worker registration path must not be reintroduced");
 const accountEditorStart = activeClient.indexOf("function openProfileEditMenu(targetUser=null){");
 const accountEditorEnd = activeClient.indexOf("function openAccountUploadMenu(targetUser=null){", accountEditorStart);
 assert.ok(accountEditorStart >= 0 && accountEditorEnd > accountEditorStart,
