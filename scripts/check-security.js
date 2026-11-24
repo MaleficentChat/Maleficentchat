@@ -139,7 +139,7 @@ const doodleSendHandler = doodle.indexOf('mcDoodleGetById("doodleStudioShare").o
 assert.ok(doodleSaveHandler >= 0 && doodleSendHandler > doodleSaveHandler,
   "Doodle Studio save and send handlers must exist in the Doodle Studio module");
 const doodleSaveStart = doodle.indexOf("async function saveDoodle(){");
-const doodleSaveEnd = doodle.indexOf("\\n  async function loadGallery()", doodleSaveStart);
+const doodleSaveEnd = doodle.indexOf("async function loadGallery()", doodleSaveStart);
 assert.ok(doodleSaveStart >= 0 && doodleSaveEnd > doodleSaveStart,
   "Doodle Studio save handler must be defined separately from the gallery loader");
 assert.match(doodle.slice(doodleSaveStart, doodleSaveEnd), /await loadGallery\(\)/,
