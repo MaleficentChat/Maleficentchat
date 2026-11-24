@@ -857,7 +857,7 @@ function modal(html) {
   // Every panel opened from profile actions gets its own close control.
   // The public profile is the exception: its close button is moved into the
   // profile action row by renderUserProfileModal().
-  if(!body.querySelector(".profile-modal")) addProfileEditPanelClose();
+  if(!body.querySelector(".profile-modal")&&!body.querySelector(".dm-chat-header")) addProfileEditPanelClose();
   overlay.classList.remove("hidden");
   overlay.setAttribute("aria-hidden","false");
 }
