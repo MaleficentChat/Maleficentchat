@@ -416,7 +416,7 @@ assert.ok(roomCreateStart>=0&&roomCreateEnd>roomCreateStart,"room creation modal
 const roomCreateSource=app.slice(roomCreateStart,roomCreateEnd);
 assert.match(roomCreateSource,/id="rVisibility"[\s\S]*Secret Society — hidden, invitation key required/,
   "room creation must visibly offer numeric-code secret rooms");
-assert.match(roomCreateSource,/public:\$\("rVisibility"\)\.value!=="secret"/,
+assert.match(roomCreateSource,/form\.append\("public",String\(mcGetById\("rVisibility"\)\.value!=="secret"\)\)/,
   "secret-room creation must persist private visibility through the existing room API");
 assert.match(roomCreateSource,/showInvite\(created\.room\)/,
   "creating a secret room must display its numeric room code");
