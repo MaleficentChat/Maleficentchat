@@ -467,7 +467,7 @@ const friendsFeedEnd=server.indexOf("app.post('/api/wall/:id/save'",friendsFeedS
 assert.ok(friendsFeedStart>=0&&friendsFeedEnd>friendsFeedStart,"accepted-friends feed route must exist");
 const friendsFeedRoute=server.slice(friendsFeedStart,friendsFeedEnd);
 const acceptedWallFriendsStart=server.indexOf("function acceptedWallFriendIds(userId){");
-const acceptedWallFriendsEnd=server.indexOf("\\n}",acceptedWallFriendsStart);
+const acceptedWallFriendsEnd=server.indexOf("}",acceptedWallFriendsStart);
 assert.ok(acceptedWallFriendsStart>=0&&acceptedWallFriendsEnd>acceptedWallFriendsStart,
   "accepted wall-friend helper must exist");
 assert.match(server.slice(acceptedWallFriendsStart,acceptedWallFriendsEnd),/f\.status\|\|''\)\.toUpperCase\(\)==='ACCEPTED'/,
