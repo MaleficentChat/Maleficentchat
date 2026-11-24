@@ -2,7 +2,7 @@
 (function(){
   if(window.__midnightCallsLoaded)return;
   window.__midnightCallsLoaded=true;
-  const style=document.createElement("link");style.rel="stylesheet";style.href="/calls.css?v=3";document.head.appendChild(style);
+  if(!document.querySelector('link[rel="stylesheet"][href^="/calls.css"]')){const style=document.createElement("link");style.rel="stylesheet";style.href="/calls.css?v=3";document.head.appendChild(style);}
   const root=document.createElement("div");root.id="midnightCallsRoot";root.innerHTML=`
     <button class="mc-call-launch" id="mcCallLaunch" type="button" aria-label="Open Midnight Calls">☎</button>
     <section class="mc-call-panel" id="mcCallPanel" hidden aria-label="Midnight Calls">
