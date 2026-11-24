@@ -115,6 +115,7 @@ console.log("Security, audit-log, messaging persistence, and profile cosmetic st
 
 
 const app = fs.readFileSync("public/app.js", "utf8");
+const doodle = fs.readFileSync("public/doodle-studio.js", "utf8");
 assert.equal((app.match(/async function loadSuggestions\(\)/g) || []).length, 1,
   "suggestions must have a single renderer so the richer status UI is not overwritten");
 assert.equal((app.match(/case "suggestions":/g) || []).length, 1,
@@ -133,12 +134,16 @@ assert.ok(
   "a valid signed client token must be resolved before a possibly stale cookie session"
 );
 
-const doodleSaveStart = app.indexOf("$('doodleSave')?.addEventListener");
-const doodleSendStart = app.indexOf("$('doodleSend')?.addEventListener", doodleSaveStart);
-assert.ok(doodleSaveStart >= 0 && doodleSendStart > doodleSaveStart,
-  "Doodle Studio save and send handlers must exist");
-assert.match(app.slice(doodleSaveStart, doodleSendStart), /await loadDoodleLibrary\(\)/,
-  "saving a doodle must refresh the saved-drawings library immediately");
+const doodleSaveHandler = doodle.indexOf('mcDoodleGetById("doodleStudioSave").onclick=saveDoodle');
+const doodleSendHandler = doodle.indexOf('mcDoodleGetById("doodleStudioShare").onclick=shareToChat');
+assert.ok(doodleSaveHandler >= 0 && doodleSendHandler > doodleSaveHandler,
+  "Doodle Studio save and send handlers must exist in the Doodle Studio module");
+const doodleSaveStart = doodle.indexOf("async function saveDoodle(){");
+const doodleSaveEnd = doodle.indexOf("async function loadGallery()", doodleSaveStart);
+assert.ok(doodleSaveStart >= 0 && doodleSaveEnd > doodleSaveStart,
+  "Doodle Studio save handler must be defined separately from the gallery loader");
+assert.match(doodle.slice(doodleSaveStart, doodleSaveEnd), /await loadGallery\(\)/,
+  "saving a doodle must refresh the saved-drawings gallery immediately");
 
 const staffNoteReadStart = server.indexOf("app.get('/api/admin/profile-note/:userId'");
 const staffNoteReadEnd = server.indexOf("\n", staffNoteReadStart);
@@ -271,7 +276,7 @@ for (const route of [
     `private room route ${route} must require a verified room session`);
 }
 
-const joinClientStart = app.indexOf("async function joinRoom(id) {");
+const joinClientStart = app.indexOf("async function joinRoom(id, options = {}) {");
 const joinClientEnd = app.indexOf("\nfunction ", joinClientStart + 1);
 const joinClient = app.slice(joinClientStart, joinClientEnd);
 assert.ok(joinClientStart >= 0 && joinClientEnd > joinClientStart, "client room-join flow must exist");
@@ -411,7 +416,7 @@ assert.ok(roomCreateStart>=0&&roomCreateEnd>roomCreateStart,"room creation modal
 const roomCreateSource=app.slice(roomCreateStart,roomCreateEnd);
 assert.match(roomCreateSource,/id="rVisibility"[\s\S]*Secret Society — hidden, invitation key required/,
   "room creation must visibly offer numeric-code secret rooms");
-assert.match(roomCreateSource,/public:\$\("rVisibility"\)\.value!=="secret"/,
+assert.match(roomCreateSource,/form\.append\("public",String\(mcGetById\("rVisibility"\)\.value!=="secret"\)\)/,
   "secret-room creation must persist private visibility through the existing room API");
 assert.match(roomCreateSource,/showInvite\(created\.room\)/,
   "creating a secret room must display its numeric room code");
@@ -461,8 +466,14 @@ const friendsFeedStart=server.indexOf("app.get('/api/wall/friends'");
 const friendsFeedEnd=server.indexOf("app.post('/api/wall/:id/save'",friendsFeedStart);
 assert.ok(friendsFeedStart>=0&&friendsFeedEnd>friendsFeedStart,"accepted-friends feed route must exist");
 const friendsFeedRoute=server.slice(friendsFeedStart,friendsFeedEnd);
-assert.match(friendsFeedRoute,/status\|\|''\)\.toUpperCase\(\)==='ACCEPTED'/,
-  "Friends Activity must include accepted friends only");
+const acceptedWallFriendsStart=server.indexOf("function acceptedWallFriendIds(userId){");
+const acceptedWallFriendsEnd=server.indexOf("}",acceptedWallFriendsStart);
+assert.ok(acceptedWallFriendsStart>=0&&acceptedWallFriendsEnd>acceptedWallFriendsStart,
+  "accepted wall-friend helper must exist");
+assert.match(server.slice(acceptedWallFriendsStart,acceptedWallFriendsEnd),/f\.status\|\|''\)\.toUpperCase\(\)==='ACCEPTED'/,
+  "Friends Activity must derive its audience from accepted friendships");
+assert.match(friendsFeedRoute,/acceptedWallFriendIds\(userId\)/,
+  "Friends Activity must use the accepted-friend helper");
 assert.match(friendsFeedRoute,/w\.user_id=ANY\(\$1::int\[\]\)/,
   "Friends Activity must query only accepted friends' posts");
 assert.match(server,/Your rank cannot create wall posts/,
@@ -508,6 +519,6 @@ assert.ok(indexHtml.includes('id="onlineUsers"') && !activeClient.includes('$("u
   "the retired Users search binding must not crash startup when the People panel is used");
 assert.match(activeClient,/if\(state\.view==="users"\)[\s\S]*?renderOnline\("all"\)/,
   "Find People navigation must open the current People panel");
-assert.match(activeClient,/const requestPremiumButton=\$\('requestPremium'\);if\(requestPremiumButton\)/,
+assert.match(activeClient,/const requestPremiumButton=mcGetById\('requestPremium'\);if\(requestPremiumButton\)/,
   "rank-restricted shop views must not dereference a missing Premium request button");
 console.log("Session revocation, upload validation, TLS and social privacy checks passed.");

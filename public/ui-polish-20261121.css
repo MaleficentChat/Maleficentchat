@@ -198,8 +198,7 @@ button.top-profile#topProfile{display:grid!important;place-items:center!importan
   align-items:center!important;min-height:28px!important;line-height:1.25!important;
   margin:0!important;padding:0!important;
 }
-.system-message.system-message-with-avatar>.system-message-profile-avatar,
-.system-message.system-message-with-avatar>b{vertical-align:middle!important}
+
 
 /* One close control everywhere inside a modal: the shared top-right
    modal-close is the only close button. Hide all panel-specific duplicates,

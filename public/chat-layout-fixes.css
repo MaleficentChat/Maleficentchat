@@ -120,7 +120,7 @@
   pointer-events:auto!important;
 }
 @media(max-width:800px){
-  #viewRooms.chatting .chat-card{padding-bottom:58px!important}
+  
   #mainChatMinimizedDock{
     left:0!important;right:0!important;bottom:calc(env(safe-area-inset-bottom,0px) + 2px)!important;
     width:100%!important;max-width:100%!important;padding-inline:12px!important;
@@ -169,19 +169,10 @@
   visibility:hidden!important;
   pointer-events:none!important;
 }
-.message-actions-menu.hidden,
-.message-more-submenu.hidden{
-  display:none!important;
-  visibility:hidden!important;
-  pointer-events:none!important;
-}
-.message-actions-menu.is-floating:not(.hidden){
-  display:flex!important;
-  visibility:visible!important;
-  pointer-events:auto!important;
-}
+
+
 @media(max-width:800px){
-  #viewRooms.chatting .chat-card{padding-bottom:58px!important}
+  
   #viewRooms.chatting .chat-card>.composer{margin-bottom:0!important}
 }
 

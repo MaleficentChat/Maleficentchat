@@ -150,11 +150,7 @@ button.success,.success{border-color:rgba(170, 170, 170, .28)!important}
   visibility:hidden!important;
   pointer-events:none!important;
 }
-.message-actions-menu.is-floating:not(.hidden){
-  display:flex!important;
-  visibility:visible!important;
-  pointer-events:auto!important;
-}
+
 .message-actions-menu.is-floating:not(.hidden) .message-menu-item{
   display:flex!important;
   visibility:visible!important;
@@ -528,13 +524,7 @@ body [data-room-filter]:active{
 /* 19 Nov 2026 — final chat flow alignment.
    Keep messages, quote preview, typing status and composer in normal document
    flow. The only 58px spacer is AFTER the composer, never inside the scroll area. */
-#viewRooms.chatting .chat-card{
-  display:flex!important;
-  flex-direction:column!important;
-  min-height:0!important;
-  padding-bottom:0!important;
-  overflow:hidden!important;
-}
+
 #viewRooms.chatting #messages{
   position:relative!important;
   flex:1 1 0!important;
@@ -732,8 +722,8 @@ body [data-room-filter]:active{
 
 
 /* Adjacent message-menu cards: neither panel obscures the other. */
-.message-actions-menu.is-floating:not(.hidden){z-index:2147483000!important;}
-.message-more-submenu.is-floating:not(.hidden){z-index:2147483001!important;}
+
+
 
 
 /* 20 Nov 2026 — tighter room messages and avatar-led notification history. */
@@ -1434,9 +1424,7 @@ body [data-room-filter]:active{
   animation:mcMainChatHaloMatchPeople 1.8s linear infinite!important;
 }
 @media(prefers-reduced-motion:reduce){
-  #viewRooms.chatting #messages > .msg:not(.dm-msg):not(.system-message) .msg-author-group .message-rank-floating .mc-rank-ring{
-    animation:none!important;transform:translate(-50%,-50%)!important;
-  }
+  
 }
 
 
@@ -1555,9 +1543,7 @@ body [data-room-filter]:active{
   filter:drop-shadow(0 0 3px rgba(255,174,45,.9))!important;
 }
 @media(prefers-reduced-motion:reduce){
-  #viewRooms.chatting #messages > .msg:not(.dm-msg):not(.system-message) .msg-author-group .message-rank-floating .mc-rank-ring{
-    animation:none!important;transform:translate(-50%,-50%)!important;
-  }
+  
 }
 
 /* Rank halo policy: rings belong ONLY on online people badges and main-room
