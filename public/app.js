@@ -352,18 +352,26 @@ async function api(url, opt = {}) {
 
 let notificationWorkerError="";
 let siteNotificationRegistration=null;
+let siteNotificationRegistrationPromise=null;
 async function registerSiteNotificationWorker(){
   if(!("serviceWorker" in navigator)){notificationWorkerError="This browser does not support service workers.";return null;}
-  try{
+  if(siteNotificationRegistration)return siteNotificationRegistration;
+  if(siteNotificationRegistrationPromise)return siteNotificationRegistrationPromise;
+  siteNotificationRegistrationPromise=(async()=>{
     const registration=await navigator.serviceWorker.register("/service-worker.js",{scope:"/",updateViaCache:"none"});
     await registration.update().catch(()=>{});
     siteNotificationRegistration=await navigator.serviceWorker.ready;
     notificationWorkerError="";
     return siteNotificationRegistration;
+  })();
+  try{
+    return await siteNotificationRegistrationPromise;
   }catch(e){
     notificationWorkerError=String(e?.message||e||"Unknown service-worker error");
     console.warn("Notification worker unavailable",e);
     return null;
+  }finally{
+    siteNotificationRegistrationPromise=null;
   }
 }
 async function showSiteNotification(title,body,targetView,targetUrl){
@@ -8275,7 +8283,7 @@ checkUnderConstruction();
 if(constructionPoll)clearInterval(constructionPoll);
 constructionPoll=setInterval(checkUnderConstruction,15000);
 
-if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("/service-worker.js").catch(()=>{}));}
+if("serviceWorker" in navigator){window.addEventListener("load",()=>{registerSiteNotificationWorker();});}
 
 function toggleReactionPicker(id){document.getElementById("reactionPicker-"+id)?.classList.toggle("hidden");}
 
