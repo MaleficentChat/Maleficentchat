@@ -7730,15 +7730,28 @@ async function loadNotifications() {
 // Refresh counts immediately when the app returns to the foreground.
 if(!window.__mcNotificationBadgeResumeBound){
   window.__mcNotificationBadgeResumeBound=true;
-  window.addEventListener("pageshow",()=>{if(state.user)loadNotifications().catch(()=>{});});
-  document.addEventListener("visibilitychange",()=>{if(!document.hidden&&state.user)loadNotifications().catch(()=>{});});
+  const refreshNotificationBadges=()=>{
+    if(!state.user||document.hidden)return;
+    loadNotifications().catch(()=>{});
+    refreshTopDMUnreadBadge().catch(()=>{});
+  };
+  window.addEventListener("pageshow",refreshNotificationBadges);
+  document.addEventListener("visibilitychange",()=>{
+    if(!document.hidden)refreshNotificationBadges();
+  });
 }
-// Notification counters are a background convenience, not a live chat
-// transport. Polling five APIs every 5 seconds was creating needless load.
-// Opening notification views and socket reconnects refresh immediately.
-setInterval(()=>{if(state.user)loadNotifications();},15000);
-setInterval(()=>{if(state.user)refreshTopDMUnreadBadge();},15000);
-setTimeout(()=>{if(state.user){loadNotifications();refreshTopDMUnreadBadge();}},1200);
+// Keep one foreground-only polling timer for both notification and DM badges.
+// Background tabs rely on the immediate refresh when they become visible again.
+setInterval(()=>{
+  if(!state.user||document.hidden)return;
+  loadNotifications();
+  refreshTopDMUnreadBadge();
+},15000);
+setTimeout(()=>{
+  if(!state.user||document.hidden)return;
+  loadNotifications();
+  refreshTopDMUnreadBadge();
+},1200);
 
 async function openNotificationCenter(){
   const button=mcGetById("notifications");
