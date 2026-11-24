@@ -276,7 +276,7 @@ for (const route of [
     `private room route ${route} must require a verified room session`);
 }
 
-const joinClientStart = app.indexOf("async function joinRoom(id) {");
+const joinClientStart = app.indexOf("async function joinRoom(id, options = {}) {");
 const joinClientEnd = app.indexOf("\nfunction ", joinClientStart + 1);
 const joinClient = app.slice(joinClientStart, joinClientEnd);
 assert.ok(joinClientStart >= 0 && joinClientEnd > joinClientStart, "client room-join flow must exist");
