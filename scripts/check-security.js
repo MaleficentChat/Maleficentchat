@@ -519,6 +519,6 @@ assert.ok(indexHtml.includes('id="onlineUsers"') && !activeClient.includes('$("u
   "the retired Users search binding must not crash startup when the People panel is used");
 assert.match(activeClient,/if\(state\.view==="users"\)[\s\S]*?renderOnline\("all"\)/,
   "Find People navigation must open the current People panel");
-assert.match(activeClient,/const requestPremiumButton=\$\('requestPremium'\);if\(requestPremiumButton\)/,
+assert.match(activeClient,/const requestPremiumButton=mcGetById\('requestPremium'\);if\(requestPremiumButton\)/,
   "rank-restricted shop views must not dereference a missing Premium request button");
 console.log("Session revocation, upload validation, TLS and social privacy checks passed.");
