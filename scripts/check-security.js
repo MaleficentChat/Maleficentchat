@@ -115,6 +115,7 @@ console.log("Security, audit-log, messaging persistence, and profile cosmetic st
 
 
 const app = fs.readFileSync("public/app.js", "utf8");
+const doodle = fs.readFileSync("public/doodle-studio.js", "utf8");
 assert.equal((app.match(/async function loadSuggestions\(\)/g) || []).length, 1,
   "suggestions must have a single renderer so the richer status UI is not overwritten");
 assert.equal((app.match(/case "suggestions":/g) || []).length, 1,
@@ -133,12 +134,16 @@ assert.ok(
   "a valid signed client token must be resolved before a possibly stale cookie session"
 );
 
-const doodleSaveStart = app.indexOf("$('doodleSave')?.addEventListener");
-const doodleSendStart = app.indexOf("$('doodleSend')?.addEventListener", doodleSaveStart);
-assert.ok(doodleSaveStart >= 0 && doodleSendStart > doodleSaveStart,
-  "Doodle Studio save and send handlers must exist");
-assert.match(app.slice(doodleSaveStart, doodleSendStart), /await loadDoodleLibrary\(\)/,
-  "saving a doodle must refresh the saved-drawings library immediately");
+const doodleSaveHandler = doodle.indexOf('mcDoodleGetById("doodleStudioSave").onclick=saveDoodle');
+const doodleSendHandler = doodle.indexOf('mcDoodleGetById("doodleStudioShare").onclick=shareToChat');
+assert.ok(doodleSaveHandler >= 0 && doodleSendHandler > doodleSaveHandler,
+  "Doodle Studio save and send handlers must exist in the Doodle Studio module");
+const doodleSaveStart = doodle.indexOf("async function saveDoodle(){");
+const doodleSaveEnd = doodle.indexOf("\\n  async function loadGallery()", doodleSaveStart);
+assert.ok(doodleSaveStart >= 0 && doodleSaveEnd > doodleSaveStart,
+  "Doodle Studio save handler must be defined separately from the gallery loader");
+assert.match(doodle.slice(doodleSaveStart, doodleSaveEnd), /await loadGallery\(\)/,
+  "saving a doodle must refresh the saved-drawings gallery immediately");
 
 const staffNoteReadStart = server.indexOf("app.get('/api/admin/profile-note/:userId'");
 const staffNoteReadEnd = server.indexOf("\n", staffNoteReadStart);
