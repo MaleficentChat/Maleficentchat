@@ -2245,7 +2245,7 @@ function openFireworksWish(){
   const animationToggle=panel?.querySelector("#fireworksAnimationEnabled");
   const soundToggle=panel?.querySelector("#fireworksSoundEnabled");
   if(animationToggle){animationToggle.checked=mcFireworksPreference("animation",true);animationToggle.addEventListener("change",()=>mcSetFireworksPreference("animation",animationToggle.checked));}
-  if(soundToggle){soundToggle.checked=mcFireworksPreference("sound",true);soundToggle.addEventListener("change",()=>mcSetFireworksPreference("sound",soundToggle.checked));}
+  if(soundToggle){soundToggle.checked=mcFireworksPreference("sound",true);soundToggle.addEventListener("change",()=>{mcSetFireworksPreference("sound",soundToggle.checked);if(soundToggle.checked){try{const AC=window.AudioContext||window.webkitAudioContext;if(AC){window.__mcFireworkAudioContext=window.__mcFireworkAudioContext||new AC();window.__mcFireworkAudioContext.resume();}}catch(_){}}});}
   panel?.querySelector("#fireworksRecipient")?.focus();
 }
 
