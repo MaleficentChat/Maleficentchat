@@ -2208,7 +2208,15 @@ async function openGifPicker(){
 }
 
 document.getElementById("chatGifBtn")?.addEventListener("click",()=>{if(!state.currentRoom){toast("Join a room before sending a GIF.");return;}openGifPicker();});
-document.getElementById("fireworksWishBtn")?.addEventListener("click",openFireworksWish);
+// Delegate the Fireworks action from the document so it remains reliable
+// if the composer toolbar is re-rendered after app initialization.
+document.addEventListener("click",event=>{
+  const button=event.target?.closest?.("#fireworksWishBtn");
+  if(!button)return;
+  event.preventDefault();
+  event.stopPropagation();
+  openFireworksWish();
+},true);
 
 function openFireworksWish(){
   const roomId=String(state.currentRoom||"");
