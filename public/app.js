@@ -2242,6 +2242,10 @@ function openFireworksWish(){
     <button type="button" id="sendFireworksWish" class="primary" style="width:100%;margin-top:12px">🎆 Send Fireworks Wish</button>
   </div>`);
   const panel=mcGetById("modalBody")?.querySelector(".fireworks-wish-panel");
+  const animationToggle=panel?.querySelector("#fireworksAnimationEnabled");
+  const soundToggle=panel?.querySelector("#fireworksSoundEnabled");
+  if(animationToggle){animationToggle.checked=mcFireworksPreference("animation",true);animationToggle.addEventListener("change",()=>mcSetFireworksPreference("animation",animationToggle.checked));}
+  if(soundToggle){soundToggle.checked=mcFireworksPreference("sound",true);soundToggle.addEventListener("change",()=>mcSetFireworksPreference("sound",soundToggle.checked));}
   panel?.querySelector("#fireworksRecipient")?.focus();
 }
 
