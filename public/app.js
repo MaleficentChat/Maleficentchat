@@ -2224,30 +2224,35 @@ document.addEventListener("click",event=>{
 
 function openFireworksWish(){
   const roomId=String(state.currentRoom||"");
-  if(!roomId){toast("Join a room before sending a Fireworks Wish.");return;}
+  if(!roomId){toast("Join a room before using Fireworks.");return;}
   modal(`<div class="fireworks-wish-panel" style="max-width:420px;margin:0 auto;padding:4px">
-    <div style="text-align:center;padding:12px;border-radius:14px;background:radial-gradient(circle at 50% 0%,rgba(255,190,90,.2),transparent 65%),linear-gradient(145deg,#21152d,#100d19);border:1px solid rgba(255,205,120,.25);margin-bottom:14px">
+    <section style="text-align:center;padding:12px;border-radius:14px;background:radial-gradient(circle at 50% 0%,rgba(255,190,90,.2),transparent 65%),linear-gradient(145deg,#21152d,#100d19);border:1px solid rgba(255,205,120,.25);margin-bottom:14px">
       <div style="font-size:28px;letter-spacing:6px">🎆 ✨ 🎇</div>
-      <h2 style="margin:6px 0;color:#ffd98a">Send a Fireworks Wish</h2>
-    </div>
+      <h2 style="margin:6px 0;color:#ffd98a">Send a Firework Wish</h2>
+    </section>
     <label for="fireworksRecipient">Recipient username</label>
     <input id="fireworksRecipient" maxlength="32" autocomplete="off" placeholder="Enter username">
     <label for="fireworksMessage" style="display:block;margin-top:12px">Your wish</label>
     <textarea id="fireworksMessage" rows="3" maxlength="240" placeholder="Write your own wish…"></textarea>
-    <div style="margin-top:12px;padding:10px 12px;border-radius:12px;background:rgba(255,255,255,.055);border:1px solid rgba(255,255,255,.1)">
-      <label style="display:flex;align-items:center;gap:9px;margin:0;cursor:pointer"><input id="fireworksAnimationEnabled" type="checkbox" style="accent-color:#ff78cf" checked><span>🎆 Launch &amp; burst animation</span></label>
-      <label style="display:flex;align-items:center;gap:9px;margin:8px 0 0 0;cursor:pointer"><input id="fireworksSoundEnabled" type="checkbox" style="accent-color:#ff78cf" checked><span>🔊 Firework sound</span></label>
-      <div style="font-size:11px;opacity:.75;margin-top:6px">One rocket rises, bursts, spreads and fades. Chat stays clickable.</div>
-    </div>
-    <button type="button" id="sendFireworksWish" class="primary" style="width:100%;margin-top:12px">🎆 Send Fireworks Wish</button>
+    <button type="button" id="sendFireworksWish" class="primary" style="width:100%;margin-top:12px">🎆 Send Firework Wish</button>
+    <div style="margin:16px 0 12px;border-top:1px solid rgba(255,255,255,.12)"></div>
+    <section class="fireworks-only-panel" style="padding:12px;border-radius:14px;background:radial-gradient(circle at 50% 0%,rgba(255,105,210,.18),transparent 70%),linear-gradient(145deg,#21152d,#100d19);border:1px solid rgba(255,120,210,.28);text-align:center">
+      <h2 style="margin:2px 0 8px;color:#ffb8ee">🎇 Fireworks</h2>
+      <p style="font-size:12px;opacity:.78;margin:0 0 12px">Just the celebration — no wish, no popup.</p>
+      <button type="button" id="launchFireworksOnly" class="primary" style="width:100%">🎇 FIREWORKS</button>
+    </section>
   </div>`);
-  const panel=mcGetById("modalBody")?.querySelector(".fireworks-wish-panel");
-  const animationToggle=panel?.querySelector("#fireworksAnimationEnabled");
-  const soundToggle=panel?.querySelector("#fireworksSoundEnabled");
-  if(animationToggle){animationToggle.checked=mcFireworksPreference("animation",true);animationToggle.addEventListener("change",()=>mcSetFireworksPreference("animation",animationToggle.checked));}
-  if(soundToggle){soundToggle.checked=mcFireworksPreference("sound",true);soundToggle.addEventListener("change",()=>{mcSetFireworksPreference("sound",soundToggle.checked);if(soundToggle.checked){try{const AC=window.AudioContext||window.webkitAudioContext;if(AC){window.__mcFireworkAudioContext=window.__mcFireworkAudioContext||new AC();window.__mcFireworkAudioContext.resume();}}catch(_){}}});}
-  panel?.querySelector("#fireworksRecipient")?.focus();
+  mcGetById("modalBody")?.querySelector("#fireworksRecipient")?.focus();
 }
+
+// Fireworks-only action: no message is created and no wish popup is shown.
+document.addEventListener("click",event=>{
+  const button=event.target instanceof Element?event.target.closest("#launchFireworksOnly"):null;
+  if(!button)return;
+  event.preventDefault();event.stopPropagation();
+  closeModal();
+  launchMCChatFirework();
+},true);
 
 // Capture the modal's send action before any room-composer or overlay handlers.
 // Read the fields from this exact modal panel, not from a potentially duplicated ID.
@@ -3498,7 +3503,6 @@ function mcSetFireworksPreference(key,value){
   try{localStorage.setItem("mcFireworks_"+key,value?"1":"0");}catch(_){}
 }
 function playMCFireworkSound(){
-  if(!mcFireworksPreference("sound",true))return;
   try{
     const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return;
     const ctx=window.__mcFireworkAudioContext||(window.__mcFireworkAudioContext=new AC());
@@ -3513,7 +3517,7 @@ function playMCFireworkSound(){
   }catch(_){}
 }
 function launchMCChatFirework(){
-  if(!mcFireworksPreference("animation",true)||document.hidden)return;
+  if(document.hidden)return;
   const canvas=document.createElement("canvas");canvas.id="mcChatFireworkCanvas";
   canvas.setAttribute("aria-hidden","true");canvas.style.cssText="position:fixed;inset:0;width:100vw;height:100vh;z-index:8;pointer-events:none;opacity:.76";
   document.body.appendChild(canvas);
@@ -3522,9 +3526,10 @@ function launchMCChatFirework(){
   canvas.width=Math.round(w*dpr);canvas.height=Math.round(h*dpr);ctx.setTransform(dpr,0,0,dpr,0,0);
   const x=w*(.32+Math.random()*.36),startY=h+10,targetY=h*(.2+Math.random()*.16),colors=["#ff62d0","#78eaff","#ffe17a","#b28aff","#ff9a63"];
   const begun=performance.now(),particles=[];let exploded=false;
-  const burst=()=>{
+  const glow=document.createElement("div");glow.setAttribute("aria-hidden","true");glow.style.cssText="position:fixed;inset:0;z-index:7;pointer-events:none;background:radial-gradient(circle at "+Math.round(x/w*100)+"% "+Math.round(targetY/h*100)+"%,rgba(255,225,150,.22),rgba(255,105,220,.10) 24%,transparent 68%);opacity:0;transition:opacity .2s ease";document.body.appendChild(glow);
+  const burst=()=>{glow.style.opacity="1";window.setTimeout(()=>{glow.style.opacity="0";},260);window.setTimeout(()=>glow.remove(),900);
     exploded=true;
-    for(let i=0;i<58;i++){const a=Math.PI*2*i/58+(Math.random()-.5)*.08,sp=1.2+Math.random()*2.5;
+    for(let i=0;i<92;i++){const a=Math.PI*2*i/92+(Math.random()-.5)*.08,sp=2.1+Math.random()*4.1;
       particles.push({x,y:targetY,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,life:.8+Math.random()*.6,max:1.4,r:1+Math.random()*1.3,color:colors[i%colors.length],tw:Math.random()*8});
     }
   };
