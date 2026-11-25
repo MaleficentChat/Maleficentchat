@@ -4948,10 +4948,10 @@ function dmMessageHTML(message, messages, user) {
         }
 
         <div class="msg-actions dm-message-actions">
-          <button type="button" class="mini dm-action-icon" onclick="replyDMMsg('\${esc(message.id)}','\${esc(user.id)}')" title="Reply" aria-label="Reply">↩</button>
-          \${message.text && !message.deleted ? '<button type="button" class="mini dm-action-icon" onclick="forwardDMMsg(\\'\${esc(message.id)}\\',\\'\${esc(user.id)}\\')" title="Forward" aria-label="Forward">↗</button>' : ""}
-          \${deleteAction}
-          \${!isMine && !message.deleted ? '<button type="button" class="mini dm-action-icon dm-report-icon" onclick="reportDMMsg(\\'\${esc(message.id)}\\',\\'\${esc(senderId)}\\')" title="Report" aria-label="Report">⚑</button>' : ""}
+          <button type="button" class="mini dm-action-icon" onclick="replyDMMsg(&quot;${esc(message.id)}&quot;,&quot;${esc(user.id)}&quot;)" title="Reply" aria-label="Reply">↩</button>
+          ${message.text && !message.deleted ? `<button type="button" class="mini dm-action-icon" onclick="forwardDMMsg(&quot;${esc(message.id)}&quot;,&quot;${esc(user.id)}&quot;)" title="Forward" aria-label="Forward">↗</button>` : ""}
+          ${deleteAction}
+          ${!isMine && !message.deleted ? `<button type="button" class="mini dm-action-icon dm-report-icon" onclick="reportDMMsg(&quot;${esc(message.id)}&quot;,&quot;${esc(senderId)}&quot;)" title="Report" aria-label="Report">⚑</button>` : ""}
         </div>
       </div>
     </div>
@@ -5207,7 +5207,7 @@ async function forwardDMMsg(messageId,conversationUserId){
     if(!target){toast("User not found. Enter their exact username.");return;}
     const originalSender=String(message.from)===String(state.user?.id)?"you":(state.dmPeerUser?.username||state.dmPeerUser?.displayName||"the sender");
     const fd=new FormData();
-    fd.append("text","↗ Forwarded message from "+originalSender+":\\n\\n"+message.text);
+    fd.append("text","↗ Forwarded message from "+originalSender+":\n\n"+message.text);
     await api("/api/dm/"+encodeURIComponent(target.id),{method:"POST",body:fd});
     toast("Message forwarded to @"+(target.username||target.displayName)+".");
     loadDMList().catch(()=>{});
