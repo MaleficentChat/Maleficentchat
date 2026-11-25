@@ -11642,3 +11642,11 @@ body.party-mode-active #partySparkleLayer{mix-blend-mode:screen}
  .dm-message-list .dm-msg .msg-body{max-width:82%!important;}
  .dm-message-list .dm-action-icon{width:30px!important;height:30px!important;min-width:30px!important;}
 }
+
+/* Fit the conversation list to the PM modal rather than overflowing the viewport. */
+.modal-card:has(.dm-chat-header){height:min(88dvh,760px)!important;max-height:94dvh!important;min-height:0!important;}
+.dm-message-list{height:auto!important;flex:1 1 0!important;min-height:0!important;max-height:none!important;overflow-y:auto!important;}
+@media(max-width:700px){
+ .modal-card:has(.dm-chat-header){height:94dvh!important;max-height:94dvh!important;}
+ .dm-message-list{height:auto!important;flex:1 1 0!important;min-height:0!important;}
+}
