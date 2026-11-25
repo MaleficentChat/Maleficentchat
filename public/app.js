@@ -2259,7 +2259,7 @@ document.addEventListener("click",async event=>{
   button.disabled=true;
   button.textContent="Sending…";
   try{
-    const text="🎆 FIREWORKS WISH 🎆\\nTo @"+recipient+"\\n"+custom+"\\n🎇 🎆 🎇";
+    const text="🎆 FIREWORKS WISH 🎆\nTo @"+recipient+"\n"+custom+"\n🎇 🎆 🎇";
     const result=await api("/api/rooms/"+encodeURIComponent(roomId)+"/messages",{method:"POST",body:JSON.stringify({text})});
     if(result.message&&String(state.currentRoom)===roomId)appendMessage(result.message);
     closeModal();
