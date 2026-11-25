@@ -3586,20 +3586,13 @@ function playMCFireworkSound(){
     shimmer.frequency.setValueAtTime(360,now);shimmer.frequency.exponentialRampToValueAtTime(760,now+.55);
     shg.gain.setValueAtTime(.0001,now);shg.gain.exponentialRampToValueAtTime(.0045,now+.22);shg.gain.exponentialRampToValueAtTime(.0001,now+.6);
     shimmer.connect(shg);shg.connect(ctx.destination);shimmer.start(now);shimmer.stop(now+.61);
-    // Deep, rounded explosion and natural crackle, unchanged in character.
-    const blastAt=now+.62,crackle=makeNoise(.72),bf=ctx.createBiquadFilter(),bg=ctx.createGain();
-    bf.type="bandpass";bf.frequency.setValueAtTime(1700,blastAt);bf.Q.value=.65;
-    bg.gain.setValueAtTime(.0001,blastAt);bg.gain.exponentialRampToValueAtTime(.20,blastAt+.018);bg.gain.exponentialRampToValueAtTime(.0001,blastAt+.68);
-    crackle.connect(bf);bf.connect(bg);bg.connect(ctx.destination);crackle.start(blastAt);crackle.stop(blastAt+.72);
+    // Clean rounded blast only: no glassy crackle or rapid pop sounds.
+    const blastAt=now+.62;
     const boom=ctx.createOscillator(),boog=ctx.createGain(),boomFilter=ctx.createBiquadFilter();
     boom.type="sine";boom.frequency.setValueAtTime(105,blastAt);boom.frequency.exponentialRampToValueAtTime(38,blastAt+.42);
     boomFilter.type="lowpass";boomFilter.frequency.value=220;
     boog.gain.setValueAtTime(.0001,blastAt);boog.gain.exponentialRampToValueAtTime(.16,blastAt+.025);boog.gain.exponentialRampToValueAtTime(.0001,blastAt+.48);
     boom.connect(boomFilter);boomFilter.connect(boog);boog.connect(ctx.destination);boom.start(blastAt);boom.stop(blastAt+.5);
-    for(let i=0;i<7;i++){const n=makeNoise(.065),filt=ctx.createBiquadFilter(),g=ctx.createGain(),at=blastAt+.08+i*.075;
-      filt.type="highpass";filt.frequency.value=2200+i*180;g.gain.setValueAtTime(.0001,at);g.gain.exponentialRampToValueAtTime(.045,at+.008);g.gain.exponentialRampToValueAtTime(.0001,at+.06);
-      n.connect(filt);filt.connect(g);g.connect(ctx.destination);n.start(at);n.stop(at+.065);
-    }
   }catch(_){}
 }
 function launchMCChatFirework(positionX=null,heightY=null){
@@ -3615,8 +3608,13 @@ function launchMCChatFirework(positionX=null,heightY=null){
   const glow=document.createElement("div");glow.setAttribute("aria-hidden","true");glow.style.cssText="position:fixed;inset:0;z-index:7;pointer-events:none;background:radial-gradient(circle at "+Math.round(x/w*100)+"% "+Math.round(targetY/h*100)+"%,rgba(255,225,150,.22),rgba(255,105,220,.10) 24%,transparent 68%);opacity:0;transition:opacity .2s ease";document.body.appendChild(glow);
   const burst=()=>{glow.style.opacity="1";window.setTimeout(()=>{glow.style.opacity="0";},260);window.setTimeout(()=>glow.remove(),900);
     exploded=true;
-    for(let i=0;i<92;i++){const a=Math.PI*2*i/92+(Math.random()-.5)*.08,sp=1.45+Math.random()*2.9;
-      particles.push({x,y:targetY,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,life:1.15+Math.random()*.85,max:2,r:1+Math.random()*1.3,color:colors[i%colors.length],tw:Math.random()*8});
+    const style=["peony","ring","willow","star","double-ring"][Math.floor(Math.random()*5)];
+    for(let i=0;i<92;i++){const a=Math.PI*2*i/92+(Math.random()-.5)*.08;let sp=1.45+Math.random()*2.9;
+      if(style==="ring")sp=2.45+Math.random()*.35;
+      if(style==="willow")sp=1.1+Math.random()*2.1;
+      if(style==="star")sp=(i%2===0?3.2:1.45)+Math.random()*.35;
+      if(style==="double-ring")sp=(i%2===0?3.0:1.65)+Math.random()*.3;
+      particles.push({x,y:targetY,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,life:style==="willow"?1.8+Math.random()*1.2:1.15+Math.random()*.85,max:2,r:1+Math.random()*1.3,color:colors[i%colors.length],tw:Math.random()*8});
     }
   };
   playMCFireworkSound();
