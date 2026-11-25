@@ -3557,6 +3557,7 @@ function showFireworksWishPopup(message) {
   const wish=wishLine.replace(/^✨\s*/,"").replace(/\s*✨$/,"").trim();
   const sender=String(message?.username||message?.senderUsername||message?.sender?.username||"Someone");
   if(!recipient||!wish)return;
+  launchMCChatFirework();
   document.getElementById("fireworksWishToast")?.remove();
   const popup=document.createElement("div");
   popup.id="fireworksWishToast";
