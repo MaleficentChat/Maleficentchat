@@ -1069,6 +1069,10 @@ async function refreshRoomMessageList(roomId,{force=false}={}){
   const reconciled=[...merged.values()]
     .filter(message=>!message.expiresAt||Number(message.expiresAt)>Date.now())
     .sort((a,b)=>Number(a.time||0)-Number(b.time||0));
+  const knownIds=new Set((Array.isArray(state.messages)?state.messages:[]).map(message=>String(message.id)));
+  for(const message of reconciled){
+    if(isFireworksWishMessage(message)&&!knownIds.has(String(message.id)))showFireworksWishPopup(message);
+  }
   const signature=requestedRoom+":"+reconciled.map(m=>JSON.stringify([m.id,m.text,m.edited,m.deleted,m.pinned,m.reactions,m.attachment,m.expiresAt])).join("|");
   if(!force&&signature===roomMessageSyncSignature)return true;
   const nearBottom=list.scrollHeight-list.scrollTop-list.clientHeight<180;
@@ -2221,39 +2225,21 @@ document.addEventListener("click",event=>{
 function openFireworksWish(){
   const roomId=String(state.currentRoom||"");
   if(!roomId){toast("Join a room before sending a Fireworks Wish.");return;}
-  modal(`<div class="fireworks-wish-panel" style="max-width:460px;margin:0 auto;padding:4px">
-    <div style="text-align:center;padding:18px 12px;border-radius:16px;background:radial-gradient(circle at 50% 0%,rgba(255,190,90,.24),transparent 65%),linear-gradient(145deg,#21152d,#100d19);border:1px solid rgba(255,205,120,.28);margin-bottom:16px">
-      <div style="font-size:34px;letter-spacing:8px">🎆 ✨ 🎇</div>
-      <h2 style="margin:8px 0;color:#ffd98a">Send a Fireworks Wish</h2>
-      <p style="margin:0;color:#e9dff1">Make someone's moment sparkle.</p>
+  modal(`<div class="fireworks-wish-panel" style="max-width:420px;margin:0 auto;padding:4px">
+    <div style="text-align:center;padding:12px;border-radius:14px;background:radial-gradient(circle at 50% 0%,rgba(255,190,90,.2),transparent 65%),linear-gradient(145deg,#21152d,#100d19);border:1px solid rgba(255,205,120,.25);margin-bottom:14px">
+      <div style="font-size:28px;letter-spacing:6px">🎆 ✨ 🎇</div>
+      <h2 style="margin:6px 0;color:#ffd98a">Send a Fireworks Wish</h2>
     </div>
-    <label for="fireworksRecipient">Wish to username</label>
+    <label for="fireworksRecipient">Recipient username</label>
     <input id="fireworksRecipient" maxlength="32" autocomplete="off" placeholder="Enter username">
-    <label for="fireworksPreset" style="display:block;margin-top:12px">Choose a wish</label>
-    <select id="fireworksPreset" style="width:100%">
-      <option value="Happy New Year!">🎆 Happy New Year</option>
-      <option value="Happy Birthday!">🎂 Happy Birthday</option>
-      <option value="Congratulations!">🎉 Congratulations</option>
-      <option value="Happy Celebration!">❤️ Happy Celebration</option>
-      <option value="Best Wishes!">🌟 Best Wishes</option>
-      <option value="custom">✨ Custom Wish</option>
-    </select>
-    <label for="fireworksMessage" style="display:block;margin-top:12px">Personal message</label>
-    <textarea id="fireworksMessage" rows="3" maxlength="240" placeholder="May your days be filled with happiness and beautiful moments!"></textarea>
-    <p class="muted" style="font-size:12px;margin:8px 0 14px">Your wish will appear in this room, addressed to the username above.</p>
-    <button type="button" id="sendFireworksWish" class="primary" style="width:100%">🎆 Send Fireworks Wish</button>
+    <label for="fireworksMessage" style="display:block;margin-top:12px">Your wish</label>
+    <textarea id="fireworksMessage" rows="3" maxlength="240" placeholder="Write your own wish…"></textarea>
+    <button type="button" id="sendFireworksWish" class="primary" style="width:100%;margin-top:12px">🎆 Send Fireworks Wish</button>
   </div>`);
-  const preset=mcGetById("fireworksPreset"), message=mcGetById("fireworksMessage");
-  preset?.addEventListener("change",()=>{
-    if(!message)return;
-    if(preset.value==="custom"){message.focus();return;}
-    if(!message.value.trim())message.value=preset.value==="Happy Birthday!"?"Wishing you a wonderful birthday filled with happiness!":preset.value==="Happy New Year!"?"May the new year bring you joy, success and new beginnings!":preset.value==="Congratulations!"?"You deserve every bit of this success. Keep shining!":preset.value==="Happy Celebration!"?"Wishing you laughter, love and unforgettable memories!":"Wishing you happiness, success and countless beautiful moments!";
-  });
   mcGetById("sendFireworksWish")?.addEventListener("click",async()=>{
     const button=mcGetById("sendFireworksWish");
     const recipient=String(mcGetById("fireworksRecipient")?.value||"").trim().replace(/^@/,"");
     const custom=String(message?.value||"").trim();
-    const title=preset?.value==="custom"?"A Special Wish":String(preset?.value||"Best Wishes!");
     if(!/^[A-Za-z0-9_]{2,32}$/.test(recipient)){toast("Enter a valid username.");return;}
     if(!custom){toast("Write a personal wish before sending.");return;}
     if(String(state.currentRoom||"")!==roomId){toast("Your room changed. Reopen Fireworks in the room you want.");return;}
@@ -3484,6 +3470,12 @@ function isFireworksWishMessage(message) {
 }
 
 function showFireworksWishPopup(message) {
+  const wishId=String(message?.id||"");
+  if(wishId){
+    window.__mcShownFireworksWishIds=window.__mcShownFireworksWishIds||new Set();
+    if(window.__mcShownFireworksWishIds.has(wishId))return;
+    window.__mcShownFireworksWishIds.add(wishId);
+  }
   const lines=String(message?.text||"").split(/\r?\n/).map(line=>line.trim()).filter(Boolean);
   const recipientLine=lines.find(line=>/^To @/i.test(line))||"";
   const wishLine=lines.find((line,index)=>index>=3&&!/^🎇|^🎆/.test(line))||lines[3]||"";
@@ -3503,19 +3495,11 @@ function showFireworksWishPopup(message) {
 }
 
 function appendMessage(message) {
-  if (
-    document.querySelector(
-      `[data-mid="${message.id}"]`
-    ) || state.messages.some(item=>String(item.id)===String(message.id))
-  ) {
-    return;
-  }
-
+  const isWish=isFireworksWishMessage(message);
+  const alreadyKnown=!!document.querySelector(`[data-mid="${message.id}"]`) || state.messages.some(item=>String(item.id)===String(message.id));
+  if(isWish){showFireworksWishPopup(message);if(!alreadyKnown)state.messages.push(message);return;}
+  if(alreadyKnown)return;
   state.messages.push(message);
-  if(isFireworksWishMessage(message)){
-    showFireworksWishPopup(message);
-    return;
-  }
 
   mcGetById("messages").insertAdjacentHTML(
     "beforeend",
