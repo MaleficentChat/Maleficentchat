@@ -2241,12 +2241,27 @@ function openFireworksWish(){
       <p style="font-size:12px;opacity:.78;margin:0 0 12px">Just the celebration — no wish, no popup.</p>
       <button type="button" id="launchFireworksOnly" class="primary" style="width:100%">🎇 START FIREWORKS</button>
     </section>
+    <section style="margin-top:14px;padding:13px;border-radius:14px;background:linear-gradient(145deg,#251333,#100d19);border:1px solid rgba(130,255,220,.35);text-align:center">
+      <h2 style="margin:2px 0 8px;color:#8fffe0">🎈 Holi Color Balloons</h2>
+      <p style="font-size:12px;opacity:.82;margin:0 0 12px">Tap anywhere on the screen to throw a color balloon!</p>
+      <button type="button" id="startHoliMode" class="primary" style="width:100%">🎨 START HOLI</button>
+    </section>
   </div>`);
   mcGetById("modalBody")?.querySelector("#fireworksRecipient")?.focus();
 }
 
 // Fireworks-only action toggles a continuous celebration. The floating stop control
 // remains available after the panel closes so the user can end it at any time.
+// Holi paint overlay: clicks pass through, only the wash control is interactive.
+let mcHoliActive=false,mcHoliCanvas=null,mcHoliContext=null,mcHoliRAF=0,mcHoliSplashes=[],mcHoliWashAt=0;
+function stopMCHoliMode(){mcHoliActive=false;if(mcHoliRAF)cancelAnimationFrame(mcHoliRAF);mcHoliRAF=0;mcHoliCanvas?.remove();mcHoliCanvas=null;mcHoliContext=null;document.getElementById("mcHoliWashControl")?.remove();document.removeEventListener("pointerdown",mcHoliPointer,true);}
+function mcHoliPointer(e){if(!mcHoliActive||e.target.closest?.("#mcHoliWashControl"))return;mcHoliSplashes.push({x:e.clientX,y:e.clientY,color:["#ff36a5","#ffdf32","#36e8ff","#7dff49","#a855ff","#ff713b","#2b73ff","#ff4d56"][Math.floor(Math.random()*8)],r:32+Math.random()*52,stamp:performance.now(),drops:Array.from({length:36},()=>({a:Math.random()*Math.PI*2,r:.5+Math.random()*1.25,s:2+Math.random()*8}))});}
+function startMCHoliMode(){stopMCHoliMode();mcHoliActive=true;mcHoliSplashes=[];mcHoliCanvas=document.createElement("canvas");mcHoliCanvas.style.cssText="position:fixed;inset:0;width:100vw;height:100vh;z-index:10000;pointer-events:none";mcHoliCanvas.setAttribute("aria-hidden","true");document.body.appendChild(mcHoliCanvas);mcHoliContext=mcHoliCanvas.getContext("2d");
+const resize=()=>{if(!mcHoliCanvas)return;let d=Math.min(window.devicePixelRatio||1,1.5);mcHoliCanvas.width=innerWidth*d;mcHoliCanvas.height=innerHeight*d;mcHoliContext.setTransform(d,0,0,d,0,0);};resize();window.addEventListener("resize",resize);document.addEventListener("pointerdown",mcHoliPointer,true);
+let wash=null;wash=document.createElement("button");wash.id="mcHoliWashControl";wash.textContent="💦 WATER BALLOON · WASH";wash.style.cssText="position:fixed;z-index:10002;left:50%;transform:translateX(-50%);bottom:calc(18px + env(safe-area-inset-bottom));padding:13px 18px;border-radius:999px;border:1px solid rgba(140,240,255,.7);background:linear-gradient(135deg,#126b91,#15345d);color:white;font-weight:900;box-shadow:0 0 20px rgba(70,200,255,.5);cursor:pointer";wash.onclick=()=>{mcHoliWashAt=performance.now();};document.body.appendChild(wash);
+function paint(now){if(!mcHoliActive||!mcHoliContext)return;let ctx=mcHoliContext;ctx.clearRect(0,0,innerWidth,innerHeight);mcHoliSplashes.forEach(p=>{let fade=Math.max(0,1-(now-p.stamp)/45000);ctx.globalAlpha=.68*fade;ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fill();p.drops.forEach(d=>{ctx.beginPath();ctx.arc(p.x+Math.cos(d.a)*p.r*d.r,p.y+Math.sin(d.a)*p.r*d.r,d.s,0,Math.PI*2);ctx.fill();});});ctx.globalAlpha=1;if(mcHoliWashAt){let prog=Math.min(1,(now-mcHoliWashAt)/850);ctx.fillStyle="rgba(120,235,255,"+(0.6*(1-prog))+")";ctx.fillRect(0,0,innerWidth,innerHeight);if(prog>=1){mcHoliSplashes=[];mcHoliWashAt=0;}}mcHoliRAF=requestAnimationFrame(paint);}mcHoliRAF=requestAnimationFrame(paint);
+window.addEventListener("keydown",e=>{if(e.key==="Escape")stopMCHoliMode();},{once:true});}
+document.addEventListener("click",e=>{let b=e.target.closest?.("#startHoliMode");if(!b)return;e.preventDefault();e.stopPropagation();closeModal();startMCHoliMode();},true);
 let mcChatFireworksLoopTimer=null;
 let mcChatFireworksLoopOn=false;
 function setMCChatFireworksLoopUI(on){
