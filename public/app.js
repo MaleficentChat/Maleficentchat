@@ -3544,13 +3544,36 @@ function playMCFireworkSound(){
     const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return;
     const ctx=window.__mcFireworkAudioContext||(window.__mcFireworkAudioContext=new AC());
     if(ctx.state==="suspended")ctx.resume().catch(()=>{});
-    const now=ctx.currentTime,osc=ctx.createOscillator(),gain=ctx.createGain();
-    osc.type="sine";osc.frequency.setValueAtTime(420,now);osc.frequency.exponentialRampToValueAtTime(980,now+.25);osc.frequency.exponentialRampToValueAtTime(160,now+.5);
-    gain.gain.setValueAtTime(.0001,now);gain.gain.exponentialRampToValueAtTime(.045,now+.04);gain.gain.exponentialRampToValueAtTime(.0001,now+.52);
-    osc.connect(gain);gain.connect(ctx.destination);osc.start(now);osc.stop(now+.53);
-    const pop=ctx.createOscillator(),pg=ctx.createGain();pop.type="triangle";pop.frequency.setValueAtTime(155,now+.43);pop.frequency.exponentialRampToValueAtTime(45,now+.67);
-    pg.gain.setValueAtTime(.0001,now+.43);pg.gain.exponentialRampToValueAtTime(.07,now+.46);pg.gain.exponentialRampToValueAtTime(.0001,now+.7);
-    pop.connect(pg);pg.connect(ctx.destination);pop.start(now+.43);pop.stop(now+.71);
+    const now=ctx.currentTime;
+    // Launch: airy rushing hiss plus a rising whistle.
+    const makeNoise=(duration)=>{
+      const buffer=ctx.createBuffer(1,Math.ceil(ctx.sampleRate*duration),ctx.sampleRate);
+      const data=buffer.getChannelData(0);for(let i=0;i<data.length;i++)data[i]=(Math.random()*2-1)*(.8+Math.random()*.2);
+      const source=ctx.createBufferSource();source.buffer=buffer;return source;
+    };
+    const whoosh=makeNoise(.55),wf=ctx.createBiquadFilter(),wg=ctx.createGain();
+    wf.type="lowpass";wf.frequency.setValueAtTime(650,now);wf.frequency.exponentialRampToValueAtTime(2400,now+.48);
+    wg.gain.setValueAtTime(.0001,now);wg.gain.exponentialRampToValueAtTime(.045,now+.1);wg.gain.exponentialRampToValueAtTime(.0001,now+.53);
+    whoosh.connect(wf);wf.connect(wg);wg.connect(ctx.destination);whoosh.start(now);whoosh.stop(now+.55);
+    const whistle=ctx.createOscillator(),whg=ctx.createGain();whistle.type="sine";
+    whistle.frequency.setValueAtTime(520,now);whistle.frequency.exponentialRampToValueAtTime(1250,now+.42);whistle.frequency.exponentialRampToValueAtTime(850,now+.58);
+    whg.gain.setValueAtTime(.0001,now);whg.gain.exponentialRampToValueAtTime(.022,now+.1);whg.gain.exponentialRampToValueAtTime(.0001,now+.58);
+    whistle.connect(whg);whg.connect(ctx.destination);whistle.start(now);whistle.stop(now+.59);
+    // Explosion follows the rocket, with a bass boom and real broadband crackle.
+    const blastAt=now+.62,crackle=makeNoise(.72),bf=ctx.createBiquadFilter(),bg=ctx.createGain();
+    bf.type="bandpass";bf.frequency.setValueAtTime(1700,blastAt);bf.Q.value=.65;
+    bg.gain.setValueAtTime(.0001,blastAt);bg.gain.exponentialRampToValueAtTime(.20,blastAt+.018);bg.gain.exponentialRampToValueAtTime(.0001,blastAt+.68);
+    crackle.connect(bf);bf.connect(bg);bg.connect(ctx.destination);crackle.start(blastAt);crackle.stop(blastAt+.72);
+    const boom=ctx.createOscillator(),boog=ctx.createGain(),boomFilter=ctx.createBiquadFilter();
+    boom.type="sine";boom.frequency.setValueAtTime(105,blastAt);boom.frequency.exponentialRampToValueAtTime(38,blastAt+.42);
+    boomFilter.type="lowpass";boomFilter.frequency.value=220;
+    boog.gain.setValueAtTime(.0001,blastAt);boog.gain.exponentialRampToValueAtTime(.16,blastAt+.025);boog.gain.exponentialRampToValueAtTime(.0001,blastAt+.48);
+    boom.connect(boomFilter);boomFilter.connect(boog);boog.connect(ctx.destination);boom.start(blastAt);boom.stop(blastAt+.5);
+    // A few short crackling spark accents after the main bang.
+    for(let i=0;i<7;i++){const n=makeNoise(.065),filt=ctx.createBiquadFilter(),g=ctx.createGain(),at=blastAt+.08+i*.075;
+      filt.type="highpass";filt.frequency.value=2200+i*180;g.gain.setValueAtTime(.0001,at);g.gain.exponentialRampToValueAtTime(.045,at+.008);g.gain.exponentialRampToValueAtTime(.0001,at+.06);
+      n.connect(filt);filt.connect(g);g.connect(ctx.destination);n.start(at);n.stop(at+.065);
+    }
   }catch(_){}
 }
 function launchMCChatFirework(positionX=null,heightY=null){
@@ -3566,22 +3589,22 @@ function launchMCChatFirework(positionX=null,heightY=null){
   const glow=document.createElement("div");glow.setAttribute("aria-hidden","true");glow.style.cssText="position:fixed;inset:0;z-index:7;pointer-events:none;background:radial-gradient(circle at "+Math.round(x/w*100)+"% "+Math.round(targetY/h*100)+"%,rgba(255,225,150,.22),rgba(255,105,220,.10) 24%,transparent 68%);opacity:0;transition:opacity .2s ease";document.body.appendChild(glow);
   const burst=()=>{glow.style.opacity="1";window.setTimeout(()=>{glow.style.opacity="0";},260);window.setTimeout(()=>glow.remove(),900);
     exploded=true;
-    for(let i=0;i<92;i++){const a=Math.PI*2*i/92+(Math.random()-.5)*.08,sp=2.1+Math.random()*4.1;
-      particles.push({x,y:targetY,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,life:.8+Math.random()*.6,max:1.4,r:1+Math.random()*1.3,color:colors[i%colors.length],tw:Math.random()*8});
+    for(let i=0;i<92;i++){const a=Math.PI*2*i/92+(Math.random()-.5)*.08,sp=1.45+Math.random()*2.9;
+      particles.push({x,y:targetY,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,life:1.15+Math.random()*.85,max:2,r:1+Math.random()*1.3,color:colors[i%colors.length],tw:Math.random()*8});
     }
   };
   playMCFireworkSound();
   function draw(now){
-    const t=(now-begun)/2300,rocketY=startY-(startY-targetY)*Math.min(1,t/.4);
+    const t=(now-begun)/3000,rocketY=startY-(startY-targetY)*Math.min(1,t/.62);
     ctx.clearRect(0,0,w,h);
-    if(t<.4){
+    if(t<.62){
       for(let i=0;i<10;i++){const yy=rocketY+i*5;ctx.beginPath();ctx.arc(x+(Math.random()-.5)*2,yy,1.1,0,Math.PI*2);ctx.fillStyle="rgba(255,180,245,"+(.4-i*.035)+")";ctx.shadowBlur=7;ctx.shadowColor="#ff70d8";ctx.fill();}
       ctx.beginPath();ctx.arc(x,rocketY,3,0,Math.PI*2);ctx.fillStyle="#fff";ctx.shadowBlur=16;ctx.shadowColor="#ff70d8";ctx.fill();
     }else if(!exploded)burst();
     ctx.shadowBlur=0;
-    particles.forEach(p=>{p.x+=p.vx;p.y+=p.vy;p.vy+=.035;p.vx*=.993;p.life-=.012;ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.globalAlpha=Math.max(0,p.life/p.max)*(.55+.45*Math.abs(Math.sin(now/100+p.tw)));ctx.fillStyle=p.color;ctx.shadowBlur=6;ctx.shadowColor=p.color;ctx.fill();});
+    particles.forEach(p=>{p.x+=p.vx;p.y+=p.vy;p.vy+=.018;p.vx*=.996;p.life-=.008;ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.globalAlpha=Math.max(0,p.life/p.max)*(.55+.45*Math.abs(Math.sin(now/100+p.tw)));ctx.fillStyle=p.color;ctx.shadowBlur=6;ctx.shadowColor=p.color;ctx.fill();});
     ctx.globalAlpha=1;ctx.shadowBlur=0;
-    if(t<1&&particles.some(p=>p.life>0)||t<.4)requestAnimationFrame(draw);else canvas.remove();
+    if(t<1.25&&particles.some(p=>p.life>0)||t<.62)requestAnimationFrame(draw);else canvas.remove();
   }
   requestAnimationFrame(draw);
 }
