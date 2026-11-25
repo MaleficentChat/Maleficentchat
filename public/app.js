@@ -2881,6 +2881,7 @@ async function translateMessageText(messageId,scope){
   catch(error){target.textContent=error.message||"Translation failed."; }
 }
 function messageHTML(message) {
+  if(isFireworksWishMessage(message))return "";
   if(message?.joinChatPanel && String(message.bot||message.username)==="Bot"){
     const joinUrl=String(message.joinChatUrl||"https://knightpulse.up.railway.app/");
     return `<div class="message bot-welcome-message bot-join-chat-message" data-mid="${esc(message.id)}">
