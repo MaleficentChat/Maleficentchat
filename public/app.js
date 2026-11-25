@@ -2255,12 +2255,11 @@ function openFireworksWish(){
 // Holi paint overlay: clicks pass through, only the wash control is interactive.
 let mcHoliActive=false,mcHoliCanvas=null,mcHoliContext=null,mcHoliRAF=0,mcHoliSplashes=[],mcHoliBalloons=[],mcHoliResize=null,mcHoliLastFrame=0,mcHoliAudio=null;
 const mcHoliColors=["#ff36a5","#ffdf32","#36e8ff","#7dff49","#a855ff","#ff713b","#2b73ff","#ff4d56"];
-function stopMCHoliMode(){mcHoliActive=false;if(mcHoliRAF)cancelAnimationFrame(mcHoliRAF);mcHoliRAF=0;if(mcHoliResize)window.removeEventListener("resize",mcHoliResize);mcHoliResize=null;mcHoliCanvas?.remove();mcHoliCanvas=null;mcHoliContext=null;mcHoliSplashes=[];mcHoliBalloons=[];document.getElementById("mcHoliWashControl")?.remove();document.removeEventListener("pointerdown",mcHoliPointer,true);document.removeEventListener("click",mcHoliBlockClick,true);document.removeEventListener("touchstart",mcHoliBlockTouch,true);}
+function stopMCHoliMode(){mcHoliActive=false;if(mcHoliRAF)cancelAnimationFrame(mcHoliRAF);mcHoliRAF=0;if(mcHoliResize)window.removeEventListener("resize",mcHoliResize);mcHoliResize=null;mcHoliCanvas?.remove();mcHoliCanvas=null;mcHoliContext=null;mcHoliSplashes=[];mcHoliBalloons=[];document.getElementById("mcHoliWashControl")?.remove();document.removeEventListener("pointerdown",mcHoliPointer,true);}
 function mcHoliSplashSound(){try{const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return;mcHoliAudio=mcHoliAudio||new AC();if(mcHoliAudio.state==="suspended")mcHoliAudio.resume();const t=mcHoliAudio.currentTime,n=mcHoliAudio.createBuffer(1,Math.floor(mcHoliAudio.sampleRate*.18),mcHoliAudio.sampleRate),d=n.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*(1-i/d.length);const src=mcHoliAudio.createBufferSource(),filter=mcHoliAudio.createBiquadFilter(),gain=mcHoliAudio.createGain();src.buffer=n;filter.type="lowpass";filter.frequency.setValueAtTime(1700,t);filter.frequency.exponentialRampToValueAtTime(420,t+.16);gain.gain.setValueAtTime(.0001,t);gain.gain.exponentialRampToValueAtTime(.13,t+.012);gain.gain.exponentialRampToValueAtTime(.0001,t+.18);src.connect(filter);filter.connect(gain);gain.connect(mcHoliAudio.destination);src.start(t);src.stop(t+.19);}catch{}}
-function mcHoliPointer(e){if(!mcHoliActive)return;if(e.target?.closest?.("#mcHoliWashControl"))return;e.preventDefault?.();e.stopPropagation?.();e.stopImmediatePropagation?.();if(e.target?.closest?.("input,textarea,button,select,a,[contenteditable=true]"))return;const x=e.clientX,y=e.clientY,color=mcHoliColors[Math.floor(Math.random()*mcHoliColors.length)],fromX=Math.max(28,Math.min(innerWidth-28,x+(Math.random()-.5)*innerWidth*.32)),fromY=innerHeight+35;mcHoliBalloons.push({x:fromX,y:fromY,tx:x,ty:y,color,start:performance.now(),duration:520+Math.random()*180,r:12+Math.random()*5});}
-function mcHoliBlockClick(e){if(!mcHoliActive||e.target?.closest?.("#mcHoliWashControl"))return;e.preventDefault?.();e.stopPropagation?.();e.stopImmediatePropagation?.();}function mcHoliBlockTouch(e){if(!mcHoliActive||e.target?.closest?.("#mcHoliWashControl"))return;e.preventDefault?.();e.stopPropagation?.();e.stopImmediatePropagation?.();}
+function mcHoliPointer(e){if(!mcHoliActive||e.target.closest?.("#mcHoliWashControl")||e.target.closest?.("input,textarea,button,select,a,[contenteditable=true]"))return;const x=e.clientX,y=e.clientY,color=mcHoliColors[Math.floor(Math.random()*mcHoliColors.length)],fromX=Math.max(28,Math.min(innerWidth-28,x+(Math.random()-.5)*innerWidth*.32)),fromY=innerHeight+35;mcHoliBalloons.push({x:fromX,y:fromY,tx:x,ty:y,color,start:performance.now(),duration:520+Math.random()*180,r:12+Math.random()*5});}
 function startMCHoliMode(){stopMCHoliMode();mcHoliActive=true;mcHoliSplashes=[];mcHoliBalloons=[];mcHoliLastFrame=0;mcHoliCanvas=document.createElement("canvas");mcHoliCanvas.style.cssText="position:fixed;inset:0;width:100vw;height:100vh;z-index:10000;pointer-events:none";mcHoliCanvas.setAttribute("aria-hidden","true");document.body.appendChild(mcHoliCanvas);mcHoliContext=mcHoliCanvas.getContext("2d",{alpha:true});if(!mcHoliContext){stopMCHoliMode();return;}
-mcHoliResize=()=>{if(!mcHoliCanvas)return;const d=Math.min(window.devicePixelRatio||1,1);mcHoliCanvas.width=innerWidth*d;mcHoliCanvas.height=innerHeight*d;mcHoliContext.setTransform(d,0,0,d,0,0);};mcHoliResize();window.addEventListener("resize",mcHoliResize);document.addEventListener("pointerdown",mcHoliPointer,true);document.addEventListener("click",mcHoliBlockClick,true);document.addEventListener("touchstart",mcHoliBlockTouch,{capture:true,passive:false});
+mcHoliResize=()=>{if(!mcHoliCanvas)return;const d=Math.min(window.devicePixelRatio||1,1);mcHoliCanvas.width=innerWidth*d;mcHoliCanvas.height=innerHeight*d;mcHoliContext.setTransform(d,0,0,d,0,0);};mcHoliResize();window.addEventListener("resize",mcHoliResize);document.addEventListener("pointerdown",mcHoliPointer,true);
 const wash=document.createElement("button");wash.id="mcHoliWashControl";wash.textContent="💦 WASH · STOP HOLI";wash.style.cssText="position:fixed;z-index:10002;left:50%;transform:translateX(-50%);bottom:calc(18px + env(safe-area-inset-bottom));padding:12px 17px;border-radius:999px;border:1px solid rgba(140,240,255,.7);background:linear-gradient(135deg,#126b91,#15345d);color:white;font-weight:900;box-shadow:0 0 14px rgba(70,200,255,.35);cursor:pointer";wash.onclick=stopMCHoliMode;document.body.appendChild(wash);
 function paint(now){if(!mcHoliActive||!mcHoliContext)return;if(document.hidden){mcHoliRAF=requestAnimationFrame(paint);return;}if(now-mcHoliLastFrame<32){mcHoliRAF=requestAnimationFrame(paint);return;}mcHoliLastFrame=now;const ctx=mcHoliContext;ctx.clearRect(0,0,innerWidth,innerHeight);
 mcHoliBalloons=mcHoliBalloons.filter(b=>{const p=Math.min(1,(now-b.start)/b.duration),ease=1-Math.pow(1-p,3);b.x=b.x+(b.tx-b.x)*Math.min(.13,ease*.13);b.y=b.y+(b.ty-b.y)*Math.min(.13,ease*.13);ctx.save();ctx.globalAlpha=1-p*.18;ctx.fillStyle=b.color;ctx.shadowBlur=7;ctx.shadowColor=b.color;ctx.beginPath();ctx.ellipse(b.x,b.y-b.r*.15,b.r*.82,b.r,Math.sin(now/80)*.12,0,Math.PI*2);ctx.fill();ctx.shadowBlur=0;ctx.strokeStyle=b.color;ctx.lineWidth=1.4;ctx.beginPath();ctx.moveTo(b.x,b.y+b.r*.8);ctx.lineTo(b.x+2,b.y+b.r+6);ctx.stroke();ctx.restore();if(p>=1){mcHoliSplashSound();mcHoliSplashes.push({x:b.tx,y:b.ty,color:b.color,r:24+Math.random()*28,stamp:now,drops:Array.from({length:14},()=>({a:Math.random()*Math.PI*2,r:.5+Math.random(),s:2+Math.random()*4}))});return false;}return true;});
@@ -3575,28 +3574,28 @@ function playMCFireworkSound(){
     const ctx=window.__mcFireworkAudioContext||(window.__mcFireworkAudioContext=new AC());
     if(ctx.state==="suspended")ctx.resume().catch(()=>{});
     const now=ctx.currentTime;
-    const noise=(duration)=>{const b=ctx.createBuffer(1,Math.ceil(ctx.sampleRate*duration),ctx.sampleRate),d=b.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*(1-i/d.length);const s=ctx.createBufferSource();s.buffer=b;return s;};
-    // Realistic launch: soft airy rising rush, not a cartoon whistle.
-    const rush=noise(.58),rf=ctx.createBiquadFilter(),rg=ctx.createGain();
-    rf.type="bandpass";rf.frequency.setValueAtTime(380,now);rf.frequency.exponentialRampToValueAtTime(1750,now+.52);rf.Q.value=.65;
-    rg.gain.setValueAtTime(.0001,now);rg.gain.exponentialRampToValueAtTime(.035,now+.16);rg.gain.exponentialRampToValueAtTime(.0001,now+.58);
-    rush.connect(rf);rf.connect(rg);rg.connect(ctx.destination);rush.start(now);rush.stop(now+.58);
-    const blastAt=now+.58;
-    // Rounded low boom with a brief natural airy burst; deliberately no glass/shattering effect.
-    const boom=noise(.32),bf=ctx.createBiquadFilter(),bg=ctx.createGain();
-    bf.type="lowpass";bf.frequency.setValueAtTime(950,blastAt);bf.frequency.exponentialRampToValueAtTime(180,blastAt+.28);bf.Q.value=.7;
-    bg.gain.setValueAtTime(.0001,blastAt);bg.gain.exponentialRampToValueAtTime(.11,blastAt+.018);bg.gain.exponentialRampToValueAtTime(.0001,blastAt+.32);
-    boom.connect(bf);bf.connect(bg);bg.connect(ctx.destination);boom.start(blastAt);boom.stop(blastAt+.32);
-    const sub=ctx.createOscillator(),sf=ctx.createBiquadFilter(),sg=ctx.createGain();
-    sub.type="sine";sub.frequency.setValueAtTime(92,blastAt);sub.frequency.exponentialRampToValueAtTime(42,blastAt+.42);
-    sf.type="lowpass";sf.frequency.value=160;
-    sg.gain.setValueAtTime(.0001,blastAt);sg.gain.exponentialRampToValueAtTime(.19,blastAt+.025);sg.gain.exponentialRampToValueAtTime(.0001,blastAt+.43);
-    sub.connect(sf);sf.connect(sg);sg.connect(ctx.destination);sub.start(blastAt);sub.stop(blastAt+.44);
-    // Soft sparkling tail, smooth filtered noise rather than sharp crackling.
-    const tail=noise(.42),tf=ctx.createBiquadFilter(),tg=ctx.createGain();
-    tf.type="highpass";tf.frequency.setValueAtTime(1500,blastAt);tf.frequency.exponentialRampToValueAtTime(700,blastAt+.4);
-    tg.gain.setValueAtTime(.0001,blastAt+.025);tg.gain.exponentialRampToValueAtTime(.025,blastAt+.07);tg.gain.exponentialRampToValueAtTime(.0001,blastAt+.42);
-    tail.connect(tf);tf.connect(tg);tg.connect(ctx.destination);tail.start(blastAt+.025);tail.stop(blastAt+.44);
+    const makeNoise=(duration)=>{
+      const buffer=ctx.createBuffer(1,Math.ceil(ctx.sampleRate*duration),ctx.sampleRate);
+      const data=buffer.getChannelData(0);for(let i=0;i<data.length;i++)data[i]=(Math.random()*2-1)*(.8+Math.random()*.2);
+      const source=ctx.createBufferSource();source.buffer=buffer;return source;
+    };
+    // Gentle, continuous upward rush: remove the sharp cartoon "whoop".
+    const rush=makeNoise(.64),rf=ctx.createBiquadFilter(),rg=ctx.createGain();
+    rf.type="lowpass";rf.frequency.setValueAtTime(420,now);rf.frequency.exponentialRampToValueAtTime(1450,now+.52);rf.Q.value=.45;
+    rg.gain.setValueAtTime(.0001,now);rg.gain.exponentialRampToValueAtTime(.025,now+.16);rg.gain.exponentialRampToValueAtTime(.0001,now+.62);
+    rush.connect(rf);rf.connect(rg);rg.connect(ctx.destination);rush.start(now);rush.stop(now+.64);
+    // A barely audible airy pitch shimmer underneath, not a prominent whistle.
+    const shimmer=ctx.createOscillator(),shg=ctx.createGain();shimmer.type="sine";
+    shimmer.frequency.setValueAtTime(360,now);shimmer.frequency.exponentialRampToValueAtTime(760,now+.55);
+    shg.gain.setValueAtTime(.0001,now);shg.gain.exponentialRampToValueAtTime(.0045,now+.22);shg.gain.exponentialRampToValueAtTime(.0001,now+.6);
+    shimmer.connect(shg);shg.connect(ctx.destination);shimmer.start(now);shimmer.stop(now+.61);
+    // Clean rounded blast only: no glassy crackle or rapid pop sounds.
+    const blastAt=now+.62;
+    const boom=ctx.createOscillator(),boog=ctx.createGain(),boomFilter=ctx.createBiquadFilter();
+    boom.type="sine";boom.frequency.setValueAtTime(105,blastAt);boom.frequency.exponentialRampToValueAtTime(38,blastAt+.42);
+    boomFilter.type="lowpass";boomFilter.frequency.value=220;
+    boog.gain.setValueAtTime(.0001,blastAt);boog.gain.exponentialRampToValueAtTime(.16,blastAt+.025);boog.gain.exponentialRampToValueAtTime(.0001,blastAt+.48);
+    boom.connect(boomFilter);boomFilter.connect(boog);boog.connect(ctx.destination);boom.start(blastAt);boom.stop(blastAt+.5);
   }catch(_){}
 }
 function launchMCChatFirework(positionX=null,heightY=null){
