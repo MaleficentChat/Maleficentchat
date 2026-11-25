@@ -4947,15 +4947,11 @@ function dmMessageHTML(message, messages, user) {
             : ""
         }
 
-        <div class="dm-message-meta">
-          ${(()=>{const d=new Date(message.time);return Number.isNaN(d.getTime())?"":String(d.getDate()).padStart(2,"0")+"/"+String(d.getMonth()+1).padStart(2,"0")+" · "+String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0");})()}
-          ${message.read ? " · read" : " · delivered"}
-        </div>
-
         <div class="msg-actions dm-message-actions">
-          ${message.text && !message.deleted ? `<button type="button" class="mini" onclick="translateMessageText(&quot;${esc(message.id)}&quot;,&quot;dm&quot;)">文 Translate</button>` : ""}
-          <button type="button" class="mini" onclick="replyDMMsg('${esc(message.id)}','${esc(user.id)}')">Quote</button>
-          ${deleteAction}
+          <button type="button" class="mini dm-action-icon" onclick="replyDMMsg('\${esc(message.id)}','\${esc(user.id)}')" title="Reply" aria-label="Reply">↩</button>
+          \${message.text && !message.deleted ? '<button type="button" class="mini dm-action-icon" onclick="forwardDMMsg(\\'\${esc(message.id)}\\',\\'\${esc(user.id)}\\')" title="Forward" aria-label="Forward">↗</button>' : ""}
+          \${deleteAction}
+          \${!isMine && !message.deleted ? '<button type="button" class="mini dm-action-icon dm-report-icon" onclick="reportDMMsg(\\'\${esc(message.id)}\\',\\'\${esc(senderId)}\\')" title="Report" aria-label="Report">⚑</button>' : ""}
         </div>
       </div>
     </div>
@@ -5003,9 +4999,9 @@ async function openDM(id) {
           </div>
         </div>
         <div class="dm-chat-actions">
-          <button type="button" class="mini dm-search-toggle" id="dmSearchToggle" title="Search conversation" aria-expanded="false" aria-controls="dmMessageSearchPanel">⌕</button>
           <button type="button" class="mini dm-settings-toggle" id="dmChatSettingsBtn" title="Conversation settings" aria-expanded="false">⚙️</button>
-          <button type="button" class="mini dm-minimize-button" id="dmChatMinimizeBtn" title="Minimize conversation" aria-label="Minimize conversation">—</button>
+          <button type="button" class="mini dm-search-toggle" id="dmSearchToggle" title="Search conversation" aria-expanded="false" aria-controls="dmMessageSearchPanel">⌕</button>
+          <button type="button" class="mini dm-minimize-button" id="dmChatMinimizeBtn" title="Minimize conversation" aria-label="Minimize conversation">−</button>
           <button type="button" class="mini dm-close-button" id="dmChatCloseBtn" title="Close conversation" aria-label="Close conversation">×</button>
           <div class="dm-settings-menu hidden" id="dmChatSettingsMenu">
 <button type="button" data-dm-action="nickname">✏️ <span><b>Nickname</b><small>Set a private nickname</small></span></button>
@@ -5194,6 +5190,41 @@ async function openDM(id) {
   } catch (error) {
     toast(error.message);
   }
+}
+
+
+async function forwardDMMsg(messageId,conversationUserId){
+  const message=(state.dmMessages||[]).find(m=>String(m.id)===String(messageId));
+  if(!message||message.deleted)return;
+  if(!message.text){toast("Only text messages can be forwarded right now.");return;}
+  const username=prompt("Forward this message to which username?");
+  if(username===null||!username.trim())return;
+  try{
+    const users=await api("/api/users");
+    const target=(users.users||[]).find(u=>String(u.id)!==String(state.user?.id)&&
+      (String(u.username||"").toLowerCase()===username.trim().replace(/^@/,"").toLowerCase()||
+       String(u.displayName||"").toLowerCase()===username.trim().toLowerCase()));
+    if(!target){toast("User not found. Enter their exact username.");return;}
+    const originalSender=String(message.from)===String(state.user?.id)?"you":(state.dmPeerUser?.username||state.dmPeerUser?.displayName||"the sender");
+    const fd=new FormData();
+    fd.append("text","↗ Forwarded message from "+originalSender+":\\n\\n"+message.text);
+    await api("/api/dm/"+encodeURIComponent(target.id),{method:"POST",body:fd});
+    toast("Message forwarded to @"+(target.username||target.displayName)+".");
+    loadDMList().catch(()=>{});
+  }catch(error){toast(error.message||"Could not forward message.");}
+}
+async function reportDMMsg(messageId,senderId){
+  const message=(state.dmMessages||[]).find(m=>String(m.id)===String(messageId));
+  if(!message||message.deleted||String(senderId)===String(state.user?.id))return;
+  const reason=prompt("Why are you reporting this message?","");
+  if(reason===null||!reason.trim())return;
+  try{
+    await api("/api/report",{method:"POST",body:JSON.stringify({
+      reportedUserId:String(senderId),conversationWithId:String(state.user.id),
+      reason:"Message report: "+String(message.text||"").slice(0,250)+" | Reason: "+reason.trim().slice(0,250)
+    })});
+    toast("Report submitted to staff.");
+  }catch(error){toast(error.message||"Could not submit report.");}
 }
 
 function replyDMMsg(messageId, userId) {
