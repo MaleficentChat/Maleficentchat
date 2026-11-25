@@ -2264,19 +2264,30 @@ function setMCChatFireworksLoopUI(on){
 }
 function launchMCChatFireworksWave(){
   if(!mcChatFireworksLoopOn||document.hidden)return;
-  // Three overlapping launches per wave at different horizontal/vertical positions.
-  const positions=[.18+Math.random()*.12,.43+Math.random()*.14,.70+Math.random()*.12];
-  const heights=[.20+Math.random()*.13,.34+Math.random()*.18,.16+Math.random()*.16];
-  positions.forEach((x,i)=>window.setTimeout(()=>{
-    if(mcChatFireworksLoopOn&&!document.hidden)launchMCChatFirework(x,heights[i]);
-  },i*260));
+  // Random-sized waves, with launches spread across the full screen and no fixed pattern.
+  const count=1+Math.floor(Math.random()*4);
+  window.__mcFireworkRecentPositions=window.__mcFireworkRecentPositions||[];
+  const launches=[];
+  for(let i=0;i<count;i++){
+    let x=.08+Math.random()*.84;
+    for(let tries=0;tries<8;tries++){
+      if(window.__mcFireworkRecentPositions.every(prev=>Math.abs(prev-x)>.16))break;
+      x=.08+Math.random()*.84;
+    }
+    window.__mcFireworkRecentPositions.push(x);
+    if(window.__mcFireworkRecentPositions.length>5)window.__mcFireworkRecentPositions.shift();
+    launches.push({x,y:.12+Math.random()*.42,delay:i===0?Math.random()*180:120+Math.random()*720});
+  }
+  launches.forEach(({x,y,delay})=>window.setTimeout(()=>{
+    if(mcChatFireworksLoopOn&&!document.hidden)launchMCChatFirework(x,y);
+  },delay));
 }
 function startMCChatFireworksLoop(){
   if(mcChatFireworksLoopOn)return stopMCChatFireworksLoop();
   mcChatFireworksLoopOn=true;
   setMCChatFireworksLoopUI(true);
   launchMCChatFireworksWave();
-  mcChatFireworksLoopTimer=window.setInterval(launchMCChatFireworksWave,1500);
+  mcChatFireworksLoopTimer=window.setInterval(launchMCChatFireworksWave,1250+Math.random()*1150);
 }
 function stopMCChatFireworksLoop(){
   mcChatFireworksLoopOn=false;
