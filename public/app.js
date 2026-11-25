@@ -3556,21 +3556,22 @@ function playMCFireworkSound(){
     const ctx=window.__mcFireworkAudioContext||(window.__mcFireworkAudioContext=new AC());
     if(ctx.state==="suspended")ctx.resume().catch(()=>{});
     const now=ctx.currentTime;
-    // Launch: airy rushing hiss plus a rising whistle.
     const makeNoise=(duration)=>{
       const buffer=ctx.createBuffer(1,Math.ceil(ctx.sampleRate*duration),ctx.sampleRate);
       const data=buffer.getChannelData(0);for(let i=0;i<data.length;i++)data[i]=(Math.random()*2-1)*(.8+Math.random()*.2);
       const source=ctx.createBufferSource();source.buffer=buffer;return source;
     };
-    const whoosh=makeNoise(.55),wf=ctx.createBiquadFilter(),wg=ctx.createGain();
-    wf.type="lowpass";wf.frequency.setValueAtTime(650,now);wf.frequency.exponentialRampToValueAtTime(2400,now+.48);
-    wg.gain.setValueAtTime(.0001,now);wg.gain.exponentialRampToValueAtTime(.045,now+.1);wg.gain.exponentialRampToValueAtTime(.0001,now+.53);
-    whoosh.connect(wf);wf.connect(wg);wg.connect(ctx.destination);whoosh.start(now);whoosh.stop(now+.55);
-    const whistle=ctx.createOscillator(),whg=ctx.createGain();whistle.type="sine";
-    whistle.frequency.setValueAtTime(520,now);whistle.frequency.exponentialRampToValueAtTime(1250,now+.42);whistle.frequency.exponentialRampToValueAtTime(850,now+.58);
-    whg.gain.setValueAtTime(.0001,now);whg.gain.exponentialRampToValueAtTime(.022,now+.1);whg.gain.exponentialRampToValueAtTime(.0001,now+.58);
-    whistle.connect(whg);whg.connect(ctx.destination);whistle.start(now);whistle.stop(now+.59);
-    // Explosion follows the rocket, with a bass boom and real broadband crackle.
+    // Gentle, continuous upward rush: remove the sharp cartoon "whoop".
+    const rush=makeNoise(.64),rf=ctx.createBiquadFilter(),rg=ctx.createGain();
+    rf.type="lowpass";rf.frequency.setValueAtTime(420,now);rf.frequency.exponentialRampToValueAtTime(1450,now+.52);rf.Q.value=.45;
+    rg.gain.setValueAtTime(.0001,now);rg.gain.exponentialRampToValueAtTime(.025,now+.16);rg.gain.exponentialRampToValueAtTime(.0001,now+.62);
+    rush.connect(rf);rf.connect(rg);rg.connect(ctx.destination);rush.start(now);rush.stop(now+.64);
+    // A barely audible airy pitch shimmer underneath, not a prominent whistle.
+    const shimmer=ctx.createOscillator(),shg=ctx.createGain();shimmer.type="sine";
+    shimmer.frequency.setValueAtTime(360,now);shimmer.frequency.exponentialRampToValueAtTime(760,now+.55);
+    shg.gain.setValueAtTime(.0001,now);shg.gain.exponentialRampToValueAtTime(.0045,now+.22);shg.gain.exponentialRampToValueAtTime(.0001,now+.6);
+    shimmer.connect(shg);shg.connect(ctx.destination);shimmer.start(now);shimmer.stop(now+.61);
+    // Deep, rounded explosion and natural crackle, unchanged in character.
     const blastAt=now+.62,crackle=makeNoise(.72),bf=ctx.createBiquadFilter(),bg=ctx.createGain();
     bf.type="bandpass";bf.frequency.setValueAtTime(1700,blastAt);bf.Q.value=.65;
     bg.gain.setValueAtTime(.0001,blastAt);bg.gain.exponentialRampToValueAtTime(.20,blastAt+.018);bg.gain.exponentialRampToValueAtTime(.0001,blastAt+.68);
@@ -3580,7 +3581,6 @@ function playMCFireworkSound(){
     boomFilter.type="lowpass";boomFilter.frequency.value=220;
     boog.gain.setValueAtTime(.0001,blastAt);boog.gain.exponentialRampToValueAtTime(.16,blastAt+.025);boog.gain.exponentialRampToValueAtTime(.0001,blastAt+.48);
     boom.connect(boomFilter);boomFilter.connect(boog);boog.connect(ctx.destination);boom.start(blastAt);boom.stop(blastAt+.5);
-    // A few short crackling spark accents after the main bang.
     for(let i=0;i<7;i++){const n=makeNoise(.065),filt=ctx.createBiquadFilter(),g=ctx.createGain(),at=blastAt+.08+i*.075;
       filt.type="highpass";filt.frequency.value=2200+i*180;g.gain.setValueAtTime(.0001,at);g.gain.exponentialRampToValueAtTime(.045,at+.008);g.gain.exponentialRampToValueAtTime(.0001,at+.06);
       n.connect(filt);filt.connect(g);g.connect(ctx.destination);n.start(at);n.stop(at+.065);
