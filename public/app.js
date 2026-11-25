@@ -2236,27 +2236,40 @@ function openFireworksWish(){
     <textarea id="fireworksMessage" rows="3" maxlength="240" placeholder="Write your own wish…"></textarea>
     <button type="button" id="sendFireworksWish" class="primary" style="width:100%;margin-top:12px">🎆 Send Fireworks Wish</button>
   </div>`);
-  mcGetById("sendFireworksWish")?.addEventListener("click",async()=>{
-    const button=mcGetById("sendFireworksWish");
-    const recipient=String(mcGetById("fireworksRecipient")?.value||"").trim().replace(/^@/,"");
-    const custom=String(mcGetById("fireworksMessage")?.value||"").trim();
-    if(!/^[A-Za-z0-9_]{2,32}$/.test(recipient)){toast("Enter a valid username.");return;}
-    if(!custom){toast("Write a personal wish before sending.");return;}
-    if(String(state.currentRoom||"")!==roomId){toast("Your room changed. Reopen Fireworks in the room you want.");return;}
-    if(button){button.disabled=true;button.textContent="Sending…";}
-    try{
-      const text="🎆 FIREWORKS WISH 🎆\nTo @"+recipient+"\n"+custom+"\n🎇 🎆 🎇";
-      const result=await api("/api/rooms/"+encodeURIComponent(roomId)+"/messages",{method:"POST",body:JSON.stringify({text})});
-      if(result.message&&String(state.currentRoom)===roomId)appendMessage(result.message);
-      closeModal();
-      toast("Fireworks Wish sent!");
-    }catch(error){
-      if(button){button.disabled=false;button.textContent="🎆 Send Fireworks Wish";}
-      toast(error.message||"Could not send the Fireworks Wish.");
-    }
-  });
+  const panel=mcGetById("modalBody")?.querySelector(".fireworks-wish-panel");
+  panel?.querySelector("#fireworksRecipient")?.focus();
 }
 
+// Capture the modal's send action before any room-composer or overlay handlers.
+// Read the fields from this exact modal panel, not from a potentially duplicated ID.
+document.addEventListener("click",async event=>{
+  const button=event.target instanceof Element?event.target.closest("#sendFireworksWish"):null;
+  if(!button)return;
+  event.preventDefault();
+  event.stopPropagation();
+  event.stopImmediatePropagation();
+  if(button.disabled)return;
+  const panel=button.closest(".fireworks-wish-panel");
+  const recipient=String(panel?.querySelector("#fireworksRecipient")?.value||"").trim().replace(/^@/,"");
+  const custom=String(panel?.querySelector("#fireworksMessage")?.value||"").trim();
+  if(!/^[A-Za-z0-9_]{2,32}$/.test(recipient)){toast("Enter a valid username.");return;}
+  if(!custom){toast("Write a personal wish before sending.");return;}
+  const roomId=String(state.currentRoom||"");
+  if(!roomId){toast("Join a room before sending a Fireworks Wish.");return;}
+  button.disabled=true;
+  button.textContent="Sending…";
+  try{
+    const text="🎆 FIREWORKS WISH 🎆\\nTo @"+recipient+"\\n"+custom+"\\n🎇 🎆 🎇";
+    const result=await api("/api/rooms/"+encodeURIComponent(roomId)+"/messages",{method:"POST",body:JSON.stringify({text})});
+    if(result.message&&String(state.currentRoom)===roomId)appendMessage(result.message);
+    closeModal();
+    toast("Fireworks Wish sent!");
+  }catch(error){
+    button.disabled=false;
+    button.textContent="🎆 Send Fireworks Wish";
+    toast(error.message||"Could not send the Fireworks Wish.");
+  }
+},true);
 
 
 /* ---------------- ROOMS ---------------- */
