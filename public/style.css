@@ -11619,3 +11619,26 @@ html{scroll-behavior:smooth;}
 body.party-mode-active::before{content:"";position:fixed;inset:0;z-index:9996;pointer-events:none;background:radial-gradient(ellipse at 18% 20%,rgba(255,80,210,.16),transparent 44%),radial-gradient(ellipse at 82% 72%,rgba(88,220,255,.14),transparent 48%),radial-gradient(ellipse at 50% 48%,rgba(255,255,180,.055),transparent 60%);animation:party-ambient-breathe 5.2s ease-in-out infinite alternate}
 body.party-mode-active #partySparkleLayer{mix-blend-mode:screen}
 @keyframes party-ambient-breathe{0%{opacity:.5;filter:hue-rotate(0deg)}100%{opacity:1;filter:hue-rotate(28deg)}}
+
+/* Approved PM layout: receive left, send right, avatar at the outer edge; compact icon actions. */
+.dm-message-list{height:calc(100dvh - 250px)!important;min-height:180px!important;max-height:none!important;overflow-y:auto!important;overscroll-behavior:contain!important;}
+.dm-message-list .dm-msg{display:flex!important;align-items:flex-end!important;gap:8px!important;width:100%!important;max-width:100%!important;margin:8px 0!important;}
+.dm-message-list .dm-msg.theirs{justify-content:flex-start!important;flex-direction:row!important;}
+.dm-message-list .dm-msg.mine{justify-content:flex-end!important;flex-direction:row-reverse!important;}
+.dm-message-list .dm-msg .dm-message-avatar{align-self:flex-end!important;flex:0 0 34px!important;width:34px!important;height:34px!important;margin:0!important;}
+.dm-message-list .dm-msg .msg-body{width:auto!important;max-width:min(78%,680px)!important;flex:0 1 auto!important;min-width:0!important;overflow-wrap:anywhere!important;}
+.dm-message-list .dm-msg.mine .msg-body{margin-left:auto!important;text-align:right!important;}
+.dm-message-list .dm-msg.theirs .msg-body{margin-right:auto!important;text-align:left!important;}
+.dm-message-list .dm-message-meta{display:none!important;}
+.dm-message-list .dm-message-actions{justify-content:flex-end!important;align-items:center!important;gap:5px!important;}
+.dm-message-list .dm-msg.theirs .dm-message-actions{justify-content:flex-start!important;}
+.dm-message-list .dm-action-icon{width:32px!important;height:32px!important;min-width:32px!important;padding:0!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;font-size:17px!important;border-radius:9px!important;}
+.dm-message-list .dm-report-icon{color:#f0c26a!important;}
+.dm-composer{position:sticky!important;bottom:0!important;z-index:3!important;margin-top:8px!important;padding-bottom:env(safe-area-inset-bottom,0px)!important;}
+@media(max-width:700px){
+ .dm-message-list{height:calc(100dvh - 235px)!important;min-height:160px!important;}
+ .dm-message-list .dm-msg .dm-message-avatar{width:30px!important;height:30px!important;min-width:30px!important;flex-basis:30px!important;}
+ .dm-message-list .dm-msg .dm-message-avatar .avatar{width:30px!important;height:30px!important;min-width:30px!important;}
+ .dm-message-list .dm-msg .msg-body{max-width:82%!important;}
+ .dm-message-list .dm-action-icon{width:30px!important;height:30px!important;min-width:30px!important;}
+}
