@@ -11614,3 +11614,8 @@ html{scroll-behavior:smooth;}
  .modal-card:has(.dm-chat-header) .dm-chat-actions>.mini{flex-basis:30px!important;width:30px!important;min-width:30px!important;height:30px!important;min-height:30px!important;font-size:14px!important}
  .dm-message-list .dm-msg .dm-message-avatar,.dm-message-list .dm-msg .dm-message-avatar .avatar{flex-basis:30px!important;width:30px!important;height:30px!important;min-width:30px!important;min-height:30px!important}
 }
+
+/* Party Mode restoration: ambient screen glow and drifting sparkles */
+body.party-mode-active::before{content:"";position:fixed;inset:0;z-index:9996;pointer-events:none;background:radial-gradient(ellipse at 18% 20%,rgba(255,80,210,.16),transparent 44%),radial-gradient(ellipse at 82% 72%,rgba(88,220,255,.14),transparent 48%),radial-gradient(ellipse at 50% 48%,rgba(255,255,180,.055),transparent 60%);animation:party-ambient-breathe 5.2s ease-in-out infinite alternate}
+body.party-mode-active #partySparkleLayer{mix-blend-mode:screen}
+@keyframes party-ambient-breathe{0%{opacity:.5;filter:hue-rotate(0deg)}100%{opacity:1;filter:hue-rotate(28deg)}}
