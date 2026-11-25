@@ -11650,3 +11650,30 @@ body.party-mode-active #partySparkleLayer{mix-blend-mode:screen}
  .modal-card:has(.dm-chat-header){height:94dvh!important;max-height:94dvh!important;}
  .dm-message-list{height:auto!important;flex:1 1 0!important;min-height:0!important;}
 }
+
+/* PM header owns its single close control; suppress the modal's legacy X. */
+#modal .modal-card:has(.dm-chat-header) > .modal-close,
+#modal .modal-card:has(.dm-chat-header) .modal-close{
+  display:none!important;
+  visibility:hidden!important;
+  pointer-events:none!important;
+}
+#modal .modal-card:has(.dm-chat-header) .dm-chat-header{
+  position:relative!important;
+  z-index:2!important;
+}
+#modal .modal-card:has(.dm-chat-header) .dm-chat-actions{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:flex-end!important;
+  gap:5px!important;
+  flex:0 0 auto!important;
+  position:relative!important;
+}
+#modal .modal-card:has(.dm-chat-header) .dm-close-button{
+  position:static!important;
+  inset:auto!important;
+  transform:none!important;
+  margin:0!important;
+  z-index:auto!important;
+}
