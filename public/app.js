@@ -3794,14 +3794,19 @@ function canUsePartyMode(){
   return ["SUPER_ADMIN","COMMISSOR","INSTRUCTOR","COOWNER","OWNER","DEVELOPER"].includes(rank)||state.user?.username==="Maleficent";
 }
 let partySparkleCanvas=null,partySparkleCtx=null,partySparkleRAF=0,partySparkles=[],partySoundEnabled=true;
-function partySparkleFrame(){
+let partySparkleLastFrame=0;
+function partySparkleFrame(now=0){
   if(!partySparkleCanvas||!partySparkleCtx)return;
+  if(document.hidden){partySparkleRAF=requestAnimationFrame(partySparkleFrame);return;}
+  if(now-partySparkleLastFrame<32){partySparkleRAF=requestAnimationFrame(partySparkleFrame);return;}
+  partySparkleLastFrame=now;
   const ctx=partySparkleCtx,w=innerWidth,h=innerHeight;ctx.clearRect(0,0,w,h);
   for(const p of partySparkles){p.x+=p.vx;p.y+=p.vy;p.twinkle+=p.twinkleSpeed;if(p.x<-12)p.x=w+12;if(p.x>w+12)p.x=-12;if(p.y>h+12){p.y=-12;p.x=Math.random()*w;}
-    ctx.save();ctx.globalAlpha=p.alpha*(.65+.35*Math.sin(p.twinkle));ctx.shadowBlur=p.glow;ctx.shadowColor=p.color;ctx.fillStyle=p.color;
-    if(p.star){ctx.translate(p.x,p.y);ctx.rotate(p.twinkle*.12);ctx.beginPath();ctx.moveTo(0,-p.size*1.7);ctx.lineTo(p.size*.5,0);ctx.lineTo(0,p.size*1.7);ctx.lineTo(-p.size*.5,0);ctx.closePath();ctx.fill();}
-    else{ctx.beginPath();ctx.arc(p.x,p.y,p.size,0,Math.PI*2);ctx.fill();}ctx.restore();}
-  partySparkleRAF=requestAnimationFrame(partySparkleFrame);
+    ctx.globalAlpha=p.alpha*(.65+.35*Math.sin(p.twinkle));ctx.shadowBlur=p.glow;ctx.shadowColor=p.color;ctx.fillStyle=p.color;
+    if(p.star){ctx.save();ctx.translate(p.x,p.y);ctx.rotate(p.twinkle*.12);ctx.beginPath();ctx.moveTo(0,-p.size*1.7);ctx.lineTo(p.size*.5,0);ctx.lineTo(0,p.size*1.7);ctx.lineTo(-p.size*.5,0);ctx.closePath();ctx.fill();ctx.restore();}
+    else{ctx.beginPath();ctx.arc(p.x,p.y,p.size,0,Math.PI*2);ctx.fill();}
+  }
+  ctx.globalAlpha=1;ctx.shadowBlur=0;partySparkleRAF=requestAnimationFrame(partySparkleFrame);
 }
 function startPartySparkles(){
   if(partySparkleCanvas)return;partySparkleCanvas=document.createElement("canvas");partySparkleCanvas.id="partySparkleLayer";partySparkleCanvas.setAttribute("aria-hidden","true");
