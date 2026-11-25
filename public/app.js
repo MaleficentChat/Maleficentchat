@@ -3478,16 +3478,43 @@ function closeStefanCard(id){
   document.querySelectorAll(".stefan-card").forEach(x=>x.remove());
 }
 
+function isFireworksWishMessage(message) {
+  return /^🎆 FIREWORKS WISH 🎆/m.test(String(message?.text||""));
+}
+
+function showFireworksWishPopup(message) {
+  const lines=String(message?.text||"").split(/\r?\n/).map(line=>line.trim()).filter(Boolean);
+  const recipientLine=lines.find(line=>/^To @/i.test(line))||"";
+  const wishLine=lines.find((line,index)=>index>=3&&!/^🎇|^🎆/.test(line))||lines[3]||"";
+  const recipient=recipientLine.replace(/^To\s+/i,"").trim();
+  const wish=wishLine.replace(/^✨\s*/,"").replace(/\s*✨$/,"").trim();
+  const sender=String(message?.username||message?.senderUsername||message?.sender?.username||"Someone");
+  if(!recipient||!wish)return;
+  document.getElementById("fireworksWishToast")?.remove();
+  const popup=document.createElement("div");
+  popup.id="fireworksWishToast";
+  popup.setAttribute("role","status");
+  popup.setAttribute("aria-live","polite");
+  popup.style.cssText="position:fixed;z-index:100000;top:18%;left:50%;transform:translateX(-50%);width:min(280px,calc(100vw - 36px));box-sizing:border-box;padding:10px 14px 9px;border:1px solid rgba(255,205,120,.62);border-radius:13px;background:linear-gradient(145deg,rgba(34,22,48,.97),rgba(15,12,25,.97));box-shadow:0 0 10px rgba(255,190,90,.28),0 0 24px rgba(153,91,255,.24);text-align:center;color:#f7edff;pointer-events:none;animation:mcFireworksPopupIn .22s ease-out both";
+  popup.innerHTML='<style>@keyframes mcFireworksPopupIn{from{opacity:0;transform:translate(-50%,-8px) scale(.96)}to{opacity:1;transform:translate(-50%,0) scale(1)}}@keyframes mcFireworksSpark{0%,100%{opacity:.45;transform:scale(.85)}50%{opacity:1;transform:scale(1.12)}}</style><div style="font-size:13px;font-weight:700;color:#ffd978;letter-spacing:.3px">🎆 Fireworks Wish 🎆</div><div style="font-size:11px;color:#d9c7f2;margin-top:3px">'+esc(recipient)+'</div><div style="font-size:17px;line-height:1.28;font-weight:750;color:#ffe8a3;text-shadow:0 0 9px rgba(255,205,120,.24);overflow-wrap:anywhere;margin:5px 0">'+esc(wish)+'</div><div style="font-size:10px;color:#c8b5e8">Sent by '+esc(sender)+'</div><div aria-hidden="true" style="font-size:12px;letter-spacing:4px;margin-top:3px;animation:mcFireworksSpark .8s ease-in-out infinite">✨ 🎇 ✨</div>';
+  document.body.appendChild(popup);
+  window.setTimeout(()=>{popup.style.transition="opacity .25s ease,transform .25s ease";popup.style.opacity="0";popup.style.transform="translate(-50%,-5px)";window.setTimeout(()=>popup.remove(),260);},3000);
+}
+
 function appendMessage(message) {
   if (
     document.querySelector(
       `[data-mid="${message.id}"]`
-    )
+    ) || state.messages.some(item=>String(item.id)===String(message.id))
   ) {
     return;
   }
 
   state.messages.push(message);
+  if(isFireworksWishMessage(message)){
+    showFireworksWishPopup(message);
+    return;
+  }
 
   mcGetById("messages").insertAdjacentHTML(
     "beforeend",
