@@ -2239,13 +2239,13 @@ function openFireworksWish(){
   mcGetById("sendFireworksWish")?.addEventListener("click",async()=>{
     const button=mcGetById("sendFireworksWish");
     const recipient=String(mcGetById("fireworksRecipient")?.value||"").trim().replace(/^@/,"");
-    const custom=String(message?.value||"").trim();
+    const custom=String(mcGetById("fireworksMessage")?.value||"").trim();
     if(!/^[A-Za-z0-9_]{2,32}$/.test(recipient)){toast("Enter a valid username.");return;}
     if(!custom){toast("Write a personal wish before sending.");return;}
     if(String(state.currentRoom||"")!==roomId){toast("Your room changed. Reopen Fireworks in the room you want.");return;}
     if(button){button.disabled=true;button.textContent="Sending…";}
     try{
-      const text="🎆 FIREWORKS WISH 🎆\nTo @"+recipient+"\n✨ "+title+" ✨\n"+custom+"\n🎇 🎆 🎇";
+      const text="🎆 FIREWORKS WISH 🎆\nTo @"+recipient+"\n"+custom+"\n🎇 🎆 🎇";
       const result=await api("/api/rooms/"+encodeURIComponent(roomId)+"/messages",{method:"POST",body:JSON.stringify({text})});
       if(result.message&&String(state.currentRoom)===roomId)appendMessage(result.message);
       closeModal();
@@ -3478,7 +3478,7 @@ function showFireworksWishPopup(message) {
   }
   const lines=String(message?.text||"").split(/\r?\n/).map(line=>line.trim()).filter(Boolean);
   const recipientLine=lines.find(line=>/^To @/i.test(line))||"";
-  const wishLine=lines.find((line,index)=>index>=3&&!/^🎇|^🎆/.test(line))||lines[3]||"";
+  const wishLine=lines.find((line,index)=>index>=2&&!/^🎇|^🎆/.test(line))||lines[2]||"";
   const recipient=recipientLine.replace(/^To\s+/i,"").trim();
   const wish=wishLine.replace(/^✨\s*/,"").replace(/\s*✨$/,"").trim();
   const sender=String(message?.username||message?.senderUsername||message?.sender?.username||"Someone");
