@@ -2239,19 +2239,49 @@ function openFireworksWish(){
     <section class="fireworks-only-panel" style="padding:12px;border-radius:14px;background:radial-gradient(circle at 50% 0%,rgba(255,105,210,.18),transparent 70%),linear-gradient(145deg,#21152d,#100d19);border:1px solid rgba(255,120,210,.28);text-align:center">
       <h2 style="margin:2px 0 8px;color:#ffb8ee">🎇 Fireworks</h2>
       <p style="font-size:12px;opacity:.78;margin:0 0 12px">Just the celebration — no wish, no popup.</p>
-      <button type="button" id="launchFireworksOnly" class="primary" style="width:100%">🎇 FIREWORKS</button>
+      <button type="button" id="launchFireworksOnly" class="primary" style="width:100%">🎇 START FIREWORKS</button>
     </section>
   </div>`);
   mcGetById("modalBody")?.querySelector("#fireworksRecipient")?.focus();
 }
 
-// Fireworks-only action: no message is created and no wish popup is shown.
+// Fireworks-only action toggles a continuous celebration. The floating stop control
+// remains available after the panel closes so the user can end it at any time.
+let mcChatFireworksLoopTimer=null;
+let mcChatFireworksLoopOn=false;
+function setMCChatFireworksLoopUI(on){
+  let control=document.getElementById("mcFireworksLoopControl");
+  if(!control&&on){
+    control=document.createElement("button");
+    control.id="mcFireworksLoopControl";
+    control.type="button";
+    control.style.cssText="position:fixed;z-index:100001;right:14px;bottom:calc(18px + env(safe-area-inset-bottom,0px));padding:11px 15px;border-radius:999px;border:1px solid rgba(255,180,230,.55);background:linear-gradient(135deg,#381b46,#170f22);color:#ffe4fa;box-shadow:0 0 16px rgba(255,90,210,.3);font-weight:800;cursor:pointer;pointer-events:auto";
+    control.textContent="🎇 FIREWORKS ON · STOP";
+    control.addEventListener("click",stopMCChatFireworksLoop);
+    document.body.appendChild(control);
+  }
+  if(control&&!on)control.remove();
+}
+function startMCChatFireworksLoop(){
+  if(mcChatFireworksLoopOn)return stopMCChatFireworksLoop();
+  mcChatFireworksLoopOn=true;
+  setMCChatFireworksLoopUI(true);
+  launchMCChatFirework();
+  mcChatFireworksLoopTimer=window.setInterval(()=>{
+    if(!document.hidden)launchMCChatFirework();
+  },2200);
+}
+function stopMCChatFireworksLoop(){
+  mcChatFireworksLoopOn=false;
+  if(mcChatFireworksLoopTimer){clearInterval(mcChatFireworksLoopTimer);mcChatFireworksLoopTimer=null;}
+  setMCChatFireworksLoopUI(false);
+}
 document.addEventListener("click",event=>{
   const button=event.target instanceof Element?event.target.closest("#launchFireworksOnly"):null;
   if(!button)return;
   event.preventDefault();event.stopPropagation();
   closeModal();
-  launchMCChatFirework();
+  startMCChatFireworksLoop();
 },true);
 
 // Capture the modal's send action before any room-composer or overlay handlers.
@@ -3562,7 +3592,7 @@ function showFireworksWishPopup(message) {
   const wish=wishLine.replace(/^✨\s*/,"").replace(/\s*✨$/,"").trim();
   const sender=String(message?.username||message?.senderUsername||message?.sender?.username||"Someone");
   if(!recipient||!wish)return;
-  launchMCChatFirework();
+  // Firework Wishes use only the glowing wish popup—no rocket animation or launch sound.
   document.getElementById("fireworksWishToast")?.remove();
   const popup=document.createElement("div");
   popup.id="fireworksWishToast";
