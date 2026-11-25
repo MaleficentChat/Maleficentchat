@@ -3502,7 +3502,16 @@ function showFireworksWishPopup(message) {
   popup.setAttribute("role","status");
   popup.setAttribute("aria-live","polite");
   popup.style.cssText="position:fixed;z-index:100000;top:18%;left:50%;transform:translateX(-50%);width:min(100%,420px);max-width:calc(100vw - 36px);box-sizing:border-box;padding:18px 20px 20px;border:1px solid rgba(255,205,120,.62);border-radius:18px;background:radial-gradient(ellipse at 50% 0%,rgba(232,162,115,.18),transparent 68%),linear-gradient(145deg,rgba(34,22,48,.98),rgba(15,12,25,.98));box-shadow:0 0 18px rgba(255,190,90,.28),0 0 30px rgba(153,91,255,.24),inset 0 0 22px rgba(255,205,120,.05);text-align:center;color:#f7edff;pointer-events:none;animation:mcFireworksPopupIn .22s ease-out both";
-  popup.innerHTML='<style>@keyframes mcFireworksPopupIn{from{opacity:0;transform:translate(-50%,-8px) scale(.96)}to{opacity:1;transform:translate(-50%,0) scale(1)}}@keyframes mcFireworksSpark{0%,100%{opacity:.45;transform:scale(.85)}50%{opacity:1;transform:scale(1.12)}}</style><div style="font-size:13px;font-weight:700;color:#ffd978;letter-spacing:.3px">🎆 Fireworks Wish 🎆</div><div style="font-size:11px;color:#d9c7f2;margin-top:3px">'+esc(recipient)+'</div><div style="font-size:17px;line-height:1.28;font-weight:750;color:#ffe8a3;text-shadow:0 0 9px rgba(255,205,120,.24);overflow-wrap:anywhere;margin:5px 0">'+esc(wish)+'</div><div style="font-size:10px;color:#c8b5e8">Sent by '+esc(sender)+'</div>';
+  const bubbleColors=["#ff5fc8","#52e6ff","#ffe16b","#9b83ff","#70ffb0","#ff895c"];
+  const fallingBubbles=Array.from({length:16},(_,index)=>{
+    const left=(index*37+9)%100;
+    const delay=-((index*0.43)%3.8).toFixed(2);
+    const duration=(2.6+(index%5)*0.42).toFixed(2);
+    const size=5+(index%4)*2;
+    const color=bubbleColors[index%bubbleColors.length];
+    return '<span aria-hidden="true" style="position:absolute;left:'+left+'%;top:-12px;width:'+size+'px;height:'+size+'px;border-radius:50%;background:'+color+';box-shadow:0 0 7px 2px '+color+',0 0 15px '+color+';opacity:0;animation:mcWishBubbleFall '+duration+'s linear '+delay+'s infinite"></span>';
+  }).join("");
+  popup.innerHTML='<style>@keyframes mcFireworksPopupIn{from{opacity:0;transform:translate(-50%,-8px) scale(.96)}to{opacity:1;transform:translate(-50%,0) scale(1)}}@keyframes mcWishBubbleFall{0%{transform:translate3d(0,-8px,0) scale(.65);opacity:0}12%{opacity:.95}78%{opacity:.85}100%{transform:translate3d(12px,245px,0) scale(1.12);opacity:0}}</style><div aria-hidden="true" style="position:absolute;inset:0;overflow:hidden;border-radius:inherit;pointer-events:none">'+fallingBubbles+'</div><div style="position:relative;z-index:1;font-size:13px;font-weight:700;color:#ffd978;letter-spacing:.3px">🎆 Fireworks Wish 🎆</div><div style="position:relative;z-index:1;font-size:11px;color:#d9c7f2;margin-top:3px">'+esc(recipient)+'</div><div style="position:relative;z-index:1;font-size:17px;line-height:1.28;font-weight:750;color:#ffe8a3;text-shadow:0 0 9px rgba(255,205,120,.24);overflow-wrap:anywhere;margin:5px 0">'+esc(wish)+'</div><div style="position:relative;z-index:1;font-size:10px;color:#c8b5e8">Sent by '+esc(sender)+'</div>';
   document.body.appendChild(popup);
   window.setTimeout(()=>{popup.style.transition="opacity .25s ease,transform .25s ease";popup.style.opacity="0";popup.style.transform="translate(-50%,-5px)";window.setTimeout(()=>popup.remove(),260);},5000);
 }
