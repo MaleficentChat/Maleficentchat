@@ -2251,7 +2251,7 @@ function openFireworksWish(){
     if(String(state.currentRoom||"")!==roomId){toast("Your room changed. Reopen Fireworks in the room you want.");return;}
     if(button){button.disabled=true;button.textContent="Sending…";}
     try{
-      const text="🎆 FIREWORKS WISH 🎆\\nTo @"+recipient+"\\n✨ "+title+" ✨\\n"+custom+"\\n🎇 🎆 🎇";
+      const text="🎆 FIREWORKS WISH 🎆\nTo @"+recipient+"\n✨ "+title+" ✨\n"+custom+"\n🎇 🎆 🎇";
       const result=await api("/api/rooms/"+encodeURIComponent(roomId)+"/messages",{method:"POST",body:JSON.stringify({text})});
       if(result.message&&String(state.currentRoom)===roomId)appendMessage(result.message);
       closeModal();
@@ -2940,7 +2940,7 @@ function messageHTML(message) {
       <div class="bot-welcome-bubble">
         <div class="bot-welcome-byline">🤖 Bot</div>
         <div class="bot-welcome-glow" style="color:#ff7a45;text-shadow:0 0 12px #ff4fd8">BOT ROAST</div>
-        <div class="bot-welcome-username">${esc(message.text||"") .replace(/\\n/g,"<br>")}</div>
+        <div class="bot-welcome-username">${esc(message.text||"") .replace(/\n/g,"<br>")}</div>
       </div>
     </div>`;
   }
