@@ -2234,6 +2234,11 @@ function openFireworksWish(){
     <input id="fireworksRecipient" maxlength="32" autocomplete="off" placeholder="Enter username">
     <label for="fireworksMessage" style="display:block;margin-top:12px">Your wish</label>
     <textarea id="fireworksMessage" rows="3" maxlength="240" placeholder="Write your own wish…"></textarea>
+    <div style="margin-top:12px;padding:10px 12px;border-radius:12px;background:rgba(255,255,255,.055);border:1px solid rgba(255,255,255,.1)">
+      <label style="display:flex;align-items:center;gap:9px;margin:0;cursor:pointer"><input id="fireworksAnimationEnabled" type="checkbox" style="accent-color:#ff78cf" checked><span>🎆 Launch &amp; burst animation</span></label>
+      <label style="display:flex;align-items:center;gap:9px;margin:8px 0 0 0;cursor:pointer"><input id="fireworksSoundEnabled" type="checkbox" style="accent-color:#ff78cf" checked><span>🔊 Firework sound</span></label>
+      <div style="font-size:11px;opacity:.75;margin-top:6px">One rocket rises, bursts, spreads and fades. Chat stays clickable.</div>
+    </div>
     <button type="button" id="sendFireworksWish" class="primary" style="width:100%;margin-top:12px">🎆 Send Fireworks Wish</button>
   </div>`);
   const panel=mcGetById("modalBody")?.querySelector(".fireworks-wish-panel");
