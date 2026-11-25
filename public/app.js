@@ -3744,8 +3744,8 @@ function openPresenceModes(){
       <span style="display:block;min-width:0;white-space:normal;overflow-wrap:anywhere"><b style="display:block;margin-bottom:4px">😈 Invisible Mode</b><small style="display:block;white-space:normal;overflow-wrap:anywhere;line-height:1.45">Hidden from online and offline user lists for everyone except higher-ranked staff. Your room joins are not announced; eligible staff see a green indicator.</small></span>
     </label>
     <div class="mode-control-row" style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px;border:1px solid var(--border-color,#353535);border-radius:10px">
-      <span><b>🎉 Party Mode</b><small style="display:block;line-height:1.45;margin-top:4px">Rainbow-glowing usernames, spinning GIFs and a music player starting at 0:20. This affects your current browser only.</small></span>
-      <button type="button" class="mini" id="togglePartyMode">🎉 Turn Party Mode On</button>
+      <span><b>🎉 Party Mode</b><small style="display:block;line-height:1.45;margin-top:4px">Full-screen glow, drifting sparkles, rainbow usernames, moving media and party sound. This affects your current browser only.</small></span>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end"><button type="button" class="mini" id="togglePartyMode">🎉 Turn Party Mode On</button><button type="button" class="mini" id="togglePartySound">🔊 Sound On</button></div>
     </div>
     <p class="muted" id="modePopupStatus" aria-live="polite" style="font-size:12px;line-height:1.4;min-height:14px;margin:0;overflow-wrap:anywhere"></p>
     <div class="toolbar" style="display:flex;flex-wrap:wrap;gap:8px"><button type="button" class="primary" id="applyModePopup">Apply mode</button><button type="button" class="mini" onclick="closeModal()">Cancel</button></div>
@@ -3756,6 +3756,8 @@ function openPresenceModes(){
     partyToggle.textContent=isPartyModeActive()?"🎉 Turn Party Mode Off":"🎉 Turn Party Mode On";
     partyToggle.addEventListener("click",()=>setPartyMode(!isPartyModeActive()));
   }
+  const partySoundToggle=mcGetById("togglePartySound");
+  if(partySoundToggle){partySoundToggle.textContent=partySoundEnabled?"🔊 Sound On":"🔇 Sound Off";partySoundToggle.addEventListener("click",()=>{partySoundEnabled=!partySoundEnabled;if(isPartyModeActive()){const player=document.getElementById("partyModePlayer");if(player)player.src="https://www.youtube-nocookie.com/embed/HIiJ2Q5gFAE?autoplay=1&start=20&playsinline=1&controls=0&rel=0"+(partySoundEnabled?"":"&mute=1");}partySoundToggle.textContent=partySoundEnabled?"🔊 Sound On":"🔇 Sound Off";});}
   const boxes=[hide,dead,invisible].filter(Boolean);
   boxes.forEach(box=>box.addEventListener("change",()=>{if(box.checked)boxes.filter(other=>other!==box).forEach(other=>other.checked=false);}));
   apply?.addEventListener("click",async()=>{
@@ -3788,33 +3790,31 @@ function canUsePartyMode(){
   const rank=String(state.user?.rank||"").toUpperCase();
   return ["SUPER_ADMIN","COMMISSOR","INSTRUCTOR","COOWNER","OWNER","DEVELOPER"].includes(rank)||state.user?.username==="Maleficent";
 }
+let partySparkleCanvas=null,partySparkleCtx=null,partySparkleRAF=0,partySparkles=[],partySoundEnabled=true;
+function partySparkleFrame(){
+  if(!partySparkleCanvas||!partySparkleCtx)return;
+  const ctx=partySparkleCtx,w=innerWidth,h=innerHeight;ctx.clearRect(0,0,w,h);
+  for(const p of partySparkles){p.x+=p.vx;p.y+=p.vy;p.twinkle+=p.twinkleSpeed;if(p.x<-12)p.x=w+12;if(p.x>w+12)p.x=-12;if(p.y>h+12){p.y=-12;p.x=Math.random()*w;}
+    ctx.save();ctx.globalAlpha=p.alpha*(.65+.35*Math.sin(p.twinkle));ctx.shadowBlur=p.glow;ctx.shadowColor=p.color;ctx.fillStyle=p.color;
+    if(p.star){ctx.translate(p.x,p.y);ctx.rotate(p.twinkle*.12);ctx.beginPath();ctx.moveTo(0,-p.size*1.7);ctx.lineTo(p.size*.5,0);ctx.lineTo(0,p.size*1.7);ctx.lineTo(-p.size*.5,0);ctx.closePath();ctx.fill();}
+    else{ctx.beginPath();ctx.arc(p.x,p.y,p.size,0,Math.PI*2);ctx.fill();}ctx.restore();}
+  partySparkleRAF=requestAnimationFrame(partySparkleFrame);
+}
+function startPartySparkles(){
+  if(partySparkleCanvas)return;partySparkleCanvas=document.createElement("canvas");partySparkleCanvas.id="partySparkleLayer";partySparkleCanvas.setAttribute("aria-hidden","true");
+  partySparkleCanvas.style.cssText="position:fixed;inset:0;width:100vw;height:100vh;pointer-events:none;z-index:9997";document.body.appendChild(partySparkleCanvas);partySparkleCtx=partySparkleCanvas.getContext("2d");
+  const resize=()=>{if(!partySparkleCanvas)return;const d=Math.min(devicePixelRatio||1,1.5);partySparkleCanvas.width=Math.floor(innerWidth*d);partySparkleCanvas.height=Math.floor(innerHeight*d);partySparkleCtx.setTransform(d,0,0,d,0,0);partySparkles=Array.from({length:90},()=>({x:Math.random()*innerWidth,y:Math.random()*innerHeight,vx:(Math.random()-.5)*.42,vy:.35+Math.random()*1.05,size:1+Math.random()*2.4,alpha:.25+Math.random()*.65,glow:5+Math.random()*13,color:["#ff69d4","#7cf7ff","#fff1a6","#a8ffce","#d9a6ff","#ffffff"][Math.floor(Math.random()*6)],star:Math.random()>.68,twinkle:Math.random()*6.28,twinkleSpeed:.025+Math.random()*.05}));};
+  resize();partySparkleCanvas._resize=resize;window.addEventListener("resize",resize);partySparkleFrame();
+}
+function stopPartySparkles(){if(partySparkleRAF)cancelAnimationFrame(partySparkleRAF);partySparkleRAF=0;if(partySparkleCanvas?._resize)window.removeEventListener("resize",partySparkleCanvas._resize);partySparkleCanvas?.remove();partySparkleCanvas=null;partySparkleCtx=null;partySparkles=[];}
 function isPartyModeActive(){return document.body.classList.contains("party-mode-active");}
 function setPartyMode(enabled){
   if(enabled&&!canUsePartyMode()){toast("Party Mode is available to SUPER_ADMIN and higher ranks.");return;}
-  const active=!!enabled;
-  document.body.classList.toggle("party-mode-active",active);
-  let player=document.getElementById("partyModePlayer");
-  if(active){
-    if(!player){
-      player=document.createElement("iframe");
-      player.id="partyModePlayer";
-      player.title="Party Mode music";
-      player.allow="autoplay; encrypted-media; picture-in-picture";
-      player.referrerPolicy="strict-origin-when-cross-origin";
-      player.src="https://www.youtube-nocookie.com/embed/HIiJ2Q5gFAE?autoplay=1&start=20&playsinline=1&controls=1&rel=0";
-      player.className="party-mode-player";
-      player.setAttribute("allowfullscreen","");
-      player.setAttribute("tabindex","-1");
-      document.body.appendChild(player);
-    }
-    // Keep audio playing without covering the chat/composer with a visible video.
-    player.style.display="block";
-  }else if(player){
-    player.src="about:blank";
-    player.remove();
-  }
-  const toggle=document.getElementById("togglePartyMode");
-  if(toggle)toggle.textContent=active?"🎉 Turn Party Mode Off":"🎉 Turn Party Mode On";
+  const active=!!enabled;document.body.classList.toggle("party-mode-active",active);let player=document.getElementById("partyModePlayer");
+  if(active){startPartySparkles();if(!player){player=document.createElement("iframe");player.id="partyModePlayer";player.title="Party Mode music";player.allow="autoplay; encrypted-media; picture-in-picture";player.referrerPolicy="strict-origin-when-cross-origin";player.className="party-mode-player";player.setAttribute("tabindex","-1");document.body.appendChild(player);}
+    player.src="https://www.youtube-nocookie.com/embed/HIiJ2Q5gFAE?autoplay=1&start=20&playsinline=1&controls=0&rel=0"+(partySoundEnabled?"":"&mute=1");player.style.display="block";
+  }else{stopPartySparkles();if(player){player.src="about:blank";player.remove();}}
+  const toggle=document.getElementById("togglePartyMode");if(toggle)toggle.textContent=active?"🎉 Turn Party Mode Off":"🎉 Turn Party Mode On";const soundToggle=document.getElementById("togglePartySound");if(soundToggle)soundToggle.textContent=partySoundEnabled?"🔊 Sound On":"🔇 Sound Off";
 }
 /* ---------------- MALefICENT ARCADE ---------------- */
 let arcadeGameTimer=null,arcadeInterval=null;
