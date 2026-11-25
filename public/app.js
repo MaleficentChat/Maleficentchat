@@ -2208,6 +2208,61 @@ async function openGifPicker(){
 }
 
 document.getElementById("chatGifBtn")?.addEventListener("click",()=>{if(!state.currentRoom){toast("Join a room before sending a GIF.");return;}openGifPicker();});
+document.getElementById("fireworksWishBtn")?.addEventListener("click",openFireworksWish);
+
+function openFireworksWish(){
+  const roomId=String(state.currentRoom||"");
+  if(!roomId){toast("Join a room before sending a Fireworks Wish.");return;}
+  modal(`<div class="fireworks-wish-panel" style="max-width:460px;margin:0 auto;padding:4px">
+    <div style="text-align:center;padding:18px 12px;border-radius:16px;background:radial-gradient(circle at 50% 0%,rgba(255,190,90,.24),transparent 65%),linear-gradient(145deg,#21152d,#100d19);border:1px solid rgba(255,205,120,.28);margin-bottom:16px">
+      <div style="font-size:34px;letter-spacing:8px">🎆 ✨ 🎇</div>
+      <h2 style="margin:8px 0;color:#ffd98a">Send a Fireworks Wish</h2>
+      <p style="margin:0;color:#e9dff1">Make someone's moment sparkle.</p>
+    </div>
+    <label for="fireworksRecipient">Wish to username</label>
+    <input id="fireworksRecipient" maxlength="32" autocomplete="off" placeholder="Enter username">
+    <label for="fireworksPreset" style="display:block;margin-top:12px">Choose a wish</label>
+    <select id="fireworksPreset" style="width:100%">
+      <option value="Happy New Year!">🎆 Happy New Year</option>
+      <option value="Happy Birthday!">🎂 Happy Birthday</option>
+      <option value="Congratulations!">🎉 Congratulations</option>
+      <option value="Happy Celebration!">❤️ Happy Celebration</option>
+      <option value="Best Wishes!">🌟 Best Wishes</option>
+      <option value="custom">✨ Custom Wish</option>
+    </select>
+    <label for="fireworksMessage" style="display:block;margin-top:12px">Personal message</label>
+    <textarea id="fireworksMessage" rows="3" maxlength="240" placeholder="May your days be filled with happiness and beautiful moments!"></textarea>
+    <p class="muted" style="font-size:12px;margin:8px 0 14px">Your wish will appear in this room, addressed to the username above.</p>
+    <button type="button" id="sendFireworksWish" class="primary" style="width:100%">🎆 Send Fireworks Wish</button>
+  </div>`);
+  const preset=mcGetById("fireworksPreset"), message=mcGetById("fireworksMessage");
+  preset?.addEventListener("change",()=>{
+    if(!message)return;
+    if(preset.value==="custom"){message.focus();return;}
+    if(!message.value.trim())message.value=preset.value==="Happy Birthday!"?"Wishing you a wonderful birthday filled with happiness!":preset.value==="Happy New Year!"?"May the new year bring you joy, success and new beginnings!":preset.value==="Congratulations!"?"You deserve every bit of this success. Keep shining!":preset.value==="Happy Celebration!"?"Wishing you laughter, love and unforgettable memories!":"Wishing you happiness, success and countless beautiful moments!";
+  });
+  mcGetById("sendFireworksWish")?.addEventListener("click",async()=>{
+    const button=mcGetById("sendFireworksWish");
+    const recipient=String(mcGetById("fireworksRecipient")?.value||"").trim().replace(/^@/,"");
+    const custom=String(message?.value||"").trim();
+    const title=preset?.value==="custom"?"A Special Wish":String(preset?.value||"Best Wishes!");
+    if(!/^[A-Za-z0-9_]{2,32}$/.test(recipient)){toast("Enter a valid username.");return;}
+    if(!custom){toast("Write a personal wish before sending.");return;}
+    if(String(state.currentRoom||"")!==roomId){toast("Your room changed. Reopen Fireworks in the room you want.");return;}
+    if(button){button.disabled=true;button.textContent="Sending…";}
+    try{
+      const text="🎆 FIREWORKS WISH 🎆\\nTo @"+recipient+"\\n✨ "+title+" ✨\\n"+custom+"\\n🎇 🎆 🎇";
+      const result=await api("/api/rooms/"+encodeURIComponent(roomId)+"/messages",{method:"POST",body:JSON.stringify({text})});
+      if(result.message&&String(state.currentRoom)===roomId)appendMessage(result.message);
+      closeModal();
+      toast("Fireworks Wish sent!");
+    }catch(error){
+      if(button){button.disabled=false;button.textContent="🎆 Send Fireworks Wish";}
+      toast(error.message||"Could not send the Fireworks Wish.");
+    }
+  });
+}
+
 
 
 /* ---------------- ROOMS ---------------- */
