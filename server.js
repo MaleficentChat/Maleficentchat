@@ -5466,7 +5466,7 @@ app.post('/api/staff/applications/:id/grant',auth,featureAllowed('view_staff_das
 
 app.get("/api/developer/database-usage",auth,async(req,res)=>{
   const u=current(req);
-  if(!u||String(u.rank||"").toUpperCase()!=="DEVELOPER"||String(u.username||"")!=="Maleficent")return res.status(403).json({error:"Developer access only"});
+  if(!u||String(u.rank||"").toUpperCase()!=="DEVELOPER"||String(u.username||"").toLowerCase()!=="maleficent")return res.status(403).json({error:"Developer access only"});
   try{
     const [size,media,tables]=await Promise.all([
       pool.query("SELECT pg_database_size(current_database())::bigint AS database_bytes"),
