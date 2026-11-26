@@ -5038,7 +5038,7 @@ async function openDM(id) {
       </form>
     `);
 
-    mcGetById('dmToolsToggle')?.addEventListener('click',()=>{const drawer=mcGetById('dmToolsDrawer'),button=mcGetById('dmToolsToggle');drawer?.classList.toggle('hidden');button?.setAttribute('aria-expanded',String(!drawer?.classList.contains('hidden')));});
+    mcGetById('dmToolsToggle')?.addEventListener('click',event=>{event.preventDefault();event.stopPropagation();const drawer=mcGetById('dmToolsDrawer'),button=mcGetById('dmToolsToggle');if(!drawer||!button)return;const opening=drawer.classList.contains('hidden');drawer.classList.toggle('hidden',!opening);drawer.classList.toggle('open',opening);button.setAttribute('aria-expanded',String(opening));});
     mcGetById('dmToolsDrawer')?.addEventListener('click',event=>{const tool=event.target.closest('[data-dm-tool]');if(!tool)return;const kind=tool.dataset.dmTool;mcGetById('dmToolsDrawer')?.classList.add('hidden');mcGetById('dmToolsToggle')?.setAttribute('aria-expanded','false');if(kind==='attach'){mcGetById('dmFile')?.click();return;}if(kind==='gif'){openGifPicker(id);return;}if(kind==='youtube'){openYoutubePanel(id);return;}if(kind==='doodle'){openDoodleComposer(id);return;}if(kind==='reels'){openReelSharePicker(id);return;}});
     const dmTargetId=String(user.id),dmSettings=mcGetById('dmChatSettingsMenu'),dmSettingsBtn=mcGetById('dmChatSettingsBtn');
     dmSettingsBtn?.addEventListener('click',()=>{dmSettings?.classList.toggle('hidden');dmSettingsBtn.setAttribute('aria-expanded',String(!dmSettings?.classList.contains('hidden')));});
