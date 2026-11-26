@@ -292,7 +292,10 @@
   <div id="viewWallet" class="view hidden"><div class="topbar"><div><h2>🏦 MC Wallet</h2><p class="muted">Diamonds, Gold, rewards and secure transfers.</p></div></div><div id="walletRoot"></div></div>
   <div id="viewStaffApplications" class="view hidden"><div id="staffApplicationFormRoot"></div></div>
   <div id="viewManagement" class="view hidden">
-    <div class="topbar"><div><h2 id="managementSpaceTitle">🛡️ Management Space</h2><p class="muted" id="managementSpaceDescription">Tools available to your rank and individual permissions.</p></div></div>
+    <div class="topbar management-space-topbar" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+      <div><h2 id="managementSpaceTitle">🛡️ Management Space</h2><p class="muted" id="managementSpaceDescription">Tools available to your rank and individual permissions.</p></div>
+      <button class="mini primary management-space-back" type="button" onclick="returnToMainChat()">← Back to Main Chat</button>
+    </div>
     <div id="staff"></div>
     <div id="owner" class="hidden"></div>
   </div>
