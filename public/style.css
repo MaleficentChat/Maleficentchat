@@ -11910,3 +11910,21 @@ body.party-mode-active #partySparkleLayer{mix-blend-mode:screen}
 #onlineUsers .online-user-heading b.mc-username-effect-target::before,#onlineUsers .online-user-heading b.mc-username-effect-target::after{font-size:.72em!important;vertical-align:middle!important;}
 #onlineUsers .online-user-rank-badge{flex:0 0 20px!important;width:20px!important;min-width:20px!important;height:20px!important;}
 #onlineUsers .online-user-rank-badge .mc-rank-glyph{font-size:14px!important;}
+
+/* Username Studio fixes: previews and live display-name styling share the same selectors. */
+.mc-username-effect-target[data-mc-effect="celestial-wings"]::before{content:"༺ ✧ ";}
+.mc-username-effect-target[data-mc-effect="celestial-wings"]::after{content:" ✧ ༻";}
+.mc-username-effect-target[data-mc-effect="shadow-wings"]::before{content:"꧁🦇 ";}
+.mc-username-effect-target[data-mc-effect="shadow-wings"]::after{content:" 🦇꧂";}
+.mc-username-effect-target[data-mc-effect="royal-crown"]::before{content:"♛ ";}
+.mc-username-effect-target[data-mc-effect="royal-crown"]::after{content:" ♛";}
+.mc-username-effect-target[data-mc-effect="rose-glow"]::before{content:"❀ ";}
+.mc-username-effect-target[data-mc-effect="rose-glow"]::after{content:" ❀";}
+.mc-username-effect-target[data-mc-effect="frosted"]::before{content:"❄ ";}
+.mc-username-effect-target[data-mc-effect="frosted"]::after{content:" ❄";}
+.mc-studio-preview #mcStudioSample{display:inline-block;max-width:100%;overflow-wrap:anywhere;}
+.mc-username-effect-target[data-mc-effect="celestial-wings"]{text-shadow:0 0 8px rgba(168,221,255,.6);}
+.mc-username-effect-target[data-mc-effect="shadow-wings"]{text-shadow:0 0 10px rgba(255,100,210,.55);}
+.mc-username-effect-target[data-mc-effect="royal-crown"]{text-shadow:0 0 8px rgba(255,218,131,.6);}
+.mc-username-effect-target[data-mc-effect="rose-glow"]{text-shadow:0 0 9px rgba(255,120,180,.6);}
+.mc-username-effect-target[data-mc-effect="frosted"]{text-shadow:0 0 9px rgba(130,220,255,.65);}
