@@ -7379,7 +7379,7 @@ app.get('/api/settings',auth,(req,res)=>{
 
 app.put('/api/settings',auth,(req,res)=>{
   const u=current(req); ensureUserSchema(u);
-  const allowed=['rememberLogin','theme','accentColor','fontSize','compactMode','reducedMotion','highContrast','language','timezone','notificationPrefs','usernameColor','usernameEffect','chatFont','messageEffects','textSize','bubbleStyle','profileAccentColor','profileColor','bubbleColor'];
+  const allowed=['rememberLogin','theme','accentColor','fontSize','compactMode','reducedMotion','highContrast','language','timezone','notificationPrefs','usernameColor','chatFont','messageEffects','textSize','bubbleStyle','profileAccentColor','profileColor','bubbleColor'];
   for(const k of allowed) if(req.body[k]!==undefined) u.settings[k]=req.body[k];
   if(req.body.theme!==undefined){ u.theme=String(req.body.theme); u.settings.theme=u.theme; }
   if(req.body.status && ['online','offline','away','busy','invisible'].includes(req.body.status)) u.status=req.body.status;
