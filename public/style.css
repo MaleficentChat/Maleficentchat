@@ -11807,3 +11807,10 @@ body.party-mode-active #partySparkleLayer{mix-blend-mode:screen}
 #modal .notification-card:after{display:none!important;content:none!important}
 #modal .notification-card .notification-kind-badge{display:inline!important}
 @media(max-width:700px){#modal .notification-card{grid-template-columns:36px minmax(0,1fr) 36px!important;gap:7px!important}#modal .notification-card>.notification-actions{width:36px!important;min-width:36px!important}}
+
+/* Reliable PM plus-menu: render above the conversation, not clipped by modal scroll containers. */
+#modal .dm-composer{overflow:visible!important;position:relative!important;isolation:isolate!important}
+#modal .dm-tools-drawer{position:fixed!important;left:12px!important;bottom:112px!important;z-index:100100!important;display:none!important;grid-template-columns:repeat(2,minmax(115px,1fr))!important;width:min(290px,calc(100vw - 24px))!important;max-height:min(45vh,300px)!important;overflow:auto!important;overscroll-behavior:contain!important;box-sizing:border-box!important}
+#modal .dm-tools-drawer.open:not(.hidden){display:grid!important;visibility:visible!important;opacity:1!important;pointer-events:auto!important}
+#modal .dm-tools-drawer button{min-width:0!important;white-space:normal!important;cursor:pointer!important}
+@media(max-width:700px){#modal .dm-tools-drawer{left:10px!important;bottom:105px!important;width:min(270px,calc(100vw - 20px))!important;grid-template-columns:repeat(2,minmax(0,1fr))!important}}
