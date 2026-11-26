@@ -2124,9 +2124,10 @@ function saveRecentGifSearch(query){
   const items=[q,...getRecentGifSearches().filter(x=>x.toLowerCase()!==q.toLowerCase())].slice(0,6);
   safeStorage.setItem("mc_gif_recent_searches",JSON.stringify(items));
 }
-async function openGifPicker(){
+async function openGifPicker(dmTarget=null){
+  const dmTargetId=dmTarget?String(dmTarget):"";
   const roomIdAtOpen=String(state.currentRoom||"");
-  if(!roomIdAtOpen){toast("Join a room before sending a GIF.");return;}
+  if(!roomIdAtOpen&&!dmTargetId){toast("Open a room or private message before sending a GIF.");return;}
   let searchVersion=0;
   let searchTimer=null;
   let sending=false;
@@ -2134,7 +2135,7 @@ async function openGifPicker(){
   let nextOffset=0;
   let hasMore=false;
   const initialCost=Number(state.gifCost||10);
-  modal(`<div class="gif-picker"><h2>GIFs · 🪙 ${initialCost} gold each</h2><input id="gifSearch" placeholder="Search GIFs…" autocomplete="off" aria-label="Search GIFs"><div id="gifRecent" class="gif-recent"></div><div id="gifSelected" class="gif-selected hidden"></div><div id="gifResults" class="gif-results" aria-live="polite"><p class="muted">Loading GIFs…</p></div><div class="gif-more-wrap"><button type="button" id="gifLoadMore" class="mini hidden">Load more GIFs</button></div><p id="gifBalance" class="muted">Your balance: 🪙 ${Number(state.user?.gold||0)}</p></div>`);
+  modal(`<div class="gif-picker"><h2>GIFs${dmTargetId?" · Private message":" · 🪙 "+initialCost+" gold each"}</h2><input id="gifSearch" placeholder="Search GIFs…" autocomplete="off" aria-label="Search GIFs"><div id="gifRecent" class="gif-recent"></div><div id="gifSelected" class="gif-selected hidden"></div><div id="gifResults" class="gif-results" aria-live="polite"><p class="muted">Loading GIFs…</p></div><div class="gif-more-wrap"><button type="button" id="gifLoadMore" class="mini hidden">Load more GIFs</button></div><p id="gifBalance" class="muted">Your balance: 🪙 ${Number(state.user?.gold||0)}</p></div>`);
   const input=mcGetById("gifSearch"), results=mcGetById("gifResults"), recentBox=mcGetById("gifRecent"), selectedBox=mcGetById("gifSelected"), moreButton=mcGetById("gifLoadMore");
   if(!input||!results||!selectedBox||!moreButton)return;
   const renderRecent=()=>{
@@ -2144,18 +2145,12 @@ async function openGifPicker(){
   const clearSelection=()=>{selectedGif=null;selectedBox.innerHTML="";selectedBox.classList.add("hidden");};
   const sendSelected=async()=>{
     if(!selectedGif||sending)return;
-    if(String(state.currentRoom)!==roomIdAtOpen){toast("Your room changed. Reopen the GIF picker in the room you want.");return;}
+    if(!dmTargetId&&String(state.currentRoom)!==roomIdAtOpen){toast("Your room changed. Reopen the GIF picker in the room you want.");return;}
     sending=true;
     const sendButton=mcGetById("gifSendSelected");
     if(sendButton){sendButton.disabled=true;sendButton.textContent="Sending…";}
     try{
-      const r=await api(`/api/rooms/${encodeURIComponent(roomIdAtOpen)}/gif`,{method:"POST",body:JSON.stringify({url:selectedGif.url})});
-      if(state.user&&r.gold!==undefined){state.user.gold=r.gold;updateNav();}
-      const balance=mcGetById("gifBalance");
-      if(balance)balance.textContent=`Your balance: 🪙 ${Number(state.user?.gold||0)}`;
-      if(r.message&&String(state.currentRoom)===String(r.message.roomId))appendMessage(r.message);
-      closeModal();
-      toast("GIF sent successfully.");
+      if(dmTargetId){const fd=new FormData();fd.append("text",selectedGif.url);const r=await api(`/api/dm/${encodeURIComponent(dmTargetId)}`,{method:"POST",body:fd});if(r.message&&String(state.dmUserId)===dmTargetId){state.dmMessages=state.dmMessages||[];state.dmMessages.push(r.message);const list=mcGetById("dmMessages");if(list){list.querySelector(".muted")?.remove();list.insertAdjacentHTML("beforeend",dmMessageHTML(r.message,state.dmMessages,state.dmPeerUser||{}));list.scrollTop=list.scrollHeight;}}closeModal();toast("GIF link sent in private message.");}else{const r=await api(`/api/rooms/${encodeURIComponent(roomIdAtOpen)}/gif`,{method:"POST",body:JSON.stringify({url:selectedGif.url})});if(state.user&&r.gold!==undefined){state.user.gold=r.gold;updateNav();}const balance=mcGetById("gifBalance");if(balance)balance.textContent=`Your balance: 🪙 ${Number(state.user?.gold||0)}`;if(r.message&&String(state.currentRoom)===String(r.message.roomId))appendMessage(r.message);closeModal();toast("GIF sent successfully.");}
     }catch(e){
       sending=false;
       if(sendButton){sendButton.disabled=false;sendButton.textContent="Send GIF";}
@@ -2201,7 +2196,7 @@ async function openGifPicker(){
     const button=event.target.closest("[data-gif-url]");
     if(!button||sending)return;
     selectedGif={url:button.dataset.gifUrl,preview:button.dataset.gifPreview||button.dataset.gifUrl,title:button.dataset.gifTitle||"GIF"};
-    selectedBox.innerHTML=`<img src="${esc(selectedGif.preview)}" alt="" loading="lazy"><div class="gif-selected-copy"><strong>${esc(selectedGif.title)}</strong><span>Preview selected GIF before sending</span><button type="button" id="gifSendSelected" class="mini">Send GIF · 🪙 ${state.gifCost}</button></div>`;
+    selectedBox.innerHTML=`<img src="${esc(selectedGif.preview)}" alt="" loading="lazy"><div class="gif-selected-copy"><strong>${esc(selectedGif.title)}</strong><span>Preview selected GIF before sending</span><button type="button" id="gifSendSelected" class="mini">${dmTargetId?"Send GIF link":"Send GIF · 🪙 "+state.gifCost}</button></div>`;
     selectedBox.classList.remove("hidden");
     results.querySelectorAll(".gif-choice").forEach(choice=>choice.classList.toggle("selected",choice===button));
     mcGetById("gifSendSelected")?.addEventListener("click",sendSelected);
