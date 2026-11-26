@@ -11677,3 +11677,13 @@ body.party-mode-active #partySparkleLayer{mix-blend-mode:screen}
   margin:0!important;
   z-index:auto!important;
 }
+
+/* Ensure PM close is visible and styled exactly like Minimize. */
+#modal .modal-card:has(.dm-chat-header) .dm-chat-actions #dmChatCloseBtn{
+  display:inline-flex!important;visibility:visible!important;opacity:1!important;
+  position:static!important;flex:0 0 34px!important;width:34px!important;min-width:34px!important;
+  height:34px!important;min-height:34px!important;padding:0!important;margin:0!important;
+  align-items:center!important;justify-content:center!important;border-radius:10px!important;
+  font-size:20px!important;line-height:1!important;transform:none!important;
+}
+@media(max-width:700px){#modal .modal-card:has(.dm-chat-header) .dm-chat-actions #dmChatCloseBtn{flex-basis:30px!important;width:30px!important;min-width:30px!important;height:30px!important;min-height:30px!important;font-size:14px!important;}}
