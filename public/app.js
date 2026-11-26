@@ -811,32 +811,33 @@ const MC_USERNAME_EFFECTS=[
 function mcUsernameEffectSaved(){try{return safeStorage.getItem("mc_username_effect")||"";}catch{return"";}}
 function mcApplyUsernameEffect(effectId){
  const id=MC_USERNAME_EFFECTS.some(x=>x.id===effectId)?effectId:"";
- document.body.dataset.mcUsernameEffect=id;
- document.querySelectorAll(".mc-username-effect-preview").forEach(el=>el.dataset.effect=id);
+ const ownName=String(state.user?.username||"").trim();
+ const decorate=()=>{document.querySelectorAll(".msg-top>b,.instagram-user-name").forEach(el=>{const name=String(el.textContent||"").trim();if(ownName&&name===ownName){if(id)el.dataset.mcEffect=id;else delete el.dataset.mcEffect;}else delete el.dataset.mcEffect;});};
+ decorate();
+ if(!window.__mcUsernameEffectObserver&&document.body){window.__mcUsernameEffectObserver=new MutationObserver(decorate);window.__mcUsernameEffectObserver.observe(document.body,{childList:true,subtree:true});}
  try{safeStorage.setItem("mc_username_effect",id);}catch{}
 }
 function openUsernameStudio(){
  const chosen=mcUsernameEffectSaved();
- const cards=MC_USERNAME_EFFECTS.map(effect=>{const selected=chosen===effect.id;return
-  '<article class="mc-username-effect-card">'+
+ const cards=MC_USERNAME_EFFECTS.map(effect=>{
+  const selected=chosen===effect.id;
+  return '<article class="mc-username-effect-card">'+
    '<div class="mc-username-effect-art" style="--effect-bg:'+effect.bg+';--effect-color:'+effect.color+'">'+
     '<div class="mc-username-effect-sample" data-effect="'+effect.id+'">'+esc(effect.preview)+'</div>'+
-    '<small>'+esc(effect.name.toUpperCase())+'</small>'+
-   '</div>'+
+    '<small>'+esc(effect.name.toUpperCase())+'</small></div>'+
    '<h3>'+esc(effect.name)+'</h3><div class="mc-username-effect-status '+(effect.status==="Unlocked"?"unlocked":"rare")+'">'+esc(effect.status)+'</div>'+
-   '<button type="button" class="mc-username-effect-select '+(selected?"selected":"")+'" data-username-effect-select="'+effect.id+'">'+(selected?"Selected ✓":"Select")+'</button>'+
-  '</article>';
+   '<button type="button" class="mc-username-effect-select '+(selected?"selected":"")+'" data-username-effect-select="'+effect.id+'">'+(selected?"Selected ✓":"Select")+'</button></article>';
  }).join("");
- openModal('<section class="mc-username-studio"><header><span>✨</span><h2>Username Studio</h2></header><div class="mc-username-studio-current"><small>YOUR USERNAME</small><strong class="mc-username-effect-preview" data-effect="'+esc(chosen)+'">'+esc(state.user?.username||"Username")+'</strong></div><div class="mc-username-effect-list">'+cards+'</div><footer><button type="button" class="primary" id="mcUsernameEffectApply">Apply</button></footer></section>');
+ modal('<section class="mc-username-studio"><header><span>✨</span><h2>Username Studio</h2></header><div class="mc-username-studio-current"><small>YOUR USERNAME</small><strong class="mc-username-effect-preview" data-effect="'+esc(chosen)+'">'+esc(state.user?.username||"Username")+'</strong></div><div class="mc-username-effect-list">'+cards+'</div><footer><button type="button" class="primary" id="mcUsernameEffectApply">Apply</button></footer></section>');
  mcGetById("modalBody")?.querySelectorAll("[data-username-effect-select]").forEach(button=>button.addEventListener("click",()=>{
-   const selectedId=button.dataset.usernameEffectSelect;
-   mcGetById("modalBody").querySelectorAll("[data-username-effect-select]").forEach(b=>{b.classList.remove("selected");b.textContent="Select";});
-   button.classList.add("selected");button.textContent="Selected ✓";
-   const preview=mcGetById("modalBody").querySelector(".mc-username-effect-preview");if(preview)preview.dataset.effect=selectedId;
+  const selectedId=button.dataset.usernameEffectSelect;
+  mcGetById("modalBody").querySelectorAll("[data-username-effect-select]").forEach(b=>{b.classList.remove("selected");b.textContent="Select";});
+  button.classList.add("selected");button.textContent="Selected ✓";
+  const preview=mcGetById("modalBody").querySelector(".mc-username-effect-preview");if(preview)preview.dataset.effect=selectedId;
  }));
  mcGetById("mcUsernameEffectApply")?.addEventListener("click",()=>{
-   const selected=mcGetById("modalBody")?.querySelector("[data-username-effect-select].selected")?.dataset.usernameEffectSelect||"";
-   mcApplyUsernameEffect(selected);closeModal();toast(selected?"Username effect applied on this device.":"Username effect cleared.");
+  const selected=mcGetById("modalBody")?.querySelector("[data-username-effect-select].selected")?.dataset.usernameEffectSelect||"";
+  mcApplyUsernameEffect(selected);closeModal();toast(selected?"Username effect applied on this device.":"Username effect cleared.");
  });
 }
 document.addEventListener("DOMContentLoaded",()=>mcApplyUsernameEffect(mcUsernameEffectSaved()));
