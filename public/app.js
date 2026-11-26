@@ -834,29 +834,7 @@ function openUsernameColorStudio(){
  mcGetById("mcColorStrength").oninput=e=>{strength=+e.target.value;mcGetById("mcColorStrengthText").textContent=strength+"%";refresh();};refresh();
  mcGetById("mcColorSave").onclick=async function(){this.disabled=true;try{const r=await api("/api/settings",{method:"PUT",body:JSON.stringify({usernameColor:color,profileColor:color,usernameColorGradient:gradient,usernameColorEffect:effect,usernameColorIntensity:strength})});state.user.settings={...(state.user.settings||{}),...(r.settings||{}),usernameColor:color,usernameColorGradient:gradient,usernameColorEffect:effect,usernameColorIntensity:strength};state.user.profileColor=color;applyUsernameColor();closeModal();toast("Display name style saved!");}catch(e){toast(e.message||"Couldn't save style.");this.disabled=false;}};
 }
-function applyUsernameColor(){const st=state.user?.settings||{},color=st.usernameColor||state.user?.profileColor||"#b56cff",gradient={"sunset":"linear-gradient(90deg,#ff7b54,#ff3cac,#a855f7)","ocean":"linear-gradient(90deg,#42e8ff,#4f8dff,#8a5cff)","gold":"linear-gradient(90deg,#fff0a6,#ffc34d,#ff8d2f)","aurora":"linear-gradient(90deg,#55e6a5,#55dcff,#b56cff)","candy":"linear-gradient(90deg,#ff7bd5,#ff91b5,#a78bfa)"}[st.usernameColorGradient]||"",effect=st.usernameColorEffect||"none",strength=Number(st.usernameColorIntensity||65),own=String(state.user?.username||"").toLowerCase();document.querySelectorAll(".mc-name-color-target").forEach(el=>{if(String(el.dataset.username||"").toLowerCase()!==own)return;el.style.color=gradient?"transparent":color;el.style.backgroundImage=gradient||"none";el.style.backgroundClip=gradient?"text":"initial";el.style.webkitBackgroundClip=gradient?"text":"initial";el.style.setProperty("--mc-color",color);el.style.setProperty("--mc-strength",strength/100);el.dataset.colorEffect=effect;});}
-
-function openUsernameStudio(){
- const chosen=mcUsernameEffectSaved();
- const cards=MC_USERNAME_EFFECTS.map(effect=>{
-  const selected=chosen===effect.id;
-  return '<article class="mc-username-effect-card">'+
-   '<div class="mc-username-effect-art" style="--effect-bg:'+effect.bg+';--effect-color:'+effect.color+'">'+
-    '<div class="mc-username-effect-sample" data-effect="'+effect.id+'">'+esc(effect.preview)+'</div>'+
-    '<small>'+esc(effect.name.toUpperCase())+'</small></div>'+
-   '<h3>'+esc(effect.name)+'</h3><div class="mc-username-effect-status '+(effect.status==="Unlocked"?"unlocked":"rare")+'">'+esc(effect.status)+'</div>'+
-   '<button type="button" class="mc-username-effect-select '+(selected?"selected":"")+'" data-username-effect-select="'+effect.id+'">'+(selected?"Selected ✓":"Select")+'</button></article>';
- }).join("");
- modal('<section class="mc-username-studio"><header><span>✨</span><h2>Username Studio</h2></header><div class="mc-username-studio-current"><small>YOUR USERNAME</small><strong class="mc-username-effect-preview" data-effect="'+esc(chosen)+'">'+esc(state.user?.username||"Username")+'</strong></div><div class="mc-username-effect-list">'+cards+'</div></section>');
- mcGetById("modalBody")?.querySelectorAll("[data-username-effect-select]").forEach(button=>button.addEventListener("click",()=>{
-  const selectedId=button.dataset.usernameEffectSelect;
-  mcApplyUsernameEffect(selectedId);
-  mcGetById("modalBody").querySelectorAll("[data-username-effect-select]").forEach(b=>{b.classList.remove("selected");b.textContent="Select";});
-  button.classList.add("selected");button.textContent="Selected ✓";
-  const preview=mcGetById("modalBody").querySelector(".mc-username-effect-preview");if(preview)preview.dataset.effect=selectedId;
-  toast("Username effect applied!");
- }));
-}
+function applyUsernameColor(){const st=state.user?.settings||{},color=st.usernameColor||state.user?.profileColor||"#b56cff",gradients={"sunset":"linear-gradient(90deg,#ff7b54,#ff3cac,#a855f7)","ocean":"linear-gradient(90deg,#42e8ff,#4f8dff,#8a5cff)","gold":"linear-gradient(90deg,#fff0a6,#ffc34d,#ff8d2f)","aurora":"linear-gradient(90deg,#55e6a5,#55dcff,#b56cff)","candy":"linear-gradient(90deg,#ff7bd5,#ff91b5,#a78bfa)"},own=String(state.user?.username||"").toLowerCase();document.querySelectorAll(".mc-name-color-target").forEach(el=>{let c=el.dataset.nameColor||"",g=el.dataset.nameGradient||"",fx=el.dataset.nameAnimation||"none";if(String(el.dataset.username||"").toLowerCase()===own){c=color;g=st.usernameColorGradient||"";fx=st.usernameColorEffect||"none";}const bg=gradients[g]||"";if(c)el.style.color=bg?"transparent":c;if(bg){el.style.backgroundImage=bg;el.style.backgroundClip="text";el.style.webkitBackgroundClip="text";}else if(!g){el.style.backgroundImage="none";el.style.backgroundClip="initial";el.style.webkitBackgroundClip="initial";}el.style.setProperty("--mc-color",c||color);el.style.setProperty("--mc-strength",Number(st.usernameColorIntensity||65)/100);el.dataset.colorEffect=fx;el.dataset.nameAnimation=fx;});}
 document.addEventListener("DOMContentLoaded",()=>mcApplyUsernameEffect(mcUsernameEffectSaved()));
 
 function closeModal() {
@@ -2986,7 +2964,7 @@ async function renderOnline(tab=onlinePanelTab,searchQuery=""){
         ${avatar(user)}${String(user.id)===String(state.user?.id) ? '<button type="button" class="my-status-toggle" id="myStatusToggle" aria-haspopup="true" aria-expanded="false" onclick="toggleMyStatusMenu(event)"><span id="myStatusGlyph">⚙</span><b id="myStatusLabel">Online</b><span>⌄</span></button><div class="my-status-options hidden" id="myStatusOptions" role="menu" onclick="event.stopPropagation()"></div>' : '<span class="user-mood-indicator" title="'+esc(user.mood||user.customStatus|| (user.online?'Online':'Away'))+'">'+(user.mood?moodEmoji(user.mood):statusEmoji(user.customStatus|| (user.online?'Online':'Away')))+'</span>'}
         <div class="online-user-copy">
           <div class="online-user-heading">
-            <b class="mc-username-effect-target" data-username="${esc(user.username)}" data-user-id="${esc(user.id)}">${esc(user.displayName||user.username)}</b>
+            <b class="mc-username-effect-target mc-name-color-target" data-username="${esc(user.username)}" data-name-color="${esc(user.profileColor||user.settings?.usernameColor||'')}" data-name-gradient="${esc(user.settings?.usernameColorGradient||'')}" data-name-animation="${esc(user.settings?.usernameColorEffect||'none')}" data-user-id="${esc(user.id)}">${esc(user.displayName||user.username)}</b>
           </div>
           <small class="mc-username-handle" data-user-id="${esc(user.id)}">@${esc(user.username)} ${invisibleDot(user)} ${moderationStatusTags(user)}${user.invisible?"":" · "+(user.customStatus||(user.online?"Available":"Away"))}</small>
         </div>
@@ -3278,7 +3256,7 @@ function messageHTML(message) {
           <span class="msg-time-side">${fmt(message.time)}${message.edited ? " · edited" : ""}</span>
           <span class="msg-author-group">
             ${(mcGetById("viewRooms")?.classList.contains("main-room-chat") || !!state.currentRoom?.isDefault || /^(main room|teen chat)$/i.test(String(state.currentRoom?.name||"").trim())) ? `<span class="online-user-rank-badge" title="${esc(String(message.rank||"MEMBER").replaceAll("_"," "))}" aria-label="${esc(String(message.rank||"MEMBER").replaceAll("_"," "))}"><span class="mc-rank-ring" aria-hidden="true"></span><span class="mc-rank-glyph">${rankIcon[String(message.rank||"MEMBER").toUpperCase().replace(/[ -]+/g,"_")]||"⚡"}</span></span>` : ''}
-            <button class="message-author tag-author mc-username-effect-target" data-username="${esc(message.username)}" type="button" title="Tag @${esc(message.username)}" onclick="tagUserFromMessage('${esc(message.username)}')" style="color:${esc(message.usernameColor||state.user?.settings?.usernameColor||'var(--username-color)')}">${esc(message.displayName)}</button>
+            <button class="message-author tag-author mc-username-effect-target mc-name-color-target" data-username="${esc(message.username)}" data-name-color="${esc(message.usernameColor||message.profileColor||'')}" data-name-gradient="${esc(message.usernameColorGradient||'')}" data-name-animation="${esc(message.usernameColorEffect||'none')}" type="button" title="Tag @${esc(message.username)}" onclick="tagUserFromMessage('${esc(message.username)}')" style="color:${esc(message.usernameColor||state.user?.settings?.usernameColor||'var(--username-color)')}">${esc(message.displayName)}</button>
 
           </span>
           <span class="msg-header-right">
