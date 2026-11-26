@@ -799,6 +799,48 @@ function stopModalMedia(root){
   });
 }
 
+
+// Username Studio: compact cosmetic collection with an individual preview and Select button.
+const MC_USERNAME_EFFECTS=[
+ {id:"celestial-wings",name:"Celestial Wings",status:"Unlocked",preview:"༺ Maleficent ༻",symbol:"༺ ✧ ༻",color:"#a8ddff",bg:"#192b40"},
+ {id:"shadow-wings",name:"Shadow Wings",status:"Rare",preview:"꧁🦇 Maleficent 🦇꧂",symbol:"꧁ 🦇 ༻",color:"#ff8cda",bg:"#301a31"},
+ {id:"royal-crown",name:"Royal Crown",status:"Unlocked",preview:"♛ Maleficent ♛",symbol:"♛",color:"#ffda83",bg:"#332818"},
+ {id:"rose-glow",name:"Rose Glow",status:"Unlocked",preview:"❀ Maleficent ❀",symbol:"❀",color:"#ff9acb",bg:"#351b2b"},
+ {id:"frosted",name:"Frosted",status:"Rare",preview:"❄ Maleficent ❄",symbol:"❄",color:"#b7efff",bg:"#1b2e39"}
+];
+function mcUsernameEffectSaved(){try{return safeStorage.getItem("mc_username_effect")||"";}catch{return"";}}
+function mcApplyUsernameEffect(effectId){
+ const id=MC_USERNAME_EFFECTS.some(x=>x.id===effectId)?effectId:"";
+ document.body.dataset.mcUsernameEffect=id;
+ document.querySelectorAll(".mc-username-effect-preview").forEach(el=>el.dataset.effect=id);
+ try{safeStorage.setItem("mc_username_effect",id);}catch{}
+}
+function openUsernameStudio(){
+ const chosen=mcUsernameEffectSaved();
+ const cards=MC_USERNAME_EFFECTS.map(effect=>{const selected=chosen===effect.id;return
+  '<article class="mc-username-effect-card">'+
+   '<div class="mc-username-effect-art" style="--effect-bg:'+effect.bg+';--effect-color:'+effect.color+'">'+
+    '<div class="mc-username-effect-sample" data-effect="'+effect.id+'">'+esc(effect.preview)+'</div>'+
+    '<small>'+esc(effect.name.toUpperCase())+'</small>'+
+   '</div>'+
+   '<h3>'+esc(effect.name)+'</h3><div class="mc-username-effect-status '+(effect.status==="Unlocked"?"unlocked":"rare")+'">'+esc(effect.status)+'</div>'+
+   '<button type="button" class="mc-username-effect-select '+(selected?"selected":"")+'" data-username-effect-select="'+effect.id+'">'+(selected?"Selected ✓":"Select")+'</button>'+
+  '</article>';
+ }).join("");
+ openModal('<section class="mc-username-studio"><header><span>✨</span><h2>Username Studio</h2></header><div class="mc-username-studio-current"><small>YOUR USERNAME</small><strong class="mc-username-effect-preview" data-effect="'+esc(chosen)+'">'+esc(state.user?.username||"Username")+'</strong></div><div class="mc-username-effect-list">'+cards+'</div><footer><button type="button" class="primary" id="mcUsernameEffectApply">Apply</button></footer></section>');
+ mcGetById("modalBody")?.querySelectorAll("[data-username-effect-select]").forEach(button=>button.addEventListener("click",()=>{
+   const selectedId=button.dataset.usernameEffectSelect;
+   mcGetById("modalBody").querySelectorAll("[data-username-effect-select]").forEach(b=>{b.classList.remove("selected");b.textContent="Select";});
+   button.classList.add("selected");button.textContent="Selected ✓";
+   const preview=mcGetById("modalBody").querySelector(".mc-username-effect-preview");if(preview)preview.dataset.effect=selectedId;
+ }));
+ mcGetById("mcUsernameEffectApply")?.addEventListener("click",()=>{
+   const selected=mcGetById("modalBody")?.querySelector("[data-username-effect-select].selected")?.dataset.usernameEffectSelect||"";
+   mcApplyUsernameEffect(selected);closeModal();toast(selected?"Username effect applied on this device.":"Username effect cleared.");
+ });
+}
+document.addEventListener("DOMContentLoaded",()=>mcApplyUsernameEffect(mcUsernameEffectSaved()));
+
 function closeModal() {
   if(activeWarningNotificationId)return;
   const overlay=mcGetById("modal");
@@ -1996,6 +2038,7 @@ function openMyProfileFromHeader(){ mcGetById("topProfileDropdown")?.classList.a
 mcGetById("profileLevelInfo")?.addEventListener("click",()=>{ mcGetById("topProfileDropdown")?.classList.add("hidden"); const u=state.user||{}; modal(`<div class="profile-level-info"><h2>🏅 Level info</h2><div class="card"><small class="muted">CURRENT LEVEL</small><h1>Level ${Number(u.level||1).toLocaleString()}</h1><p><b>${Number(u.xp||0).toLocaleString()} XP</b> earned</p></div><p class="muted">Your level and experience progress.</p><button class="primary" type="button" onclick="closeModal();state.view='leaderboard';renderView()">View leaderboard</button></div>`); });
 mcGetById("profileWallet")?.addEventListener("click",()=>{ mcGetById("topProfileDropdown")?.classList.add("hidden"); const u=state.user||{}; modal(`<div class="profile-wallet-shortcut"><h2>💰 Wallet</h2><div class="wallet-balance-grid"><div class="card"><span>🪙 Gold</span><strong>${Number(u.gold||0).toLocaleString()}</strong></div><div class="card"><span>💎 Diamonds</span><strong>${Number(u.diamonds||0).toLocaleString()}</strong></div></div><button class="primary" type="button" id="openFullWallet">Open full wallet</button></div>`); mcGetById("openFullWallet")?.addEventListener("click",()=>{closeModal();state.view="wallet";document.querySelectorAll(".nav[data-view]").forEach(x=>x.classList.toggle("active",x.dataset.view==="wallet"));renderView();}); });
 mcGetById("profileUsername")?.addEventListener("click",()=>{ mcGetById("topProfileDropdown")?.classList.add("hidden"); editUsername(); });
+mcGetById("profileUsernameStudio")?.addEventListener("click",()=>{ mcGetById("topProfileDropdown")?.classList.add("hidden"); openUsernameStudio(); });
 mcGetById("profileEdit")?.addEventListener("click",()=>{ mcGetById("topProfileDropdown")?.classList.add("hidden"); openProfileEditMenu(); });
 mcGetById("profileLogout")?.addEventListener("click",()=>{ mcGetById("topProfileDropdown")?.classList.add("hidden"); mcGetById("logout")?.click(); });
 async function loadSuggestions(){
