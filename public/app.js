@@ -6894,7 +6894,7 @@ async function loadStaff() {
 
     // Developer-only storage monitor; the server enforces access independently.
     const databaseUsageCard=mcGetById("developerDatabaseUsageCard");
-    if(databaseUsageCard&&String(state.user?.rank||"").toUpperCase()==="DEVELOPER"&&String(state.user?.username||"")==="Maleficent"){
+    if(databaseUsageCard&&String(state.user?.rank||"").toUpperCase()==="DEVELOPER"&&String(state.user?.username||"").toLowerCase()==="maleficent"){
       const fmtBytes=value=>{const n=Math.max(0,Number(value)||0);if(!n)return "0 B";const units=["B","KB","MB","GB","TB"];let v=n,i=0;while(v>=1024&&i<units.length-1){v/=1024;i++;}return v.toFixed(i===0?0:2)+" "+units[i];};
       const refreshDatabaseUsage=async()=>{
         try{
