@@ -812,7 +812,7 @@ function mcUsernameEffectSaved(){try{return safeStorage.getItem("mc_username_eff
 function mcApplyUsernameEffect(effectId){
  const id=MC_USERNAME_EFFECTS.some(x=>x.id===effectId)?effectId:"";
  const ownId=String(state.user?.id||"");
- const decorate=()=>{const ownId=String(state.user?.id||"");document.querySelectorAll(".mc-username-handle[data-user-id]").forEach(el=>{if(ownId&&String(el.dataset.userId)===ownId){if(id)el.dataset.mcEffect=id;else delete el.dataset.mcEffect;}else delete el.dataset.mcEffect;});};
+ const decorate=()=>{const ownName=String(state.user?.username||"").trim().toLowerCase();document.querySelectorAll(".mc-username-effect-target").forEach(el=>{if(ownName&&String(el.dataset.username||"").trim().toLowerCase()===ownName){if(id)el.dataset.mcEffect=id;else delete el.dataset.mcEffect;}else delete el.dataset.mcEffect;});};
  decorate();
  if(!window.__mcUsernameEffectObserver&&document.body){window.__mcUsernameEffectObserver=new MutationObserver(decorate);window.__mcUsernameEffectObserver.observe(document.body,{childList:true,subtree:true});}
  try{safeStorage.setItem("mc_username_effect",id);}catch{}
@@ -2969,7 +2969,7 @@ async function renderOnline(tab=onlinePanelTab,searchQuery=""){
           <div class="online-user-heading">
             <b>${esc(user.displayName||user.username)}</b>
           </div>
-          <small class="mc-username-handle" data-user-id="${esc(user.id)}">@${esc(user.username)} ${invisibleDot(user)} ${moderationStatusTags(user)}${user.invisible?"":" · "+(user.customStatus||(user.online?"Available":"Away"))}</small>
+          <small class="mc-username-handle mc-username-effect-target" data-username="${esc(user.username)}" data-user-id="${esc(user.id)}">@${esc(user.username)} ${invisibleDot(user)} ${moderationStatusTags(user)}${user.invisible?"":" · "+(user.customStatus||(user.online?"Available":"Away"))}</small>
         </div>
         <span class="online-user-rank-badge" title="${esc(String(user.rank||'MEMBER').replaceAll('_',' '))}" aria-label="${esc(String(user.rank||'MEMBER').replaceAll('_',' '))}"><span class="mc-rank-ring" aria-hidden="true"></span><span class="mc-rank-glyph">${rankIcon[String(user.rank||'MEMBER').toUpperCase()]||'⚡'}</span></span>
         
@@ -3259,7 +3259,7 @@ function messageHTML(message) {
           <span class="msg-time-side">${fmt(message.time)}${message.edited ? " · edited" : ""}</span>
           <span class="msg-author-group">
             ${(mcGetById("viewRooms")?.classList.contains("main-room-chat") || !!state.currentRoom?.isDefault || /^(main room|teen chat)$/i.test(String(state.currentRoom?.name||"").trim())) ? `<span class="online-user-rank-badge" title="${esc(String(message.rank||"MEMBER").replaceAll("_"," "))}" aria-label="${esc(String(message.rank||"MEMBER").replaceAll("_"," "))}"><span class="mc-rank-ring" aria-hidden="true"></span><span class="mc-rank-glyph">${rankIcon[String(message.rank||"MEMBER").toUpperCase().replace(/[ -]+/g,"_")]||"⚡"}</span></span>` : ''}
-            <button class="message-author tag-author" type="button" title="Tag @${esc(message.username)}" onclick="tagUserFromMessage('${esc(message.username)}')" style="color:${esc(message.usernameColor||state.user?.settings?.usernameColor||'var(--username-color)')}">${esc(message.displayName)}</button><small class="mc-username-handle msg-username-handle" data-user-id="${esc(message.userId)}">@${esc(message.username)}</small>
+            <button class="message-author tag-author mc-username-effect-target" data-username="${esc(message.username)}" type="button" title="Tag @${esc(message.username)}" onclick="tagUserFromMessage('${esc(message.username)}')" style="color:${esc(message.usernameColor||state.user?.settings?.usernameColor||'var(--username-color)')}">${esc(message.displayName)}</button>
 
           </span>
           <span class="msg-header-right">
@@ -4431,7 +4431,7 @@ function userCard(user) {
       <span class="instagram-avatar-ring">${avatar(user)}</span>
       <span class="horizontal-user-details">
         <b class="instagram-user-name">${esc(displayName)}</b>
-        <small class="instagram-user-handle mc-username-handle" data-user-id="${esc(user.id)}">@${esc(user.username)} ${invisibleDot(user)} ${moderationStatusTags(user)}</small>
+        <small class="instagram-user-handle mc-username-handle mc-username-effect-target" data-username="${esc(user.username)}" data-user-id="${esc(user.id)}">@${esc(user.username)} ${invisibleDot(user)} ${moderationStatusTags(user)}</small>
         <span class="instagram-user-rank">${({ROOM_MODERATOR:"🛡️ Room Moderator",ROOM_ADMIN:"👑 Room Admin",ROOM_OWNER:"🎩 Room Owner"})[state.roomRankByUser?.[String(user.id)]] ? esc(({ROOM_MODERATOR:"🛡️ Room Moderator",ROOM_ADMIN:"👑 Room Admin",ROOM_OWNER:"🎩 Room Owner"})[state.roomRankByUser[String(user.id)]]) : rank(user.rank)}</span>
         <span class="instagram-user-meta"><span class="instagram-presence-dot ${onlineNow ? "is-online" : ""}"></span>${onlineNow ? "Online" : "Member"} <span>·</span> Lv ${Number(user.level || 1)}</span>
       </span>
@@ -4501,7 +4501,7 @@ function renderUserProfileModal(user,data={}){
       <div class="profile-stats"><div class="profile-stat-group"><span class="profile-stat"><span class="profile-stat-icon">⭐</span><span>${user.level||1}</span></span><span class="profile-stat"><span class="profile-stat-icon">✦</span><span>XP ${user.xp||0}</span></span>${!isSelf?`<button type="button" class="profile-stat profile-like-trigger" id="profileLikeBtn" aria-label="Like profile" aria-pressed="${liked}"><span class="profile-stat-icon">❤️</span><span class="profile-like-count">${Number(data.profileLikes??user.profileLikes??0).toLocaleString()}</span></button>`:""}</div><div class="profile-action-group">${!isSelf && (String(state.user?.rank||"").toUpperCase()==="DEVELOPER" || (state.user?.username==="Maleficent" && String(state.user?.rank||"").toUpperCase()==="OWNER") || canFeature("staff_rank_assignment")) ? `<button class="mini profile-rank-btn" id="profileRankBtn" title="Change rank" aria-label="Change rank">🏅</button>` : ""}${isSelf?'<button class="mini profile-edit-btn" id="profileEditBtn" title="Edit account" aria-label="Edit account">✏️</button><button class="mini profile-hamburger" id="profileMenuBtn" title="Profile actions">☰</button>':((canFeature("account_modifications")||canFeature("edit_email")||canFeature("change_password")||canFeature("manage_staff_accounts")) && canAccessStaffTarget(user) ? '<button class="mini profile-edit-btn" id="staffProfileEditBtn" title="Edit this member account" aria-label="Edit this member account">✏️</button><button class="mini profile-hamburger" id="profileMenuBtn" title="Profile actions">☰</button>' : '')}</div></div>
       <div class="profile-rank">${rank(user.rank)}${user.verified?' · ✓ Verified':''}${profileBadge?` <span class="equipped-profile-badge" title="${esc(profileBadge.name)}">${esc(profileBadge.icon)} ${esc(profileBadge.name)}</span>`:''}</div>
       <div class="profile-name">${esc(user.displayName)}${user._nickname?` <span class="nickname-badge">“${esc(user._nickname)}”</span>`:''}</div>
-      <div class="profile-handle mc-username-handle" data-user-id="${esc(user.id)}">@${esc(user.username)}</div>
+      <div class="profile-handle mc-username-handle mc-username-effect-target" data-username="${esc(user.username)}" data-user-id="${esc(user.id)}">@${esc(user.username)}</div>
       ${!isSelf?`<div class="profile-primary-actions"><button class="profile-social-button profile-message-button" id="profileSendPM"><span>✉</span> Send PM</button><button class="profile-social-button profile-friend-button" id="profileAddFriend"><span>＋</span> Add Friend</button></div>`:""}
     </div>
     <div class="profile-tabs">
