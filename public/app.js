@@ -3916,15 +3916,14 @@ function openDoodleComposer(dmTarget=null){
   mcGetById('doodleSend')?.addEventListener('click',async()=>{const btn=mcGetById('doodleSend');btn.disabled=true;btn.textContent='Sending…';try{
     const blob=await new Promise((resolve,reject)=>canvas.toBlob(b=>b?resolve(b):reject(Error('Could not export the doodle.')),'image/png'));
     const file=new File([blob],'maleficent-doodle.png',{type:'image/png'}),form=new FormData();form.append('text','');form.append('file',file);
-    const data=await api('/api/rooms/'+encodeURIComponent(state.currentRoom)+'/messages',{method:'POST',body:form});
-    if(data.message&&String(data.message.roomId)===String(state.currentRoom))appendMessage(data.message);
-    closeModal();toast('Doodle sent to the room!');
+    if(dmTarget){const data=await api('/api/dm/'+encodeURIComponent(dmTarget),{method:'POST',body:form});if(data.message&&String(state.dmUserId)===String(dmTarget)){state.dmMessages=state.dmMessages||[];state.dmMessages.push(data.message);const list=mcGetById('dmMessages');if(list){list.querySelector('.muted')?.remove();list.insertAdjacentHTML('beforeend',dmMessageHTML(data.message,state.dmMessages,state.dmPeerUser||{}));list.scrollTop=list.scrollHeight;}}closeModal();toast('Doodle sent privately!');}
+    else{const data=await api('/api/rooms/'+encodeURIComponent(state.currentRoom)+'/messages',{method:'POST',body:form});if(data.message&&String(data.message.roomId)===String(state.currentRoom))appendMessage(data.message);closeModal();toast('Doodle sent to the room!');}
   }catch(e){btn.disabled=false;btn.textContent='➤ Send to Main Chat';toast(e.message||'Could not send doodle.')}});
 }
 mcGetById('doodleBtn')?.addEventListener('click',openDoodleComposer);
 
 
-async function openReelSharePicker(){
+async function openReelSharePicker(dmTarget=null){
   try{
     const data=await api("/api/wall");
     const videos=(data.posts||[]).filter(p=>/\.(mp4|webm|ogg)(\?|$)/i.test(String(p.media_url||"")));
