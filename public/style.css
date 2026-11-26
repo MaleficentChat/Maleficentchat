@@ -11838,3 +11838,9 @@ body.party-mode-active #partySparkleLayer{mix-blend-mode:screen}
 #modal .dm-tools-drawer.open:not(.hidden){display:grid!important}
 #modal .dm-tools-drawer button{display:flex!important;align-items:center!important;gap:8px!important;min-width:0!important;min-height:42px!important;white-space:normal!important;cursor:pointer!important}
 @media(max-width:700px){#modal .notification-card{grid-template-columns:38px minmax(0,1fr) 32px!important;gap:7px!important;padding:8px!important}#modal .notification-card>.notification-avatar-wrap{width:38px!important;height:38px!important;min-width:38px!important;max-width:38px!important;min-height:38px!important;max-height:38px!important}#modal .notification-card>.notification-actions{width:32px!important;min-width:32px!important}#modal .notification-card .notification-actions .mini{width:25px!important;height:25px!important;min-width:25px!important;min-height:25px!important}#modal .notification-head{flex-wrap:wrap!important;gap:8px!important}#modal .notification-head .toolbar{display:flex!important;flex-wrap:wrap!important;gap:5px!important}}
+
+
+/* 2026-11-26 unified quick-action popovers: prevent stale fixed coordinates. */
+#viewRooms.chatting #chatToolsDrawer.open{display:flex!important;}
+#modal .dm-tools-drawer.open:not(.hidden){display:grid!important;}
+#viewRooms.chatting #chatToolsDrawer.open>button,#modal .dm-tools-drawer.open:not(.hidden)>button{box-sizing:border-box!important;min-height:44px!important;}
