@@ -5043,7 +5043,7 @@ async function openDM(id) {
         <div class="dm-chat-person">
           <button type="button" class="dm-profile-link dm-profile-avatar" data-dm-open-profile="${esc(user.id)}" aria-label="Open ${esc(user.displayName)}'s profile">${avatar(user)}</button>
           <div class="dm-chat-person-copy">
-            <button type="button" class="dm-profile-link dm-profile-name" data-dm-open-profile="${esc(user.id)}">${esc(privateNickname||user.displayName)}</button>
+            <button type="button" class="dm-profile-link dm-profile-name" data-dm-open-profile="${esc(user.id)}">${usernameEffectMarkup(privateNickname||user.displayName,user.settings?.usernameEffect)}</button>
             <span><i class="${user.online?'is-online':'is-offline'}"></i> ${user.online?'Online':'Offline'}</span>
           </div>
         </div>
