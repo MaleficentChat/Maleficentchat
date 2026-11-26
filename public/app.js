@@ -1129,7 +1129,7 @@ function startRoomMessageBackgroundSync(){
     try{await refreshRoomMessageList(roomId);}
     catch(error){console.warn("Background room-message sync failed:",error?.message||error);}
     finally{roomMessageSyncInFlight=false;}
-  },5000);
+  },8000);
 }
 
 async function refreshActiveDMMessageList(peerId){
@@ -1170,7 +1170,7 @@ function startActiveDMMessageBackgroundSync(){
     try{await refreshActiveDMMessageList(peerId);}
     catch(error){console.warn("Background private-message recovery failed:",error?.message||error);}
     finally{activeDMSyncInFlight=false;}
-  },2000);
+  },8000);
 }
 
 async function authenticateSocketAndJoinRoom(socket=state.socket, syncHistory=true) {
@@ -1209,7 +1209,7 @@ async function authenticateSocketAndJoinRoom(socket=state.socket, syncHistory=tr
 async function start() {
   checkUnderConstruction();
   if(constructionPoll)clearInterval(constructionPoll);
-  constructionPoll=setInterval(checkUnderConstruction,15000);
+  constructionPoll=setInterval(checkUnderConstruction,30000);
   mcGetById("auth").classList.add("hidden");
   mcGetById("app").classList.remove("hidden");
 
