@@ -122,6 +122,7 @@ let state = {
   user: null,
   rooms: [],
   currentRoom: null,
+  returnRoomId: null,
   replyTo: null,
   messageExpiry: 0,
 
@@ -1484,6 +1485,8 @@ async function start() {
 
   // Resolve the destination from a fresh server room list and join it in the
   // same login flow. Never expose the room directory as a required intermediate step.
+  const bootParams=new URL(window.location.href).searchParams;
+  state.returnRoomId=bootParams.get("returnRoomId")||null;
   let joined=false;
   let lastJoinError="";
   for(let attempt=0;attempt<6&&!joined;attempt++){
@@ -1492,7 +1495,8 @@ async function start() {
       if(Array.isArray(latest.rooms))state.rooms=sanitizeRoomList(latest.rooms);
       state.roomListMode="all";
       renderRooms();
-      const targetRoom=roomForAgeRouting();
+      const requestedRoom=attempt===0&&state.returnRoomId?state.rooms.find(room=>String(room.id)===String(state.returnRoomId)):null;
+      const targetRoom=requestedRoom||roomForAgeRouting();
       joined=await joinRoom(String(targetRoom.id),{silent:true});
       if(!joined)lastJoinError="The server did not complete the room join.";
     }catch(error){
@@ -1511,6 +1515,11 @@ async function start() {
     toast("We couldn't open your age-appropriate room automatically. Please contact staff. "+lastJoinError);
   }
   await loadNotifications();
+  if(bootParams.get("staffSpace")==="1"){
+    state.view="management";
+    document.querySelectorAll(".nav[data-view]").forEach(button=>button.classList.toggle("active",button.dataset.view==="management"));
+    await renderView();
+  }
   // Notification Reply/Open actions deep-link directly into the sender conversation.
   const notificationPeer=new URL(window.location.href).searchParams.get("dm");
   if(notificationPeer){
@@ -1722,6 +1731,16 @@ document
       event.stopPropagation();
       const requestedView = button.dataset.view;
       if (!requestedView) return;
+      if(requestedView==="management"&&!new URL(window.location.href).searchParams.has("staffSpace")){
+        const spaceUrl=new URL(window.location.href);
+        spaceUrl.searchParams.set("staffSpace","1");
+        spaceUrl.searchParams.delete("dm");
+        if(state.currentRoom)spaceUrl.searchParams.set("returnRoomId",String(state.currentRoom));
+        else spaceUrl.searchParams.delete("returnRoomId");
+        const opened=window.open(spaceUrl.toString(),"_blank");
+        if(!opened)toast("Your browser blocked the Staff Space tab. Allow pop-ups for Maleficent Chat and try again.");
+        return;
+      }
       // Keep the Rooms dropdown expanded while switching between other
       // navigation destinations. Its open state is independent of the active view.
       state.view = requestedView;
@@ -1764,6 +1783,80 @@ document
       mcGetById("sidebar").classList.remove("open");
     };
   });
+
+function returnToMainChat(){
+  const url=new URL(window.location.href);
+  url.searchParams.delete("staffSpace");
+  url.searchParams.delete("dm");
+  if(state.returnRoomId)url.searchParams.set("returnRoomId",String(state.returnRoomId));
+  const fallback=url.pathname+url.search+url.hash;
+  if(window.opener&&!window.opener.closed){
+    window.close();
+    if(window.closed)return;
+  }
+  window.location.assign(fallback);
+}
+
+function organizeOwnerSpace(){
+  const rank=String(state.user?.rank||"").toUpperCase();
+  if(!["OWNER","DEVELOPER"].includes(rank))return;
+  const root=mcGetById("viewManagement"),staffRoot=mcGetById("staff"),ownerRoot=mcGetById("owner");
+  if(!root||!staffRoot||!ownerRoot)return;
+  const oldLayout=root.querySelector(".owner-space-master-layout");
+  if(oldLayout){
+    oldLayout.querySelectorAll(".owner-space-category-content").forEach(container=>{
+      Array.from(container.children).forEach(node=>{
+        const source=node.dataset.ownerSpaceSource==="owner"?ownerRoot:staffRoot;
+        source.appendChild(node);
+      });
+    });
+    const oldStats=oldLayout.querySelector(".owner-statistics-card");
+    if(oldStats)staffRoot.appendChild(oldStats);
+    oldLayout.remove();
+  }
+  const layout=document.createElement("div");
+  layout.className="owner-space-master-layout";
+  layout.style.cssText="display:flex;flex-direction:column;gap:12px;margin:12px 0;";
+  const stats=staffRoot.querySelector(".owner-statistics-card");
+  if(stats)layout.appendChild(stats);
+  const categoryDefs=[
+    ["system","🖥️ System",/site refresh|hard refresh|system notifications|notification center|notification settings/],
+    ["investigation","🔎 User Investigation",/ip inspection|personalized ip|similar ip|matching ip|ip history|ip lookup|user controls|private message inspection|inspect private messages|previous usernames|user history/],
+    ["security","🛡️ Moderation & Security",/audit|filter management|filter words|cleared room|moderation|ip ban|vpn|proxy|risk signals|security/],
+    ["staff","👥 Staff Management",/staff application|premium requests|rank management|rank assignment|staff accounts|grant premium|staff management/],
+    ["config","⚙️ Site Configuration",/site settings|gold|diamonds|xp|daily rewards|gif costs|mute settings|feature grant|mode management|economy|configuration/],
+    ["chat","🧹 Chat Management",/under construction|refresh site messages|clear room|clear private|message refresh|chat management/]
+  ];
+  const groups=new Map();
+  categoryDefs.forEach(([key,label,matcher])=>{
+    const details=document.createElement("details");
+    details.className="owner-space-category";
+    details.style.cssText="border:1px solid var(--border,#39313f);border-radius:14px;background:var(--panel,#15121b);overflow:hidden;";
+    const summary=document.createElement("summary");
+    summary.textContent=label;
+    summary.style.cssText="padding:14px 16px;font-weight:700;cursor:pointer;list-style:none;";
+    const content=document.createElement("div");
+    content.className="owner-space-category-content";
+    content.style.cssText="display:flex;flex-direction:column;gap:10px;padding:0 12px 12px;";
+    details.append(summary,content);
+    layout.appendChild(details);
+    groups.set(key,{content,matcher});
+  });
+  const classify=node=>{
+    const text=String(node.innerText||node.textContent||"").toLowerCase();
+    for(const [key,{matcher}] of groups)if(matcher.test(text))return key;
+    return "config";
+  };
+  [staffRoot,ownerRoot].forEach(source=>{
+    Array.from(source.children).forEach(node=>{
+      node.dataset.ownerSpaceSource=source===ownerRoot?"owner":"staff";
+      groups.get(classify(node)).content.appendChild(node);
+    });
+  });
+  root.insertBefore(layout,staffRoot);
+  staffRoot.classList.add("hidden");
+  ownerRoot.classList.add("hidden");
+}
 
 async function renderView() {
   // The People directory is the existing room-side panel, not a standalone .view.
@@ -1897,6 +1990,7 @@ async function renderView() {
       mcGetById("owner")?.classList.toggle("hidden",!ownerEligible);
       await loadStaff();
       if(ownerEligible) await loadOwner();
+      if(ownerEligible) organizeOwnerSpace();
       return;
     }
   }
@@ -6732,6 +6826,7 @@ async function loadStaff() {
 
 
     mcGetById('staff').innerHTML=`
+      ${['OWNER','DEVELOPER'].includes(staffRank) ? `<section class="card owner-statistics-card" style="border:1px solid var(--border,#39313f);border-radius:16px;padding:14px;margin-bottom:12px"><h3 style="margin-top:0">📊 Statistics</h3><div class="grid2"><div class="card"><h3>👥 Users</h3><p>${Number((data.stats||{}).users||0)}</p></div><div class="card"><h3>🟢 Online</h3><p>${Number((data.stats||{}).online||0)}</p></div><div class="card"><h3>💬 Messages</h3><p>${Number((data.stats||{}).messages||0)}</p></div><div class="card"><h3>🚩 Open Reports</h3><p>${Number((data.stats||{}).reportsOpen||0)}</p></div></div></section>` : ''}
       ${['INSTRUCTOR','COOWNER','OWNER','DEVELOPER'].includes(String(state.user?.rank||'').toUpperCase()) ? '<details class="staff-compact-dropdown"><summary>🗃️ Cleared Room Messages Inspection</summary><section class="card cleared-room-evidence-card"><div class="toolbar" style="justify-content:space-between;align-items:flex-start"><div><h3>🗃️ Cleared Room Messages Inspection</h3><p class="muted">Review archived messages from rooms that were cleared. New clears are archived automatically before messages are removed.</p></div><button class="mini" type="button" id="refreshClearedRoomEvidence">↻ Refresh</button></div><form id="clearedRoomEvidenceSearch" class="toolbar"><input id="clearedRoomEvidenceQuery" maxlength="100" placeholder="Filter by room name or staff username"><button class="mini primary" type="submit">Search</button></form><div id="clearedRoomEvidenceList"><p class="muted">Loading cleared-room evidence…</p></div></section></details>' : ''}
       ${canHardRefreshSite ? '<section class="card site-hard-refresh-card"><div><h3>⟳ Site Refresh</h3><p class="muted">Clear cached website files on this device and reload Maleficent Chat. All account data and messages remain stored safely.</p></div><button class="primary" type="button" id="hardRefreshSiteButton">⟳ Hard Refresh Site</button></section>' : ''}
       ${(String(state.user?.rank||'').toUpperCase()==='DEVELOPER'||String(state.user?.rank||'').toUpperCase()==='OWNER') ? '<details class="staff-compact-dropdown"><summary>🚧 Under Construction</summary><section class="card under-construction-admin-card"><div class="under-construction-admin-heading"><div><h3>🚧 Under Construction</h3><p class="muted">Switch maintenance mode ON to block regular users. Create a shutdown code when enabling; the same code is required to switch it OFF. Owner and Developer accounts remain exempt.</p></div><span class="construction-status-pill" id="staffConstructionStatus" aria-live="polite">Checking status…</span></div><div class="construction-switch-row"><span><b>Maintenance mode</b><small>OFF = site open · ON = maintenance screen</small></span><span class="construction-switch"><input type="checkbox" id="staffUnderConstructionToggle" role="switch" aria-label="Under Construction mode" aria-checked="false" onchange="toggleUnderConstruction(this.checked)"><span class="construction-switch-track" aria-hidden="true"></span></span></div><div class="construction-message-box"><label for="staffConstructionMessage">Maintenance message for users</label><textarea id="staffConstructionMessage" maxlength="1000" rows="3" placeholder="Write the message users should see above the shutdown code box"></textarea><small class="muted">This message will appear on the maintenance screen above the Shutdown Code field.</small></div><div class="construction-code-box"><label for="staffConstructionCode" id="staffConstructionCodeLabel">Create shutdown code<input type="password" id="staffConstructionCode" minlength="4" maxlength="128" autocomplete="new-password" placeholder="Create a code to switch ON" aria-describedby="staffConstructionCodeHelp"></label><small id="staffConstructionCodeHelp" class="muted">Use 4–128 characters. When maintenance is ON, enter this same code before switching it OFF.</small></div><p class="muted construction-last-result" id="staffConstructionResult" aria-live="polite">The saved server setting will be checked before displaying the current state.</p></section></details>' : ''}
@@ -7293,14 +7388,12 @@ async function loadOwner() {
         <h3>
           ${String(state.user?.rank||"").toUpperCase()==="DEVELOPER"?"🛠️ Developer Controls":"👑 Owner Controls"}
         </h3>
-
-        <p>
-          ${String(state.user?.rank||"").toUpperCase()==="DEVELOPER"?"Developer-level system controls and authorized owner tools.":"Owner-level controls for users, ranks, gold, private-message inspection, rooms and settings."}
-        </p>
-
-        <div class="toolbar">
-          <button class="primary" onclick="inspectDMs()">Inspect private messages</button>
-        </div>
+        <p>${String(state.user?.rank||"").toUpperCase()==="DEVELOPER"?"Developer-level system controls and authorized owner tools.":"Owner-level controls for users, ranks, Gold, Diamonds, XP, private-message inspection and settings."}</p>
+        <section class="card owner-inspect-dms-card" style="margin-top:14px">
+          <h3>💬 Inspect Private Messages</h3>
+          <p class="muted">Inspect conversations using the existing staff permission rules.</p>
+          <button class="primary" type="button" onclick="inspectDMs()">💬 Inspect private messages</button>
+        </section>
         <section class="card owner-message-refresh-card" style="margin-top:14px;border-color:var(--danger,#646464)">
           <h3>🧹 Refresh Site Messages</h3>
           <p class="muted">Permanently remove all current room chat messages and private messages for every user. Accounts, passwords, ranks, gold, settings, rooms, reports, and moderation/audit history are kept.</p>
@@ -7493,6 +7586,7 @@ async function loadOwner() {
     document.querySelectorAll('[data-filter-delete]').forEach(b=>b.onclick=async()=>{try{await api('/api/filter-words/'+b.dataset.filterDelete,{method:'DELETE'});loadOwner()}catch(e){toast(e.message)}});
     document.querySelectorAll('[data-grant-premium]').forEach(b=>b.onclick=async()=>{try{await api('/api/owner/premium-requests/'+b.dataset.grantPremium+'/grant',{method:'POST'});toast('Premium granted.');loadOwner()}catch(e){toast(e.message)}});
 document.querySelectorAll('[data-cancel-premium]').forEach(b=>b.onclick=async()=>{try{const r=await api('/api/premium/cancel',{method:'POST',body:JSON.stringify({userId:b.dataset.cancelPremium})});b.closest('.hub-row')?.remove();toast('Premium cancelled.');}catch(e){toast(e.message)}});
+    organizeOwnerSpace();
   } catch (error) {
     toast(error.message);
   }
