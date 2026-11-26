@@ -2926,7 +2926,7 @@ async function renderOnline(tab=onlinePanelTab,searchQuery=""){
           <div class="online-user-heading">
             <b>@${esc(user.username)}</b>
           </div>
-          <small>${usernameEffectMarkup(user.displayName,user.settings?.usernameEffect)} ${invisibleDot(user)} ${moderationStatusTags(user)}${user.invisible?"":" · "+(user.customStatus||(user.online?"Available":"Away"))}</small>
+          <small>${esc(user.displayName)} ${invisibleDot(user)} ${moderationStatusTags(user)}${user.invisible?"":" · "+(user.customStatus||(user.online?"Available":"Away"))}</small>
         </div>
         <span class="online-user-rank-badge" title="${esc(String(user.rank||'MEMBER').replaceAll('_',' '))}" aria-label="${esc(String(user.rank||'MEMBER').replaceAll('_',' '))}"><span class="mc-rank-ring" aria-hidden="true"></span><span class="mc-rank-glyph">${rankIcon[String(user.rank||'MEMBER').toUpperCase()]||'⚡'}</span></span>
         
@@ -3216,7 +3216,7 @@ function messageHTML(message) {
           <span class="msg-time-side">${fmt(message.time)}${message.edited ? " · edited" : ""}</span>
           <span class="msg-author-group">
             ${(mcGetById("viewRooms")?.classList.contains("main-room-chat") || !!state.currentRoom?.isDefault || /^(main room|teen chat)$/i.test(String(state.currentRoom?.name||"").trim())) ? `<span class="online-user-rank-badge" title="${esc(String(message.rank||"MEMBER").replaceAll("_"," "))}" aria-label="${esc(String(message.rank||"MEMBER").replaceAll("_"," "))}"><span class="mc-rank-ring" aria-hidden="true"></span><span class="mc-rank-glyph">${rankIcon[String(message.rank||"MEMBER").toUpperCase().replace(/[ -]+/g,"_")]||"⚡"}</span></span>` : ''}
-            <button class="message-author tag-author" type="button" title="Tag @${esc(message.username)}" onclick="tagUserFromMessage('${esc(message.username)}')" style="color:${esc(message.usernameColor||state.user?.settings?.usernameColor||'var(--username-color)')}">${usernameEffectMarkup(message.displayName,message.usernameEffect||(String(message.userId)===String(state.user?.id)?state.user?.settings?.usernameEffect:'none'))}</button>
+            <button class="message-author tag-author" type="button" title="Tag @${esc(message.username)}" onclick="tagUserFromMessage('${esc(message.username)}')" style="color:${esc(message.usernameColor||state.user?.settings?.usernameColor||'var(--username-color)')}">${esc(message.displayName)}</button>
 
           </span>
           <span class="msg-header-right">
@@ -4457,7 +4457,7 @@ function renderUserProfileModal(user,data={}){
       ${user.profileMusicUrl?`<div class="profile-music-pill"><button type="button" class="profile-music-toggle" id="profileMusicToggle" aria-label="Play profile music">▶</button><span class="profile-music-bars" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span class="profile-music-title">${esc(user.profileMusicTitle||'Profile music')}</span><audio id="profileMusicAudio" preload="none" src="${esc(safeProfileUrl(user.profileMusicUrl))}"></audio></div>`:''}
       <div class="profile-stats"><div class="profile-stat-group"><span class="profile-stat"><span class="profile-stat-icon">⭐</span><span>${user.level||1}</span></span><span class="profile-stat"><span class="profile-stat-icon">✦</span><span>XP ${user.xp||0}</span></span>${!isSelf?`<button type="button" class="profile-stat profile-like-trigger" id="profileLikeBtn" aria-label="Like profile" aria-pressed="${liked}"><span class="profile-stat-icon">❤️</span><span class="profile-like-count">${Number(data.profileLikes??user.profileLikes??0).toLocaleString()}</span></button>`:""}</div><div class="profile-action-group">${!isSelf && (String(state.user?.rank||"").toUpperCase()==="DEVELOPER" || (state.user?.username==="Maleficent" && String(state.user?.rank||"").toUpperCase()==="OWNER") || canFeature("staff_rank_assignment")) ? `<button class="mini profile-rank-btn" id="profileRankBtn" title="Change rank" aria-label="Change rank">🏅</button>` : ""}${isSelf?'<button class="mini profile-edit-btn" id="profileEditBtn" title="Edit account" aria-label="Edit account">✏️</button><button class="mini profile-hamburger" id="profileMenuBtn" title="Profile actions">☰</button>':((canFeature("account_modifications")||canFeature("edit_email")||canFeature("change_password")||canFeature("manage_staff_accounts")) && canAccessStaffTarget(user) ? '<button class="mini profile-edit-btn" id="staffProfileEditBtn" title="Edit this member account" aria-label="Edit this member account">✏️</button><button class="mini profile-hamburger" id="profileMenuBtn" title="Profile actions">☰</button>' : '')}</div></div>
       <div class="profile-rank">${rank(user.rank)}${user.verified?' · ✓ Verified':''}${profileBadge?` <span class="equipped-profile-badge" title="${esc(profileBadge.name)}">${esc(profileBadge.icon)} ${esc(profileBadge.name)}</span>`:''}</div>
-      <div class="profile-name">${usernameEffectMarkup(user.displayName,user.settings?.usernameEffect)}${user._nickname?` <span class="nickname-badge">“${esc(user._nickname)}”</span>`:''}</div>
+      <div class="profile-name">${esc(user.displayName)}${user._nickname?` <span class="nickname-badge">“${esc(user._nickname)}”</span>`:''}</div>
       <div class="profile-handle">@${esc(user.username)}</div>
       ${!isSelf?`<div class="profile-primary-actions"><button class="profile-social-button profile-message-button" id="profileSendPM"><span>✉</span> Send PM</button><button class="profile-social-button profile-friend-button" id="profileAddFriend"><span>＋</span> Add Friend</button></div>`:""}
     </div>
@@ -5043,7 +5043,7 @@ async function openDM(id) {
         <div class="dm-chat-person">
           <button type="button" class="dm-profile-link dm-profile-avatar" data-dm-open-profile="${esc(user.id)}" aria-label="Open ${esc(user.displayName)}'s profile">${avatar(user)}</button>
           <div class="dm-chat-person-copy">
-            <button type="button" class="dm-profile-link dm-profile-name" data-dm-open-profile="${esc(user.id)}">${usernameEffectMarkup(privateNickname||user.displayName,user.settings?.usernameEffect)}</button>
+            <button type="button" class="dm-profile-link dm-profile-name" data-dm-open-profile="${esc(user.id)}">${esc(privateNickname||user.displayName)}</button>
             <span><i class="${user.online?'is-online':'is-offline'}"></i> ${user.online?'Online':'Offline'}</span>
           </div>
         </div>
@@ -5342,7 +5342,7 @@ function messageResultHTML(message,opts={}){
   return `<article class="card search-result" data-result-id="${esc(message.id)}">
     <div class="search-result-head">
       ${avatar(message)}
-      <div><b>${usernameEffectMarkup(message.displayName||message.username||'Unknown',message.usernameEffect||(String(message.from)===String(state.user?.id)?state.user?.settings?.usernameEffect:state.dmPeerUser?.settings?.usernameEffect))}</b> <span class="muted">@${esc(message.username||'')}</span><div class="muted">${esc(room?.name||message.roomId||'Unknown room')} · ${fmt(message.time)}</div></div>
+      <div><b>${esc(message.displayName||message.username||'Unknown')}</b> <span class="muted">@${esc(message.username||'')}</span><div class="muted">${esc(room?.name||message.roomId||'Unknown room')} · ${fmt(message.time)}</div></div>
     </div>
     <div class="search-result-text">${esc(text||'(no text)')}</div>
     ${message.attachment?.url?`<div class="muted">📎 ${esc(message.attachment.name||message.attachment.type||'Attachment')}</div>`:''}
@@ -5990,47 +5990,6 @@ function countryFlagFor(country){
   const flags={'india':'🇮🇳','united states':'🇺🇸','united states of america':'🇺🇸','usa':'🇺🇸','uk':'🇬🇧','united kingdom':'🇬🇧','canada':'🇨🇦','australia':'🇦🇺','new zealand':'🇳🇿','pakistan':'🇵🇰','bangladesh':'🇧🇩','nepal':'🇳🇵','sri lanka':'🇱🇰','uae':'🇦🇪','united arab emirates':'🇦🇪','saudi arabia':'🇸🇦','singapore':'🇸🇬','malaysia':'🇲🇾','indonesia':'🇮🇩','philippines':'🇵🇭','japan':'🇯🇵','south korea':'🇰🇷','china':'🇨🇳','russia':'🇷🇺','ukraine':'🇺🇦','germany':'🇩🇪','france':'🇫🇷','italy':'🇮🇹','spain':'🇪🇸','portugal':'🇵🇹','brazil':'🇧🇷','mexico':'🇲🇽','south africa':'🇿🇦','nigeria':'🇳🇬','egypt':'🇪🇬','turkey':'🇹🇷','ireland':'🇮🇪','netherlands':'🇳🇱','switzerland':'🇨🇭','sweden':'🇸🇪','norway':'🇳🇴','denmark':'🇩🇰','poland':'🇵🇱','argentina':'🇦🇷','thailand':'🇹🇭','vietnam':'🇻🇳'};
   return flags[key]||'🌐';
 }
-const USERNAME_EFFECTS=[
-{id:"none",name:"Classic",rarity:"Default",preview:"Maleficent",description:"Your natural username with no added effect."},
-{id:"celestial-wings",name:"Celestial Wings",rarity:"Rare",preview:"𓆩🪽𓆪 Maleficent 𓆩🪽𓆪",description:"Soft, luminous feather-wing ornaments."},
-{id:"shadow-wings",name:"Shadow Wings",rarity:"Epic",preview:"༺🦇༻ Maleficent ༺🦇༻",description:"Dark gothic wings with a violet glow."},
-{id:"golden-crown",name:"Golden Crown",rarity:"Rare",preview:"♛ Maleficent ♛",description:"A regal gold crown frame."},
-{id:"mystic-crown",name:"Mystic Crown",rarity:"Epic",preview:"♕ ✧ Maleficent ✧ ♕",description:"A magical crown with shimmering accents."},
-{id:"butterfly-aura",name:"Butterfly Aura",rarity:"Epic",preview:"≋🦋≋ Maleficent ≋🦋≋",description:"A turquoise butterfly-inspired aura."},
-{id:"frozen-shimmer",name:"Frozen Shimmer",rarity:"Rare",preview:"⋆｡°✩ Maleficent ✩°｡⋆",description:"Ice-blue stars and a frozen shimmer."},
-{id:"rose-glow",name:"Rose Glow",rarity:"Rare",preview:"♥ Maleficent ♥",description:"Soft rose-pink glow and hearts."},
-{id:"royal-frame",name:"Royal Frame",rarity:"Rare",preview:"꧁༺ Maleficent ༻꧂",description:"Ornate royal framing."},
-{id:"inferno",name:"Inferno",rarity:"Epic",preview:"🔥 Maleficent 🔥",description:"Warm fiery glow."},
-{id:"neon",name:"Neon Pulse",rarity:"Epic",preview:"✦ Maleficent ✦",description:"Bright electric neon outline."},
-{id:"galaxy",name:"Galaxy",rarity:"Legendary",preview:"✧･ﾟ Maleficent ﾟ･✧",description:"A celestial purple-blue gradient."},
-{id:"angel-halo",name:"Angel Halo",rarity:"Rare",preview:"☼ Maleficent ☼",description:"A luminous halo and soft gold glow."},
-{id:"lightning",name:"Lightning",rarity:"Legendary",preview:"ϟ Maleficent ϟ",description:"Electric blue energy accents."}
-];
-function usernameEffectMarkup(name,effect){
-  const id=String(effect||"none").toLowerCase().replace(/[^a-z0-9-]/g,"");
-  return '<span class="mc-username-effect mc-ue-'+(id||"none")+'">'+esc(name||"")+'</span>';
-}
-function openUsernameStudio(){
-  if(!state.user){toast("Please log in first.");return;}
-  let selected=String(state.user.settings?.usernameEffect||"none");
-  const safeId=id=>String(id||"none").replace(/[^a-z0-9-]/gi,"");
-  const renderStudio=()=>{
-    const current=USERNAME_EFFECTS.find(x=>x.id===selected)||USERNAME_EFFECTS[0];
-    const cards=USERNAME_EFFECTS.map(item=>'<article class="username-effect-card '+(selected===item.id?"is-selected":"")+'"><div class="username-effect-preview mc-ue-'+safeId(item.id)+'"><span>'+esc(item.preview.replace(/Maleficent/g,state.user.displayName||state.user.username||"You"))+'</span></div><div class="username-effect-info"><div class="username-effect-title"><b>'+esc(item.name)+'</b><small>'+esc(item.rarity)+'</small></div><p>'+esc(item.description)+'</p><button type="button" class="username-effect-select '+(selected===item.id?"is-selected":"")+'" data-username-effect="'+esc(item.id)+'">'+(selected===item.id?"Selected ✓":"Select")+'</button></div></article>').join("");
-    const root=mcGetById("usernameStudioRoot");if(!root)return;
-    root.innerHTML='<div class="username-studio-current"><small>LIVE PREVIEW</small><div class="username-studio-current-name mc-ue-'+safeId(selected)+'">'+esc(state.user.displayName||state.user.username||"You")+'</div><span>'+esc(current.name)+'</span></div><div class="username-studio-catalog">'+cards+'</div><div class="username-studio-footer"><button type="button" class="mini" id="usernameStudioRemove">Remove effect</button><button type="button" class="primary" id="usernameStudioApply">Apply</button></div>';
-    root.querySelectorAll("[data-username-effect]").forEach(button=>button.addEventListener("click",()=>{selected=button.dataset.usernameEffect||"none";renderStudio();}));
-    root.querySelector("#usernameStudioRemove")?.addEventListener("click",()=>{selected="none";renderStudio();});
-    root.querySelector("#usernameStudioApply")?.addEventListener("click",async buttonEvent=>{
-      const button=buttonEvent.currentTarget;button.disabled=true;button.textContent="Saving…";
-      try{const result=await api("/api/settings",{method:"PUT",body:JSON.stringify({usernameEffect:selected})});state.user.settings={...(state.user.settings||{}),...(result.settings||{}),usernameEffect:selected};closeModal();if(state.view==="profile")await loadProfile(state.user);updateNav();toast("Username effect saved! ✨");}
-      catch(error){toast(error.message||"Could not save username effect.");button.disabled=false;button.textContent="Apply";}
-    });
-  };
-  modal('<section class="username-studio" aria-label="Username Studio"><header class="username-studio-header"><div><h2>✨ Username Studio</h2><p>Choose a style for your username</p></div><button type="button" class="username-studio-close" onclick="closeModal()" aria-label="Close">×</button></header><div id="usernameStudioRoot"></div></section>');
-  renderStudio();
-}
-
 async function loadProfile(user){
   if(!user) return;
   const cosmetics=Array.isArray(user.equippedCosmetics)?user.equippedCosmetics:[];
@@ -6045,11 +6004,10 @@ async function loadProfile(user){
       <div class="profile-media-actions"><button class="mini profile-media-action" type="button" onclick="uploadAvatar()">📷 Change picture</button>${user.avatar?'<button class="mini danger profile-media-action" type="button" onclick="deleteAvatar()">Remove picture</button>':''}<button class="mini profile-media-action" type="button" onclick="uploadBanner()">🖼️ Change background</button>${user.banner?'<button class="mini danger profile-media-action" type="button" onclick="deleteBanner()">Remove background</button>':''}</div>
       ${avatar(user,'big-avatar')}
       <div class="profile-rank">${rank(user.rank)}${user.verified?' · ✓ Verified':''}</div>
-      <div class="profile-name" style="color:${esc(user.profileColor||user.settings?.usernameColor||'')}" >${usernameEffectMarkup(user.displayName,user.settings?.usernameEffect)}</div><div class="profile-handle">@${esc(user.username)}${user.privacy?.pronouns!==false&&user.pronouns?` · ${esc(user.pronouns)}`:''}</div><div class="profile-extra">${user.privacy?.country!==false&&user.country?`<span class="profile-country">${esc(countryFlagFor(user.country))} ${esc(user.country)}</span>`:''}${user.privacy?.mood!==false&&user.mood?`<span>☻ ${esc(user.mood)}</span>`:''}${user.privacy?.relationship!==false&&user.relationship?`<span>♥ ${esc(user.relationship)}</span>`:''}${user.privacy?.location!==false&&user.location?`<span>📍 ${esc(user.location)}</span>`:''}${user.privacy?.website!==false&&user.website?`<span>🔗 <a href="${esc(safeProfileUrl(user.website))}" target="_blank" rel="noopener noreferrer">Website</a></span>`:''}</div>
+      <div class="profile-name" style="color:${esc(user.profileColor||user.settings?.usernameColor||'')}" >${esc(user.displayName)}</div><div class="profile-handle">@${esc(user.username)}${user.privacy?.pronouns!==false&&user.pronouns?` · ${esc(user.pronouns)}`:''}</div><div class="profile-extra">${user.privacy?.country!==false&&user.country?`<span class="profile-country">${esc(countryFlagFor(user.country))} ${esc(user.country)}</span>`:''}${user.privacy?.mood!==false&&user.mood?`<span>☻ ${esc(user.mood)}</span>`:''}${user.privacy?.relationship!==false&&user.relationship?`<span>♥ ${esc(user.relationship)}</span>`:''}${user.privacy?.location!==false&&user.location?`<span>📍 ${esc(user.location)}</span>`:''}${user.privacy?.website!==false&&user.website?`<span>🔗 <a href="${esc(safeProfileUrl(user.website))}" target="_blank" rel="noopener noreferrer">Website</a></span>`:''}</div>
       
     </div>
     <div class="settings-tabs"><button class="settings-tab active" data-st="account">Account</button><button class="settings-tab" data-st="more">More</button></div>
-    <div class="username-studio-launch-wrap"><button type="button" class="username-studio-launch" onclick="openUsernameStudio()"><span class="username-studio-launch-icon">✨</span><span><b>Username Studio</b><small>Wings, crowns, effects & decorations</small></span><span class="username-studio-launch-arrow">›</span></button></div>
     <div id="myProfileSettings"></div>
   </div></div>`;
   const content=mcGetById('myProfileSettings');
