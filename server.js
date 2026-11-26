@@ -1615,14 +1615,23 @@ const staticAssetOptions = {
   maxAge: "1d",
   etag: true,
   lastModified: true,
-  setHeaders(res) {
-    res.setHeader("Cache-Control", "public, max-age=86400, stale-while-revalidate=604800");
+  setHeaders(res, filePath) {
+    // Query-versioned assets are immutable until the HTML changes its version.
+    // Cache them for a year so repeat visits on mobile avoid downloading large JS/CSS.
+    const versioned = /[?&](?:v|version)=/i.test(String(res.req?.originalUrl||""));
+    res.setHeader("Cache-Control", versioned
+      ? "public, max-age=31536000, immutable"
+      : "public, max-age=86400, stale-while-revalidate=604800");
   }
 };
 
 app.use("/uploads", express.static(UP, staticAssetOptions));
 app.use(express.static(path.join(__dirname,"public"), staticAssetOptions));
-app.get("/", (req, res) => res.sendFile(path.join(__dirname, "public", "index.html")));
+app.get("/", (req, res) => {
+  // HTML carries current asset versions; never cache it longer than needed.
+  res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+  res.sendFile(path.join(__dirname, "public", "index.html"));
+});
 
 const upload=multer({
   storage:multer.diskStorage({
