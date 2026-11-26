@@ -5032,7 +5032,7 @@ async function openDM(id) {
       }
 
       <form id="dmForm" class="composer dm-composer">
-        <label class="dm-upload-btn" title="Attach photo, audio, video or file">📎
+        <label class="dm-tools-toggle" title="Attach photo, audio, video or file">📎
           <input id="dmFile" type="file" accept="image/*,audio/*,video/*,.pdf,.txt" hidden>
         </label>
         <span id="dmFileName" class="muted dm-file-name"></span>
