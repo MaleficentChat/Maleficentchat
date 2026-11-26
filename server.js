@@ -585,7 +585,7 @@ function safeUser(u){
     banner:u.banner||"",
     profilePhotos:Array.isArray(u.profilePhotos)?u.profilePhotos.slice(0,10).map(p=>({id:String(p.id),url:String(p.url)})):[],
     theme:u.settings?.theme||u.theme||"obsidian",
-    settings:{usernameColor:u.settings?.usernameColor||'',usernameEffect:u.settings?.usernameEffect||'none',usernameColorGradient:u.settings?.usernameColorGradient||'',usernameColorEffect:u.settings?.usernameColorEffect||'none',usernameColorIntensity:Number(u.settings?.usernameColorIntensity||65),chatFont:u.settings?.chatFont||'',messageEffects:u.settings?.messageEffects||'',fontSize:u.settings?.fontSize||'medium',compactMode:!!u.settings?.compactMode},
+    settings:{usernameColor:u.settings?.usernameColor||'',usernameEffect:u.settings?.usernameEffect||'none',usernameColorGradient:u.settings?.usernameColorGradient||'',usernameColorEffect:u.settings?.usernameColorEffect||'none',usernameColorIntensity:Number(u.settings?.usernameColorIntensity||65),usernameColorSpeed:Number(u.settings?.usernameColorSpeed||50),usernameDecorationEffect:['','celestial-wings','shadow-wings','royal-crown','rose-glow','frosted'].includes(u.settings?.usernameDecorationEffect)?(u.settings?.usernameDecorationEffect||''):'',chatFont:u.settings?.chatFont||'',messageEffects:u.settings?.messageEffects||'',fontSize:u.settings?.fontSize||'medium',compactMode:!!u.settings?.compactMode},
     profileColor:u.profileColor||"",
     profileMusicTitle:u.profileMusicTitle||"",
     profileMusicUrl:u.profileMusicUrl||"",
