@@ -3259,7 +3259,7 @@ function messageHTML(message) {
           <span class="msg-time-side">${fmt(message.time)}${message.edited ? " · edited" : ""}</span>
           <span class="msg-author-group">
             ${(mcGetById("viewRooms")?.classList.contains("main-room-chat") || !!state.currentRoom?.isDefault || /^(main room|teen chat)$/i.test(String(state.currentRoom?.name||"").trim())) ? `<span class="online-user-rank-badge" title="${esc(String(message.rank||"MEMBER").replaceAll("_"," "))}" aria-label="${esc(String(message.rank||"MEMBER").replaceAll("_"," "))}"><span class="mc-rank-ring" aria-hidden="true"></span><span class="mc-rank-glyph">${rankIcon[String(message.rank||"MEMBER").toUpperCase().replace(/[ -]+/g,"_")]||"⚡"}</span></span>` : ''}
-            <button class="message-author tag-author" type="button" title="Tag @${esc(message.username)}" onclick="tagUserFromMessage('${esc(message.username)}')" style="color:${esc(message.usernameColor||state.user?.settings?.usernameColor||'var(--username-color)')}">${esc(message.displayName)}</button>
+            <button class="message-author tag-author" type="button" title="Tag @${esc(message.username)}" onclick="tagUserFromMessage('${esc(message.username)}')" style="color:${esc(message.usernameColor||state.user?.settings?.usernameColor||'var(--username-color)')}">${esc(message.displayName)}</button><small class="mc-username-handle msg-username-handle" data-user-id="${esc(message.userId)}">@${esc(message.username)}</small>
 
           </span>
           <span class="msg-header-right">
