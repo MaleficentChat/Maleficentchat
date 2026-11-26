@@ -812,7 +812,7 @@ function mcUsernameEffectSaved(){try{return safeStorage.getItem("mc_username_eff
 function mcApplyUsernameEffect(effectId){
  const id=MC_USERNAME_EFFECTS.some(x=>x.id===effectId)?effectId:"";
  const ownId=String(state.user?.id||"");
- const decorate=()=>{document.querySelectorAll(".mc-username-handle[data-user-id]").forEach(el=>{if(ownId&&String(el.dataset.userId)===ownId){if(id)el.dataset.mcEffect=id;else delete el.dataset.mcEffect;}else delete el.dataset.mcEffect;});};
+ const decorate=()=>{const ownId=String(state.user?.id||"");document.querySelectorAll(".mc-username-handle[data-user-id]").forEach(el=>{if(ownId&&String(el.dataset.userId)===ownId){if(id)el.dataset.mcEffect=id;else delete el.dataset.mcEffect;}else delete el.dataset.mcEffect;});};
  decorate();
  if(!window.__mcUsernameEffectObserver&&document.body){window.__mcUsernameEffectObserver=new MutationObserver(decorate);window.__mcUsernameEffectObserver.observe(document.body,{childList:true,subtree:true});}
  try{safeStorage.setItem("mc_username_effect",id);}catch{}
