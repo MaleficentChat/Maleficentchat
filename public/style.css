@@ -11928,3 +11928,30 @@ body.party-mode-active #partySparkleLayer{mix-blend-mode:screen}
 .mc-username-effect-target[data-mc-effect="royal-crown"]{text-shadow:0 0 8px rgba(255,218,131,.6);}
 .mc-username-effect-target[data-mc-effect="rose-glow"]{text-shadow:0 0 9px rgba(255,120,180,.6);}
 .mc-username-effect-target[data-mc-effect="frosted"]{text-shadow:0 0 9px rgba(130,220,255,.65);}
+
+/* Username Studio unified styling: decoration must not override the chosen color. */
+.mc-name-color-target[data-mc-effect="celestial-wings"],
+.mc-name-color-target[data-mc-effect="shadow-wings"],
+.mc-name-color-target[data-mc-effect="royal-crown"],
+.mc-name-color-target[data-mc-effect="rose-glow"],
+.mc-name-color-target[data-mc-effect="frosted"]{color:var(--mc-color,currentColor)!important;text-shadow:none!important}
+.mc-name-color-target[data-mc-effect="celestial-wings"]::before,
+.mc-name-color-target[data-mc-effect="celestial-wings"]::after{color:#a8ddff}
+.mc-name-color-target[data-mc-effect="shadow-wings"]::before,
+.mc-name-color-target[data-mc-effect="shadow-wings"]::after{color:#ff8cda}
+.mc-name-color-target[data-mc-effect="royal-crown"]::before,
+.mc-name-color-target[data-mc-effect="royal-crown"]::after{color:#ffda83}
+.mc-name-color-target[data-mc-effect="rose-glow"]::before,
+.mc-name-color-target[data-mc-effect="rose-glow"]::after{color:#ff9acb}
+.mc-name-color-target[data-mc-effect="frosted"]::before,
+.mc-name-color-target[data-mc-effect="frosted"]::after{color:#b7efff}
+.mc-name-color-target[data-name-animation="glow"]{animation:mcColorGlow calc(3.4s - 2.4s * var(--mc-speed,.5)) ease-in-out infinite alternate;text-shadow:0 0 calc(12px * var(--mc-strength,.65)) var(--mc-color,#b56cff)!important}
+.mc-name-color-target[data-name-animation="pulse"]{animation:mcColorPulse calc(2.8s - 1.8s * var(--mc-speed,.5)) ease-in-out infinite}
+.mc-name-color-target[data-name-animation="rainbow"]{background-image:linear-gradient(90deg,#ff4d8d,#ffbf45,#62e6b2,#55c9ff,#b26cff,#ff4d8d)!important;background-size:300% 100%!important;background-clip:text!important;-webkit-background-clip:text!important;color:transparent!important;animation:mcColorRainbow calc(7s - 5.5s * var(--mc-speed,.5)) linear infinite}
+.mc-name-color-target[data-name-animation="shimmer"]{background-image:linear-gradient(100deg,var(--mc-color,#b56cff) 20%,#fff 45%,var(--mc-color,#b56cff) 70%)!important;background-size:250% 100%!important;background-clip:text!important;-webkit-background-clip:text!important;color:transparent!important;animation:mcColorShimmer calc(5s - 3.5s * var(--mc-speed,.5)) linear infinite}
+.mc-studio-preview #mcStudioSample{display:inline-block;position:relative;max-width:100%;overflow-wrap:anywhere;animation-duration:inherit}
+.mc-studio-preview #mcStudioSample[data-name-animation="none"]{animation:none!important;text-shadow:none!important}
+.mc-studio-preview #mcStudioSample[data-name-animation="glow"]{animation:mcColorGlow calc(3.4s - 2.4s * var(--mc-speed,.5)) ease-in-out infinite alternate}
+.mc-studio-preview #mcStudioSample[data-name-animation="pulse"]{animation:mcColorPulse calc(2.8s - 1.8s * var(--mc-speed,.5)) ease-in-out infinite}
+.mc-studio-preview #mcStudioSample[data-name-animation="rainbow"]{animation:mcColorRainbow calc(7s - 5.5s * var(--mc-speed,.5)) linear infinite}
+.mc-studio-preview #mcStudioSample[data-name-animation="shimmer"]{animation:mcColorShimmer calc(5s - 3.5s * var(--mc-speed,.5)) linear infinite}
