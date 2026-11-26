@@ -2255,12 +2255,12 @@ function openFireworksWish(){
 // Holi paint overlay: clicks pass through, only the wash control is interactive.
 let mcHoliActive=false,mcHoliCanvas=null,mcHoliContext=null,mcHoliRAF=0,mcHoliSplashes=[],mcHoliBalloons=[],mcHoliResize=null,mcHoliLastFrame=0,mcHoliAudio=null;
 const mcHoliColors=["#ff36a5","#ffdf32","#36e8ff","#7dff49","#a855ff","#ff713b","#2b73ff","#ff4d56"];
-function stopMCHoliMode(){mcHoliActive=false;if(mcHoliRAF)cancelAnimationFrame(mcHoliRAF);mcHoliRAF=0;if(mcHoliResize)window.removeEventListener("resize",mcHoliResize);mcHoliResize=null;mcHoliCanvas?.remove();mcHoliCanvas=null;mcHoliContext=null;mcHoliSplashes=[];mcHoliBalloons=[];document.getElementById("mcHoliWashControl")?.remove();document.removeEventListener("pointerdown",mcHoliInputBlock,true);document.removeEventListener("pointerup",mcHoliInputBlock,true);document.removeEventListener("click",mcHoliInputBlock,true);}
+function stopMCHoliMode(){mcHoliActive=false;if(mcHoliRAF)cancelAnimationFrame(mcHoliRAF);mcHoliRAF=0;if(mcHoliResize)window.removeEventListener("resize",mcHoliResize);mcHoliResize=null;mcHoliCanvas?.remove();mcHoliCanvas=null;mcHoliContext=null;mcHoliBoard?.remove();mcHoliBoard=null;mcHoliSplashes=[];mcHoliBalloons=[];document.getElementById("mcHoliWashControl")?.remove();["pointerdown","pointerup","pointermove","click","touchstart","touchmove","touchend","wheel","contextmenu","keydown"].forEach(type=>document.removeEventListener(type,mcHoliInputBlock,true));document.body.style.overflow=mcHoliPreviousOverflow||"";document.body.style.touchAction=mcHoliPreviousTouchAction||"";mcHoliPreviousOverflow="";mcHoliPreviousTouchAction="";}
 function mcHoliSplashSound(){try{const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return;mcHoliAudio=mcHoliAudio||new AC();if(mcHoliAudio.state==="suspended")mcHoliAudio.resume();const t=mcHoliAudio.currentTime,n=mcHoliAudio.createBuffer(1,Math.floor(mcHoliAudio.sampleRate*.18),mcHoliAudio.sampleRate),d=n.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*(1-i/d.length);const src=mcHoliAudio.createBufferSource(),filter=mcHoliAudio.createBiquadFilter(),gain=mcHoliAudio.createGain();src.buffer=n;filter.type="lowpass";filter.frequency.setValueAtTime(1700,t);filter.frequency.exponentialRampToValueAtTime(420,t+.16);gain.gain.setValueAtTime(.0001,t);gain.gain.exponentialRampToValueAtTime(.13,t+.012);gain.gain.exponentialRampToValueAtTime(.0001,t+.18);src.connect(filter);filter.connect(gain);gain.connect(mcHoliAudio.destination);src.start(t);src.stop(t+.19);}catch{}}
 function mcHoliPointer(e){if(!mcHoliActive)return;const x=e.clientX,y=e.clientY,color=mcHoliColors[Math.floor(Math.random()*mcHoliColors.length)],fromX=Math.max(28,Math.min(innerWidth-28,x+(Math.random()-.5)*innerWidth*.32)),fromY=innerHeight+35;mcHoliBalloons.push({x:fromX,y:fromY,tx:x,ty:y,color,start:performance.now(),duration:520+Math.random()*180,r:12+Math.random()*5});}
-function mcHoliInputBlock(e){if(!mcHoliActive||e.target.closest?.("#mcHoliWashControl"))return;if(e.type==="pointerdown")mcHoliPointer(e);e.preventDefault();e.stopPropagation();}
-function startMCHoliMode(){stopMCHoliMode();mcHoliActive=true;mcHoliSplashes=[];mcHoliBalloons=[];mcHoliLastFrame=0;mcHoliCanvas=document.createElement("canvas");mcHoliCanvas.style.cssText="position:fixed;inset:0;width:100vw;height:100vh;z-index:10000;pointer-events:none";mcHoliCanvas.setAttribute("aria-hidden","true");document.body.appendChild(mcHoliCanvas);mcHoliContext=mcHoliCanvas.getContext("2d",{alpha:true});if(!mcHoliContext){stopMCHoliMode();return;}
-mcHoliResize=()=>{if(!mcHoliCanvas)return;const d=Math.min(window.devicePixelRatio||1,1);mcHoliCanvas.width=innerWidth*d;mcHoliCanvas.height=innerHeight*d;mcHoliContext.setTransform(d,0,0,d,0,0);};mcHoliResize();window.addEventListener("resize",mcHoliResize);document.addEventListener("pointerdown",mcHoliInputBlock,true);document.addEventListener("pointerup",mcHoliInputBlock,true);document.addEventListener("click",mcHoliInputBlock,true);
+let mcHoliBoard=null,mcHoliPreviousOverflow="",mcHoliPreviousTouchAction="";function mcHoliInputBlock(e){if(!mcHoliActive||e.target.closest?.("#mcHoliWashControl"))return;if(e.type==="pointerdown"&&e.target===mcHoliBoard)mcHoliPointer(e);if(e.cancelable)e.preventDefault();e.stopPropagation();if(e.stopImmediatePropagation)e.stopImmediatePropagation();}
+function startMCHoliMode(){stopMCHoliMode();mcHoliActive=true;mcHoliSplashes=[];mcHoliBalloons=[];mcHoliLastFrame=0;mcHoliPreviousOverflow=document.body.style.overflow;mcHoliPreviousTouchAction=document.body.style.touchAction;document.body.style.overflow="hidden";document.body.style.touchAction="none";mcHoliCanvas=document.createElement("canvas");mcHoliCanvas.style.cssText="position:fixed;inset:0;width:100vw;height:100vh;z-index:10000;pointer-events:none";mcHoliCanvas.setAttribute("aria-hidden","true");document.body.appendChild(mcHoliCanvas);mcHoliContext=mcHoliCanvas.getContext("2d",{alpha:true});if(!mcHoliContext){stopMCHoliMode();return;}
+mcHoliResize=()=>{if(!mcHoliCanvas)return;const d=Math.min(window.devicePixelRatio||1,1);mcHoliCanvas.width=innerWidth*d;mcHoliCanvas.height=innerHeight*d;mcHoliContext.setTransform(d,0,0,d,0,0);};mcHoliResize();window.addEventListener("resize",mcHoliResize);mcHoliBoard=document.createElement("div");mcHoliBoard.id="mcHoliThrowBoard";mcHoliBoard.style.cssText="position:fixed;inset:0;z-index:10001;background:transparent;touch-action:none;pointer-events:auto;cursor:crosshair";document.body.appendChild(mcHoliBoard);["pointerdown","pointerup","pointermove","click","touchstart","touchmove","touchend","wheel","contextmenu","keydown"].forEach(type=>document.addEventListener(type,mcHoliInputBlock,true));
 const wash=document.createElement("button");wash.id="mcHoliWashControl";wash.textContent="💦 WASH · STOP HOLI";wash.style.cssText="position:fixed;z-index:10002;left:50%;transform:translateX(-50%);bottom:calc(18px + env(safe-area-inset-bottom));padding:12px 17px;border-radius:999px;border:1px solid rgba(140,240,255,.7);background:linear-gradient(135deg,#126b91,#15345d);color:white;font-weight:900;box-shadow:0 0 14px rgba(70,200,255,.35);cursor:pointer";wash.onclick=stopMCHoliMode;document.body.appendChild(wash);
 function paint(now){if(!mcHoliActive||!mcHoliContext)return;if(document.hidden){mcHoliRAF=requestAnimationFrame(paint);return;}if(now-mcHoliLastFrame<32){mcHoliRAF=requestAnimationFrame(paint);return;}mcHoliLastFrame=now;const ctx=mcHoliContext;ctx.clearRect(0,0,innerWidth,innerHeight);
 mcHoliBalloons=mcHoliBalloons.filter(b=>{const p=Math.min(1,(now-b.start)/b.duration),ease=1-Math.pow(1-p,3);b.x=b.x+(b.tx-b.x)*Math.min(.13,ease*.13);b.y=b.y+(b.ty-b.y)*Math.min(.13,ease*.13);ctx.save();ctx.globalAlpha=1-p*.18;ctx.fillStyle=b.color;ctx.shadowBlur=7;ctx.shadowColor=b.color;ctx.beginPath();ctx.ellipse(b.x,b.y-b.r*.15,b.r*.82,b.r,Math.sin(now/80)*.12,0,Math.PI*2);ctx.fill();ctx.shadowBlur=0;ctx.strokeStyle=b.color;ctx.lineWidth=1.4;ctx.beginPath();ctx.moveTo(b.x,b.y+b.r*.8);ctx.lineTo(b.x+2,b.y+b.r+6);ctx.stroke();ctx.restore();if(p>=1){mcHoliSplashSound();mcHoliSplashes.push({x:b.tx,y:b.ty,color:b.color,r:24+Math.random()*28,stamp:now,drops:Array.from({length:14},()=>({a:Math.random()*Math.PI*2,r:.5+Math.random(),s:2+Math.random()*4}))});return false;}return true;});
@@ -2303,6 +2303,8 @@ function launchMCChatFireworksWave(){
 }
 function startMCChatFireworksLoop(){
   if(mcChatFireworksLoopOn)return stopMCChatFireworksLoop();
+  // Unlock the audio context directly inside the Start button gesture on mobile.
+  try{const AC=window.AudioContext||window.webkitAudioContext;if(AC){const ctx=window.__mcFireworkAudioContext||(window.__mcFireworkAudioContext=new AC());if(ctx.state==="suspended")ctx.resume().catch(()=>{});}}catch(e){console.warn("Could not unlock fireworks audio",e);}
   mcChatFireworksLoopOn=true;
   setMCChatFireworksLoopUI(true);
   launchMCChatFireworksWave();
@@ -3574,30 +3576,15 @@ function playMCFireworkSound(){
     const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return;
     const ctx=window.__mcFireworkAudioContext||(window.__mcFireworkAudioContext=new AC());
     if(ctx.state==="suspended")ctx.resume().catch(()=>{});
+    if(ctx.state==="closed")return;
     const now=ctx.currentTime;
-    const makeNoise=(duration)=>{
-      const buffer=ctx.createBuffer(1,Math.ceil(ctx.sampleRate*duration),ctx.sampleRate);
-      const data=buffer.getChannelData(0);for(let i=0;i<data.length;i++)data[i]=(Math.random()*2-1)*(.8+Math.random()*.2);
-      const source=ctx.createBufferSource();source.buffer=buffer;return source;
-    };
-    // Gentle, continuous upward rush: remove the sharp cartoon "whoop".
-    const rush=makeNoise(.64),rf=ctx.createBiquadFilter(),rg=ctx.createGain();
-    rf.type="lowpass";rf.frequency.setValueAtTime(420,now);rf.frequency.exponentialRampToValueAtTime(1450,now+.52);rf.Q.value=.45;
-    rg.gain.setValueAtTime(.0001,now);rg.gain.exponentialRampToValueAtTime(.025,now+.16);rg.gain.exponentialRampToValueAtTime(.0001,now+.62);
-    rush.connect(rf);rf.connect(rg);rg.connect(ctx.destination);rush.start(now);rush.stop(now+.64);
-    // A barely audible airy pitch shimmer underneath, not a prominent whistle.
-    const shimmer=ctx.createOscillator(),shg=ctx.createGain();shimmer.type="sine";
-    shimmer.frequency.setValueAtTime(360,now);shimmer.frequency.exponentialRampToValueAtTime(760,now+.55);
-    shg.gain.setValueAtTime(.0001,now);shg.gain.exponentialRampToValueAtTime(.0045,now+.22);shg.gain.exponentialRampToValueAtTime(.0001,now+.6);
-    shimmer.connect(shg);shg.connect(ctx.destination);shimmer.start(now);shimmer.stop(now+.61);
-    // Clean rounded blast only: no glassy crackle or rapid pop sounds.
-    const blastAt=now+.62;
-    const boom=ctx.createOscillator(),boog=ctx.createGain(),boomFilter=ctx.createBiquadFilter();
-    boom.type="sine";boom.frequency.setValueAtTime(105,blastAt);boom.frequency.exponentialRampToValueAtTime(38,blastAt+.42);
-    boomFilter.type="lowpass";boomFilter.frequency.value=220;
-    boog.gain.setValueAtTime(.0001,blastAt);boog.gain.exponentialRampToValueAtTime(.16,blastAt+.025);boog.gain.exponentialRampToValueAtTime(.0001,blastAt+.48);
-    boom.connect(boomFilter);boomFilter.connect(boog);boog.connect(ctx.destination);boom.start(blastAt);boom.stop(blastAt+.5);
-  }catch(_){}
+    const makeNoise=(duration)=>{const buffer=ctx.createBuffer(1,Math.ceil(ctx.sampleRate*duration),ctx.sampleRate);const data=buffer.getChannelData(0);for(let i=0;i<data.length;i++)data[i]=(Math.random()*2-1)*(.75+Math.random()*.25);const source=ctx.createBufferSource();source.buffer=buffer;return source;};
+    // Clear, audible rocket rush, then a rounded burst with a brief sparkling tail.
+    const rush=makeNoise(.62),rf=ctx.createBiquadFilter(),rg=ctx.createGain();rf.type="lowpass";rf.frequency.setValueAtTime(380,now);rf.frequency.exponentialRampToValueAtTime(1900,now+.5);rf.Q.value=.5;rg.gain.setValueAtTime(.0001,now);rg.gain.exponentialRampToValueAtTime(.075,now+.12);rg.gain.exponentialRampToValueAtTime(.0001,now+.62);rush.connect(rf);rf.connect(rg);rg.connect(ctx.destination);rush.start(now);rush.stop(now+.63);
+    const shimmer=ctx.createOscillator(),shg=ctx.createGain();shimmer.type="sine";shimmer.frequency.setValueAtTime(420,now);shimmer.frequency.exponentialRampToValueAtTime(980,now+.54);shg.gain.setValueAtTime(.0001,now);shg.gain.exponentialRampToValueAtTime(.012,now+.25);shg.gain.exponentialRampToValueAtTime(.0001,now+.58);shimmer.connect(shg);shg.connect(ctx.destination);shimmer.start(now);shimmer.stop(now+.6);
+    const blastAt=now+.62,burst=makeNoise(.24),bf=ctx.createBiquadFilter(),bg=ctx.createGain();bf.type="bandpass";bf.frequency.setValueAtTime(1250,blastAt);bf.frequency.exponentialRampToValueAtTime(320,blastAt+.2);bf.Q.value=.55;bg.gain.setValueAtTime(.0001,blastAt);bg.gain.exponentialRampToValueAtTime(.095,blastAt+.015);bg.gain.exponentialRampToValueAtTime(.0001,blastAt+.23);burst.connect(bf);bf.connect(bg);bg.connect(ctx.destination);burst.start(blastAt);burst.stop(blastAt+.24);
+    const boom=ctx.createOscillator(),boog=ctx.createGain(),boomFilter=ctx.createBiquadFilter();boom.type="sine";boom.frequency.setValueAtTime(115,blastAt);boom.frequency.exponentialRampToValueAtTime(42,blastAt+.4);boomFilter.type="lowpass";boomFilter.frequency.value=260;boog.gain.setValueAtTime(.0001,blastAt);boog.gain.exponentialRampToValueAtTime(.22,blastAt+.025);boog.gain.exponentialRampToValueAtTime(.0001,blastAt+.46);boom.connect(boomFilter);boomFilter.connect(boog);boog.connect(ctx.destination);boom.start(blastAt);boom.stop(blastAt+.47);
+  }catch(err){console.warn("Fireworks audio failed",err);}
 }
 function launchMCChatFirework(positionX=null,heightY=null){
   if(document.hidden)return;
