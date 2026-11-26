@@ -585,7 +585,7 @@ function safeUser(u){
     banner:u.banner||"",
     profilePhotos:Array.isArray(u.profilePhotos)?u.profilePhotos.slice(0,10).map(p=>({id:String(p.id),url:String(p.url)})):[],
     theme:u.settings?.theme||u.theme||"obsidian",
-    settings:{usernameColor:u.settings?.usernameColor||'',usernameEffect:u.settings?.usernameEffect||'none',chatFont:u.settings?.chatFont||'',messageEffects:u.settings?.messageEffects||'',fontSize:u.settings?.fontSize||'medium',compactMode:!!u.settings?.compactMode},
+    settings:{usernameColor:u.settings?.usernameColor||'',usernameEffect:u.settings?.usernameEffect||'none',usernameColorGradient:u.settings?.usernameColorGradient||'',usernameColorEffect:u.settings?.usernameColorEffect||'none',usernameColorIntensity:Number(u.settings?.usernameColorIntensity||65),chatFont:u.settings?.chatFont||'',messageEffects:u.settings?.messageEffects||'',fontSize:u.settings?.fontSize||'medium',compactMode:!!u.settings?.compactMode},
     profileColor:u.profileColor||"",
     profileMusicTitle:u.profileMusicTitle||"",
     profileMusicUrl:u.profileMusicUrl||"",
@@ -3476,7 +3476,7 @@ app.post("/api/rooms/:id/messages",auth,featureAllowed("send_messages"),upload.s
   const roomRank=roomRole(r.id,u.id);
   const anonymousMode=!!(u.hideMode||u.deadMode); // Ghost and Dead messages are sent as Aurora.
    const m={id:id(),roomId:String(r.id),userId:anonymousMode?null:u.id,username:anonymousMode?"Aurora":u.username,displayName:anonymousMode?"Aurora":u.displayName,rank:anonymousMode?"BOT":u.rank,avatar:anonymousMode?"":(u.avatar||""),system:anonymousMode,isBot:anonymousMode,bot:anonymousMode?"Aurora":undefined,anonymous:anonymousMode,roomRank:anonymousMode?"USER":roomRank,roomRankBadge:({USER:"✨",ROOM_MODERATOR:"🪄",ROOM_ADMIN:"💫",ROOM_OWNER:"🎩"})[anonymousMode?"USER":roomRank]||"✨",
-    usernameColor:u.settings?.usernameColor||"",chatFont:u.settings?.chatFont||"",text,
+    usernameColor:u.settings?.usernameColor||"",profileColor:u.profileColor||u.settings?.profileColor||"",usernameColorGradient:u.settings?.usernameColorGradient||"",usernameColorEffect:u.settings?.usernameColorEffect||"none",usernameColorIntensity:Number(u.settings?.usernameColorIntensity||65),chatFont:u.settings?.chatFont||"",text,
     attachment:req.file?{url:"/uploads/"+req.file.filename,type:req.file.mimetype,name:req.file.originalname}:reelAttachment,
     replyTo:req.body.replyTo||null,forwardedFrom:req.body.forwardedFrom||null,reactions:{},edited:false,deleted:false,pinned:false,time:Date.now(),delivered:true};
   const expiresIn=Number(req.body.expiresIn||0); if(expiresIn>0)m.expiresAt=Date.now()+Math.min(expiresIn,7*86400000);
@@ -7379,7 +7379,7 @@ app.get('/api/settings',auth,(req,res)=>{
 
 app.put('/api/settings',auth,(req,res)=>{
   const u=current(req); ensureUserSchema(u);
-  const allowed=['rememberLogin','theme','accentColor','fontSize','compactMode','reducedMotion','highContrast','language','timezone','notificationPrefs','usernameColor','chatFont','messageEffects','textSize','bubbleStyle','profileAccentColor','profileColor','bubbleColor'];
+  const allowed=['rememberLogin','theme','accentColor','fontSize','compactMode','reducedMotion','highContrast','language','timezone','notificationPrefs','usernameColor','usernameColorGradient','usernameColorEffect','usernameColorIntensity','chatFont','messageEffects','textSize','bubbleStyle','profileAccentColor','profileColor','bubbleColor'];
   for(const k of allowed) if(req.body[k]!==undefined) u.settings[k]=req.body[k];
   if(req.body.theme!==undefined){ u.theme=String(req.body.theme); u.settings.theme=u.theme; }
   if(req.body.status && ['online','offline','away','busy','invisible'].includes(req.body.status)) u.status=req.body.status;
