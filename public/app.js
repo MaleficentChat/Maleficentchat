@@ -2926,7 +2926,7 @@ async function renderOnline(tab=onlinePanelTab,searchQuery=""){
           <div class="online-user-heading">
             <b>@${esc(user.username)}</b>
           </div>
-          <small>${esc(user.displayName)} ${invisibleDot(user)} ${moderationStatusTags(user)}${user.invisible?"":" · "+(user.customStatus||(user.online?"Available":"Away"))}</small>
+          <small>${usernameEffectMarkup(user.displayName,user.settings?.usernameEffect)} ${invisibleDot(user)} ${moderationStatusTags(user)}${user.invisible?"":" · "+(user.customStatus||(user.online?"Available":"Away"))}</small>
         </div>
         <span class="online-user-rank-badge" title="${esc(String(user.rank||'MEMBER').replaceAll('_',' '))}" aria-label="${esc(String(user.rank||'MEMBER').replaceAll('_',' '))}"><span class="mc-rank-ring" aria-hidden="true"></span><span class="mc-rank-glyph">${rankIcon[String(user.rank||'MEMBER').toUpperCase()]||'⚡'}</span></span>
         
@@ -3216,7 +3216,7 @@ function messageHTML(message) {
           <span class="msg-time-side">${fmt(message.time)}${message.edited ? " · edited" : ""}</span>
           <span class="msg-author-group">
             ${(mcGetById("viewRooms")?.classList.contains("main-room-chat") || !!state.currentRoom?.isDefault || /^(main room|teen chat)$/i.test(String(state.currentRoom?.name||"").trim())) ? `<span class="online-user-rank-badge" title="${esc(String(message.rank||"MEMBER").replaceAll("_"," "))}" aria-label="${esc(String(message.rank||"MEMBER").replaceAll("_"," "))}"><span class="mc-rank-ring" aria-hidden="true"></span><span class="mc-rank-glyph">${rankIcon[String(message.rank||"MEMBER").toUpperCase().replace(/[ -]+/g,"_")]||"⚡"}</span></span>` : ''}
-            <button class="message-author tag-author" type="button" title="Tag @${esc(message.username)}" onclick="tagUserFromMessage('${esc(message.username)}')" style="color:${esc(message.usernameColor||state.user?.settings?.usernameColor||'var(--username-color)')}">${esc(message.displayName)}</button>
+            <button class="message-author tag-author" type="button" title="Tag @${esc(message.username)}" onclick="tagUserFromMessage('${esc(message.username)}')" style="color:${esc(message.usernameColor||state.user?.settings?.usernameColor||'var(--username-color)')}">${usernameEffectMarkup(message.displayName,message.usernameEffect||(String(message.userId)===String(state.user?.id)?state.user?.settings?.usernameEffect:'none'))}</button>
 
           </span>
           <span class="msg-header-right">
@@ -4457,7 +4457,7 @@ function renderUserProfileModal(user,data={}){
       ${user.profileMusicUrl?`<div class="profile-music-pill"><button type="button" class="profile-music-toggle" id="profileMusicToggle" aria-label="Play profile music">▶</button><span class="profile-music-bars" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span class="profile-music-title">${esc(user.profileMusicTitle||'Profile music')}</span><audio id="profileMusicAudio" preload="none" src="${esc(safeProfileUrl(user.profileMusicUrl))}"></audio></div>`:''}
       <div class="profile-stats"><div class="profile-stat-group"><span class="profile-stat"><span class="profile-stat-icon">⭐</span><span>${user.level||1}</span></span><span class="profile-stat"><span class="profile-stat-icon">✦</span><span>XP ${user.xp||0}</span></span>${!isSelf?`<button type="button" class="profile-stat profile-like-trigger" id="profileLikeBtn" aria-label="Like profile" aria-pressed="${liked}"><span class="profile-stat-icon">❤️</span><span class="profile-like-count">${Number(data.profileLikes??user.profileLikes??0).toLocaleString()}</span></button>`:""}</div><div class="profile-action-group">${!isSelf && (String(state.user?.rank||"").toUpperCase()==="DEVELOPER" || (state.user?.username==="Maleficent" && String(state.user?.rank||"").toUpperCase()==="OWNER") || canFeature("staff_rank_assignment")) ? `<button class="mini profile-rank-btn" id="profileRankBtn" title="Change rank" aria-label="Change rank">🏅</button>` : ""}${isSelf?'<button class="mini profile-edit-btn" id="profileEditBtn" title="Edit account" aria-label="Edit account">✏️</button><button class="mini profile-hamburger" id="profileMenuBtn" title="Profile actions">☰</button>':((canFeature("account_modifications")||canFeature("edit_email")||canFeature("change_password")||canFeature("manage_staff_accounts")) && canAccessStaffTarget(user) ? '<button class="mini profile-edit-btn" id="staffProfileEditBtn" title="Edit this member account" aria-label="Edit this member account">✏️</button><button class="mini profile-hamburger" id="profileMenuBtn" title="Profile actions">☰</button>' : '')}</div></div>
       <div class="profile-rank">${rank(user.rank)}${user.verified?' · ✓ Verified':''}${profileBadge?` <span class="equipped-profile-badge" title="${esc(profileBadge.name)}">${esc(profileBadge.icon)} ${esc(profileBadge.name)}</span>`:''}</div>
-      <div class="profile-name">${esc(user.displayName)}${user._nickname?` <span class="nickname-badge">“${esc(user._nickname)}”</span>`:''}</div>
+      <div class="profile-name">${usernameEffectMarkup(user.displayName,user.settings?.usernameEffect)}${user._nickname?` <span class="nickname-badge">“${esc(user._nickname)}”</span>`:''}</div>
       <div class="profile-handle">@${esc(user.username)}</div>
       ${!isSelf?`<div class="profile-primary-actions"><button class="profile-social-button profile-message-button" id="profileSendPM"><span>✉</span> Send PM</button><button class="profile-social-button profile-friend-button" id="profileAddFriend"><span>＋</span> Add Friend</button></div>`:""}
     </div>
@@ -5342,7 +5342,7 @@ function messageResultHTML(message,opts={}){
   return `<article class="card search-result" data-result-id="${esc(message.id)}">
     <div class="search-result-head">
       ${avatar(message)}
-      <div><b>${esc(message.displayName||message.username||'Unknown')}</b> <span class="muted">@${esc(message.username||'')}</span><div class="muted">${esc(room?.name||message.roomId||'Unknown room')} · ${fmt(message.time)}</div></div>
+      <div><b>${usernameEffectMarkup(message.displayName||message.username||'Unknown',message.usernameEffect||(String(message.from)===String(state.user?.id)?state.user?.settings?.usernameEffect:state.dmPeerUser?.settings?.usernameEffect))}</b> <span class="muted">@${esc(message.username||'')}</span><div class="muted">${esc(room?.name||message.roomId||'Unknown room')} · ${fmt(message.time)}</div></div>
     </div>
     <div class="search-result-text">${esc(text||'(no text)')}</div>
     ${message.attachment?.url?`<div class="muted">📎 ${esc(message.attachment.name||message.attachment.type||'Attachment')}</div>`:''}
