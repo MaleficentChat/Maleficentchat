@@ -809,13 +809,7 @@ const MC_USERNAME_EFFECTS=[
  {id:"frosted",name:"Frosted",status:"Rare",preview:"❄ Maleficent ❄",symbol:"❄",color:"#b7efff",bg:"#1b2e39"}
 ];
 function mcUsernameEffectSaved(){try{return state.user?.settings?.usernameDecorationEffect||safeStorage.getItem("mc_username_effect")||"";}catch{return state.user?.settings?.usernameDecorationEffect||"";}}
-function mcApplyUsernameEffect(effectId){
- const id=MC_USERNAME_EFFECTS.some(x=>x.id===effectId)?effectId:"";
- const decorate=()=>{const ownName=String(state.user?.username||"").trim().toLowerCase(),ownId=String(state.user?.id||"");document.querySelectorAll(".mc-username-effect-target").forEach(el=>{const isOwn=(ownId&&String(el.dataset.userId||"")===ownId)||(ownName&&String(el.dataset.username||"").trim().toLowerCase()===ownName);if(isOwn){if(id)el.dataset.mcEffect=id;else delete el.dataset.mcEffect;}else delete el.dataset.mcEffect;});applyUsernameColor();};
- decorate();
- if(!window.__mcUsernameEffectObserver&&document.body){window.__mcUsernameEffectObserver=new MutationObserver(decorate);window.__mcUsernameEffectObserver.observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:["data-username","data-user-id"]});}
- try{safeStorage.setItem("mc_username_effect",id);}catch{}
-}
+function mcApplyUsernameEffect(effectId){const id=MC_USERNAME_EFFECTS.some(x=>x.id===effectId)?effectId:"";const decorate=()=>{const ownName=String(state.user?.username||"").trim().toLowerCase(),ownId=String(state.user?.id||"");document.querySelectorAll(".mc-username-effect-target").forEach(el=>{const isOwn=(ownId&&String(el.dataset.userId||"")===ownId)||(ownName&&String(el.dataset.username||"").trim().toLowerCase()===ownName);if(isOwn){if(id)el.dataset.mcEffect=id;else delete el.dataset.mcEffect;}else delete el.dataset.mcEffect;});applyUsernameColor();};decorate();if(!window.__mcUsernameEffectObserver&&document.body){window.__mcUsernameEffectObserver=new MutationObserver(decorate);window.__mcUsernameEffectObserver.observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:["data-username","data-user-id"]});}try{safeStorage.setItem("mc_username_effect",id);}catch{}}
 function openUsernameStudio(){
  const st=state.user?.settings||{};let color=st.usernameColor||state.user?.profileColor||"#b56cff",effect=st.usernameColorEffect||"none",strength=Number(st.usernameColorIntensity||65),speed=Number(st.usernameColorSpeed||50),selected=mcUsernameEffectSaved();
  const colors=["#ff69b4","#b56cff","#55dcff","#b8f2ff","#ffd166","#55e6a5","#ff5c70","#65a9ff","#ff9d4d","#ffffff","#d2b4ff","#ff3cac"];
