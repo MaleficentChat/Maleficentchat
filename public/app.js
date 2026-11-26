@@ -812,7 +812,7 @@ function mcUsernameEffectSaved(){try{return safeStorage.getItem("mc_username_eff
 function mcApplyUsernameEffect(effectId){
  const id=MC_USERNAME_EFFECTS.some(x=>x.id===effectId)?effectId:"";
  const ownId=String(state.user?.id||"");
- const decorate=()=>{const ownName=String(state.user?.username||"").trim().toLowerCase();document.querySelectorAll(".mc-username-effect-target").forEach(el=>{if(ownName&&String(el.dataset.username||"").trim().toLowerCase()===ownName){if(id)el.dataset.mcEffect=id;else delete el.dataset.mcEffect;}else delete el.dataset.mcEffect;});};
+ const decorate=()=>{const ownName=String(state.user?.username||"").trim().toLowerCase();document.querySelectorAll(".mc-username-effect-target").forEach(el=>{if(ownName&&String(el.dataset.username||"").trim().toLowerCase()===ownName){if(id)el.dataset.mcEffect=id;else delete el.dataset.mcEffect;}else delete el.dataset.mcEffect;});applyUsernameColor();};
  decorate();
  if(!window.__mcUsernameEffectObserver&&document.body){window.__mcUsernameEffectObserver=new MutationObserver(decorate);window.__mcUsernameEffectObserver.observe(document.body,{childList:true,subtree:true});}
  try{safeStorage.setItem("mc_username_effect",id);}catch{}
@@ -2964,7 +2964,7 @@ async function renderOnline(tab=onlinePanelTab,searchQuery=""){
         ${avatar(user)}${String(user.id)===String(state.user?.id) ? '<button type="button" class="my-status-toggle" id="myStatusToggle" aria-haspopup="true" aria-expanded="false" onclick="toggleMyStatusMenu(event)"><span id="myStatusGlyph">⚙</span><b id="myStatusLabel">Online</b><span>⌄</span></button><div class="my-status-options hidden" id="myStatusOptions" role="menu" onclick="event.stopPropagation()"></div>' : '<span class="user-mood-indicator" title="'+esc(user.mood||user.customStatus|| (user.online?'Online':'Away'))+'">'+(user.mood?moodEmoji(user.mood):statusEmoji(user.customStatus|| (user.online?'Online':'Away')))+'</span>'}
         <div class="online-user-copy">
           <div class="online-user-heading">
-            <b class="mc-username-effect-target mc-name-color-target" data-username="${esc(user.username)}" data-name-color="${esc(user.profileColor||user.settings?.usernameColor||'')}" data-name-gradient="${esc(user.settings?.usernameColorGradient||'')}" data-name-animation="${esc(user.settings?.usernameColorEffect||'none')}" data-user-id="${esc(user.id)}">${esc(user.displayName||user.username)}</b>
+            <b class="mc-username-effect-target mc-name-color-target" data-username="${esc(user.username)}" data-name-color="${esc(user.profileColor||user.settings?.usernameColor||'')}" data-name-gradient="${esc(user.settings?.usernameColorGradient||'')}" data-name-animation="${esc(user.settings?.usernameColorEffect||'none')}" data-user-id="${esc(user.id)}" style="color:${esc(user.profileColor||user.settings?.usernameColor||'')}">${esc(user.displayName||user.username)}</b>
           </div>
           <small class="mc-username-handle" data-user-id="${esc(user.id)}">@${esc(user.username)} ${invisibleDot(user)} ${moderationStatusTags(user)}${user.invisible?"":" · "+(user.customStatus||(user.online?"Available":"Away"))}</small>
         </div>
@@ -3256,7 +3256,7 @@ function messageHTML(message) {
           <span class="msg-time-side">${fmt(message.time)}${message.edited ? " · edited" : ""}</span>
           <span class="msg-author-group">
             ${(mcGetById("viewRooms")?.classList.contains("main-room-chat") || !!state.currentRoom?.isDefault || /^(main room|teen chat)$/i.test(String(state.currentRoom?.name||"").trim())) ? `<span class="online-user-rank-badge" title="${esc(String(message.rank||"MEMBER").replaceAll("_"," "))}" aria-label="${esc(String(message.rank||"MEMBER").replaceAll("_"," "))}"><span class="mc-rank-ring" aria-hidden="true"></span><span class="mc-rank-glyph">${rankIcon[String(message.rank||"MEMBER").toUpperCase().replace(/[ -]+/g,"_")]||"⚡"}</span></span>` : ''}
-            <button class="message-author tag-author mc-username-effect-target mc-name-color-target" data-username="${esc(message.username)}" data-name-color="${esc(message.usernameColor||message.profileColor||'')}" data-name-gradient="${esc(message.usernameColorGradient||'')}" data-name-animation="${esc(message.usernameColorEffect||'none')}" type="button" title="Tag @${esc(message.username)}" onclick="tagUserFromMessage('${esc(message.username)}')" style="color:${esc(message.usernameColor||state.user?.settings?.usernameColor||'var(--username-color)')}">${esc(message.displayName)}</button>
+            <button class="message-author tag-author mc-username-effect-target mc-name-color-target" data-username="${esc(message.username)}" data-name-color="${esc(message.usernameColor||message.profileColor||'')}" data-name-gradient="${esc(message.usernameColorGradient||'')}" data-name-animation="${esc(message.usernameColorEffect||'none')}" type="button" title="Tag @${esc(message.username)}" onclick="tagUserFromMessage('${esc(message.username)}')" style="color:${esc(message.profileColor||message.usernameColor||message.settings?.usernameColor||'var(--username-color)')}">${esc(message.displayName)}</button>
 
           </span>
           <span class="msg-header-right">
