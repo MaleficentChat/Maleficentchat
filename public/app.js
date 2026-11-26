@@ -5032,9 +5032,7 @@ async function openDM(id) {
       }
 
       <form id="dmForm" class="composer dm-composer">
-        <label class="dm-tools-toggle" title="Attach photo, audio, video or file">📎
-          <input id="dmFile" type="file" accept="image/*,audio/*,video/*,.pdf,.txt" hidden>
-        </label>
+        <button type="button" class="dm-tools-toggle" id="dmToolsToggle" aria-expanded="false">＋</button><div class="dm-tools-drawer hidden" id="dmToolsDrawer"><button type="button" data-dm-tool="attach">📎 Attach</button><button type="button" data-dm-tool="youtube">▶️ YouTube</button><button type="button" data-dm-tool="reels">🎬 Reels</button><button type="button" data-dm-tool="doodle">✏️ Doodle</button><button type="button" data-dm-tool="gif">🎞️ GIF</button><input id="dmFile" type="file" accept="image/*,audio/*" hidden></div>
         <span id="dmFileName" class="muted dm-file-name"></span>
         <input id="dmText" placeholder="Write a private message…" maxlength="4000" autocomplete="off">
         <button class="send" type="submit">Send ↗</button>
