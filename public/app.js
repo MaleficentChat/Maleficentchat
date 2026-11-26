@@ -7381,10 +7381,6 @@ async function loadOwner() {
     const premiumRequests = await api("/api/owner/premium-requests").catch(()=>({requests:[]}));
 
     mcGetById("owner").innerHTML = `
-      <div class="card">
-
-              
-
         <section class="card owner-controls-heading-card">
           <h3>${String(state.user?.rank||"").toUpperCase()==="DEVELOPER"?"🛠️ Developer Controls":"👑 Owner Controls"}</h3>
           <p>${String(state.user?.rank||"").toUpperCase()==="DEVELOPER"?"Developer-level system controls and authorized owner tools.":"Owner-level controls for users, ranks, Gold, Diamonds, XP, private-message inspection and settings."}</p>
