@@ -811,8 +811,8 @@ const MC_USERNAME_EFFECTS=[
 function mcUsernameEffectSaved(){try{return safeStorage.getItem("mc_username_effect")||"";}catch{return"";}}
 function mcApplyUsernameEffect(effectId){
  const id=MC_USERNAME_EFFECTS.some(x=>x.id===effectId)?effectId:"";
- const ownName=String(state.user?.username||"").trim();
- const decorate=()=>{document.querySelectorAll(".msg-top>b,.instagram-user-name").forEach(el=>{const name=String(el.textContent||"").trim();if(ownName&&name===ownName){if(id)el.dataset.mcEffect=id;else delete el.dataset.mcEffect;}else delete el.dataset.mcEffect;});};
+ const ownId=String(state.user?.id||"");
+ const decorate=()=>{document.querySelectorAll(".mc-username-handle[data-user-id]").forEach(el=>{if(ownId&&String(el.dataset.userId)===ownId){if(id)el.dataset.mcEffect=id;else delete el.dataset.mcEffect;}else delete el.dataset.mcEffect;});};
  decorate();
  if(!window.__mcUsernameEffectObserver&&document.body){window.__mcUsernameEffectObserver=new MutationObserver(decorate);window.__mcUsernameEffectObserver.observe(document.body,{childList:true,subtree:true});}
  try{safeStorage.setItem("mc_username_effect",id);}catch{}
@@ -828,17 +828,15 @@ function openUsernameStudio(){
    '<h3>'+esc(effect.name)+'</h3><div class="mc-username-effect-status '+(effect.status==="Unlocked"?"unlocked":"rare")+'">'+esc(effect.status)+'</div>'+
    '<button type="button" class="mc-username-effect-select '+(selected?"selected":"")+'" data-username-effect-select="'+effect.id+'">'+(selected?"Selected ✓":"Select")+'</button></article>';
  }).join("");
- modal('<section class="mc-username-studio"><header><span>✨</span><h2>Username Studio</h2></header><div class="mc-username-studio-current"><small>YOUR USERNAME</small><strong class="mc-username-effect-preview" data-effect="'+esc(chosen)+'">'+esc(state.user?.username||"Username")+'</strong></div><div class="mc-username-effect-list">'+cards+'</div><footer><button type="button" class="primary" id="mcUsernameEffectApply">Apply</button></footer></section>');
+ modal('<section class="mc-username-studio"><header><span>✨</span><h2>Username Studio</h2></header><div class="mc-username-studio-current"><small>YOUR USERNAME</small><strong class="mc-username-effect-preview" data-effect="'+esc(chosen)+'">'+esc(state.user?.username||"Username")+'</strong></div><div class="mc-username-effect-list">'+cards+'</div></section>');
  mcGetById("modalBody")?.querySelectorAll("[data-username-effect-select]").forEach(button=>button.addEventListener("click",()=>{
   const selectedId=button.dataset.usernameEffectSelect;
+  mcApplyUsernameEffect(selectedId);
   mcGetById("modalBody").querySelectorAll("[data-username-effect-select]").forEach(b=>{b.classList.remove("selected");b.textContent="Select";});
   button.classList.add("selected");button.textContent="Selected ✓";
   const preview=mcGetById("modalBody").querySelector(".mc-username-effect-preview");if(preview)preview.dataset.effect=selectedId;
+  toast("Username effect applied!");
  }));
- mcGetById("mcUsernameEffectApply")?.addEventListener("click",()=>{
-  const selected=mcGetById("modalBody")?.querySelector("[data-username-effect-select].selected")?.dataset.usernameEffectSelect||"";
-  mcApplyUsernameEffect(selected);closeModal();toast(selected?"Username effect applied on this device.":"Username effect cleared.");
- });
 }
 document.addEventListener("DOMContentLoaded",()=>mcApplyUsernameEffect(mcUsernameEffectSaved()));
 
@@ -2969,9 +2967,9 @@ async function renderOnline(tab=onlinePanelTab,searchQuery=""){
         ${avatar(user)}${String(user.id)===String(state.user?.id) ? '<button type="button" class="my-status-toggle" id="myStatusToggle" aria-haspopup="true" aria-expanded="false" onclick="toggleMyStatusMenu(event)"><span id="myStatusGlyph">⚙</span><b id="myStatusLabel">Online</b><span>⌄</span></button><div class="my-status-options hidden" id="myStatusOptions" role="menu" onclick="event.stopPropagation()"></div>' : '<span class="user-mood-indicator" title="'+esc(user.mood||user.customStatus|| (user.online?'Online':'Away'))+'">'+(user.mood?moodEmoji(user.mood):statusEmoji(user.customStatus|| (user.online?'Online':'Away')))+'</span>'}
         <div class="online-user-copy">
           <div class="online-user-heading">
-            <b>@${esc(user.username)}</b>
+            <b>${esc(user.displayName||user.username)}</b>
           </div>
-          <small>${esc(user.displayName)} ${invisibleDot(user)} ${moderationStatusTags(user)}${user.invisible?"":" · "+(user.customStatus||(user.online?"Available":"Away"))}</small>
+          <small class="mc-username-handle" data-user-id="${esc(user.id)}">@${esc(user.username)} ${invisibleDot(user)} ${moderationStatusTags(user)}${user.invisible?"":" · "+(user.customStatus||(user.online?"Available":"Away"))}</small>
         </div>
         <span class="online-user-rank-badge" title="${esc(String(user.rank||'MEMBER').replaceAll('_',' '))}" aria-label="${esc(String(user.rank||'MEMBER').replaceAll('_',' '))}"><span class="mc-rank-ring" aria-hidden="true"></span><span class="mc-rank-glyph">${rankIcon[String(user.rank||'MEMBER').toUpperCase()]||'⚡'}</span></span>
         
@@ -4433,7 +4431,7 @@ function userCard(user) {
       <span class="instagram-avatar-ring">${avatar(user)}</span>
       <span class="horizontal-user-details">
         <b class="instagram-user-name">${esc(displayName)}</b>
-        <small class="instagram-user-handle">@${esc(user.username)} ${invisibleDot(user)} ${moderationStatusTags(user)}</small>
+        <small class="instagram-user-handle mc-username-handle" data-user-id="${esc(user.id)}">@${esc(user.username)} ${invisibleDot(user)} ${moderationStatusTags(user)}</small>
         <span class="instagram-user-rank">${({ROOM_MODERATOR:"🛡️ Room Moderator",ROOM_ADMIN:"👑 Room Admin",ROOM_OWNER:"🎩 Room Owner"})[state.roomRankByUser?.[String(user.id)]] ? esc(({ROOM_MODERATOR:"🛡️ Room Moderator",ROOM_ADMIN:"👑 Room Admin",ROOM_OWNER:"🎩 Room Owner"})[state.roomRankByUser[String(user.id)]]) : rank(user.rank)}</span>
         <span class="instagram-user-meta"><span class="instagram-presence-dot ${onlineNow ? "is-online" : ""}"></span>${onlineNow ? "Online" : "Member"} <span>·</span> Lv ${Number(user.level || 1)}</span>
       </span>
@@ -4503,7 +4501,7 @@ function renderUserProfileModal(user,data={}){
       <div class="profile-stats"><div class="profile-stat-group"><span class="profile-stat"><span class="profile-stat-icon">⭐</span><span>${user.level||1}</span></span><span class="profile-stat"><span class="profile-stat-icon">✦</span><span>XP ${user.xp||0}</span></span>${!isSelf?`<button type="button" class="profile-stat profile-like-trigger" id="profileLikeBtn" aria-label="Like profile" aria-pressed="${liked}"><span class="profile-stat-icon">❤️</span><span class="profile-like-count">${Number(data.profileLikes??user.profileLikes??0).toLocaleString()}</span></button>`:""}</div><div class="profile-action-group">${!isSelf && (String(state.user?.rank||"").toUpperCase()==="DEVELOPER" || (state.user?.username==="Maleficent" && String(state.user?.rank||"").toUpperCase()==="OWNER") || canFeature("staff_rank_assignment")) ? `<button class="mini profile-rank-btn" id="profileRankBtn" title="Change rank" aria-label="Change rank">🏅</button>` : ""}${isSelf?'<button class="mini profile-edit-btn" id="profileEditBtn" title="Edit account" aria-label="Edit account">✏️</button><button class="mini profile-hamburger" id="profileMenuBtn" title="Profile actions">☰</button>':((canFeature("account_modifications")||canFeature("edit_email")||canFeature("change_password")||canFeature("manage_staff_accounts")) && canAccessStaffTarget(user) ? '<button class="mini profile-edit-btn" id="staffProfileEditBtn" title="Edit this member account" aria-label="Edit this member account">✏️</button><button class="mini profile-hamburger" id="profileMenuBtn" title="Profile actions">☰</button>' : '')}</div></div>
       <div class="profile-rank">${rank(user.rank)}${user.verified?' · ✓ Verified':''}${profileBadge?` <span class="equipped-profile-badge" title="${esc(profileBadge.name)}">${esc(profileBadge.icon)} ${esc(profileBadge.name)}</span>`:''}</div>
       <div class="profile-name">${esc(user.displayName)}${user._nickname?` <span class="nickname-badge">“${esc(user._nickname)}”</span>`:''}</div>
-      <div class="profile-handle">@${esc(user.username)}</div>
+      <div class="profile-handle mc-username-handle" data-user-id="${esc(user.id)}">@${esc(user.username)}</div>
       ${!isSelf?`<div class="profile-primary-actions"><button class="profile-social-button profile-message-button" id="profileSendPM"><span>✉</span> Send PM</button><button class="profile-social-button profile-friend-button" id="profileAddFriend"><span>＋</span> Add Friend</button></div>`:""}
     </div>
     <div class="profile-tabs">
