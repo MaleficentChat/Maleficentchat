@@ -11800,3 +11800,10 @@ body.party-mode-active #partySparkleLayer{mix-blend-mode:screen}
 #modal .dm-tools-drawer.hidden{display:none!important}
 #modal .dm-tools-drawer button{display:flex!important;align-items:center!important;gap:8px!important;min-height:42px!important;padding:8px 10px!important;border-radius:11px!important;text-align:left!important}
 @media(max-width:700px){#modal .dm-tools-toggle{flex-basis:44px!important;width:44px!important;height:44px!important;min-width:44px!important}#modal .dm-composer{gap:6px!important}}
+/* Visible notification controls override previous compact-row rules. */
+#modal .notification-card{grid-template-columns:40px minmax(0,1fr) 42px!important;grid-template-areas:"avatar copy actions"!important}
+#modal .notification-card>.notification-actions{grid-area:actions!important;display:flex!important;flex-direction:column!important;align-items:center!important;gap:4px!important;width:42px!important;min-width:42px!important;margin:0!important}
+#modal .notification-card .notification-actions .mini{display:grid!important;place-items:center!important;width:26px!important;height:26px!important;min-width:26px!important;min-height:26px!important;padding:0!important;font-size:14px!important}
+#modal .notification-card:after{display:none!important;content:none!important}
+#modal .notification-card .notification-kind-badge{display:inline!important}
+@media(max-width:700px){#modal .notification-card{grid-template-columns:36px minmax(0,1fr) 36px!important;gap:7px!important}#modal .notification-card>.notification-actions{width:36px!important;min-width:36px!important}}
