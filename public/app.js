@@ -5990,6 +5990,47 @@ function countryFlagFor(country){
   const flags={'india':'🇮🇳','united states':'🇺🇸','united states of america':'🇺🇸','usa':'🇺🇸','uk':'🇬🇧','united kingdom':'🇬🇧','canada':'🇨🇦','australia':'🇦🇺','new zealand':'🇳🇿','pakistan':'🇵🇰','bangladesh':'🇧🇩','nepal':'🇳🇵','sri lanka':'🇱🇰','uae':'🇦🇪','united arab emirates':'🇦🇪','saudi arabia':'🇸🇦','singapore':'🇸🇬','malaysia':'🇲🇾','indonesia':'🇮🇩','philippines':'🇵🇭','japan':'🇯🇵','south korea':'🇰🇷','china':'🇨🇳','russia':'🇷🇺','ukraine':'🇺🇦','germany':'🇩🇪','france':'🇫🇷','italy':'🇮🇹','spain':'🇪🇸','portugal':'🇵🇹','brazil':'🇧🇷','mexico':'🇲🇽','south africa':'🇿🇦','nigeria':'🇳🇬','egypt':'🇪🇬','turkey':'🇹🇷','ireland':'🇮🇪','netherlands':'🇳🇱','switzerland':'🇨🇭','sweden':'🇸🇪','norway':'🇳🇴','denmark':'🇩🇰','poland':'🇵🇱','argentina':'🇦🇷','thailand':'🇹🇭','vietnam':'🇻🇳'};
   return flags[key]||'🌐';
 }
+const USERNAME_EFFECTS=[
+{id:"none",name:"Classic",rarity:"Default",preview:"Maleficent",description:"Your natural username with no added effect."},
+{id:"celestial-wings",name:"Celestial Wings",rarity:"Rare",preview:"𓆩🪽𓆪 Maleficent 𓆩🪽𓆪",description:"Soft, luminous feather-wing ornaments."},
+{id:"shadow-wings",name:"Shadow Wings",rarity:"Epic",preview:"༺🦇༻ Maleficent ༺🦇༻",description:"Dark gothic wings with a violet glow."},
+{id:"golden-crown",name:"Golden Crown",rarity:"Rare",preview:"♛ Maleficent ♛",description:"A regal gold crown frame."},
+{id:"mystic-crown",name:"Mystic Crown",rarity:"Epic",preview:"♕ ✧ Maleficent ✧ ♕",description:"A magical crown with shimmering accents."},
+{id:"butterfly-aura",name:"Butterfly Aura",rarity:"Epic",preview:"≋🦋≋ Maleficent ≋🦋≋",description:"A turquoise butterfly-inspired aura."},
+{id:"frozen-shimmer",name:"Frozen Shimmer",rarity:"Rare",preview:"⋆｡°✩ Maleficent ✩°｡⋆",description:"Ice-blue stars and a frozen shimmer."},
+{id:"rose-glow",name:"Rose Glow",rarity:"Rare",preview:"♥ Maleficent ♥",description:"Soft rose-pink glow and hearts."},
+{id:"royal-frame",name:"Royal Frame",rarity:"Rare",preview:"꧁༺ Maleficent ༻꧂",description:"Ornate royal framing."},
+{id:"inferno",name:"Inferno",rarity:"Epic",preview:"🔥 Maleficent 🔥",description:"Warm fiery glow."},
+{id:"neon",name:"Neon Pulse",rarity:"Epic",preview:"✦ Maleficent ✦",description:"Bright electric neon outline."},
+{id:"galaxy",name:"Galaxy",rarity:"Legendary",preview:"✧･ﾟ Maleficent ﾟ･✧",description:"A celestial purple-blue gradient."},
+{id:"angel-halo",name:"Angel Halo",rarity:"Rare",preview:"☼ Maleficent ☼",description:"A luminous halo and soft gold glow."},
+{id:"lightning",name:"Lightning",rarity:"Legendary",preview:"ϟ Maleficent ϟ",description:"Electric blue energy accents."}
+];
+function usernameEffectMarkup(name,effect){
+  const id=String(effect||"none").toLowerCase().replace(/[^a-z0-9-]/g,"");
+  return '<span class="mc-username-effect mc-ue-'+(id||"none")+'">'+esc(name||"")+'</span>';
+}
+function openUsernameStudio(){
+  if(!state.user){toast("Please log in first.");return;}
+  let selected=String(state.user.settings?.usernameEffect||"none");
+  const safeId=id=>String(id||"none").replace(/[^a-z0-9-]/gi,"");
+  const renderStudio=()=>{
+    const current=USERNAME_EFFECTS.find(x=>x.id===selected)||USERNAME_EFFECTS[0];
+    const cards=USERNAME_EFFECTS.map(item=>'<article class="username-effect-card '+(selected===item.id?"is-selected":"")+'"><div class="username-effect-preview mc-ue-'+safeId(item.id)+'"><span>'+esc(item.preview.replace(/Maleficent/g,state.user.displayName||state.user.username||"You"))+'</span></div><div class="username-effect-info"><div class="username-effect-title"><b>'+esc(item.name)+'</b><small>'+esc(item.rarity)+'</small></div><p>'+esc(item.description)+'</p><button type="button" class="username-effect-select '+(selected===item.id?"is-selected":"")+'" data-username-effect="'+esc(item.id)+'">'+(selected===item.id?"Selected ✓":"Select")+'</button></div></article>').join("");
+    const root=mcGetById("usernameStudioRoot");if(!root)return;
+    root.innerHTML='<div class="username-studio-current"><small>LIVE PREVIEW</small><div class="username-studio-current-name mc-ue-'+safeId(selected)+'">'+esc(state.user.displayName||state.user.username||"You")+'</div><span>'+esc(current.name)+'</span></div><div class="username-studio-catalog">'+cards+'</div><div class="username-studio-footer"><button type="button" class="mini" id="usernameStudioRemove">Remove effect</button><button type="button" class="primary" id="usernameStudioApply">Apply</button></div>';
+    root.querySelectorAll("[data-username-effect]").forEach(button=>button.addEventListener("click",()=>{selected=button.dataset.usernameEffect||"none";renderStudio();}));
+    root.querySelector("#usernameStudioRemove")?.addEventListener("click",()=>{selected="none";renderStudio();});
+    root.querySelector("#usernameStudioApply")?.addEventListener("click",async buttonEvent=>{
+      const button=buttonEvent.currentTarget;button.disabled=true;button.textContent="Saving…";
+      try{const result=await api("/api/settings",{method:"PUT",body:JSON.stringify({usernameEffect:selected})});state.user.settings={...(state.user.settings||{}),...(result.settings||{}),usernameEffect:selected};closeModal();if(state.view==="profile")await loadProfile(state.user);updateNav();toast("Username effect saved! ✨");}
+      catch(error){toast(error.message||"Could not save username effect.");button.disabled=false;button.textContent="Apply";}
+    });
+  };
+  modal('<section class="username-studio" aria-label="Username Studio"><header class="username-studio-header"><div><h2>✨ Username Studio</h2><p>Choose a style for your username</p></div><button type="button" class="username-studio-close" onclick="closeModal()" aria-label="Close">×</button></header><div id="usernameStudioRoot"></div></section>');
+  renderStudio();
+}
+
 async function loadProfile(user){
   if(!user) return;
   const cosmetics=Array.isArray(user.equippedCosmetics)?user.equippedCosmetics:[];
@@ -6004,10 +6045,11 @@ async function loadProfile(user){
       <div class="profile-media-actions"><button class="mini profile-media-action" type="button" onclick="uploadAvatar()">📷 Change picture</button>${user.avatar?'<button class="mini danger profile-media-action" type="button" onclick="deleteAvatar()">Remove picture</button>':''}<button class="mini profile-media-action" type="button" onclick="uploadBanner()">🖼️ Change background</button>${user.banner?'<button class="mini danger profile-media-action" type="button" onclick="deleteBanner()">Remove background</button>':''}</div>
       ${avatar(user,'big-avatar')}
       <div class="profile-rank">${rank(user.rank)}${user.verified?' · ✓ Verified':''}</div>
-      <div class="profile-name" style="color:${esc(user.profileColor||user.settings?.usernameColor||'')}" >${esc(user.displayName)}</div><div class="profile-handle">@${esc(user.username)}${user.privacy?.pronouns!==false&&user.pronouns?` · ${esc(user.pronouns)}`:''}</div><div class="profile-extra">${user.privacy?.country!==false&&user.country?`<span class="profile-country">${esc(countryFlagFor(user.country))} ${esc(user.country)}</span>`:''}${user.privacy?.mood!==false&&user.mood?`<span>☻ ${esc(user.mood)}</span>`:''}${user.privacy?.relationship!==false&&user.relationship?`<span>♥ ${esc(user.relationship)}</span>`:''}${user.privacy?.location!==false&&user.location?`<span>📍 ${esc(user.location)}</span>`:''}${user.privacy?.website!==false&&user.website?`<span>🔗 <a href="${esc(safeProfileUrl(user.website))}" target="_blank" rel="noopener noreferrer">Website</a></span>`:''}</div>
+      <div class="profile-name" style="color:${esc(user.profileColor||user.settings?.usernameColor||'')}" >${usernameEffectMarkup(user.displayName,user.settings?.usernameEffect)}</div><div class="profile-handle">@${esc(user.username)}${user.privacy?.pronouns!==false&&user.pronouns?` · ${esc(user.pronouns)}`:''}</div><div class="profile-extra">${user.privacy?.country!==false&&user.country?`<span class="profile-country">${esc(countryFlagFor(user.country))} ${esc(user.country)}</span>`:''}${user.privacy?.mood!==false&&user.mood?`<span>☻ ${esc(user.mood)}</span>`:''}${user.privacy?.relationship!==false&&user.relationship?`<span>♥ ${esc(user.relationship)}</span>`:''}${user.privacy?.location!==false&&user.location?`<span>📍 ${esc(user.location)}</span>`:''}${user.privacy?.website!==false&&user.website?`<span>🔗 <a href="${esc(safeProfileUrl(user.website))}" target="_blank" rel="noopener noreferrer">Website</a></span>`:''}</div>
       
     </div>
     <div class="settings-tabs"><button class="settings-tab active" data-st="account">Account</button><button class="settings-tab" data-st="more">More</button></div>
+    <div class="username-studio-launch-wrap"><button type="button" class="username-studio-launch" onclick="openUsernameStudio()"><span class="username-studio-launch-icon">✨</span><span><b>Username Studio</b><small>Wings, crowns, effects & decorations</small></span><span class="username-studio-launch-arrow">›</span></button></div>
     <div id="myProfileSettings"></div>
   </div></div>`;
   const content=mcGetById('myProfileSettings');
