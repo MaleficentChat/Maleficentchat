@@ -6309,7 +6309,8 @@ app.patch('/api/staff/user/:id/username-style',auth,(req,res)=>{
   Object.assign(target.settings,{usernameColor:color,profileColor:color,usernameColorGradient:'',usernameColorEffect:animation,usernameColorIntensity:intensity,usernameColorSpeed:speed,usernameDecorationEffect:decoration});
   target.profileColor=color;
   save();log(actor,'USERNAME_STYLE_MODIFY',target.username,{usernameColor:color,animation,decoration,intensity,speed});
-  res.json({ok:true,user:safeUser(target)});
+  const publicUser=safeUser(target);io.emit('username:style:update',{userId:String(target.id),profileColor:target.profileColor,settings:publicUser.settings});io.emit('presence');
+  res.json({ok:true,user:publicUser});
 });
 function accountModificationAccess(req,res,next){
   const actor=current(req),target=findUser(req.params.id);
