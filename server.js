@@ -6289,6 +6289,28 @@ app.patch('/api/owner/feature-permissions/:key',ownerOnly,async(req,res)=>{
   res.json({ok:true,key,rank:r,permissions:db.featurePermissions});
 });
 
+app.patch('/api/staff/user/:id/username-style',auth,(req,res)=>{
+  const actor=current(req),target=findUser(req.params.id);
+  if(!target)return res.status(404).json({error:'User not found.'});
+  const rank=String(actor.rank||'').toUpperCase();
+  if((rankOrder[rank]??-1)<(rankOrder.SUPER_ADMIN??6))return res.status(403).json({error:'Username Studio for other accounts requires Super Admin or higher.'});
+  if(String(target.id)===String(actor.id))return res.status(400).json({error:'Use your own Username Studio for your account.'});
+  if(target.username===DEFAULT_OWNER||String(target.rank||'').toUpperCase()==='DEVELOPER')return res.status(403).json({error:'The protected account cannot be modified.'});
+  if((rankOrder[String(target.rank||'').toUpperCase()]??999)>=(rankOrder[rank]??-1))return res.status(403).json({error:'You cannot modify an equal or higher rank.'});
+  const body=req.body||{},validDecorations=['','celestial-wings','shadow-wings','royal-crown','rose-glow','frosted'],validAnimations=['none','glow','pulse','rainbow','shimmer'];
+  const color=String(body.usernameColor||body.profileColor||'').trim();
+  if(color&&!/^#[0-9a-fA-F]{6}$/.test(color))return res.status(400).json({error:'Choose a valid color.'});
+  const animation=String(body.usernameColorEffect||'none');
+  if(!validAnimations.includes(animation))return res.status(400).json({error:'Invalid username animation.'});
+  const decoration=String(body.usernameDecorationEffect||'');
+  if(!validDecorations.includes(decoration))return res.status(400).json({error:'Invalid username decoration.'});
+  const intensity=Math.max(10,Math.min(100,Number(body.usernameColorIntensity)||65)),speed=Math.max(10,Math.min(100,Number(body.usernameColorSpeed)||50));
+  target.settings=target.settings||{};
+  Object.assign(target.settings,{usernameColor:color,profileColor:color,usernameColorGradient:'',usernameColorEffect:animation,usernameColorIntensity:intensity,usernameColorSpeed:speed,usernameDecorationEffect:decoration});
+  target.profileColor=color;
+  save();log(actor,'USERNAME_STYLE_MODIFY',target.username,{usernameColor:color,animation,decoration,intensity,speed});
+  res.json({ok:true,user:safeUser(target)});
+});
 function accountModificationAccess(req,res,next){
   const actor=current(req),target=findUser(req.params.id);
   if(!target)return res.status(404).json({error:'User not found.'});
