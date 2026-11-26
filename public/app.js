@@ -7385,10 +7385,10 @@ async function loadOwner() {
 
               
 
-        <h3>
-          ${String(state.user?.rank||"").toUpperCase()==="DEVELOPER"?"🛠️ Developer Controls":"👑 Owner Controls"}
-        </h3>
-        <p>${String(state.user?.rank||"").toUpperCase()==="DEVELOPER"?"Developer-level system controls and authorized owner tools.":"Owner-level controls for users, ranks, Gold, Diamonds, XP, private-message inspection and settings."}</p>
+        <section class="card owner-controls-heading-card">
+          <h3>${String(state.user?.rank||"").toUpperCase()==="DEVELOPER"?"🛠️ Developer Controls":"👑 Owner Controls"}</h3>
+          <p>${String(state.user?.rank||"").toUpperCase()==="DEVELOPER"?"Developer-level system controls and authorized owner tools.":"Owner-level controls for users, ranks, Gold, Diamonds, XP, private-message inspection and settings."}</p>
+        </section>
         <section class="card owner-inspect-dms-card" style="margin-top:14px">
           <h3>💬 Inspect Private Messages</h3>
           <p class="muted">Inspect conversations using the existing staff permission rules.</p>
@@ -7400,9 +7400,6 @@ async function loadOwner() {
           <button class="danger" type="button" id="ownerClearAllMessages">🧹 Clear all room & private messages</button>
           <p class="muted" id="ownerClearAllMessagesStatus" aria-live="polite"></p>
         </section>
-
-      </div>
-
 
       <details class="filter-words-details owner-settings-dropdown owner-audit-dropdown">
         <summary>📜 Audit Logs Management — open to configure event visibility</summary>
