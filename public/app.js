@@ -3888,8 +3888,8 @@ function launchArcadeGame(game){
   }
 }
 function bindBack(){const b=mcGetById("gamesRoot")?.querySelector("[data-arcade-back]");if(b)b.onclick=renderArcade;}
-function openDoodleComposer(){
-  const canSave=canFeature('doodle_studio_save'),canShare=!!state.currentRoom&&canFeature('doodle_studio_share');
+function openDoodleComposer(dmTarget=null){
+  const canSave=canFeature('doodle_studio_save'),canShare=!!dmTarget||!!state.currentRoom&&canFeature('doodle_studio_share');
   if(!canSave&&!canShare){toast('Doodle Studio is not available for your account.');return;}
   modal(`<div class="doodle-modal"><div class="doodle-head"><h2>🖌️ Doodle Studio</h2><button type="button" class="mini" id="doodleClose">×</button></div>
     <div class="doodle-tools"><label class="doodle-title-field">Title <input id="doodleTitle" type="text" maxlength="80" value="Untitled doodle" placeholder="Name your drawing"></label><button type="button" id="doodlePen">🖌️ Pen</button><button type="button" id="doodleEraser">🧽 Eraser</button><label>Color <input type="color" id="doodleColor" value="#111111"></label><label>Size <input type="range" id="doodleSize" min="2" max="24" value="5"></label><button type="button" id="doodleUndo">↶ Undo</button><button type="button" id="doodleClear">🗑 Clear</button></div>
@@ -8049,15 +8049,16 @@ function extractYoutubeVideoId(value){
     return /^[A-Za-z0-9_-]{11}$/.test(String(id||""))?String(id):"";
   }catch{return "";}
 }
-function openYoutubePanel(roomId=state.currentRoom){
+function openYoutubePanel(dmTarget=null){
+  const roomId=dmTarget?null:state.currentRoom;
   modal(`<div class="youtube-panel"><h2>▶️ YouTube</h2><p class="muted">Search for a video or paste a YouTube video, Shorts or live link.</p><div class="toolbar"><input id="ytQuery" placeholder="Search or paste YouTube URL…" autocomplete="off"><button class="primary" id="ytSearch" type="button">Search</button></div><div id="ytResults" class="youtube-results"><p class="muted">Choose a video to preview it before sharing.</p></div><div id="ytSelected" class="youtube-selected" aria-live="polite"></div></div>`);
   const query=mcGetById("ytQuery"),searchButton=mcGetById("ytSearch"),results=mcGetById("ytResults"),selected=mcGetById("ytSelected");
   let chosen=null;
   const selectVideo=(video)=>{
     if(!video||! /^[A-Za-z0-9_-]{11}$/.test(String(video.id||"")))return;
     chosen={id:String(video.id),title:String(video.title||"YouTube video").slice(0,200)};
-    selected.innerHTML=`<div class="youtube-selection-preview"><img src="https://i.ytimg.com/vi/${chosen.id}/hqdefault.jpg" alt=""><div><b>${esc(chosen.title)}</b><small>Ready to share in this room</small></div><button type="button" class="primary" id="ytShare">Share video</button></div>`;
-    selected.querySelector("#ytShare")?.addEventListener("click",()=>sendYoutube(chosen.id,chosen.title,roomId));
+    selected.innerHTML=`<div class="youtube-selection-preview"><img src="https://i.ytimg.com/vi/${chosen.id}/hqdefault.jpg" alt=""><div><b>${esc(chosen.title)}</b><small>Ready to share ${dmTarget?"in this private chat":"in this room"}</small></div><button type="button" class="primary" id="ytShare">Share video</button></div>`;
+    selected.querySelector("#ytShare")?.addEventListener("click",async()=>{if(dmTarget){try{const fd=new FormData();fd.append("text",`https://www.youtube.com/watch?v=${chosen.id}`);const result=await api(`/api/dm/${encodeURIComponent(dmTarget)}`,{method:"POST",body:fd});if(result.message&&String(state.dmUserId)===String(dmTarget)){state.dmMessages=state.dmMessages||[];state.dmMessages.push(result.message);const list=mcGetById("dmMessages");if(list){list.querySelector(".muted")?.remove();list.insertAdjacentHTML("beforeend",dmMessageHTML(result.message,state.dmMessages,state.dmPeerUser||{}));list.scrollTop=list.scrollHeight;}}closeModal();toast("YouTube link sent in private message.");}catch(error){toast(error.message||"Could not send YouTube link.");}}else sendYoutube(chosen.id,chosen.title,roomId);});
   };
   const addResult=(video)=>{
     const button=document.createElement("button");
