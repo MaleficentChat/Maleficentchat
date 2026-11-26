@@ -5464,6 +5464,22 @@ app.post('/api/staff/applications/:id/grant',auth,featureAllowed('view_staff_das
   }catch(e){console.error('Staff application rank grant failed:',e);res.status(500).json({error:'Could not grant this rank. Check rank-assignment permissions and try again.'});}
 });
 
+app.get("/api/developer/database-usage",auth,async(req,res)=>{
+  const u=current(req);
+  if(!u||String(u.rank||"").toUpperCase()!=="DEVELOPER"||String(u.username||"")!=="Maleficent")return res.status(403).json({error:"Developer access only"});
+  try{
+    const [size,media,tables]=await Promise.all([
+      pool.query("SELECT pg_database_size(current_database())::bigint AS database_bytes"),
+      pool.query("SELECT COALESCE(SUM(byte_size),0)::bigint AS media_bytes,COUNT(*)::bigint AS media_count FROM stored_media"),
+      pool.query("SELECT COALESCE(SUM(pg_total_relation_size(format('%I.%I',schemaname,tablename)::regclass)),0)::bigint AS table_bytes FROM pg_tables WHERE schemaname='public'")
+    ]);
+    const databaseBytes=Number(size.rows[0]?.database_bytes||0);
+    const mediaBytes=Number(media.rows[0]?.media_bytes||0);
+    const limitRaw=Number(process.env.DATABASE_STORAGE_LIMIT_BYTES||0);
+    res.json({databaseBytes,tableBytes:Number(tables.rows[0]?.table_bytes||0),mediaBytes,mediaCount:Number(media.rows[0]?.media_count||0),limitBytes:Number.isFinite(limitRaw)&&limitRaw>0?limitRaw:null,remainingBytes:limitRaw>0?Math.max(0,limitRaw-databaseBytes):null,updatedAt:Date.now()});
+  }catch(e){console.error("Developer database usage query failed:",e);res.status(500).json({error:"Database storage metrics unavailable"});}
+});
+
 app.get("/api/staff/dashboard",auth,featureAllowed("view_staff_dashboard"),async(req,res)=>{
   const u=current(req);
   if(!hasRank(u,"MOD"))return res.status(403).json({error:"Staff only"});
