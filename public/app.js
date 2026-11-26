@@ -7953,7 +7953,8 @@ async function toggleNotificationDropdown(){
     const unreadCount=rows.filter(n=>!n.read).length;
     box.innerHTML=`<div class="notification-dropdown-head"><div><b>🔔 Notifications</b><small class="notification-unread-summary">${unreadCount} unread</small></div><button class="mini" id="dropdownMarkAll" ${unreadCount?'':'disabled'}>Mark all read</button></div>${notificationFilterMarkup("dropdown")}<div class="notification-dropdown-list">${rows.map(n=>`<button class="notification-dropdown-item ${n.read?'':'unread'}" data-dropdown-notif="${esc(n.id)}" data-notif-row data-category="${notificationCategory(n)}" data-unread="${!n.read}">${notificationAvatarMarkup(n,true)}<span class="notification-dropdown-copy"><b>${esc(notificationActorLabel(n))}</b><span>${esc(n.text||n.message||n.title||'')}</span><small>${fmt(n.time)}</small></span><i class="notification-dropdown-kind">${notificationKindIcon(n)}</i></button>`).join('')||'<p class="muted notification-empty">✨ You’re all caught up.</p>'}</div>`;
     box.classList.remove('hidden');
-    bindNotificationFilters(box,'dropdown');\n    box.querySelectorAll('[data-dropdown-notif]').forEach(b=>b.onclick=async()=>{
+    bindNotificationFilters(box,'dropdown');
+    box.querySelectorAll('[data-dropdown-notif]').forEach(b=>b.onclick=async()=>{
       try{await api('/api/notifications/'+encodeURIComponent(b.dataset.dropdownNotif)+'/read',{method:'PATCH'});b.classList.remove('unread');loadNotifications();toggleNotificationDropdown();}catch(e){toast(e.message)}
     });
     mcGetById('dropdownMarkAll')?.addEventListener('click',async e=>{e.stopPropagation();try{await api('/api/notifications/read',{method:'POST'});box.classList.add('hidden');loadNotifications();toast('All notifications marked as read.');}catch(err){toast(err.message)}});
