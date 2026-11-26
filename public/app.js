@@ -1292,6 +1292,22 @@ async function start() {
   state.socket.on('rooms_updated', async()=>{try{await loadRooms();renderRooms();}catch{}});
   state.socket.on("connect",()=>{loadRooms().catch(()=>{});});
 
+  state.socket.on("username:style:update",payload=>{
+    const uid=String(payload?.userId||''),settings=payload?.settings||{};
+    if(!uid)return;
+    document.querySelectorAll('.mc-name-color-target[data-user-id="'+CSS.escape(uid)+'"],.mc-username-effect-target[data-user-id="'+CSS.escape(uid)+'"]').forEach(el=>{
+      el.dataset.nameColor=settings.usernameColor||payload.profileColor||'';
+      el.dataset.nameGradient=settings.usernameColorGradient||'';
+      el.dataset.nameAnimation=settings.usernameColorEffect||'none';
+      el.dataset.colorEffect=settings.usernameColorEffect||'none';
+      el.dataset.mcEffect=settings.usernameDecorationEffect||'';
+      el.style.setProperty('--mc-color',settings.usernameColor||payload.profileColor||'');
+      el.style.setProperty('--mc-strength',Number(settings.usernameColorIntensity||65)/100);
+      el.style.setProperty('--mc-speed',Number(settings.usernameColorSpeed||50)/100);
+    });
+    applyUsernameColor();
+    loadUsers().catch(()=>{});
+  });
   state.socket.on("presence", () => {
     // Refresh the visible public profile's status and room without closing the profile.
     const profileModal=document.querySelector("#modal .profile-modal");
