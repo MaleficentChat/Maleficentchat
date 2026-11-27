@@ -11987,3 +11987,14 @@ body.party-mode-active #partySparkleLayer{mix-blend-mode:screen}
 #modal .mc-studio-select{min-height:36px;border:1px solid rgba(255,255,255,.13);border-radius:10px;background:rgba(255,255,255,.045);font-weight:700;transition:background .18s,border-color .18s}
 #modal .mc-studio-style.selected .mc-studio-select{border-color:rgba(181,108,255,.5);background:rgba(181,108,255,.14)}
 @media(prefers-reduced-motion:reduce){.mc-name-color-target[data-name-animation="rainbow"],.mc-name-color-target[data-name-animation="shimmer"],.mc-name-color-target[data-name-animation="pulse"],.mc-name-color-target[data-name-animation="glow"]{animation:none!important}}
+
+/* Compact notification controls are available directly in the header bell panel. */
+.notification-dropdown-tools{display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end}
+.notification-dropdown-card{display:grid;grid-template-columns:36px minmax(0,1fr) 20px auto;gap:8px;align-items:center;padding:9px;border-radius:12px;border-bottom:1px solid rgba(255,255,255,.06);min-width:0}
+.notification-dropdown-card.unread{background:rgba(170,170,170,.10);border-left:2px solid #bdbdbd}
+.notification-dropdown-card .notification-dropdown-copy{min-width:0;display:flex;flex-direction:column;gap:3px}
+.notification-dropdown-card .notification-dropdown-copy span{overflow-wrap:anywhere}
+.notification-dropdown-actions{display:flex;gap:4px;align-items:center}
+.notification-dropdown-actions .mini{min-width:28px;padding:3px 6px}
+.notification-dropdown-card .notification-dropdown-kind{align-self:start}
+@media(max-width:700px){.notification-dropdown-card{grid-template-columns:34px minmax(0,1fr) 18px auto;gap:6px;padding:8px}.notification-dropdown-actions .mini{min-height:26px;font-size:11px}}
