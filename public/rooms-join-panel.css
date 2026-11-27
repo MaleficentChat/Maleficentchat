@@ -12,3 +12,12 @@
 
 .rooms-nav-join-label{font-size:11px;font-weight:750;white-space:nowrap;padding:3px 7px;border-radius:7px;background:rgba(65,180,125,.13);color:#72dca8}
 .rooms-nav-item.active .rooms-nav-join-label{background:rgba(120,140,160,.16);color:inherit}
+
+/* Room Dashboard More controls */
+.rooms-nav-more{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:38px;margin-top:3px;padding:7px 10px;border:1px solid var(--border-color,rgba(255,255,255,.15));border-radius:10px;background:rgba(120,120,120,.08);color:inherit;font:inherit;cursor:pointer}
+.rooms-nav-more:hover{background:rgba(140,140,140,.18)}
+.rooms-more-dashboard{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;padding:2px 0 12px;position:sticky;top:0;background:var(--panel-bg,#17141e);z-index:2}
+.rooms-more-dashboard button{min-height:40px;padding:7px 8px;border:1px solid var(--border-color,rgba(255,255,255,.14));border-radius:10px;background:rgba(120,120,120,.1);color:inherit;font:inherit;font-size:13px;font-weight:650;cursor:pointer}
+.rooms-more-dashboard button:disabled{opacity:.65}
+.rooms-more-content{overflow:auto}
+@media(max-width:420px){.rooms-more-dashboard{gap:5px}.rooms-more-dashboard button{font-size:12px;padding:6px 4px}}
