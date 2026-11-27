@@ -1289,7 +1289,7 @@ async function start() {
     if(d?.typing)state.dmTypingResetTimer=setTimeout(()=>{if(status.isConnected)status.textContent="Quote a message to reply · Attach photos or files";},3500);
   });
 
-  state.socket.on('rooms_updated', async()=>{try{await loadRooms();renderRooms();}catch{}});
+  state.socket.on('rooms_updated', async()=>{try{await loadRooms();renderRooms();renderSidebarRoomList();renderRoomQuickNav();}catch{}});
   state.socket.on("connect",()=>{loadRooms().catch(()=>{});});
 
   state.socket.on("username:style:update",payload=>{
@@ -1517,7 +1517,7 @@ async function start() {
       state.roomListMode="all";
       renderRooms();
       const requestedRoom=attempt===0&&state.returnRoomId?state.rooms.find(room=>String(room.id)===String(state.returnRoomId)):null;
-      const targetRoom=requestedRoom||roomForAgeRouting();
+      const targetRoom=requestedRoom||roomForMainChat();
       joined=await joinRoom(String(targetRoom.id),{silent:true});
       if(!joined)lastJoinError="The server did not complete the room join.";
     }catch(error){
@@ -2579,6 +2579,11 @@ function maleficentUserAge(user=state.user) {
 function isMaleficentStaff(user=state.user) {
   return ["MOD","MODERATOR","ADMIN","SUPER_ADMIN","SUPERADMIN","COMMISSOR","INSTRUCTOR","COOWNER","OWNER","DEVELOPER"].includes(String(user?.rank||"").toUpperCase());
 }
+function roomForMainChat() {
+  const room=(state.rooms||[]).find(item=>item.isDefault||item.isMain||item.isSystem||String(item.type||"").toLowerCase()==="main"||/^(main room|main chat)$/i.test(String(item.name||"").trim()));
+  if(!room)throw new Error("Main Chat could not be found. Please ask staff to check the room setup.");
+  return room;
+}
 function roomForAgeRouting() {
   const staff=isMaleficentStaff();
   const age=maleficentUserAge();
@@ -2910,8 +2915,6 @@ function postRoomAnnouncement(){
 window.canPostRoomAnnouncement=()=>can("COMMISSOR");
 
 async function joinRoom(id, options = {}) {
-  toast("Room joining is temporarily disabled while the chat experience is being redesigned.");
-  return false;
   const room =
     state.rooms.find(r => String(r.id) === String(id));
 
@@ -2967,7 +2970,8 @@ async function joinRoom(id, options = {}) {
     mcGetById("viewRooms").classList.add("chatting");
     mcGetById("viewRooms").classList.toggle("main-room-chat",!!(room.isDefault||/^(main room|teen chat)$/i.test(String(room.name||"").trim())));
 
-    mcGetById("roomName").innerHTML = `${room.banner?`<img class="room-title-picture" src="${esc(room.banner)}" alt="" loading="lazy">`:esc(room.icon||"💬")} <span>${esc(room.name||"")}</span>`;
+    const displayRoomName=room.isDefault||/^(main room|main chat)$/i.test(String(room.name||"").trim())?"Main Chat":String(room.name||"");
+    mcGetById("roomName").innerHTML = `${room.banner?`<img class="room-title-picture" src="${esc(room.banner)}" alt="" loading="lazy">`:esc(room.icon||"💬")} <span>${esc(displayRoomName)}</span>`;
 
     mcGetById("roomDesc").textContent =
       room.description || "";
