@@ -1529,7 +1529,7 @@ async function start() {
   // The room directory is not part of the signed-in flow. The chat is now
   // a sibling of the directory, so keep the picker hidden after successful entry.
   if(joined){
-    mcGetById("viewRooms")?.classList.add("hidden");
+    mcGetById("viewRooms")?.classList.remove("hidden");
   }else{
     mcGetById("viewRooms")?.classList.add("hidden");
     console.error("Automatic age-room entry failed after retries:",lastJoinError);
@@ -2994,6 +2994,8 @@ async function joinRoom(id, options = {}) {
     }
 
     mcGetById("chatWrap").classList.remove("hidden");
+    mcGetById("viewRooms").classList.remove("hidden");
+    document.querySelectorAll(".view").forEach(view=>{if(view.id!=="viewRooms")view.classList.add("hidden");});
     mcGetById("viewRooms").classList.add("chatting");
     mcGetById("viewRooms").classList.toggle("main-room-chat",!!(room.isDefault||/^(main room|teen chat)$/i.test(String(room.name||"").trim())));
 
