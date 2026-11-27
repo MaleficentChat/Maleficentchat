@@ -12059,3 +12059,20 @@ body.party-mode-active #partySparkleLayer{mix-blend-mode:screen}
 /* PM minimized docks: restore spacing in both dock variants for switching conversations. */
 #dmMinimizedDock,#mainChatMinimizedDock{gap:50px!important;column-gap:50px!important;overflow-x:auto!important;scrollbar-width:thin!important}
 #dmMinimizedDock .dm-minimized-avatar,#mainChatMinimizedDock .dm-minimized-avatar{flex:0 0 40px!important}
+
+
+/* Correct minimized PM dock: reserve a 50px bottom strip BELOW the composer. */
+#viewRooms.chatting .chat-card{padding-bottom:50px!important;box-sizing:border-box!important}
+#viewRooms.chatting .chat-card > .composer{margin-bottom:50px!important}
+#mainChatMinimizedDock{
+  bottom:5px!important;max-height:44px!important;height:44px!important;
+  gap:6px!important;column-gap:6px!important;
+  overflow-x:auto!important;overflow-y:hidden!important;
+  align-items:center!important;justify-content:flex-start!important;
+}
+#mainChatMinimizedDock .dm-minimized-avatar{flex:0 0 40px!important}
+@media(max-width:700px){
+  #viewRooms.chatting .chat-card{padding-bottom:50px!important}
+  #viewRooms.chatting .chat-card > .composer{margin-bottom:50px!important}
+  #mainChatMinimizedDock{bottom:3px!important;max-width:calc(100% - 16px)!important}
+}
