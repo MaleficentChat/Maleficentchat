@@ -1,0 +1,118 @@
+/* 27 Nov 2026 — isolate chat/PM scroll areas; prevent mobile page scroll-jumps */
+html:has(#modal:not(.hidden) .dm-chat-header),
+body:has(#modal:not(.hidden) .dm-chat-header){
+  height:100%;
+  max-height:100dvh;
+  overflow:hidden!important;
+}
+body:has(#modal:not(.hidden) .dm-chat-header){
+  position:fixed!important;
+  inset:0!important;
+  width:100%!important;
+}
+#modal:has(.dm-chat-header){
+  position:fixed!important;
+  inset:0!important;
+  width:100vw!important;
+  height:100dvh!important;
+  max-height:100dvh!important;
+  overflow:hidden!important;
+  overscroll-behavior:none!important;
+  touch-action:pan-y!important;
+  box-sizing:border-box!important;
+}
+#modal .modal-card:has(.dm-chat-header){
+  display:flex!important;
+  flex-direction:column!important;
+  height:min(88dvh,760px)!important;
+  max-height:calc(100dvh - 12px)!important;
+  min-height:0!important;
+  overflow:hidden!important;
+  overscroll-behavior:none!important;
+}
+#modal .modal-card:has(.dm-chat-header) #modalBody{
+  display:flex!important;
+  flex:1 1 auto!important;
+  flex-direction:column!important;
+  min-height:0!important;
+  height:100%!important;
+  max-height:100%!important;
+  overflow:hidden!important;
+}
+#modal .dm-message-list{
+  flex:1 1 0!important;
+  height:auto!important;
+  min-height:0!important;
+  max-height:none!important;
+  overflow-x:hidden!important;
+  overflow-y:auto!important;
+  -webkit-overflow-scrolling:touch!important;
+  overscroll-behavior:contain!important;
+  scroll-behavior:auto!important;
+  touch-action:pan-y!important;
+}
+#modal .dm-chat-header,
+#modal .dm-message-search,
+#modal .dm-replybar,
+#modal .dm-composer{
+  flex:0 0 auto!important;
+  min-height:0!important;
+}
+#modal .dm-composer{
+  position:relative!important;
+  inset:auto!important;
+  margin-top:0!important;
+  bottom:auto!important;
+  z-index:3!important;
+}
+#modal .dm-replybar{
+  max-height:100px!important;
+  overflow:hidden!important;
+}
+#modal .dm-reply-preview{
+  max-width:calc(100vw - 100px)!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+  white-space:nowrap!important;
+}
+@media(max-width:700px){
+  #modal .modal-card:has(.dm-chat-header){
+    height:calc(100dvh - 12px)!important;
+    max-height:calc(100dvh - 12px)!important;
+    width:calc(100vw - 12px)!important;
+    margin:6px!important;
+  }
+  #modal .dm-message-list{
+    padding-bottom:12px!important;
+    scroll-padding-bottom:12px!important;
+  }
+}
+/* Main chat: keep the app viewport fixed and scroll messages only. */
+body:has(#viewRooms.chatting){
+  height:100dvh!important;
+  max-height:100dvh!important;
+  overflow:hidden!important;
+}
+#viewRooms.chatting{
+  min-height:0!important;
+  height:calc(100dvh - var(--header-h,0px))!important;
+  max-height:calc(100dvh - var(--header-h,0px))!important;
+  overflow:hidden!important;
+}
+#viewRooms.chatting .chat-card{
+  display:flex!important;
+  flex-direction:column!important;
+  min-height:0!important;
+  height:100%!important;
+  max-height:100%!important;
+  overflow:hidden!important;
+}
+#viewRooms.chatting #messages{
+  flex:1 1 auto!important;
+  min-height:0!important;
+  max-height:100%!important;
+  overflow-y:auto!important;
+  overscroll-behavior:contain!important;
+  -webkit-overflow-scrolling:touch!important;
+  scroll-behavior:auto!important;
+}
