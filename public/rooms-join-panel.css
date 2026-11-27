@@ -1,0 +1,11 @@
+/* Compact room-join panel: room-specific gear, horizontal icon-only actions. */
+#roomsNavList{display:flex;flex-direction:column;gap:7px}
+.rooms-nav-card{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:5px;padding:5px;border:1px solid var(--border-color,rgba(255,255,255,.12));border-radius:12px;background:rgba(120,120,120,.06)}
+.rooms-nav-card .rooms-nav-item{min-width:0;width:100%;border:0!important;background:transparent!important;box-shadow:none!important}
+.rooms-nav-gear,.room-action-icon{display:inline-grid;place-items:center;width:34px;height:34px;min-width:34px;padding:0;border-radius:9px;border:1px solid var(--border-color,rgba(255,255,255,.14));background:rgba(120,120,120,.1);color:inherit;cursor:pointer}
+.rooms-nav-gear:hover,.room-action-icon:hover{background:rgba(140,140,140,.2)}
+.rooms-nav-actions{grid-column:1/-1;display:flex;justify-content:flex-end;gap:5px;padding:2px 1px 1px}
+.room-action-icon.danger{color:#ff7777;border-color:rgba(255,80,80,.3)}
+.rooms-nav-card .rooms-nav-item-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#viewRooms.chatting .mc-room-directory{display:none!important}
+#viewRooms.chatting #chatWrap{display:block!important}
