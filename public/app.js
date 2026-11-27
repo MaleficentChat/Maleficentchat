@@ -1740,19 +1740,13 @@ function openRoomsMorePanel(){
     dashboard=document.createElement("div");
     dashboard.id="roomsMoreDashboard";
     dashboard.className="rooms-more-dashboard";
-    dashboard.innerHTML='<button type="button" data-room-dashboard-action="refresh">⟳ Refresh</button><button type="button" data-room-dashboard-action="create">＋ Create Room</button><button type="button" data-room-dashboard-action="list">☷ Room List</button>';
+    dashboard.innerHTML='<button type="button" data-room-dashboard-action="refresh">⟳ Refresh</button>';
     content.insertBefore(dashboard,content.firstChild);
     dashboard.addEventListener("click",async event=>{
       const btn=event.target.closest("[data-room-dashboard-action]");
       if(!btn)return;
       const action=btn.dataset.roomDashboardAction;
-      if(action==="create"){
-        closeRoomsMorePanel();
-        openRoomCreationModal();
-      }else if(action==="list"){
-        const list=content.querySelector("#roomsAllSection,.discover-room-grid,#roomsPinnedSection");
-        list?.scrollIntoView({behavior:"smooth",block:"start"});
-      }else if(action==="refresh"){
+      if(action==="refresh"){
         btn.disabled=true;btn.textContent="⟳ Refreshing…";
         try{
           await loadRooms();
@@ -1765,7 +1759,7 @@ function openRoomsMorePanel(){
       }
     });
   }
-  ["mcRoomSearchRow","mcRoomAccess","roomsPinnedSection","roomsAllSection"].forEach(id=>{
+  ["mcRoomAccess","roomsPinnedSection","roomsAllSection"].forEach(id=>{
     const el=mcGetById(id);
     if(!el||el.parentElement===content)return;
     if(!el.__roomsMorePlaceholder){
@@ -8213,7 +8207,7 @@ async function toggleNotificationDropdown(){
     const unreadCount=rows.filter(n=>!n.read).length;
     box.innerHTML=`<div class="notification-dropdown-head"><div><b>🔔 Notifications</b><small class="notification-unread-summary">${unreadCount} unread</small></div><button class="mini" id="dropdownMarkAll" ${unreadCount?'':'disabled'}>Mark all read</button></div><div class="notification-dropdown-list">${rows.map(n=>`<button class="notification-dropdown-item ${n.read?'':'unread'}" data-dropdown-notif="${esc(n.id)}" data-notif-row data-category="${notificationCategory(n)}" data-unread="${!n.read}">${notificationAvatarMarkup(n,true)}<span class="notification-dropdown-copy"><b>${esc(notificationActorLabel(n))}</b><span>${esc(n.text||n.message||n.title||'')}</span><small>${fmt(n.time)}</small></span><i class="notification-dropdown-kind">${notificationKindIcon(n)}</i></button>`).join('')||'<p class="muted notification-empty">✨ You’re all caught up.</p>'}</div>`;
     box.classList.remove('hidden');
-    bindNotificationFilters(box,'dropdown');
+
     box.querySelectorAll('[data-dropdown-notif]').forEach(b=>b.onclick=async()=>{
       try{await api('/api/notifications/'+encodeURIComponent(b.dataset.dropdownNotif)+'/read',{method:'PATCH'});b.classList.remove('unread');loadNotifications();toggleNotificationDropdown();}catch(e){toast(e.message)}
     });
@@ -8336,7 +8330,7 @@ async function toggleNotificationDropdown(){
     const data=await api('/api/notifications');
     const rows=Array.isArray(data.notifications)?data.notifications.slice(0,20):[];
     const unreadCount=rows.filter(n=>!n.read).length;
-    box.innerHTML=`<div class="notification-dropdown-head"><div><b>🔔 Notifications</b><small class="notification-unread-summary">${unreadCount} unread</small></div><div class="notification-dropdown-tools"><button class="mini" id="dropdownMarkAll" type="button" ${unreadCount?'':'disabled'}>Mark all read</button><button class="mini danger" id="dropdownClearAll" type="button" ${rows.length?'':'disabled'}>Clear all</button></div></div>${notificationFilterMarkup("dropdown")}<div class="notification-dropdown-list">${rows.map(n=>`<div class="notification-dropdown-card ${n.read?'':'unread'}" data-notif-row data-category="${notificationCategory(n)}" data-unread="${!n.read}" data-notification-row="${esc(n.id)}">${notificationAvatarMarkup(n,true)}<span class="notification-dropdown-copy"><b>${esc(notificationActorLabel(n))}</b><span>${esc(n.text||n.message||n.title||'')}</span><small>${fmt(n.time)}</small></span><i class="notification-dropdown-kind">${notificationKindIcon(n)}</i><div class="notification-dropdown-actions"><button class="mini" data-dropdown-read="${esc(n.id)}" type="button" title="Mark as read">${n.read?'✓':'○'}</button><button class="mini danger" data-dropdown-delete="${esc(n.id)}" type="button" title="Delete">×</button></div></div>`).join('')||'<p class="muted notification-empty">✨ You’re all caught up.</p>'}</div>`;
+    box.innerHTML=`<div class="notification-dropdown-head"><div><b>🔔 Notifications</b><small class="notification-unread-summary">${unreadCount} unread</small></div><div class="notification-dropdown-tools"><button class="mini" id="dropdownMarkAll" type="button" ${unreadCount?'':'disabled'}>Mark all read</button><button class="mini danger" id="dropdownClearAll" type="button" ${rows.length?'':'disabled'}>Clear all</button></div></div><div class="notification-dropdown-list">${rows.map(n=>`<div class="notification-dropdown-card ${n.read?'':'unread'}" data-notif-row data-category="${notificationCategory(n)}" data-unread="${!n.read}" data-notification-row="${esc(n.id)}">${notificationAvatarMarkup(n,true)}<span class="notification-dropdown-copy"><b>${esc(notificationActorLabel(n))}</b><span>${esc(n.text||n.message||n.title||'')}</span><small>${fmt(n.time)}</small></span><i class="notification-dropdown-kind">${notificationKindIcon(n)}</i><div class="notification-dropdown-actions"><button class="mini" data-dropdown-read="${esc(n.id)}" type="button" title="Mark as read">${n.read?'✓':'○'}</button><button class="mini danger" data-dropdown-delete="${esc(n.id)}" type="button" title="Delete">×</button></div></div>`).join('')||'<p class="muted notification-empty">✨ You’re all caught up.</p>'}</div>`;
     bindNotificationFilters(box,'dropdown');
     box.querySelectorAll('[data-dropdown-read]').forEach(button=>button.addEventListener('click',async event=>{event.stopPropagation();try{await api('/api/notifications/'+encodeURIComponent(button.dataset.dropdownRead)+'/read',{method:'PATCH'});await loadNotifications();await toggleNotificationDropdown();}catch(e){toast(e.message||'Could not mark notification read.');}}));
     box.querySelectorAll('[data-dropdown-delete]').forEach(button=>button.addEventListener('click',async event=>{event.stopPropagation();try{await api('/api/notifications/'+encodeURIComponent(button.dataset.dropdownDelete),{method:'DELETE'});await loadNotifications();await toggleNotificationDropdown();}catch(e){toast(e.message||'Could not delete notification.');}}));
