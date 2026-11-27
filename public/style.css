@@ -12052,3 +12052,6 @@ body.party-mode-active #partySparkleLayer{mix-blend-mode:screen}
 #mainChatMinimizedDock{gap:50px!important;overflow-x:auto!important;scrollbar-width:thin!important}
 #mainChatMinimizedDock .dm-minimized-avatar{flex:0 0 40px!important}
 @media(max-width:700px){#mainChatMinimizedDock{gap:50px!important;max-width:calc(100% - 20px)!important}}
+
+/* User-requested removal of room search from the directory panel. */
+#mcRoomSearchRow{display:none!important}
