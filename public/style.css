@@ -12056,10 +12056,6 @@ body.party-mode-active #partySparkleLayer{mix-blend-mode:screen}
 /* User-requested removal of room search from the directory panel. */
 #mcRoomSearchRow{display:none!important}
 
-/* PM minimized docks: restore spacing in both dock variants for switching conversations. */
-#dmMinimizedDock,#mainChatMinimizedDock{gap:50px!important;column-gap:50px!important;overflow-x:auto!important;scrollbar-width:thin!important}
-#dmMinimizedDock .dm-minimized-avatar,#mainChatMinimizedDock .dm-minimized-avatar{flex:0 0 40px!important}
-
 
 /* Correct minimized PM dock: reserve a 50px bottom strip BELOW the composer. */
 #viewRooms.chatting .chat-card{padding-bottom:50px!important;box-sizing:border-box!important}
