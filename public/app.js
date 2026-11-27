@@ -2068,16 +2068,17 @@ function closeQuickActions(drawer,button){
   resetChatToolsPosition(drawer);
 }
 const chatToolsToggle=mcGetById("chatToolsToggle");
-if(chatToolsToggle) chatToolsToggle.onclick=event=>{
-  event.preventDefault();event.stopPropagation();
-  const drawer=mcGetById("chatToolsDrawer");if(!drawer)return;
-  const opening=!drawer.classList.contains("open");
-  if(opening){drawer.classList.add("open");drawer.classList.remove("hidden");chatToolsToggle.setAttribute("aria-expanded","true");positionChatTools(chatToolsToggle,drawer,"stack");}
-  else closeQuickActions(drawer,chatToolsToggle);
-};
+if(chatToolsToggle&&!chatToolsToggle.dataset.mcBound){
+  chatToolsToggle.dataset.mcBound="true";
+  chatToolsToggle.addEventListener("click",event=>{
+    event.preventDefault();event.stopPropagation();
+    const drawer=mcGetById("chatToolsDrawer");if(!drawer)return;
+    if(drawer.classList.contains("open"))closeQuickActions(drawer,chatToolsToggle);
+    else{drawer.classList.add("open");drawer.classList.remove("hidden");chatToolsToggle.setAttribute("aria-expanded","true");positionChatTools(chatToolsToggle,drawer,"stack");}
+  },true);
+}
 document.addEventListener("click",event=>{
-  const target=event.target instanceof Element?event.target:null;
-  if(!target)return;
+  const target=event.target instanceof Element?event.target:null;if(!target)return;
   const main=mcGetById("chatToolsDrawer"),mainButton=mcGetById("chatToolsToggle");
   if(main?.classList.contains("open")&&!target.closest("#chatToolsDrawer,#chatToolsToggle"))closeQuickActions(main,mainButton);
   const dm=mcGetById("dmToolsDrawer"),dmButton=mcGetById("dmToolsToggle");
@@ -2088,6 +2089,7 @@ window.addEventListener("resize",()=>{
   const dm=mcGetById("dmToolsDrawer");if(dm&&!dm.classList.contains("hidden"))positionChatTools(mcGetById("dmToolsToggle"),dm,"grid");
 });
 window.visualViewport?.addEventListener("resize",()=>{
+  const main=mcGetById("chatToolsDrawer");if(main?.classList.contains("open"))positionChatTools(mcGetById("chatToolsToggle"),main,"stack");
   const dm=mcGetById("dmToolsDrawer");if(dm&&!dm.classList.contains("hidden"))positionChatTools(mcGetById("dmToolsToggle"),dm,"grid");
 });
 
@@ -8233,44 +8235,24 @@ setInterval(()=>{if(state.user)loadNotifications();},15000);
 setInterval(()=>{if(state.user)refreshTopDMUnreadBadge();},15000);
 setTimeout(()=>{if(state.user){loadNotifications();refreshTopDMUnreadBadge();}},1200);
 
-async function openNotificationCenter(){
-  const button=mcGetById("notifications");
-  if(button){button.disabled=true;button.setAttribute("aria-busy","true");}
-  // Show the centre immediately. A slow or rejected API request must not make
-  // the navigation button appear dead.
-  modal('<div class="notification-center"><div class="notification-head"><h2>🔔 Notifications</h2></div><p class="muted">Loading notifications…</p></div>');
+async function toggleNotificationDropdown(){
+  const box=mcGetById('notificationDropdown');if(!box)return;
+  if(!box.classList.contains('hidden')){box.classList.add('hidden');return;}
+  box.innerHTML='<div class="notification-dropdown-head"><b>🔔 Notifications</b></div><p class="muted notification-empty">Loading notifications…</p>';
+  box.classList.remove('hidden');
   try{
-    const data=await api("/api/notifications");
-    const rows=Array.isArray(data.notifications)?data.notifications:[];
+    const data=await api('/api/notifications');
+    const rows=Array.isArray(data.notifications)?data.notifications.slice(0,20):[];
     const unreadCount=rows.filter(n=>!n.read).length;
-    modal(`<div class="notification-center"><div class="notification-head"><div><h2>🔔 Notifications</h2><p class="muted">${unreadCount} unread · Your activity</p></div><div class="toolbar"><button class="mini" id="markAllNotifications" type="button" ${unreadCount?'':'disabled'}>Mark all read</button><button class="mini danger" id="clearNotifications" type="button">Clear all</button></div></div>${notificationFilterMarkup("center")}<div class="notification-list">${rows.map(n=>`<div class="notification-card ${n.read?'':'unread'}" data-notification-row="${esc(n.id)}" data-notif-row data-category="${notificationCategory(n)}" data-unread="${!n.read}">${notificationAvatarMarkup(n)}<div class="notification-copy"><div class="notification-title-row"><b>${esc(notificationActorLabel(n))}</b><i class="notification-kind-badge">${notificationKindIcon(n)}</i></div><p>${esc(n.text||n.message||n.title||'')}</p><small>${fmt(n.time)}</small></div><div class="notification-actions"><button class="mini notification-read-action" data-notif-read="${esc(n.id)}" type="button" aria-label="${n.read?'Read':'Mark as read'}" title="${n.read?'Read':'Mark as read'}">${n.read?'✓':'○'}</button><button class="mini danger notification-delete-action" data-notif-delete="${esc(n.id)}" type="button" aria-label="Delete notification" title="Delete">×</button></div><span class="notification-unread-dot" aria-hidden="true"></span></div>`).join('')||'<p class="muted notification-empty">✨ You’re all caught up.</p>'}</div></div>`);
-    bindNotificationFilters(mcGetById('modal'),'center');
-    document.querySelectorAll('[data-notif-read]').forEach(b=>b.onclick=async()=>{
-      try{const row=b.closest('.notification-card');if(row?.querySelector('b')?.textContent==='Warning ⚠️'){closeModal();return;}await api('/api/notifications/'+encodeURIComponent(b.dataset.notifRead)+'/read',{method:'PATCH'});row?.classList.remove('unread');b.textContent='✓';b.title='Read';b.setAttribute('aria-label','Read');await loadNotifications();}catch(e){toast(e.message||'Could not update notification.');}
-    });
-    document.querySelectorAll('[data-notif-delete]').forEach(b=>b.onclick=async()=>{
-      try{await api('/api/notifications/'+encodeURIComponent(b.dataset.notifDelete),{method:'DELETE'});b.closest('.notification-card')?.remove();await loadNotifications();}catch(e){toast(e.message||'Could not delete notification.');}
-    });
-    mcGetById('markAllNotifications')?.addEventListener('click',async()=>{try{await api('/api/notifications/read',{method:'POST'});closeModal();await loadNotifications();toast('Notifications marked as read.');}catch(e){toast(e.message);}});
-    mcGetById('clearNotifications')?.addEventListener('click',async()=>{if(!confirm('Clear all notifications?'))return;try{await api('/api/notifications',{method:'DELETE'});closeModal();await loadNotifications();toast('Notifications cleared.');}catch(e){toast(e.message);}});
-    await loadNotifications();
-  }catch(e){
-    const message=esc(e?.message||'Could not load notifications.');
-    modal(`<div class="notification-center"><div class="notification-head"><h2>🔔 Notifications</h2></div><p class="muted">Could not load notifications: ${message}</p><button class="mini" id="retryNotifications" type="button">Retry</button></div>`);
-    mcGetById('retryNotifications')?.addEventListener('click',()=>openNotificationCenter());
-  }finally{
-    if(button){button.disabled=false;button.removeAttribute("aria-busy");}
-  }
+    box.innerHTML=`<div class="notification-dropdown-head"><div><b>🔔 Notifications</b><small class="notification-unread-summary">${unreadCount} unread</small></div><div class="notification-dropdown-tools"><button class="mini" id="dropdownMarkAll" type="button" ${unreadCount?'':'disabled'}>Mark all read</button><button class="mini danger" id="dropdownClearAll" type="button" ${rows.length?'':'disabled'}>Clear all</button></div></div>${notificationFilterMarkup("dropdown")}<div class="notification-dropdown-list">${rows.map(n=>`<div class="notification-dropdown-card ${n.read?'':'unread'}" data-notif-row data-category="${notificationCategory(n)}" data-unread="${!n.read}" data-notification-row="${esc(n.id)}">${notificationAvatarMarkup(n,true)}<span class="notification-dropdown-copy"><b>${esc(notificationActorLabel(n))}</b><span>${esc(n.text||n.message||n.title||'')}</span><small>${fmt(n.time)}</small></span><i class="notification-dropdown-kind">${notificationKindIcon(n)}</i><div class="notification-dropdown-actions"><button class="mini" data-dropdown-read="${esc(n.id)}" type="button" title="Mark as read">${n.read?'✓':'○'}</button><button class="mini danger" data-dropdown-delete="${esc(n.id)}" type="button" title="Delete">×</button></div></div>`).join('')||'<p class="muted notification-empty">✨ You’re all caught up.</p>'}</div>`;
+    bindNotificationFilters(box,'dropdown');
+    box.querySelectorAll('[data-dropdown-read]').forEach(button=>button.addEventListener('click',async event=>{event.stopPropagation();try{await api('/api/notifications/'+encodeURIComponent(button.dataset.dropdownRead)+'/read',{method:'PATCH'});await loadNotifications();await toggleNotificationDropdown();}catch(e){toast(e.message||'Could not mark notification read.');}}));
+    box.querySelectorAll('[data-dropdown-delete]').forEach(button=>button.addEventListener('click',async event=>{event.stopPropagation();try{await api('/api/notifications/'+encodeURIComponent(button.dataset.dropdownDelete),{method:'DELETE'});await loadNotifications();await toggleNotificationDropdown();}catch(e){toast(e.message||'Could not delete notification.');}}));
+    box.querySelectorAll('[data-notification-row]').forEach(row=>row.addEventListener('click',async event=>{if(event.target.closest('.notification-dropdown-actions'))return;try{await api('/api/notifications/'+encodeURIComponent(row.dataset.notificationRow)+'/read',{method:'PATCH'});await loadNotifications();box.classList.add('hidden');}catch(e){toast(e.message||'Could not open notification.');}}));
+    mcGetById('dropdownMarkAll')?.addEventListener('click',async event=>{event.stopPropagation();try{await api('/api/notifications/read',{method:'POST'});await loadNotifications();await toggleNotificationDropdown();toast('All notifications marked as read.');}catch(err){toast(err.message||'Could not update notifications.');}});
+    mcGetById('dropdownClearAll')?.addEventListener('click',async event=>{event.stopPropagation();if(!confirm('Clear all notifications?'))return;try{await api('/api/notifications',{method:'DELETE'});await loadNotifications();await toggleNotificationDropdown();toast('Notifications cleared.');}catch(err){toast(err.message||'Could not clear notifications.');}});
+  }catch(error){box.innerHTML='<div class="notification-dropdown-head"><b>🔔 Notifications</b></div><p class="muted notification-empty">'+esc(error.message||'Could not load notifications.')+'</p>';box.classList.remove('hidden');}
 }
-// Capture the sidebar tap before other navigation handlers can swallow it.
-document.addEventListener("click",event=>{
-  const target=event.target;
-  const button=target instanceof Element?target.closest("#notifications"):null;
-  if(!button)return;
-  event.preventDefault();
-  event.stopImmediatePropagation();
-  openNotificationCenter();
-},true);
 
 async function showPinnedMessages(){
   try{ const data=await api(`/api/rooms/${encodeURIComponent(state.currentRoom)}/pinned`); const pinned=data.messages||[]; modal(`<h2>📌 Pinned messages</h2><p class="muted">Pinned messages in ${esc(state.rooms.find(r=>String(r.id)===String(state.currentRoom))?.name||'this room')}.</p><div class="pinned-list">${pinned.map(m=>`<button class="pinned-result" onclick="closeModal();jumpToMessage('${esc(m.id)}')"><b>${esc(m.displayName||m.username)}</b><small>${fmt(m.time)}</small><span>${esc(m.text||'📎 Attachment')}</span></button>`).join('')||'<p class="muted">No pinned messages in this room.</p>'}</div>`); }catch(e){toast(e.message)}
