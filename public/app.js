@@ -1755,11 +1755,10 @@ function openRoomsMorePanel(){
       }else if(action==="refresh"){
         btn.disabled=true;btn.textContent="⟳ Refreshing…";
         try{
-          const data=await api("/api/rooms");
-          if(Array.isArray(data.rooms))state.rooms=sanitizeRoomList(data.rooms);
+          await loadRooms();
+          renderRooms();
           renderSidebarRoomList();
-          if(typeof renderRoomDirectory==="function")renderRoomDirectory();
-          else if(typeof renderRooms==="function")renderRooms();
+          renderRoomQuickNav();
           toast("Rooms refreshed.");
         }catch(error){toast(error?.message||"Could not refresh rooms.");}
         finally{btn.disabled=false;btn.textContent="⟳ Refresh";}
