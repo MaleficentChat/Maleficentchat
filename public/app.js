@@ -1033,7 +1033,7 @@ mcGetById("authForm").onsubmit = async e => {
       console.warn("Login succeeded but bootstrap failed; continuing with the authenticated user.", bootstrapError);
     }
 
-    await start();
+    await startAuthenticatedAppSafely();
   } catch (error) {
     mcGetById("authMsg").textContent = error.message;
     if(/you have been banned/i.test(String(error.message||""))){showBanLock(error.reason||String(error.message).replace(/^.*you have been banned\s*/i,"").replace(/^[:.\-]\s*/,"")||"Community rules");}
@@ -1550,6 +1550,38 @@ async function start() {
   }
 }
 
+
+// Keep a frontend initialization failure from leaving the signed-in screen blank.
+// If the full app startup fails, recover the authenticated shell and try to join Main Chat directly.
+async function startAuthenticatedAppSafely(){
+  try{
+    await startAuthenticatedAppSafely();
+  }catch(error){
+    console.error("Maleficent Chat startup failed; attempting Main Chat recovery:",error);
+    mcGetById("auth")?.classList.add("hidden");
+    mcGetById("app")?.classList.remove("hidden");
+    document.querySelectorAll(".view").forEach(view=>view.classList.add("hidden"));
+    const roomsView=mcGetById("viewRooms");
+    roomsView?.classList.remove("hidden");
+    state.view="rooms";
+    document.querySelectorAll(".nav[data-view]").forEach(button=>button.classList.toggle("active",button.dataset.view==="rooms"));
+    try{
+      await loadRooms();
+      const room=roomForMainChat();
+      const recovered=await joinRoom(String(room.id),{silent:true});
+      if(!recovered)throw new Error("Main Chat join did not complete.");
+      roomsView?.classList.remove("hidden");
+      toast("Chat restored. You are in Main Chat.");
+    }catch(recoveryError){
+      console.error("Main Chat recovery failed:",recoveryError);
+      roomsView?.classList.add("hidden");
+      const message=mcGetById("authMsg");
+      if(message)message.textContent="Chat could not start: "+String(recoveryError?.message||recoveryError);
+      toast("Main Chat could not open. Please try again.");
+    }
+  }
+}
+
 async function bootstrap() {
   let data=null,lastError=null;
   // A short transient API/network failure during a mobile page restore should
@@ -1586,7 +1618,7 @@ async function bootstrap() {
     state.featureGrants=data.settings?.feature_grants||{};
     state.modeManagement=data.settings?.mode_management||{};
     state.userPermissions=data.userPermissions||{};
-    await start();
+    await startAuthenticatedAppSafely();
   }
 }
 
