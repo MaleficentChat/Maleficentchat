@@ -1664,8 +1664,30 @@ function renderSidebarRoomList(){
       <span class="rooms-nav-item-count">${Number(room.onlineCount||0)}</span>
     </button>`;
   }).join("");
-  root.innerHTML=(roomItems||'<div class="rooms-nav-empty">No rooms available</div>')+
-    '<button type="button" class="rooms-nav-more" id="roomsNavMore" aria-haspopup="dialog" aria-controls="roomsMorePanel"><span>⋯</span><span>More</span></button>';
+  root.innerHTML=roomItems||'<div class="rooms-nav-empty">No rooms available</div>';
+  // Give every room its own compact gear and icon-only action strip.
+  root.querySelectorAll(".rooms-nav-item").forEach(item=>{
+    const roomId=String(item.dataset.sidebarRoomId||"");
+    const room=(state.rooms||[]).find(r=>String(r.id)===roomId);
+    if(!room)return;
+    const rank=String(state.user?.rank||"").toUpperCase().replace(/[\\s_-]/g,"");
+    const canPin=["COOWNER","OWNER","DEVELOPER"].includes(rank);
+    const protectedMain=!!room.isDefault||/^(main room|main chat)$/i.test(String(room.name||"").trim());
+    const canEdit=!protectedMain&&(canEditRoomFromMenu(room)||canFeature("edit_room"));
+    const canDelete=!protectedMain&&(canFeature("delete_room")||room.ownerId===state.user?.id||["OWNER","DEVELOPER"].includes(rank));
+    if(!canPin&&!canEdit&&!canDelete)return;
+    const card=document.createElement("div");card.className="rooms-nav-card";
+    item.parentNode.insertBefore(card,item);card.appendChild(item);
+    const gear=document.createElement("button");gear.type="button";gear.className="rooms-nav-gear";gear.textContent="⚙️";gear.title="Room options";gear.setAttribute("aria-label","Room options");gear.dataset.roomGear=roomId;gear.setAttribute("aria-expanded",String(String(window.__mcRoomActionOpen||"")===roomId));card.appendChild(gear);
+    if(String(window.__mcRoomActionOpen||"")===roomId){
+      const bar=document.createElement("div");bar.className="rooms-nav-actions";
+      const add=(icon,action,title)=>{const b=document.createElement("button");b.type="button";b.className="room-action-icon"+(action==="delete"?" danger":"");b.textContent=icon;b.title=title;b.setAttribute("aria-label",title);b.dataset.roomAction=action;b.dataset.roomId=roomId;bar.appendChild(b);};
+      if(canPin)add(room.pinned?"📌":"📍", "pin",room.pinned?"Unpin room":"Pin room");
+      if(canEdit)add("✏️","edit","Edit room");
+      if(canDelete)add("🗑️","delete","Delete room");
+      card.appendChild(bar);
+    }
+  });
 }
 function openRoomsMorePanel(){
   const panel=mcGetById("roomsMorePanel");
@@ -1731,6 +1753,11 @@ document.addEventListener("click",async event=>{
   }
 },true);
 mcGetById("roomsNavList")?.addEventListener("click",event=>{
+  const target=event.target instanceof Element?event.target:null;
+  const gear=target?.closest("[data-room-gear]");
+  if(gear){event.preventDefault();event.stopPropagation();window.__mcRoomActionOpen=String(gear.dataset.roomGear)===String(window.__mcRoomActionOpen||"")?"":String(gear.dataset.roomGear);renderSidebarRoomList();return;}
+  const action=target?.closest("[data-room-action]");
+  if(action){event.preventDefault();event.stopPropagation();const id=String(action.dataset.roomId||"");window.__mcRoomActionOpen="";if(action.dataset.roomAction==="pin")toggleRoomPinById(id);else if(action.dataset.roomAction==="edit")editRoomById(id);else if(action.dataset.roomAction==="delete")deleteRoomById(id);return;}
   const more=event.target instanceof Element?event.target.closest("#roomsNavMore"):null;
   if(more){event.preventDefault();event.stopPropagation();openRoomsMorePanel();return;}
   const button=event.target instanceof Element?event.target.closest("[data-sidebar-room-id]"):null;
