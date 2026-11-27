@@ -1698,6 +1698,14 @@ function renderSidebarRoomList(){
     </button>`;
   }).join("");
   root.innerHTML=roomItems||'<div class="rooms-nav-empty">No rooms available</div>';
+  // Restore the More option at the bottom of the room list.
+  const more=document.createElement("button");
+  more.type="button";
+  more.className="rooms-nav-more";
+  more.id="roomsNavMore";
+  more.innerHTML='<span aria-hidden="true">⋯</span><span>More</span>';
+  more.setAttribute("aria-label","More room options");
+  root.appendChild(more);
   // Give every room its own compact gear and icon-only action strip.
   root.querySelectorAll(".rooms-nav-item").forEach(item=>{
     const roomId=String(item.dataset.sidebarRoomId||"");
@@ -1726,7 +1734,38 @@ function openRoomsMorePanel(){
   const panel=mcGetById("roomsMorePanel");
   const content=mcGetById("roomsMoreContent");
   if(!panel||!content)return;
-  // Show the same room directory cards used in the Rooms page inside the sidebar's More panel.
+  // Compact Room Dashboard controls, inserted once.
+  let dashboard=mcGetById("roomsMoreDashboard");
+  if(!dashboard){
+    dashboard=document.createElement("div");
+    dashboard.id="roomsMoreDashboard";
+    dashboard.className="rooms-more-dashboard";
+    dashboard.innerHTML='<button type="button" data-room-dashboard-action="refresh">⟳ Refresh</button><button type="button" data-room-dashboard-action="create">＋ Create Room</button><button type="button" data-room-dashboard-action="list">☷ Room List</button>';
+    content.insertBefore(dashboard,content.firstChild);
+    dashboard.addEventListener("click",async event=>{
+      const btn=event.target.closest("[data-room-dashboard-action]");
+      if(!btn)return;
+      const action=btn.dataset.roomDashboardAction;
+      if(action==="create"){
+        closeRoomsMorePanel();
+        openRoomCreationModal();
+      }else if(action==="list"){
+        const list=content.querySelector("#roomsAllSection,.discover-room-grid,#roomsPinnedSection");
+        list?.scrollIntoView({behavior:"smooth",block:"start"});
+      }else if(action==="refresh"){
+        btn.disabled=true;btn.textContent="⟳ Refreshing…";
+        try{
+          const data=await api("/api/rooms");
+          if(Array.isArray(data.rooms))state.rooms=sanitizeRoomList(data.rooms);
+          renderSidebarRoomList();
+          if(typeof renderRoomDirectory==="function")renderRoomDirectory();
+          else if(typeof renderRooms==="function")renderRooms();
+          toast("Rooms refreshed.");
+        }catch(error){toast(error?.message||"Could not refresh rooms.");}
+        finally{btn.disabled=false;btn.textContent="⟳ Refresh";}
+      }
+    });
+  }
   ["mcRoomSearchRow","mcRoomAccess","roomsPinnedSection","roomsAllSection"].forEach(id=>{
     const el=mcGetById(id);
     if(!el||el.parentElement===content)return;
@@ -1742,7 +1781,7 @@ function openRoomsMorePanel(){
       actions.__roomsMorePlaceholder=document.createComment("rooms-more-actions-return");
       actions.parentNode.insertBefore(actions.__roomsMorePlaceholder,actions);
     }
-    content.insertBefore(actions,content.firstChild);
+    content.appendChild(actions);
   }
   panel.classList.remove("hidden");
   panel.setAttribute("aria-hidden","false");
