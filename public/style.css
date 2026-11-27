@@ -11998,3 +11998,18 @@ body.party-mode-active #partySparkleLayer{mix-blend-mode:screen}
 .notification-dropdown-actions .mini{min-width:28px;padding:3px 6px}
 .notification-dropdown-card .notification-dropdown-kind{align-self:start}
 @media(max-width:700px){.notification-dropdown-card{grid-template-columns:34px minmax(0,1fr) 18px auto;gap:6px;padding:8px}.notification-dropdown-actions .mini{min-height:26px;font-size:11px}}
+
+/* Notifications: remove filter tabs and prevent text/avatar/action overlap on mobile. */
+#notificationDropdown .notification-filters{display:none!important}
+#notificationDropdown .notification-dropdown-card{display:grid!important;grid-template-columns:38px minmax(0,1fr) auto!important;align-items:start!important;gap:8px!important;min-width:0!important;padding:9px!important;box-sizing:border-box!important;overflow:hidden!important}
+#notificationDropdown .notification-dropdown-card>.notification-avatar-wrap{grid-column:1!important;grid-row:1!important;width:38px!important;height:38px!important;min-width:38px!important;max-width:38px!important;overflow:hidden!important}
+#notificationDropdown .notification-dropdown-copy{grid-column:2!important;grid-row:1!important;min-width:0!important;max-width:100%!important;overflow-wrap:anywhere!important;word-break:break-word!important;white-space:normal!important}
+#notificationDropdown .notification-dropdown-copy b,#notificationDropdown .notification-dropdown-copy span,#notificationDropdown .notification-dropdown-copy small{display:block!important;max-width:100%!important;white-space:normal!important;overflow-wrap:anywhere!important;word-break:break-word!important}
+#notificationDropdown .notification-dropdown-kind{display:none!important}
+#notificationDropdown .notification-dropdown-actions{grid-column:3!important;grid-row:1!important;align-self:center!important;display:flex!important;flex-direction:column!important;gap:5px!important}
+#notificationDropdown .notification-dropdown-actions button{min-width:32px!important;width:32px!important;height:32px!important;padding:0!important}
+@media(max-width:430px){#notificationDropdown .notification-dropdown-card{grid-template-columns:34px minmax(0,1fr) 30px!important;gap:6px!important;padding:7px!important}#notificationDropdown .notification-dropdown-card>.notification-avatar-wrap{width:34px!important;height:34px!important;min-width:34px!important;max-width:34px!important}#notificationDropdown .notification-dropdown-actions button{width:28px!important;min-width:28px!important;height:28px!important}}
+/* Minimized PM avatars: roomy 50px separation for easy switching. */
+#mainChatMinimizedDock{gap:50px!important;overflow-x:auto!important;scrollbar-width:thin!important}
+#mainChatMinimizedDock .dm-minimized-avatar{flex:0 0 40px!important}
+@media(max-width:700px){#mainChatMinimizedDock{gap:50px!important;max-width:calc(100% - 20px)!important}}
