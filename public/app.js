@@ -1555,7 +1555,7 @@ async function start() {
 // If the full app startup fails, recover the authenticated shell and try to join Main Chat directly.
 async function startAuthenticatedAppSafely(){
   try{
-    await startAuthenticatedAppSafely();
+    await start();
   }catch(error){
     console.error("Maleficent Chat startup failed; attempting Main Chat recovery:",error);
     mcGetById("auth")?.classList.add("hidden");
