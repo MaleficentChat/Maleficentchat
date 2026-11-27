@@ -2673,8 +2673,10 @@ async function loadRooms() {
     if (attempt === 0) await new Promise(resolve => setTimeout(resolve, 500));
   }
   renderRooms();
+  renderSidebarRoomList();
+  renderRoomQuickNav();
   if (!state.rooms.length && lastError) toast("Rooms could not load: " + lastError.message);
-  requestAnimationFrame(()=>renderRooms());
+  requestAnimationFrame(()=>{renderRooms();renderSidebarRoomList();renderRoomQuickNav();});
   if (!state.rooms.length) {
     setTimeout(async()=>{try{const retry=await api("/api/rooms");if(Array.isArray(retry.rooms)&&retry.rooms.length){state.rooms=sanitizeRoomList(retry.rooms);state.roomListMode="all";renderRooms();}}catch(e){console.warn("Room list retry failed:",e.message)}},1500);
   }
