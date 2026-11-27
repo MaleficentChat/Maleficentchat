@@ -1577,7 +1577,7 @@ async function startAuthenticatedAppSafely(){
       roomsView?.classList.add("hidden");
       const message=mcGetById("authMsg");
       if(message)message.textContent="Chat could not start: "+String(recoveryError?.message||recoveryError);
-      toast("Main Chat could not open. Please try again.");
+      toast("Main Chat could not open: "+String(recoveryError?.message||recoveryError));
     }
   }
 }
@@ -2618,12 +2618,8 @@ document.addEventListener("click",async event=>{
 
 /* Defensive room-list cleanup: never display the retired age-split defaults, even if an older server response is cached. */
 function sanitizeRoomList(input) {
-  const rooms = Array.isArray(input) ? input : [];
-  return rooms.filter(room => {
-    const name=String(room?.name||"").replace("🏠","").trim().toLowerCase().replace(/\s+/g," ");
-    // Main Room remains stored for legacy data, but is no longer shown to members.
-    return name!=="main room";
-  }).map(room => ({...room,isDefault:false}));
+  // Preserve canonical chat rooms and their server flags for automatic login routing.
+  return (Array.isArray(input) ? input : []).filter(Boolean).map(room => ({...room}));
 }
 
 function maleficentUserAge(user=state.user) {
@@ -2640,8 +2636,11 @@ function isMaleficentStaff(user=state.user) {
   return ["MOD","MODERATOR","ADMIN","SUPER_ADMIN","SUPERADMIN","COMMISSOR","INSTRUCTOR","COOWNER","OWNER","DEVELOPER"].includes(String(user?.rank||"").toUpperCase());
 }
 function roomForMainChat() {
-  const room=(state.rooms||[]).find(item=>item.isDefault||item.isMain||item.isSystem||String(item.type||"").toLowerCase()==="main"||/^(main room|main chat)$/i.test(String(item.name||"").trim()));
-  if(!room)throw new Error("Main Chat could not be found. Please ask staff to check the room setup.");
+  const rooms=state.rooms||[];
+  const room=rooms.find(item=>/^(main chat|main room)$/i.test(String(item.name||"").replace("🏠","").trim()))
+    ||rooms.find(item=>item.isDefault||item.isMain||item.isSystem||String(item.type||"").toLowerCase()==="main")
+    ||rooms.find(item=>/^teen chat$/i.test(String(item.name||"").replace("🏠","").trim()));
+  if(!room)throw new Error("No Main Chat room exists. Rooms returned: "+rooms.map(item=>String(item.name||"(unnamed)")).join(", "));
   return room;
 }
 function roomForAgeRouting() {
