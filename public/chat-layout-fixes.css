@@ -297,7 +297,7 @@
 
 
 /* 27 Nov 2026 — remove room discovery controls unconditionally from the Main Chat view. The view has no chatting class, so the prior conditional did not apply. */
-#viewRooms .mc-room-directory,
+#viewRooms .discover-head,
 #viewRooms #newRoom,
 #viewRooms #mcRoomSearchRow,
 #viewRooms #hiddenRoomsToggle,
