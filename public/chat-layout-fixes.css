@@ -267,3 +267,30 @@
     overflow-wrap:anywhere!important;
   }
 }
+
+
+/* 27 Nov 2026 — MC main-chat-only view: collapse room discovery/nav completely.
+   Do not leave a hidden Rooms toggle, directory, search or Create Room row taking space. */
+#viewRooms.chatting #roomsNavToggle,
+#viewRooms.chatting #roomsNavList,
+#viewRooms.chatting .mc-room-directory,
+#viewRooms.chatting #mcRoomSearchRow,
+#viewRooms.chatting #mcRoomAccess,
+#viewRooms.chatting .discover-head,
+#viewRooms.chatting .room-shelf,
+#viewRooms.chatting .room-filter-tabs,
+#viewRooms.chatting .mc-room-access {
+  display:none!important;
+  height:0!important;
+  min-height:0!important;
+  max-height:0!important;
+  margin:0!important;
+  padding:0!important;
+  border:0!important;
+  flex:0 0 0!important;
+  overflow:hidden!important;
+}
+#viewRooms.chatting #chatWrap{
+  margin-top:0!important;
+  padding-top:0!important;
+}
