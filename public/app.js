@@ -133,7 +133,7 @@ dmReplyAuthor: null,
 dmReplyText: null,
 
   socket: null,
-  view: "rooms",
+  view: "home",
   featurePermissions: {},
   featureGrants: {},
   modeManagement: {},
@@ -1798,11 +1798,9 @@ document
 
 function returnToMainChat(){
   state.view="home";
-  document.querySelectorAll(".view").forEach(el=>el.classList.add("hidden"));
-  const home=mcGetById("viewHome");
-  if(home)home.classList.remove("hidden");
   document.querySelectorAll(".nav[data-view]").forEach(el=>el.classList.remove("active"));
   mcGetById("sidebar")?.classList.remove("open");
+  renderView();
 }
 
 function organizeOwnerSpace(){
