@@ -1752,16 +1752,7 @@ document
       event.stopPropagation();
       const requestedView = button.dataset.view;
       if (!requestedView) return;
-      if(requestedView==="management"&&!new URL(window.location.href).searchParams.has("staffSpace")){
-        const spaceUrl=new URL(window.location.href);
-        spaceUrl.searchParams.set("staffSpace","1");
-        spaceUrl.searchParams.delete("dm");
-        if(state.currentRoom)spaceUrl.searchParams.set("returnRoomId",String(state.currentRoom));
-        else spaceUrl.searchParams.delete("returnRoomId");
-        const opened=window.open(spaceUrl.toString(),"_blank");
-        if(!opened)toast("Your browser blocked the Staff Space tab. Allow pop-ups for Maleficent Chat and try again.");
-        return;
-      }
+      // Spaces stay inside this app shell; never open a separate browser tab.
       // Keep the Rooms dropdown expanded while switching between other
       // navigation destinations. Its open state is independent of the active view.
       state.view = requestedView;
@@ -1806,16 +1797,12 @@ document
   });
 
 function returnToMainChat(){
-  const url=new URL(window.location.href);
-  url.searchParams.delete("staffSpace");
-  url.searchParams.delete("dm");
-  if(state.returnRoomId)url.searchParams.set("returnRoomId",String(state.returnRoomId));
-  const fallback=url.pathname+url.search+url.hash;
-  if(window.opener&&!window.opener.closed){
-    window.close();
-    if(window.closed)return;
-  }
-  window.location.assign(fallback);
+  state.view="home";
+  document.querySelectorAll(".view").forEach(el=>el.classList.add("hidden"));
+  const home=mcGetById("viewHome");
+  if(home)home.classList.remove("hidden");
+  document.querySelectorAll(".nav[data-view]").forEach(el=>el.classList.remove("active"));
+  mcGetById("sidebar")?.classList.remove("open");
 }
 
 function organizeOwnerSpace(){
@@ -2925,6 +2912,8 @@ function postRoomAnnouncement(){
 window.canPostRoomAnnouncement=()=>can("COMMISSOR");
 
 async function joinRoom(id, options = {}) {
+  toast("Room joining is temporarily disabled while the chat experience is being redesigned.");
+  return false;
   const room =
     state.rooms.find(r => String(r.id) === String(id));
 
