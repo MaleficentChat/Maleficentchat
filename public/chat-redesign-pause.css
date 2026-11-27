@@ -1,0 +1,5 @@
+/* Chat redesign pause: hide legacy live chat and room-opening UI while retaining account data and backend. */
+#roomsNavToggle,#roomsNavList,#viewRooms,#chatWrap,#roomQuickNav,
+#roomsMorePanel,.rooms-more-overlay,.room-quick-nav,.room-directory-shelf,
+#roomOnlineBadge,#openOnlinePanel,#composer,#messages,#replyBar,#typing,
+#chatToolsToggle,#chatToolsDrawer,.chat-wrap,.chat-card { display:none!important; }
