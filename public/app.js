@@ -1783,7 +1783,7 @@ function openRoomsMorePanel(){
 function closeRoomsMorePanel(){
   const panel=mcGetById("roomsMorePanel");
   if(!panel)return;
-  ["mcRoomSearchRow","mcRoomAccess","roomsPinnedSection","roomsAllSection"].forEach(id=>{
+  ["mcRoomAccess","roomsPinnedSection","roomsAllSection"].forEach(id=>{
     const el=mcGetById(id),placeholder=el?.__roomsMorePlaceholder;
     if(el&&placeholder?.parentNode){placeholder.parentNode.insertBefore(el,placeholder);placeholder.remove();delete el.__roomsMorePlaceholder;}
   });
