@@ -9,3 +9,6 @@
 .rooms-nav-card .rooms-nav-item-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 #viewRooms.chatting .mc-room-directory{display:none!important}
 #viewRooms.chatting #chatWrap{display:block!important}
+
+.rooms-nav-join-label{font-size:11px;font-weight:750;white-space:nowrap;padding:3px 7px;border-radius:7px;background:rgba(65,180,125,.13);color:#72dca8}
+.rooms-nav-item.active .rooms-nav-join-label{background:rgba(120,140,160,.16);color:inherit}
