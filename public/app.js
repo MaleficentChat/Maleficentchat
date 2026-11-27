@@ -1661,6 +1661,7 @@ function renderSidebarRoomList(){
       <span class="rooms-nav-item-icon">${room.banner?`<img src="${esc(room.banner)}" alt="" loading="lazy">`:esc(room.icon||"💬")}</span>
       <span class="rooms-nav-item-name">${esc((room.isDefault||/^(main room|main chat)$/i.test(String(room.name||"").trim()))?"Main Chat":(room.name||"Chat"))}</span>
       ${locked?'<span class="rooms-nav-item-lock">🔒</span>':''}
+      <span class="rooms-nav-join-label">${active?"✓ Joined":"Join"}</span>
       <span class="rooms-nav-item-count">${Number(room.onlineCount||0)}</span>
     </button>`;
   }).join("");
