@@ -81,7 +81,7 @@
 <link rel="stylesheet" href="/mc-kp-experience.css?v=people-48px-quick-actions-stack-20261119-4">
 <link rel="stylesheet" href="/mc-outline-corrections.css?v=profile-action-drawer-fixed-top-20261120g">
 <link rel="stylesheet" href="/ui-polish-20261121.css?v=4">
-  <link rel="stylesheet" href="/chat-redesign-pause.css?v=20261127">
+  <!-- Chat and rooms are active again; redesign pause stylesheet removed. -->
 </head>
 <body>
 <div id="auth" class="auth-screen">
@@ -185,13 +185,12 @@
   </div>
 
 <main class="main">
-  <div id="viewHome" class="view"><section class="card" style="max-width:900px;margin:24px auto;padding:28px"><h2>✨ A new experience is coming</h2><p class="muted">Maleficent Chat is being redesigned. Your account and saved data remain here while the new experience takes shape.</p></section></div>
+  <div id="viewHome" class="view hidden"></div>
   <div id="viewRooms" class="view">
     <section class="mc-room-directory" aria-labelledby="mc-room-directory-title">
       <header class="discover-head" aria-label="Room controls">
         <div class="discover-actions">
-          <button class="discover-refresh" id="mcRoomRefresh" type="button" aria-label="Refresh rooms" title="Refresh rooms" onclick="refreshDiscoverRooms()"><span aria-hidden="true">⟳</span></button>
-          <button class="discover-create primary room-create-button hidden" id="newRoom" type="button">＋ Create a room</button>
+<button class="discover-create primary room-create-button hidden" id="newRoom" type="button">＋ Create a room</button>
         </div>
       </header>
       <div class="mc-room-search-row" id="mcRoomSearchRow">
