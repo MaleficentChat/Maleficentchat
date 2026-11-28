@@ -5062,11 +5062,11 @@ app.get('/api/staff/user/:id/ip-insights',auth,async(req,res)=>{
         ORDER BY u.created_at ASC NULLS LAST,LOWER(u.username)`,[Number(target.id),ips]);
       matches=found.rows.map(row=>{
         const historic=findUser(String(row.id));
-        return {id:String(row.id),username:row.username,registeredAt:row.created_at,firstSeen:row.first_seen,lastSeen:row.last_seen,sharedIpEvents:row.shared_ip_events,usernameHistory:(historic?.usernameHistory||[]).map(item=>({from:item.from||item.username||'',to:item.to||'',time:item.time||item.changedAt||null,changedBy:item.changedBy||''}))};
+        return {id:String(row.id),username:row.username,registeredAt:row.created_at,firstSeen:row.first_seen,lastSeen:row.last_seen,sharedIpEvents:row.shared_ip_events,usernameHistory:(historic?.usernameHistory||[]).map(item=>({from:item.from||item.username||'',to:item.to||'',time:item.time||item.changedAt||null,changedBy:item.changedBy||''})),displayNameHistory:(historic?.displayNameHistory||[]).map(item=>({from:item.from||'',to:item.to||item.value||'',time:item.time||item.changedAt||null}))};
       });
     }
     res.json({
-      user:{id:String(target.id),username:target.username,registeredAt:target.createdAt||null,usernameHistory:(target.usernameHistory||[]).map(item=>({from:item.from||item.username||'',to:item.to||'',time:item.time||item.changedAt||null,changedBy:item.changedBy||''}))},
+      user:{id:String(target.id),username:target.username,registeredAt:target.createdAt||null,usernameHistory:(target.usernameHistory||[]).map(item=>({from:item.from||item.username||'',to:item.to||'',time:item.time||item.changedAt||null,changedBy:item.changedBy||''})),displayNameHistory:(target.displayNameHistory||[]).map(item=>({from:item.from||'',to:item.to||item.value||'',time:item.time||item.changedAt||null}))},
       matches
     });
   }catch(err){
@@ -7498,7 +7498,7 @@ app.put('/api/profile',auth,(req,res)=>{
     else if(k==='socials') { const s=v&&typeof v==='object'?v:{}; u.socials={instagram:cleanText(s.instagram||'').slice(0,180),discord:cleanText(s.discord||'').slice(0,180),tiktok:cleanText(s.tiktok||'').slice(0,180),youtube:cleanText(s.youtube||'').slice(0,180)}; }
     else u[k]=cleanText(v).slice(0,500);
   }
-  if(oldDisplay!==u.displayName) u.displayNameHistory.push({value:u.displayName,time:Date.now()});
+  if(oldDisplay!==u.displayName) u.displayNameHistory.push({from:oldDisplay||'',to:u.displayName||'',value:u.displayName,time:Date.now()});
   save();
   if(oldUsername!==u.username) systemNotice(`@${oldUsername} has changed name to @${u.username}.`);
   if(!u.hideMode&&!u.deadMode)io.emit('profile:update',safeUser(u)); res.json({user:safeUser(u)});
