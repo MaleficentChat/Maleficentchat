@@ -5859,17 +5859,17 @@ async function openNewsComments(id){
     </div>`).join("")||`<div class="news-empty-comments">No comments yet. Be the first to comment.</div>`;
     const host=mcGetById("newsCommentsPanel");
     if(!host)throw new Error("News comments panel is unavailable.");
-    host.innerHTML=`<div class="news-comments-panel-head"><div><h2>${esc(n.title)}</h2><p class="muted">Join the conversation</p></div><div class="news-comments-panel-actions"><span class="news-count">💬 ${(data.comments||[]).length}</span><button type="button" class="news-comments-panel-close" id="closeNewsComments" aria-label="Close comments">×</button></div></div><div class="news-comments-panel-content"><div class="news-comments-list" id="commentsList">${render(data.comments)}</div><form id="commentForm" class="news-comment-form"><input id="commentText" maxlength="1000" placeholder="Type your comment" required><button class="primary">Post</button></form></div>`;
+    host.innerHTML=`<div class="news-comments-panel-head"><div><h2>Comments</h2><p class="muted">Join the conversation</p></div><div class="news-comments-panel-actions"><span class="news-count">💬 ${(data.comments||[]).length}</span><button type="button" class="news-comments-panel-close" id="closeNewsComments" aria-label="Close comments">×</button></div></div><div class="news-comments-panel-content"><div class="news-comments-list" id="commentsList">${render(data.comments)}</div><form id="commentForm" class="news-comment-form"><input id="commentText" maxlength="1000" placeholder="Write a comment…" required><button class="primary" aria-label="Send comment" title="Send">➤</button></form></div>`;
     host.classList.remove("hidden");
     host.onclick=event=>{const profileLink=event.target.closest("[data-news-comment-user]");if(profileLink){const userId=profileLink.dataset.newsCommentUser;if(userId){event.preventDefault();openUser(userId);}}};
     mcGetById("closeNewsComments")?.addEventListener("click",()=>{host.classList.add("hidden");host.innerHTML="";});
     mcGetById("commentForm").onsubmit=async e=>{
       e.preventDefault();
       const input=mcGetById("commentText"),text=input?.value.trim(); if(!text)return;
-      const submit=e.submitter||mcGetById("commentForm").querySelector("button");if(submit){submit.disabled=true;submit.textContent="Posting…";}
+      const submit=e.submitter||mcGetById("commentForm").querySelector("button");if(submit){submit.disabled=true;submit.textContent="…";}
       try{await api(`/api/news/${encodeURIComponent(id)}/comments`,{method:"POST",body:JSON.stringify({text})});input.value="";const r=await api(`/api/news/${encodeURIComponent(id)}/comments`);mcGetById("commentsList").innerHTML=render(r.comments);host.querySelector(".news-count").textContent="💬 "+(r.comments||[]).length;await loadNews();}
       catch(err){toast(err.message);}
-      finally{if(submit){submit.disabled=false;submit.textContent="Post";}}
+      finally{if(submit){submit.disabled=false;submit.textContent="➤";}}
     };
   }catch(e){toast(e.message)}
 }
