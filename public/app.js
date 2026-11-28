@@ -7379,6 +7379,7 @@ async function resolveReport(id) {
     await loadNotifications();
   } catch (error) { toast(error.message); }
 }
+async function dismissReport(id){if(!confirm("Dismiss this report without taking action against the user?"))return;try{await api(`/api/staff/reports/${encodeURIComponent(id)}/resolve`,{method:"POST",body:JSON.stringify({status:"DISMISSED",resolutionNote:"Dismissed by staff."})});toast("Report dismissed.");if(state.view==="management")await loadStaff();}catch(error){toast(error.message||"Could not dismiss report.");}}
 async function assignReport(id){
   const username=prompt("Enter the username of the site staff member to assign this report to (you can include @):");
   if(!username)return;
@@ -8209,6 +8210,8 @@ async function toggleReportDropdown(refresh=false){
       }).slice(0,100);
       const rows=filtered.map(r=>{
         const snap=r.messageSnapshot||{};
+        if(r.kind==="profile"){const st=String(r.status||"OPEN").toUpperCase();return `<article class="report-dropdown-item report-manager-item profile-report-card"><div class="profile-report-card-head"><b>🚩 User Report · @${esc(r.reportedUserUsername||"Unknown")}</b><span class="report-status-pill">${esc(st)}</span></div><div class="profile-report-card-meta"><span><small>Reported by</small><b>@${esc(r.reporterUsername||"Unknown")}</b></span><span><small>Date</small><b>${esc(fmt(r.time))}</b></span></div><div class="profile-report-card-reason"><small>REPORT DETAILS</small><p>${esc(r.reason||"No details provided")}</p></div><div class="toolbar report-manager-actions">${r.reportedUserId?`<button class="mini" data-report-moderate="${esc(r.reportedUserId)}">View Profile</button>`:""}<button class="mini" data-report-assign="${esc(r.id)}">Assign Staff</button>${st!=="RESOLVED"&&st!=="DISMISSED"?`<button class="mini primary" data-report-resolve="${esc(r.id)}">Resolve</button><button class="mini" data-report-dismiss="${esc(r.id)}">Dismiss</button>`:""}</div></article>`;}
+
         const who=r.reportedUserUsername||snap.username||"Unknown";
         const category=r.category||(r.conversationUserId?"Private message":r.messageId?"Message":"Profile");
         const st=String(r.status||"OPEN").toUpperCase();
@@ -8233,6 +8236,7 @@ async function toggleReportDropdown(refresh=false){
       box.querySelectorAll("[data-report-moderate]").forEach(b=>b.onclick=()=>{box.classList.add("hidden");moderate(b.dataset.reportModerate);});
       box.querySelectorAll("[data-report-evidence]").forEach(b=>b.onclick=()=>{box.classList.add("hidden");viewPrivateMessageReport(b.dataset.reportEvidence);});
       box.querySelectorAll("[data-report-resolve]").forEach(b=>b.onclick=async()=>{await resolveReport(b.dataset.reportResolve);await toggleReportDropdown(true);});
+      box.querySelectorAll("[data-report-dismiss]").forEach(b=>b.onclick=async()=>{await dismissReport(b.dataset.reportDismiss);await toggleReportDropdown(true);});
       box.querySelectorAll("[data-report-assign]").forEach(b=>b.onclick=async()=>{await assignReport(b.dataset.reportAssign);await toggleReportDropdown(true);});
       box.querySelectorAll("[data-report-delete-message]").forEach(b=>b.onclick=async()=>{box.classList.add("hidden");await deleteReportedMessage(b.dataset.reportDeleteMessage);await toggleReportDropdown(true);});
     };
