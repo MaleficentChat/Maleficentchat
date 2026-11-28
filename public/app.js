@@ -5374,6 +5374,26 @@ function dmMessageHTML(message, messages, user) {
   `;
 }
 
+
+function openDMStickerPicker(peerId){
+  modal('<div class="mc-sticker-picker"><h2>🩷 Stickers</h2><div class="mc-sticker-grid" id="dmStickerGrid" aria-label="Stickers"></div></div>');
+  const grid=mcGetById("dmStickerGrid");if(!grid)return;
+  grid.innerHTML=MC_STICKERS.slice(0,120).map(emoji=>'<button type="button" class="mc-sticker-choice" data-sticker="'+esc(emoji)+'" aria-label="Send sticker '+esc(emoji)+'"><span>'+emoji+'</span></button>').join("");
+  let busy=false;
+  grid.addEventListener("click",async event=>{const choice=event.target.closest("[data-sticker]");if(!choice||busy)return;busy=true;grid.querySelectorAll("button").forEach(b=>b.disabled=true);try{const result=await api('/api/dm/'+encodeURIComponent(peerId),{method:'POST',body:JSON.stringify({stickerEmoji:choice.dataset.sticker})});if(result.message){state.dmMessages=state.dmMessages||[];if(!state.dmMessages.some(m=>String(m.id)===String(result.message.id)))state.dmMessages.push(result.message);const list=mcGetById('dmMessages');if(list){list.querySelector('.muted')?.remove();list.insertAdjacentHTML('beforeend',dmMessageHTML(result.message,state.dmMessages,state.dmPeerUser));list.scrollTop=list.scrollHeight;}}closeModal();loadDMList().catch(()=>{});}catch(error){busy=false;grid.querySelectorAll('button').forEach(b=>b.disabled=false);toast(error.message||'Could not send sticker.');}});
+}
+function openDMVoiceRecorder(peerId){
+  if(!navigator.mediaDevices?.getUserMedia||!window.MediaRecorder){toast('Voice recording is not supported in this browser.');return;}
+  modal('<div class="dm-voice-modal"><h2>🎤 Voice message</h2><div id="dmVoiceStatus">Ready to record</div><div id="dmVoiceTimer" class="dm-voice-timer">00:00</div><div id="dmVoiceWave" class="dm-voice-wave" aria-hidden="true">▂ ▄ ▆ ▃ ▇ ▄ ▂ ▅ ▃ ▆ ▂</div><div class="toolbar"><button type="button" class="primary" id="dmVoiceRecord">● Record</button><button type="button" class="mini" id="dmVoiceStop" disabled>■ Stop</button></div><div id="dmVoicePreview" class="dm-voice-preview hidden"></div><div class="toolbar hidden" id="dmVoiceActions"><button type="button" class="mini danger" id="dmVoiceDelete">🗑 Delete</button><button type="button" class="primary" id="dmVoiceSend">📤 Send voice note</button></div></div>');
+  const status=mcGetById('dmVoiceStatus'),timer=mcGetById('dmVoiceTimer'),wave=mcGetById('dmVoiceWave'),record=mcGetById('dmVoiceRecord'),stop=mcGetById('dmVoiceStop'),preview=mcGetById('dmVoicePreview'),actions=mcGetById('dmVoiceActions');let stream=null,recorder=null,chunks=[],started=0,interval=null,blob=null,url=null;
+  const cleanup=()=>{if(interval)clearInterval(interval);stream?.getTracks().forEach(t=>t.stop());if(url)URL.revokeObjectURL(url);};
+  record.onclick=async()=>{record.disabled=true;try{stream=await navigator.mediaDevices.getUserMedia({audio:true});recorder=new MediaRecorder(stream);chunks=[];recorder.ondataavailable=e=>{if(e.data?.size)chunks.push(e.data);};recorder.onstop=()=>{blob=new Blob(chunks,{type:recorder.mimeType||'audio/webm'});url=URL.createObjectURL(blob);preview.innerHTML='<audio controls preload="metadata" src="'+url+'"></audio><small>'+timer.textContent+' · Preview before sending</small>';preview.classList.remove('hidden');actions.classList.remove('hidden');status.textContent='Preview your recording';wave.classList.remove('recording');cleanup();};recorder.start();started=Date.now();status.textContent='Recording…';stop.disabled=false;wave.classList.add('recording');interval=setInterval(()=>{const sec=Math.floor((Date.now()-started)/1000);timer.textContent=String(Math.floor(sec/60)).padStart(2,'0')+':'+String(sec%60).padStart(2,'0');},250);}catch(e){record.disabled=false;status.textContent='Microphone permission is required';toast(e.message||'Microphone access denied.');}};
+  stop.onclick=()=>{if(recorder&&recorder.state==='recording'){recorder.stop();stop.disabled=true;record.disabled=true;}};
+  mcGetById('dmVoiceDelete').onclick=()=>{cleanup();closeModal();};
+  mcGetById('dmVoiceSend').onclick=async()=>{if(!blob)return;const send=mcGetById('dmVoiceSend');send.disabled=true;send.textContent='Sending…';try{const ext=blob.type.includes('ogg')?'ogg':blob.type.includes('mp4')?'m4a':'webm';const file=new File([blob],'voice-note-'+Date.now()+'.'+ext,{type:blob.type||'audio/webm'});const fd=new FormData();fd.append('text','');fd.append('file',file);if(state.dmReplyTo)fd.append('replyTo',state.dmReplyTo);const sent=await api('/api/dm/'+encodeURIComponent(peerId),{method:'POST',body:fd});if(sent.message){state.dmMessages=state.dmMessages||[];if(!state.dmMessages.some(m=>String(m.id)===String(sent.message.id)))state.dmMessages.push(sent.message);const list=mcGetById('dmMessages');if(list){list.querySelector('.muted')?.remove();list.insertAdjacentHTML('beforeend',dmMessageHTML(sent.message,state.dmMessages,state.dmPeerUser));list.scrollTop=list.scrollHeight;}}cleanup();closeModal();loadDMList().catch(()=>{});}catch(e){send.disabled=false;send.textContent='📤 Send voice note';toast(e.message||'Could not send voice note.');}};
+  const modalRoot=mcGetById('modal');modalRoot?.addEventListener('click',e=>{if(e.target.closest('.modal-close,.close-modal'))cleanup();},{once:true});
+}
+
 async function openDM(id) {
   try {
     let user;
@@ -5466,7 +5486,7 @@ async function openDM(id) {
       }
 
       <form id="dmForm" class="composer dm-composer">
-        <button type="button" class="dm-tools-toggle" id="dmToolsToggle" aria-expanded="false">＋</button><div class="dm-tools-drawer hidden" id="dmToolsDrawer"><button type="button" data-dm-tool="attach">📎 Attach</button><button type="button" data-dm-tool="youtube">▶️ YouTube</button><button type="button" data-dm-tool="reels">🎬 Reels</button><button type="button" data-dm-tool="doodle">✏️ Doodle</button><button type="button" data-dm-tool="gif">🎞️ GIF</button><input id="dmFile" type="file" accept="image/*,audio/*" hidden></div>
+        <button type="button" class="dm-tools-toggle" id="dmToolsToggle" aria-expanded="false">＋</button><div class="dm-tools-drawer hidden" id="dmToolsDrawer"><button type="button" data-dm-tool="attach">📎 Upload</button><button type="button" data-dm-tool="voice">🎤 Voice message</button><button type="button" data-dm-tool="sticker">🩷 Stickers</button><button type="button" data-dm-tool="youtube">▶️ YouTube</button><button type="button" data-dm-tool="reels">🎬 Reels</button><button type="button" data-dm-tool="doodle">✏️ Doodle</button><button type="button" data-dm-tool="gif">🎞️ GIF</button><input id="dmFile" type="file" accept="image/*,audio/*" hidden></div>
         <span id="dmFileName" class="muted dm-file-name"></span>
         <input id="dmText" placeholder="Write a private message…" maxlength="4000" autocomplete="off">
         <button class="send" type="submit">Send ↗</button>
@@ -5474,7 +5494,7 @@ async function openDM(id) {
     `);
 
     mcGetById('dmToolsToggle')?.addEventListener('click',event=>{event.preventDefault();event.stopPropagation();const drawer=mcGetById('dmToolsDrawer'),button=mcGetById('dmToolsToggle');if(!drawer||!button)return;const opening=drawer.classList.contains('hidden');if(opening){drawer.classList.remove('hidden');drawer.classList.add('open');button.setAttribute('aria-expanded','true');positionChatTools(button,drawer,'grid');}else closeQuickActions(drawer,button);});
-    mcGetById('dmToolsDrawer')?.addEventListener('click',event=>{const tool=event.target.closest('[data-dm-tool]');if(!tool)return;const kind=tool.dataset.dmTool;closeQuickActions(mcGetById('dmToolsDrawer'),mcGetById('dmToolsToggle'));if(kind==='attach'){mcGetById('dmFile')?.click();return;}if(kind==='gif'){openGifPicker(id);return;}if(kind==='youtube'){openYoutubePanel(id);return;}if(kind==='doodle'){openDoodleComposer(id);return;}if(kind==='reels'){openReelSharePicker(id);return;}});
+    mcGetById('dmToolsDrawer')?.addEventListener('click',event=>{const tool=event.target.closest('[data-dm-tool]');if(!tool)return;const kind=tool.dataset.dmTool;closeQuickActions(mcGetById('dmToolsDrawer'),mcGetById('dmToolsToggle'));if(kind==='attach'){mcGetById('dmFile')?.click();return;}if(kind==='voice'){openDMVoiceRecorder(id);return;}if(kind==='sticker'){openDMStickerPicker(id);return;}if(kind==='gif'){openGifPicker(id);return;}if(kind==='youtube'){openYoutubePanel(id);return;}if(kind==='doodle'){openDoodleComposer(id);return;}if(kind==='reels'){openReelSharePicker(id);return;}});
     const dmTargetId=String(user.id),dmSettings=mcGetById('dmChatSettingsMenu'),dmSettingsBtn=mcGetById('dmChatSettingsBtn');
     dmSettingsBtn?.addEventListener('click',()=>{dmSettings?.classList.toggle('hidden');dmSettingsBtn.setAttribute('aria-expanded',String(!dmSettings?.classList.contains('hidden')));});
     mcGetById('dmChatCloseBtn')?.addEventListener('click',closeModal);
