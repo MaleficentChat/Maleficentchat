@@ -5257,17 +5257,28 @@ function quotedMessagePlainPreview(message){
 function quotedMessagePreviewHTML(message){
   if(!message)return "Message";
   const text=message.text?esc(String(message.text).slice(0,160)):"";
-  if(message.stickerEmoji)return '<span class="mc-quote-sticker">'+esc(message.stickerEmoji)+' Sticker</span>';
-  if(message.youtube?.videoId)return '<span class="mc-quote-media">▶️ '+esc(message.youtube.title||"YouTube video")+'</span><img class="mc-quote-thumb" src="https://i.ytimg.com/vi/'+esc(message.youtube.videoId)+'/mqdefault.jpg" alt="" loading="lazy">';
-  if(message.gifUrl)return '<span class="mc-quote-media">🎞️ GIF</span><img class="mc-quote-thumb" src="'+esc(message.gifUrl)+'" alt="" loading="lazy">';
-  if(message.attachment?.type?.startsWith("image/"))return '<span class="mc-quote-media">🖼️ Image</span><img class="mc-quote-thumb" src="'+esc(message.attachment.url)+'" alt="" loading="lazy">';
-  if(message.attachment?.type?.startsWith("video/"))return '<span class="mc-quote-media">🎬 Video</span>';
-  if(message.attachment?.type?.startsWith("audio/"))return '<span class="mc-quote-media">🎵 Audio</span>';
+  const attachment=message.attachment||{},safeUrl=esc(attachment.url||"");
+  if(message.stickerEmoji)return '<span class="mc-quote-sticker">'+esc(message.stickerEmoji)+'</span>';
+  const doodle=message.doodle?.url||message.doodleUrl||message.doodle?.dataUrl||message.doodleDataUrl;
+  if(doodle)return '<span class="mc-quote-media">✏️ Doodle</span><img class="mc-quote-thumb" src="'+esc(doodle)+'" alt="Doodle preview" loading="lazy">';
+  if(message.youtube?.videoId)return '<span class="mc-quote-media">▶️ '+esc(message.youtube.title||"YouTube video")+'</span><img class="mc-quote-thumb" src="https://i.ytimg.com/vi/'+esc(message.youtube.videoId)+'/mqdefault.jpg" alt="YouTube thumbnail" loading="lazy">';
+  if(message.gifUrl)return '<span class="mc-quote-media">🎞️ GIF</span><img class="mc-quote-thumb" src="'+esc(message.gifUrl)+'" alt="GIF preview" loading="lazy">';
+  if(attachment.url&&String(attachment.type||"").startsWith("image/"))return '<span class="mc-quote-media">🖼️ Image</span><img class="mc-quote-thumb" src="'+safeUrl+'" alt="Image preview" loading="lazy">';
+  if(attachment.url&&String(attachment.type||"").startsWith("video/"))return '<span class="mc-quote-media">📹 Video</span><video class="mc-quote-thumb mc-quote-video" controls playsinline preload="metadata" src="'+safeUrl+'"></video>';
+  if(attachment.url&&String(attachment.type||"").startsWith("audio/"))return '<span class="mc-quote-media">🎵 Audio</span><audio class="mc-quote-audio" controls preload="metadata" src="'+safeUrl+'"></audio>';
+  if(attachment.url)return '<span class="mc-quote-media">📎 '+esc(attachment.name||"Attachment")+'</span><a class="mc-quote-attachment" href="'+safeUrl+'" target="_blank" rel="noopener">📎 '+esc(attachment.name||"Open attachment")+'</a>';
+  const raw=String(message.text||"").trim();
+  const yt=raw.match(/(?:youtube\.com\/(?:watch\?v=|shorts\/|embed\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/i);
+  if(yt)return '<span class="mc-quote-media">▶️ YouTube</span><img class="mc-quote-thumb" src="https://i.ytimg.com/vi/'+esc(yt[1])+'/mqdefault.jpg" alt="YouTube thumbnail" loading="lazy">';
+  if(/\.gif(?:\?.*)?$/i.test(raw))return '<span class="mc-quote-media">🎞️ GIF</span><img class="mc-quote-thumb" src="'+esc(raw)+'" alt="GIF preview" loading="lazy">';
+  if(/\.(mp4|webm|mov)(?:\?.*)?$/i.test(raw))return '<span class="mc-quote-media">📹 Video</span><video class="mc-quote-thumb mc-quote-video" controls playsinline preload="metadata" src="'+esc(raw)+'"></video>';
+  if(/\.(mp3|wav|ogg|m4a|aac)(?:\?.*)?$/i.test(raw))return '<span class="mc-quote-media">🎵 Audio</span><audio class="mc-quote-audio" controls preload="metadata" src="'+esc(raw)+'"></audio>';
+  if(/\.(png|jpe?g|webp)(?:\?.*)?$/i.test(raw))return '<span class="mc-quote-media">🖼️ Image</span><img class="mc-quote-thumb" src="'+esc(raw)+'" alt="Image preview" loading="lazy">';
   return text||esc(quotedMessagePlainPreview(message));
 }
 function dmMediaPreviewHTML(message){
   const attachment=message.attachment,raw=String(message.text||"").trim();
-  if(attachment?.url){
+  if(message.stickerEmoji)return '<div class="dm-sticker-preview" aria-label="Sticker">'+esc(message.stickerEmoji)+'</div>';\n  const doodle=message.doodle?.url||message.doodleUrl||message.doodle?.dataUrl||message.doodleDataUrl;\n  if(doodle)return '<a class="dm-media-preview dm-doodle-preview" href="'+esc(doodle)+'" target="_blank" rel="noopener"><img class="dm-inline-image" src="'+esc(doodle)+'" alt="Doodle" loading="lazy"><span>✏️ Doodle</span></a>';\n  if(message.youtube?.videoId)return youtubePreviewHTML(message.youtube.videoId,message.youtube.title||"YouTube video");\n  if(message.gifUrl)return '<a class="chat-gif" href="'+esc(message.gifUrl)+'" target="_blank" rel="noopener"><img src="'+esc(message.gifUrl)+'" alt="GIF" loading="lazy"></a>';\n  if(attachment?.url){
     const url=esc(attachment.url),type=String(attachment.type||"");
     if(type.startsWith("image/"))return '<a class="dm-media-preview" href="'+url+'" target="_blank" rel="noopener"><img class="dm-inline-image" src="'+url+'" alt="'+esc(attachment.name||"Image")+'" loading="lazy"></a>';
     if(type.startsWith("video/"))return '<video class="dm-inline-video" controls playsinline preload="metadata" src="'+url+'"></video>';
@@ -5425,7 +5436,7 @@ async function openDM(id) {
                     ↪ Replying to ${esc(state.dmReplyAuthor || user.displayName)}
                   </strong>
                   <div class="dm-reply-preview">
-                    ${esc(state.dmReplyText || "Original message")}
+                    ${state.dmReplyTo ? (()=>{const quotedMessage=(state.dmMessages||[]).find(m=>String(m.id)===String(state.dmReplyTo));return quotedMessage&&!quotedMessage.deleted?quotedMessagePreviewHTML(quotedMessage):esc(state.dmReplyText||"Original message");})() : esc(state.dmReplyText||"Original message")}
                   </div>
                 </div>
                 <button
