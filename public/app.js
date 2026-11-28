@@ -1914,30 +1914,32 @@ function organizeOwnerSpace(){
   }
   const layout=document.createElement("div");
   layout.className="owner-space-master-layout";
-  layout.style.cssText="display:flex;flex-direction:column;gap:12px;margin:12px 0;";
+  layout.style.cssText="display:flex;flex-direction:column;gap:0;margin:8px 0;";
   const stats=staffRoot.querySelector(".owner-statistics-card");
   if(stats)layout.appendChild(stats);
   const categoryDefs=[
-    ["system","🖥️ System",/site refresh|hard refresh|system notifications|notification center|notification settings/],
-    ["investigation","🔎 User Investigation",/ip inspection|personalized ip|similar ip|matching ip|ip history|ip lookup|user controls|private message inspection|inspect private messages|previous usernames|user history/],
-    ["security","🛡️ Moderation & Security",/audit|filter management|filter words|cleared room|moderation|ip ban|vpn|proxy|risk signals|security/],
-    ["staff","👥 Staff Management",/staff application|premium requests|rank management|rank assignment|staff accounts|grant premium|staff management/],
-    ["config","⚙️ Site Configuration",/site settings|gold|diamonds|xp|daily rewards|gif costs|mute settings|feature grant|mode management|economy|configuration/],
-    ["chat","🧹 Chat Management",/under construction|refresh site messages|clear room|clear private|message refresh|chat management/]
+    ["system","📊 System Overview",/system statistics|database storage|storage limit|stored media|database overview|system overview/],
+    ["config","⚙️ Site Configuration",/site settings|developer controls|site refresh|hard refresh|database information|gold|diamonds|xp|daily rewards|gif costs|mute settings|feature grant|mode management|economy|configuration/],
+    ["users","👥 User Management",/ip inspection|personalized ip|similar ip|matching ip|ip history|ip lookup|user investigation|user controls|private message inspection|inspect private messages|previous usernames|user history|cleared messages inspection/],
+    ["staff","👮 Staff Management",/staff application|premium requests|rank management|rank assignment|staff accounts|grant premium|staff management|staff permissions/],
+    ["security","🛡️ Moderation & Security",/filter management|filter words|cleared room|moderation|ip ban|vpn|proxy|risk signals|security|filtered words|link filter/],
+    ["logs","📜 Logs & Auditing",/admin activity logs|staff activity logs|activity log/],
+    ["chat","💬 Chat Management",/under construction|refresh site messages|clear room|clear private|message refresh|chat management|room management|message management/]
   ];
   const groups=new Map();
-  categoryDefs.forEach(([key,label,matcher])=>{
-    const details=document.createElement("details");
-    details.className="owner-space-category";
-    details.style.cssText="border:1px solid var(--border,#39313f);border-radius:14px;background:var(--panel,#15121b);overflow:hidden;";
+  categoryDefs.forEach(([key,label,matcher],index)=>{
+    const section=document.createElement("details");
+    section.className="owner-space-category owner-space-continuous";
+    section.open=true;
+    section.style.cssText="border:0;border-bottom:1px solid var(--border,#39536e);border-radius:0;background:transparent;overflow:visible;";
     const summary=document.createElement("summary");
     summary.textContent=label;
-    summary.style.cssText="padding:14px 16px;font-weight:700;cursor:pointer;list-style:none;";
+    summary.style.cssText="padding:12px 4px;font-weight:700;cursor:pointer;list-style:none;";
     const content=document.createElement("div");
     content.className="owner-space-category-content";
-    content.style.cssText="display:flex;flex-direction:column;gap:10px;padding:0 12px 12px;";
-    details.append(summary,content);
-    layout.appendChild(details);
+    content.style.cssText="display:flex;flex-direction:column;gap:0;padding:0 4px 8px;";
+    section.append(summary,content);
+    layout.appendChild(section);
     groups.set(key,{content,matcher});
   });
   const classify=node=>{
@@ -1949,6 +1951,13 @@ function organizeOwnerSpace(){
     Array.from(source.children).forEach(node=>{
       node.dataset.ownerSpaceSource=source===ownerRoot?"owner":"staff";
       groups.get(classify(node)).content.appendChild(node);
+      node.style.margin="0";
+      node.style.border="0";
+      node.style.borderRadius="0";
+      node.style.background="transparent";
+      node.style.boxShadow="none";
+      node.style.padding="8px 0";
+      node.style.borderBottom="1px solid var(--border,#29435f)";
     });
   });
   root.insertBefore(layout,staffRoot);
@@ -7599,18 +7608,6 @@ async function loadOwner() {
           <p class="muted" id="ownerClearAllMessagesStatus" aria-live="polite"></p>
         </section>
 
-      <details class="filter-words-details owner-settings-dropdown owner-audit-dropdown">
-        <summary>📜 Audit Logs Management — open to configure event visibility</summary>
-        <div class="owner-audit-dropdown-content">
-          <div class="card owner-audit-management">
-            <h3>📜 Audit Logs Management</h3>
-            <p class="muted">Control which event types appear in Staff Dashboard audit logs and choose the minimum rank allowed to view each type.</p>
-            <div class="owner-audit-toolbar"><input id="ownerAuditTypeSearch" type="search" placeholder="Search event types…"><button class="mini" type="button" id="ownerAuditAllOn">Turn all on</button><button class="mini" type="button" id="ownerAuditAllOff">Turn all off</button></div>
-            <div id="ownerAuditVisibilityRows" class="owner-audit-visibility-list"></div>
-            <div class="toolbar"><button class="primary" type="button" id="saveOwnerAuditVisibility">Save Audit Log Settings</button><span class="muted" id="ownerAuditSaveStatus">Unsaved changes stay here until saved.</span></div>
-          </div>
-        </div>
-      </details>
 
       <div class="card"><h3>💎 Premium Requests</h3>${(premiumRequests.requests||[]).map(r=>`<div class="hub-row"><span>@${esc(r.username||'Unknown')} · ${esc(r.created_at||'')}</span><button class="mini" data-grant-premium="${r.id}">Grant Premium</button><button class="mini danger" data-cancel-premium="${r.user_id||r.id}">Cancel Premium</button></div>`).join('')||'<p class="muted">No requests.</p>'}</div><div class="card owner-settings-card">
         <h3>⚙️ Site Settings</h3>
