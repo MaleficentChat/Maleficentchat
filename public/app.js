@@ -5851,22 +5851,31 @@ async function openNewsComments(id){
     const n=(await api("/api/news")).news.find(x=>x.id===id);
     if(!n) return;
     const data=await api(`/api/news/${encodeURIComponent(id)}/comments`);
-    const render=comments=>(comments||[]).map(c=>`<div class="news-comment">
-      <button type="button" class="news-comment-profile-link" data-news-comment-user="${esc(c.userId||"")}" aria-label="Open ${esc(c.displayName||c.username||"commenter")}'s profile">${avatar({displayName:c.displayName,username:c.username,avatar:c.avatar})}</button>
-      <div class="news-comment-main"><div><button type="button" class="news-comment-name-link" data-news-comment-user="${esc(c.userId||"")}">${esc(c.displayName||c.username)}</button> <span class="muted">${c.time?esc(new Date(c.time).toLocaleDateString()):""}</span></div><p>${esc(c.text)}</p></div>
-      ${(c.userId===state.user.id||can("MOD"))?`<button class="mini danger" onclick="deleteNewsComment('${esc(id)}','${esc(c.id)}')">×</button>`:""}
-    </div>`).join("")||`<div class="news-empty-comments">No comments yet. Be the first to comment.</div>`;
+    const render=comments=>{
+      const all=comments||[];
+      const children=pid=>all.filter(c=>String(c.parentId||'')===String(pid));
+      const renderOne=c=>{
+        const liked=(c.likes||[]).map(String).includes(String(state.user?.id));
+        return '<div class="news-comment-thread '+(c.parentId?'is-reply':'')+'" data-comment-id="'+esc(c.id)+'"><div class="news-comment">'+
+          '<button type="button" class="news-comment-profile-link" data-news-comment-user="'+esc(c.userId||'')+'">'+avatar({displayName:c.displayName,username:c.username,avatar:c.avatar})+'</button>'+
+          '<div class="news-comment-main"><div class="news-comment-head"><button type="button" class="news-comment-name-link" data-news-comment-user="'+esc(c.userId||'')+'">'+esc(c.displayName||c.username)+'</button><span class="muted">'+(c.time?esc(new Date(c.time).toLocaleDateString()):'')+'</span></div><p>'+esc(c.text)+'</p>'+
+          '<div class="news-comment-actions"><button type="button" class="news-comment-like '+(liked?'is-liked':'')+'" data-comment-like="'+esc(c.id)+'">♥ <span>'+((c.likes||[]).length||'')+'</span></button><button type="button" class="news-comment-reply" data-comment-reply="'+esc(c.id)+'">Reply</button></div></div>'+
+          ((c.userId===state.user.id||can('MOD'))?'<button class="mini danger news-comment-delete" onclick="deleteNewsComment(\''+esc(id)+'\',\''+esc(c.id)+'\')">×</button>':'')+'</div>'+children(c.id).map(renderOne).join('')+'</div>';
+      };
+      const roots=all.filter(c=>!c.parentId);
+      return roots.map(renderOne).join('')||'<div class="news-empty-comments">No comments yet. Be the first to comment.</div>';
+    };
     const host=mcGetById("newsCommentsPanel");
     if(!host)throw new Error("News comments panel is unavailable.");
     host.innerHTML=`<div class="news-comments-panel-head"><div><h2>Comments</h2><p class="muted">Join the conversation</p></div><div class="news-comments-panel-actions"><span class="news-count">💬 ${(data.comments||[]).length}</span><button type="button" class="news-comments-panel-close" id="closeNewsComments" aria-label="Close comments">×</button></div></div><div class="news-comments-panel-content"><div class="news-comments-list" id="commentsList">${render(data.comments)}</div><form id="commentForm" class="news-comment-form"><input id="commentText" maxlength="1000" placeholder="Write a comment…" required><button class="primary" aria-label="Send comment" title="Send">➤</button></form></div>`;
     host.classList.remove("hidden");
-    host.onclick=event=>{const profileLink=event.target.closest("[data-news-comment-user]");if(profileLink){const userId=profileLink.dataset.newsCommentUser;if(userId){event.preventDefault();openUser(userId);}}};
+    host.onclick=event=>{const profileLink=event.target.closest("[data-news-comment-user]");if(profileLink){const userId=profileLink.dataset.newsCommentUser;if(userId){event.preventDefault();openUser(userId);return;}}const likeButton=event.target.closest("[data-comment-like]");if(likeButton){api("/api/news/"+encodeURIComponent(id)+"/comments/"+encodeURIComponent(likeButton.dataset.commentLike)+"/like",{method:"POST",body:JSON.stringify({})}).then(()=>openNewsComments(id)).catch(e=>toast(e.message));return;}const replyButton=event.target.closest("[data-comment-reply]");if(replyButton){const form=mcGetById("commentForm"),input=mcGetById("commentText");if(form&&input){form.dataset.replyTo=replyButton.dataset.commentReply;const c=(data.comments||[]).find(x=>String(x.id)===String(replyButton.dataset.commentReply));input.placeholder="Reply to "+(c?.displayName||c?.username||"comment")+"…";input.focus();}}};
     mcGetById("closeNewsComments")?.addEventListener("click",()=>{host.classList.add("hidden");host.innerHTML="";});
     mcGetById("commentForm").onsubmit=async e=>{
       e.preventDefault();
       const input=mcGetById("commentText"),text=input?.value.trim(); if(!text)return;
       const submit=e.submitter||mcGetById("commentForm").querySelector("button");if(submit){submit.disabled=true;submit.textContent="…";}
-      try{await api(`/api/news/${encodeURIComponent(id)}/comments`,{method:"POST",body:JSON.stringify({text})});input.value="";const r=await api(`/api/news/${encodeURIComponent(id)}/comments`);mcGetById("commentsList").innerHTML=render(r.comments);host.querySelector(".news-count").textContent="💬 "+(r.comments||[]).length;await loadNews();}
+      try{await api(`/api/news/${encodeURIComponent(id)}/comments`,{method:"POST",body:JSON.stringify({text,parentId:mcGetById("commentForm")?.dataset.replyTo||null})});input.value="";mcGetById("commentForm").dataset.replyTo="";input.placeholder="Write a comment…";const r=await api(`/api/news/${encodeURIComponent(id)}/comments`);mcGetById("commentsList").innerHTML=render(r.comments);host.querySelector(".news-count").textContent="💬 "+(r.comments||[]).length;await loadNews();}
       catch(err){toast(err.message);}
       finally{if(submit){submit.disabled=false;submit.textContent="➤";}}
     };
