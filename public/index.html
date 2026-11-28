@@ -82,7 +82,7 @@
 <link rel="stylesheet" href="/mc-outline-corrections.css?v=profile-action-drawer-fixed-top-20261120g">
 <link rel="stylesheet" href="/ui-polish-20261121.css?v=4">
   <link rel="stylesheet" href="/rooms-join-panel.css?v=20261127-1">
-<link rel="stylesheet" href="/chat-quick-actions.css?v=20261128-1">
+
 
 <style id="mc-sidebar-cleanup-20261128">
 /* Navigation panel intentionally excludes branding, profile picture, and logout. */
@@ -237,7 +237,7 @@
         <div id="typing" class="typing"></div>
         <form id="composer" class="composer" onsubmit="return false;">
           <button type="button" id="chatToolsToggle" class="chat-tools-toggle" aria-label="Open chat tools" aria-expanded="false">＋</button>
-          <div id="chatToolsDrawer" class="chat-tools-drawer" aria-label="Chat tools"><button type="button" id="attach" aria-label="Photo/Video"><span class="chat-tool-icon">📷</span><span><b>Photo/Video</b></span></button><button type="button" id="chatGiftBtn" aria-label="Gift"><span class="chat-tool-icon">🎁</span><span><b>Gift</b></span></button><button type="button" id="fireworksWishBtn" aria-label="Fireworks Wish"><span class="chat-tool-icon">🎆</span><span><b>Fireworks Wish</b></span></button><button type="button" id="youtubeComposerBtn" aria-label="YouTube"><span class="chat-tool-icon">▶️</span><span><b>YouTube</b></span></button><button type="button" id="chatEmojiBtn" aria-label="Emoji/Stickers"><span class="chat-tool-icon">😊</span><span><b>Emoji/Stickers</b></span></button></div>
+          <div id="chatToolsDrawer" class="chat-tools-drawer" aria-label="Chat tools"><div class="chat-tools-heading"><strong>Quick actions</strong></div><button type="button" id="attach" aria-label="Media"><span class="chat-tool-icon">📎</span><span><b>Media</b></span></button><button type="button" id="chatGifBtn" aria-label="GIFs"><span class="chat-tool-icon">🎞️</span><span><b>GIFs</b></span></button><button type="button" id="fireworksWishBtn" aria-label="Fireworks Wish"><span class="chat-tool-icon">🎆</span><span><b>Fireworks Wish</b></span></button><button type="button" id="doodleBtn" aria-label="Doodle"><span class="chat-tool-icon">✏️</span><span><b>Doodle</b></span></button><button type="button" class="icon-btn" id="youtubeComposerBtn" aria-label="YouTube"><span class="chat-tool-icon">▶️</span><span><b>YouTube</b></span></button><button type="button" class="icon-btn" id="reelComposerBtn" aria-label="Reels"><span class="chat-tool-icon">🎬</span><span><b>Reels</b></span></button></div>
           <input id="message" maxlength="4000" placeholder="Write a message… Use @username to mention">
           <span id="fileName" class="composer-file-name" aria-live="polite"></span>
           <button class="send" type="submit">Send</button>
@@ -466,7 +466,7 @@
   document.addEventListener("keydown",function(event){if(event.key==="Escape"&&!panel.classList.contains("hidden"))hide();});
 })();
 </script>
-<script src="/app.js?v=quick-actions-gift-emoji-20261128-1"></script>
+<script src="/app.js?v=restore-original-menu-reels-20261128-1"></script>
 <script src="/navigation-panels.js?v=20261119-2"></script>
 <script src="/ai-companion.js?v=premium-studio-20261114-2"></script>
 <script src="/calls.js?v=helper-isolation-20261121a"></script>
