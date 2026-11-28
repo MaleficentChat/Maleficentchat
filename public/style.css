@@ -12163,3 +12163,16 @@ body.party-mode-active #partySparkleLayer{mix-blend-mode:screen}
 #viewNews .news-comment-form input{flex:1!important;min-width:0!important;height:48px!important;padding:0 14px!important;border-radius:15px!important;background:#142f53!important;border:1px solid rgba(122,180,235,.3)!important;color:#f5f8ff!important;}
 #viewNews .news-comment-form button{flex:0 0 48px!important;width:48px!important;height:48px!important;border-radius:14px!important;background:linear-gradient(110deg,#4795ed,#e6bd5d)!important;color:white!important;}
 @media(max-width:600px){#viewNews #newsCommentsPanel{width:calc(100vw - 20px)!important;max-height:88dvh!important;padding:12px!important;}#viewNews .news-comments-list{max-height:calc(88dvh - 155px)!important;}#viewNews .news-comment-thread.is-reply{margin-left:24px!important;padding-left:8px!important;}#viewNews .news-comment{padding:10px!important;gap:8px!important;}}
+
+/* Compact Doodle Studio toolbar and color palette */
+.doodle-compact-tools{gap:7px!important;}
+.doodle-compact-tools>button,.doodle-compact-tools .doodle-size-control{padding:6px 9px!important;min-height:36px;}
+.doodle-compact-tools #doodleEraser.active{background:var(--accent,rgba(90,140,190,.28));border-color:var(--accent-border,#7da5c9);}
+.doodle-palette-wrap{position:relative;}
+#doodlePaletteToggle{display:flex;align-items:center;gap:6px;}
+#doodleColorChip{width:20px;height:20px;border:1px solid rgba(255,255,255,.45);border-radius:5px;background:#111;display:inline-block;}
+.doodle-palette{position:absolute;z-index:20;top:calc(100% + 6px);left:0;width:204px;padding:8px;display:grid;grid-template-columns:repeat(6,1fr);gap:6px;border:1px solid var(--border);border-radius:12px;background:var(--panel,#15263b);box-shadow:0 8px 22px rgba(0,0,0,.35);}
+.doodle-palette[hidden]{display:none!important;}
+.doodle-swatch{width:26px;height:26px;padding:0!important;border-radius:7px!important;background:var(--swatch)!important;border:1px solid rgba(255,255,255,.35)!important;}
+.doodle-size-control{display:inline-flex;align-items:center;gap:7px;}
+.doodle-size-control input[type=range]{width:85px;}
