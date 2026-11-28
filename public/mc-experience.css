@@ -1725,3 +1725,16 @@ body{background-image:radial-gradient(ellipse at 70% -15%,rgba(77,143,216,.18),t
 .profile-more-history-list{display:flex;flex-direction:column;gap:8px}.profile-more-history-item{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;padding:10px;border:1px solid rgba(92,155,215,.18);border-radius:10px;background:rgba(24,53,82,.6)}.profile-more-history-item>div{min-width:0;flex:1}.profile-more-history-item b{display:block}.profile-more-history-item small{display:block;margin-top:4px;color:#9bb8d6;font-size:11px}.profile-more-history-item p{margin:6px 0 0;font-size:12px;white-space:pre-wrap;overflow-wrap:anywhere}.profile-more-history-item button{flex:none}
 .profile-more-redesign .profile-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;padding-top:12px;border-top:1px solid rgba(92,155,215,.2)}.profile-more-redesign .profile-actions button{flex:1;min-width:130px}
 @media(max-width:420px){.profile-more-dropdown>summary{padding:10px}.profile-more-content{padding:10px}.profile-more-history-row{flex-direction:column;gap:4px}.profile-more-history-row small{text-align:left}.profile-more-balance b{font-size:19px}}
+
+/* 2026-11-28: Public profile More list compact rows; no subtitles, reduced height. */
+.profile-more-redesign{padding:0 6px!important;gap:0!important}
+.profile-more-dropdown>summary{min-height:36px!important;height:36px!important;padding:5px 4px!important;gap:7px!important}
+.profile-more-icon{flex-basis:20px!important;width:20px!important;height:20px!important;font-size:14px!important}
+.profile-more-label{gap:0!important}
+.profile-more-label b{font-size:12px!important;line-height:1.2!important;font-weight:700!important}
+.profile-more-label small{display:none!important}
+.profile-more-chevron{font-size:14px!important}
+.profile-more-content{padding:6px 6px 8px!important}
+.profile-more-redesign .profile-actions{gap:5px!important;margin-top:6px!important;padding-top:6px!important}
+.profile-more-redesign .profile-actions button{min-height:30px!important;height:30px!important;padding:4px 8px!important;font-size:11px!important}
+@media(max-width:420px){.profile-more-dropdown>summary{min-height:34px!important;height:34px!important;padding:4px!important}.profile-more-content{padding:5px!important}}
