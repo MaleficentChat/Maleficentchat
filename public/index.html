@@ -84,11 +84,14 @@
   <link rel="stylesheet" href="/rooms-join-panel.css?v=20261127-1">
 
 <style id="mc-sidebar-cleanup-20261128">
-/* Requested clean mobile/desktop navigation drawer: keep logout in the account menu. */
+/* Navigation panel intentionally excludes branding, profile picture, and logout. */
 #sidebar > .logo,
 #sidebar > .side-spacer,
 #sidebar > #logout,
-#sidebar > #meMini { display:none !important; }
+#sidebar > #meMini,
+#sidebar .me-mini,
+#sidebar .me-mini img,
+#sidebar .me-mini .avatar { display:none !important; }
 #sidebar { gap: 12px; }
 </style>
 
