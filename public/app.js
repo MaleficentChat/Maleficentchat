@@ -2463,6 +2463,32 @@ function saveRecentGifSearch(query){
   const items=[q,...getRecentGifSearches().filter(x=>x.toLowerCase()!==q.toLowerCase())].slice(0,6);
   safeStorage.setItem("mc_gif_recent_searches",JSON.stringify(items));
 }
+
+const MC_STICKERS=[
+"🤠","😎","🥳","😂","🤣","😊","😍","🥰","😘","🤗","🤩","😜","😝","🤪","😏","🙃","😇","🥹","😭","😤","😡","🤯","😱","😴","🤔","🫡","🤭","🫣","🤫","🤓","👻","💀","🤖","👽","🎃","😈","👑","🧙","🦄","🐸","🐵","🐶","🐱","🐼","🐻","🐨","🐯","🦁","🐮","🐷","🐰","🦊","🐹","🐭","🐔","🐧","🦋","🐝","🐞","🦖","🐢","🐙","🦀","🐬","🐳","🦈","🦩","🦚","🦜","🦔","🐣","🐥","🐾","🌈","☀️","🌙","⭐","✨","💫","⚡","🔥","💥","🎉","🎊","🎈","🎁","🎀","💎","💍","👗","👠","👜","💅","💄","🧸","🍓","🍒","🍉","🍍","🍕","🍟","🍔","🍩","🍪","🍰","🧁","☕","🥤","🍿","🧋","🌹","🌻","🌷","💐","❤️","🩷","💜","💙","💚","🫶"
+];
+function openStickerPicker(){
+  if(!state.currentRoom){toast("Join a room before sending a sticker.");return;}
+  let sending=false;
+  modal('<div class="mc-sticker-picker"><h2>🩷 Stickers</h2><div class="mc-sticker-grid" id="mcStickerGrid" aria-label="Animated stickers"></div></div>');
+  const grid=mcGetById("mcStickerGrid");if(!grid)return;
+  grid.innerHTML=MC_STICKERS.slice(0,120).map(emoji=>'<button type="button" class="mc-sticker-choice" data-sticker="'+esc(emoji)+'" aria-label="Send sticker '+esc(emoji)+'"><span>'+emoji+'</span></button>').join("");
+  grid.addEventListener("click",async event=>{
+    const choice=event.target.closest("[data-sticker]");if(!choice||sending)return;
+    const sticker=choice.dataset.sticker,roomId=String(state.currentRoom||"");
+    sending=true;grid.querySelectorAll("button").forEach(button=>button.disabled=true);
+    try{
+      const result=await api("/api/rooms/"+encodeURIComponent(roomId)+"/sticker",{method:"POST",body:JSON.stringify({emoji:sticker})});
+      if(result.message&&String(state.currentRoom)===roomId)appendMessage(result.message);
+      closeModal();toast("Sticker sent!");
+    }catch(error){sending=false;grid.querySelectorAll("button").forEach(button=>button.disabled=false);toast(error.message||"Could not send sticker.");}
+  });
+}
+document.addEventListener("click",event=>{
+  const button=event.target?.closest?.("#stickerPickerBtn");if(!button)return;
+  event.preventDefault();event.stopPropagation();openStickerPicker();
+},true);
+
 async function openGifPicker(dmTarget=null){
   const dmTargetId=dmTarget?String(dmTarget):"";
   const roomIdAtOpen=String(state.currentRoom||"");
@@ -3544,6 +3570,7 @@ function messageHTML(message) {
 }
 
         ${message.type === "gif" && message.gifUrl ? `<a class="chat-gif" href="${esc(message.gifUrl)}" target="_blank" rel="noopener"><img src="${esc(message.gifUrl)}" alt="GIF" loading="lazy"></a>` : ""}
+        ${message.stickerEmoji ? `<div class="mc-animated-sticker" data-motion="${Number(message.stickerMotion||1)}" aria-label="Animated sticker"><span>${esc(message.stickerEmoji)}</span></div>` : ""}
         ${
           message.text && message.type !== "gif"
             ? `<div class="msg-text">${formatMentions(message.text)}</div>`
