@@ -6670,7 +6670,7 @@ app.get("/api/dm/unread-count",auth,featureAllowed("private_messages"),async(req
 
 app.post('/api/reports',auth,async(req,res)=>{
   const reporter=current(req),targetId=String(req.body.target||req.body.targetId||"").trim();
-  const target=findUser(targetId),reason=cleanText(req.body.reason||"").trim().slice(0,500);
+  const target=findUser(targetId),reason=cleanText(req.body.reason||"").trim().slice(0,1000);
   if(!target)return res.status(404).json({error:"Reported user not found."});
   if(String(target.id)===String(reporter.id))return res.status(400).json({error:"You cannot report your own account."});
   if(!reason)return res.status(400).json({error:"Please provide a reason for this report."});
