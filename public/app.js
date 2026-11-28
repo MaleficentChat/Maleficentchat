@@ -6591,17 +6591,28 @@ function privacyModal() {
 }
 
 function usernameHistory() {
-  modal(`
-    <h2>Username change history</h2>
-
-    <pre>${esc(
-      JSON.stringify(
-        state.user.usernameHistory || [],
-        null,
-        2
-      )
-    )}</pre>
-  `);
+  const user=state.user||{};
+  const entries=[];
+  (Array.isArray(user.usernameHistory)?user.usernameHistory:[]).forEach(h=>{
+    const from=String(h.from||h.username||"").replace(/^@/,"").trim();
+    const to=String(h.to||"").replace(/^@/,"").trim();
+    if(!from||!to||from.toLowerCase()===to.toLowerCase())return;
+    entries.push({type:"Username",from:"@"+from,to:"@"+to,time:Number(h.time||h.changedAt||0)});
+  });
+  const displayHistory=Array.isArray(user.displayNameHistory)?user.displayNameHistory:[];
+  displayHistory.forEach((h,i)=>{
+    const to=String(h.value||h.displayName||"").trim();
+    if(!to)return;
+    const from=String(displayHistory[i-1]?.value||"").trim();
+    if(from&&from===to)return;
+    entries.push({type:"Display Name",from:from||"Previous name",to,time:Number(h.time||h.changedAt||0)});
+  });
+  entries.sort((a,b)=>(b.time||0)-(a.time||0));
+  const rows=entries.map(h=>{
+    const date=h.time?fmt(h.time):"Date unavailable";
+    return '<div class="mc-name-history-row"><div class="mc-name-history-meta"><span class="mc-name-history-type">'+esc(h.type)+'</span><span class="mc-name-history-date">'+esc(date)+'</span></div><div class="mc-name-history-change"><span class="mc-name-history-old">'+esc(h.from)+'</span><span class="mc-name-history-arrow" aria-hidden="true">→</span><strong>'+esc(h.to)+'</strong></div></div>';
+  }).join('<div class="mc-name-history-divider"></div>');
+  modal('<div class="mc-name-history"><h2>Name History</h2><p class="muted">History of username and display name changes.</p><div class="mc-name-history-list">'+(rows||'<p class="muted">No name changes recorded yet.</p>')+'</div></div>');
 }
 
 async function deleteAccount() {
