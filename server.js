@@ -4264,8 +4264,10 @@ app.post("/api/dm/:id",auth,featureAllowed("private_messages"),upload.single("fi
   if(await checkRestrictedMediaUpload(req,res,u,req.file))return;
   if(privateMessagesBlocked(u,v))return res.status(403).json({error:"Messaging blocked"});
   if(req.file&&!/^(image|audio)\//i.test(String(req.file.mimetype||""))){await discardUploadedMedia(req.file);return res.status(415).json({error:"Private-message attachments must be image or audio files."});}
-  const m={id:id(),from:u.id,to:v.id,text:cleanText(req.body.text),attachment:req.file?{url:"/uploads/"+req.file.filename,type:req.file.mimetype,name:req.file.originalname}:null,replyTo:req.body.replyTo||null,time:Date.now(),read:false,delivered:true};
-  if(!m.text&&!m.attachment)return res.status(400).json({error:"Empty message"});
+  const stickerEmoji=String(req.body.stickerEmoji||"").trim();
+  if(stickerEmoji&&!/^\\p{Extended_Pictographic}(?:\\uFE0F|\\u200D\\p{Extended_Pictographic})*$/u.test(stickerEmoji))return res.status(400).json({error:"Choose a valid sticker."});
+  const m={id:id(),from:u.id,to:v.id,text:cleanText(req.body.text),attachment:req.file?{url:"/uploads/"+req.file.filename,type:req.file.mimetype,name:req.file.originalname}:null,stickerEmoji:stickerEmoji||undefined,stickerMotion:stickerEmoji?1+Math.floor(Math.random()*4):undefined,replyTo:req.body.replyTo||null,time:Date.now(),read:false,delivered:true};
+  if(!m.text&&!m.attachment&&!m.stickerEmoji)return res.status(400).json({error:"Empty message"});
   await pool.query(`INSERT INTO private_messages(id,sender_id,receiver_id,message,data,created_at) VALUES($1,$2,$3,$4,$5::jsonb,NOW())`,
     [m.id,Number(u.id),Number(v.id),m.text,JSON.stringify(m)]);
   // private_messages is already the durable source; avoid save(), which rewrites
