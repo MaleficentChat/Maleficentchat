@@ -1915,8 +1915,6 @@ function organizeOwnerSpace(){
   const layout=document.createElement("div");
   layout.className="owner-space-master-layout";
   layout.style.cssText="display:flex;flex-direction:column;gap:0;margin:8px 0;";
-  const stats=staffRoot.querySelector(".owner-statistics-card");
-  if(stats)layout.appendChild(stats);
   const categoryDefs=[
     ["system","📊 System Overview",/system statistics|database storage|storage limit|stored media|database overview|system overview/],
     ["config","⚙️ Site Configuration",/site settings|developer controls|site refresh|hard refresh|database information|gold|diamonds|xp|daily rewards|gif costs|mute settings|feature grant|mode management|economy|configuration/],
@@ -1943,6 +1941,7 @@ function organizeOwnerSpace(){
     groups.set(key,{content,matcher});
   });
   const classify=node=>{
+    if(node.classList?.contains("owner-statistics-card"))return "system";
     const text=String(node.innerText||node.textContent||"").toLowerCase();
     for(const [key,{matcher}] of groups)if(matcher.test(text))return key;
     return "config";
