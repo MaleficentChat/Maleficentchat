@@ -6873,11 +6873,24 @@ app.post('/api/news/:id/comments',auth,(req,res)=>{
   const text=cleanText(req.body.text||'').trim().slice(0,1000);
   if(!text) return res.status(400).json({error:'Comment cannot be empty.'});
   n.comments ||= [];
-  const comment={id:id(),userId:u.id,username:u.username,displayName:u.displayName,avatar:u.avatar||'',rank:u.rank,text,time:Date.now()};
+  const parentId=req.body.parentId||null;
+  if(parentId&&!n.comments.some(c=>String(c.id)===String(parentId)))return res.status(404).json({error:'Parent comment not found.'});
+  const comment={id:id(),parentId,userId:u.id,username:u.username,displayName:u.displayName,avatar:u.avatar||'',rank:u.rank,text,likes:[],time:Date.now()};
   n.comments.push(comment);
   save();
   io.emit('news');
   res.json({comment});
+});
+
+app.post('/api/news/:newsId/comments/:commentId/like',auth,(req,res)=>{
+  const u=current(req),n=(db.news||[]).find(x=>x.id===req.params.newsId);
+  if(!n)return res.status(404).json({error:'News item not found'});
+  const c=(n.comments||[]).find(x=>x.id===req.params.commentId);
+  if(!c)return res.status(404).json({error:'Comment not found'});
+  c.likes ||= [];
+  const index=c.likes.map(String).indexOf(String(u.id));
+  if(index>=0)c.likes.splice(index,1);else c.likes.push(u.id);
+  save();io.emit('news');res.json({ok:true,liked:index<0,likes:c.likes.length});
 });
 
 app.delete('/api/news/:newsId/comments/:commentId',auth,(req,res)=>{
