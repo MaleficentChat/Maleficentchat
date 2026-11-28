@@ -1219,9 +1219,7 @@ async function start() {
   loadPendingWarning().catch(error=>console.warn("Pending warning restore failed:",error?.message||error));
   updateNav();
   applyTheme(state.user?.settings?.theme||state.user?.theme||'obsidian');
-  applyUserAppearance();
   if(state.user?.banned) showBanLock(state.user.banReason||"Community rules"); else if(state.user?.kickedUntil&&state.user.kickedUntil>Date.now()) showKickLock(state.user.kickedUntil,state.user.kickReason||"Community rules"); else clearActionLock();
-  applyUserAppearance();
 
   if (state.socket) {
     try {
@@ -2139,6 +2137,13 @@ function positionChatTools(button,drawer,layout){
     top=Math.max(pad,top);
     drawer.style.setProperty("left",Math.round(left)+"px","important");
     drawer.style.setProperty("top",Math.round(top)+"px","important");
+    // An ancestor with backdrop-filter/transform (the composer, the chat card) becomes the
+    // containing block for position:fixed, so viewport coordinates land offset (off-screen on
+    // phones). Measure where the popover really landed and shift it onto the intended spot.
+    const placed=drawer.getBoundingClientRect();
+    const dx=Math.round(left)-placed.left,dy=Math.round(top)-placed.top;
+    if(Math.abs(dx)>1)drawer.style.setProperty("left",Math.round(left+dx)+"px","important");
+    if(Math.abs(dy)>1)drawer.style.setProperty("top",Math.round(top+dy)+"px","important");
     drawer.style.setProperty("visibility","visible","important");
   });
 }
@@ -2174,6 +2179,18 @@ document.addEventListener("click",event=>{
   const dm=mcGetById("dmToolsDrawer"),dmButton=mcGetById("dmToolsToggle");
   if(dm&&!dm.classList.contains("hidden")&&!target.closest("#dmToolsDrawer,#dmToolsToggle"))closeQuickActions(dm,dmButton);
 },true);
+// Picking an action closes the popover (bubble phase, so the action's own handler runs first).
+document.addEventListener("click",event=>{
+  const option=event.target instanceof Element?event.target.closest("#chatToolsDrawer button"):null;
+  if(option)closeQuickActions(mcGetById("chatToolsDrawer"),mcGetById("chatToolsToggle"));
+});
+document.addEventListener("keydown",event=>{
+  if(event.key!=="Escape")return;
+  const main=mcGetById("chatToolsDrawer");
+  if(main?.classList.contains("open")){closeQuickActions(main,mcGetById("chatToolsToggle"));mcGetById("chatToolsToggle")?.focus();}
+  const dm=mcGetById("dmToolsDrawer");
+  if(dm&&!dm.classList.contains("hidden")){closeQuickActions(dm,mcGetById("dmToolsToggle"));mcGetById("dmToolsToggle")?.focus();}
+});
 window.addEventListener("resize",()=>{
   const main=mcGetById("chatToolsDrawer");if(main?.classList.contains("open"))positionChatTools(mcGetById("chatToolsToggle"),main,"stack");
   const dm=mcGetById("dmToolsDrawer");if(dm&&!dm.classList.contains("hidden"))positionChatTools(mcGetById("dmToolsToggle"),dm,"grid");
