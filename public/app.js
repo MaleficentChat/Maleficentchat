@@ -2152,16 +2152,21 @@ function closeQuickActions(drawer,button){
   button?.setAttribute("aria-expanded","false");
   resetChatToolsPosition(drawer);
 }
-const chatToolsToggle=mcGetById("chatToolsToggle");
-if(chatToolsToggle&&!chatToolsToggle.dataset.mcBound){
-  chatToolsToggle.dataset.mcBound="true";
-  chatToolsToggle.addEventListener("click",event=>{
-    event.preventDefault();event.stopPropagation();
-    const drawer=mcGetById("chatToolsDrawer");if(!drawer)return;
-    if(drawer.classList.contains("open"))closeQuickActions(drawer,chatToolsToggle);
-    else{drawer.classList.add("open");drawer.classList.remove("hidden");chatToolsToggle.setAttribute("aria-expanded","true");positionChatTools(chatToolsToggle,drawer,"stack");}
-  },true);
-}
+// Delegated capture handler: survives composer rerenders and prevents any
+// bubbling/capture listener from swallowing the Main Chat Add tap.
+document.addEventListener("click",event=>{
+  const button=event.target instanceof Element?event.target.closest("#chatToolsToggle"):null;
+  if(!button)return;
+  event.preventDefault();event.stopPropagation();event.stopImmediatePropagation();
+  const drawer=mcGetById("chatToolsDrawer");if(!drawer)return;
+  if(drawer.classList.contains("open"))closeQuickActions(drawer,button);
+  else{
+    drawer.classList.remove("hidden");
+    drawer.classList.add("open");
+    button.setAttribute("aria-expanded","true");
+    positionChatTools(button,drawer,"stack");
+  }
+},true);
 document.addEventListener("click",event=>{
   const target=event.target instanceof Element?event.target:null;if(!target)return;
   const main=mcGetById("chatToolsDrawer"),mainButton=mcGetById("chatToolsToggle");
