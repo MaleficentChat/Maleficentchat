@@ -5330,7 +5330,7 @@ function dmMessageHTML(message, messages, user) {
         }
 
         ${
-          !message.deleted && message.text && !message.youtube?.videoId
+          !message.deleted && message.text && !message.youtube?.videoId && !dmTextIsMedia(message.text)
             ? `<div class="msg-text">${esc(message.text)}</div>`
             : ""
         }
