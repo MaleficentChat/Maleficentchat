@@ -7267,22 +7267,40 @@ async function loadIpInspection(query=''){
   }catch(e){results.innerHTML='<p class="muted">'+esc(e.message||'Could not load IP history.')+'</p>';}
 }
 async function showIpInsights(user){
-  modal('<div class="about-card"><h2>🔎 Account insights</h2><p class="muted">Loading shared-IP matches and username history…</p></div>');
+  modal('<div class="about-card"><h2>🔎 Account insights</h2><p class="muted">Loading shared-IP matches and identity history…</p></div>');
   try{
     const d=await api('/api/staff/user/'+encodeURIComponent(user.id)+'/ip-insights');
     const fmtDate=value=>value?fmt(new Date(value).getTime()):'Unknown';
-    const history=d.user?.usernameHistory||[];
-    const historyHtml=history.length?history.map(h=>'<div class="profile-info-row"><b>@'+esc(h.from||'Unknown')+' → @'+esc(h.to||'Unknown')+'</b><span>'+esc(fmtDate(h.time))+(h.changedBy?' · changed by @'+esc(h.changedBy):'')+'</span></div>').join(''):'<p class="muted">No previous username changes are recorded.</p>';
+    const identityEntries=account=>{
+      const entries=[];
+      (account?.usernameHistory||[]).forEach(h=>{
+        const from=String(h.from||h.username||'').replace(/^@/,'').trim(),to=String(h.to||'').replace(/^@/,'').trim();
+        if(!from||!to||from.toLowerCase()===to.toLowerCase())return;
+        entries.push({type:'Username',from:'@'+from,to:'@'+to,time:Number(h.time||h.changedAt||0),changedBy:h.changedBy||''});
+      });
+      const dh=Array.isArray(account?.displayNameHistory)?account.displayNameHistory:[];
+      dh.forEach((h,index)=>{
+        const from=String(h.from??dh[index-1]?.value??'').trim();
+        const to=String(h.to??h.value??h.displayName??'').trim();
+        if(!to||from&&from===to)return;
+        entries.push({type:'Display Name',from:from||'Previous name',to,time:Number(h.time||h.changedAt||0),changedBy:''});
+      });
+      entries.sort((x,y)=>(y.time||0)-(x.time||0));
+      return entries;
+    };
+    const identityHtml=account=>{
+      const entries=identityEntries(account);
+      return entries.length?entries.map(h=>'<div class="profile-info-row"><div><b>'+esc(h.type)+'</b><div style="margin-top:4px">'+esc(h.from)+' → '+esc(h.to)+'</div></div><span>'+esc(fmtDate(h.time))+(h.changedBy?' · changed by @'+esc(h.changedBy):'')+'</span></div>').join(''):'<p class="muted">No identity changes recorded.</p>';
+    };
     const matches=d.matches||[];
     const matchHtml=matches.length?matches.map(m=>{
-      const names=(m.usernameHistory||[]).length?m.usernameHistory.map(h=>'<small>@'+esc(h.from||'Unknown')+' → @'+esc(h.to||'Unknown')+' · '+esc(fmtDate(h.time))+'</small>').join(''):'<small>No previous usernames recorded</small>';
-      return '<div class="about-card" style="margin-top:10px"><div class="profile-info-row"><b>👤 @'+esc(m.username)+'</b><span>Registered '+esc(fmtDate(m.registeredAt))+'</span></div><div class="profile-info-row"><b>Shared-IP events</b><span>'+esc(m.sharedIpEvents)+'</span></div><div style="margin-top:8px"><b>📜 Previous usernames</b>'+names+'</div></div>';
+      const names=identityHtml(m);
+      return '<div class="about-card" style="margin-top:10px"><div class="profile-info-row"><b>👤 @'+esc(m.username)+'</b><span>Registered '+esc(fmtDate(m.registeredAt))+'</span></div><div class="profile-info-row"><b>Shared-IP events</b><span>'+esc(m.sharedIpEvents)+'</span></div><h4 style="margin-top:10px">📜 Previous identity history</h4>'+names+'</div>';
     }).join(''):'<p class="muted">No other accounts with a matching recorded IP were found.</p>';
-    modal('<div class="profile-drawer"><h2>🔎 View insights · @'+esc(d.user?.username||user.username)+'</h2><div class="about-card"><div class="profile-info-row"><b>📅 Registration date</b><span>'+esc(fmtDate(d.user?.registeredAt))+'</span></div><h3>📜 Previous usernames</h3>'+historyHtml+'</div><h3 style="margin-top:16px">🔗 Accounts with matching IP ('+matches.length+')</h3>'+matchHtml+'<p class="muted" style="margin-top:12px">'+esc(d.note||'IP matches are not proof of common ownership.')+'</p><div class="toolbar"><button class="primary" id="closeIpInsights">Close</button></div></div>');
+    modal('<div class="profile-drawer"><h2>🔎 View insights · @'+esc(d.user?.username||user.username)+'</h2><div class="about-card"><div class="profile-info-row"><b>📅 Registration date</b><span>'+esc(fmtDate(d.user?.registeredAt))+'</span></div><h3>📜 Previous identity history</h3>'+identityHtml(d.user)+'</div><h3 style="margin-top:16px">🔗 Accounts with matching IP ('+matches.length+')</h3>'+matchHtml+'<div class="toolbar"><button class="primary" id="closeIpInsights">Close</button></div></div>');
     mcGetById('closeIpInsights')?.addEventListener('click',closeModal);
   }catch(e){modal('<div class="about-card"><h2>🔎 Account insights</h2><p class="muted">'+esc(e.message||'Could not load insights.')+'</p><button class="primary" id="closeIpInsightsError">Close</button></div>');mcGetById('closeIpInsightsError')?.addEventListener('click',closeModal);}
 }
-
 function findUserName(id){
   return state.allUsers?.find(u=>u.id===id)?.username || (id?String(id).slice(0,12):'Unknown');
 }
