@@ -6831,6 +6831,16 @@ app.post('/api/news/:id/reaction',auth,(req,res)=>{
   save();io.emit('news');res.json({ok:true,reactions:n.reactions,reacted:!reacted});
 });
 
+app.patch('/api/news/:id',auth,(req,res)=>{
+  const u=current(req),n=(db.news||[]).find(x=>String(x.id)===String(req.params.id));
+  if(!n)return res.status(404).json({error:'News item not found.'});
+  if(String(n.authorId)!==String(u.id)&&!hasFeature(u,'delete_news'))return res.status(403).json({error:'You may only edit your own News posts.'});
+  const body=cleanText(req.body.body||'').trim().slice(0,3000);
+  if(!body)return res.status(400).json({error:'News post cannot be empty.'});
+  n.body=body;
+  save();io.emit('news');res.json({ok:true,news:n});
+});
+
 app.delete(
   "/api/news/:id",
   auth,

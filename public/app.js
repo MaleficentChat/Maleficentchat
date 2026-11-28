@@ -5642,14 +5642,15 @@ async function loadNews() {
       const authorButton=n.authorId? `<button type="button" class="news-author-link" data-news-author="${esc(n.authorId)}"><span class="news-author-avatar">${n.avatar?`<img src="${esc(n.avatar)}" alt="">`:'📰'}</span><span><b>${esc(n.author||'Maleficent Chat')}</b><small>${fmt(n.time)}</small></span></button>`:`<div class="news-author-link"><span class="news-author-avatar">${n.avatar?`<img src="${esc(n.avatar)}" alt="">`:'📰'}</span><span><b>${esc(n.author||'Maleficent Chat')}</b><small>${fmt(n.time)}</small></span></div>`;
       return `<article class="card news-card news-card-premium" data-news-id="${esc(n.id)}">
         <header class="news-card-top">${authorButton}<button class="social-more" data-news-more="${esc(n.id)}" aria-label="Post options">•••</button></header>
-        <div class="news-post-content">${n.title?'<h3 class="news-post-title">'+esc(n.title)+'</h3>':''}<div class="news-body">${esc(n.body||'')}</div></div>
+        <div class="news-post-content"><div class="news-body">${esc(n.body||'')}</div></div>
         ${n.attachment?.type?.startsWith('image/')?`<img class="news-attachment" src="${esc(n.attachment.url)}" alt="News photo" loading="lazy">`:''}
-        <div class="news-social-stats"><button type="button" data-news-likes="${esc(n.id)}"><span>♥</span> ${likes.length} likes</button><button type="button" data-news-comments="${esc(n.id)}">${comments.length} comments</button></div>
-        <div class="news-actions news-actions-clean"><button class="mini news-like-button ${liked?'is-liked':''}" type="button" data-news-like="${esc(n.id)}" aria-pressed="${liked}"><span>♥</span> ${liked?'Liked':'Like'}</button><button class="mini" type="button" data-news-comments="${esc(n.id)}">Comment</button>${canFeature('delete_news')?`<button class="mini danger" type="button" onclick="deleteNews('${esc(n.id)}')">Delete</button>`:""}</div>
-        <div class="social-post-options hidden" id="newsOptions-${esc(n.id)}"><button type="button" data-news-report="${esc(n.id)}">⚑ Report</button></div>
+        <div class="news-actions news-actions-clean"><button class="news-like-button news-like-icon ${liked?'is-liked':''}" type="button" data-news-like="${esc(n.id)}" aria-pressed="${liked}" aria-label="${liked?'Unlike':'Like'}" title="${liked?'Unlike':'Like'}">♥</button><button class="news-comments-action" type="button" data-news-comments="${esc(n.id)}">▢ <span>Comments</span></button></div>
+        <div class="social-post-options hidden" id="newsOptions-${esc(n.id)}"><button type="button" data-news-likes="${esc(n.id)}">♥ Likes</button>${String(n.authorId)===String(state.user?.id)?`<button type="button" data-news-edit="${esc(n.id)}">✎ Edit</button>`:""}${canFeature('delete_news')?`<button type="button" data-news-delete="${esc(n.id)}">⌫ Delete</button>`:""}<button type="button" data-news-report="${esc(n.id)}">⚑ Report</button></div>
       </article>`;
     }).join("")||`<div class="news-empty-state"><span>✦</span><b>Nothing new just yet</b><p>Community announcements will appear here.</p></div>`;
     document.querySelectorAll('[data-news-more]').forEach(b=>b.onclick=()=>{mcGetById('newsOptions-'+b.dataset.newsMore)?.classList.toggle('hidden')});
+    document.querySelectorAll('[data-news-delete]').forEach(b=>b.onclick=()=>deleteNews(b.dataset.newsDelete));
+    document.querySelectorAll('[data-news-edit]').forEach(b=>b.onclick=()=>editNewsPost(b.dataset.newsEdit));
     document.querySelectorAll('[data-news-report]').forEach(b=>b.onclick=async()=>{const id=b.dataset.newsReport;try{await api('/api/news/'+encodeURIComponent(id)+'/report',{method:'POST',body:JSON.stringify({reason:'Reported by community member'})});toast('Report submitted.')}catch(e){toast(e.message||'Reporting is unavailable for this post.')}});
     document.querySelectorAll('[data-news-like]').forEach(b=>b.onclick=async()=>{b.disabled=true;try{await api('/api/news/'+encodeURIComponent(b.dataset.newsLike)+'/like',{method:'POST',body:JSON.stringify({})});await loadNews()}catch(e){toast(e.message||'Could not like this post.')}finally{b.disabled=false}});
     document.querySelectorAll('[data-news-likes]').forEach(b=>b.onclick=()=>openNewsLikes(b.dataset.newsLikes));
@@ -5678,20 +5679,23 @@ function openPublishNews(){
     </div>
     <div class="instagram-compose-author">${avatar(state.user,'avatar')}<div><b>${esc(state.user?.displayName||state.user?.username||'You')}</b><small class="muted">Publishing to Community News</small></div></div>
     <form id="newsForm" novalidate>
-      <label class="news-compose-label" for="nt">Headline <span>Optional</span></label>
-      <input id="nt" maxlength="120" placeholder="Give your update a headline…">
-      <label class="news-compose-label" for="nb">Your update</label>
-      <textarea id="nb" rows="6" maxlength="3000" placeholder="What's happening? Write your announcement…" required></textarea>
-      <label class="instagram-photo-picker news-compose-upload" for="nphoto"><span>＋</span><div><b>Add a photo</b><small>Attach an image to your News post</small></div><strong>Browse</strong></label>
+      <div class="news-composer-shell">
+        <textarea id="nb" rows="3" maxlength="3000" placeholder="What's happening? Share an update…" required></textarea>
+        <div class="news-composer-tools">
+          <button type="button" class="news-icon-button" id="newsAttach" aria-label="Attach photo" title="Attach photo">＋</button>
+          <button type="submit" class="news-icon-button news-send-button" id="newsComposePublish" aria-label="Publish post" title="Publish">➤</button>
+        </div>
+      </div>
       <input id="nphoto" type="file" accept="image/jpeg,image/png,image/webp,image/gif" hidden>
       <div id="newsPhotoPreview" class="instagram-photo-preview hidden"><img id="newsPhotoPreviewImage" alt="Selected News photo preview"><button type="button" class="mini danger" id="newsPhotoRemove">Remove photo</button></div>
-      <div class="news-compose-footer"><small class="muted">Your post will appear in the News feed.</small><div class="toolbar instagram-compose-actions"><button class="mini" type="button" id="newsComposeCancel">Cancel</button><button class="primary" type="submit" id="newsComposePublish">Publish post</button></div></div>
+      <div class="news-compose-footer"><button type="button" class="news-compose-cancel" id="newsComposeCancel">Cancel</button><small class="muted">Your post will appear in the News feed.</small></div>
       <p id="newsComposeError" class="error" role="status" aria-live="polite"></p>
     </form>
   </div>`);
   const form=mcGetById('newsForm'),photo=mcGetById('nphoto'),preview=mcGetById('newsPhotoPreview'),previewImage=mcGetById('newsPhotoPreviewImage');
   const publish=mcGetById('newsComposePublish'),errorBox=mcGetById('newsComposeError');
   mcGetById('newsComposeCancel')?.addEventListener('click',closeModal);
+  mcGetById('newsAttach')?.addEventListener('click',()=>photo?.click());
   photo?.addEventListener('change',()=>{
     const file=photo.files?.[0];
     if(!file){preview?.classList.add('hidden');return;}
@@ -5709,7 +5713,6 @@ function openPublishNews(){
   });
   const publishPost=async()=>{
     if(publish?.disabled)return;
-    const title=mcGetById('nt')?.value.trim()||'';
     const body=mcGetById('nb')?.value.trim()||'';
     const file=photo?.files?.[0];
     if(!body&&!file){if(errorBox)errorBox.textContent='Write an update or attach a photo before publishing.';return;}
@@ -5717,11 +5720,10 @@ function openPublishNews(){
       if(errorBox)errorBox.textContent='Choose an image no larger than 10 MB.';return;
     }
     publish.disabled=true;
-    publish.textContent='Publishing…';
+    publish.textContent='…';
     if(errorBox)errorBox.textContent='';
     try{
       const payload=new FormData();
-      payload.append('title',title);
       payload.append('body',body);
       if(file)payload.append('file',file);
       await api('/api/news',{method:'POST',body:payload,uploadProgress:true});
@@ -5732,7 +5734,7 @@ function openPublishNews(){
       const message=err.message||'Could not publish this News post.';
       if(errorBox)errorBox.textContent=message;
       toast(message);
-      if(publish){publish.disabled=false;publish.textContent='Publish post';}
+      if(publish){publish.disabled=false;publish.textContent='➤';}
     }
   };
   // Keep the publish callback on the live button and route both touch/click
@@ -5856,19 +5858,32 @@ async function openNewsComments(id){
     </div>`).join("")||`<div class="news-empty-comments">No comments yet. Be the first to comment.</div>`;
     const host=mcGetById("newsCommentsPanel");
     if(!host)throw new Error("News comments panel is unavailable.");
-    host.innerHTML=`<div class="news-comments-panel-head"><div><h2>${esc(n.title)}</h2><p class="muted">Join the conversation</p></div><div class="news-comments-panel-actions"><span class="news-count">💬 ${(data.comments||[]).length}</span><button type="button" class="news-comments-panel-close" id="closeNewsComments" aria-label="Close comments">×</button></div></div><div class="news-comments-panel-content"><div class="news-comments-list" id="commentsList">${render(data.comments)}</div><form id="commentForm" class="news-comment-form"><input id="commentText" maxlength="1000" placeholder="Type your comment" required><button class="primary">Post</button></form></div>`;
+    host.innerHTML=`<div class="news-comments-panel-head"><div><h2>Comments</h2><p class="muted">Join the conversation</p></div><div class="news-comments-panel-actions"><span class="news-count">💬 ${(data.comments||[]).length}</span><button type="button" class="news-comments-panel-close" id="closeNewsComments" aria-label="Close comments">×</button></div></div><div class="news-comments-panel-content"><div class="news-comments-list" id="commentsList">${render(data.comments)}</div><form id="commentForm" class="news-comment-form"><input id="commentText" maxlength="1000" placeholder="Write a comment…" required><button class="primary" aria-label="Send comment" title="Send">➤</button></form></div>`;
     host.classList.remove("hidden");
     host.onclick=event=>{const profileLink=event.target.closest("[data-news-comment-user]");if(profileLink){const userId=profileLink.dataset.newsCommentUser;if(userId){event.preventDefault();openUser(userId);}}};
     mcGetById("closeNewsComments")?.addEventListener("click",()=>{host.classList.add("hidden");host.innerHTML="";});
     mcGetById("commentForm").onsubmit=async e=>{
       e.preventDefault();
       const input=mcGetById("commentText"),text=input?.value.trim(); if(!text)return;
-      const submit=e.submitter||mcGetById("commentForm").querySelector("button");if(submit){submit.disabled=true;submit.textContent="Posting…";}
+      const submit=e.submitter||mcGetById("commentForm").querySelector("button");if(submit){submit.disabled=true;submit.textContent="…";}
       try{await api(`/api/news/${encodeURIComponent(id)}/comments`,{method:"POST",body:JSON.stringify({text})});input.value="";const r=await api(`/api/news/${encodeURIComponent(id)}/comments`);mcGetById("commentsList").innerHTML=render(r.comments);host.querySelector(".news-count").textContent="💬 "+(r.comments||[]).length;await loadNews();}
       catch(err){toast(err.message);}
-      finally{if(submit){submit.disabled=false;submit.textContent="Post";}}
+      finally{if(submit){submit.disabled=false;submit.textContent="➤";}}
     };
   }catch(e){toast(e.message)}
+}
+async function editNewsPost(id){
+  const post=(await api('/api/news')).news.find(n=>String(n.id)===String(id));
+  if(!post)return;
+  modal(`<div class="news-edit-modal"><h2>Edit News post</h2><textarea id="newsEditBody" maxlength="3000" rows="5">${esc(post.body||'')}</textarea><div class="news-edit-actions"><button type="button" class="mini" id="newsEditCancel">Cancel</button><button type="button" class="primary" id="newsEditSave">Save</button></div></div>`);
+  mcGetById('newsEditCancel')?.addEventListener('click',closeModal);
+  mcGetById('newsEditSave')?.addEventListener('click',async()=>{
+    const body=mcGetById('newsEditBody')?.value.trim()||'';
+    if(!body){toast('News post cannot be empty.');return;}
+    const saveButton=mcGetById('newsEditSave');if(saveButton)saveButton.disabled=true;
+    try{await api('/api/news/'+encodeURIComponent(id),{method:'PATCH',body:JSON.stringify({body})});closeModal();await loadNews();toast('News post updated.');}
+    catch(e){toast(e.message||'Could not update News post.');if(saveButton)saveButton.disabled=false;}
+  });
 }
 async function deleteNews(id){
   if(!canFeature('delete_news')){toast('You do not have permission to delete news.');return;}
