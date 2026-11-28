@@ -4264,12 +4264,16 @@ function launchArcadeGame(game){
 }
 function bindBack(){const b=mcGetById("gamesRoot")?.querySelector("[data-arcade-back]");if(b)b.onclick=renderArcade;}
 function openDoodleComposer(dmTarget=null){
-  const canSave=canFeature('doodle_studio_save'),canShare=!!dmTarget||!!state.currentRoom&&canFeature('doodle_studio_share');
-  if(!canSave&&!canShare){toast('Doodle Studio is not available for your account.');return;}
+  const canShare=!!dmTarget||!!state.currentRoom&&canFeature('doodle_studio_share');
+  if(!canShare){toast('Doodle Studio sharing is not available for your account.');return;}
   modal(`<div class="doodle-modal"><div class="doodle-head"><h2>🖌️ Doodle Studio</h2><button type="button" class="mini" id="doodleClose">×</button></div>
-    <div class="doodle-tools"><label class="doodle-title-field">Title <input id="doodleTitle" type="text" maxlength="80" value="Untitled doodle" placeholder="Name your drawing"></label><button type="button" id="doodlePen">🖌️ Pen</button><button type="button" id="doodleEraser">🧽 Eraser</button><label>Color <input type="color" id="doodleColor" value="#111111"></label><label>Size <input type="range" id="doodleSize" min="2" max="24" value="5"></label><button type="button" id="doodleUndo">↶ Undo</button><button type="button" id="doodleClear">🗑 Clear</button></div>
+    <div class="doodle-tools doodle-compact-tools">
+      <button type="button" id="doodleEraser" aria-pressed="false" title="Toggle eraser">🧽 Eraser</button>
+      <div class="doodle-palette-wrap"><button type="button" id="doodlePaletteToggle" title="Choose drawing color"><span id="doodleColorChip"></span> 🎨</button><div id="doodlePalette" class="doodle-palette" hidden>${['#111111','#FFFFFF','#FF3B30','#FF9500','#FFCC00','#34C759','#00C7BE','#32ADE6','#007AFF','#5856D6','#AF52DE','#FF2D55','#8B4513','#808080','#FFC0CB','#9B9B9B','#7CFC00','#00FFFF'].map(c=>'<button type="button" class="doodle-swatch" data-doodle-color="'+c+'" style="--swatch:'+c+'" aria-label="Choose '+c+'"></button>').join('')}</div></div>
+      <button type="button" id="doodleUndo" title="Undo">↩️</button><label class="doodle-size-control">Size <input type="range" id="doodleSize" min="2" max="24" value="5"></label>
+    </div>
     <canvas id="doodleCanvas" width="900" height="620" aria-label="Draw your doodle here"></canvas>
-    <div class="doodle-footer"><span class="muted">Save a private copy or share it with your current room.</span>${canSave?'<button type="button" id="doodleSave">💾 Save drawing</button>':''}${canShare?'<button type="button" class="primary" id="doodleSend">➤ Send to Room</button>':''}</div></div>`);
+    <div class="doodle-footer"><button type="button" class="primary" id="doodleSend">➤ ${dmTarget?'Send in PM':'Send to Room'}</button></div></div>`);
   const canvas=mcGetById('doodleCanvas'),ctx=canvas.getContext('2d');canvas.style.touchAction='none';canvas.style.userSelect='none';ctx.fillStyle='#ffffff';ctx.fillRect(0,0,canvas.width,canvas.height);
   let drawing=false,erase=false,color='#111111',size=5,history=[];
   const snapshot=()=>{try{history.push(ctx.getImageData(0,0,canvas.width,canvas.height));if(history.length>20)history.shift()}catch{}};
@@ -4278,22 +4282,20 @@ function openDoodleComposer(dmTarget=null){
   canvas.onpointerdown=e=>{e.preventDefault();drawing=true;canvas.setPointerCapture?.(e.pointerId);const p=point(e);ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineCap='round';ctx.lineJoin='round';ctx.strokeStyle=erase?'#ffffff':color;ctx.lineWidth=size;ctx.lineTo(p.x+.01,p.y+.01);ctx.stroke();};
   canvas.onpointermove=e=>{if(!drawing)return;e.preventDefault();const p=point(e);ctx.strokeStyle=erase?'#ffffff':color;ctx.lineWidth=size;ctx.lineTo(p.x,p.y);ctx.stroke();};
   const finish=()=>{if(drawing){drawing=false;snapshot()}};canvas.onpointerup=finish;canvas.onpointercancel=finish;
-  mcGetById('doodlePen').onclick=()=>erase=false;mcGetById('doodleEraser').onclick=()=>erase=true;mcGetById('doodleColor').oninput=e=>{color=e.target.value;erase=false};mcGetById('doodleSize').oninput=e=>size=Number(e.target.value);
+  const eraserBtn=mcGetById('doodleEraser');
+  eraserBtn.onclick=()=>{erase=!erase;eraserBtn.classList.toggle('active',erase);eraserBtn.setAttribute('aria-pressed',String(erase));};
+  const palette=mcGetById('doodlePalette'),paletteToggle=mcGetById('doodlePaletteToggle');
+  paletteToggle.onclick=()=>{palette.hidden=!palette.hidden;};
+  palette.querySelectorAll('[data-doodle-color]').forEach(btn=>btn.onclick=()=>{color=btn.dataset.doodleColor;erase=false;eraserBtn.classList.remove('active');eraserBtn.setAttribute('aria-pressed','false');mcGetById('doodleColorChip').style.background=color;palette.hidden=true;});
+  mcGetById('doodleSize').oninput=e=>size=Number(e.target.value);
   mcGetById('doodleUndo').onclick=()=>{if(history.length>1){history.pop();ctx.putImageData(history[history.length-1],0,0)}};
-  mcGetById('doodleClear').onclick=()=>{ctx.fillStyle='#ffffff';ctx.fillRect(0,0,canvas.width,canvas.height);snapshot()};
   mcGetById('doodleClose').onclick=closeModal;
-  mcGetById('doodleSave')?.addEventListener('click',async()=>{const btn=mcGetById('doodleSave');btn.disabled=true;btn.textContent='Saving…';try{
-    const image=canvas.toDataURL('image/png');
-    const title=(mcGetById('doodleTitle')?.value||'Untitled doodle').trim().slice(0,80)||'Untitled doodle';
-    await api('/api/doodles',{method:'POST',body:JSON.stringify({title,image})});
-    toast('Doodle saved to your personal library.');await loadDoodleLibrary();btn.textContent='✓ Saved';
-  }catch(e){toast(e.message||'Could not save doodle.');btn.disabled=false;btn.textContent='💾 Save drawing';}});
   mcGetById('doodleSend')?.addEventListener('click',async()=>{const btn=mcGetById('doodleSend');btn.disabled=true;btn.textContent='Sending…';try{
     const blob=await new Promise((resolve,reject)=>canvas.toBlob(b=>b?resolve(b):reject(Error('Could not export the doodle.')),'image/png'));
     const file=new File([blob],'maleficent-doodle.png',{type:'image/png'}),form=new FormData();form.append('text','');form.append('file',file);
     if(dmTarget){const data=await api('/api/dm/'+encodeURIComponent(dmTarget),{method:'POST',body:form});if(data.message&&String(state.dmUserId)===String(dmTarget)){state.dmMessages=state.dmMessages||[];state.dmMessages.push(data.message);const list=mcGetById('dmMessages');if(list){list.querySelector('.muted')?.remove();list.insertAdjacentHTML('beforeend',dmMessageHTML(data.message,state.dmMessages,state.dmPeerUser||{}));list.scrollTop=list.scrollHeight;}}closeModal();toast('Doodle sent privately!');}
     else{const data=await api('/api/rooms/'+encodeURIComponent(state.currentRoom)+'/messages',{method:'POST',body:form});if(data.message&&String(data.message.roomId)===String(state.currentRoom))appendMessage(data.message);closeModal();toast('Doodle sent to the room!');}
-  }catch(e){btn.disabled=false;btn.textContent='➤ Send to Main Chat';toast(e.message||'Could not send doodle.')}});
+  }catch(e){btn.disabled=false;btn.textContent='➤ Send to Room';toast(e.message||'Could not send doodle.')}});
 }
 mcGetById('doodleBtn')?.addEventListener('click',openDoodleComposer);
 
