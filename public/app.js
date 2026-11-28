@@ -5298,6 +5298,14 @@ function dmMediaPreviewHTML(message){
   return raw&&/^https?:\/\//i.test(raw)?'<a class="dm-media-link" href="'+esc(raw)+'" target="_blank" rel="noopener">'+esc(raw)+'</a>':"";
 }
 
+function dmTextIsMedia(text){
+  const raw=String(text||"").trim();
+  if(!raw)return false;
+  return /(?:youtube\\.com\\/(?:watch\\?v=|shorts\\/|embed\\/)|youtu\\.be\\/)/i.test(raw)
+    || /\\.(?:gif|png|jpe?g|webp|mp4|webm|mov|mp3|wav|ogg|m4a|aac)(?:\\?.*)?$/i.test(raw)
+    || /^https?:\\/\\/\\S+$/i.test(raw) && /(?:\\.(?:gif|png|jpe?g|webp|mp4|webm|mov|mp3|wav|ogg|m4a|aac)(?:\\?.*)?$|youtube\\.com|youtu\\.be)/i.test(raw);
+}
+
 function dmMessageHTML(message, messages, user) {
   const deleteAction=String(message.from)===String(state.user?.id)&&!message.deleted
     ? '<button type="button" class="mini danger dm-delete-icon" data-dm-delete="'+esc(message.id)+'" title="Delete message" aria-label="Delete message">🗑</button>'
