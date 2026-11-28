@@ -5067,8 +5067,7 @@ app.get('/api/staff/user/:id/ip-insights',auth,async(req,res)=>{
     }
     res.json({
       user:{id:String(target.id),username:target.username,registeredAt:target.createdAt||null,usernameHistory:(target.usernameHistory||[]).map(item=>({from:item.from||item.username||'',to:item.to||'',time:item.time||item.changedAt||null,changedBy:item.changedBy||''}))},
-      matches,
-      note:'Shared IP addresses can be used by families, schools, workplaces, mobile carriers, VPNs, and public networks. A match alone does not prove that accounts belong to the same person. IP addresses are intentionally hidden in this profile insights view.'
+      matches
     });
   }catch(err){
     console.error('[IP_INSIGHTS] failed:',err?.stack||err?.message||err);
