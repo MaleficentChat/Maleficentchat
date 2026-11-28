@@ -3560,7 +3560,7 @@ function messageHTML(message) {
             <div class="quoted-content">
               <div class="quoted-author-name">${esc(quotedAuthor.displayName)}</div>
               <div class="quoted-text">${
-                quoted.text ? esc(quoted.text) : quoted.attachment ? "📎 Attachment" : "Message"
+                quotedMessagePreviewHTML(quoted)
               }</div>
             </div>
           </div>
@@ -5238,6 +5238,50 @@ async function loadDMList() {
   } catch (error) { toast(error.message); }
 }
 
+
+// Media-aware previews for quotes and private-message media.
+function quotedMessagePlainPreview(message){
+  if(!message)return "Message";
+  if(message.stickerEmoji)return "🩷 Sticker "+message.stickerEmoji;
+  if(message.youtube?.videoId)return "▶️ YouTube · "+(message.youtube.title||"Video");
+  if(message.gifUrl)return "🎞️ GIF";
+  if(message.attachment?.type?.startsWith("image/"))return "🖼️ Image";
+  if(message.attachment?.type?.startsWith("video/"))return "🎬 Video";
+  if(message.attachment?.type?.startsWith("audio/"))return "🎵 Audio";
+  const text=String(message.text||"").trim();
+  if(/youtu(?:be\.com|\.be)\//i.test(text))return "▶️ YouTube video";
+  if(/\.(gif)(?:\?|$)/i.test(text))return "🎞️ GIF";
+  if(/\.(mp4|webm|mov)(?:\?|$)/i.test(text))return "🎬 Video";
+  return text||(message.attachment?"📎 Attachment":"Message");
+}
+function quotedMessagePreviewHTML(message){
+  if(!message)return "Message";
+  const text=message.text?esc(String(message.text).slice(0,160)):"";
+  if(message.stickerEmoji)return '<span class="mc-quote-sticker">'+esc(message.stickerEmoji)+' Sticker</span>';
+  if(message.youtube?.videoId)return '<span class="mc-quote-media">▶️ '+esc(message.youtube.title||"YouTube video")+'</span><img class="mc-quote-thumb" src="https://i.ytimg.com/vi/'+esc(message.youtube.videoId)+'/mqdefault.jpg" alt="" loading="lazy">';
+  if(message.gifUrl)return '<span class="mc-quote-media">🎞️ GIF</span><img class="mc-quote-thumb" src="'+esc(message.gifUrl)+'" alt="" loading="lazy">';
+  if(message.attachment?.type?.startsWith("image/"))return '<span class="mc-quote-media">🖼️ Image</span><img class="mc-quote-thumb" src="'+esc(message.attachment.url)+'" alt="" loading="lazy">';
+  if(message.attachment?.type?.startsWith("video/"))return '<span class="mc-quote-media">🎬 Video</span>';
+  if(message.attachment?.type?.startsWith("audio/"))return '<span class="mc-quote-media">🎵 Audio</span>';
+  return text||esc(quotedMessagePlainPreview(message));
+}
+function dmMediaPreviewHTML(message){
+  const attachment=message.attachment,raw=String(message.text||"").trim();
+  if(attachment?.url){
+    const url=esc(attachment.url),type=String(attachment.type||"");
+    if(type.startsWith("image/"))return '<a class="dm-media-preview" href="'+url+'" target="_blank" rel="noopener"><img class="dm-inline-image" src="'+url+'" alt="'+esc(attachment.name||"Image")+'" loading="lazy"></a>';
+    if(type.startsWith("video/"))return '<video class="dm-inline-video" controls playsinline preload="metadata" src="'+url+'"></video>';
+    if(type.startsWith("audio/"))return '<audio class="dm-inline-audio" controls preload="metadata" src="'+url+'"></audio>';
+    return '<a href="'+url+'" target="_blank" rel="noopener">📎 '+esc(attachment.name||"Attachment")+'</a>';
+  }
+  const yt=raw.match(/(?:youtube\.com\/(?:watch\?v=|shorts\/|embed\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/i);
+  if(yt)return youtubePreviewHTML(yt[1],"YouTube video");
+  if(/\.gif(?:\?.*)?$/i.test(raw))return '<a class="chat-gif" href="'+esc(raw)+'" target="_blank" rel="noopener"><img src="'+esc(raw)+'" alt="GIF" loading="lazy"></a>';
+  if(/\.(mp4|webm|mov)(?:\?.*)?$/i.test(raw))return '<video class="dm-inline-video" controls playsinline preload="metadata" src="'+esc(raw)+'"></video>';
+  if(/\.(png|jpe?g|webp)(?:\?.*)?$/i.test(raw))return '<a class="dm-media-preview" href="'+esc(raw)+'" target="_blank" rel="noopener"><img class="dm-inline-image" src="'+esc(raw)+'" alt="Shared image" loading="lazy"></a>';
+  return raw&&/^https?:\/\//i.test(raw)?'<a class="dm-media-link" href="'+esc(raw)+'" target="_blank" rel="noopener">'+esc(raw)+'</a>':"";
+}
+
 function dmMessageHTML(message, messages, user) {
   const deleteAction=String(message.from)===String(state.user?.id)&&!message.deleted
     ? '<button type="button" class="mini danger dm-delete-icon" data-dm-delete="'+esc(message.id)+'" title="Delete message" aria-label="Delete message">🗑</button>'
@@ -5251,7 +5295,7 @@ function dmMessageHTML(message, messages, user) {
     : null;
 
   const quoteText = quoted
-    ? (quoted.deleted ? "Deleted message" : (quoted.text || (quoted.attachment ? "📎 Attachment" : "Message")))
+    ? (quoted.deleted ? "Deleted message" : quotedMessagePlainPreview(quoted))
     : null;
 
   const isMine=String(message.from)===String(state.user.id);
@@ -5278,7 +5322,7 @@ function dmMessageHTML(message, messages, user) {
                   ↪ ${esc(quoteAuthor || "Original message")}
                 </div>
                 <div class="quoted-text">
-                  ${esc(quoteText || "Original message is no longer visible")}
+                  ${quoted&&!quoted.deleted?quotedMessagePreviewHTML(quoted):esc(quoteText || "Original message is no longer visible")}
                 </div>
               </div>
             `
@@ -5293,19 +5337,7 @@ function dmMessageHTML(message, messages, user) {
 
         ${message.deleted ? '<div class="msg-text muted">This message was deleted.</div>' : ""}
 
-        ${
-          !message.deleted && message.attachment
-            ? `
-              <a
-                href="${esc(message.attachment.url)}"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                📎 ${esc(message.attachment.name || "Attachment")}
-              </a>
-            `
-            : ""
-        }
+        ${!message.deleted ? dmMediaPreviewHTML(message) : ""}
 
         <div class="msg-actions dm-message-actions">
           <button type="button" class="mini dm-action-icon" onclick="replyDMMsg(&quot;${esc(message.id)}&quot;,&quot;${esc(user.id)}&quot;)" title="Reply" aria-label="Reply">↩</button>
