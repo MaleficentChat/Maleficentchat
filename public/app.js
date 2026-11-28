@@ -8960,3 +8960,38 @@ bootstrap();
 
 
 if(new URLSearchParams(location.search).get("parallelEmbed")==="1")startParallelEmbed();
+
+// Main chat quick-action handlers for the simplified plus menu.
+document.addEventListener("click", async event=>{
+  const button=event.target instanceof Element?event.target.closest("#chatGiftBtn,#chatEmojiBtn"):null;
+  if(!button)return;
+  event.preventDefault();event.stopPropagation();
+  if(button.id==="chatEmojiBtn"){
+    const emojis=["😀","😁","😂","🥹","😍","🥰","😘","😎","😭","😡","🤔","🤗","🥳","😴","❤️","💜","💙","💚","💛","🖤","✨","🔥","🎉","🎆","🌹","💐","🎁","👑","💎","🫶","👍","👎","🙏","🤣","😇","🙈","🙉","🙊","🐱","🐶"];
+    const input=mcGetById("message");
+    modal('<div class="mc-quick-emoji"><h3>😊 Emoji &amp; Stickers</h3><div class="mc-quick-emoji-grid">'+emojis.map(e=>'<button type="button" class="mc-quick-emoji-item" data-emoji="'+e+'">'+e+'</button>').join('')+'</div></div>');
+    document.querySelectorAll(".mc-quick-emoji-item").forEach(item=>item.addEventListener("click",()=>{
+      if(input){const start=input.selectionStart??input.value.length,end=input.selectionEnd??start;input.value=input.value.slice(0,start)+item.dataset.emoji+input.value.slice(end);input.focus();input.setSelectionRange(start+item.dataset.emoji.length,start+item.dataset.emoji.length);}
+      closeModal();
+    }));
+    return;
+  }
+  if(!state.currentRoom){toast("Join a room before sending a gift.");return;}
+  const users=(onlinePanelCache||[]).filter(u=>u.online&&!u.invisible&&String(u.id)!==String(state.user?.id));
+  if(!users.length){await renderOnline("online").catch(()=>{});}
+  const fresh=(onlinePanelCache||[]).filter(u=>u.online&&!u.invisible&&String(u.id)!==String(state.user?.id));
+  if(!fresh.length){toast("No other users are online right now.");return;}
+  const catalogData=await api("/api/gifts/catalog").catch(e=>{toast(e.message||"Could not load gifts.");return null;});
+  const gifts=catalogData?.gifts||[];
+  if(!gifts.length){toast("No gifts are available right now.");return;}
+  modal('<div class="mc-chat-gift-picker"><h3>🎁 Send a gift</h3><label>Recipient<select id="mcChatGiftRecipient"><option value="">Choose someone online…</option>'+fresh.map(u=>'<option value="'+esc(u.id)+'">'+esc(u.displayName||u.username)+'</option>').join('')+'</select></label><div class="mc-chat-gift-grid">'+gifts.map(g=>'<button type="button" class="mc-chat-gift-choice" data-gift="'+esc(g.id)+'"><span>'+esc(g.icon||"🎁")+'</span><b>'+esc(g.name)+'</b><small>🪙 '+Number(g.price||0).toLocaleString()+'</small></button>').join('')+'</div><textarea id="mcChatGiftMessage" maxlength="180" rows="2" placeholder="Add a note (optional)"></textarea><button id="mcChatGiftSend" class="primary" disabled>Send gift</button></div>');
+  let selectedGift=null;
+  document.querySelectorAll(".mc-chat-gift-choice").forEach(choice=>choice.addEventListener("click",()=>{selectedGift=choice.dataset.gift;document.querySelectorAll(".mc-chat-gift-choice").forEach(x=>x.classList.toggle("selected",x===choice));mcGetById("mcChatGiftSend").disabled=!mcGetById("mcChatGiftRecipient").value;}));
+  mcGetById("mcChatGiftRecipient")?.addEventListener("change",()=>{mcGetById("mcChatGiftSend").disabled=!selectedGift||!mcGetById("mcChatGiftRecipient").value;});
+  mcGetById("mcChatGiftSend")?.addEventListener("click",async()=>{
+    const recipient=mcGetById("mcChatGiftRecipient").value;if(!recipient||!selectedGift)return;
+    const send=mcGetById("mcChatGiftSend");send.disabled=true;send.textContent="Sending…";
+    try{const result=await api("/api/users/"+encodeURIComponent(recipient)+"/gifts",{method:"POST",body:JSON.stringify({giftId:selectedGift,message:mcGetById("mcChatGiftMessage")?.value||""})});if(state.user)state.user.gold=result.gold;updateNav();closeModal();toast("Gift sent! 🎁");}
+    catch(error){toast(error.message||"Could not send gift.");send.disabled=false;send.textContent="Send gift";}
+  });
+},true);
