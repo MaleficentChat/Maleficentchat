@@ -7822,7 +7822,7 @@ app.post('/api/rooms/:id/sticker',auth,featureAllowed('emojis_stickers'),async(r
   if(u.banned===true||(u.kickedUntil&&u.kickedUntil>Date.now())||(u.mutedUntil&&u.mutedUntil>Date.now()))return res.status(403).json({error:'Your account cannot send messages right now.'});
   if(!featureGrantAllowed(u,'emojis_stickers'))return res.status(403).json({error:'Your rank cannot send stickers.'});
   const emoji=String(req.body.emoji||'').trim();
-  if(!emoji||emoji.length>32||! /\\p{Extended_Pictographic}/u.test(emoji))return res.status(400).json({error:'Choose a valid sticker.'});
+  if(!emoji||emoji.length>32||! /\p{Extended_Pictographic}/u.test(emoji))return res.status(400).json({error:'Choose a valid sticker.'});
   const m={id:id(),roomId:String(r.id),userId:u.id,username:u.username,displayName:u.displayName,rank:u.rank,avatar:u.avatar||'',text:'',type:'sticker',stickerEmoji:emoji,stickerMotion:1+Math.floor(Math.random()*4),reactions:{},edited:false,deleted:false,pinned:false,time:Date.now(),delivered:true};
   try{
     await pool.query('INSERT INTO room_messages(id,room_id,user_id,data,created_at) VALUES($1,$2,$3,$4::jsonb,NOW())',[m.id,Number(r.id),Number(u.id),JSON.stringify(m)]);
