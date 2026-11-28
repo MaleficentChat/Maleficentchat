@@ -5301,9 +5301,9 @@ function dmMediaPreviewHTML(message){
 function dmTextIsMedia(text){
   const raw=String(text||"").trim();
   if(!raw)return false;
-  return /(?:youtube\\.com\\/(?:watch\\?v=|shorts\\/|embed\\/)|youtu\\.be\\/)/i.test(raw)
-    || /\\.(?:gif|png|jpe?g|webp|mp4|webm|mov|mp3|wav|ogg|m4a|aac)(?:\\?.*)?$/i.test(raw)
-    || /^https?:\\/\\/\\S+$/i.test(raw) && /(?:\\.(?:gif|png|jpe?g|webp|mp4|webm|mov|mp3|wav|ogg|m4a|aac)(?:\\?.*)?$|youtube\\.com|youtu\\.be)/i.test(raw);
+  return /(?:youtube\.com\/(?:watch\?v=|shorts\/|embed\/)|youtu\.be\/)/i.test(raw)
+    || /\.(?:gif|png|jpe?g|webp|mp4|webm|mov|mp3|wav|ogg|m4a|aac)(?:\?.*)?$/i.test(raw)
+    || /^https?:\/\/\S+$/i.test(raw) && /(?:\.(?:gif|png|jpe?g|webp|mp4|webm|mov|mp3|wav|ogg|m4a|aac)(?:\?.*)?$|youtube\.com|youtu\.be)/i.test(raw);
 }
 
 function dmMessageHTML(message, messages, user) {
