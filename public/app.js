@@ -5651,7 +5651,7 @@ async function loadNews() {
     document.querySelectorAll('[data-news-more]').forEach(b=>b.onclick=()=>{mcGetById('newsOptions-'+b.dataset.newsMore)?.classList.toggle('hidden')});
     document.querySelectorAll('[data-news-delete]').forEach(b=>b.onclick=()=>deleteNews(b.dataset.newsDelete));
     document.querySelectorAll('[data-news-edit]').forEach(b=>b.onclick=()=>editNewsPost(b.dataset.newsEdit));
-    document.querySelectorAll('[data-news-report]').forEach(b=>{const id=b.dataset.newsReport;try{await api('/api/news/'+encodeURIComponent(id)+'/report',{method:'POST',body:JSON.stringify({reason:'Reported by community member'})});toast('Report submitted.')}catch(e){toast(e.message||'Reporting is unavailable for this post.')}});
+    document.querySelectorAll('[data-news-report]').forEach(b=>b.onclick=async()=>{const id=b.dataset.newsReport;try{await api('/api/news/'+encodeURIComponent(id)+'/report',{method:'POST',body:JSON.stringify({reason:'Reported by community member'})});toast('Report submitted.')}catch(e){toast(e.message||'Reporting is unavailable for this post.')}});
     document.querySelectorAll('[data-news-like]').forEach(b=>b.onclick=async()=>{b.disabled=true;try{await api('/api/news/'+encodeURIComponent(b.dataset.newsLike)+'/like',{method:'POST',body:JSON.stringify({})});await loadNews()}catch(e){toast(e.message||'Could not like this post.')}finally{b.disabled=false}});
     document.querySelectorAll('[data-news-likes]').forEach(b=>b.onclick=()=>openNewsLikes(b.dataset.newsLikes));
     document.querySelectorAll('[data-news-comments]').forEach(b=>b.onclick=()=>openNewsComments(b.dataset.newsComments));
@@ -5724,7 +5724,6 @@ function openPublishNews(){
     if(errorBox)errorBox.textContent='';
     try{
       const payload=new FormData();
-      payload.append('title',title);
       payload.append('body',body);
       if(file)payload.append('file',file);
       await api('/api/news',{method:'POST',body:payload,uploadProgress:true});
