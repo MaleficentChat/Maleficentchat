@@ -5278,7 +5278,12 @@ function quotedMessagePreviewHTML(message){
 }
 function dmMediaPreviewHTML(message){
   const attachment=message.attachment,raw=String(message.text||"").trim();
-  if(message.stickerEmoji)return '<div class="dm-sticker-preview" aria-label="Sticker">'+esc(message.stickerEmoji)+'</div>';\n  const doodle=message.doodle?.url||message.doodleUrl||message.doodle?.dataUrl||message.doodleDataUrl;\n  if(doodle)return '<a class="dm-media-preview dm-doodle-preview" href="'+esc(doodle)+'" target="_blank" rel="noopener"><img class="dm-inline-image" src="'+esc(doodle)+'" alt="Doodle" loading="lazy"><span>✏️ Doodle</span></a>';\n  if(message.youtube?.videoId)return youtubePreviewHTML(message.youtube.videoId,message.youtube.title||"YouTube video");\n  if(message.gifUrl)return '<a class="chat-gif" href="'+esc(message.gifUrl)+'" target="_blank" rel="noopener"><img src="'+esc(message.gifUrl)+'" alt="GIF" loading="lazy"></a>';\n  if(attachment?.url){
+  if(message.stickerEmoji)return '<div class="dm-sticker-preview" aria-label="Sticker">'+esc(message.stickerEmoji)+'</div>';
+  const doodle=message.doodle?.url||message.doodleUrl||message.doodle?.dataUrl||message.doodleDataUrl;
+  if(doodle)return '<a class="dm-media-preview dm-doodle-preview" href="'+esc(doodle)+'" target="_blank" rel="noopener"><img class="dm-inline-image" src="'+esc(doodle)+'" alt="Doodle" loading="lazy"><span>✏️ Doodle</span></a>';
+  if(message.youtube?.videoId)return youtubePreviewHTML(message.youtube.videoId,message.youtube.title||"YouTube video");
+  if(message.gifUrl)return '<a class="chat-gif" href="'+esc(message.gifUrl)+'" target="_blank" rel="noopener"><img src="'+esc(message.gifUrl)+'" alt="GIF" loading="lazy"></a>';
+  if(attachment?.url){
     const url=esc(attachment.url),type=String(attachment.type||"");
     if(type.startsWith("image/"))return '<a class="dm-media-preview" href="'+url+'" target="_blank" rel="noopener"><img class="dm-inline-image" src="'+url+'" alt="'+esc(attachment.name||"Image")+'" loading="lazy"></a>';
     if(type.startsWith("video/"))return '<video class="dm-inline-video" controls playsinline preload="metadata" src="'+url+'"></video>';
