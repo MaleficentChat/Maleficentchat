@@ -7814,6 +7814,21 @@ app.get('/api/gifs/search',auth,async(req,res)=>{
   const results=filtered.slice(offset,offset+limit);
   res.json({results,cost:Number(db.settings.gif_cost??10),hasMore:offset+results.length<filtered.length,nextOffset:offset+results.length,notice:process.env.GIPHY_API_KEY?undefined:'Set GIPHY_API_KEY for full GIPHY search.'});
 });
+app.post('/api/rooms/:id/sticker',auth,featureAllowed('emojis_stickers'),async(req,res)=>{
+  const u=current(req),r=db.rooms.find(x=>String(x.id)===String(req.params.id));
+  if(!r)return res.status(404).json({error:'Room not found'});
+  if(!verifyRoomJoinToken(req.headers['x-room-join-token'],u.id,r))return res.status(403).json({error:'Join this room before sending a sticker.'});
+  if(!roomRankCanEnter(u,r))return res.status(403).json({error:'Your rank cannot enter this room.'});
+  if(u.banned===true||(u.kickedUntil&&u.kickedUntil>Date.now())||(u.mutedUntil&&u.mutedUntil>Date.now()))return res.status(403).json({error:'Your account cannot send messages right now.'});
+  if(!featureGrantAllowed(u,'emojis_stickers'))return res.status(403).json({error:'Your rank cannot send stickers.'});
+  const emoji=String(req.body.emoji||'').trim();
+  if(!emoji||emoji.length>32||! /\\p{Extended_Pictographic}/u.test(emoji))return res.status(400).json({error:'Choose a valid sticker.'});
+  const m={id:id(),roomId:String(r.id),userId:u.id,username:u.username,displayName:u.displayName,rank:u.rank,avatar:u.avatar||'',text:'',type:'sticker',stickerEmoji:emoji,stickerMotion:1+Math.floor(Math.random()*4),reactions:{},edited:false,deleted:false,pinned:false,time:Date.now(),delivered:true};
+  try{
+    await pool.query('INSERT INTO room_messages(id,room_id,user_id,data,created_at) VALUES($1,$2,$3,$4::jsonb,NOW())',[m.id,Number(r.id),Number(u.id),JSON.stringify(m)]);
+    db.messages.push(m);save();io.to('room:'+r.id).emit('message',m);res.json({ok:true,message:m});
+  }catch(error){console.error('Sticker send failed:',error);res.status(500).json({error:'Could not send sticker.'});}
+});
 app.post('/api/rooms/:id/gif',auth,featureAllowed('gif_sending'),async(req,res)=>{
   const u=current(req),r=db.rooms.find(x=>String(x.id)===String(req.params.id));
   if(!r)return res.status(404).json({error:'Room not found'});
